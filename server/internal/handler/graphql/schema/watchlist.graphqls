@@ -1,0 +1,21 @@
+# internal/handler/graphql/schema/watchlist.graphqls
+
+type Watchlist {
+    id: ID!
+    name: String!
+    createdAt: Time!
+    updatedAt: Time!
+    user: User!
+    assets: [Asset!]!
+}
+
+# --- Inputs for Watchlist ---
+
+input CreateWatchlistInput {
+    userID: ID!
+    name: String!
+}
+
+input WatchlistFilter {
+    userID: ID!
+}

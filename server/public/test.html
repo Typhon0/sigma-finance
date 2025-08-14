@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GraphQL API Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 3px; }
+        .error { background: #ffe6e6; color: #d00; }
+        .success { background: #e6ffe6; color: #060; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>GraphQL API End-to-End Test</h1>
+        
+        <div class="test-section">
+            <h2>1. Test GraphQL Introspection</h2>
+            <button onclick="testIntrospection()">Test Schema Introspection</button>
+            <div id="introspection-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Test User Operations</h2>
+            <button onclick="testUserOperations()">Test User CRUD</button>
+            <div id="user-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Test Portfolio Operations</h2>
+            <button onclick="testPortfolioOperations()">Test Portfolio CRUD</button>
+            <div id="portfolio-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Test Watchlist Operations</h2>
+            <button onclick="testWatchlistOperations()">Test Watchlist CRUD</button>
+            <div id="watchlist-result" class="result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>5. Test Error Handling</h2>
+            <button onclick="testErrorHandling()">Test Validation Errors</button>
+            <div id="error-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const GRAPHQL_ENDPOINT = '/graphql';
+
+        async function graphqlRequest(query, variables = {}) {
+            try {
+                const response = await fetch(GRAPHQL_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ query, variables })
+                });
+                return await response.json();
+            } catch (error) {
+                return { errors: [{ message: error.message }] };
+            }
+        }
+
+        function displayResult(elementId, result, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.className = `result ${isSuccess ? 'success' : 'error'}`;
+            element.innerHTML = `<pre>${JSON.stringify(result, null, 2)}</pre>`;
+        }
+
+        async function testIntrospection() {
+            const query = `
+                query {
+                    __schema {
+                        queryType { name }
+                        mutationType { name }
+                        types(includeDeprecated: false) {
+                            name
+                            kind
+                        }
+                    }
+                }
+            `;
+            
+            const result = await graphqlRequest(query);
+            const isSuccess = !result.errors && result.data?.__schema;
+            displayResult('introspection-result', result, isSuccess);
+        }
+
+        async function testUserOperations() {
+            const results = [];
+            
+            // Test user creation
+            const createQuery = `
+                mutation {
+                    createUser(input: {
+                        username: "frontend_test_user"
+                        email: "frontend@test.com"
+                        password: "password123"
+                    }) {
+                        id
+                        username
+                        email
+                    }
+                }
+            `;
+            
+            const createResult = await graphqlRequest(createQuery);
+            results.push({ operation: 'Create User', result: createResult });
+            
+            if (createResult.data?.createUser?.id) {
+                const userId = createResult.data.createUser.id;
+                
+                // Test user query
+                const queryUser = `
+                    query {
+                        user(id: "${userId}") {
+                            id
+                            username
+                            email
+                        }
+                    }
+                `;
+                
+                const queryResult = await graphqlRequest(queryUser);
+                results.push({ operation: 'Query User', result: queryResult });
+                
+                // Test user update
+                const updateQuery = `
+                    mutation {
+                        updateUser(id: "${userId}", input: {
+                            email: "updated@test.com"
+                        }) {
+                            id
+                            username
+                            email
+                        }
+                    }
+                `;
+                
+                const updateResult = await graphqlRequest(updateQuery);
+                results.push({ operation: 'Update User', result: updateResult });
+            }
+            
+            const isSuccess = results.every(r => !r.result.errors);
+            displayResult('user-result', results, isSuccess);
+        }
+
+        async function testPortfolioOperations() {
+            const results = [];
+            
+            // First get a user ID
+            const usersQuery = `query { users(pagination: { limit: 1 }) { id } }`;
+            const usersResult = await graphqlRequest(usersQuery);
+            
+            if (usersResult.data?.users?.[0]?.id) {
+                const userId = usersResult.data.users[0].id;
+                
+                // Test portfolio creation
+                const createQuery = `
+                    mutation {
+                        createPortfolio(input: {
+                            userID: "${userId}"
+                            name: "Frontend Test Portfolio"
+                        }) {
+                            id
+                            name
+                        }
+                    }
+                `;
+                
+                const createResult = await graphqlRequest(createQuery);
+                results.push({ operation: 'Create Portfolio', result: createResult });
+                
+                // Test portfolios query
+                const queryPortfolios = `
+                    query {
+                        portfolios(pagination: { limit: 5 }) {
+                            id
+                            name
+                        }
+                    }
+                `;
+                
+                const queryResult = await graphqlRequest(queryPortfolios);
+                results.push({ operation: 'Query Portfolios', result: queryResult });
+            }
+            
+            const isSuccess = results.every(r => !r.result.errors);
+            displayResult('portfolio-result', results, isSuccess);
+        }
+
+        async function testWatchlistOperations() {
+            const results = [];
+            
+            // First get a user ID
+            const usersQuery = `query { users(pagination: { limit: 1 }) { id } }`;
+            const usersResult = await graphqlRequest(usersQuery);
+            
+            if (usersResult.data?.users?.[0]?.id) {
+                const userId = usersResult.data.users[0].id;
+                
+                // Test watchlist creation
+                const createQuery = `
+                    mutation {
+                        createWatchlist(input: {
+                            userID: "${userId}"
+                            name: "Frontend Test Watchlist"
+                        }) {
+                            id
+                            name
+                        }
+                    }
+                `;
+                
+                const createResult = await graphqlRequest(createQuery);
+                results.push({ operation: 'Create Watchlist', result: createResult });
+                
+                // Test watchlists query
+                const queryWatchlists = `
+                    query {
+                        watchlists {
+                            id
+                            name
+                        }
+                    }
+                `;
+                
+                const queryResult = await graphqlRequest(queryWatchlists);
+                results.push({ operation: 'Query Watchlists', result: queryResult });
+            }
+            
+            const isSuccess = results.every(r => !r.result.errors);
+            displayResult('watchlist-result', results, isSuccess);
+        }
+
+        async function testErrorHandling() {
+            const results = [];
+            
+            // Test validation error
+            const invalidUserQuery = `
+                mutation {
+                    createUser(input: {
+                        username: ""
+                        email: "invalid-email"
+                        password: "123"
+                    }) {
+                        id
+                        username
+                    }
+                }
+            `;
+            
+            const validationResult = await graphqlRequest(invalidUserQuery);
+            results.push({ operation: 'Validation Error Test', result: validationResult });
+            
+            // Test not found error
+            const notFoundQuery = `
+                query {
+                    user(id: "99999") {
+                        id
+                        username
+                    }
+                }
+            `;
+            
+            const notFoundResult = await graphqlRequest(notFoundQuery);
+            results.push({ operation: 'Not Found Test', result: notFoundResult });
+            
+            // Success if we got expected errors
+            const isSuccess = validationResult.errors && validationResult.errors.length > 0;
+            displayResult('error-result', results, isSuccess);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+# internal/handler/graphql/schema/asset.graphqls
+
+type AssetType {
+    id: ID!
+    name: String!
+}
+
+interface Asset {
+    id: ID!
+    name: String!
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+}
+
+type Stock implements Asset {
+    id: ID!
+    name: String!
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    ticker: String!
+    quantity: Float!
+    buyingPrice: Float # Note: Redundant with purchase_price in asset table
+}
+
+type Crypto implements Asset {
+    id: ID!
+    name: String!
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    walletAddress: String
+    blockchainNetwork: String
+    quantity: Float!
+}
+
+type Tag {
+    id: ID!
+    name: String!
+}
+
+# Input for creating a new Stock asset
+input CreateStockInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    ticker: String!
+    quantity: Float!
+}
+
+# Input for creating a new Crypto asset
+input CreateCryptoInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    walletAddress: String
+    blockchainNetwork: String
+    quantity: Float!
+}
+
+input AssetFilter {
+    assetTypeID: ID
+    nameContains: String
+    hasTagIDs: [ID!]
+}
+
+input AssetOrder {
+    field: AssetOrderField! = NAME
+    direction: SortDirection! = ASC
+}
+
+enum AssetOrderField {
+    NAME
+    CURRENT_VALUE
+    PURCHASE_DATE
+}

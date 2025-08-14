@@ -1,0 +1,49 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when run with the -o flag
+*.out
+
+# Go workspace file
+go.work
+go.work.sum
+
+# Dependency directories (Go modules)
+# This is a common practice, as `go mod download` can fetch them.
+# If you want to commit your dependencies, remove the /vendor/ line.
+/vendor/
+
+# Environment configuration files
+.env
+.env.*
+!.env.example
+
+# Log files
+*.log
+
+# Build results
+/build/
+/bin/
+/dist/
+
+# IDE/Editor specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS-generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

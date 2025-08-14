@@ -1,0 +1,69 @@
+# internal/handler/graphql/schema/schema.graphqls
+
+# Global custom scalars
+scalar Time
+
+# Reusable input for pagination. It's generic enough to live here.
+input PaginationInput {
+    limit: Int = 20
+    offset: Int = 0
+}
+
+# Generic enum for sort direction. Used by all Order inputs.
+enum SortDirection {
+    ASC
+    DESC
+}
+
+# The root of all read operations.
+# All arguments are now defined alongside their respective types.
+type Query {
+    user(id: ID!): User
+    users(filter: UserFilter, pagination: PaginationInput, orderBy: UserOrder): [User!]!
+
+    portfolio(id: ID!): Portfolio
+    portfolios(filter: PortfolioFilter, pagination: PaginationInput, orderBy: PortfolioOrder): [Portfolio!]!
+
+    asset(id: ID!): Asset
+    assets(filter: AssetFilter, pagination: PaginationInput, orderBy: AssetOrder): [Asset!]!
+    assetTypes: [AssetType!]!
+
+    tag(id: ID!): Tag
+    tags: [Tag!]!
+
+    watchlist(id: ID!): Watchlist
+    watchlists(filter: WatchlistFilter, pagination: PaginationInput): [Watchlist!]!
+    
+    transaction(id: ID!): Transaction
+    transactions(filter: TransactionFilter, pagination: PaginationInput, orderBy: TransactionOrder): [Transaction!]!
+}
+
+# The root of all write operations.
+type Mutation {
+    # User Mutations
+    createUser(input: CreateUserInput!): User!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    deleteUser(id: ID!): ID!
+
+    # Portfolio Mutations
+    createPortfolio(input: CreatePortfolioInput!): Portfolio!
+    updatePortfolio(id: ID!, input: UpdatePortfolioInput!): Portfolio!
+    deletePortfolio(id: ID!): ID!
+    addAssetToPortfolio(input: PortfolioAssetInput!): PortfolioAsset!
+    updateAssetInPortfolio(input: PortfolioAssetInput!): PortfolioAsset!
+    removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!): ID!
+    tagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
+    untagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
+
+    # Asset Mutations
+    createStockAsset(input: CreateStockInput!): Stock!
+    createCryptoAsset(input: CreateCryptoInput!): Crypto!
+    tagAsset(assetID: ID!, tagID: ID!): Asset!
+    untagAsset(assetID: ID!, tagID: ID!): Asset!
+
+    # Watchlist Mutations
+    createWatchlist(input: CreateWatchlistInput!): Watchlist!
+    deleteWatchlist(id: ID!): ID!
+    addAssetToWatchlist(watchlistID: ID!, assetID: ID!): Watchlist!
+    removeAssetFromWatchlist(watchlistID: ID!, assetID: ID!): Watchlist!
+}

@@ -1,0 +1,37 @@
+# internal/handler/graphql/schema/transaction.graphqls
+
+type Transaction {
+    id: ID!
+    portfolio: Portfolio!
+    asset: Asset!
+    transactionType: TransactionType!
+    quantity: Float!
+    pricePerUnit: Float!
+    transactionDate: Time!
+    notes: String
+}
+
+
+enum TransactionType {
+    BUY
+    SELL
+}
+
+input TransactionFilter {
+    portfolioID: ID
+    assetID: ID
+    transactionType: TransactionType
+    dateFrom: Time
+    dateTo: Time
+}
+
+input TransactionOrder {
+    field: TransactionOrderField! = TRANSACTION_DATE
+    direction: SortDirection! = DESC
+}
+
+enum TransactionOrderField {
+    TRANSACTION_DATE
+    PRICE_PER_UNIT
+    QUANTITY
+}

@@ -1,0 +1,44 @@
+# internal/handler/graphql/schema/user.graphqls
+
+type User {
+    id: ID!
+    username: String!
+    email: String!
+    createdAt: Time!
+    updatedAt: Time!
+    portfolios: [Portfolio!]!
+    watchlists: [Watchlist!]!
+    alerts: [Alert!]!
+    reports: [Report!]!
+    ownerships: [Ownership!]!
+}
+
+# --- Inputs & Enums for User ---
+
+input CreateUserInput {
+    username: String!
+    email: String!
+    password: String!
+}
+
+input UpdateUserInput {
+    username: String
+    email: String
+    password: String
+}
+
+input UserFilter {
+    usernameContains: String
+    email: String
+}
+
+input UserOrder {
+    field: UserOrderField! = CREATED_AT
+    direction: SortDirection! = DESC
+}
+
+enum UserOrderField {
+    USERNAME
+    EMAIL
+    CREATED_AT
+}

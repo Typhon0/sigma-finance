@@ -1,0 +1,8 @@
+# internal/handler/graphql/schema/ownership.graphqls
+
+# Represents a user's percentage ownership of a specific asset.
+type Ownership {
+    user: User!
+    asset: Asset!
+    ownershipPercentage: Float!
+}

@@ -1,0 +1,53 @@
+# internal/handler/graphql/schema/portfolio.graphqls
+
+type Portfolio {
+    id: ID!
+    name: String!
+    createdAt: Time!
+    updatedAt: Time!
+    user: User!
+    tags: [Tag!]!
+    assets: [PortfolioAsset!]!
+    transactions: [Transaction!]!
+}
+
+type PortfolioAsset {
+    asset: Asset!
+    quantity: Float!
+    averagePurchasePrice: Float
+}
+
+# --- Inputs & Enums for Portfolio ---
+
+input CreatePortfolioInput {
+    userID: ID!
+    name: String!
+}
+
+input UpdatePortfolioInput {
+    name: String
+}
+
+input PortfolioAssetInput {
+    portfolioID: ID!
+    assetID: ID!
+    quantity: Float!
+    averagePurchasePrice: Float
+}
+
+input PortfolioFilter {
+    userID: ID
+    nameContains: String
+    hasTagIDs: [ID!]
+}
+
+input PortfolioOrder {
+    field: PortfolioOrderField! = NAME
+    direction: SortDirection! = ASC
+}
+
+enum PortfolioOrderField {
+    NAME
+    CREATED_AT
+    UPDATED_AT
+}
