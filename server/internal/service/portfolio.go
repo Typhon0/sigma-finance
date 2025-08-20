@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"time"
 )
 
 type IPortfolioService interface {
@@ -20,6 +22,12 @@ type IPortfolioService interface {
 	TagPortfolio(ctx context.Context, portfolioID, tagID uint) error
 	UntagPortfolio(ctx context.Context, portfolioID, tagID uint) error
 	GetPortfolioAssets(ctx context.Context, portfolioID uint) ([]model.PortfolioAsset, error)
+
+	// Enhanced functionality
+	DuplicatePortfolio(ctx context.Context, input DuplicatePortfolioInput) (model.Portfolio, error)
+	ReorderPortfolios(ctx context.Context, userID uint, orders []PortfolioOrderInput) ([]model.Portfolio, error)
+	GetPortfoliosByUser(ctx context.Context, userID uint, orderBy string) ([]model.Portfolio, error)
+	GetPortfolioAnalytics(ctx context.Context, portfolioID uint) (PortfolioAnalytics, error)
 }
 
 // PortfolioService is the concrete implementation of IPortfolioService.
@@ -38,12 +46,63 @@ func NewPortfolioService(uow repository.IUnitOfWork) *PortfolioService {
 // --- Input Structs for Service Methods (keeps method signatures clean) ---
 
 type CreatePortfolioInput struct {
-	UserID uint
-	Name   string
+	UserID      uint
+	Name        string
+	Description *string
 }
 
 type UpdatePortfolioInput struct {
-	Name *string
+	Name        *string
+	Description *string
+	SortOrder   *int
+}
+
+// DuplicatePortfolioInput represents the input for duplicating a portfolio
+type DuplicatePortfolioInput struct {
+	SourcePortfolioID uint   `validate:"required"`
+	NewName           string `validate:"required,min=3,max=100"`
+	Description       string `validate:"max=500"`
+	CopyAssets        bool
+}
+
+// PortfolioOrderInput represents the input for reordering portfolios
+type PortfolioOrderInput struct {
+	PortfolioID uint `validate:"required"`
+	SortOrder   int  `validate:"min=0"`
+}
+
+// PortfolioAnalytics represents comprehensive portfolio performance metrics
+type PortfolioAnalytics struct {
+	PortfolioID          int                `json:"portfolioId"`
+	TotalValue           float64            `json:"totalValue"`
+	TotalCost            float64            `json:"totalCost"`
+	TotalGainLoss        float64            `json:"totalGainLoss"`
+	TotalGainLossPercent float64            `json:"totalGainLossPercent"`
+	AssetAllocation      []AssetAllocation  `json:"assetAllocation"`
+	RiskMetrics          RiskMetrics        `json:"riskMetrics"`
+	PerformanceHistory   []PerformancePoint `json:"performanceHistory"`
+}
+
+// AssetAllocation represents the allocation of assets by type
+type AssetAllocation struct {
+	AssetType  string  `json:"assetType"`
+	Value      float64 `json:"value"`
+	Percentage float64 `json:"percentage"`
+	Count      int     `json:"count"`
+}
+
+// RiskMetrics represents portfolio risk calculations
+type RiskMetrics struct {
+	Volatility      float64 `json:"volatility"`
+	SharpeRatio     float64 `json:"sharpeRatio"`
+	MaxDrawdown     float64 `json:"maxDrawdown"`
+	Diversification float64 `json:"diversification"`
+}
+
+// PerformancePoint represents a point in time performance data
+type PerformancePoint struct {
+	Date  time.Time `json:"date"`
+	Value float64   `json:"value"`
 }
 
 // --- Method Implementations ---
@@ -81,8 +140,14 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 
 	// 2. --- Data Mapping ---
 	newPortfolio := model.Portfolio{
-		UserID: int(input.UserID),
-		Name:   input.Name,
+		UserID:    int(input.UserID),
+		Name:      input.Name,
+		SortOrder: 0, // Default sort order for new portfolios
+	}
+
+	// Set description if provided
+	if input.Description != nil {
+		newPortfolio.Description = *input.Description
 	}
 
 	// 3. --- Persistence ---
@@ -112,6 +177,18 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id uint, input U
 		}
 		portfolioToUpdate.Name = *input.Name
 	}
+
+	if input.Description != nil {
+		portfolioToUpdate.Description = *input.Description
+	}
+
+	if input.SortOrder != nil {
+		// Validation for sort order (should be non-negative)
+		if *input.SortOrder < 0 {
+			return model.Portfolio{}, errors.New("sort order must be non-negative")
+		}
+		portfolioToUpdate.SortOrder = *input.SortOrder
+	}
 	// Note: The UpdatedAt field is typically handled automatically by the database or ORM hook.
 
 	// 3. --- Persistence ---
@@ -125,14 +202,44 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id uint, input U
 
 // DeletePortfolio handles the removal of a portfolio.
 func (s *PortfolioService) DeletePortfolio(ctx context.Context, id uint) error {
-	// Here you might add business logic, e.g., "cannot delete a portfolio with active assets".
-	// For now, it's a direct pass-through.
-	err := s.uow.Portfolio().Delete(ctx, id)
-	if err != nil {
-		// The repo will return ErrNotFound if the ID doesn't exist.
-		return err
-	}
-	return nil
+	// Use transaction to ensure cascade deletion is atomic
+	return s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+		portfolioID := int(id) // Convert uint to int for repository calls
+
+		// 1. Check if portfolio exists
+		_, err := repos.PortfolioRepo.GetByID(ctx, id)
+		if err != nil {
+			return fmt.Errorf("portfolio not found: %w", err)
+		}
+
+		// 2. Get all portfolio assets to delete them first
+		portfolioAssets, err := repos.PortfolioAssetRepo.FindByPortfolioID(ctx, portfolioID)
+		if err != nil {
+			return fmt.Errorf("failed to get portfolio assets: %w", err)
+		}
+
+		// 3. Delete all portfolio assets by using the database directly since they have composite keys
+		for _, asset := range portfolioAssets {
+			_, err := repos.PortfolioAssetRepo.GetDB().NewDelete().
+				Model(&model.PortfolioAsset{}).
+				Where("portfolio_id = ? AND asset_id = ?", asset.PortfolioID, asset.AssetID).
+				Exec(ctx)
+			if err != nil {
+				return fmt.Errorf("failed to delete portfolio asset %d-%d: %w", asset.PortfolioID, asset.AssetID, err)
+			}
+		}
+
+		// 4. Delete portfolio tags associations (skipped for now due to schema issues)
+		// TODO: Implement portfolio tag deletion when the schema is properly set up
+
+		// 5. Finally delete the portfolio itself
+		err = repos.PortfolioRepo.Delete(ctx, id)
+		if err != nil {
+			return fmt.Errorf("failed to delete portfolio: %w", err)
+		}
+
+		return nil
+	})
 }
 
 // AddAssetToPortfolio handles adding an asset to a portfolio, creating the join table record.
@@ -308,4 +415,324 @@ func (s *PortfolioService) GetPortfolioAssets(ctx context.Context, portfolioID u
 	}
 
 	return portfolioAssets, nil
+}
+
+// DuplicatePortfolio creates a copy of an existing portfolio with optional asset copying
+func (s *PortfolioService) DuplicatePortfolio(ctx context.Context, input DuplicatePortfolioInput) (model.Portfolio, error) {
+	// 1. --- Input Validation ---
+	if len(input.NewName) < 3 {
+		return model.Portfolio{}, errors.New("portfolio name must be at least 3 characters long")
+	}
+	if len(input.NewName) > 100 {
+		return model.Portfolio{}, errors.New("portfolio name must be less than 100 characters")
+	}
+	if len(input.Description) > 500 {
+		return model.Portfolio{}, errors.New("description must be less than 500 characters")
+	}
+
+	// 2. --- Get Source Portfolio ---
+	sourcePortfolio, err := s.uow.Portfolio().GetByID(ctx, input.SourcePortfolioID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Portfolio{}, fmt.Errorf("source portfolio with ID %d not found", input.SourcePortfolioID)
+		}
+		return model.Portfolio{}, fmt.Errorf("failed to retrieve source portfolio: %w", err)
+	}
+
+	// 3. --- Check for Duplicate Name ---
+	existingPortfolios, err := s.uow.Portfolio().FindAllBy(ctx,
+		repository.ByColumn("user_id", sourcePortfolio.UserID),
+		repository.ByColumn("name", input.NewName),
+	)
+	if err != nil {
+		return model.Portfolio{}, fmt.Errorf("failed to check for duplicate portfolio name: %w", err)
+	}
+	if len(existingPortfolios) > 0 {
+		return model.Portfolio{}, errors.New("portfolio name already exists for this user")
+	}
+
+	// 4. --- Get Next Sort Order ---
+	userPortfolios, err := s.uow.Portfolio().FindAllBy(ctx,
+		repository.ByColumn("user_id", sourcePortfolio.UserID),
+	)
+	if err != nil {
+		return model.Portfolio{}, fmt.Errorf("failed to get user portfolios for sort order: %w", err)
+	}
+
+	nextSortOrder := 0
+	for _, portfolio := range userPortfolios {
+		if portfolio.SortOrder >= nextSortOrder {
+			nextSortOrder = portfolio.SortOrder + 1
+		}
+	}
+
+	// 5. --- Create New Portfolio ---
+	newPortfolio := model.Portfolio{
+		UserID:      sourcePortfolio.UserID,
+		Name:        input.NewName,
+		Description: input.Description,
+		SortOrder:   nextSortOrder,
+	}
+
+	createdPortfolio, err := s.uow.Portfolio().Create(ctx, &newPortfolio)
+	if err != nil {
+		return model.Portfolio{}, fmt.Errorf("failed to create duplicated portfolio: %w", err)
+	}
+
+	// 6. --- Copy Assets if Requested ---
+	if input.CopyAssets {
+		sourceAssets, err := s.uow.PortfolioAsset().FindByPortfolioID(ctx, int(input.SourcePortfolioID))
+		if err != nil {
+			return model.Portfolio{}, fmt.Errorf("failed to get source portfolio assets: %w", err)
+		}
+
+		for _, sourceAsset := range sourceAssets {
+			newPortfolioAsset := model.PortfolioAsset{
+				PortfolioID:          createdPortfolio.ID,
+				AssetID:              sourceAsset.AssetID,
+				Quantity:             sourceAsset.Quantity,
+				AveragePurchasePrice: sourceAsset.AveragePurchasePrice,
+			}
+
+			_, err := s.uow.PortfolioAsset().Create(ctx, &newPortfolioAsset)
+			if err != nil {
+				// If asset copying fails, we should still return the created portfolio
+				// but log the error for debugging
+				fmt.Printf("Warning: failed to copy asset %d to new portfolio: %v\n", sourceAsset.AssetID, err)
+			}
+		}
+	}
+
+	return *createdPortfolio, nil
+}
+
+// ReorderPortfolios updates the sort order of multiple portfolios for a user
+func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID uint, orders []PortfolioOrderInput) ([]model.Portfolio, error) {
+	// 1. --- Input Validation ---
+	if len(orders) == 0 {
+		return nil, errors.New("no portfolio orders provided")
+	}
+
+	// Validate that all sort orders are non-negative and unique
+	sortOrderMap := make(map[int]bool)
+	for _, order := range orders {
+		if order.SortOrder < 0 {
+			return nil, errors.New("sort order must be non-negative")
+		}
+		if sortOrderMap[order.SortOrder] {
+			return nil, errors.New("duplicate sort orders are not allowed")
+		}
+		sortOrderMap[order.SortOrder] = true
+	}
+
+	// 2. --- Verify User Owns All Portfolios ---
+	var portfolioIDs []uint
+	for _, order := range orders {
+		portfolioIDs = append(portfolioIDs, order.PortfolioID)
+	}
+
+	// Get all portfolios to verify ownership
+	var updatedPortfolios []model.Portfolio
+	for _, order := range orders {
+		portfolio, err := s.uow.Portfolio().GetByID(ctx, order.PortfolioID)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return nil, fmt.Errorf("portfolio with ID %d not found", order.PortfolioID)
+			}
+			return nil, fmt.Errorf("failed to retrieve portfolio %d: %w", order.PortfolioID, err)
+		}
+
+		// Verify user ownership
+		if portfolio.UserID != int(userID) {
+			return nil, fmt.Errorf("portfolio %d does not belong to user %d", order.PortfolioID, userID)
+		}
+
+		// Update sort order
+		portfolio.SortOrder = order.SortOrder
+		err = s.uow.Portfolio().Update(ctx, &portfolio)
+		if err != nil {
+			return nil, fmt.Errorf("failed to update portfolio %d sort order: %w", order.PortfolioID, err)
+		}
+
+		updatedPortfolios = append(updatedPortfolios, portfolio)
+	}
+
+	return updatedPortfolios, nil
+}
+
+// GetPortfoliosByUser retrieves all portfolios for a user with custom ordering
+func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID uint, orderBy string) ([]model.Portfolio, error) {
+	// 1. --- Input Validation ---
+	validOrderBy := map[string]string{
+		"name":         "name ASC",
+		"name_desc":    "name DESC",
+		"created":      "created_at ASC",
+		"created_desc": "created_at DESC",
+		"sort_order":   "sort_order ASC",
+		"updated":      "updated_at DESC",
+	}
+
+	orderClause, exists := validOrderBy[orderBy]
+	if !exists {
+		orderClause = "sort_order ASC" // Default ordering
+	}
+
+	// 2. --- Query Options ---
+	opts := []repository.QueryOption{
+		repository.ByColumn("user_id", userID),
+		repository.WithOrder(orderClause),
+	}
+
+	// 3. --- Retrieve Portfolios ---
+	portfolios, err := s.uow.Portfolio().FindAllBy(ctx, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve portfolios for user %d: %w", userID, err)
+	}
+
+	return portfolios, nil
+}
+
+// GetPortfolioAnalytics calculates comprehensive analytics for a portfolio
+func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID uint) (PortfolioAnalytics, error) {
+	// 1. --- Verify Portfolio Exists ---
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return PortfolioAnalytics{}, fmt.Errorf("portfolio with ID %d not found", portfolioID)
+		}
+		return PortfolioAnalytics{}, fmt.Errorf("failed to retrieve portfolio: %w", err)
+	}
+
+	// 2. --- Get Portfolio Assets ---
+	portfolioAssets, err := s.uow.PortfolioAsset().FindByPortfolioID(ctx, int(portfolioID))
+	if err != nil {
+		return PortfolioAnalytics{}, fmt.Errorf("failed to retrieve portfolio assets: %w", err)
+	}
+
+	// 3. --- Calculate Basic Metrics ---
+	analytics := PortfolioAnalytics{
+		PortfolioID: portfolio.ID,
+	}
+
+	if len(portfolioAssets) == 0 {
+		// Empty portfolio
+		return analytics, nil
+	}
+
+	// 4. --- Calculate Total Values ---
+	var totalValue, totalCost float64
+	assetTypeMap := make(map[string]*AssetAllocation)
+
+	for _, portfolioAsset := range portfolioAssets {
+		// For this implementation, we'll use the average purchase price as current value
+		// In a real implementation, you'd fetch current market prices
+		currentValue := portfolioAsset.Quantity * portfolioAsset.AveragePurchasePrice
+		cost := portfolioAsset.Quantity * portfolioAsset.AveragePurchasePrice
+
+		totalValue += currentValue
+		totalCost += cost
+
+		// Get asset details for type classification
+		// For now, we'll use a placeholder asset type
+		assetType := "UNKNOWN"
+
+		if allocation, exists := assetTypeMap[assetType]; exists {
+			allocation.Value += currentValue
+			allocation.Count++
+		} else {
+			assetTypeMap[assetType] = &AssetAllocation{
+				AssetType: assetType,
+				Value:     currentValue,
+				Count:     1,
+			}
+		}
+	}
+
+	// 5. --- Calculate Gain/Loss ---
+	analytics.TotalValue = totalValue
+	analytics.TotalCost = totalCost
+	analytics.TotalGainLoss = totalValue - totalCost
+	if totalCost > 0 {
+		analytics.TotalGainLossPercent = (analytics.TotalGainLoss / totalCost) * 100
+	}
+
+	// 6. --- Calculate Asset Allocation Percentages ---
+	for _, allocation := range assetTypeMap {
+		if totalValue > 0 {
+			allocation.Percentage = (allocation.Value / totalValue) * 100
+		}
+		analytics.AssetAllocation = append(analytics.AssetAllocation, *allocation)
+	}
+
+	// 7. --- Calculate Risk Metrics ---
+	analytics.RiskMetrics = s.calculateRiskMetrics(portfolioAssets, totalValue)
+
+	// 8. --- Generate Performance History (placeholder) ---
+	analytics.PerformanceHistory = s.generatePerformanceHistory(portfolio.ID, totalValue)
+
+	return analytics, nil
+}
+
+// calculateRiskMetrics calculates risk-related metrics for the portfolio
+func (s *PortfolioService) calculateRiskMetrics(portfolioAssets []model.PortfolioAsset, totalValue float64) RiskMetrics {
+	// Placeholder implementation - in a real system, you'd use historical price data
+
+	// Calculate diversification score based on number of assets and allocation spread
+	diversification := s.calculateDiversificationScore(portfolioAssets, totalValue)
+
+	return RiskMetrics{
+		Volatility:      0.15, // Placeholder: 15% volatility
+		SharpeRatio:     0.8,  // Placeholder: 0.8 Sharpe ratio
+		MaxDrawdown:     0.12, // Placeholder: 12% max drawdown
+		Diversification: diversification,
+	}
+}
+
+// calculateDiversificationScore calculates a diversification score (0-100)
+func (s *PortfolioService) calculateDiversificationScore(portfolioAssets []model.PortfolioAsset, totalValue float64) float64 {
+	if len(portfolioAssets) == 0 || totalValue == 0 {
+		return 0
+	}
+
+	// Calculate Herfindahl-Hirschman Index (HHI) for concentration
+	var hhi float64
+	for _, asset := range portfolioAssets {
+		assetValue := asset.Quantity * asset.AveragePurchasePrice
+		marketShare := assetValue / totalValue
+		hhi += marketShare * marketShare
+	}
+
+	// Convert HHI to diversification score (lower HHI = higher diversification)
+	// HHI ranges from 1/n to 1, where n is number of assets
+	// We convert this to a 0-100 scale where 100 is perfectly diversified
+	maxHHI := 1.0
+	minHHI := 1.0 / float64(len(portfolioAssets))
+
+	if maxHHI == minHHI {
+		return 100 // Single asset case
+	}
+
+	diversificationScore := ((maxHHI - hhi) / (maxHHI - minHHI)) * 100
+	return math.Max(0, math.Min(100, diversificationScore))
+}
+
+// generatePerformanceHistory generates placeholder performance history
+func (s *PortfolioService) generatePerformanceHistory(portfolioID int, currentValue float64) []PerformancePoint {
+	// Placeholder implementation - in a real system, you'd query historical data
+	now := time.Now()
+	history := make([]PerformancePoint, 0, 30) // Last 30 days
+
+	for i := 29; i >= 0; i-- {
+		date := now.AddDate(0, 0, -i)
+		// Generate some sample variation around current value
+		variation := 1.0 + (float64(i%7-3) * 0.02) // ±6% variation
+		value := currentValue * variation
+
+		history = append(history, PerformancePoint{
+			Date:  date,
+			Value: value,
+		})
+	}
+
+	return history
 }

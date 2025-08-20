@@ -18,6 +18,7 @@ enum TransactionType {
 }
 
 input TransactionFilter {
+    userID: ID
     portfolioID: ID
     assetID: ID
     transactionType: TransactionType

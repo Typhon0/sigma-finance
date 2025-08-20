@@ -1,0 +1,16 @@
+# Subscription root type for real-time updates
+
+type Subscription {
+  portfolioUpdates(userID: ID!): PortfolioUpdatePayload!
+  transactionUpdates(userID: ID!): TransactionUpdatePayload!
+}
+
+type PortfolioUpdatePayload {
+  type: String!
+  portfolio: Portfolio!
+}
+
+type TransactionUpdatePayload {
+  type: String!
+  transaction: Transaction!
+}

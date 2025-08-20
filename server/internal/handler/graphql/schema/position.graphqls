@@ -1,0 +1,10 @@
+# internal/handler/graphql/schema/position.graphqls
+
+type Position {
+    id: ID!
+    portfolio: Portfolio!
+    asset: Asset!
+    quantity: Float!
+    averagePurchasePrice: Float
+    ownershipPct: Float
+}

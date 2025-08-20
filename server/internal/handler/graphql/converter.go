@@ -3,16 +3,19 @@ package graphql
 import (
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/service"
 	"strconv"
 )
 
 // mapPortfolioToGQL converts a domain Portfolio to a GraphQL Portfolio
 func mapPortfolioToGQL(domainPortfolio model.Portfolio) *gqlModel.Portfolio {
 	return &gqlModel.Portfolio{
-		ID:        strconv.Itoa(domainPortfolio.ID),
-		Name:      domainPortfolio.Name,
-		CreatedAt: domainPortfolio.CreatedAt,
-		UpdatedAt: domainPortfolio.UpdatedAt,
+		ID:          strconv.Itoa(domainPortfolio.ID),
+		Name:        domainPortfolio.Name,
+		Description: &domainPortfolio.Description,
+		SortOrder:   int32(domainPortfolio.SortOrder),
+		CreatedAt:   domainPortfolio.CreatedAt,
+		UpdatedAt:   domainPortfolio.UpdatedAt,
 		// User, Tags, Assets, and Transactions would be populated by separate resolvers
 		// or through eager loading if needed
 	}
@@ -215,4 +218,53 @@ func mapWatchlistsToGQL(domainWatchlists []model.Watchlist) []*gqlModel.Watchlis
 		gqlWatchlists[i] = mapWatchlistToGQL(watchlist)
 	}
 	return gqlWatchlists
+}
+
+// mapPortfolioAnalyticsToGQL converts service PortfolioAnalytics to GraphQL PortfolioAnalytics
+func mapPortfolioAnalyticsToGQL(analytics service.PortfolioAnalytics) *gqlModel.PortfolioAnalytics {
+	return &gqlModel.PortfolioAnalytics{
+		TotalValue:           analytics.TotalValue,
+		TotalCost:            analytics.TotalCost,
+		TotalGainLoss:        analytics.TotalGainLoss,
+		TotalGainLossPercent: analytics.TotalGainLossPercent,
+		AssetAllocation:      mapAssetAllocationsToGQL(analytics.AssetAllocation),
+		RiskMetrics:          mapRiskMetricsToGQL(analytics.RiskMetrics),
+		PerformanceHistory:   mapPerformanceHistoryToGQL(analytics.PerformanceHistory),
+	}
+}
+
+// mapAssetAllocationsToGQL converts service AssetAllocation slice to GraphQL AssetAllocation slice
+func mapAssetAllocationsToGQL(allocations []service.AssetAllocation) []*gqlModel.AssetAllocation {
+	gqlAllocations := make([]*gqlModel.AssetAllocation, len(allocations))
+	for i, allocation := range allocations {
+		gqlAllocations[i] = &gqlModel.AssetAllocation{
+			AssetType:  allocation.AssetType,
+			Value:      allocation.Value,
+			Percentage: allocation.Percentage,
+			Count:      int32(allocation.Count),
+		}
+	}
+	return gqlAllocations
+}
+
+// mapRiskMetricsToGQL converts service RiskMetrics to GraphQL RiskMetrics
+func mapRiskMetricsToGQL(metrics service.RiskMetrics) *gqlModel.RiskMetrics {
+	return &gqlModel.RiskMetrics{
+		Volatility:      metrics.Volatility,
+		SharpeRatio:     metrics.SharpeRatio,
+		MaxDrawdown:     metrics.MaxDrawdown,
+		Diversification: metrics.Diversification,
+	}
+}
+
+// mapPerformanceHistoryToGQL converts service PerformancePoint slice to GraphQL PerformancePoint slice
+func mapPerformanceHistoryToGQL(history []service.PerformancePoint) []*gqlModel.PerformancePoint {
+	gqlHistory := make([]*gqlModel.PerformancePoint, len(history))
+	for i, point := range history {
+		gqlHistory[i] = &gqlModel.PerformancePoint{
+			Date:  point.Date,
+			Value: point.Value,
+		}
+	}
+	return gqlHistory
 }

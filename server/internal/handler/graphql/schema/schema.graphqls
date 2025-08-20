@@ -22,6 +22,8 @@ type Query {
     users(filter: UserFilter, pagination: PaginationInput, orderBy: UserOrder): [User!]!
 
     portfolio(id: ID!): Portfolio
+    # Returns portfolios with analytics for a user
+    GetPortfoliosWithAnalytics(userID: ID!): [Portfolio!]!
     portfolios(filter: PortfolioFilter, pagination: PaginationInput, orderBy: PortfolioOrder): [Portfolio!]!
 
     asset(id: ID!): Asset
@@ -54,6 +56,9 @@ type Mutation {
     removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!): ID!
     tagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
     untagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
+    duplicatePortfolio(input: DuplicatePortfolioInput!): Portfolio!
+    reorderPortfolios(input: ReorderPortfoliosInput!): [Portfolio!]!
+    exportPortfolio(input: ExportPortfolioInput!): ExportResult!
 
     # Asset Mutations
     createStockAsset(input: CreateStockInput!): Stock!

@@ -25,11 +25,13 @@ type PerformanceMetrics struct {
 type Portfolio struct {
 	bun.BaseModel `bun:"table:sigma_finance.portfolio"`
 
-	ID        int       `bun:"id,pk,autoincrement"`
-	UserID    int       `bun:"user_id,notnull"`
-	Name      string    `bun:"name,notnull"`
-	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	ID          int       `bun:"id,pk,autoincrement"`
+	UserID      int       `bun:"user_id,notnull"`
+	Name        string    `bun:"name,notnull"`
+	Description string    `bun:"description"`
+	SortOrder   int       `bun:"sort_order,default:0"`
+	CreatedAt   time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt   time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 }
 
 // Implement Entity interface

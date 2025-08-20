@@ -1,3 +1,14 @@
 {
-    "kiroAgent.configureMCP": "Enabled"
+	"typescript.autoClosingTags": false,
+	"biome.lsp.bin": {
+		"win32-x64": "./client/node_modules/@biomejs/cli-win32-x64/biome.exe",
+		"linux-x64": "./client/node_modules/@biomejs/cli-linux-x64/biome",
+		"linux-arm64": "./client/node_modules/@biomejs/cli-linux-arm64/biome",
+		"linux-x64-musl": "./client/node_modules/@biomejs/cli-linux-x64-musl/biome",
+		"linux-arm64-musl": "./client/node_modules/@biomejs/cli-linux-arm64-musl/biome",
+		"darwin-x64": "./client/node_modules/@biomejs/cli-darwin-x64/biome",
+		"darwin-arm64": "./client/node_modules/@biomejs/cli-darwin-arm64/biome",
+		"typescript.tsdk": "./client/node_modules/typescript/lib",
+		"typescript.enablePromptUseWorkspaceTsdk": true
+	}
 }

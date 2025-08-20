@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"io"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"strconv"
 	"sync"
@@ -42,6 +43,7 @@ type Config struct {
 type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
+	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -58,6 +60,13 @@ type ComplexityRoot struct {
 		User             func(childComplexity int) int
 	}
 
+	AssetAllocation struct {
+		AssetType  func(childComplexity int) int
+		Count      func(childComplexity int) int
+		Percentage func(childComplexity int) int
+		Value      func(childComplexity int) int
+	}
+
 	AssetType struct {
 		ID   func(childComplexity int) int
 		Name func(childComplexity int) int
@@ -69,11 +78,19 @@ type ComplexityRoot struct {
 		CurrentValue      func(childComplexity int) int
 		ID                func(childComplexity int) int
 		Name              func(childComplexity int) int
+		Positions         func(childComplexity int) int
 		PurchaseDate      func(childComplexity int) int
 		PurchasePrice     func(childComplexity int) int
 		Quantity          func(childComplexity int) int
+		Symbol            func(childComplexity int) int
 		Tags              func(childComplexity int) int
 		WalletAddress     func(childComplexity int) int
+	}
+
+	ExportResult struct {
+		DownloadURL func(childComplexity int) int
+		Error       func(childComplexity int) int
+		Success     func(childComplexity int) int
 	}
 
 	Mutation struct {
@@ -87,8 +104,11 @@ type ComplexityRoot struct {
 		DeletePortfolio          func(childComplexity int, id string) int
 		DeleteUser               func(childComplexity int, id string) int
 		DeleteWatchlist          func(childComplexity int, id string) int
+		DuplicatePortfolio       func(childComplexity int, input gqlModel.DuplicatePortfolioInput) int
+		ExportPortfolio          func(childComplexity int, input gqlModel.ExportPortfolioInput) int
 		RemoveAssetFromPortfolio func(childComplexity int, portfolioID string, assetID string) int
 		RemoveAssetFromWatchlist func(childComplexity int, watchlistID string, assetID string) int
+		ReorderPortfolios        func(childComplexity int, input gqlModel.ReorderPortfoliosInput) int
 		TagAsset                 func(childComplexity int, assetID string, tagID string) int
 		TagPortfolio             func(childComplexity int, portfolioID string, tagID string) int
 		UntagAsset               func(childComplexity int, assetID string, tagID string) int
@@ -104,37 +124,71 @@ type ComplexityRoot struct {
 		User                func(childComplexity int) int
 	}
 
+	PerformancePoint struct {
+		Date  func(childComplexity int) int
+		Value func(childComplexity int) int
+	}
+
 	Portfolio struct {
+		Analytics    func(childComplexity int) int
 		Assets       func(childComplexity int) int
 		CreatedAt    func(childComplexity int) int
+		Description  func(childComplexity int) int
 		ID           func(childComplexity int) int
 		Name         func(childComplexity int) int
+		SortOrder    func(childComplexity int) int
 		Tags         func(childComplexity int) int
 		Transactions func(childComplexity int) int
 		UpdatedAt    func(childComplexity int) int
 		User         func(childComplexity int) int
 	}
 
+	PortfolioAnalytics struct {
+		AssetAllocation      func(childComplexity int) int
+		PerformanceHistory   func(childComplexity int) int
+		RiskMetrics          func(childComplexity int) int
+		TotalCost            func(childComplexity int) int
+		TotalGainLoss        func(childComplexity int) int
+		TotalGainLossPercent func(childComplexity int) int
+		TotalValue           func(childComplexity int) int
+	}
+
 	PortfolioAsset struct {
 		Asset                func(childComplexity int) int
 		AveragePurchasePrice func(childComplexity int) int
+		OwnershipPct         func(childComplexity int) int
+		Quantity             func(childComplexity int) int
+	}
+
+	PortfolioUpdatePayload struct {
+		Portfolio func(childComplexity int) int
+		Type      func(childComplexity int) int
+	}
+
+	Position struct {
+		Asset                func(childComplexity int) int
+		AveragePurchasePrice func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		OwnershipPct         func(childComplexity int) int
+		Portfolio            func(childComplexity int) int
 		Quantity             func(childComplexity int) int
 	}
 
 	Query struct {
-		Asset        func(childComplexity int, id string) int
-		AssetTypes   func(childComplexity int) int
-		Assets       func(childComplexity int, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) int
-		Portfolio    func(childComplexity int, id string) int
-		Portfolios   func(childComplexity int, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) int
-		Tag          func(childComplexity int, id string) int
-		Tags         func(childComplexity int) int
-		Transaction  func(childComplexity int, id string) int
-		Transactions func(childComplexity int, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) int
-		User         func(childComplexity int, id string) int
-		Users        func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
-		Watchlist    func(childComplexity int, id string) int
-		Watchlists   func(childComplexity int, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) int
+		Asset                      func(childComplexity int, id string) int
+		AssetTypes                 func(childComplexity int) int
+		Assets                     func(childComplexity int, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) int
+		GetPortfoliosWithAnalytics func(childComplexity int, userID string) int
+		Portfolio                  func(childComplexity int, id string) int
+		Portfolios                 func(childComplexity int, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) int
+		Tag                        func(childComplexity int, id string) int
+		Tags                       func(childComplexity int) int
+		Transaction                func(childComplexity int, id string) int
+		Transactions               func(childComplexity int, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) int
+		User                       func(childComplexity int, id string) int
+		Users                      func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
+		Watchlist                  func(childComplexity int, id string) int
+		Watchlists                 func(childComplexity int, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) int
 	}
 
 	Report struct {
@@ -145,17 +199,31 @@ type ComplexityRoot struct {
 		User        func(childComplexity int) int
 	}
 
+	RiskMetrics struct {
+		Diversification func(childComplexity int) int
+		MaxDrawdown     func(childComplexity int) int
+		SharpeRatio     func(childComplexity int) int
+		Volatility      func(childComplexity int) int
+	}
+
 	Stock struct {
 		AssetType     func(childComplexity int) int
 		BuyingPrice   func(childComplexity int) int
 		CurrentValue  func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Name          func(childComplexity int) int
+		Positions     func(childComplexity int) int
 		PurchaseDate  func(childComplexity int) int
 		PurchasePrice func(childComplexity int) int
 		Quantity      func(childComplexity int) int
+		Symbol        func(childComplexity int) int
 		Tags          func(childComplexity int) int
 		Ticker        func(childComplexity int) int
+	}
+
+	Subscription struct {
+		PortfolioUpdates   func(childComplexity int, userID string) int
+		TransactionUpdates func(childComplexity int, userID string) int
 	}
 
 	Tag struct {
@@ -172,6 +240,11 @@ type ComplexityRoot struct {
 		Quantity        func(childComplexity int) int
 		TransactionDate func(childComplexity int) int
 		TransactionType func(childComplexity int) int
+	}
+
+	TransactionUpdatePayload struct {
+		Transaction func(childComplexity int) int
+		Type        func(childComplexity int) int
 	}
 
 	User struct {
@@ -209,6 +282,9 @@ type MutationResolver interface {
 	RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string) (string, error)
 	TagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error)
 	UntagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error)
+	DuplicatePortfolio(ctx context.Context, input gqlModel.DuplicatePortfolioInput) (*gqlModel.Portfolio, error)
+	ReorderPortfolios(ctx context.Context, input gqlModel.ReorderPortfoliosInput) ([]*gqlModel.Portfolio, error)
+	ExportPortfolio(ctx context.Context, input gqlModel.ExportPortfolioInput) (*gqlModel.ExportResult, error)
 	CreateStockAsset(ctx context.Context, input gqlModel.CreateStockInput) (*gqlModel.Stock, error)
 	CreateCryptoAsset(ctx context.Context, input gqlModel.CreateCryptoInput) (*gqlModel.Crypto, error)
 	TagAsset(ctx context.Context, assetID string, tagID string) (gqlModel.Asset, error)
@@ -222,6 +298,7 @@ type QueryResolver interface {
 	User(ctx context.Context, id string) (*gqlModel.User, error)
 	Users(ctx context.Context, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) ([]*gqlModel.User, error)
 	Portfolio(ctx context.Context, id string) (*gqlModel.Portfolio, error)
+	GetPortfoliosWithAnalytics(ctx context.Context, userID string) ([]*gqlModel.Portfolio, error)
 	Portfolios(ctx context.Context, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) ([]*gqlModel.Portfolio, error)
 	Asset(ctx context.Context, id string) (gqlModel.Asset, error)
 	Assets(ctx context.Context, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) ([]gqlModel.Asset, error)
@@ -232,6 +309,10 @@ type QueryResolver interface {
 	Watchlists(ctx context.Context, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Watchlist, error)
 	Transaction(ctx context.Context, id string) (*gqlModel.Transaction, error)
 	Transactions(ctx context.Context, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) ([]*gqlModel.Transaction, error)
+}
+type SubscriptionResolver interface {
+	PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error)
+	TransactionUpdates(ctx context.Context, userID string) (<-chan *gqlModel.TransactionUpdatePayload, error)
 }
 
 type executableSchema struct {
@@ -302,6 +383,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Alert.User(childComplexity), true
 
+	case "AssetAllocation.assetType":
+		if e.complexity.AssetAllocation.AssetType == nil {
+			break
+		}
+
+		return e.complexity.AssetAllocation.AssetType(childComplexity), true
+
+	case "AssetAllocation.count":
+		if e.complexity.AssetAllocation.Count == nil {
+			break
+		}
+
+		return e.complexity.AssetAllocation.Count(childComplexity), true
+
+	case "AssetAllocation.percentage":
+		if e.complexity.AssetAllocation.Percentage == nil {
+			break
+		}
+
+		return e.complexity.AssetAllocation.Percentage(childComplexity), true
+
+	case "AssetAllocation.value":
+		if e.complexity.AssetAllocation.Value == nil {
+			break
+		}
+
+		return e.complexity.AssetAllocation.Value(childComplexity), true
+
 	case "AssetType.id":
 		if e.complexity.AssetType.ID == nil {
 			break
@@ -351,6 +460,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Crypto.Name(childComplexity), true
 
+	case "Crypto.positions":
+		if e.complexity.Crypto.Positions == nil {
+			break
+		}
+
+		return e.complexity.Crypto.Positions(childComplexity), true
+
 	case "Crypto.purchaseDate":
 		if e.complexity.Crypto.PurchaseDate == nil {
 			break
@@ -372,6 +488,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Crypto.Quantity(childComplexity), true
 
+	case "Crypto.symbol":
+		if e.complexity.Crypto.Symbol == nil {
+			break
+		}
+
+		return e.complexity.Crypto.Symbol(childComplexity), true
+
 	case "Crypto.tags":
 		if e.complexity.Crypto.Tags == nil {
 			break
@@ -385,6 +508,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Crypto.WalletAddress(childComplexity), true
+
+	case "ExportResult.downloadUrl":
+		if e.complexity.ExportResult.DownloadURL == nil {
+			break
+		}
+
+		return e.complexity.ExportResult.DownloadURL(childComplexity), true
+
+	case "ExportResult.error":
+		if e.complexity.ExportResult.Error == nil {
+			break
+		}
+
+		return e.complexity.ExportResult.Error(childComplexity), true
+
+	case "ExportResult.success":
+		if e.complexity.ExportResult.Success == nil {
+			break
+		}
+
+		return e.complexity.ExportResult.Success(childComplexity), true
 
 	case "Mutation.addAssetToPortfolio":
 		if e.complexity.Mutation.AddAssetToPortfolio == nil {
@@ -506,6 +650,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.DeleteWatchlist(childComplexity, args["id"].(string)), true
 
+	case "Mutation.duplicatePortfolio":
+		if e.complexity.Mutation.DuplicatePortfolio == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_duplicatePortfolio_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.DuplicatePortfolio(childComplexity, args["input"].(gqlModel.DuplicatePortfolioInput)), true
+
+	case "Mutation.exportPortfolio":
+		if e.complexity.Mutation.ExportPortfolio == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_exportPortfolio_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ExportPortfolio(childComplexity, args["input"].(gqlModel.ExportPortfolioInput)), true
+
 	case "Mutation.removeAssetFromPortfolio":
 		if e.complexity.Mutation.RemoveAssetFromPortfolio == nil {
 			break
@@ -529,6 +697,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.RemoveAssetFromWatchlist(childComplexity, args["watchlistID"].(string), args["assetID"].(string)), true
+
+	case "Mutation.reorderPortfolios":
+		if e.complexity.Mutation.ReorderPortfolios == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_reorderPortfolios_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.ReorderPortfolios(childComplexity, args["input"].(gqlModel.ReorderPortfoliosInput)), true
 
 	case "Mutation.tagAsset":
 		if e.complexity.Mutation.TagAsset == nil {
@@ -635,6 +815,27 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Ownership.User(childComplexity), true
 
+	case "PerformancePoint.date":
+		if e.complexity.PerformancePoint.Date == nil {
+			break
+		}
+
+		return e.complexity.PerformancePoint.Date(childComplexity), true
+
+	case "PerformancePoint.value":
+		if e.complexity.PerformancePoint.Value == nil {
+			break
+		}
+
+		return e.complexity.PerformancePoint.Value(childComplexity), true
+
+	case "Portfolio.analytics":
+		if e.complexity.Portfolio.Analytics == nil {
+			break
+		}
+
+		return e.complexity.Portfolio.Analytics(childComplexity), true
+
 	case "Portfolio.assets":
 		if e.complexity.Portfolio.Assets == nil {
 			break
@@ -649,6 +850,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Portfolio.CreatedAt(childComplexity), true
 
+	case "Portfolio.description":
+		if e.complexity.Portfolio.Description == nil {
+			break
+		}
+
+		return e.complexity.Portfolio.Description(childComplexity), true
+
 	case "Portfolio.id":
 		if e.complexity.Portfolio.ID == nil {
 			break
@@ -662,6 +870,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Portfolio.Name(childComplexity), true
+
+	case "Portfolio.sortOrder":
+		if e.complexity.Portfolio.SortOrder == nil {
+			break
+		}
+
+		return e.complexity.Portfolio.SortOrder(childComplexity), true
 
 	case "Portfolio.tags":
 		if e.complexity.Portfolio.Tags == nil {
@@ -691,6 +906,55 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Portfolio.User(childComplexity), true
 
+	case "PortfolioAnalytics.assetAllocation":
+		if e.complexity.PortfolioAnalytics.AssetAllocation == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.AssetAllocation(childComplexity), true
+
+	case "PortfolioAnalytics.performanceHistory":
+		if e.complexity.PortfolioAnalytics.PerformanceHistory == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.PerformanceHistory(childComplexity), true
+
+	case "PortfolioAnalytics.riskMetrics":
+		if e.complexity.PortfolioAnalytics.RiskMetrics == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.RiskMetrics(childComplexity), true
+
+	case "PortfolioAnalytics.totalCost":
+		if e.complexity.PortfolioAnalytics.TotalCost == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.TotalCost(childComplexity), true
+
+	case "PortfolioAnalytics.totalGainLoss":
+		if e.complexity.PortfolioAnalytics.TotalGainLoss == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.TotalGainLoss(childComplexity), true
+
+	case "PortfolioAnalytics.totalGainLossPercent":
+		if e.complexity.PortfolioAnalytics.TotalGainLossPercent == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.TotalGainLossPercent(childComplexity), true
+
+	case "PortfolioAnalytics.totalValue":
+		if e.complexity.PortfolioAnalytics.TotalValue == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAnalytics.TotalValue(childComplexity), true
+
 	case "PortfolioAsset.asset":
 		if e.complexity.PortfolioAsset.Asset == nil {
 			break
@@ -705,12 +969,75 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.PortfolioAsset.AveragePurchasePrice(childComplexity), true
 
+	case "PortfolioAsset.ownershipPct":
+		if e.complexity.PortfolioAsset.OwnershipPct == nil {
+			break
+		}
+
+		return e.complexity.PortfolioAsset.OwnershipPct(childComplexity), true
+
 	case "PortfolioAsset.quantity":
 		if e.complexity.PortfolioAsset.Quantity == nil {
 			break
 		}
 
 		return e.complexity.PortfolioAsset.Quantity(childComplexity), true
+
+	case "PortfolioUpdatePayload.portfolio":
+		if e.complexity.PortfolioUpdatePayload.Portfolio == nil {
+			break
+		}
+
+		return e.complexity.PortfolioUpdatePayload.Portfolio(childComplexity), true
+
+	case "PortfolioUpdatePayload.type":
+		if e.complexity.PortfolioUpdatePayload.Type == nil {
+			break
+		}
+
+		return e.complexity.PortfolioUpdatePayload.Type(childComplexity), true
+
+	case "Position.asset":
+		if e.complexity.Position.Asset == nil {
+			break
+		}
+
+		return e.complexity.Position.Asset(childComplexity), true
+
+	case "Position.averagePurchasePrice":
+		if e.complexity.Position.AveragePurchasePrice == nil {
+			break
+		}
+
+		return e.complexity.Position.AveragePurchasePrice(childComplexity), true
+
+	case "Position.id":
+		if e.complexity.Position.ID == nil {
+			break
+		}
+
+		return e.complexity.Position.ID(childComplexity), true
+
+	case "Position.ownershipPct":
+		if e.complexity.Position.OwnershipPct == nil {
+			break
+		}
+
+		return e.complexity.Position.OwnershipPct(childComplexity), true
+
+	case "Position.portfolio":
+		if e.complexity.Position.Portfolio == nil {
+			break
+		}
+
+		return e.complexity.Position.Portfolio(childComplexity), true
+
+	case "Position.quantity":
+		if e.complexity.Position.Quantity == nil {
+			break
+		}
+
+		return e.complexity.Position.Quantity(childComplexity), true
 
 	case "Query.asset":
 		if e.complexity.Query.Asset == nil {
@@ -742,6 +1069,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Query.Assets(childComplexity, args["filter"].(*gqlModel.AssetFilter), args["pagination"].(*gqlModel.PaginationInput), args["orderBy"].(*gqlModel.AssetOrder)), true
+
+	case "Query.GetPortfoliosWithAnalytics":
+		if e.complexity.Query.GetPortfoliosWithAnalytics == nil {
+			break
+		}
+
+		args, err := ec.field_Query_GetPortfoliosWithAnalytics_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.GetPortfoliosWithAnalytics(childComplexity, args["userID"].(string)), true
 
 	case "Query.portfolio":
 		if e.complexity.Query.Portfolio == nil {
@@ -893,6 +1232,34 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Report.User(childComplexity), true
 
+	case "RiskMetrics.diversification":
+		if e.complexity.RiskMetrics.Diversification == nil {
+			break
+		}
+
+		return e.complexity.RiskMetrics.Diversification(childComplexity), true
+
+	case "RiskMetrics.maxDrawdown":
+		if e.complexity.RiskMetrics.MaxDrawdown == nil {
+			break
+		}
+
+		return e.complexity.RiskMetrics.MaxDrawdown(childComplexity), true
+
+	case "RiskMetrics.sharpeRatio":
+		if e.complexity.RiskMetrics.SharpeRatio == nil {
+			break
+		}
+
+		return e.complexity.RiskMetrics.SharpeRatio(childComplexity), true
+
+	case "RiskMetrics.volatility":
+		if e.complexity.RiskMetrics.Volatility == nil {
+			break
+		}
+
+		return e.complexity.RiskMetrics.Volatility(childComplexity), true
+
 	case "Stock.assetType":
 		if e.complexity.Stock.AssetType == nil {
 			break
@@ -928,6 +1295,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stock.Name(childComplexity), true
 
+	case "Stock.positions":
+		if e.complexity.Stock.Positions == nil {
+			break
+		}
+
+		return e.complexity.Stock.Positions(childComplexity), true
+
 	case "Stock.purchaseDate":
 		if e.complexity.Stock.PurchaseDate == nil {
 			break
@@ -949,6 +1323,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Stock.Quantity(childComplexity), true
 
+	case "Stock.symbol":
+		if e.complexity.Stock.Symbol == nil {
+			break
+		}
+
+		return e.complexity.Stock.Symbol(childComplexity), true
+
 	case "Stock.tags":
 		if e.complexity.Stock.Tags == nil {
 			break
@@ -962,6 +1343,30 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Stock.Ticker(childComplexity), true
+
+	case "Subscription.portfolioUpdates":
+		if e.complexity.Subscription.PortfolioUpdates == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_portfolioUpdates_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.PortfolioUpdates(childComplexity, args["userID"].(string)), true
+
+	case "Subscription.transactionUpdates":
+		if e.complexity.Subscription.TransactionUpdates == nil {
+			break
+		}
+
+		args, err := ec.field_Subscription_transactionUpdates_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Subscription.TransactionUpdates(childComplexity, args["userID"].(string)), true
 
 	case "Tag.id":
 		if e.complexity.Tag.ID == nil {
@@ -1032,6 +1437,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Transaction.TransactionType(childComplexity), true
+
+	case "TransactionUpdatePayload.transaction":
+		if e.complexity.TransactionUpdatePayload.Transaction == nil {
+			break
+		}
+
+		return e.complexity.TransactionUpdatePayload.Transaction(childComplexity), true
+
+	case "TransactionUpdatePayload.type":
+		if e.complexity.TransactionUpdatePayload.Type == nil {
+			break
+		}
+
+		return e.complexity.TransactionUpdatePayload.Type(childComplexity), true
 
 	case "User.alerts":
 		if e.complexity.User.Alerts == nil {
@@ -1160,10 +1579,14 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateStockInput,
 		ec.unmarshalInputCreateUserInput,
 		ec.unmarshalInputCreateWatchlistInput,
+		ec.unmarshalInputDuplicatePortfolioInput,
+		ec.unmarshalInputExportPortfolioInput,
 		ec.unmarshalInputPaginationInput,
 		ec.unmarshalInputPortfolioAssetInput,
 		ec.unmarshalInputPortfolioFilter,
 		ec.unmarshalInputPortfolioOrder,
+		ec.unmarshalInputPortfolioOrderInput,
+		ec.unmarshalInputReorderPortfoliosInput,
 		ec.unmarshalInputTransactionFilter,
 		ec.unmarshalInputTransactionOrder,
 		ec.unmarshalInputUpdatePortfolioInput,
@@ -1220,6 +1643,23 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
+	case ast.Subscription:
+		next := ec._Subscription(ctx, rc.Operation.SelectionSet)
+
+		var buf bytes.Buffer
+		return func(ctx context.Context) *graphql.Response {
+			buf.Reset()
+			data := next(ctx)
+
+			if data == nil {
+				return nil
+			}
+			data.MarshalGQL(&buf)
+
+			return &graphql.Response{
+				Data: buf.Bytes(),
+			}
+		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -1267,7 +1707,7 @@ func (ec *executionContext) introspectType(name string) (*introspection.Type, er
 	return introspection.WrapTypeFromDef(ec.Schema(), ec.Schema().Types[name]), nil
 }
 
-//go:embed "schema/alert_report.graphqls" "schema/asset.graphqls" "schema/ownership.graphqls" "schema/portfolio.graphqls" "schema/schema.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
+//go:embed "schema/alert_report.graphqls" "schema/asset.graphqls" "schema/ownership.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -1283,7 +1723,9 @@ var sources = []*ast.Source{
 	{Name: "schema/asset.graphqls", Input: sourceData("schema/asset.graphqls"), BuiltIn: false},
 	{Name: "schema/ownership.graphqls", Input: sourceData("schema/ownership.graphqls"), BuiltIn: false},
 	{Name: "schema/portfolio.graphqls", Input: sourceData("schema/portfolio.graphqls"), BuiltIn: false},
+	{Name: "schema/position.graphqls", Input: sourceData("schema/position.graphqls"), BuiltIn: false},
 	{Name: "schema/schema.graphqls", Input: sourceData("schema/schema.graphqls"), BuiltIn: false},
+	{Name: "schema/subscription.graphqls", Input: sourceData("schema/subscription.graphqls"), BuiltIn: false},
 	{Name: "schema/transaction.graphqls", Input: sourceData("schema/transaction.graphqls"), BuiltIn: false},
 	{Name: "schema/user.graphqls", Input: sourceData("schema/user.graphqls"), BuiltIn: false},
 	{Name: "schema/watchlist.graphqls", Input: sourceData("schema/watchlist.graphqls"), BuiltIn: false},
@@ -1542,6 +1984,52 @@ func (ec *executionContext) field_Mutation_deleteWatchlist_argsID(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Mutation_duplicatePortfolio_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Mutation_duplicatePortfolio_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_duplicatePortfolio_argsInput(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (gqlModel.DuplicatePortfolioInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNDuplicatePortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDuplicatePortfolioInput(ctx, tmp)
+	}
+
+	var zeroVal gqlModel.DuplicatePortfolioInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_exportPortfolio_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Mutation_exportPortfolio_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_exportPortfolio_argsInput(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (gqlModel.ExportPortfolioInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNExportPortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportPortfolioInput(ctx, tmp)
+	}
+
+	var zeroVal gqlModel.ExportPortfolioInput
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field_Mutation_removeAssetFromPortfolio_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -1621,6 +2109,29 @@ func (ec *executionContext) field_Mutation_removeAssetFromWatchlist_argsAssetID(
 	}
 
 	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Mutation_reorderPortfolios_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Mutation_reorderPortfolios_argsInput(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Mutation_reorderPortfolios_argsInput(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (gqlModel.ReorderPortfoliosInput, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
+	if tmp, ok := rawArgs["input"]; ok {
+		return ec.unmarshalNReorderPortfoliosInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐReorderPortfoliosInput(ctx, tmp)
+	}
+
+	var zeroVal gqlModel.ReorderPortfoliosInput
 	return zeroVal, nil
 }
 
@@ -1890,6 +2401,29 @@ func (ec *executionContext) field_Mutation_updateUser_argsInput(
 	}
 
 	var zeroVal gqlModel.UpdateUserInput
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Query_GetPortfoliosWithAnalytics_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Query_GetPortfoliosWithAnalytics_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Query_GetPortfoliosWithAnalytics_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+	if tmp, ok := rawArgs["userID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
 	return zeroVal, nil
 }
 
@@ -2331,6 +2865,52 @@ func (ec *executionContext) field_Query_watchlists_argsPagination(
 	return zeroVal, nil
 }
 
+func (ec *executionContext) field_Subscription_portfolioUpdates_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Subscription_portfolioUpdates_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_portfolioUpdates_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+	if tmp, ok := rawArgs["userID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
+func (ec *executionContext) field_Subscription_transactionUpdates_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	arg0, err := ec.field_Subscription_transactionUpdates_argsUserID(ctx, rawArgs)
+	if err != nil {
+		return nil, err
+	}
+	args["userID"] = arg0
+	return args, nil
+}
+func (ec *executionContext) field_Subscription_transactionUpdates_argsUserID(
+	ctx context.Context,
+	rawArgs map[string]interface{},
+) (string, error) {
+	ctx = graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+	if tmp, ok := rawArgs["userID"]; ok {
+		return ec.unmarshalNID2string(ctx, tmp)
+	}
+
+	var zeroVal string
+	return zeroVal, nil
+}
+
 func (ec *executionContext) field___Type_enumValues_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -2712,6 +3292,182 @@ func (ec *executionContext) fieldContext_Alert_asset(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _AssetAllocation_assetType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AssetAllocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssetAllocation_assetType(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssetType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssetAllocation_assetType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssetAllocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssetAllocation_value(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AssetAllocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssetAllocation_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssetAllocation_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssetAllocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssetAllocation_percentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AssetAllocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssetAllocation_percentage(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Percentage, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssetAllocation_percentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssetAllocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AssetAllocation_count(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AssetAllocation) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_AssetAllocation_count(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Count, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int32)
+	fc.Result = res
+	return ec.marshalNInt2int32(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_AssetAllocation_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AssetAllocation",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _AssetType_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AssetType) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_AssetType_id(ctx, field)
 	if err != nil {
@@ -2876,6 +3632,47 @@ func (ec *executionContext) _Crypto_name(ctx context.Context, field graphql.Coll
 }
 
 func (ec *executionContext) fieldContext_Crypto_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Crypto",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Crypto_symbol(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Crypto) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Crypto_symbol(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Symbol, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Crypto_symbol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Crypto",
 		Field:      field,
@@ -3237,6 +4034,190 @@ func (ec *executionContext) fieldContext_Crypto_quantity(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Crypto_positions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Crypto) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Crypto_positions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Positions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.Position)
+	fc.Result = res
+	return ec.marshalNPosition2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPositionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Crypto_positions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Crypto",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Position_id(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_Position_portfolio(ctx, field)
+			case "asset":
+				return ec.fieldContext_Position_asset(ctx, field)
+			case "quantity":
+				return ec.fieldContext_Position_quantity(ctx, field)
+			case "averagePurchasePrice":
+				return ec.fieldContext_Position_averagePurchasePrice(ctx, field)
+			case "ownershipPct":
+				return ec.fieldContext_Position_ownershipPct(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExportResult_success(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ExportResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExportResult_success(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Success, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(bool)
+	fc.Result = res
+	return ec.marshalNBoolean2bool(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExportResult_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExportResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExportResult_downloadUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ExportResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExportResult_downloadUrl(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DownloadURL, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExportResult_downloadUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExportResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ExportResult_error(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ExportResult) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_ExportResult_error(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Error, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_ExportResult_error(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ExportResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_createUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Mutation_createUser(ctx, field)
 	if err != nil {
@@ -3489,6 +4470,10 @@ func (ec *executionContext) fieldContext_Mutation_createPortfolio(ctx context.Co
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -3501,6 +4486,8 @@ func (ec *executionContext) fieldContext_Mutation_createPortfolio(ctx context.Co
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -3562,6 +4549,10 @@ func (ec *executionContext) fieldContext_Mutation_updatePortfolio(ctx context.Co
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -3574,6 +4565,8 @@ func (ec *executionContext) fieldContext_Mutation_updatePortfolio(ctx context.Co
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -3692,6 +4685,8 @@ func (ec *executionContext) fieldContext_Mutation_addAssetToPortfolio(ctx contex
 				return ec.fieldContext_PortfolioAsset_quantity(ctx, field)
 			case "averagePurchasePrice":
 				return ec.fieldContext_PortfolioAsset_averagePurchasePrice(ctx, field)
+			case "ownershipPct":
+				return ec.fieldContext_PortfolioAsset_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -3755,6 +4750,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAssetInPortfolio(ctx con
 				return ec.fieldContext_PortfolioAsset_quantity(ctx, field)
 			case "averagePurchasePrice":
 				return ec.fieldContext_PortfolioAsset_averagePurchasePrice(ctx, field)
+			case "ownershipPct":
+				return ec.fieldContext_PortfolioAsset_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -3871,6 +4868,10 @@ func (ec *executionContext) fieldContext_Mutation_tagPortfolio(ctx context.Conte
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -3883,6 +4884,8 @@ func (ec *executionContext) fieldContext_Mutation_tagPortfolio(ctx context.Conte
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -3944,6 +4947,10 @@ func (ec *executionContext) fieldContext_Mutation_untagPortfolio(ctx context.Con
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -3956,6 +4963,8 @@ func (ec *executionContext) fieldContext_Mutation_untagPortfolio(ctx context.Con
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -3968,6 +4977,227 @@ func (ec *executionContext) fieldContext_Mutation_untagPortfolio(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_untagPortfolio_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_duplicatePortfolio(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_duplicatePortfolio(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().DuplicatePortfolio(rctx, fc.Args["input"].(gqlModel.DuplicatePortfolioInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.Portfolio)
+	fc.Result = res
+	return ec.marshalNPortfolio2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_duplicatePortfolio(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Portfolio_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Portfolio_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Portfolio_user(ctx, field)
+			case "tags":
+				return ec.fieldContext_Portfolio_tags(ctx, field)
+			case "assets":
+				return ec.fieldContext_Portfolio_assets(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_duplicatePortfolio_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_reorderPortfolios(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_reorderPortfolios(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ReorderPortfolios(rctx, fc.Args["input"].(gqlModel.ReorderPortfoliosInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.Portfolio)
+	fc.Result = res
+	return ec.marshalNPortfolio2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_reorderPortfolios(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Portfolio_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Portfolio_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Portfolio_user(ctx, field)
+			case "tags":
+				return ec.fieldContext_Portfolio_tags(ctx, field)
+			case "assets":
+				return ec.fieldContext_Portfolio_assets(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_reorderPortfolios_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_exportPortfolio(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Mutation_exportPortfolio(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().ExportPortfolio(rctx, fc.Args["input"].(gqlModel.ExportPortfolioInput))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.ExportResult)
+	fc.Result = res
+	return ec.marshalNExportResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportResult(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Mutation_exportPortfolio(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ExportResult_success(ctx, field)
+			case "downloadUrl":
+				return ec.fieldContext_ExportResult_downloadUrl(ctx, field)
+			case "error":
+				return ec.fieldContext_ExportResult_error(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ExportResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_exportPortfolio_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -4017,6 +5247,8 @@ func (ec *executionContext) fieldContext_Mutation_createStockAsset(ctx context.C
 				return ec.fieldContext_Stock_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Stock_name(ctx, field)
+			case "symbol":
+				return ec.fieldContext_Stock_symbol(ctx, field)
 			case "assetType":
 				return ec.fieldContext_Stock_assetType(ctx, field)
 			case "currentValue":
@@ -4033,6 +5265,8 @@ func (ec *executionContext) fieldContext_Mutation_createStockAsset(ctx context.C
 				return ec.fieldContext_Stock_quantity(ctx, field)
 			case "buyingPrice":
 				return ec.fieldContext_Stock_buyingPrice(ctx, field)
+			case "positions":
+				return ec.fieldContext_Stock_positions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Stock", field.Name)
 		},
@@ -4094,6 +5328,8 @@ func (ec *executionContext) fieldContext_Mutation_createCryptoAsset(ctx context.
 				return ec.fieldContext_Crypto_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Crypto_name(ctx, field)
+			case "symbol":
+				return ec.fieldContext_Crypto_symbol(ctx, field)
 			case "assetType":
 				return ec.fieldContext_Crypto_assetType(ctx, field)
 			case "currentValue":
@@ -4110,6 +5346,8 @@ func (ec *executionContext) fieldContext_Mutation_createCryptoAsset(ctx context.
 				return ec.fieldContext_Crypto_blockchainNetwork(ctx, field)
 			case "quantity":
 				return ec.fieldContext_Crypto_quantity(ctx, field)
+			case "positions":
+				return ec.fieldContext_Crypto_positions(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Crypto", field.Name)
 		},
@@ -4654,6 +5892,94 @@ func (ec *executionContext) fieldContext_Ownership_ownershipPercentage(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _PerformancePoint_date(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PerformancePoint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PerformancePoint_date(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Date, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTime2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PerformancePoint_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PerformancePoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PerformancePoint_value(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PerformancePoint) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PerformancePoint_value(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Value, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PerformancePoint_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PerformancePoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Portfolio_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Portfolio) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Portfolio_id(ctx, field)
 	if err != nil {
@@ -4737,6 +6063,91 @@ func (ec *executionContext) fieldContext_Portfolio_name(_ context.Context, field
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Portfolio_description(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Portfolio) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Portfolio_description(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Description, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Portfolio_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Portfolio",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Portfolio_sortOrder(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Portfolio) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Portfolio_sortOrder(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SortOrder, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(int32)
+	fc.Result = res
+	return ec.marshalNInt2int32(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Portfolio_sortOrder(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Portfolio",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4991,6 +6402,8 @@ func (ec *executionContext) fieldContext_Portfolio_assets(_ context.Context, fie
 				return ec.fieldContext_PortfolioAsset_quantity(ctx, field)
 			case "averagePurchasePrice":
 				return ec.fieldContext_PortfolioAsset_averagePurchasePrice(ctx, field)
+			case "ownershipPct":
+				return ec.fieldContext_PortfolioAsset_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -5055,6 +6468,397 @@ func (ec *executionContext) fieldContext_Portfolio_transactions(_ context.Contex
 				return ec.fieldContext_Transaction_notes(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Portfolio_analytics(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Portfolio) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Portfolio_analytics(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Analytics, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.PortfolioAnalytics)
+	fc.Result = res
+	return ec.marshalOPortfolioAnalytics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioAnalytics(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Portfolio_analytics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Portfolio",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "totalValue":
+				return ec.fieldContext_PortfolioAnalytics_totalValue(ctx, field)
+			case "totalCost":
+				return ec.fieldContext_PortfolioAnalytics_totalCost(ctx, field)
+			case "totalGainLoss":
+				return ec.fieldContext_PortfolioAnalytics_totalGainLoss(ctx, field)
+			case "totalGainLossPercent":
+				return ec.fieldContext_PortfolioAnalytics_totalGainLossPercent(ctx, field)
+			case "assetAllocation":
+				return ec.fieldContext_PortfolioAnalytics_assetAllocation(ctx, field)
+			case "riskMetrics":
+				return ec.fieldContext_PortfolioAnalytics_riskMetrics(ctx, field)
+			case "performanceHistory":
+				return ec.fieldContext_PortfolioAnalytics_performanceHistory(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PortfolioAnalytics", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_totalValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_totalValue(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalValue, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_totalValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_totalCost(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_totalCost(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalCost, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_totalCost(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_totalGainLoss(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_totalGainLoss(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalGainLoss, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_totalGainLoss(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_totalGainLossPercent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_totalGainLossPercent(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TotalGainLossPercent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_totalGainLossPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_assetAllocation(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_assetAllocation(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AssetAllocation, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.AssetAllocation)
+	fc.Result = res
+	return ec.marshalNAssetAllocation2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAssetAllocationᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_assetAllocation(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "assetType":
+				return ec.fieldContext_AssetAllocation_assetType(ctx, field)
+			case "value":
+				return ec.fieldContext_AssetAllocation_value(ctx, field)
+			case "percentage":
+				return ec.fieldContext_AssetAllocation_percentage(ctx, field)
+			case "count":
+				return ec.fieldContext_AssetAllocation_count(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AssetAllocation", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_riskMetrics(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_riskMetrics(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RiskMetrics, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.RiskMetrics)
+	fc.Result = res
+	return ec.marshalNRiskMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRiskMetrics(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_riskMetrics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "volatility":
+				return ec.fieldContext_RiskMetrics_volatility(ctx, field)
+			case "sharpeRatio":
+				return ec.fieldContext_RiskMetrics_sharpeRatio(ctx, field)
+			case "maxDrawdown":
+				return ec.fieldContext_RiskMetrics_maxDrawdown(ctx, field)
+			case "diversification":
+				return ec.fieldContext_RiskMetrics_diversification(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RiskMetrics", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAnalytics_performanceHistory(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAnalytics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAnalytics_performanceHistory(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.PerformanceHistory, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.PerformancePoint)
+	fc.Result = res
+	return ec.marshalNPerformancePoint2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPerformancePointᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAnalytics_performanceHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAnalytics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_PerformancePoint_date(ctx, field)
+			case "value":
+				return ec.fieldContext_PerformancePoint_value(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PerformancePoint", field.Name)
 		},
 	}
 	return fc, nil
@@ -5179,6 +6983,441 @@ func (ec *executionContext) _PortfolioAsset_averagePurchasePrice(ctx context.Con
 func (ec *executionContext) fieldContext_PortfolioAsset_averagePurchasePrice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "PortfolioAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAsset_ownershipPct(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAsset) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioAsset_ownershipPct(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OwnershipPct, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAsset_ownershipPct(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioUpdatePayload_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioUpdatePayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioUpdatePayload_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioUpdatePayload_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioUpdatePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioUpdatePayload_portfolio(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioUpdatePayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_PortfolioUpdatePayload_portfolio(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Portfolio, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.Portfolio)
+	fc.Result = res
+	return ec.marshalNPortfolio2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_PortfolioUpdatePayload_portfolio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioUpdatePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Portfolio_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Portfolio_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Portfolio_user(ctx, field)
+			case "tags":
+				return ec.fieldContext_Portfolio_tags(ctx, field)
+			case "assets":
+				return ec.fieldContext_Portfolio_assets(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_id(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ID, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNID2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_portfolio(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_portfolio(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Portfolio, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.Portfolio)
+	fc.Result = res
+	return ec.marshalNPortfolio2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_portfolio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Portfolio_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Portfolio_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Portfolio_user(ctx, field)
+			case "tags":
+				return ec.fieldContext_Portfolio_tags(ctx, field)
+			case "assets":
+				return ec.fieldContext_Portfolio_assets(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_asset(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_asset(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Asset, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(gqlModel.Asset)
+	fc.Result = res
+	return ec.marshalNAsset2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAsset(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_asset(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_quantity(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_quantity(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Quantity, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_quantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_averagePurchasePrice(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_averagePurchasePrice(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AveragePurchasePrice, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_averagePurchasePrice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Position_ownershipPct(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Position_ownershipPct(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.OwnershipPct, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*float64)
+	fc.Result = res
+	return ec.marshalOFloat2ᚖfloat64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Position_ownershipPct(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Position",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
@@ -5380,6 +7619,10 @@ func (ec *executionContext) fieldContext_Query_portfolio(ctx context.Context, fi
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -5392,6 +7635,8 @@ func (ec *executionContext) fieldContext_Query_portfolio(ctx context.Context, fi
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -5404,6 +7649,85 @@ func (ec *executionContext) fieldContext_Query_portfolio(ctx context.Context, fi
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_portfolio_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_GetPortfoliosWithAnalytics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Query_GetPortfoliosWithAnalytics(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Query().GetPortfoliosWithAnalytics(rctx, fc.Args["userID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.Portfolio)
+	fc.Result = res
+	return ec.marshalNPortfolio2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Query_GetPortfoliosWithAnalytics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Portfolio_id(ctx, field)
+			case "name":
+				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Portfolio_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
+			case "user":
+				return ec.fieldContext_Portfolio_user(ctx, field)
+			case "tags":
+				return ec.fieldContext_Portfolio_tags(ctx, field)
+			case "assets":
+				return ec.fieldContext_Portfolio_assets(ctx, field)
+			case "transactions":
+				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_GetPortfoliosWithAnalytics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -5453,6 +7777,10 @@ func (ec *executionContext) fieldContext_Query_portfolios(ctx context.Context, f
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -5465,6 +7793,8 @@ func (ec *executionContext) fieldContext_Query_portfolios(ctx context.Context, f
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -6394,6 +8724,182 @@ func (ec *executionContext) fieldContext_Report_user(_ context.Context, field gr
 	return fc, nil
 }
 
+func (ec *executionContext) _RiskMetrics_volatility(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RiskMetrics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskMetrics_volatility(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Volatility, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskMetrics_volatility(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskMetrics_sharpeRatio(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RiskMetrics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskMetrics_sharpeRatio(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.SharpeRatio, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskMetrics_sharpeRatio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskMetrics_maxDrawdown(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RiskMetrics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskMetrics_maxDrawdown(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.MaxDrawdown, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskMetrics_maxDrawdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RiskMetrics_diversification(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RiskMetrics) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_RiskMetrics_diversification(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Diversification, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(float64)
+	fc.Result = res
+	return ec.marshalNFloat2float64(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_RiskMetrics_diversification(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RiskMetrics",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Stock_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Stock) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Stock_id(ctx, field)
 	if err != nil {
@@ -6470,6 +8976,47 @@ func (ec *executionContext) _Stock_name(ctx context.Context, field graphql.Colle
 }
 
 func (ec *executionContext) fieldContext_Stock_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Stock",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Stock_symbol(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Stock) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Stock_symbol(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Symbol, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Stock_symbol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Stock",
 		Field:      field,
@@ -6834,6 +9381,214 @@ func (ec *executionContext) fieldContext_Stock_buyingPrice(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Stock_positions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Stock) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_Stock_positions(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Positions, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.([]*gqlModel.Position)
+	fc.Result = res
+	return ec.marshalNPosition2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPositionᚄ(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_Stock_positions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Stock",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Position_id(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_Position_portfolio(ctx, field)
+			case "asset":
+				return ec.fieldContext_Position_asset(ctx, field)
+			case "quantity":
+				return ec.fieldContext_Position_quantity(ctx, field)
+			case "averagePurchasePrice":
+				return ec.fieldContext_Position_averagePurchasePrice(ctx, field)
+			case "ownershipPct":
+				return ec.fieldContext_Position_ownershipPct(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_portfolioUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_portfolioUpdates(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().PortfolioUpdates(rctx, fc.Args["userID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *gqlModel.PortfolioUpdatePayload):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNPortfolioUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_portfolioUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_PortfolioUpdatePayload_type(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_PortfolioUpdatePayload_portfolio(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PortfolioUpdatePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_portfolioUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Subscription_transactionUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
+	fc, err := ec.fieldContext_Subscription_transactionUpdates(ctx, field)
+	if err != nil {
+		return nil
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = nil
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Subscription().TransactionUpdates(rctx, fc.Args["userID"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return nil
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return nil
+	}
+	return func(ctx context.Context) graphql.Marshaler {
+		select {
+		case res, ok := <-resTmp.(<-chan *gqlModel.TransactionUpdatePayload):
+			if !ok {
+				return nil
+			}
+			return graphql.WriterFunc(func(w io.Writer) {
+				w.Write([]byte{'{'})
+				graphql.MarshalString(field.Alias).MarshalGQL(w)
+				w.Write([]byte{':'})
+				ec.marshalNTransactionUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload(ctx, field.Selections, res).MarshalGQL(w)
+				w.Write([]byte{'}'})
+			})
+		case <-ctx.Done():
+			return nil
+		}
+	}
+}
+
+func (ec *executionContext) fieldContext_Subscription_transactionUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Subscription",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "type":
+				return ec.fieldContext_TransactionUpdatePayload_type(ctx, field)
+			case "transaction":
+				return ec.fieldContext_TransactionUpdatePayload_transaction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TransactionUpdatePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Subscription_transactionUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Tag_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Tag) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_Tag_id(ctx, field)
 	if err != nil {
@@ -7009,6 +9764,10 @@ func (ec *executionContext) fieldContext_Transaction_portfolio(_ context.Context
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -7021,6 +9780,8 @@ func (ec *executionContext) fieldContext_Transaction_portfolio(_ context.Context
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -7289,6 +10050,112 @@ func (ec *executionContext) fieldContext_Transaction_notes(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _TransactionUpdatePayload_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TransactionUpdatePayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TransactionUpdatePayload_type(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Type, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TransactionUpdatePayload_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransactionUpdatePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TransactionUpdatePayload_transaction(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TransactionUpdatePayload) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TransactionUpdatePayload_transaction(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Transaction, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*gqlModel.Transaction)
+	fc.Result = res
+	return ec.marshalNTransaction2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransaction(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_TransactionUpdatePayload_transaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TransactionUpdatePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Transaction_id(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_Transaction_portfolio(ctx, field)
+			case "asset":
+				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "transactionType":
+				return ec.fieldContext_Transaction_transactionType(ctx, field)
+			case "quantity":
+				return ec.fieldContext_Transaction_quantity(ctx, field)
+			case "pricePerUnit":
+				return ec.fieldContext_Transaction_pricePerUnit(ctx, field)
+			case "transactionDate":
+				return ec.fieldContext_Transaction_transactionDate(ctx, field)
+			case "notes":
+				return ec.fieldContext_Transaction_notes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
 	fc, err := ec.fieldContext_User_id(ctx, field)
 	if err != nil {
@@ -7552,6 +10419,10 @@ func (ec *executionContext) fieldContext_User_portfolios(_ context.Context, fiel
 				return ec.fieldContext_Portfolio_id(ctx, field)
 			case "name":
 				return ec.fieldContext_Portfolio_name(ctx, field)
+			case "description":
+				return ec.fieldContext_Portfolio_description(ctx, field)
+			case "sortOrder":
+				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Portfolio_createdAt(ctx, field)
 			case "updatedAt":
@@ -7564,6 +10435,8 @@ func (ec *executionContext) fieldContext_User_portfolios(_ context.Context, fiel
 				return ec.fieldContext_Portfolio_assets(ctx, field)
 			case "transactions":
 				return ec.fieldContext_Portfolio_transactions(ctx, field)
+			case "analytics":
+				return ec.fieldContext_Portfolio_analytics(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
 		},
@@ -9863,13 +12736,20 @@ func (ec *executionContext) unmarshalInputAssetFilter(ctx context.Context, obj i
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"assetTypeID", "nameContains", "hasTagIDs"}
+	fieldsInOrder := [...]string{"userID", "assetTypeID", "nameContains", "hasTagIDs"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "assetTypeID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetTypeID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -10021,7 +12901,7 @@ func (ec *executionContext) unmarshalInputCreatePortfolioInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"userID", "name"}
+	fieldsInOrder := [...]string{"userID", "name", "description"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10042,6 +12922,13 @@ func (ec *executionContext) unmarshalInputCreatePortfolioInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
 		}
 	}
 
@@ -10186,6 +13073,113 @@ func (ec *executionContext) unmarshalInputCreateWatchlistInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputDuplicatePortfolioInput(ctx context.Context, obj interface{}) (gqlModel.DuplicatePortfolioInput, error) {
+	var it gqlModel.DuplicatePortfolioInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["copyAssets"]; !present {
+		asMap["copyAssets"] = true
+	}
+
+	fieldsInOrder := [...]string{"sourcePortfolioID", "newName", "description", "copyAssets"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "sourcePortfolioID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourcePortfolioID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourcePortfolioID = data
+		case "newName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("newName"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NewName = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "copyAssets":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("copyAssets"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CopyAssets = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputExportPortfolioInput(ctx context.Context, obj interface{}) (gqlModel.ExportPortfolioInput, error) {
+	var it gqlModel.ExportPortfolioInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["includeTransactions"]; !present {
+		asMap["includeTransactions"] = true
+	}
+	if _, present := asMap["includeAnalytics"]; !present {
+		asMap["includeAnalytics"] = true
+	}
+
+	fieldsInOrder := [...]string{"portfolioID", "format", "includeTransactions", "includeAnalytics"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "portfolioID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioID = data
+		case "format":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("format"))
+			data, err := ec.unmarshalNExportFormat2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportFormat(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Format = data
+		case "includeTransactions":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeTransactions"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeTransactions = data
+		case "includeAnalytics":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("includeAnalytics"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IncludeAnalytics = data
 		}
 	}
 
@@ -10363,6 +13357,74 @@ func (ec *executionContext) unmarshalInputPortfolioOrder(ctx context.Context, ob
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputPortfolioOrderInput(ctx context.Context, obj interface{}) (gqlModel.PortfolioOrderInput, error) {
+	var it gqlModel.PortfolioOrderInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"portfolioID", "sortOrder"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "portfolioID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioID = data
+		case "sortOrder":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortOrder"))
+			data, err := ec.unmarshalNInt2int32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SortOrder = data
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputReorderPortfoliosInput(ctx context.Context, obj interface{}) (gqlModel.ReorderPortfoliosInput, error) {
+	var it gqlModel.ReorderPortfoliosInput
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"userID", "portfolioOrders"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "portfolioOrders":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioOrders"))
+			data, err := ec.unmarshalNPortfolioOrderInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioOrderInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioOrders = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context, obj interface{}) (gqlModel.TransactionFilter, error) {
 	var it gqlModel.TransactionFilter
 	asMap := map[string]interface{}{}
@@ -10370,13 +13432,20 @@ func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"portfolioID", "assetID", "transactionType", "dateFrom", "dateTo"}
+	fieldsInOrder := [...]string{"userID", "portfolioID", "assetID", "transactionType", "dateFrom", "dateTo"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
 			continue
 		}
 		switch k {
+		case "userID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
 		case "portfolioID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -10466,7 +13535,7 @@ func (ec *executionContext) unmarshalInputUpdatePortfolioInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name"}
+	fieldsInOrder := [...]string{"name", "description", "sortOrder"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -10480,6 +13549,20 @@ func (ec *executionContext) unmarshalInputUpdatePortfolioInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		case "description":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("description"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Description = data
+		case "sortOrder":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortOrder"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SortOrder = data
 		}
 	}
 
@@ -10726,6 +13809,60 @@ func (ec *executionContext) _Alert(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
+var assetAllocationImplementors = []string{"AssetAllocation"}
+
+func (ec *executionContext) _AssetAllocation(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AssetAllocation) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, assetAllocationImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AssetAllocation")
+		case "assetType":
+			out.Values[i] = ec._AssetAllocation_assetType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._AssetAllocation_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentage":
+			out.Values[i] = ec._AssetAllocation_percentage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "count":
+			out.Values[i] = ec._AssetAllocation_count(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var assetTypeImplementors = []string{"AssetType"}
 
 func (ec *executionContext) _AssetType(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AssetType) graphql.Marshaler {
@@ -10791,6 +13928,8 @@ func (ec *executionContext) _Crypto(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "symbol":
+			out.Values[i] = ec._Crypto_symbol(ctx, field, obj)
 		case "assetType":
 			out.Values[i] = ec._Crypto_assetType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -10816,6 +13955,54 @@ func (ec *executionContext) _Crypto(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "positions":
+			out.Values[i] = ec._Crypto_positions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var exportResultImplementors = []string{"ExportResult"}
+
+func (ec *executionContext) _ExportResult(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.ExportResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, exportResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ExportResult")
+		case "success":
+			out.Values[i] = ec._ExportResult_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "downloadUrl":
+			out.Values[i] = ec._ExportResult_downloadUrl(ctx, field, obj)
+		case "error":
+			out.Values[i] = ec._ExportResult_error(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -10931,6 +14118,27 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "untagPortfolio":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_untagPortfolio(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "duplicatePortfolio":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_duplicatePortfolio(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reorderPortfolios":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_reorderPortfolios(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "exportPortfolio":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_exportPortfolio(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -11063,6 +14271,50 @@ func (ec *executionContext) _Ownership(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var performancePointImplementors = []string{"PerformancePoint"}
+
+func (ec *executionContext) _PerformancePoint(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.PerformancePoint) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, performancePointImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PerformancePoint")
+		case "date":
+			out.Values[i] = ec._PerformancePoint_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._PerformancePoint_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var portfolioImplementors = []string{"Portfolio"}
 
 func (ec *executionContext) _Portfolio(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Portfolio) graphql.Marshaler {
@@ -11081,6 +14333,13 @@ func (ec *executionContext) _Portfolio(ctx context.Context, sel ast.SelectionSet
 			}
 		case "name":
 			out.Values[i] = ec._Portfolio_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._Portfolio_description(ctx, field, obj)
+		case "sortOrder":
+			out.Values[i] = ec._Portfolio_sortOrder(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -11111,6 +14370,77 @@ func (ec *executionContext) _Portfolio(ctx context.Context, sel ast.SelectionSet
 			}
 		case "transactions":
 			out.Values[i] = ec._Portfolio_transactions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "analytics":
+			out.Values[i] = ec._Portfolio_analytics(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var portfolioAnalyticsImplementors = []string{"PortfolioAnalytics"}
+
+func (ec *executionContext) _PortfolioAnalytics(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.PortfolioAnalytics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, portfolioAnalyticsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PortfolioAnalytics")
+		case "totalValue":
+			out.Values[i] = ec._PortfolioAnalytics_totalValue(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCost":
+			out.Values[i] = ec._PortfolioAnalytics_totalCost(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalGainLoss":
+			out.Values[i] = ec._PortfolioAnalytics_totalGainLoss(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalGainLossPercent":
+			out.Values[i] = ec._PortfolioAnalytics_totalGainLossPercent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetAllocation":
+			out.Values[i] = ec._PortfolioAnalytics_assetAllocation(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "riskMetrics":
+			out.Values[i] = ec._PortfolioAnalytics_riskMetrics(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "performanceHistory":
+			out.Values[i] = ec._PortfolioAnalytics_performanceHistory(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -11160,6 +14490,110 @@ func (ec *executionContext) _PortfolioAsset(ctx context.Context, sel ast.Selecti
 			}
 		case "averagePurchasePrice":
 			out.Values[i] = ec._PortfolioAsset_averagePurchasePrice(ctx, field, obj)
+		case "ownershipPct":
+			out.Values[i] = ec._PortfolioAsset_ownershipPct(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var portfolioUpdatePayloadImplementors = []string{"PortfolioUpdatePayload"}
+
+func (ec *executionContext) _PortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, portfolioUpdatePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PortfolioUpdatePayload")
+		case "type":
+			out.Values[i] = ec._PortfolioUpdatePayload_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "portfolio":
+			out.Values[i] = ec._PortfolioUpdatePayload_portfolio(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var positionImplementors = []string{"Position"}
+
+func (ec *executionContext) _Position(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Position) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, positionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Position")
+		case "id":
+			out.Values[i] = ec._Position_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "portfolio":
+			out.Values[i] = ec._Position_portfolio(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "asset":
+			out.Values[i] = ec._Position_asset(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quantity":
+			out.Values[i] = ec._Position_quantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "averagePurchasePrice":
+			out.Values[i] = ec._Position_averagePurchasePrice(ctx, field, obj)
+		case "ownershipPct":
+			out.Values[i] = ec._Position_ownershipPct(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11253,6 +14687,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_portfolio(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "GetPortfoliosWithAnalytics":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_GetPortfoliosWithAnalytics(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -11557,6 +15013,60 @@ func (ec *executionContext) _Report(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
+var riskMetricsImplementors = []string{"RiskMetrics"}
+
+func (ec *executionContext) _RiskMetrics(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.RiskMetrics) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, riskMetricsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RiskMetrics")
+		case "volatility":
+			out.Values[i] = ec._RiskMetrics_volatility(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sharpeRatio":
+			out.Values[i] = ec._RiskMetrics_sharpeRatio(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxDrawdown":
+			out.Values[i] = ec._RiskMetrics_maxDrawdown(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "diversification":
+			out.Values[i] = ec._RiskMetrics_diversification(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var stockImplementors = []string{"Stock", "Asset"}
 
 func (ec *executionContext) _Stock(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Stock) graphql.Marshaler {
@@ -11578,6 +15088,8 @@ func (ec *executionContext) _Stock(ctx context.Context, sel ast.SelectionSet, ob
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "symbol":
+			out.Values[i] = ec._Stock_symbol(ctx, field, obj)
 		case "assetType":
 			out.Values[i] = ec._Stock_assetType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -11606,6 +15118,11 @@ func (ec *executionContext) _Stock(ctx context.Context, sel ast.SelectionSet, ob
 			}
 		case "buyingPrice":
 			out.Values[i] = ec._Stock_buyingPrice(ctx, field, obj)
+		case "positions":
+			out.Values[i] = ec._Stock_positions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -11627,6 +15144,28 @@ func (ec *executionContext) _Stock(ctx context.Context, sel ast.SelectionSet, ob
 	}
 
 	return out
+}
+
+var subscriptionImplementors = []string{"Subscription"}
+
+func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
+	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
+		Object: "Subscription",
+	})
+	if len(fields) != 1 {
+		ec.Errorf(ctx, "must subscribe to exactly one stream")
+		return nil
+	}
+
+	switch fields[0].Name {
+	case "portfolioUpdates":
+		return ec._Subscription_portfolioUpdates(ctx, fields[0])
+	case "transactionUpdates":
+		return ec._Subscription_transactionUpdates(ctx, fields[0])
+	default:
+		panic("unknown field " + strconv.Quote(fields[0].Name))
+	}
 }
 
 var tagImplementors = []string{"Tag"}
@@ -11721,6 +15260,50 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			}
 		case "notes":
 			out.Values[i] = ec._Transaction_notes(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var transactionUpdatePayloadImplementors = []string{"TransactionUpdatePayload"}
+
+func (ec *executionContext) _TransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.TransactionUpdatePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, transactionUpdatePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TransactionUpdatePayload")
+		case "type":
+			out.Values[i] = ec._TransactionUpdatePayload_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "transaction":
+			out.Values[i] = ec._TransactionUpdatePayload_transaction(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -12326,6 +15909,60 @@ func (ec *executionContext) marshalNAsset2ᚕsigma_financeᚋinternalᚋhandler�
 	return ret
 }
 
+func (ec *executionContext) marshalNAssetAllocation2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAssetAllocationᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.AssetAllocation) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNAssetAllocation2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAssetAllocation(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAssetAllocation2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAssetAllocation(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AssetAllocation) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AssetAllocation(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNAssetOrderField2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAssetOrderField(ctx context.Context, v interface{}) (gqlModel.AssetOrderField, error) {
 	var res gqlModel.AssetOrderField
 	err := res.UnmarshalGQL(v)
@@ -12444,6 +16081,40 @@ func (ec *executionContext) marshalNCrypto2ᚖsigma_financeᚋinternalᚋhandler
 	return ec._Crypto(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNDuplicatePortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDuplicatePortfolioInput(ctx context.Context, v interface{}) (gqlModel.DuplicatePortfolioInput, error) {
+	res, err := ec.unmarshalInputDuplicatePortfolioInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNExportFormat2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportFormat(ctx context.Context, v interface{}) (gqlModel.ExportFormat, error) {
+	var res gqlModel.ExportFormat
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNExportFormat2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportFormat(ctx context.Context, sel ast.SelectionSet, v gqlModel.ExportFormat) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNExportPortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportPortfolioInput(ctx context.Context, v interface{}) (gqlModel.ExportPortfolioInput, error) {
+	res, err := ec.unmarshalInputExportPortfolioInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNExportResult2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportResult(ctx context.Context, sel ast.SelectionSet, v gqlModel.ExportResult) graphql.Marshaler {
+	return ec._ExportResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNExportResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportResult(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ExportResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ExportResult(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNFloat2float64(ctx context.Context, v interface{}) (float64, error) {
 	res, err := graphql.UnmarshalFloatContext(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -12466,6 +16137,21 @@ func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface
 
 func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
 	res := graphql.MarshalID(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) unmarshalNInt2int32(ctx context.Context, v interface{}) (int32, error) {
+	res, err := graphql.UnmarshalInt32(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.SelectionSet, v int32) graphql.Marshaler {
+	res := graphql.MarshalInt32(v)
 	if res == graphql.Null {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -12536,6 +16222,60 @@ func (ec *executionContext) marshalNOwnership2ᚖsigma_financeᚋinternalᚋhand
 		return graphql.Null
 	}
 	return ec._Ownership(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPerformancePoint2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPerformancePointᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.PerformancePoint) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPerformancePoint2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPerformancePoint(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPerformancePoint2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPerformancePoint(ctx context.Context, sel ast.SelectionSet, v *gqlModel.PerformancePoint) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PerformancePoint(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNPortfolio2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx context.Context, sel ast.SelectionSet, v gqlModel.Portfolio) graphql.Marshaler {
@@ -12669,6 +16409,101 @@ func (ec *executionContext) marshalNPortfolioOrderField2sigma_financeᚋinternal
 	return v
 }
 
+func (ec *executionContext) unmarshalNPortfolioOrderInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioOrderInputᚄ(ctx context.Context, v interface{}) ([]*gqlModel.PortfolioOrderInput, error) {
+	var vSlice []interface{}
+	if v != nil {
+		vSlice = graphql.CoerceList(v)
+	}
+	var err error
+	res := make([]*gqlModel.PortfolioOrderInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNPortfolioOrderInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioOrderInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) unmarshalNPortfolioOrderInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioOrderInput(ctx context.Context, v interface{}) (*gqlModel.PortfolioOrderInput, error) {
+	res, err := ec.unmarshalInputPortfolioOrderInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNPortfolioUpdatePayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
+	return ec._PortfolioUpdatePayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNPortfolioUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PortfolioUpdatePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNPosition2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPositionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Position) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNPosition2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPosition(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNPosition2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPosition(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Position) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._Position(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNReorderPortfoliosInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐReorderPortfoliosInput(ctx context.Context, v interface{}) (gqlModel.ReorderPortfoliosInput, error) {
+	res, err := ec.unmarshalInputReorderPortfoliosInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNReport2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐReportᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Report) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -12721,6 +16556,16 @@ func (ec *executionContext) marshalNReport2ᚖsigma_financeᚋinternalᚋhandler
 		return graphql.Null
 	}
 	return ec._Report(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRiskMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRiskMetrics(ctx context.Context, sel ast.SelectionSet, v *gqlModel.RiskMetrics) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RiskMetrics(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNSortDirection2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSortDirection(ctx context.Context, v interface{}) (gqlModel.SortDirection, error) {
@@ -12903,6 +16748,20 @@ func (ec *executionContext) unmarshalNTransactionType2sigma_financeᚋinternal�
 
 func (ec *executionContext) marshalNTransactionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionType(ctx context.Context, sel ast.SelectionSet, v gqlModel.TransactionType) graphql.Marshaler {
 	return v
+}
+
+func (ec *executionContext) marshalNTransactionUpdatePayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.TransactionUpdatePayload) graphql.Marshaler {
+	return ec._TransactionUpdatePayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTransactionUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.TransactionUpdatePayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TransactionUpdatePayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUpdatePortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdatePortfolioInput(ctx context.Context, v interface{}) (gqlModel.UpdatePortfolioInput, error) {
@@ -13442,6 +17301,13 @@ func (ec *executionContext) marshalOPortfolio2ᚖsigma_financeᚋinternalᚋhand
 		return graphql.Null
 	}
 	return ec._Portfolio(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOPortfolioAnalytics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioAnalytics(ctx context.Context, sel ast.SelectionSet, v *gqlModel.PortfolioAnalytics) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._PortfolioAnalytics(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalOPortfolioFilter2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioFilter(ctx context.Context, v interface{}) (*gqlModel.PortfolioFilter, error) {

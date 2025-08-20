@@ -3,18 +3,51 @@
 type Portfolio {
     id: ID!
     name: String!
+    description: String
+    sortOrder: Int!
     createdAt: Time!
     updatedAt: Time!
     user: User!
     tags: [Tag!]!
     assets: [PortfolioAsset!]!
     transactions: [Transaction!]!
+    analytics: PortfolioAnalytics
 }
 
 type PortfolioAsset {
     asset: Asset!
     quantity: Float!
     averagePurchasePrice: Float
+    ownershipPct: Float
+}
+
+type PortfolioAnalytics {
+    totalValue: Float!
+    totalCost: Float!
+    totalGainLoss: Float!
+    totalGainLossPercent: Float!
+    assetAllocation: [AssetAllocation!]!
+    riskMetrics: RiskMetrics!
+    performanceHistory: [PerformancePoint!]!
+}
+
+type AssetAllocation {
+    assetType: String!
+    value: Float!
+    percentage: Float!
+    count: Int!
+}
+
+type RiskMetrics {
+    volatility: Float!
+    sharpeRatio: Float!
+    maxDrawdown: Float!
+    diversification: Float!
+}
+
+type PerformancePoint {
+    date: Time!
+    value: Float!
 }
 
 # --- Inputs & Enums for Portfolio ---
@@ -22,10 +55,13 @@ type PortfolioAsset {
 input CreatePortfolioInput {
     userID: ID!
     name: String!
+    description: String
 }
 
 input UpdatePortfolioInput {
     name: String
+    description: String
+    sortOrder: Int
 }
 
 input PortfolioAssetInput {
@@ -48,6 +84,43 @@ input PortfolioOrder {
 
 enum PortfolioOrderField {
     NAME
+    SORT_ORDER
     CREATED_AT
     UPDATED_AT
+}
+
+input DuplicatePortfolioInput {
+    sourcePortfolioID: ID!
+    newName: String!
+    description: String
+    copyAssets: Boolean! = true
+}
+
+input ReorderPortfoliosInput {
+    userID: ID!
+    portfolioOrders: [PortfolioOrderInput!]!
+}
+
+input PortfolioOrderInput {
+    portfolioID: ID!
+    sortOrder: Int!
+}
+
+input ExportPortfolioInput {
+    portfolioID: ID!
+    format: ExportFormat!
+    includeTransactions: Boolean! = true
+    includeAnalytics: Boolean! = true
+}
+
+enum ExportFormat {
+    CSV
+    PDF
+    EXCEL
+}
+
+type ExportResult {
+    success: Boolean!
+    downloadUrl: String
+    error: String
 }

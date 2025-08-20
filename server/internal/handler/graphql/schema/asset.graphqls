@@ -8,16 +8,19 @@ type AssetType {
 interface Asset {
     id: ID!
     name: String!
+    symbol: String
     assetType: AssetType!
     currentValue: Float
     purchaseDate: Time
     purchasePrice: Float
     tags: [Tag!]!
+    positions: [Position!]!
 }
 
 type Stock implements Asset {
     id: ID!
     name: String!
+    symbol: String
     assetType: AssetType!
     currentValue: Float
     purchaseDate: Time
@@ -27,11 +30,13 @@ type Stock implements Asset {
     ticker: String!
     quantity: Float!
     buyingPrice: Float # Note: Redundant with purchase_price in asset table
+    positions: [Position!]!
 }
 
 type Crypto implements Asset {
     id: ID!
     name: String!
+    symbol: String
     assetType: AssetType!
     currentValue: Float
     purchaseDate: Time
@@ -41,6 +46,7 @@ type Crypto implements Asset {
     walletAddress: String
     blockchainNetwork: String
     quantity: Float!
+    positions: [Position!]!
 }
 
 type Tag {
@@ -72,6 +78,7 @@ input CreateCryptoInput {
 }
 
 input AssetFilter {
+    userID: ID
     assetTypeID: ID
     nameContains: String
     hasTagIDs: [ID!]

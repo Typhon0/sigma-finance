@@ -15,7 +15,10 @@ import (
 
 func main() {
 
-	db := infrastructure.NewDB()
+	db, err := infrastructure.NewDB()
+	if err != nil {
+		log.Fatalf("failed to initialize database: %v", err)
+	}
 
 	templateData := map[string]string{
 		"Prefix": "example_",

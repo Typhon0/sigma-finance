@@ -13,11 +13,13 @@ type Asset interface {
 	IsAsset()
 	GetID() string
 	GetName() string
+	GetSymbol() *string
 	GetAssetType() *AssetType
 	GetCurrentValue() *float64
 	GetPurchaseDate() *time.Time
 	GetPurchasePrice() *float64
 	GetTags() []*Tag
+	GetPositions() []*Position
 }
 
 type Alert struct {
@@ -30,7 +32,15 @@ type Alert struct {
 	Asset            Asset            `json:"asset"`
 }
 
+type AssetAllocation struct {
+	AssetType  string  `json:"assetType"`
+	Value      float64 `json:"value"`
+	Percentage float64 `json:"percentage"`
+	Count      int32   `json:"count"`
+}
+
 type AssetFilter struct {
+	UserID       *string  `json:"userID,omitempty"`
 	AssetTypeID  *string  `json:"assetTypeID,omitempty"`
 	NameContains *string  `json:"nameContains,omitempty"`
 	HasTagIDs    []string `json:"hasTagIDs,omitempty"`
@@ -58,8 +68,9 @@ type CreateCryptoInput struct {
 }
 
 type CreatePortfolioInput struct {
-	UserID string `json:"userID"`
-	Name   string `json:"name"`
+	UserID      string  `json:"userID"`
+	Name        string  `json:"name"`
+	Description *string `json:"description,omitempty"`
 }
 
 type CreateStockInput struct {
@@ -84,21 +95,24 @@ type CreateWatchlistInput struct {
 }
 
 type Crypto struct {
-	ID                string     `json:"id"`
-	Name              string     `json:"name"`
-	AssetType         *AssetType `json:"assetType"`
-	CurrentValue      *float64   `json:"currentValue,omitempty"`
-	PurchaseDate      *time.Time `json:"purchaseDate,omitempty"`
-	PurchasePrice     *float64   `json:"purchasePrice,omitempty"`
-	Tags              []*Tag     `json:"tags"`
-	WalletAddress     *string    `json:"walletAddress,omitempty"`
-	BlockchainNetwork *string    `json:"blockchainNetwork,omitempty"`
-	Quantity          float64    `json:"quantity"`
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Symbol            *string     `json:"symbol,omitempty"`
+	AssetType         *AssetType  `json:"assetType"`
+	CurrentValue      *float64    `json:"currentValue,omitempty"`
+	PurchaseDate      *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice     *float64    `json:"purchasePrice,omitempty"`
+	Tags              []*Tag      `json:"tags"`
+	WalletAddress     *string     `json:"walletAddress,omitempty"`
+	BlockchainNetwork *string     `json:"blockchainNetwork,omitempty"`
+	Quantity          float64     `json:"quantity"`
+	Positions         []*Position `json:"positions"`
 }
 
 func (Crypto) IsAsset()                         {}
 func (this Crypto) GetID() string               { return this.ID }
 func (this Crypto) GetName() string             { return this.Name }
+func (this Crypto) GetSymbol() *string          { return this.Symbol }
 func (this Crypto) GetAssetType() *AssetType    { return this.AssetType }
 func (this Crypto) GetCurrentValue() *float64   { return this.CurrentValue }
 func (this Crypto) GetPurchaseDate() *time.Time { return this.PurchaseDate }
@@ -112,6 +126,36 @@ func (this Crypto) GetTags() []*Tag {
 		interfaceSlice = append(interfaceSlice, concrete)
 	}
 	return interfaceSlice
+}
+func (this Crypto) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+type DuplicatePortfolioInput struct {
+	SourcePortfolioID string  `json:"sourcePortfolioID"`
+	NewName           string  `json:"newName"`
+	Description       *string `json:"description,omitempty"`
+	CopyAssets        bool    `json:"copyAssets"`
+}
+
+type ExportPortfolioInput struct {
+	PortfolioID         string       `json:"portfolioID"`
+	Format              ExportFormat `json:"format"`
+	IncludeTransactions bool         `json:"includeTransactions"`
+	IncludeAnalytics    bool         `json:"includeAnalytics"`
+}
+
+type ExportResult struct {
+	Success     bool    `json:"success"`
+	DownloadURL *string `json:"downloadUrl,omitempty"`
+	Error       *string `json:"error,omitempty"`
 }
 
 type Mutation struct {
@@ -128,21 +172,40 @@ type PaginationInput struct {
 	Offset *int32 `json:"offset,omitempty"`
 }
 
+type PerformancePoint struct {
+	Date  time.Time `json:"date"`
+	Value float64   `json:"value"`
+}
+
 type Portfolio struct {
-	ID           string            `json:"id"`
-	Name         string            `json:"name"`
-	CreatedAt    time.Time         `json:"createdAt"`
-	UpdatedAt    time.Time         `json:"updatedAt"`
-	User         *User             `json:"user"`
-	Tags         []*Tag            `json:"tags"`
-	Assets       []*PortfolioAsset `json:"assets"`
-	Transactions []*Transaction    `json:"transactions"`
+	ID           string              `json:"id"`
+	Name         string              `json:"name"`
+	Description  *string             `json:"description,omitempty"`
+	SortOrder    int32               `json:"sortOrder"`
+	CreatedAt    time.Time           `json:"createdAt"`
+	UpdatedAt    time.Time           `json:"updatedAt"`
+	User         *User               `json:"user"`
+	Tags         []*Tag              `json:"tags"`
+	Assets       []*PortfolioAsset   `json:"assets"`
+	Transactions []*Transaction      `json:"transactions"`
+	Analytics    *PortfolioAnalytics `json:"analytics,omitempty"`
+}
+
+type PortfolioAnalytics struct {
+	TotalValue           float64             `json:"totalValue"`
+	TotalCost            float64             `json:"totalCost"`
+	TotalGainLoss        float64             `json:"totalGainLoss"`
+	TotalGainLossPercent float64             `json:"totalGainLossPercent"`
+	AssetAllocation      []*AssetAllocation  `json:"assetAllocation"`
+	RiskMetrics          *RiskMetrics        `json:"riskMetrics"`
+	PerformanceHistory   []*PerformancePoint `json:"performanceHistory"`
 }
 
 type PortfolioAsset struct {
 	Asset                Asset    `json:"asset"`
 	Quantity             float64  `json:"quantity"`
 	AveragePurchasePrice *float64 `json:"averagePurchasePrice,omitempty"`
+	OwnershipPct         *float64 `json:"ownershipPct,omitempty"`
 }
 
 type PortfolioAssetInput struct {
@@ -163,7 +226,31 @@ type PortfolioOrder struct {
 	Direction SortDirection       `json:"direction"`
 }
 
+type PortfolioOrderInput struct {
+	PortfolioID string `json:"portfolioID"`
+	SortOrder   int32  `json:"sortOrder"`
+}
+
+type PortfolioUpdatePayload struct {
+	Type      string     `json:"type"`
+	Portfolio *Portfolio `json:"portfolio"`
+}
+
+type Position struct {
+	ID                   string     `json:"id"`
+	Portfolio            *Portfolio `json:"portfolio"`
+	Asset                Asset      `json:"asset"`
+	Quantity             float64    `json:"quantity"`
+	AveragePurchasePrice *float64   `json:"averagePurchasePrice,omitempty"`
+	OwnershipPct         *float64   `json:"ownershipPct,omitempty"`
+}
+
 type Query struct {
+}
+
+type ReorderPortfoliosInput struct {
+	UserID          string                 `json:"userID"`
+	PortfolioOrders []*PortfolioOrderInput `json:"portfolioOrders"`
 }
 
 type Report struct {
@@ -174,22 +261,32 @@ type Report struct {
 	User        *User     `json:"user"`
 }
 
+type RiskMetrics struct {
+	Volatility      float64 `json:"volatility"`
+	SharpeRatio     float64 `json:"sharpeRatio"`
+	MaxDrawdown     float64 `json:"maxDrawdown"`
+	Diversification float64 `json:"diversification"`
+}
+
 type Stock struct {
-	ID            string     `json:"id"`
-	Name          string     `json:"name"`
-	AssetType     *AssetType `json:"assetType"`
-	CurrentValue  *float64   `json:"currentValue,omitempty"`
-	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
-	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
-	Tags          []*Tag     `json:"tags"`
-	Ticker        string     `json:"ticker"`
-	Quantity      float64    `json:"quantity"`
-	BuyingPrice   *float64   `json:"buyingPrice,omitempty"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Symbol        *string     `json:"symbol,omitempty"`
+	AssetType     *AssetType  `json:"assetType"`
+	CurrentValue  *float64    `json:"currentValue,omitempty"`
+	PurchaseDate  *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice *float64    `json:"purchasePrice,omitempty"`
+	Tags          []*Tag      `json:"tags"`
+	Ticker        string      `json:"ticker"`
+	Quantity      float64     `json:"quantity"`
+	BuyingPrice   *float64    `json:"buyingPrice,omitempty"`
+	Positions     []*Position `json:"positions"`
 }
 
 func (Stock) IsAsset()                         {}
 func (this Stock) GetID() string               { return this.ID }
 func (this Stock) GetName() string             { return this.Name }
+func (this Stock) GetSymbol() *string          { return this.Symbol }
 func (this Stock) GetAssetType() *AssetType    { return this.AssetType }
 func (this Stock) GetCurrentValue() *float64   { return this.CurrentValue }
 func (this Stock) GetPurchaseDate() *time.Time { return this.PurchaseDate }
@@ -203,6 +300,19 @@ func (this Stock) GetTags() []*Tag {
 		interfaceSlice = append(interfaceSlice, concrete)
 	}
 	return interfaceSlice
+}
+func (this Stock) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+
+type Subscription struct {
 }
 
 type Tag struct {
@@ -222,6 +332,7 @@ type Transaction struct {
 }
 
 type TransactionFilter struct {
+	UserID          *string          `json:"userID,omitempty"`
 	PortfolioID     *string          `json:"portfolioID,omitempty"`
 	AssetID         *string          `json:"assetID,omitempty"`
 	TransactionType *TransactionType `json:"transactionType,omitempty"`
@@ -234,8 +345,15 @@ type TransactionOrder struct {
 	Direction SortDirection         `json:"direction"`
 }
 
+type TransactionUpdatePayload struct {
+	Type        string       `json:"type"`
+	Transaction *Transaction `json:"transaction"`
+}
+
 type UpdatePortfolioInput struct {
-	Name *string `json:"name,omitempty"`
+	Name        *string `json:"name,omitempty"`
+	Description *string `json:"description,omitempty"`
+	SortOrder   *int32  `json:"sortOrder,omitempty"`
 }
 
 type UpdateUserInput struct {
@@ -323,6 +441,49 @@ func (e AssetOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type ExportFormat string
+
+const (
+	ExportFormatCSV   ExportFormat = "CSV"
+	ExportFormatPDF   ExportFormat = "PDF"
+	ExportFormatExcel ExportFormat = "EXCEL"
+)
+
+var AllExportFormat = []ExportFormat{
+	ExportFormatCSV,
+	ExportFormatPDF,
+	ExportFormatExcel,
+}
+
+func (e ExportFormat) IsValid() bool {
+	switch e {
+	case ExportFormatCSV, ExportFormatPDF, ExportFormatExcel:
+		return true
+	}
+	return false
+}
+
+func (e ExportFormat) String() string {
+	return string(e)
+}
+
+func (e *ExportFormat) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ExportFormat(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ExportFormat", str)
+	}
+	return nil
+}
+
+func (e ExportFormat) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type NotificationType string
 
 const (
@@ -370,19 +531,21 @@ type PortfolioOrderField string
 
 const (
 	PortfolioOrderFieldName      PortfolioOrderField = "NAME"
+	PortfolioOrderFieldSortOrder PortfolioOrderField = "SORT_ORDER"
 	PortfolioOrderFieldCreatedAt PortfolioOrderField = "CREATED_AT"
 	PortfolioOrderFieldUpdatedAt PortfolioOrderField = "UPDATED_AT"
 )
 
 var AllPortfolioOrderField = []PortfolioOrderField{
 	PortfolioOrderFieldName,
+	PortfolioOrderFieldSortOrder,
 	PortfolioOrderFieldCreatedAt,
 	PortfolioOrderFieldUpdatedAt,
 }
 
 func (e PortfolioOrderField) IsValid() bool {
 	switch e {
-	case PortfolioOrderFieldName, PortfolioOrderFieldCreatedAt, PortfolioOrderFieldUpdatedAt:
+	case PortfolioOrderFieldName, PortfolioOrderFieldSortOrder, PortfolioOrderFieldCreatedAt, PortfolioOrderFieldUpdatedAt:
 		return true
 	}
 	return false

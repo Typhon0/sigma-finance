@@ -3,23 +3,23 @@
 import * as React from "react"
 import {
   AudioWaveform,
-  BookOpen,
-  Bot,
   Command,
   Frame,
   GalleryVerticalEnd,
-  icons,
   Map,
   PieChart,
   Settings2,
   ChartColumn,
-  Bitcoin
+  LayoutDashboard,
+  Wallet,
+  TrendingUp,
+  Bell,
+  FileText
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
-import { TeamSwitcher } from "@/components/team-switcher"
 import {
   Sidebar,
   SidebarContent,
@@ -54,10 +54,34 @@ const data = {
   ],
   navMain: [
     {
-      title: "Portfolio",
+      title: "Dashboard",
+      url: "/dashboard",
+      icon: LayoutDashboard,
+      isActive: true,
+    },
+    {
+      title: "Portfolios",
+      url: "/portfolios",
+      icon: Wallet,
+      items: [
+        {
+          title: "All Portfolios",
+          url: "/portfolios",
+        },
+        {
+          title: "Create Portfolio",
+          url: "/portfolios/create",
+        },
+        {
+          title: "Portfolio Analytics",
+          url: "/portfolios/analytics",
+        },
+      ],
+    },
+    {
+      title: "Assets",
       url: "#",
       icon: ChartColumn,
-      isActive: true,
       items: [
         {
           title: "Stocks",
@@ -68,49 +92,56 @@ const data = {
           url: "#",
         },
         {
-          title: "Settings",
+          title: "Real Estate",
+          url: "#",
+        },
+        {
+          title: "Other Assets",
           url: "#",
         },
       ],
     },
     {
-      title: "Models",
+      title: "Transactions",
       url: "#",
-      icon: Bot,
+      icon: TrendingUp,
       items: [
         {
-          title: "Genesis",
+          title: "All Transactions",
           url: "#",
         },
         {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
+          title: "Add Transaction",
           url: "#",
         },
       ],
     },
     {
-      title: "Documentation",
+      title: "Alerts",
       url: "#",
-      icon: BookOpen,
+      icon: Bell,
       items: [
         {
-          title: "Introduction",
+          title: "Active Alerts",
           url: "#",
         },
         {
-          title: "Get Started",
+          title: "Create Alert",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Reports",
+      url: "#",
+      icon: FileText,
+      items: [
+        {
+          title: "Performance",
           url: "#",
         },
         {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
+          title: "Tax Reports",
           url: "#",
         },
       ],
@@ -121,19 +152,15 @@ const data = {
       icon: Settings2,
       items: [
         {
-          title: "General",
+          title: "Profile",
           url: "#",
         },
         {
-          title: "Team",
+          title: "Preferences",
           url: "#",
         },
         {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
+          title: "Security",
           url: "#",
         },
       ],

@@ -455,6 +455,16 @@ func (m *MockPortfolioAssetRepository) DeleteByPortfolioAndAsset(ctx context.Con
 	return args.Error(0)
 }
 
+func (m *MockPortfolioAssetRepository) FindByAssetID(ctx context.Context, assetID int) ([]model.PortfolioAsset, error) {
+	args := m.Called(ctx, assetID)
+	return args.Get(0).([]model.PortfolioAsset), args.Error(1)
+}
+
+func (m *MockPortfolioAssetRepository) UpdateAveragePurchasePrice(ctx context.Context, portfolioID, assetID int, avgPrice float64) error {
+	args := m.Called(ctx, portfolioID, assetID, avgPrice)
+	return args.Error(0)
+}
+
 // Helper function to create string pointers
 func stringPtr(s string) *string {
 	return &s
