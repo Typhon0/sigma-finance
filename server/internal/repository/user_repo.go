@@ -18,7 +18,7 @@ type UserRepository struct {
 }
 
 // NewUserRepository creates a new user repository
-func NewUserRepository(db *bun.DB) *UserRepository {
+func NewUserRepository(db bun.IDB) *UserRepository {
 	return &UserRepository{
 		Repository: NewRepository[model.User](db),
 	}

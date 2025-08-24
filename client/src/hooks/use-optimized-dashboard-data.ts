@@ -1,26 +1,19 @@
-import {
-	useQuery,
-	useLazyQuery,
-	useSubscription,
-	ApolloClient,
-} from "@apollo/client";
-import { apolloCacheConfig } from "@/lib/apollo/apollo-cache-config";
-
+import { useLazyQuery, useQuery, useSubscription } from "@apollo/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+	DASHBOARD_DATA_SUBSCRIPTION,
+	GET_ASSET_PERFORMANCE_OPTIMIZED,
 	GET_DASHBOARD_CRITICAL,
 	GET_DASHBOARD_SECONDARY,
 	GET_PORTFOLIO_CARDS,
 	GET_RECENT_TRANSACTIONS_MINIMAL,
-	GET_ASSET_PERFORMANCE_OPTIMIZED,
-	DASHBOARD_DATA_SUBSCRIPTION,
 } from "@/lib/graphql/optimized-dashboard.queries";
 
 // Hook for critical dashboard data (loads first)
 export const useCriticalDashboardData = (userID: string) => {
 	return useQuery(GET_DASHBOARD_CRITICAL, {
 		variables: { userID },
-		fetchPolicy: "cache-first",
+		fetchPolicy: "cache-and-network",
 		errorPolicy: "all",
 		notifyOnNetworkStatusChange: true,
 		// Skip if no userID
@@ -116,6 +109,7 @@ export const useOptimizedDashboardData = (userID: string) => {
 		data: criticalData,
 		loading: criticalLoading,
 		error: criticalError,
+		refetch: refetchCritical,
 	} = useCriticalDashboardData(userID);
 
 	// Load secondary data after critical data is loaded
@@ -123,6 +117,7 @@ export const useOptimizedDashboardData = (userID: string) => {
 		data: secondaryData,
 		loading: secondaryLoading,
 		error: secondaryError,
+		refetch: refetchSecondary,
 	} = useSecondaryDashboardData(userID, secondaryEnabled);
 
 	// Enable secondary data loading when critical data is loaded
@@ -142,7 +137,7 @@ export const useOptimizedDashboardData = (userID: string) => {
 		return {
 			portfolios: criticalData?.portfolios || [],
 			transactions: secondaryData?.transactions || [],
-			alerts: secondaryData?.alerts || [],
+			alerts: [],
 		};
 	}, [criticalData, secondaryData]);
 
@@ -152,10 +147,17 @@ export const useOptimizedDashboardData = (userID: string) => {
 	// Combine errors
 	const error = criticalError || secondaryError;
 
+	const refetch = useCallback(() => {
+		const p1 = refetchCritical ? refetchCritical() : Promise.resolve();
+		const p2 = refetchSecondary ? refetchSecondary() : Promise.resolve();
+		return Promise.all([p1, p2]);
+	}, [refetchCritical, refetchSecondary]);
+
 	return {
 		data: combinedData,
 		loading: isLoading,
 		error,
+		refetch,
 		criticalLoaded: !!criticalData && !criticalLoading,
 		secondaryLoaded: !!secondaryData && !secondaryLoading,
 	};

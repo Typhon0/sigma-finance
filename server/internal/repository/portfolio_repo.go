@@ -18,7 +18,7 @@ type PortfolioRepository struct {
 }
 
 // NewPortfolioRepository creates a new portfolio repository
-func NewPortfolioRepository(db *bun.DB) *PortfolioRepository {
+func NewPortfolioRepository(db bun.IDB) *PortfolioRepository {
 	return &PortfolioRepository{
 		Repository: NewRepository[model.Portfolio](db),
 	}

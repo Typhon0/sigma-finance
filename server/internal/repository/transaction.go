@@ -8,9 +8,9 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// TransactionRepository defines the interface for transaction-specific database operations.
+// ITransactionRepository defines the interface for transaction-specific database operations.
 // It extends the generic repository with domain-specific methods for complex queries.
-type TransactionRepository interface {
+type ITransactionRepository interface {
 	IRepository[model.Transaction]
 
 	// FindByPortfolioID retrieves all transactions for a specific portfolio
@@ -49,7 +49,7 @@ type transactionRepository struct {
 }
 
 // NewTransactionRepository creates a new transaction repository instance
-func NewTransactionRepository(repo *Repository[model.Transaction]) TransactionRepository {
+func NewTransactionRepository(repo *Repository[model.Transaction]) ITransactionRepository {
 	return &transactionRepository{
 		Repository: repo,
 	}

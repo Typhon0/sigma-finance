@@ -5,6 +5,7 @@ go 1.24.3
 require (
 	github.com/99designs/gqlgen v0.17.55
 	github.com/gofiber/fiber/v2 v2.52.5
+	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/stretchr/testify v1.10.0
 	github.com/uptrace/bun v1.2.15

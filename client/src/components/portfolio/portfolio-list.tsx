@@ -1,24 +1,62 @@
-interface SortablePortfolioCardProps {
-	portfolio: Portfolio;
-	viewMode: ViewMode;
-	isSelected: boolean;
-	onSelect: (selected: boolean) => void;
-	onAction: (action: PortfolioAction, portfolioId: string) => void;
-	isDragging: boolean;
-	accessibilityProps?: React.HTMLProps<HTMLDivElement>;
-	assets?: import("@/hooks/use-asset-management").Asset[];
+import {
+	closestCenter,
+	DndContext,
+	type DragEndEvent,
+	type DragOverEvent,
+	DragOverlay,
+	type DragStartEvent,
+	KeyboardSensor,
+	PointerSensor,
+	useSensor,
+	useSensors,
+} from "@dnd-kit/core";
+import {
+	arrayMove,
+	rectSortingStrategy,
+	SortableContext,
+	sortableKeyboardCoordinates,
+	useSortable,
+	verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Grid3X3, List, SortAsc } from "lucide-react";
+import React, { useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAssets } from "@/hooks/use-asset-management";
+import type { Portfolio } from "@/hooks/use-portfolio-management";
+import { cn } from "@/lib/utils";
+import {
+	type PortfolioAction,
+	PortfolioCard,
+	type PortfolioCardProps,
+	type ViewMode,
+} from "./portfolio-card";
+
+export type SortBy = "name" | "value" | "performance" | "created";
+
+interface SortablePortfolioCardProps extends PortfolioCardProps {
+	isDragging?: boolean;
 }
 
-function SortablePortfolioCard({
+const SortablePortfolioCard = ({
 	portfolio,
 	viewMode,
 	isSelected,
 	onSelect,
 	onAction,
 	isDragging,
-	accessibilityProps,
 	assets,
-}: SortablePortfolioCardProps) {
+}: SortablePortfolioCardProps) => {
 	const {
 		attributes,
 		listeners,
@@ -34,7 +72,15 @@ function SortablePortfolioCard({
 	};
 
 	return (
-		<div ref={setNodeRef} style={style}>
+		<li
+			ref={setNodeRef}
+			style={style}
+			{...attributes}
+			{...listeners}
+			aria-label={`Portfolio card for ${portfolio.name}`}
+			aria-selected={isSelected}
+			className="list-none"
+		>
 			<PortfolioCard
 				portfolio={portfolio}
 				viewMode={viewMode}
@@ -42,52 +88,11 @@ function SortablePortfolioCard({
 				onSelect={onSelect}
 				onAction={onAction}
 				isDragging={isDragging || isSortableDragging}
-				dragHandleProps={{ ...attributes, ...listeners }}
-				accessibilityProps={accessibilityProps}
 				assets={assets}
 			/>
-		</div>
+		</li>
 	);
-}
-import React, { useState } from "react";
-import {
-	DndContext,
-	closestCenter,
-	KeyboardSensor,
-	PointerSensor,
-	useSensor,
-	useSensors,
-	type DragEndEvent,
-	type DragStartEvent,
-	DragOverlay,
-} from "@dnd-kit/core";
-import {
-	arrayMove,
-	SortableContext,
-	sortableKeyboardCoordinates,
-	verticalListSortingStrategy,
-	rectSortingStrategy,
-} from "@dnd-kit/sortable";
-import { useSortable } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { Grid3X3, List, SortAsc, CheckSquare, Square } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
-import { Portfolio } from "@/hooks/use-portfolio-management";
-import { PortfolioCard, PortfolioAction, ViewMode } from "./portfolio-card";
-import { useAssets } from "@/hooks/use-asset-management";
-
-export type SortBy = "name" | "value" | "performance" | "created";
+};
 
 interface PortfolioListProps {
 	portfolios: Portfolio[];
@@ -143,22 +148,39 @@ export function PortfolioList({
 		setDraggedPortfolio(event.active.id as string);
 	};
 
+	const handleDragOver = (event: DragOverEvent) => {
+		const { active, over } = event;
+
+		if (!active || !over) {
+			return;
+		}
+
+		const draggedPortfolioId = active.id.toString();
+		const targetPortfolioId = over.id.toString();
+
+		if (draggedPortfolioId === targetPortfolioId) {
+			return;
+		}
+
+		setOrderedPortfolios((items) => {
+			const oldIndex = items.findIndex((p) => p.id === draggedPortfolioId);
+			const newIndex = items.findIndex((p) => p.id === targetPortfolioId);
+
+			if (oldIndex === -1 || newIndex === -1) {
+				return items;
+			}
+			return arrayMove(items, oldIndex, newIndex);
+		});
+	};
+
 	const handleDragEnd = (event: DragEndEvent) => {
 		const { active, over } = event;
-		setDraggedPortfolio(null);
-
-		if (over && active.id !== over.id) {
-			const oldIndex = orderedPortfolios.findIndex((p) => p.id === active.id);
-			const newIndex = orderedPortfolios.findIndex((p) => p.id === over.id);
-
-			const newOrder = arrayMove(orderedPortfolios, oldIndex, newIndex);
-			setOrderedPortfolios(newOrder);
-
-			// Call the onReorder callback if provided
+		if (active && over && active.id !== over.id) {
 			if (onReorder) {
-				onReorder(newOrder);
+				onReorder(orderedPortfolios);
 			}
 		}
+		setDraggedPortfolio(null);
 	};
 
 	const handleSelectAll = () => {
@@ -281,7 +303,9 @@ export function PortfolioList({
 				sensors={sensors}
 				collisionDetection={closestCenter}
 				onDragStart={handleDragStart}
+				onDragOver={handleDragOver}
 				onDragEnd={handleDragEnd}
+				onDragCancel={() => setDraggedPortfolio(null)}
 			>
 				<SortableContext
 					items={orderedPortfolios.map((p) => p.id)}
@@ -291,17 +315,16 @@ export function PortfolioList({
 							: verticalListSortingStrategy
 					}
 				>
-					<div
+					<ul
 						className={cn(
 							"gap-4 w-full",
 							viewMode === "grid"
 								? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
 								: "flex flex-col space-y-2",
 						)}
-						role="list"
 						aria-label="Portfolios"
 					>
-						{orderedPortfolios.map((portfolio, idx) => (
+						{orderedPortfolios.map((portfolio) => (
 							<SortablePortfolioCard
 								key={portfolio.id}
 								portfolio={portfolio}
@@ -312,31 +335,27 @@ export function PortfolioList({
 								}
 								onAction={onPortfolioAction}
 								isDragging={draggedPortfolio === portfolio.id}
-								accessibilityProps={{
-									tabIndex: 0,
-									"aria-label": `Portfolio card for ${portfolio.name}`,
-									"aria-posinset": idx + 1,
-									"aria-setsize": orderedPortfolios.length,
-									"aria-selected": selectedPortfolios.includes(portfolio.id),
-								}}
 								assets={assets}
 							/>
 						))}
-					</div>
+					</ul>
 				</SortableContext>
 
 				<DragOverlay>
 					{draggedPortfolio ? (
-						<PortfolioCard
-							portfolio={
-								orderedPortfolios.find((p) => p.id === draggedPortfolio)!
-							}
-							viewMode={viewMode}
-							isSelected={false}
-							onSelect={() => {}}
-							onAction={() => {}}
-							isDragging={true}
-						/>
+						<ul className="list-none">
+							<PortfolioCard
+								portfolio={
+									orderedPortfolios.find((p) => p.id === draggedPortfolio) ??
+									orderedPortfolios[0]
+								}
+								viewMode={viewMode}
+								isSelected={false}
+								onSelect={() => {}}
+								onAction={() => {}}
+								isDragging={true}
+							/>
+						</ul>
 					) : null}
 				</DragOverlay>
 			</DndContext>
@@ -383,9 +402,6 @@ export function PortfolioList({
 	);
 }
 
-// Sortable wrapper for PortfolioCard
-// ...existing code...
-
 // Loading skeleton for portfolio list
 function PortfolioListSkeleton({ viewMode }: { viewMode: ViewMode }) {
 	const skeletonCount = 8;
@@ -411,7 +427,10 @@ function PortfolioListSkeleton({ viewMode }: { viewMode: ViewMode }) {
 				)}
 			>
 				{Array.from({ length: skeletonCount }).map((_, i) => (
-					<div key={i} className="bg-muted rounded-lg h-48 animate-pulse" />
+					<div
+						key={`portfolio-view-skeleton-${i}`}
+						className="bg-muted rounded-lg h-48 animate-pulse"
+					/>
 				))}
 			</div>
 		</div>

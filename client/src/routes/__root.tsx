@@ -1,9 +1,9 @@
+import { ApolloProvider } from "@apollo/client";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { ApolloProvider } from "@apollo/client";
 import { ThemeProvider } from "@/components/theme-provider";
-import { AuthProvider } from "@/lib/auth-context";
 import { apolloClient } from "@/lib/apollo/apollo-client";
+import { AuthProvider } from "@/lib/auth-context";
 
 export const Route = createRootRoute({
 	component: () => (

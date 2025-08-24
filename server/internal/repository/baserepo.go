@@ -51,7 +51,7 @@ func (r *Repository[T]) GetDB() bun.IDB {
 
 // NewRepository is the public constructor for a standard repository instance.
 // It should be called at application startup with the main DB connection pool.
-func NewRepository[T any](db *bun.DB) *Repository[T] {
+func NewRepository[T any](db bun.IDB) *Repository[T] {
 	return &Repository[T]{db: db}
 }
 
@@ -141,32 +141,38 @@ func (r *Repository[T]) Count(ctx context.Context, options ...QueryOption) (int,
 
 // --- Reusable QueryOption Helpers ---
 
-// ByColumn creates a generic "WHERE column = value" clause.
-// It uses bun.Ident to safely escape the column name, preventing SQL injection.
+// ByColumn creates a QueryOption to filter by a specific column and value.
 func ByColumn(column string, value any) QueryOption {
 	return func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("? = ?", bun.Ident(column), value)
 	}
 }
 
-// WithLimit applies a LIMIT clause to the query.
+// ByColumnIn creates a QueryOption to filter by a column where the value is in a given slice.
+func ByColumnIn(column string, values ...any) QueryOption {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("? IN (?)", bun.Ident(column), bun.In(values))
+	}
+}
+
+// WithOrder creates a QueryOption to apply sorting to the query.
+func WithOrder(order string) QueryOption {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Order(order)
+	}
+}
+
+// WithLimit creates a QueryOption to limit the number of results.
 func WithLimit(limit int) QueryOption {
 	return func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Limit(limit)
 	}
 }
 
-// WithOffset applies an OFFSET clause, typically for pagination.
+// WithOffset creates a QueryOption to offset the results, for pagination.
 func WithOffset(offset int) QueryOption {
 	return func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Offset(offset)
-	}
-}
-
-// WithOrder applies an ORDER BY clause. E.g., WithOrder("created_at DESC").
-func WithOrder(order string) QueryOption {
-	return func(q *bun.SelectQuery) *bun.SelectQuery {
-		return q.Order(order)
 	}
 }
 

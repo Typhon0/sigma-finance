@@ -27,6 +27,7 @@ type IAssetService interface {
 	// Asset type operations
 	GetAssetTypes(ctx context.Context) ([]model.AssetType, error)
 	GetAssetTypeByID(ctx context.Context, id uint) (model.AssetType, error)
+	GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error)
 }
 
 type AssetService struct {
@@ -127,9 +128,9 @@ func (s *AssetService) CreateStockAsset(ctx context.Context, input CreateStockAs
 	var stock model.Stock
 
 	// Use Unit of Work to ensure atomicity
-	err := s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify asset type exists
-		_, err := repos.AssetTypeRepo.GetByID(ctx, uint(input.AssetTypeID))
+		_, err := uow.AssetType().GetByID(ctx, uint(input.AssetTypeID))
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset type with ID %d not found", input.AssetTypeID)
@@ -153,7 +154,7 @@ func (s *AssetService) CreateStockAsset(ctx context.Context, input CreateStockAs
 			newAsset.PurchasePrice = *input.PurchasePrice
 		}
 
-		createdAsset, err := repos.AssetRepo.Create(ctx, &newAsset)
+		createdAsset, err := uow.Asset().Create(ctx, &newAsset)
 		if err != nil {
 			return fmt.Errorf("failed to create asset: %w", err)
 		}
@@ -161,16 +162,16 @@ func (s *AssetService) CreateStockAsset(ctx context.Context, input CreateStockAs
 
 		// Create stock-specific data
 		newStock := model.Stock{
-			AssetID:     asset.ID,
-			Ticker:      input.Ticker,
-			Quantity:    input.Quantity,
-			BuyingPrice: 0,
+			AssetID: asset.ID,
 		}
-		if input.PurchasePrice != nil {
-			newStock.BuyingPrice = *input.PurchasePrice
+		if input.Ticker != "" {
+			newStock.Ticker = input.Ticker
+		}
+		if input.Quantity > 0 {
+			newStock.Quantity = input.Quantity
 		}
 
-		createdStock, err := repos.StockRepo.Create(ctx, &newStock)
+		createdStock, err := uow.Stock().Create(ctx, &newStock)
 		if err != nil {
 			return fmt.Errorf("failed to create stock data: %w", err)
 		}
@@ -203,10 +204,10 @@ func (s *AssetService) CreateCryptoAsset(ctx context.Context, input CreateCrypto
 	var asset model.Asset
 	var crypto model.Crypto
 
-	// Use Unit of Work to ensure atomicity
-	err := s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+		// Use Unit of Work to ensure atomicity
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify asset type exists
-		_, err := repos.AssetTypeRepo.GetByID(ctx, uint(input.AssetTypeID))
+		_, err := uow.AssetType().GetByID(ctx, uint(input.AssetTypeID))
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset type with ID %d not found", input.AssetTypeID)
@@ -230,7 +231,7 @@ func (s *AssetService) CreateCryptoAsset(ctx context.Context, input CreateCrypto
 			newAsset.PurchasePrice = *input.PurchasePrice
 		}
 
-		createdAsset, err := repos.AssetRepo.Create(ctx, &newAsset)
+		createdAsset, err := uow.Asset().Create(ctx, &newAsset)
 		if err != nil {
 			return fmt.Errorf("failed to create asset: %w", err)
 		}
@@ -238,8 +239,7 @@ func (s *AssetService) CreateCryptoAsset(ctx context.Context, input CreateCrypto
 
 		// Create crypto-specific data
 		newCrypto := model.Crypto{
-			AssetID:  asset.ID,
-			Quantity: input.Quantity,
+			AssetID: asset.ID,
 		}
 		if input.WalletAddress != nil {
 			newCrypto.WalletAddress = *input.WalletAddress
@@ -248,7 +248,7 @@ func (s *AssetService) CreateCryptoAsset(ctx context.Context, input CreateCrypto
 			newCrypto.BlockchainNetwork = *input.BlockchainNetwork
 		}
 
-		createdCrypto, err := repos.CryptoRepo.Create(ctx, &newCrypto)
+		createdCrypto, err := uow.Crypto().Create(ctx, &newCrypto)
 		if err != nil {
 			return fmt.Errorf("failed to create crypto data: %w", err)
 		}
@@ -277,4 +277,9 @@ func (s *AssetService) GetAssetTypes(ctx context.Context) ([]model.AssetType, er
 // GetAssetTypeByID retrieves a specific asset type by ID
 func (s *AssetService) GetAssetTypeByID(ctx context.Context, id uint) (model.AssetType, error) {
 	return s.uow.AssetType().GetByID(ctx, id)
+}
+
+// GetAssetsByTag retrieves assets associated with a specific tag
+func (s *AssetService) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) {
+	return s.uow.Asset().FindAllBy(ctx, repository.ByColumn("tag_id", tagID))
 }

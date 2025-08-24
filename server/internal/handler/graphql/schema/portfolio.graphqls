@@ -18,6 +18,7 @@ type PortfolioAsset {
     asset: Asset!
     quantity: Float!
     averagePurchasePrice: Float
+    currentValue: Float
     ownershipPct: Float
 }
 

@@ -24,6 +24,7 @@ type ITransactionService interface {
 	RecordBuyTransaction(ctx context.Context, input BuyTransactionInput) (model.Transaction, error)
 	RecordSellTransaction(ctx context.Context, input SellTransactionInput) (model.Transaction, error)
 	CalculatePortfolioBalance(ctx context.Context, portfolioID int) (float64, error)
+	GetByPortfolioID(ctx context.Context, portfolioID uint) ([]model.Transaction, error)
 }
 
 // TransactionService is the concrete implementation of ITransactionService
@@ -200,9 +201,9 @@ func (s *TransactionService) RecordBuyTransaction(ctx context.Context, input Buy
 
 	// Use Unit of Work to ensure atomicity
 	var createdTransaction model.Transaction
-	err := s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify portfolio exists
-		if _, err := repos.PortfolioRepo.GetByID(ctx, uint(input.PortfolioID)); err != nil {
+		if _, err := uow.Portfolio().GetByID(ctx, uint(input.PortfolioID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("portfolio with ID %d not found", input.PortfolioID)
 			}
@@ -210,7 +211,7 @@ func (s *TransactionService) RecordBuyTransaction(ctx context.Context, input Buy
 		}
 
 		// Verify asset exists
-		if _, err := repos.AssetRepo.GetByID(ctx, uint(input.AssetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, uint(input.AssetID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset with ID %d not found", input.AssetID)
 			}
@@ -228,14 +229,14 @@ func (s *TransactionService) RecordBuyTransaction(ctx context.Context, input Buy
 			Notes:           input.Notes,
 		}
 
-		created, err := repos.TransactionRepo.Create(ctx, &newTransaction)
+		created, err := uow.Transaction().Create(ctx, &newTransaction)
 		if err != nil {
 			return fmt.Errorf("failed to create buy transaction: %w", err)
 		}
 		createdTransaction = *created
 
 		// Update or create portfolio asset position
-		err = s.updatePortfolioAssetPosition(ctx, repos, input.PortfolioID, input.AssetID, input.Quantity, input.PricePerUnit, true)
+		err = s.updatePortfolioAssetPosition(ctx, uow, input.PortfolioID, input.AssetID, input.Quantity, input.PricePerUnit, true)
 		if err != nil {
 			return fmt.Errorf("failed to update portfolio position: %w", err)
 		}
@@ -259,9 +260,9 @@ func (s *TransactionService) RecordSellTransaction(ctx context.Context, input Se
 
 	// Use Unit of Work to ensure atomicity
 	var createdTransaction model.Transaction
-	err := s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify portfolio exists
-		if _, err := repos.PortfolioRepo.GetByID(ctx, uint(input.PortfolioID)); err != nil {
+		if _, err := uow.Portfolio().GetByID(ctx, uint(input.PortfolioID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("portfolio with ID %d not found", input.PortfolioID)
 			}
@@ -269,7 +270,7 @@ func (s *TransactionService) RecordSellTransaction(ctx context.Context, input Se
 		}
 
 		// Verify asset exists
-		if _, err := repos.AssetRepo.GetByID(ctx, uint(input.AssetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, uint(input.AssetID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset with ID %d not found", input.AssetID)
 			}
@@ -277,21 +278,16 @@ func (s *TransactionService) RecordSellTransaction(ctx context.Context, input Se
 		}
 
 		// Check if sufficient quantity exists in portfolio
-		portfolioAssets, err := repos.PortfolioAssetRepo.FindAllBy(ctx,
-			repository.ByColumn("portfolio_id", input.PortfolioID),
-			repository.ByColumn("asset_id", input.AssetID),
-		)
+		portfolioAsset, err := uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, input.PortfolioID, input.AssetID)
 		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return errors.New("no position found for this asset in the portfolio")
+			}
 			return fmt.Errorf("failed to check portfolio position: %w", err)
 		}
 
-		if len(portfolioAssets) == 0 {
-			return errors.New("no position found for this asset in the portfolio")
-		}
-
-		currentQuantity := portfolioAssets[0].Quantity
-		if currentQuantity < input.Quantity {
-			return fmt.Errorf("insufficient quantity: have %.6f, trying to sell %.6f", currentQuantity, input.Quantity)
+		if portfolioAsset.Quantity < input.Quantity {
+			return fmt.Errorf("insufficient quantity: have %.6f, trying to sell %.6f", portfolioAsset.Quantity, input.Quantity)
 		}
 
 		// Create sell transaction
@@ -305,14 +301,14 @@ func (s *TransactionService) RecordSellTransaction(ctx context.Context, input Se
 			Notes:           input.Notes,
 		}
 
-		created, err := repos.TransactionRepo.Create(ctx, &newTransaction)
+		created, err := uow.Transaction().Create(ctx, &newTransaction)
 		if err != nil {
 			return fmt.Errorf("failed to create sell transaction: %w", err)
 		}
 		createdTransaction = *created
 
-		// Update portfolio asset position (subtract quantity)
-		err = s.updatePortfolioAssetPosition(ctx, repos, input.PortfolioID, input.AssetID, -input.Quantity, input.PricePerUnit, false)
+		// Update portfolio asset position
+		err = s.updatePortfolioAssetPosition(ctx, uow, input.PortfolioID, input.AssetID, input.Quantity, input.PricePerUnit, false)
 		if err != nil {
 			return fmt.Errorf("failed to update portfolio position: %w", err)
 		}
@@ -344,6 +340,11 @@ func (s *TransactionService) CalculatePortfolioBalance(ctx context.Context, port
 	}
 
 	return totalBalance, nil
+}
+
+// GetByPortfolioID retrieves all transactions for a specific portfolio
+func (s *TransactionService) GetByPortfolioID(ctx context.Context, portfolioID uint) ([]model.Transaction, error) {
+	return s.uow.Transaction().FindByPortfolioID(ctx, int(portfolioID))
 }
 
 // Helper methods for validation and business logic
@@ -419,52 +420,35 @@ func (s *TransactionService) validateSellTransactionInput(input SellTransactionI
 }
 
 // updatePortfolioAssetPosition updates or creates a portfolio asset position
-func (s *TransactionService) updatePortfolioAssetPosition(ctx context.Context, repos *repository.TxRepositories, portfolioID, assetID int, quantity, pricePerUnit float64, isBuy bool) error {
-	// Try to find existing position
-	portfolioAssets, err := repos.PortfolioAssetRepo.FindAllBy(ctx,
-		repository.ByColumn("portfolio_id", portfolioID),
-		repository.ByColumn("asset_id", assetID),
-	)
+func (s *TransactionService) updatePortfolioAssetPosition(ctx context.Context, uow repository.IUnitOfWork, portfolioID, assetID int, quantity, price float64, isBuy bool) error {
+	portfolioAsset, err := uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, portfolioID, assetID)
 	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			// Asset not in portfolio, create a new entry
+			if !isBuy {
+				return errors.New("cannot sell an asset that is not in the portfolio")
+			}
+			newPortfolioAsset := model.PortfolioAsset{
+				PortfolioID:          portfolioID,
+				AssetID:              assetID,
+				Quantity:             quantity,
+				AveragePurchasePrice: price,
+			}
+			_, err := uow.PortfolioAsset().Create(ctx, &newPortfolioAsset)
+			return err
+		}
 		return err
 	}
 
-	if len(portfolioAssets) == 0 {
-		// Create new position (only for buy transactions)
-		if !isBuy {
-			return errors.New("cannot sell asset not in portfolio")
-		}
-
-		newPosition := model.PortfolioAsset{
-			PortfolioID:          portfolioID,
-			AssetID:              assetID,
-			Quantity:             quantity,
-			AveragePurchasePrice: pricePerUnit,
-		}
-
-		_, err = repos.PortfolioAssetRepo.Create(ctx, &newPosition)
-		return err
-	}
-
-	// Update existing position
-	position := portfolioAssets[0]
-
+	// Asset already in portfolio, update the position
 	if isBuy {
-		// Calculate new average purchase price
-		totalValue := (position.Quantity * position.AveragePurchasePrice) + (quantity * pricePerUnit)
-		newQuantity := position.Quantity + quantity
-		position.AveragePurchasePrice = totalValue / newQuantity
-		position.Quantity = newQuantity
-	} else {
-		// Sell transaction - just reduce quantity
-		position.Quantity += quantity // quantity is negative for sells
-
-		// If quantity becomes zero or negative, remove the position
-		if position.Quantity <= 0 {
-			// Delete the position
-			return repos.PortfolioAssetRepo.Delete(ctx, uint(position.PortfolioID)) // This might need adjustment based on composite key
-		}
+		newTotalValue := (portfolioAsset.AveragePurchasePrice * portfolioAsset.Quantity) + (price * quantity)
+		newQuantity := portfolioAsset.Quantity + quantity
+		portfolioAsset.AveragePurchasePrice = newTotalValue / newQuantity
+		portfolioAsset.Quantity = newQuantity
+	} else { // isSell
+		portfolioAsset.Quantity -= quantity
 	}
 
-	return repos.PortfolioAssetRepo.Update(ctx, &position)
+	return uow.PortfolioAsset().Update(ctx, portfolioAsset)
 }

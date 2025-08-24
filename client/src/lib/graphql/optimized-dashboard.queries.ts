@@ -241,6 +241,12 @@ export const DASHBOARD_DATA_SUBSCRIPTION = graphql(/* GraphQL */ `
         }
       }
     }
+  }
+  `);
+
+// Subscription for transaction updates (real-time)
+export const TRANSACTION_UPDATES_SUBSCRIPTION = graphql(/* GraphQL */ `
+  subscription TransactionUpdates($userID: ID!) {
     transactionUpdates(userID: $userID) {
       type
       transaction {
@@ -261,7 +267,7 @@ export const DASHBOARD_DATA_SUBSCRIPTION = graphql(/* GraphQL */ `
       }
     }
   }
-  `);
+`);
 
 // Query for initial page load with critical data only
 export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
@@ -271,9 +277,16 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
       name
       assets {
         asset {
+          id
+          name
+          symbol
           currentValue
+          assetType {
+            name
+          }
         }
         quantity
+        averagePurchasePrice
         ownershipPct
       }
     }
@@ -303,3 +316,35 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
     }
   }
   `);
+
+// Query for portfolio summary analytics
+export const GET_PORTFOLIO_SUMMARY = graphql(/* GraphQL */ `
+  query GetPortfolioSummary($portfolioId: ID!) {
+    portfolio(id: $portfolioId) {
+      id
+      name
+      analytics {
+        totalValue
+        totalGainLoss
+        totalGainLossPercent
+      }
+    }
+  }
+`);
+
+// Query for asset allocation analytics
+export const GET_ASSET_ALLOCATION = graphql(/* GraphQL */ `
+  query GetAssetAllocation($portfolioId: ID!) {
+    portfolio(id: $portfolioId) {
+      id
+      analytics {
+        assetAllocation {
+          assetType
+          value
+          percentage
+          count
+        }
+      }
+    }
+  }
+`);

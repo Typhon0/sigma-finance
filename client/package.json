@@ -6,7 +6,8 @@
 	"scripts": {
 		"dev": "vite",
 		"build": "tsc -b && vite build",
-		"lint": "eslint .",
+		"lint": "biome check --write",
+		"typecheck": "tsc --noEmit",
 		"preview": "vite preview",
 		"test": "vitest",
 		"test:run": "vitest run",
@@ -51,9 +52,11 @@
 		"recharts": "latest",
 		"sonner": "latest",
 		"tailwind-merge": "latest",
+		"tailwind-variants": "^2.1.0",
 		"tailwindcss": "latest",
 		"vaul": "latest",
-		"zod": "latest"
+		"zod": "latest",
+		"zustand": "^5.0.8"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "latest",

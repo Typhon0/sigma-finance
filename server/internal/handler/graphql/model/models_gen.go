@@ -22,16 +22,6 @@ type Asset interface {
 	GetPositions() []*Position
 }
 
-type Alert struct {
-	ID               string           `json:"id"`
-	Condition        string           `json:"condition"`
-	NotificationType NotificationType `json:"notificationType"`
-	CreatedAt        time.Time        `json:"createdAt"`
-	TriggeredAt      *time.Time       `json:"triggeredAt,omitempty"`
-	User             *User            `json:"user"`
-	Asset            Asset            `json:"asset"`
-}
-
 type AssetAllocation struct {
 	AssetType  string  `json:"assetType"`
 	Value      float64 `json:"value"`
@@ -205,6 +195,7 @@ type PortfolioAsset struct {
 	Asset                Asset    `json:"asset"`
 	Quantity             float64  `json:"quantity"`
 	AveragePurchasePrice *float64 `json:"averagePurchasePrice,omitempty"`
+	CurrentValue         *float64 `json:"currentValue,omitempty"`
 	OwnershipPct         *float64 `json:"ownershipPct,omitempty"`
 }
 
@@ -251,14 +242,6 @@ type Query struct {
 type ReorderPortfoliosInput struct {
 	UserID          string                 `json:"userID"`
 	PortfolioOrders []*PortfolioOrderInput `json:"portfolioOrders"`
-}
-
-type Report struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	GeneratedAt time.Time `json:"generatedAt"`
-	ReportData  *string   `json:"reportData,omitempty"`
-	User        *User     `json:"user"`
 }
 
 type RiskMetrics struct {
@@ -370,12 +353,10 @@ type User struct {
 	UpdatedAt  time.Time    `json:"updatedAt"`
 	Portfolios []*Portfolio `json:"portfolios"`
 	Watchlists []*Watchlist `json:"watchlists"`
-	Alerts     []*Alert     `json:"alerts"`
-	Reports    []*Report    `json:"reports"`
-	Ownerships []*Ownership `json:"ownerships"`
 }
 
 type UserFilter struct {
+	ID               *string `json:"id,omitempty"`
 	UsernameContains *string `json:"usernameContains,omitempty"`
 	Email            *string `json:"email,omitempty"`
 }
@@ -481,49 +462,6 @@ func (e *ExportFormat) UnmarshalGQL(v interface{}) error {
 }
 
 func (e ExportFormat) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-type NotificationType string
-
-const (
-	NotificationTypeEmail NotificationType = "EMAIL"
-	NotificationTypeSms   NotificationType = "SMS"
-	NotificationTypePush  NotificationType = "PUSH"
-)
-
-var AllNotificationType = []NotificationType{
-	NotificationTypeEmail,
-	NotificationTypeSms,
-	NotificationTypePush,
-}
-
-func (e NotificationType) IsValid() bool {
-	switch e {
-	case NotificationTypeEmail, NotificationTypeSms, NotificationTypePush:
-		return true
-	}
-	return false
-}
-
-func (e NotificationType) String() string {
-	return string(e)
-}
-
-func (e *NotificationType) UnmarshalGQL(v interface{}) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = NotificationType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid NotificationType", str)
-	}
-	return nil
-}
-
-func (e NotificationType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

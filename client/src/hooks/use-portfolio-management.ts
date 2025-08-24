@@ -1,67 +1,91 @@
+import { gql, useMutation, useQuery } from "@apollo/client";
 import { useMemo } from "react";
-import { useQuery, useMutation } from "@apollo/client";
-import { apolloClient } from "@/lib/apollo/apollo-client";
-import { gql } from "@apollo/client";
+import type {
+	CreatePortfolioInput,
+	DuplicatePortfolioInput,
+	GetPortfoliosWithAnalyticsQuery,
+	Portfolio,
+	UpdatePortfolioInput,
+} from "@/gql/graphql";
 import { apolloClient } from "@/lib/apollo/apollo-client";
 import { useAuth } from "@/lib/auth-context";
-
-// GraphQL Queries and Mutations
-const GET_PORTFOLIOS_WITH_ANALYTICS = gql`
-  query GetPortfoliosWithAnalytics($userID: ID!) {
-    portfolios(filter: { userID: $userID }) {
-      id
-      name
-      description
-      createdAt
-      updatedAt
-      assets {
-        asset {
-          id
-          name
-          symbol
-          currentValue
-          assetType {
-            name
-          }
-        }
-        quantity
-        averagePurchasePrice
-        ownershipPct
-      }
-    }
-  }
-`;
+import {
+	CREATE_PORTFOLIO,
+	DELETE_PORTFOLIO,
+	DUPLICATE_PORTFOLIO,
+	UPDATE_PORTFOLIO,
+} from "@/lib/graphql/portfolio.mutations";
+import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/lib/graphql/portfolios.queries";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const optimisticResponseGenerators = {
-	createPortfolio: (input: unknown) => ({
+	createPortfolio: (input: CreatePortfolioInput) => ({
 		createPortfolio: {
+			__typename: "Portfolio" as const,
 			id: "temp-id",
-			name: (input as CreatePortfolioInput).name,
-			description: (input as CreatePortfolioInput).description,
+			name: input.name,
+			description: input.description,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
+			assets: [],
+			analytics: null,
+			sortOrder: 0,
+			tags: [],
+			transactions: [],
+			user: {
+				__typename: "User" as const,
+				id: input.userID,
+			},
 		},
 	}),
-	updatePortfolio: (id: string, input: unknown) => ({
-		updatePortfolio: {
-			id,
-			name: (input as UpdatePortfolioInput).name,
-			description: (input as UpdatePortfolioInput).description,
-			updatedAt: new Date().toISOString(),
-		},
-	}),
+	updatePortfolio: (id: string, input: UpdatePortfolioInput) => {
+		// This is tricky because we don't have access to the cache here.
+		// A full implementation would require reading the portfolio from the cache
+		// or passing the current portfolio data to the mutation function.
+		// For now, we'll construct a partial optimistic response.
+		return {
+			updatePortfolio: {
+				__typename: "Portfolio" as const,
+				id,
+				name: input.name,
+				description: input.description,
+				updatedAt: new Date().toISOString(),
+				// The following fields are required by the Portfolio type,
+				// but we don't have the data here. Apollo will merge this
+				// partial data with the existing data in the cache.
+				createdAt: new Date().toISOString(),
+				assets: [],
+				analytics: null,
+				sortOrder: 0,
+				tags: [],
+				transactions: [],
+				user: {
+					__typename: "User" as const,
+					id: "temp-user-id", // This should be the actual user ID
+				},
+			},
+		};
+	},
 	deletePortfolio: (id: string) => ({
 		deletePortfolio: id,
 	}),
-	duplicatePortfolio: (input: unknown) => ({
+	duplicatePortfolio: (input: DuplicatePortfolioInput) => ({
 		duplicatePortfolio: {
+			__typename: "Portfolio" as const,
 			id: "temp-id",
-			name: (input as DuplicatePortfolioInput).newName,
+			name: input.newName,
 			description: "",
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),
 			assets: [],
+			analytics: null,
+			sortOrder: 0,
+			tags: [],
+			transactions: [],
+			user: {
+				__typename: "User" as const,
+				id: "temp-user-id", // This should be the actual user ID
+			},
 		},
 	}),
 };
@@ -71,20 +95,17 @@ const cacheUpdateUtils = {
 		cache: import("@apollo/client").ApolloCache<unknown>,
 		portfolio: Portfolio,
 	) => {
-		// Add new portfolio to cached list for user
-		cache.modify({
-			fields: {
-				portfolios(
-					existing: readonly import("@apollo/client").Reference[],
-					{
-						toReference,
-					}: { toReference: (obj: any) => import("@apollo/client").Reference },
-				) {
-					const newPortfolioRef = toReference(portfolio);
-					return [...existing, newPortfolioRef];
-				},
-			},
+		const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
+			query: GET_PORTFOLIOS_WITH_ANALYTICS,
 		});
+		if (data && data.portfolios) {
+			cache.writeQuery({
+				query: GET_PORTFOLIOS_WITH_ANALYTICS,
+				data: {
+					portfolios: [...data.portfolios, portfolio],
+				},
+			});
+		}
 	},
 	updatePortfolioInCache: (
 		cache: import("@apollo/client").ApolloCache<unknown>,
@@ -94,28 +115,14 @@ const cacheUpdateUtils = {
 		cache.writeFragment({
 			id: `Portfolio:${portfolio.id}`,
 			fragment: gql`
-        fragment PortfolioFields on Portfolio {
-          id
-          name
-          description
-          createdAt
-          updatedAt
-          assets {
-            asset {
-              id
-              name
-              symbol
-              currentValue
-              assetType {
-                name
-              }
-            }
-            quantity
-            averagePurchasePrice
-            ownershipPct
-          }
-        }
-      `,
+				fragment PortfolioFields on Portfolio {
+					id
+					name
+					description
+					createdAt
+					updatedAt
+				}
+			`,
 			data: portfolio,
 		});
 	},
@@ -123,24 +130,17 @@ const cacheUpdateUtils = {
 		cache: import("@apollo/client").ApolloCache<unknown>,
 		portfolioId: string,
 	) => {
-		// Remove portfolio from cached list for user
-		cache.modify({
-			fields: {
-				portfolios(
-					existing: readonly import("@apollo/client").Reference[],
-					{
-						readField,
-					}: {
-						readField: (
-							fieldName: string,
-							ref: import("@apollo/client").Reference,
-						) => any;
-					},
-				) {
-					return existing.filter((ref) => readField("id", ref) !== portfolioId);
-				},
-			},
+		const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
+			query: GET_PORTFOLIOS_WITH_ANALYTICS,
 		});
+		if (data && data.portfolios) {
+			cache.writeQuery({
+				query: GET_PORTFOLIOS_WITH_ANALYTICS,
+				data: {
+					portfolios: data.portfolios.filter((p) => p.id !== portfolioId),
+				},
+			});
+		}
 		cache.evict({ id: `Portfolio:${portfolioId}` });
 		cache.gc();
 	},
@@ -150,151 +150,36 @@ const cacheInvalidationHelpers = {
 	invalidateDashboardData: (
 		cache: import("@apollo/client").ApolloCache<unknown>,
 	) => {
-		// Invalidate dashboard queries for user
-		cache.modify({
-			fields: {
-				dashboard(existing: any, { DELETE }: { DELETE: any }) {
-					return DELETE;
-				},
-			},
-		});
-	},
-	invalidatePortfolioQueries: (
-		cache: import("@apollo/client").ApolloCache<unknown>,
-	) => {
-		// Invalidate all portfolio queries for user
-		cache.modify({
-			fields: {
-				portfolios(
-					existing: readonly import("@apollo/client").Reference[],
-					{ DELETE }: { DELETE: any },
-				) {
-					return DELETE;
-				},
-			},
-		});
+		// This is a placeholder. In a real app, you would invalidate specific queries
+		// related to the dashboard. For now, we can refetch active queries.
+		// A more robust implementation would use cache.evict() and cache.gc()
+		// on specific dashboard-related query root fields.
+		const query = GET_PORTFOLIOS_WITH_ANALYTICS;
+		if (query) {
+			const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
+				query,
+			});
+			if (data) {
+				cache.writeQuery({ query, data: null });
+			}
+		}
 	},
 	invalidatePortfolio: (
 		cache: import("@apollo/client").ApolloCache<unknown>,
 		portfolioId: string,
 	) => {
-		// Invalidate a single portfolio
 		cache.evict({ id: `Portfolio:${portfolioId}` });
 		cache.gc();
 	},
 };
-
-const CREATE_PORTFOLIO = gql`
-  mutation CreatePortfolio($input: CreatePortfolioInput!) {
-    createPortfolio(input: $input) {
-      id
-      name
-      description
-      createdAt
-      updatedAt
-    }
-  }
-`;
-
-const UPDATE_PORTFOLIO = gql`
-  mutation UpdatePortfolio($id: ID!, $input: UpdatePortfolioInput!) {
-    updatePortfolio(id: $id, input: $input) {
-      id
-      name
-      description
-      updatedAt
-    }
-  }
-`;
-
-const DELETE_PORTFOLIO = gql`
-  mutation DeletePortfolio($id: ID!) {
-    deletePortfolio(id: $id)
-  }
-`;
-
-const DUPLICATE_PORTFOLIO = gql`
-  mutation DuplicatePortfolio($input: DuplicatePortfolioInput!) {
-    duplicatePortfolio(input: $input) {
-      id
-      name
-      description
-      createdAt
-      updatedAt
-      assets {
-        id
-        asset {
-          id
-          name
-          symbol
-          currentValue
-          assetType {
-            name
-          }
-        }
-        quantity
-        averagePurchasePrice
-        ownershipPct
-      }
-    }
-  }
-`;
-
-// Types
-export interface Portfolio {
-	id: string;
-	name: string;
-	description?: string;
-	createdAt: string;
-	updatedAt: string;
-	assets: PortfolioAsset[];
-}
-
-export interface PortfolioAsset {
-	id: string;
-	asset: {
-		id: string;
-		name: string;
-		symbol?: string;
-		currentValue: number;
-		assetType: {
-			name: string;
-		};
-	};
-	quantity: number;
-	averagePurchasePrice: number;
-	ownershipPct: number;
-}
-
-export interface CreatePortfolioInput {
-	userID: string;
-	name: string;
-	description?: string;
-}
-
-export interface UpdatePortfolioInput {
-	name?: string;
-	description?: string;
-}
-
-export interface DuplicatePortfolioInput {
-	sourcePortfolioID: string;
-	newName: string;
-	copyAssets: boolean;
-}
-
-export interface PortfolioManagementData {
-	portfolios: Portfolio[];
-}
 
 // FIXED: Main Hook Implementation
 export function usePortfolioManagement() {
 	const { user } = useAuth();
 	const effectiveUserID = user?.id;
 
-	const { data, loading, error, refetch } = useQuery<PortfolioManagementData>(
-		GET_PORTFOLIOS_WITH_ANALYTICS,
-		{
+	const { data, loading, error, refetch } =
+		useQuery<GetPortfoliosWithAnalyticsQuery>(GET_PORTFOLIOS_WITH_ANALYTICS, {
 			client: apolloClient,
 			variables: { userID: effectiveUserID },
 			errorPolicy: "all",
@@ -302,8 +187,7 @@ export function usePortfolioManagement() {
 			nextFetchPolicy: "cache-first",
 			notifyOnNetworkStatusChange: true,
 			skip: !effectiveUserID,
-		},
-	);
+		});
 
 	// Create portfolio mutation with optimistic updates
 	const [createPortfolioMutation] = useMutation(CREATE_PORTFOLIO, {
@@ -313,14 +197,13 @@ export function usePortfolioManagement() {
 			if (mutationData?.createPortfolio) {
 				cacheUpdateUtils.addPortfolioToCache(
 					cache,
-					mutationData.createPortfolio,
+					mutationData.createPortfolio as Portfolio,
 				);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
 		onError: (error) => {
 			console.error("Create portfolio error:", error);
-			// Optionally, trigger a refetch or other error recovery here if needed
 		},
 	});
 
@@ -329,23 +212,44 @@ export function usePortfolioManagement() {
 		optimisticResponse: (variables: {
 			id: string;
 			input: UpdatePortfolioInput;
-		}) =>
-			optimisticResponseGenerators.updatePortfolio(
-				variables.id,
-				variables.input,
-			),
+		}) => {
+			const currentPortfolio = data?.portfolios?.find(
+				(p) => p.id === variables.id,
+			) as Portfolio | undefined;
+			return {
+				updatePortfolio: {
+					__typename: "Portfolio" as const,
+					id: variables.id,
+					name: variables.input.name ?? currentPortfolio?.name ?? "",
+					description:
+						variables.input.description ??
+						currentPortfolio?.description ??
+						null,
+					updatedAt: new Date().toISOString(),
+					createdAt: currentPortfolio?.createdAt ?? new Date().toISOString(),
+					assets: currentPortfolio?.assets ?? [],
+					analytics: currentPortfolio?.analytics ?? null,
+					sortOrder: currentPortfolio?.sortOrder ?? 0,
+					tags: currentPortfolio?.tags ?? [],
+					transactions: currentPortfolio?.transactions ?? [],
+					user: currentPortfolio?.user ?? {
+						__typename: "User" as const,
+						id: user?.id ?? "temp-user-id",
+					},
+				},
+			};
+		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.updatePortfolio) {
 				cacheUpdateUtils.updatePortfolioInCache(
 					cache,
-					mutationData.updatePortfolio,
+					mutationData.updatePortfolio as Portfolio,
 				);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
 		onError: (error) => {
 			console.error("Update portfolio error:", error);
-			// Optionally, trigger cache invalidation or recovery logic here if needed
 		},
 	});
 
@@ -362,8 +266,6 @@ export function usePortfolioManagement() {
 		},
 		onError: (error) => {
 			console.error("Delete portfolio error:", error);
-			// Invalidate all portfolio queries using Apollo cache
-			// 'cache' is not available in onError, so refetch queries as fallback
 			if (refetch) refetch();
 		},
 	});
@@ -376,15 +278,13 @@ export function usePortfolioManagement() {
 			if (mutationData?.duplicatePortfolio) {
 				cacheUpdateUtils.addPortfolioToCache(
 					cache,
-					mutationData.duplicatePortfolio,
+					mutationData.duplicatePortfolio as Portfolio,
 				);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
 		onError: (error) => {
 			console.error("Duplicate portfolio error:", error);
-			// Invalidate all portfolio queries using Apollo cache
-			// 'cache' is not available in onError, so refetch queries as fallback
 			if (refetch) refetch();
 		},
 	});
@@ -452,7 +352,7 @@ export function usePortfolioManagement() {
 	}, [data]);
 
 	return {
-		data: transformedData,
+		portfolios: transformedData?.portfolios,
 		loading,
 		error,
 		refetch,
@@ -466,18 +366,18 @@ export function usePortfolioManagement() {
 
 // Additional utility hooks for portfolio management
 
+export type { Portfolio } from "./use-portfolio-analytics";
 // Re-export the analytics hook from the dedicated file
-export {
-	usePortfolioAnalytics,
-	useRealTimePortfolioAnalytics,
-} from "./use-portfolio-analytics";
+// Additional utility hooks for portfolio management
+// Re-export the analytics hook from the dedicated file
+export { usePortfolioAnalytics } from "./use-portfolio-analytics";
 
 export function usePortfolioExport() {
 	// This would be implemented when export functionality is added
 	const exportToFormat = async (
 		portfolioId: string,
 		format: "CSV" | "PDF" | "EXCEL",
-		options: unknown = {},
+		_options: unknown = {},
 	) => {
 		// Mock implementation
 		console.log(`Exporting portfolio ${portfolioId} to ${format}`);

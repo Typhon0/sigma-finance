@@ -1,22 +1,24 @@
 import {
 	ApolloClient,
-	InMemoryCache,
 	createHttpLink,
 	from,
+	InMemoryCache,
 } from "@apollo/client";
 import { loadDevMessages, loadErrorMessages } from "@apollo/client/dev";
 import { onError } from "@apollo/client/link/error";
-import { apolloCacheConfig } from "./apollo-cache-config";
-import { GET_DASHBOARD_CRITICAL } from "../graphql/optimized-dashboard.queries";
 import { RetryLink } from "@apollo/client/link/retry";
+import { GET_DASHBOARD_CRITICAL } from "../graphql/optimized-dashboard.queries";
+import { apolloCacheConfig } from "./apollo-cache-config";
 
 if (import.meta.env.MODE === "development") {
 	loadDevMessages();
 	loadErrorMessages();
 }
+
 // HTTP link to the GraphQL server
 const httpLink = createHttpLink({
-	uri: "http://localhost:8080/graphql", // Assuming the GraphQL endpoint is at /graphql
+	uri: import.meta.env.VITE_GRAPHQL_ENDPOINT, // Assuming the GraphQL endpoint is at /graphql
+	credentials: "include",
 });
 const retryLink = new RetryLink({
 	delay: {
@@ -49,24 +51,8 @@ const cache = apolloCacheConfig;
 // Apollo Client configuration with caching policies and error handling
 export const apolloClient = new ApolloClient({
 	link: from([errorLink, retryLink, httpLink]),
-	cache: cache,
-	defaultOptions: {
-		watchQuery: {
-			// Use cache-first for better performance
-			fetchPolicy: "cache-first",
-			// Enable partial data return
-			errorPolicy: "all",
-			// Notify on network status changes
-			notifyOnNetworkStatusChange: true,
-		},
-		query: {
-			fetchPolicy: "cache-first",
-			errorPolicy: "all",
-		},
-		mutate: {
-			errorPolicy: "all",
-		},
-	},
+	credentials: "include",
+	cache: new InMemoryCache(),
 });
 // Cache management utilities
 export const clearCache = () => {

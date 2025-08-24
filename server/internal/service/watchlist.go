@@ -23,6 +23,7 @@ type IWatchlistService interface {
 	GetWatchlistAssets(ctx context.Context, watchlistID int) ([]model.Asset, error)
 	IsAssetInWatchlist(ctx context.Context, watchlistID, assetID int) (bool, error)
 	ValidateUserOwnership(ctx context.Context, userID int, watchlistID int) error
+	GetByUserID(ctx context.Context, userID int) ([]model.Watchlist, error)
 }
 
 // WatchlistService is the concrete implementation of IWatchlistService
@@ -151,29 +152,29 @@ func (s *WatchlistService) UpdateWatchlist(ctx context.Context, id uint, input U
 // DeleteWatchlist removes a watchlist and all its asset associations
 func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id uint) error {
 	// Use Unit of Work to ensure atomicity
-	return s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
-		watchlist, err := repos.WatchlistRepo.GetByID(ctx, id)
+		watchlist, err := uow.Watchlist().GetByID(ctx, id)
 		if err != nil {
 			return err
 		}
 
 		// Get all assets in the watchlist
-		watchlistAssets, err := repos.WatchlistAssetRepo.FindAllBy(ctx, repository.ByColumn("watchlist_id", watchlist.ID))
+		watchlistAssets, err := uow.WatchlistAsset().FindAllBy(ctx, repository.ByColumn("watchlist_id", watchlist.ID))
 		if err != nil {
 			return fmt.Errorf("failed to get watchlist assets: %w", err)
 		}
 
 		// Remove all asset associations
 		for _, wa := range watchlistAssets {
-			err = repos.WatchlistRepo.RemoveAssetFromWatchlist(ctx, watchlist.ID, wa.AssetID)
+			err = uow.Watchlist().RemoveAssetFromWatchlist(ctx, int(watchlist.ID), int(wa.AssetID))
 			if err != nil {
 				return fmt.Errorf("failed to remove asset %d from watchlist: %w", wa.AssetID, err)
 			}
 		}
 
 		// Delete the watchlist
-		return repos.WatchlistRepo.Delete(ctx, id)
+		return uow.Watchlist().Delete(ctx, id)
 	})
 }
 
@@ -188,9 +189,9 @@ func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID,
 	}
 
 	// Use Unit of Work to ensure atomicity
-	return s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
-		if _, err := repos.WatchlistRepo.GetByID(ctx, uint(watchlistID)); err != nil {
+		if _, err := uow.Watchlist().GetByID(ctx, uint(watchlistID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("watchlist with ID %d not found", watchlistID)
 			}
@@ -198,7 +199,7 @@ func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID,
 		}
 
 		// Verify asset exists
-		if _, err := repos.AssetRepo.GetByID(ctx, uint(assetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset with ID %d not found", assetID)
 			}
@@ -206,7 +207,7 @@ func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID,
 		}
 
 		// Add asset to watchlist
-		return repos.WatchlistRepo.AddAssetToWatchlist(ctx, watchlistID, assetID)
+		return uow.Watchlist().AddAssetToWatchlist(ctx, watchlistID, assetID)
 	})
 }
 
@@ -221,9 +222,9 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 	}
 
 	// Use Unit of Work to ensure atomicity
-	return s.uow.Do(ctx, func(repos *repository.TxRepositories) error {
+	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
-		if _, err := repos.WatchlistRepo.GetByID(ctx, uint(watchlistID)); err != nil {
+		if _, err := uow.Watchlist().GetByID(ctx, uint(watchlistID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("watchlist with ID %d not found", watchlistID)
 			}
@@ -231,7 +232,7 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 		}
 
 		// Verify asset exists
-		if _, err := repos.AssetRepo.GetByID(ctx, uint(assetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
 				return fmt.Errorf("asset with ID %d not found", assetID)
 			}
@@ -239,7 +240,7 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 		}
 
 		// Check if asset is in watchlist
-		isInWatchlist, err := repos.WatchlistRepo.IsAssetInWatchlist(ctx, watchlistID, assetID)
+		isInWatchlist, err := uow.Watchlist().IsAssetInWatchlist(ctx, watchlistID, assetID)
 		if err != nil {
 			return fmt.Errorf("failed to check if asset is in watchlist: %w", err)
 		}
@@ -248,7 +249,7 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 		}
 
 		// Remove asset from watchlist
-		return repos.WatchlistRepo.RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
+		return uow.Watchlist().RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
 	})
 }
 
@@ -326,11 +327,12 @@ func (s *WatchlistService) validateCreateWatchlistInput(input CreateWatchlistInp
 }
 
 func (s *WatchlistService) validateUpdateWatchlistInput(input UpdateWatchlistInput) error {
-	if len(input.Name) < 1 {
+	if input.Name == "" {
 		return errors.New("watchlist name is required")
 	}
-	if len(input.Name) > 100 {
-		return errors.New("watchlist name must be 100 characters or less")
-	}
 	return nil
+}
+
+func (s *WatchlistService) GetByUserID(ctx context.Context, userID int) ([]model.Watchlist, error) {
+	return s.uow.Watchlist().FindByUserID(ctx, userID)
 }

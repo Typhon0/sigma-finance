@@ -7,9 +7,9 @@ import (
 	"github.com/uptrace/bun"
 )
 
-// WatchlistRepository defines the interface for watchlist-specific database operations.
+// IWatchlistRepository defines the interface for watchlist-specific database operations.
 // It extends the generic repository with domain-specific methods for user associations and asset management.
-type WatchlistRepository interface {
+type IWatchlistRepository interface {
 	IRepository[model.Watchlist]
 
 	// FindByUserID retrieves all watchlists for a specific user
@@ -37,16 +37,16 @@ type WatchlistRepository interface {
 // watchlistRepository is the concrete implementation of WatchlistRepository
 type watchlistRepository struct {
 	*Repository[model.Watchlist]
-	watchlistAssetRepo IRepository[model.WatchlistAsset]
-	assetRepo          IRepository[model.Asset]
+	watchlistAssetRepo *Repository[model.WatchlistAsset]
+	assetRepo          *Repository[model.Asset]
 }
 
 // NewWatchlistRepository creates a new watchlist repository instance
 func NewWatchlistRepository(
 	repo *Repository[model.Watchlist],
-	watchlistAssetRepo IRepository[model.WatchlistAsset],
-	assetRepo IRepository[model.Asset],
-) WatchlistRepository {
+	watchlistAssetRepo *Repository[model.WatchlistAsset],
+	assetRepo *Repository[model.Asset],
+) IWatchlistRepository {
 	return &watchlistRepository{
 		Repository:         repo,
 		watchlistAssetRepo: watchlistAssetRepo,

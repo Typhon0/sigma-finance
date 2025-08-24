@@ -8,9 +8,6 @@ type User {
     updatedAt: Time!
     portfolios: [Portfolio!]!
     watchlists: [Watchlist!]!
-    alerts: [Alert!]!
-    reports: [Report!]!
-    ownerships: [Ownership!]!
 }
 
 # --- Inputs & Enums for User ---
@@ -28,6 +25,7 @@ input UpdateUserInput {
 }
 
 input UserFilter {
+    id: ID
     usernameContains: String
     email: String
 }

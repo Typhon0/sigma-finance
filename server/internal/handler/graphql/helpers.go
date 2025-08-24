@@ -7,12 +7,12 @@ import (
 )
 
 // parseID converts a GraphQL string ID to uint
-// parseID parses a string ID, accepting both numeric and 'user-1' style IDs.
+// parseID parses a string ID, accepting both numeric and '1' style IDs.
 func parseID(id string) (uint, error) {
 	if len(id) == 0 {
 		return 0, fmt.Errorf("empty ID")
 	}
-	// Accept 'user-1' or 'asset-2' style IDs
+	// Accept '1' or 'asset-2' style IDs
 	for i, c := range id {
 		if c >= '0' && c <= '9' {
 			parsed, err := strconv.ParseUint(id[i:], 10, 32)

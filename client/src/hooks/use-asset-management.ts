@@ -1,13 +1,14 @@
 // Hook to fetch asset types for asset filtering dialogs
-import { useQuery, useMutation, ApolloClient } from "@apollo/client";
-import { apolloClient } from "@/lib/apollo/apollo-client";
+import { type ApolloClient, useMutation, useQuery } from "@apollo/client";
 import { graphql } from "@/gql";
+import type { AssetOrder as GqlAssetOrder } from "@/gql/graphql";
+import { apolloClient } from "@/lib/apollo/apollo-client";
 
 // Hook to fetch assets for asset selection dialogs
 export function useAssets(
 	filter?: AssetFilter,
 	pagination?: PaginationInput,
-	orderBy?: AssetOrder,
+	orderBy?: GqlAssetOrder,
 ) {
 	const { data, loading, error, refetch } = useQuery(GET_ASSETS, {
 		variables: {
@@ -38,8 +39,8 @@ export function useAssetTypes() {
 export interface Asset {
 	id: string;
 	name: string;
-	symbol?: string;
-	currentValue?: number;
+	symbol?: string | null;
+	currentValue?: number | null;
 	assetType: {
 		id: string;
 		name: string;
@@ -65,10 +66,7 @@ export interface AssetFilter {
 	hasTagIDs?: string[];
 }
 
-export interface AssetOrder {
-	field: "NAME" | "CURRENT_VALUE" | "PURCHASE_DATE";
-	direction: "ASC" | "DESC";
-}
+export type AssetOrder = GqlAssetOrder;
 
 export interface PaginationInput {
 	limit?: number;
@@ -185,8 +183,6 @@ const REMOVE_ASSET_FROM_PORTFOLIO = graphql(/* GraphQL */ `
 `);
 
 export function useAssetManagement(apolloClient?: ApolloClient<any>) {
-	const clientInstance = apolloClient;
-
 	const [addAssetToPortfolioMutation] = useMutation<
 		AddAssetToPortfolioMutationResult,
 		AddAssetToPortfolioMutationVariables
@@ -220,13 +216,18 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 		REMOVE_ASSET_FROM_PORTFOLIO,
 		{
 			client: apolloClient,
-			optimisticResponse: () =>
-				optimisticResponseGenerators.removeAssetFromPortfolio(),
 			update: (cache, { data: mutationData }, { variables }) => {
 				if (mutationData?.removeAssetFromPortfolio && variables) {
-					invalidatePortfolioQueries(cache);
-					invalidateDashboardData(cache);
-					invalidatePortfolio(cache, variables.portfolioID);
+					const portfolioId =
+						typeof variables.portfolioID === "string"
+							? variables.portfolioID
+							: "";
+
+					if (portfolioId) {
+						invalidatePortfolioQueries(cache);
+						invalidateDashboardData(cache);
+						invalidatePortfolio(cache, portfolioId);
+					}
 				}
 			},
 			onError: (error) => {
