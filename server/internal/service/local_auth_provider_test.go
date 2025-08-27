@@ -44,7 +44,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Email:    "test@example.com",
 				Password: "password123",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				passwordHash := "hashed_password"
 				user := &model.User{
 					ID:            "user-123",
@@ -66,7 +66,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Provider: "google",
 				Token:    "token123",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				// No mocks needed
 			},
 			wantErr: true,
@@ -78,7 +78,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Email:    "nonexistent@example.com",
 				Password: "password123",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				userRepo.On("GetByEmail", mock.Anything, "nonexistent@example.com").Return(nil, assert.AnError)
 			},
 			wantErr: true,
@@ -90,7 +90,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Email:    "locked@example.com",
 				Password: "password123",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				lockUntil := time.Now().Add(30 * time.Minute)
 				user := &model.User{
 					ID:               "user-123",
@@ -109,7 +109,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Email:    "external@example.com",
 				Password: "password123",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				user := &model.User{
 					ID:           "user-123",
 					Email:        "external@example.com",
@@ -126,7 +126,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 				Email:    "test@example.com",
 				Password: "wrongpassword",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				passwordHash := "hashed_password"
 				user := &model.User{
 					ID:           "user-123",
@@ -144,7 +144,7 @@ func TestLocalAuthProvider_ValidateCredentials(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userRepo := &MockUserRepository{}
+			userRepo := &MockLocalUserRepository{}
 			securityService := &MockSecurityService{}
 			provider := NewLocalAuthProvider(userRepo, securityService)
 
@@ -174,7 +174,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 	tests := []struct {
 		name       string
 		request    RegisterRequest
-		setupMocks func(*MockUserRepository, *MockSecurityService)
+		setupMocks func(*MockLocalUserRepository, *MockSecurityService)
 		wantErr    bool
 		errCode    string
 	}{
@@ -185,7 +185,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 				Password: "SecurePass123!",
 				Name:     "New User",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				userRepo.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, assert.AnError) // User doesn't exist
 				securityService.On("HashPassword", "SecurePass123!").Return("hashed_password", nil)
 				userRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.User")).Return(nil)
@@ -198,7 +198,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 				Email: "new@example.com",
 				Name:  "New User",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				// No mocks needed
 			},
 			wantErr: true,
@@ -211,7 +211,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 				Password: "weak",
 				Name:     "New User",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				// No mocks needed - validation happens before repo calls
 			},
 			wantErr: true,
@@ -224,7 +224,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 				Password: "SecurePass123!",
 				Name:     "New User",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				existingUser := &model.User{
 					ID:    "existing-user",
 					Email: "existing@example.com",
@@ -241,7 +241,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 				Password: "SecurePass123!",
 				Name:     "New User",
 			},
-			setupMocks: func(userRepo *MockUserRepository, securityService *MockSecurityService) {
+			setupMocks: func(userRepo *MockLocalUserRepository, securityService *MockSecurityService) {
 				userRepo.On("GetByEmail", mock.Anything, "invalid-email").Return(nil, assert.AnError) // User doesn't exist
 				securityService.On("HashPassword", "SecurePass123!").Return("hashed_password", nil)
 				// Create will fail due to validation
@@ -253,7 +253,7 @@ func TestLocalAuthProvider_Register(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			userRepo := &MockUserRepository{}
+			userRepo := &MockLocalUserRepository{}
 			securityService := &MockSecurityService{}
 			provider := NewLocalAuthProvider(userRepo, securityService)
 

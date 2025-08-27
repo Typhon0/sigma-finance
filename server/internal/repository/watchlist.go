@@ -13,10 +13,10 @@ type IWatchlistRepository interface {
 	IRepository[model.Watchlist]
 
 	// FindByUserID retrieves all watchlists for a specific user
-	FindByUserID(ctx context.Context, userID int) ([]model.Watchlist, error)
+	FindByUserID(ctx context.Context, userID string) ([]model.Watchlist, error)
 
 	// FindByUserIDWithAssets retrieves watchlists for a user with their associated assets
-	FindByUserIDWithAssets(ctx context.Context, userID int) ([]model.Watchlist, error)
+	FindByUserIDWithAssets(ctx context.Context, userID string) ([]model.Watchlist, error)
 
 	// FindWithAssets retrieves a watchlist with its associated assets
 	FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error)
@@ -55,12 +55,12 @@ func NewWatchlistRepository(
 }
 
 // FindByUserID retrieves all watchlists for a specific user
-func (r *watchlistRepository) FindByUserID(ctx context.Context, userID int) ([]model.Watchlist, error) {
+func (r *watchlistRepository) FindByUserID(ctx context.Context, userID string) ([]model.Watchlist, error) {
 	return r.FindAllBy(ctx, ByColumn("user_id", userID))
 }
 
 // FindByUserIDWithAssets retrieves watchlists for a user with their associated assets
-func (r *watchlistRepository) FindByUserIDWithAssets(ctx context.Context, userID int) ([]model.Watchlist, error) {
+func (r *watchlistRepository) FindByUserIDWithAssets(ctx context.Context, userID string) ([]model.Watchlist, error) {
 	return r.FindAllBy(ctx,
 		ByColumn("user_id", userID),
 		WithPreload("Assets"),

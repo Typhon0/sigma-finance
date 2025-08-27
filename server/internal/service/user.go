@@ -10,6 +10,7 @@ import (
 
 type IUserService interface {
 	GetByID(ctx context.Context, id uint) (model.User, error)
+	GetByStringID(ctx context.Context, id string) (*model.User, error)
 	FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.User, error)
 	CreateUser(ctx context.Context, input CreateUserInput) (model.User, error)
 	UpdateUser(ctx context.Context, id uint, input UpdateUserInput) (model.User, error)
@@ -37,6 +38,10 @@ type UpdateUserInput struct {
 
 func (s *UserService) GetByID(ctx context.Context, id uint) (model.User, error) {
 	return s.uow.User().GetByID(ctx, id)
+}
+
+func (s *UserService) GetByStringID(ctx context.Context, id string) (*model.User, error) {
+	return s.uow.User().GetByStringID(ctx, id)
 }
 
 func (s *UserService) FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.User, error) {

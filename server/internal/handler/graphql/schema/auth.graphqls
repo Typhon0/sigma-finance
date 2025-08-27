@@ -1,5 +1,9 @@
 # internal/handler/graphql/schema/auth.graphqls
 
+# Authorization Directives
+directive @auth on FIELD_DEFINITION | OBJECT
+directive @requireEmailVerified on FIELD_DEFINITION
+
 # Authentication Types
 
 type AuthResponse {
@@ -79,6 +83,12 @@ input ResendVerificationInput {
 
 input RefreshTokenInput {
     refreshToken: String!
+}
+
+# Authentication Queries (added to main Query type)
+extend type Query {
+    # Get current authenticated user
+    me: AuthUser @auth
 }
 
 # Authentication Mutations (added to main Mutation type)

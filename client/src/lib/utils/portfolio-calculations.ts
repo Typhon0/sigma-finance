@@ -36,9 +36,12 @@ export function calculatePortfolioMetrics(
 	let totalCost = 0;
 
 	for (const portfolio of portfolios) {
-		for (const position of portfolio.assets) {
-			totalValue += calculatePositionValue(position);
-			totalCost += calculatePositionCost(position);
+		// Check if portfolio.assets exists and is an array
+		if (portfolio.assets && Array.isArray(portfolio.assets)) {
+			for (const position of portfolio.assets) {
+				totalValue += calculatePositionValue(position);
+				totalCost += calculatePositionCost(position);
+			}
 		}
 	}
 
@@ -84,41 +87,44 @@ export function calculateAssetPerformance(
 	const assetMap = new Map<string, AssetPerformance>();
 
 	for (const portfolio of portfolios) {
-		for (const position of portfolio.assets) {
-			const assetId = position.asset.id;
-			const currentValue = calculatePositionValue(position);
-			const purchaseValue = calculatePositionCost(position);
-			const changeAmount = currentValue - purchaseValue;
-			const changePercent =
-				purchaseValue > 0 ? (changeAmount / purchaseValue) * 100 : 0;
+		// Check if portfolio.assets exists and is an array
+		if (portfolio.assets && Array.isArray(portfolio.assets)) {
+			for (const position of portfolio.assets) {
+				const assetId = position.asset.id;
+				const currentValue = calculatePositionValue(position);
+				const purchaseValue = calculatePositionCost(position);
+				const changeAmount = currentValue - purchaseValue;
+				const changePercent =
+					purchaseValue > 0 ? (changeAmount / purchaseValue) * 100 : 0;
 
-			if (assetMap.has(assetId)) {
-				const existing = assetMap.get(assetId)!;
-				const totalCurrentValue = existing.currentValue + currentValue;
-				const totalPurchaseValue = existing.purchaseValue + purchaseValue;
-				const totalChangeAmount = totalCurrentValue - totalPurchaseValue;
-				const totalChangePercent =
-					totalPurchaseValue > 0
-						? (totalChangeAmount / totalPurchaseValue) * 100
-						: 0;
+				if (assetMap.has(assetId)) {
+					const existing = assetMap.get(assetId)!;
+					const totalCurrentValue = existing.currentValue + currentValue;
+					const totalPurchaseValue = existing.purchaseValue + purchaseValue;
+					const totalChangeAmount = totalCurrentValue - totalPurchaseValue;
+					const totalChangePercent =
+						totalPurchaseValue > 0
+							? (totalChangeAmount / totalPurchaseValue) * 100
+							: 0;
 
-				assetMap.set(assetId, {
-					asset: position.asset,
-					currentValue: totalCurrentValue,
-					purchaseValue: totalPurchaseValue,
-					changeAmount: totalChangeAmount,
-					changePercent: totalChangePercent,
-					positions: [...existing.positions, position],
-				});
-			} else {
-				assetMap.set(assetId, {
-					asset: position.asset,
-					currentValue,
-					purchaseValue,
-					changeAmount,
-					changePercent,
-					positions: [position],
-				});
+					assetMap.set(assetId, {
+						asset: position.asset,
+						currentValue: totalCurrentValue,
+						purchaseValue: totalPurchaseValue,
+						changeAmount: totalChangeAmount,
+						changePercent: totalChangePercent,
+						positions: [...existing.positions, position],
+					});
+				} else {
+					assetMap.set(assetId, {
+						asset: position.asset,
+						currentValue,
+						purchaseValue,
+						changeAmount,
+						changePercent,
+						positions: [position],
+					});
+				}
 			}
 		}
 	}
@@ -173,25 +179,28 @@ export function calculateAssetAllocation(
 	};
 
 	portfolios.forEach((portfolio) => {
-		portfolio.assets.forEach((position) => {
-			const assetType = position.asset.assetType.name;
-			const positionValue = calculatePositionValue(position);
+		// Check if portfolio.assets exists and is an array
+		if (portfolio.assets && Array.isArray(portfolio.assets)) {
+			portfolio.assets.forEach((position) => {
+				const assetType = position.asset.assetType.name;
+				const positionValue = calculatePositionValue(position);
 
-			totalValue += positionValue;
+				totalValue += positionValue;
 
-			if (allocationMap.has(assetType)) {
-				const existing = allocationMap.get(assetType)!;
-				allocationMap.set(assetType, {
-					value: existing.value + positionValue,
-					color: existing.color,
-				});
-			} else {
-				allocationMap.set(assetType, {
-					value: positionValue,
-					color: assetTypeColors[assetType] || assetTypeColors.OTHER,
-				});
-			}
-		});
+				if (allocationMap.has(assetType)) {
+					const existing = allocationMap.get(assetType)!;
+					allocationMap.set(assetType, {
+						value: existing.value + positionValue,
+						color: existing.color,
+					});
+				} else {
+					allocationMap.set(assetType, {
+						value: positionValue,
+						color: assetTypeColors[assetType] || assetTypeColors.OTHER,
+					});
+				}
+			});
+		}
 	});
 
 	return Array.from(allocationMap.entries()).map(([assetType, data]) => ({

@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import DashboardHomePage from "@/pages/dashboard-home";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export const Route = createFileRoute("/dashboard")({
-	component: DashboardHomePage,
+	component: () => (
+		<ProtectedRoute>
+			<DashboardHomePage />
+		</ProtectedRoute>
+	),
 });

@@ -10,7 +10,7 @@ import (
 // mapPortfolioToGQL converts a domain Portfolio to a GraphQL Portfolio
 func mapPortfolioToGQL(domainPortfolio model.Portfolio) *gqlModel.Portfolio {
 	return &gqlModel.Portfolio{
-		ID:          strconv.Itoa(domainPortfolio.ID),
+		ID:          strconv.Itoa(int(domainPortfolio.ID)),
 		Name:        domainPortfolio.Name,
 		Description: &domainPortfolio.Description,
 		SortOrder:   int32(domainPortfolio.SortOrder),

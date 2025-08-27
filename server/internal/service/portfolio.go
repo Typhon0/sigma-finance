@@ -30,8 +30,8 @@ type IPortfolioService interface {
 
 	// Enhanced functionality
 	DuplicatePortfolio(ctx context.Context, input DuplicatePortfolioInput) (model.Portfolio, error)
-	ReorderPortfolios(ctx context.Context, userID uint, orders []PortfolioOrderInput) ([]model.Portfolio, error)
-	GetPortfoliosByUser(ctx context.Context, userID uint, orderBy string) ([]model.Portfolio, error)
+	ReorderPortfolios(ctx context.Context, userID string, orders []PortfolioOrderInput) ([]model.Portfolio, error)
+	GetPortfoliosByUser(ctx context.Context, userID string, orderBy string) ([]model.Portfolio, error)
 	GetPortfolioAnalytics(ctx context.Context, portfolioID uint) (PortfolioAnalytics, error)
 	GetPortfolioHistory(ctx context.Context, portfolioID uint, period string) (PortfolioHistory, error)
 	GetAssetAllocation(ctx context.Context, portfolioID uint) ([]AssetAllocation, error)
@@ -54,7 +54,7 @@ func NewPortfolioService(uow repository.IUnitOfWork) *PortfolioService {
 // --- Input Structs for Service Methods (keeps method signatures clean) ---
 
 type CreatePortfolioInput struct {
-	UserID      uint
+	UserID      string
 	Name        string
 	Description *string
 }
@@ -168,7 +168,7 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 		}
 
 		newPortfolio := model.Portfolio{
-			UserID:      int(input.UserID),
+			UserID:      input.UserID,
 			Name:        input.Name,
 			Description: description,
 			SortOrder:   maxSortOrder + 1,
@@ -517,7 +517,7 @@ func (s *PortfolioService) DuplicatePortfolio(ctx context.Context, input Duplica
 
 		for _, sourceAsset := range sourceAssets {
 			newPortfolioAsset := model.PortfolioAsset{
-				PortfolioID:          createdPortfolio.ID,
+				PortfolioID:          int(createdPortfolio.ID),
 				AssetID:              sourceAsset.AssetID,
 				Quantity:             sourceAsset.Quantity,
 				AveragePurchasePrice: sourceAsset.AveragePurchasePrice,
@@ -536,7 +536,7 @@ func (s *PortfolioService) DuplicatePortfolio(ctx context.Context, input Duplica
 }
 
 // ReorderPortfolios updates the sort order of multiple portfolios for a user
-func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID uint, orders []PortfolioOrderInput) ([]model.Portfolio, error) {
+func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID string, orders []PortfolioOrderInput) ([]model.Portfolio, error) {
 	// 1. --- Input Validation ---
 	if len(orders) == 0 {
 		return nil, errors.New("no portfolio orders provided")
@@ -572,8 +572,8 @@ func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID uint, o
 		}
 
 		// Verify user ownership
-		if portfolio.UserID != int(userID) {
-			return nil, fmt.Errorf("portfolio %d does not belong to user %d", order.PortfolioID, userID)
+		if portfolio.UserID != userID {
+			return nil, fmt.Errorf("portfolio %d does not belong to user %s", order.PortfolioID, userID)
 		}
 
 		// Update sort order
@@ -590,7 +590,7 @@ func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID uint, o
 }
 
 // GetPortfoliosByUser retrieves all portfolios for a user with custom ordering
-func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID uint, orderBy string) ([]model.Portfolio, error) {
+func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID string, orderBy string) ([]model.Portfolio, error) {
 	// 1. --- Input Validation ---
 	validOrderBy := map[string]string{
 		"name":         "name ASC",
@@ -615,7 +615,7 @@ func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID uint,
 	// 3. --- Retrieve Portfolios ---
 	portfolios, err := s.uow.Portfolio().FindAllBy(ctx, opts...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve portfolios for user %d: %w", userID, err)
+		return nil, fmt.Errorf("failed to retrieve portfolios for user %s: %w", userID, err)
 	}
 
 	return portfolios, nil
@@ -640,7 +640,7 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 
 	// 3. --- Calculate Basic Metrics ---
 	analytics := PortfolioAnalytics{
-		PortfolioID: portfolio.ID,
+		PortfolioID: int(portfolio.ID),
 	}
 
 	if len(portfolioAssets) == 0 {
@@ -697,7 +697,7 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 	analytics.RiskMetrics = s.calculateRiskMetrics(portfolioAssets, totalValue)
 
 	// 8. --- Generate Performance History (placeholder) ---
-	analytics.PerformanceHistory = s.generatePerformanceHistory(portfolio.ID, totalValue)
+	analytics.PerformanceHistory = s.generatePerformanceHistory(int(portfolio.ID), totalValue)
 
 	return analytics, nil
 }

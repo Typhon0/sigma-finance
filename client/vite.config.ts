@@ -7,11 +7,11 @@ import codegen from "vite-plugin-graphql-codegen";
 
 export default defineConfig({
 	plugins: [
-		react(),
 		tanstackRouter({
 			target: "react",
 			autoCodeSplitting: true,
 		}),
+		react(),
 		tailwindcss(),
 		codegen(),
 	],

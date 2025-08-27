@@ -72,6 +72,11 @@ func (m *MockUserRepository) Delete(ctx context.Context, id uint) error {
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) DeleteByStringID(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
+}
+
 func (m *MockUserRepository) GetByID(ctx context.Context, id uint) (model.User, error) {
 	args := m.Called(ctx, id)
 	return args.Get(0).(model.User), args.Error(1)
@@ -363,6 +368,65 @@ func (m *MockSessionRepository) Count(ctx context.Context, options ...repository
 	return args.Int(0), args.Error(1)
 }
 
+// MockSessionService is a mock implementation of SessionService
+type MockSessionService struct {
+	mock.Mock
+}
+
+func (m *MockSessionService) CreateSession(ctx context.Context, userID string, ipAddress, userAgent string) (*model.Session, error) {
+	args := m.Called(ctx, userID, ipAddress, userAgent)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
+}
+
+func (m *MockSessionService) ValidateSession(ctx context.Context, token string) (*model.Session, error) {
+	args := m.Called(ctx, token)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
+}
+
+func (m *MockSessionService) RefreshSession(ctx context.Context, refreshToken string) (*model.Session, error) {
+	args := m.Called(ctx, refreshToken)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
+}
+
+func (m *MockSessionService) RevokeSession(ctx context.Context, token string) error {
+	args := m.Called(ctx, token)
+	return args.Error(0)
+}
+
+func (m *MockSessionService) RevokeAllUserSessions(ctx context.Context, userID string) error {
+	args := m.Called(ctx, userID)
+	return args.Error(0)
+}
+
+func (m *MockSessionService) GetUserSessions(ctx context.Context, userID string) ([]model.Session, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]model.Session), args.Error(1)
+}
+
+func (m *MockSessionService) GetActiveUserSessions(ctx context.Context, userID string) ([]model.Session, error) {
+	args := m.Called(ctx, userID)
+	return args.Get(0).([]model.Session), args.Error(1)
+}
+
+func (m *MockSessionService) CleanupExpiredSessions(ctx context.Context) (int, error) {
+	args := m.Called(ctx)
+	return args.Get(0).(int), args.Error(1)
+}
+
+func (m *MockSessionService) ExtendSession(ctx context.Context, sessionID string, duration time.Duration) error {
+	args := m.Called(ctx, sessionID, duration)
+	return args.Error(0)
+}
+
 // MockPasswordResetTokenRepository is a mock implementation of password reset token repository
 type MockPasswordResetTokenRepository struct {
 	mock.Mock
@@ -554,9 +618,9 @@ func (m *MockEmailVerificationTokenRepository) Count(ctx context.Context, option
 }
 
 // Test helper function to create authentication service with mocks
-func createTestAuthService(t *testing.T) (AuthenticationService, *MockUserRepository, *MockSessionRepository, *MockPasswordResetTokenRepository, *MockEmailVerificationTokenRepository, *MockSecurityService, *MockAuditService, EmailService) {
+func createTestAuthService(t *testing.T) (AuthenticationService, *MockUserRepository, *MockSessionService, *MockPasswordResetTokenRepository, *MockEmailVerificationTokenRepository, *MockSecurityService, *MockAuditService, EmailService) {
 	userRepo := &MockUserRepository{}
-	sessionRepo := &MockSessionRepository{}
+	sessionService := &MockSessionService{}
 	passwordResetTokenRepo := &MockPasswordResetTokenRepository{}
 	emailVerificationTokenRepo := &MockEmailVerificationTokenRepository{}
 	securityService := &MockSecurityService{}
@@ -565,7 +629,7 @@ func createTestAuthService(t *testing.T) (AuthenticationService, *MockUserReposi
 
 	authService := NewAuthenticationService(
 		userRepo,
-		sessionRepo,
+		sessionService,
 		passwordResetTokenRepo,
 		emailVerificationTokenRepo,
 		securityService,
@@ -574,7 +638,7 @@ func createTestAuthService(t *testing.T) (AuthenticationService, *MockUserReposi
 		[]AuthProvider{}, // No auth providers for basic tests
 	)
 
-	return authService, userRepo, sessionRepo, passwordResetTokenRepo, emailVerificationTokenRepo, securityService, auditService, emailService
+	return authService, userRepo, sessionService, passwordResetTokenRepo, emailVerificationTokenRepo, securityService, auditService, emailService
 }
 
 // Helper function to create string pointer

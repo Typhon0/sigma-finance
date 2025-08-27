@@ -6,8 +6,6 @@ package graphql
 
 import (
 	"context"
-	"fmt"
-	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
 )
@@ -24,8 +22,6 @@ func (r *mutationResolver) Register(ctx context.Context, input gqlModel.Register
 	// Call authentication service
 	authResponse, err := r.AuthenticationService.Register(ctx, req)
 	if err != nil {
-		// Log the actual error for debugging
-		fmt.Printf("DEBUG: Register error: %v (type: %T)\n", err, err)
 		return convertAuthErrorToGraphQL(err), nil
 	}
 
@@ -189,159 +185,14 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.Refr
 	}, nil
 }
 
-// Helper functions for error conversion and context extraction
-
-// convertAuthErrorToGraphQL converts service authentication errors to GraphQL AuthResponse
-func convertAuthErrorToGraphQL(err error) *gqlModel.AuthResponse {
-	if authErr, ok := err.(*service.AuthError); ok {
-		return &gqlModel.AuthResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    authErr.Code,
-					Message: authErr.Message,
-					Field:   stringPtrIfNotEmpty(authErr.Field),
-				},
-			},
-		}
-	}
-
-	// Handle validation errors from domain models
-	if validationErr, ok := err.(*model.ValidationError); ok {
-		return &gqlModel.AuthResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    "INVALID_INPUT",
-					Message: validationErr.Message,
-					Field:   stringPtrIfNotEmpty(validationErr.Field),
-				},
-			},
-		}
-	}
-
-	// Generic error
-	return &gqlModel.AuthResponse{
-		Success: false,
-		Errors: []*gqlModel.AuthError{
-			{
-				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
-			},
-		},
-	}
-}
-
-// convertLogoutErrorToGraphQL converts service errors to GraphQL LogoutResponse
-func convertLogoutErrorToGraphQL(err error) *gqlModel.LogoutResponse {
-	if authErr, ok := err.(*service.AuthError); ok {
-		return &gqlModel.LogoutResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    authErr.Code,
-					Message: authErr.Message,
-					Field:   stringPtrIfNotEmpty(authErr.Field),
-				},
-			},
-		}
-	}
-
-	// Generic error
-	return &gqlModel.LogoutResponse{
-		Success: false,
-		Errors: []*gqlModel.AuthError{
-			{
-				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
-			},
-		},
-	}
-}
-
-// convertPasswordResetErrorToGraphQL converts service errors to GraphQL PasswordResetResponse
-func convertPasswordResetErrorToGraphQL(err error) *gqlModel.PasswordResetResponse {
-	if authErr, ok := err.(*service.AuthError); ok {
-		return &gqlModel.PasswordResetResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    authErr.Code,
-					Message: authErr.Message,
-					Field:   stringPtrIfNotEmpty(authErr.Field),
-				},
-			},
-		}
-	}
-
-	// Generic error
-	return &gqlModel.PasswordResetResponse{
-		Success: false,
-		Errors: []*gqlModel.AuthError{
-			{
-				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
-			},
-		},
-	}
-}
-
-// convertEmailVerificationErrorToGraphQL converts service errors to GraphQL EmailVerificationResponse
-func convertEmailVerificationErrorToGraphQL(err error) *gqlModel.EmailVerificationResponse {
-	if authErr, ok := err.(*service.AuthError); ok {
-		return &gqlModel.EmailVerificationResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    authErr.Code,
-					Message: authErr.Message,
-					Field:   stringPtrIfNotEmpty(authErr.Field),
-				},
-			},
-		}
-	}
-
-	// Generic error
-	return &gqlModel.EmailVerificationResponse{
-		Success: false,
-		Errors: []*gqlModel.AuthError{
-			{
-				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
-			},
-		},
-	}
-}
-
-// Helper functions for context extraction and utilities
-
-// extractIPFromContext extracts IP address from GraphQL context
-func extractIPFromContext(ctx context.Context) string {
-	// In a real implementation, this would extract from HTTP headers
-	// For testing, return a valid IP address
-	return "127.0.0.1"
-}
-
-// extractUserAgentFromContext extracts user agent from GraphQL context
-func extractUserAgentFromContext(ctx context.Context) string {
-	// In a real implementation, this would extract from HTTP headers
-	// For testing, return a test user agent
-	return "GraphQL-Test-Client/1.0"
-}
-
-// extractUserIDFromToken extracts user ID from JWT token using SecurityService
-func (r *mutationResolver) extractUserIDFromToken(token string) string {
-	claims, err := r.SecurityService.ValidateJWT(token)
-	if err != nil {
-		return ""
-	}
-	return claims.UserID
-}
-
-// stringPtrIfNotEmpty returns a pointer to the string if it's not empty, otherwise nil
-func stringPtrIfNotEmpty(s string) *string {
-	if s == "" {
-		return nil
-	}
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func stringPtr(s string) *string {
 	return &s
 }
+*/

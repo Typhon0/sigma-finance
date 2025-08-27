@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"strconv"
@@ -29,6 +30,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.Create
 
 // UpdateUser is the resolver for the updateUser field.
 func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlModel.UpdateUserInput) (*gqlModel.User, error) {
+	// Convert string ID to uint
 	userID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("invalid user ID: %w", err)
@@ -48,10 +50,12 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlM
 
 // DeleteUser is the resolver for the deleteUser field.
 func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, error) {
+	// Convert string ID to uint
 	userID, err := strconv.ParseUint(id, 10, 32)
 	if err != nil {
 		return "", fmt.Errorf("invalid user ID: %w", err)
 	}
+
 	err = r.UserService.DeleteUser(ctx, uint(userID))
 	if err != nil {
 		return "", err
@@ -61,12 +65,8 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, e
 
 // CreatePortfolio is the resolver for the createPortfolio field.
 func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.CreatePortfolioInput) (*gqlModel.Portfolio, error) {
-	userID, err := strconv.ParseUint(input.UserID, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
 	portfolioInput := service.CreatePortfolioInput{
-		UserID:      uint(userID),
+		UserID:      input.UserID,
 		Name:        input.Name,
 		Description: input.Description,
 	}
@@ -253,22 +253,18 @@ func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlMode
 
 // ReorderPortfolios is the resolver for the reorderPortfolios field.
 func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel.ReorderPortfoliosInput) ([]*gqlModel.Portfolio, error) {
-	userID, err := strconv.ParseUint(input.UserID, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
 	orders := make([]service.PortfolioOrderInput, len(input.PortfolioOrders))
 	for i, o := range input.PortfolioOrders {
-		pID, err := strconv.ParseUint(o.PortfolioID, 10, 32)
+		portfolioID, err := strconv.ParseUint(o.PortfolioID, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("invalid portfolio ID in reorder input: %w", err)
+			return nil, fmt.Errorf("invalid portfolio ID: %w", err)
 		}
 		orders[i] = service.PortfolioOrderInput{
-			PortfolioID: uint(pID),
+			PortfolioID: uint(portfolioID),
 			SortOrder:   int(o.SortOrder),
 		}
 	}
-	portfolios, err := r.PortfolioService.ReorderPortfolios(ctx, uint(userID), orders)
+	portfolios, err := r.PortfolioService.ReorderPortfolios(ctx, input.UserID, orders)
 	if err != nil {
 		return nil, err
 	}
@@ -415,12 +411,8 @@ func (r *mutationResolver) UntagAsset(ctx context.Context, assetID string, tagID
 
 // CreateWatchlist is the resolver for the createWatchlist field.
 func (r *mutationResolver) CreateWatchlist(ctx context.Context, input gqlModel.CreateWatchlistInput) (*gqlModel.Watchlist, error) {
-	userID, err := strconv.Atoi(input.UserID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
 	watchlistInput := service.CreateWatchlistInput{
-		UserID: userID,
+		UserID: input.UserID,
 		Name:   input.Name,
 	}
 	createdWatchlist, err := r.WatchlistService.CreateWatchlist(ctx, watchlistInput)
@@ -487,15 +479,14 @@ func (r *mutationResolver) RemoveAssetFromWatchlist(ctx context.Context, watchli
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*gqlModel.User, error) {
-	userID, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-	user, err := r.UserService.GetByID(ctx, uint(userID))
+	user, err := r.UserService.GetByStringID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
-	return ToGraphQLUser(&user), nil
+	if user == nil {
+		return nil, fmt.Errorf("user not found")
+	}
+	return ToGraphQLUser(user), nil
 }
 
 // Users is the resolver for the users field.
@@ -526,11 +517,7 @@ func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Por
 
 // GetPortfoliosWithAnalytics is the resolver for the GetPortfoliosWithAnalytics field.
 func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID string) ([]*gqlModel.Portfolio, error) {
-	uID, err := strconv.ParseUint(userID, 10, 32)
-	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
-	}
-	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, uint(uID), "")
+	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, userID, "")
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +525,7 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 	for i := range portfolios {
 		p := portfolios[i]
 		gqlP := ToGraphQLPortfolio(&p)
-		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, uint(p.ID))
+		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID)
 		if err == nil {
 			gqlP.Analytics = &gqlModel.PortfolioAnalytics{
 				TotalValue:           analytics.TotalValue,
@@ -556,10 +543,7 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) ([]*gqlModel.Portfolio, error) {
 	var opts []repository.QueryOption
 	if filter != nil && filter.UserID != nil {
-		userIDInt, err := strconv.Atoi(*filter.UserID)
-		if err == nil {
-			opts = append(opts, repository.ByColumn("user_id", userIDInt))
-		}
+		opts = append(opts, repository.ByColumn("user_id", *filter.UserID))
 	}
 	portfolios, err := r.Resolver.PortfolioService.FindAll(ctx, opts...)
 	if err != nil {
@@ -655,15 +639,14 @@ func (r *queryResolver) Watchlist(ctx context.Context, id string) (*gqlModel.Wat
 
 // Watchlists is the resolver for the watchlists field.
 func (r *queryResolver) Watchlists(ctx context.Context, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Watchlist, error) {
-	if filter == nil || filter.UserID == "" {
-		// Or handle as a request for all watchlists if that's desired
-		return nil, fmt.Errorf("user ID is required to fetch watchlists")
-	}
-	uID, err := strconv.Atoi(filter.UserID)
+	// Get authenticated user from context
+	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid user ID: %w", err)
+		return nil, err
 	}
-	watchlists, err := r.WatchlistService.FindByUserID(ctx, uID)
+
+	// Use authenticated user's ID instead of filter parameter
+	watchlists, err := r.WatchlistService.FindByUserID(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -689,15 +672,16 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.T
 
 // Transactions is the resolver for the transactions field.
 func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) ([]*gqlModel.Transaction, error) {
+	// Get authenticated user from context
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	var opts []repository.QueryOption
 	if filter != nil {
-		if filter.UserID != nil {
-			userID, err := strconv.ParseUint(*filter.UserID, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("invalid user ID: %w", err)
-			}
-
-			portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, uint(userID), "")
+		if filter.UserID != nil || true { // Always filter by authenticated user
+			portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, user.ID, "")
 			if err != nil {
 				return nil, fmt.Errorf("could not retrieve portfolios for user: %w", err)
 			}
@@ -714,10 +698,7 @@ func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.Trans
 			opts = append(opts, repository.ByColumnIn("portfolio_id", portfolioIDs...))
 
 		} else if filter.PortfolioID != nil {
-			portfolioIDInt, err := strconv.Atoi(*filter.PortfolioID)
-			if err == nil {
-				opts = append(opts, repository.ByColumn("portfolio_id", portfolioIDInt))
-			}
+			opts = append(opts, repository.ByColumn("portfolio_id", *filter.PortfolioID))
 		}
 	}
 	transactions, err := r.TransactionService.FindAll(ctx, opts...)

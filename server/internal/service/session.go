@@ -157,6 +157,7 @@ func (s *sessionService) ValidateSession(ctx context.Context, token string) (*mo
 	// Validate JWT token
 	claims, err := s.securityService.ValidateJWT(token)
 	if err != nil {
+		fmt.Printf("DEBUG: JWT validation failed: %v\n", err)
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
 

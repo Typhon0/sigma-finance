@@ -41,60 +41,87 @@ type JWTClaims struct {
 
 // SecurityConfig holds configuration for the security service
 type SecurityConfig struct {
-	JWTPrivateKey string
-	JWTPublicKey  string
+	JWTSecretKey  string // For HMAC algorithms
+	JWTPrivateKey string // For RSA algorithms
+	JWTPublicKey  string // For RSA algorithms
+	JWTAlgorithm  string // Algorithm to use (HS256, RS256, etc.)
 	BCryptCost    int
 }
 
 // securityService implements SecurityService
 type securityService struct {
-	privateKey  *rsa.PrivateKey
-	publicKey   *rsa.PublicKey
+	secretKey   []byte          // For HMAC algorithms
+	privateKey  *rsa.PrivateKey // For RSA algorithms
+	publicKey   *rsa.PublicKey  // For RSA algorithms
+	algorithm   string
 	bcryptCost  int
 	rateLimiter RateLimiter
 }
 
 // NewSecurityService creates a new SecurityService instance
 func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (SecurityService, error) {
-	// Parse private key
-	privateKeyBlock, _ := pem.Decode([]byte(config.JWTPrivateKey))
-	if privateKeyBlock == nil {
-		return nil, fmt.Errorf("failed to decode private key PEM")
-	}
-
-	privateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse private key: %w", err)
-	}
-
-	// Parse public key
-	publicKeyBlock, _ := pem.Decode([]byte(config.JWTPublicKey))
-	if publicKeyBlock == nil {
-		return nil, fmt.Errorf("failed to decode public key PEM")
-	}
-
-	publicKeyInterface, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse public key: %w", err)
-	}
-
-	publicKey, ok := publicKeyInterface.(*rsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("public key is not RSA")
-	}
-
 	// Validate bcrypt cost
 	bcryptCost := config.BCryptCost
 	if bcryptCost < 12 {
 		bcryptCost = 12 // Minimum cost factor as per requirements
 	}
 
-	return &securityService{
-		privateKey:  privateKey,
-		publicKey:   publicKey,
+	service := &securityService{
+		algorithm:   config.JWTAlgorithm,
 		bcryptCost:  bcryptCost,
 		rateLimiter: rateLimiter,
-	}, nil
+	}
+
+	// Configure JWT signing based on algorithm
+	switch config.JWTAlgorithm {
+	case "HS256", "HS384", "HS512":
+		// HMAC algorithms use a secret key
+		if config.JWTSecretKey == "" {
+			return nil, fmt.Errorf("JWT secret key is required for HMAC algorithms")
+		}
+		service.secretKey = []byte(config.JWTSecretKey)
+
+	case "RS256", "RS384", "RS512":
+		// RSA algorithms use public/private key pairs
+		if config.JWTPrivateKey == "" || config.JWTPublicKey == "" {
+			return nil, fmt.Errorf("JWT private and public keys are required for RSA algorithms")
+		}
+
+		// Parse private key
+		privateKeyBlock, _ := pem.Decode([]byte(config.JWTPrivateKey))
+		if privateKeyBlock == nil {
+			return nil, fmt.Errorf("failed to decode private key PEM")
+		}
+
+		privateKey, err := x509.ParsePKCS1PrivateKey(privateKeyBlock.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse private key: %w", err)
+		}
+
+		// Parse public key
+		publicKeyBlock, _ := pem.Decode([]byte(config.JWTPublicKey))
+		if publicKeyBlock == nil {
+			return nil, fmt.Errorf("failed to decode public key PEM")
+		}
+
+		publicKeyInterface, err := x509.ParsePKIXPublicKey(publicKeyBlock.Bytes)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse public key: %w", err)
+		}
+
+		publicKey, ok := publicKeyInterface.(*rsa.PublicKey)
+		if !ok {
+			return nil, fmt.Errorf("public key is not RSA")
+		}
+
+		service.privateKey = privateKey
+		service.publicKey = publicKey
+
+	default:
+		return nil, fmt.Errorf("unsupported JWT algorithm: %s", config.JWTAlgorithm)
+	}
+
+	return service, nil
 }
 
 // HashPassword hashes a password using bcrypt with cost factor 12
@@ -129,7 +156,7 @@ func (s *securityService) VerifyPassword(password, hash string) error {
 	return nil
 }
 
-// GenerateJWT generates a JWT token with RS256 signing
+// GenerateJWT generates a JWT token with the configured signing method
 func (s *securityService) GenerateJWT(userID string, expiresAt time.Time) (string, error) {
 	if len(userID) == 0 {
 		return "", fmt.Errorf("userID cannot be empty")
@@ -150,9 +177,36 @@ func (s *securityService) GenerateJWT(userID string, expiresAt time.Time) (strin
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	// Choose signing method based on algorithm
+	var signingMethod jwt.SigningMethod
+	var signingKey interface{}
 
-	tokenString, err := token.SignedString(s.privateKey)
+	switch s.algorithm {
+	case "HS256":
+		signingMethod = jwt.SigningMethodHS256
+		signingKey = s.secretKey
+	case "HS384":
+		signingMethod = jwt.SigningMethodHS384
+		signingKey = s.secretKey
+	case "HS512":
+		signingMethod = jwt.SigningMethodHS512
+		signingKey = s.secretKey
+	case "RS256":
+		signingMethod = jwt.SigningMethodRS256
+		signingKey = s.privateKey
+	case "RS384":
+		signingMethod = jwt.SigningMethodRS384
+		signingKey = s.privateKey
+	case "RS512":
+		signingMethod = jwt.SigningMethodRS512
+		signingKey = s.privateKey
+	default:
+		return "", fmt.Errorf("unsupported JWT algorithm: %s", s.algorithm)
+	}
+
+	token := jwt.NewWithClaims(signingMethod, claims)
+
+	tokenString, err := token.SignedString(signingKey)
 	if err != nil {
 		return "", fmt.Errorf("failed to sign JWT token: %w", err)
 	}
@@ -167,11 +221,21 @@ func (s *securityService) ValidateJWT(tokenString string) (*JWTClaims, error) {
 	}
 
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		// Verify the signing method
-		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		// Verify the signing method matches our algorithm
+		switch s.algorithm {
+		case "HS256", "HS384", "HS512":
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v, expected HMAC", token.Header["alg"])
+			}
+			return s.secretKey, nil
+		case "RS256", "RS384", "RS512":
+			if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+				return nil, fmt.Errorf("unexpected signing method: %v, expected RSA", token.Header["alg"])
+			}
+			return s.publicKey, nil
+		default:
+			return nil, fmt.Errorf("unsupported JWT algorithm: %s", s.algorithm)
 		}
-		return s.publicKey, nil
 	})
 
 	if err != nil {

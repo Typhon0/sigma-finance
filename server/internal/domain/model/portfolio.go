@@ -25,8 +25,8 @@ type PerformanceMetrics struct {
 type Portfolio struct {
 	bun.BaseModel `bun:"table:sigma_finance.portfolio"`
 
-	ID          int       `bun:"id,pk,autoincrement"`
-	UserID      int       `bun:"user_id,notnull"`
+	ID          uint      `bun:"id,pk,autoincrement"`
+	UserID      string    `bun:"user_id,notnull,type:uuid"`
 	Name        string    `bun:"name,notnull"`
 	Description string    `bun:"description"`
 	SortOrder   int       `bun:"sort_order,default:0"`
@@ -36,7 +36,7 @@ type Portfolio struct {
 
 // Implement Entity interface
 func (p Portfolio) GetID() int64             { return int64(p.ID) }
-func (p Portfolio) SetID(id int64)           { p.ID = int(id) }
+func (p Portfolio) SetID(id int64)           { p.ID = uint(id) }
 func (p Portfolio) GetCreatedAt() time.Time  { return p.CreatedAt }
 func (p Portfolio) SetCreatedAt(t time.Time) { p.CreatedAt = t }
 func (p Portfolio) GetUpdatedAt() time.Time  { return p.UpdatedAt }

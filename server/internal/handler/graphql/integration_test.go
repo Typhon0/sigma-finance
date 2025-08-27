@@ -478,7 +478,7 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	t.Run("GetTransaction", func(t *testing.T) {
 		// Create a transaction directly in the database for testing
 		transaction := &model.Transaction{
-			PortfolioID:     testData.Portfolios[0].ID,
+			PortfolioID:     int(testData.Portfolios[0].ID),
 			AssetID:         testData.Assets[0].ID,
 			TransactionType: "BUY",
 			Quantity:        10.0,
@@ -500,7 +500,7 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 		// Create multiple transactions directly in the database
 		transactions := []*model.Transaction{
 			{
-				PortfolioID:     testData.Portfolios[0].ID,
+				PortfolioID:     int(testData.Portfolios[0].ID),
 				AssetID:         testData.Assets[0].ID,
 				TransactionType: "BUY",
 				Quantity:        5.0,
@@ -508,7 +508,7 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 				TransactionDate: time.Now().AddDate(0, 0, -1),
 			},
 			{
-				PortfolioID:     testData.Portfolios[0].ID,
+				PortfolioID:     int(testData.Portfolios[0].ID),
 				AssetID:         testData.Assets[1].ID,
 				TransactionType: "SELL",
 				Quantity:        2.0,
@@ -528,7 +528,7 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 		assert.GreaterOrEqual(t, len(allTransactions), 2)
 
 		// Test filtering by portfolio ID
-		portfolioIDStr := strconv.Itoa(testData.Portfolios[0].ID)
+		portfolioIDStr := strconv.Itoa(int(testData.Portfolios[0].ID))
 		filter := &gqlModel.TransactionFilter{PortfolioID: &portfolioIDStr}
 		portfolioTransactions, err := queryResolver.Transactions(ctx, filter, nil, nil)
 		require.NoError(t, err)

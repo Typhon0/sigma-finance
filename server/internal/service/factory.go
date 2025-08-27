@@ -23,6 +23,7 @@ type ServiceContainer struct {
 	Authentication AuthenticationService
 	Session        SessionService
 	Email          EmailService
+	Security       SecurityService
 }
 
 // NewServiceContainer creates a new service container with all services initialized
@@ -39,16 +40,21 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	// Initialize rate limiter
 	rateLimiter := NewInMemoryRateLimiter()
 
-	// Initialize security service with generated RSA keys
-	privateKey, publicKey, err := generateRSAKeyPair()
-	if err != nil {
-		panic(fmt.Sprintf("Failed to generate RSA key pair: %v", err))
+	// Initialize security service with configuration
+	securityConfig := SecurityConfig{
+		JWTSecretKey: cfg.JWT.SecretKey,
+		JWTAlgorithm: cfg.JWT.Algorithm,
+		BCryptCost:   cfg.Security.BcryptCost,
 	}
 
-	securityConfig := SecurityConfig{
-		JWTPrivateKey: privateKey,
-		JWTPublicKey:  publicKey,
-		BCryptCost:    12,
+	// If using RSA algorithms, generate keys (for now, we'll use HMAC)
+	if cfg.JWT.Algorithm == "RS256" || cfg.JWT.Algorithm == "RS384" || cfg.JWT.Algorithm == "RS512" {
+		privateKey, publicKey, err := generateRSAKeyPair()
+		if err != nil {
+			panic(fmt.Sprintf("Failed to generate RSA key pair: %v", err))
+		}
+		securityConfig.JWTPrivateKey = privateKey
+		securityConfig.JWTPublicKey = publicKey
 	}
 
 	securityService, err := NewSecurityService(securityConfig, rateLimiter)
@@ -96,6 +102,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		Authentication: authService,
 		Session:        sessionService,
 		Email:          emailService,
+		Security:       securityService,
 	}
 }
 

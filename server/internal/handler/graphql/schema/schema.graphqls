@@ -18,57 +18,57 @@ enum SortDirection {
 # The root of all read operations.
 # All arguments are now defined alongside their respective types.
 type Query {
-    user(id: ID!): User
-    users(filter: UserFilter, pagination: PaginationInput, orderBy: UserOrder): [User!]!
+    user(id: ID!): User @auth
+    users(filter: UserFilter, pagination: PaginationInput, orderBy: UserOrder): [User!]! @auth
 
-    portfolio(id: ID!): Portfolio
+    portfolio(id: ID!): Portfolio @auth
     # Returns portfolios with analytics for a user
-    GetPortfoliosWithAnalytics(userID: ID!): [Portfolio!]!
-    portfolios(filter: PortfolioFilter, pagination: PaginationInput, orderBy: PortfolioOrder): [Portfolio!]!
+    GetPortfoliosWithAnalytics(userID: ID!): [Portfolio!]! @auth
+    portfolios(filter: PortfolioFilter, pagination: PaginationInput, orderBy: PortfolioOrder): [Portfolio!]! @auth
 
-    asset(id: ID!): Asset
-    assets(filter: AssetFilter, pagination: PaginationInput, orderBy: AssetOrder): [Asset!]!
-    assetTypes: [AssetType!]!
+    asset(id: ID!): Asset @auth
+    assets(filter: AssetFilter, pagination: PaginationInput, orderBy: AssetOrder): [Asset!]! @auth
+    assetTypes: [AssetType!]! @auth
 
-    tag(id: ID!): Tag
-    tags: [Tag!]!
+    tag(id: ID!): Tag @auth
+    tags: [Tag!]! @auth
 
-    watchlist(id: ID!): Watchlist
-    watchlists(filter: WatchlistFilter, pagination: PaginationInput): [Watchlist!]!
+    watchlist(id: ID!): Watchlist @auth
+    watchlists(filter: WatchlistFilter, pagination: PaginationInput): [Watchlist!]! @auth
     
-    transaction(id: ID!): Transaction
-    transactions(filter: TransactionFilter, pagination: PaginationInput, orderBy: TransactionOrder): [Transaction!]!
+    transaction(id: ID!): Transaction @auth
+    transactions(filter: TransactionFilter, pagination: PaginationInput, orderBy: TransactionOrder): [Transaction!]! @auth
 }
 
 # The root of all write operations.
 type Mutation {
     # User Mutations
-    createUser(input: CreateUserInput!): User!
-    updateUser(id: ID!, input: UpdateUserInput!): User!
-    deleteUser(id: ID!): ID!
+    createUser(input: CreateUserInput!): User! @auth
+    updateUser(id: ID!, input: UpdateUserInput!): User! @auth
+    deleteUser(id: ID!): ID! @auth
 
     # Portfolio Mutations
-    createPortfolio(input: CreatePortfolioInput!): Portfolio!
-    updatePortfolio(id: ID!, input: UpdatePortfolioInput!): Portfolio!
-    deletePortfolio(id: ID!): ID!
-    addAssetToPortfolio(input: PortfolioAssetInput!): PortfolioAsset!
-    updateAssetInPortfolio(input: PortfolioAssetInput!): PortfolioAsset!
-    removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!): ID!
-    tagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
-    untagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio!
-    duplicatePortfolio(input: DuplicatePortfolioInput!): Portfolio!
-    reorderPortfolios(input: ReorderPortfoliosInput!): [Portfolio!]!
-    exportPortfolio(input: ExportPortfolioInput!): ExportResult!
+    createPortfolio(input: CreatePortfolioInput!): Portfolio! @auth
+    updatePortfolio(id: ID!, input: UpdatePortfolioInput!): Portfolio! @auth
+    deletePortfolio(id: ID!): ID! @auth
+    addAssetToPortfolio(input: PortfolioAssetInput!): PortfolioAsset! @auth
+    updateAssetInPortfolio(input: PortfolioAssetInput!): PortfolioAsset! @auth
+    removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!): ID! @auth
+    tagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio! @auth
+    untagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio! @auth
+    duplicatePortfolio(input: DuplicatePortfolioInput!): Portfolio! @auth
+    reorderPortfolios(input: ReorderPortfoliosInput!): [Portfolio!]! @auth
+    exportPortfolio(input: ExportPortfolioInput!): ExportResult! @auth
 
     # Asset Mutations
-    createStockAsset(input: CreateStockInput!): Stock!
-    createCryptoAsset(input: CreateCryptoInput!): Crypto!
-    tagAsset(assetID: ID!, tagID: ID!): Asset!
-    untagAsset(assetID: ID!, tagID: ID!): Asset!
+    createStockAsset(input: CreateStockInput!): Stock! @auth
+    createCryptoAsset(input: CreateCryptoInput!): Crypto! @auth
+    tagAsset(assetID: ID!, tagID: ID!): Asset! @auth
+    untagAsset(assetID: ID!, tagID: ID!): Asset! @auth
 
     # Watchlist Mutations
-    createWatchlist(input: CreateWatchlistInput!): Watchlist!
-    deleteWatchlist(id: ID!): ID!
-    addAssetToWatchlist(watchlistID: ID!, assetID: ID!): Watchlist!
-    removeAssetFromWatchlist(watchlistID: ID!, assetID: ID!): Watchlist!
+    createWatchlist(input: CreateWatchlistInput!): Watchlist! @auth
+    deleteWatchlist(id: ID!): ID! @auth
+    addAssetToWatchlist(watchlistID: ID!, assetID: ID!): Watchlist! @auth
+    removeAssetFromWatchlist(watchlistID: ID!, assetID: ID!): Watchlist! @auth
 }

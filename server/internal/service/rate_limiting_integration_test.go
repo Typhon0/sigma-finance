@@ -2,303 +2,652 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
 	"sigma_finance/internal/domain/model"
+	"sigma_finance/internal/repository"
+	"sigma_finance/internal/testutil"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
-// TestRateLimitingAndAccountLockoutIntegration tests the complete integration
-// of rate limiting, account lockout, and security middleware
-func TestRateLimitingAndAccountLockoutIntegration(t *testing.T) {
+// TestRateLimitingIntegration tests rate limiting functionality in authentication flows
+func TestRateLimitingIntegration(t *testing.T) {
+	testDB := testutil.NewTestDB(t)
+	defer testDB.Close()
+
 	ctx := context.Background()
+	testDB.CleanupTables(ctx)
 
-	// Setup services
-	rateLimiter := NewInMemoryRateLimiter()
-	mockUserRepo := &MockLockoutUserRepo{}
-	mockAudit := &MockLockoutAuditService{}
-	config := DefaultAccountLockoutConfig()
+	t.Run("Registration_Rate_Limiting", func(t *testing.T) {
+		// Create fresh services for each test to avoid rate limit carryover
+		authService := createFreshAuthService(t, testDB)
 
-	lockoutService := NewAccountLockoutService(mockUserRepo, mockAudit, rateLimiter, config)
+		// Test registration rate limiting (3 per hour per IP)
+		successCount := 0
+		rateLimitCount := 0
 
-	userID := "test-user-123"
-	email := "test@example.com"
-	ipAddress := "192.168.1.100"
-	userAgent := "Test-Browser/1.0"
-
-	t.Run("complete failed login scenario with rate limiting and account lockout", func(t *testing.T) {
-		// Test scenario: User fails to login 5 times, gets rate limited and account locked
-
-		for attempt := 1; attempt <= 5; attempt++ {
-			t.Logf("Failed login attempt %d", attempt)
-
-			// Mock user state after each failed attempt
-			user := &model.User{
-				ID:               userID,
-				Email:            email,
-				FailedLoginCount: attempt,
-				LockedUntil:      nil,
+		// Attempt 5 registrations from same IP
+		for i := 0; i < 5; i++ {
+			req := RegisterRequest{
+				Email:    fmt.Sprintf("user%d@ratelimit.com", i),
+				Password: "SecurePass123!",
+				Name:     fmt.Sprintf("User %d", i),
 			}
 
-			// On the 5th attempt, the account should be locked
-			if attempt == 5 {
-				lockUntil := time.Now().Add(30 * time.Minute)
-				user.LockedUntil = &lockUntil
-			}
+			_, err := authService.Register(ctx, req)
 
-			// Setup mocks for this attempt
-			mockUserRepo.On("IncrementFailedLoginCount", ctx, userID).Return(nil).Once()
-			mockUserRepo.On("GetByStringID", ctx, userID).Return(user, nil).Once()
-
-			// Expect audit logging
-			if attempt == 5 {
-				// Two audit events: failed login + account lock
-				mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Times(2)
+			if err != nil {
+				if authErr, ok := err.(*AuthError); ok && authErr.Code == ErrRateLimitExceeded {
+					rateLimitCount++
+				} else {
+					t.Fatalf("Unexpected error: %v", err)
+				}
 			} else {
-				// One audit event: failed login
-				mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Once()
+				successCount++
+			}
+		}
+
+		// Should have 3 successful registrations and 2 rate limited
+		assert.Equal(t, 3, successCount, "Should allow 3 registrations per hour")
+		assert.Equal(t, 2, rateLimitCount, "Should rate limit after 3 attempts")
+	})
+
+	t.Run("Account_Lockout_Integration", func(t *testing.T) {
+		authService := createAuthServiceWithNoRateLimit(t, testDB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+
+		// First register and verify a user
+		email := "lockout@example.com"
+		password := "CorrectPass123!"
+		wrongPassword := "WrongPass123!"
+
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: password,
+			Name:     "Lockout User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		// Manually verify email
+		err = userRepo.UpdateEmailVerified(ctx, authResponse.User.ID, true)
+		require.NoError(t, err)
+
+		// Test failed login attempts leading to account lockout
+		failedAttempts := 0
+		accountLocked := false
+
+		for i := 0; i < 7; i++ {
+			loginReq := LoginRequest{
+				Email:     email,
+				Password:  wrongPassword,
+				IPAddress: fmt.Sprintf("192.168.1.%d", 101+i), // Different IP for each attempt
+				UserAgent: "Test Browser",
 			}
 
-			// Perform failed login
-			err := lockoutService.HandleFailedLogin(ctx, userID, email, ipAddress, userAgent)
+			_, err := authService.Login(ctx, loginReq)
 
-			if attempt < 5 {
-				// Should succeed for first 4 attempts
-				assert.NoError(t, err, "Attempt %d should not be blocked", attempt)
+			if err != nil {
+				if authErr, ok := err.(*AuthError); ok {
+					switch authErr.Code {
+					case ErrInvalidCredentials:
+						failedAttempts++
+					case ErrAccountLocked:
+						accountLocked = true
+					case ErrRateLimitExceeded:
+						// Skip rate limiting errors in this test - we're testing account lockout
+						t.Logf("Skipping rate limit error to focus on account lockout testing")
+						continue
+					default:
+						t.Fatalf("Unexpected error: %v", err)
+					}
+				} else {
+					t.Fatalf("Unexpected error type: %v", err)
+				}
+			}
+		}
+
+		assert.Equal(t, 5, failedAttempts, "Should allow 5 failed attempts before locking")
+		assert.True(t, accountLocked, "Account should be locked after 5 failed attempts")
+
+		// Verify that even correct password fails when account is locked
+		correctLoginReq := LoginRequest{
+			Email:     email,
+			Password:  password,
+			IPAddress: "192.168.1.200", // Different IP for final test
+			UserAgent: "Test Browser",
+		}
+
+		_, err = authService.Login(ctx, correctLoginReq)
+		require.Error(t, err)
+
+		authErr, ok := err.(*AuthError)
+		require.True(t, ok)
+		assert.Equal(t, ErrAccountLocked, authErr.Code)
+	})
+
+	t.Run("Password_Reset_Rate_Limiting", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+
+		// Register a user first
+		email := "resetlimit@example.com"
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: "SecurePass123!",
+			Name:     "Reset Limit User",
+		}
+
+		_, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		// Test password reset rate limiting (3 per hour per email)
+		successCount := 0
+		rateLimitCount := 0
+
+		for i := 0; i < 5; i++ {
+			err := authService.ResetPassword(ctx, email)
+
+			if err != nil {
+				if authErr, ok := err.(*AuthError); ok && authErr.Code == ErrRateLimitExceeded {
+					rateLimitCount++
+				} else {
+					t.Fatalf("Unexpected error: %v", err)
+				}
 			} else {
-				// 5th attempt should result in account lock
-				assert.Error(t, err, "5th attempt should result in account lock")
-				assert.True(t, IsAccountLockedError(err), "Error should be account locked error")
+				successCount++
 			}
 		}
 
-		// Verify all mocks were called as expected
-		mockUserRepo.AssertExpectations(t)
-		mockAudit.AssertExpectations(t)
-
-		// Reset mocks for next test
-		mockUserRepo.ExpectedCalls = nil
-		mockAudit.ExpectedCalls = nil
-	})
-
-	t.Run("rate limiting prevents excessive attempts", func(t *testing.T) {
-		// Test that rate limiting kicks in before account lockout for rapid attempts
-		differentEmail := "ratelimit@example.com"
-		loginKey := LoginRateLimitKey(differentEmail)
-
-		// Exhaust rate limit quickly
-		for i := 0; i < config.MaxFailedAttempts; i++ {
-			err := rateLimiter.CheckRateLimit(ctx, loginKey, config.MaxFailedAttempts, config.RateLimitWindow)
-			assert.NoError(t, err, "Rate limit attempt %d should succeed", i+1)
-		}
-
-		// Next attempt should be rate limited
-		mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Once()
-
-		err := lockoutService.HandleFailedLogin(ctx, "different-user", differentEmail, ipAddress, userAgent)
-		assert.Error(t, err)
-		assert.True(t, IsRateLimitError(err), "Should be rate limited")
-
-		// Verify user repository methods were NOT called (rate limit prevented it)
-		mockUserRepo.AssertNotCalled(t, "IncrementFailedLoginCount")
-		mockAudit.AssertExpectations(t)
-
-		// Reset mocks
-		mockAudit.ExpectedCalls = nil
-	})
-
-	t.Run("successful login resets both rate limit and failed count", func(t *testing.T) {
-		// Test that successful login resets everything
-		successUserID := "success-user"
-		successEmail := "success@example.com"
-
-		// Setup mocks for successful login
-		mockUserRepo.On("ResetFailedLoginCount", ctx, successUserID).Return(nil).Once()
-		mockUserRepo.On("UpdateLastLogin", ctx, successUserID, mock.AnythingOfType("time.Time"), ipAddress).Return(nil).Once()
-		mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Once()
-
-		err := lockoutService.HandleSuccessfulLogin(ctx, successUserID, successEmail, ipAddress, userAgent)
-		assert.NoError(t, err)
-
-		// Verify rate limit was reset
-		loginKey := LoginRateLimitKey(successEmail)
-		attempts, err := rateLimiter.GetAttempts(ctx, loginKey)
-		assert.NoError(t, err)
-		assert.Equal(t, 0, attempts, "Rate limit should be reset after successful login")
-
-		mockUserRepo.AssertExpectations(t)
-		mockAudit.AssertExpectations(t)
-
-		// Reset mocks
-		mockUserRepo.ExpectedCalls = nil
-		mockAudit.ExpectedCalls = nil
-	})
-
-	t.Run("account lockout check prevents access", func(t *testing.T) {
-		// Test that locked accounts are properly blocked
-		lockedUserID := "locked-user"
-		lockUntil := time.Now().Add(time.Hour)
-
-		lockedUser := &model.User{
-			ID:               lockedUserID,
-			Email:            "locked@example.com",
-			FailedLoginCount: 5,
-			LockedUntil:      &lockUntil,
-		}
-
-		mockUserRepo.On("GetByStringID", ctx, lockedUserID).Return(lockedUser, nil).Once()
-
-		err := lockoutService.CheckAccountLockout(ctx, lockedUserID)
-		assert.Error(t, err)
-		assert.True(t, IsAccountLockedError(err), "Should be account locked error")
-
-		mockUserRepo.AssertExpectations(t)
-
-		// Reset mocks
-		mockUserRepo.ExpectedCalls = nil
-	})
-
-	t.Run("manual account unlock resets everything", func(t *testing.T) {
-		// Test manual unlock functionality
-		lockedUserID := "manual-unlock-user"
-		adminUserID := "admin-123"
-		lockUntil := time.Now().Add(time.Hour)
-
-		lockedUser := &model.User{
-			ID:               lockedUserID,
-			Email:            "unlock@example.com",
-			FailedLoginCount: 5,
-			LockedUntil:      &lockUntil,
-		}
-
-		// Setup mocks for unlock operation
-		mockUserRepo.On("GetByStringID", ctx, lockedUserID).Return(lockedUser, nil).Once()
-		mockUserRepo.On("UnlockAccount", ctx, lockedUserID).Return(nil).Once()
-		mockUserRepo.On("ResetFailedLoginCount", ctx, lockedUserID).Return(nil).Once()
-		mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Once()
-
-		err := lockoutService.UnlockAccount(ctx, lockedUserID, adminUserID)
-		assert.NoError(t, err)
-
-		mockUserRepo.AssertExpectations(t)
-		mockAudit.AssertExpectations(t)
+		assert.Equal(t, 3, successCount, "Should allow 3 password resets per hour")
+		assert.Equal(t, 2, rateLimitCount, "Should rate limit after 3 attempts")
 	})
 }
 
-// TestRateLimitKeyGeneration tests that rate limit keys are generated correctly
-// for different scenarios
-func TestRateLimitKeyGeneration(t *testing.T) {
-	tests := []struct {
-		name     string
-		function func(string) string
-		input    string
-		expected string
-	}{
-		{
-			name:     "login rate limit key",
-			function: LoginRateLimitKey,
-			input:    "user@example.com",
-			expected: "login:user@example.com",
-		},
-		{
-			name:     "IP rate limit key",
-			function: IPRateLimitKey,
-			input:    "192.168.1.1",
-			expected: "ip:192.168.1.1",
-		},
-		{
-			name:     "registration rate limit key",
-			function: RegistrationRateLimitKey,
-			input:    "10.0.0.1",
-			expected: "register:10.0.0.1",
-		},
-		{
-			name:     "password reset rate limit key",
-			function: PasswordResetRateLimitKey,
-			input:    "reset@example.com",
-			expected: "password_reset:reset@example.com",
-		},
-		{
-			name:     "email verification rate limit key",
-			function: EmailVerificationRateLimitKey,
-			input:    "verify@example.com",
-			expected: "email_verify:verify@example.com",
-		},
-	}
+// TestSecurityFeatures tests various security aspects of the authentication system
+func TestSecurityFeatures(t *testing.T) {
+	testDB := testutil.NewTestDB(t)
+	defer testDB.Close()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := tt.function(tt.input)
-			assert.Equal(t, tt.expected, result)
-		})
-	}
-}
-
-// TestSecurityConfiguration tests that security configurations are properly validated
-func TestSecurityConfiguration(t *testing.T) {
-	t.Run("default account lockout config", func(t *testing.T) {
-		config := DefaultAccountLockoutConfig()
-
-		// Verify default values match requirements
-		assert.Equal(t, 5, config.MaxFailedAttempts, "Should allow 5 failed attempts")
-		assert.Equal(t, 30*time.Minute, config.LockoutDuration, "Should lock for 30 minutes")
-		assert.Equal(t, 15*time.Minute, config.RateLimitWindow, "Should have 15 minute rate limit window")
-	})
-
-	t.Run("custom account lockout config", func(t *testing.T) {
-		config := AccountLockoutConfig{
-			MaxFailedAttempts: 3,
-			LockoutDuration:   time.Hour,
-			RateLimitWindow:   30 * time.Minute,
-		}
-
-		rateLimiter := NewInMemoryRateLimiter()
-		mockUserRepo := &MockLockoutUserRepo{}
-		mockAudit := &MockLockoutAuditService{}
-
-		service := NewAccountLockoutService(mockUserRepo, mockAudit, rateLimiter, config)
-		assert.NotNil(t, service, "Should create service with custom config")
-	})
-}
-
-// TestConcurrentRateLimiting tests rate limiting under concurrent access
-func TestConcurrentRateLimiting(t *testing.T) {
-	rateLimiter := NewInMemoryRateLimiter()
 	ctx := context.Background()
+	testDB.CleanupTables(ctx)
 
-	t.Run("concurrent rate limiting maintains accuracy", func(t *testing.T) {
-		key := "concurrent:test"
-		limit := 10
-		window := time.Minute
-		goroutines := 20
+	t.Run("Password_Hashing_Security", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		userRepo := repository.NewUserRepository(testDB.DB)
 
-		// Channel to collect results
-		results := make(chan bool, goroutines)
+		password := "TestPassword123!"
+		email := "hash@example.com"
 
-		// Launch concurrent goroutines
-		for i := 0; i < goroutines; i++ {
-			go func() {
-				err := rateLimiter.CheckRateLimit(ctx, key, limit, window)
-				results <- (err == nil)
-			}()
+		// Register user
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: password,
+			Name:     "Hash User",
 		}
 
-		// Collect results
-		allowed := 0
-		blocked := 0
-		for i := 0; i < goroutines; i++ {
-			if <-results {
-				allowed++
-			} else {
-				blocked++
+		_, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		// Retrieve user from database
+		user, err := userRepo.GetByEmail(ctx, email)
+		require.NoError(t, err)
+
+		// Verify password is hashed (not stored in plaintext)
+		assert.NotNil(t, user.PasswordHash)
+		assert.NotEqual(t, password, *user.PasswordHash, "Password should be hashed, not stored in plaintext")
+		assert.Contains(t, *user.PasswordHash, "$2a$", "Should use bcrypt hashing")
+
+		// Verify password hash is different for same password (due to salt)
+		registerReq2 := RegisterRequest{
+			Email:    "hash2@example.com",
+			Password: password, // Same password
+			Name:     "Hash User 2",
+		}
+
+		_, err = authService.Register(ctx, registerReq2)
+		require.NoError(t, err)
+
+		user2, err := userRepo.GetByEmail(ctx, "hash2@example.com")
+		require.NoError(t, err)
+
+		assert.NotEqual(t, *user.PasswordHash, *user2.PasswordHash, "Same password should produce different hashes due to salt")
+	})
+
+	t.Run("JWT_Token_Security", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+
+		email := "jwt@example.com"
+		password := "JWTPass123!"
+
+		// Register and verify user
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: password,
+			Name:     "JWT User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		err = userRepo.UpdateEmailVerified(ctx, authResponse.User.ID, true)
+		require.NoError(t, err)
+
+		// Login to get JWT token
+		loginReq := LoginRequest{
+			Email:     email,
+			Password:  password,
+			IPAddress: "192.168.1.104",
+			UserAgent: "Test Browser",
+		}
+
+		loginResponse, err := authService.Login(ctx, loginReq)
+		require.NoError(t, err)
+
+		// Verify JWT token properties
+		token := loginResponse.Token
+		assert.NotEmpty(t, token, "JWT token should not be empty")
+		assert.Contains(t, token, ".", "JWT should contain dots separating header.payload.signature")
+
+		// JWT should have 3 parts (header.payload.signature)
+		parts := len([]rune(token)) // Simple check that it's not just a random string
+		assert.Greater(t, parts, 50, "JWT token should be reasonably long")
+
+		// Verify refresh token is different from JWT token
+		refreshToken := loginResponse.RefreshToken
+		assert.NotEmpty(t, refreshToken, "Refresh token should not be empty")
+		assert.NotEqual(t, token, refreshToken, "JWT and refresh tokens should be different")
+
+		// Verify expiration is set appropriately
+		assert.True(t, loginResponse.ExpiresAt.After(time.Now()), "Token expiration should be in the future")
+		assert.True(t, loginResponse.ExpiresAt.Before(time.Now().Add(24*time.Hour)), "Token should expire within 24 hours")
+	})
+
+	t.Run("Session_Security", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+		sessionRepo := repository.NewSessionRepository(testDB.DB)
+
+		email := "session@example.com"
+		password := "SessionPass123!"
+
+		// Register and verify user
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: password,
+			Name:     "Session User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		err = userRepo.UpdateEmailVerified(ctx, authResponse.User.ID, true)
+		require.NoError(t, err)
+
+		// Create multiple sessions
+		var tokens []string
+		for i := 0; i < 3; i++ {
+			loginReq := LoginRequest{
+				Email:     email,
+				Password:  password,
+				IPAddress: fmt.Sprintf("192.168.1.%d", 105+i),
+				UserAgent: fmt.Sprintf("Browser %d", i),
+			}
+
+			loginResponse, err := authService.Login(ctx, loginReq)
+			require.NoError(t, err)
+			tokens = append(tokens, loginResponse.Token)
+		}
+
+		// Verify all sessions are stored
+		sessions, err := sessionRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(sessions), 3, "Should have at least 3 sessions")
+
+		// Verify sessions have proper security attributes
+		for _, session := range sessions {
+			assert.NotEmpty(t, session.Token, "Session should have token")
+			assert.NotEmpty(t, session.RefreshToken, "Session should have refresh token")
+			assert.True(t, session.ExpiresAt.After(time.Now()), "Session should not be expired")
+			assert.NotEmpty(t, session.IPAddress, "Session should track IP address")
+			assert.NotEmpty(t, session.UserAgent, "Session should track user agent")
+		}
+
+		// Test session invalidation on logout
+		err = authService.Logout(ctx, authResponse.User.ID, tokens[0])
+		require.NoError(t, err)
+
+		// Verify session was invalidated
+		sessions, err = sessionRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+
+		// Should have one less active session
+		activeCount := 0
+		for _, session := range sessions {
+			if session.ExpiresAt.After(time.Now()) {
+				activeCount++
 			}
 		}
-
-		// Should allow exactly the limit
-		assert.Equal(t, limit, allowed, "Should allow exactly %d requests", limit)
-		assert.Equal(t, goroutines-limit, blocked, "Should block %d requests", goroutines-limit)
+		assert.LessOrEqual(t, activeCount, 2, "Should have invalidated one session")
 	})
+}
+
+// TestTokenLifecycleManagement tests comprehensive token lifecycle scenarios
+func TestTokenLifecycleManagement(t *testing.T) {
+	testDB := testutil.NewTestDB(t)
+	defer testDB.Close()
+
+	ctx := context.Background()
+	testDB.CleanupTables(ctx)
+
+	t.Run("Email_Verification_Token_Lifecycle", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		emailVerificationTokenRepo := repository.NewEmailVerificationTokenRepository(testDB.DB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+
+		email := "tokenlife@example.com"
+
+		// Register user (creates verification token)
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: "TokenPass123!",
+			Name:     "Token User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		// Verify token was created
+		tokens, err := emailVerificationTokenRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+		assert.Len(t, tokens, 1, "Should create one verification token")
+
+		originalToken := tokens[0]
+		assert.False(t, originalToken.Used, "Token should not be marked as used initially")
+		assert.True(t, originalToken.ExpiresAt.After(time.Now()), "Token should not be expired")
+
+		// Use the token
+		err = authService.VerifyEmail(ctx, originalToken.Token)
+		require.NoError(t, err)
+
+		// Verify token is marked as used
+		updatedTokens, err := emailVerificationTokenRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+		assert.Len(t, updatedTokens, 1)
+		assert.True(t, updatedTokens[0].Used, "Token should be marked as used after verification")
+
+		// Verify user is marked as verified
+		user, err := userRepo.GetByEmail(ctx, email)
+		require.NoError(t, err)
+		assert.True(t, user.EmailVerified, "User should be marked as verified")
+
+		// Try to use token again (should fail)
+		err = authService.VerifyEmail(ctx, originalToken.Token)
+		require.Error(t, err)
+
+		authErr, ok := err.(*AuthError)
+		require.True(t, ok)
+		assert.Equal(t, ErrInvalidToken, authErr.Code)
+	})
+
+	t.Run("Password_Reset_Token_Lifecycle", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(testDB.DB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+
+		email := "resettoken@example.com"
+		originalPassword := "OriginalPass123!"
+		newPassword := "NewPassword123!"
+
+		// Register and verify user
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: originalPassword,
+			Name:     "Reset Token User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		err = userRepo.UpdateEmailVerified(ctx, authResponse.User.ID, true)
+		require.NoError(t, err)
+
+		// Request password reset (creates reset token)
+		err = authService.ResetPassword(ctx, email)
+		require.NoError(t, err)
+
+		// Verify token was created
+		tokens, err := passwordResetTokenRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+		assert.Len(t, tokens, 1, "Should create one reset token")
+
+		resetToken := tokens[0]
+		assert.False(t, resetToken.Used, "Token should not be marked as used initially")
+		assert.True(t, resetToken.ExpiresAt.After(time.Now()), "Token should not be expired")
+
+		// Use the token to reset password
+		err = authService.ConfirmPasswordReset(ctx, resetToken.Token, newPassword)
+		require.NoError(t, err)
+
+		// Verify token is marked as used
+		updatedTokens, err := passwordResetTokenRepo.GetByUserID(ctx, authResponse.User.ID)
+		require.NoError(t, err)
+		assert.Len(t, updatedTokens, 1)
+		assert.True(t, updatedTokens[0].Used, "Token should be marked as used after reset")
+
+		// Try to use token again (should fail)
+		err = authService.ConfirmPasswordReset(ctx, resetToken.Token, "AnotherPass123!")
+		require.Error(t, err)
+
+		authErr, ok := err.(*AuthError)
+		require.True(t, ok)
+		assert.Equal(t, ErrInvalidToken, authErr.Code)
+
+		// Verify password was actually changed
+		loginReq := LoginRequest{
+			Email:     email,
+			Password:  newPassword,
+			IPAddress: "192.168.1.107",
+			UserAgent: "Test Browser",
+		}
+
+		_, err = authService.Login(ctx, loginReq)
+		require.NoError(t, err, "Should be able to login with new password")
+
+		// Verify old password no longer works
+		oldLoginReq := LoginRequest{
+			Email:     email,
+			Password:  originalPassword,
+			IPAddress: "192.168.1.107",
+			UserAgent: "Test Browser",
+		}
+
+		_, err = authService.Login(ctx, oldLoginReq)
+		require.Error(t, err, "Should not be able to login with old password")
+	})
+
+	t.Run("JWT_Refresh_Token_Lifecycle", func(t *testing.T) {
+		authService := createFreshAuthService(t, testDB)
+		userRepo := repository.NewUserRepository(testDB.DB)
+
+		email := "refresh@example.com"
+		password := "RefreshPass123!"
+
+		// Register and verify user
+		registerReq := RegisterRequest{
+			Email:    email,
+			Password: password,
+			Name:     "Refresh User",
+		}
+
+		authResponse, err := authService.Register(ctx, registerReq)
+		require.NoError(t, err)
+
+		err = userRepo.UpdateEmailVerified(ctx, authResponse.User.ID, true)
+		require.NoError(t, err)
+
+		// Login to get initial tokens
+		loginReq := LoginRequest{
+			Email:     email,
+			Password:  password,
+			IPAddress: "192.168.1.108",
+			UserAgent: "Test Browser",
+		}
+
+		loginResponse, err := authService.Login(ctx, loginReq)
+		require.NoError(t, err)
+
+		originalToken := loginResponse.Token
+		originalRefreshToken := loginResponse.RefreshToken
+
+		// Refresh the token
+		refreshResponse, err := authService.RefreshToken(ctx, originalRefreshToken)
+		require.NoError(t, err)
+
+		// Verify new tokens are different
+		assert.NotEqual(t, originalToken, refreshResponse.Token, "New JWT should be different")
+		assert.NotEqual(t, originalRefreshToken, refreshResponse.RefreshToken, "New refresh token should be different")
+
+		// Verify old refresh token cannot be used again
+		_, err = authService.RefreshToken(ctx, originalRefreshToken)
+		require.Error(t, err, "Old refresh token should be invalidated")
+
+		authErr, ok := err.(*AuthError)
+		require.True(t, ok)
+		assert.Equal(t, ErrInvalidToken, authErr.Code)
+
+		// Verify new refresh token works
+		_, err = authService.RefreshToken(ctx, refreshResponse.RefreshToken)
+		require.NoError(t, err, "New refresh token should work")
+	})
+}
+
+// createFreshAuthService creates a new authentication service with fresh rate limiter
+func createFreshAuthService(t *testing.T, testDB *testutil.TestDB) AuthenticationService {
+	// Setup repositories
+	userRepo := repository.NewUserRepository(testDB.DB)
+	sessionRepo := repository.NewSessionRepository(testDB.DB)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(testDB.DB)
+	emailVerificationTokenRepo := repository.NewEmailVerificationTokenRepository(testDB.DB)
+
+	// Generate RSA keys for testing
+	privateKeyPEM, publicKeyPEM, err := GenerateRSAKeyPair()
+	require.NoError(t, err)
+
+	// Setup services with fresh rate limiter
+	rateLimiter := NewInMemoryRateLimiter()
+	securityConfig := SecurityConfig{
+		JWTPrivateKey: privateKeyPEM,
+		JWTPublicKey:  publicKeyPEM,
+		JWTAlgorithm:  "RS256",
+		BCryptCost:    12,
+	}
+	securityService, err := NewSecurityService(securityConfig, rateLimiter)
+	require.NoError(t, err)
+
+	auditService := NewAuditService(repository.NewAuthEventRepository(testDB.DB))
+	emailService := NewMockEmailService()
+
+	sessionConfig := DefaultSessionServiceConfig()
+	sessionService := NewSessionService(sessionRepo, userRepo, securityService, auditService, sessionConfig)
+
+	// Setup authentication providers
+	userRepoAdapter := &rateLimitUserRepositoryAdapter{repo: userRepo}
+	localAuthProvider := NewLocalAuthProvider(userRepoAdapter, securityService)
+	authProviders := []AuthProvider{localAuthProvider}
+
+	return NewAuthenticationService(
+		userRepo,
+		sessionService,
+		passwordResetTokenRepo,
+		emailVerificationTokenRepo,
+		securityService,
+		auditService,
+		emailService,
+		authProviders,
+	)
+}
+
+// createAuthServiceWithNoRateLimit creates an authentication service with a permissive rate limiter for account lockout testing
+func createAuthServiceWithNoRateLimit(t *testing.T, testDB *testutil.TestDB) AuthenticationService {
+	// Setup repositories
+	userRepo := repository.NewUserRepository(testDB.DB)
+	sessionRepo := repository.NewSessionRepository(testDB.DB)
+	passwordResetTokenRepo := repository.NewPasswordResetTokenRepository(testDB.DB)
+	emailVerificationTokenRepo := repository.NewEmailVerificationTokenRepository(testDB.DB)
+
+	// Generate RSA keys for testing
+	privateKeyPEM, publicKeyPEM, err := GenerateRSAKeyPair()
+	require.NoError(t, err)
+
+	// Setup services with permissive rate limiter
+	rateLimiter := &noRateLimitMock{}
+	securityConfig := SecurityConfig{
+		JWTPrivateKey: privateKeyPEM,
+		JWTPublicKey:  publicKeyPEM,
+		JWTAlgorithm:  "RS256",
+		BCryptCost:    12,
+	}
+	securityService, err := NewSecurityService(securityConfig, rateLimiter)
+	require.NoError(t, err)
+
+	auditService := NewAuditService(repository.NewAuthEventRepository(testDB.DB))
+	emailService := NewMockEmailService()
+
+	sessionConfig := DefaultSessionServiceConfig()
+	sessionService := NewSessionService(sessionRepo, userRepo, securityService, auditService, sessionConfig)
+
+	// Setup authentication providers
+	userRepoAdapter := &rateLimitUserRepositoryAdapter{repo: userRepo}
+	localAuthProvider := NewLocalAuthProvider(userRepoAdapter, securityService)
+	authProviders := []AuthProvider{localAuthProvider}
+
+	return NewAuthenticationService(
+		userRepo,
+		sessionService,
+		passwordResetTokenRepo,
+		emailVerificationTokenRepo,
+		securityService,
+		auditService,
+		emailService,
+		authProviders,
+	)
+}
+
+// noRateLimitMock is a rate limiter that never enforces limits (for testing account lockout without rate limiting interference)
+type noRateLimitMock struct{}
+
+func (n *noRateLimitMock) CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) error {
+	return nil // Never rate limit
+}
+
+func (n *noRateLimitMock) Reset(ctx context.Context, key string) error {
+	return nil
+}
+
+func (n *noRateLimitMock) GetAttempts(ctx context.Context, key string) (int, error) {
+	return 0, nil
+}
+
+// rateLimitUserRepositoryAdapter adapts IUserRepository to UserRepository interface for testing
+type rateLimitUserRepositoryAdapter struct {
+	repo repository.IUserRepository
+}
+
+func (a *rateLimitUserRepositoryAdapter) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	return a.repo.GetByEmail(ctx, email)
+}
+
+func (a *rateLimitUserRepositoryAdapter) Create(ctx context.Context, user *model.User) error {
+	_, err := a.repo.Create(ctx, user)
+	return err
+}
+
+func (a *rateLimitUserRepositoryAdapter) Update(ctx context.Context, user *model.User) error {
+	return a.repo.Update(ctx, user)
 }

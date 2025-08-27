@@ -56,7 +56,7 @@ func ToGraphQLTransaction(transaction *model.Transaction) *graphmodel.Transactio
 
 func ToGraphQLPortfolio(p *model.Portfolio) *graphmodel.Portfolio {
 	return &graphmodel.Portfolio{
-		ID:           strconv.Itoa(p.ID),
+		ID:           strconv.Itoa(int(p.ID)),
 		Name:         p.Name,
 		Description:  &p.Description,
 		CreatedAt:    p.CreatedAt,

@@ -15,6 +15,7 @@ type IUserRepository interface {
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByEmailWithAuthMethods(ctx context.Context, email string) (*model.User, error)
 	GetByStringID(ctx context.Context, id string) (*model.User, error)
+	DeleteByStringID(ctx context.Context, id string) error
 	UpdatePasswordHash(ctx context.Context, userID string, passwordHash string) error
 	UpdateEmailVerified(ctx context.Context, userID string, verified bool) error
 	UpdateLastLogin(ctx context.Context, userID string, loginTime time.Time, ipAddress string) error
@@ -45,6 +46,25 @@ func (r *UserRepository) GetByStringID(ctx context.Context, id string) (*model.U
 		return nil, err
 	}
 	return &user, nil
+}
+
+// DeleteByStringID deletes a user by string ID
+func (r *UserRepository) DeleteByStringID(ctx context.Context, id string) error {
+	res, err := r.db.NewDelete().
+		Model((*model.User)(nil)).
+		Where("id = ?", id).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }
 
 // GetByEmail retrieves a user by email address

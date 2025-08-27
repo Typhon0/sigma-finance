@@ -11,13 +11,15 @@ import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 
 // Hook for critical dashboard data (loads first)
 export const useCriticalDashboardData = (userID: string) => {
+	console.log('useCriticalDashboardData called with userID:', userID, 'skip:', !userID || userID.trim() === "");
+	
 	return useQuery(GET_DASHBOARD_CRITICAL, {
 		variables: { userID },
 		fetchPolicy: "cache-and-network",
 		errorPolicy: "all",
 		notifyOnNetworkStatusChange: true,
-		// Skip if no userID
-		skip: !userID,
+		// Skip if no userID or userID is empty string
+		skip: !userID || userID.trim() === "",
 	});
 };
 
@@ -27,8 +29,8 @@ export const useSecondaryDashboardData = (userID: string, enabled = true) => {
 		variables: { userID },
 		fetchPolicy: "cache-first",
 		errorPolicy: "all",
-		// Only fetch when enabled and userID exists
-		skip: !userID || !enabled,
+		// Only fetch when enabled and userID exists and is not empty
+		skip: !userID || userID.trim() === "" || !enabled,
 	});
 };
 
@@ -40,7 +42,7 @@ export const usePortfolioCards = (userID: string) => {
 		errorPolicy: "all",
 		// Poll every 5 minutes for portfolio updates
 		pollInterval: 5 * 60 * 1000,
-		skip: !userID,
+		skip: !userID || userID.trim() === "",
 	});
 };
 
@@ -57,7 +59,7 @@ export const useRecentTransactions = (userID: string, limit = 5) => {
 
 	// Load transactions when component becomes visible
 	const loadWhenVisible = useCallback(() => {
-		if (userID) {
+		if (userID && userID.trim() !== "") {
 			loadTransactions();
 		}
 	}, [userID, loadTransactions]);
@@ -78,7 +80,7 @@ export const useAssetPerformance = (userID: string, limit = 10) => {
 		errorPolicy: "all",
 		// Poll every 10 minutes for performance updates
 		pollInterval: 10 * 60 * 1000,
-		skip: !userID,
+		skip: !userID || userID.trim() === "",
 	});
 };
 
@@ -88,7 +90,7 @@ export const useDashboardSubscription = (userID: string, enabled = true) => {
 		PORTFOLIO_UPDATE_SUBSCRIPTION,
 		{
 			variables: { userID },
-			skip: !userID || !enabled,
+			skip: !userID || userID.trim() === "" || !enabled,
 			onSubscriptionData: ({ subscriptionData }) => {
 				if (subscriptionData.data) {
 					console.log("Dashboard update received:", subscriptionData.data);

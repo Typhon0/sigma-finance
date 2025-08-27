@@ -14,6 +14,11 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PortfoliosCreateRouteImport } from './routes/portfolios.create'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios.$portfolioId'
+import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
+import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
+import { Route as AuthRegisterRouteImport } from './routes/auth.register'
+import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
 
 const PortfoliosRoute = PortfoliosRouteImport.update({
   id: '/portfolios',
@@ -40,28 +45,69 @@ const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
   path: '/$portfolioId',
   getParentRoute: () => PortfoliosRoute,
 } as any)
+const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
+  id: '/auth/verify-email',
+  path: '/auth/verify-email',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
+  id: '/auth/reset-password',
+  path: '/auth/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/auth/register',
+  path: '/auth/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthResetPasswordConfirmRoute =
+  AuthResetPasswordConfirmRouteImport.update({
+    id: '/confirm',
+    path: '/confirm',
+    getParentRoute: () => AuthResetPasswordRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/portfolios': typeof PortfoliosRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/portfolios/create': typeof PortfoliosCreateRoute
+  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/portfolios': typeof PortfoliosRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/portfolios/create': typeof PortfoliosCreateRoute
+  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/dashboard': typeof DashboardRoute
   '/portfolios': typeof PortfoliosRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/register': typeof AuthRegisterRoute
+  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
+  '/auth/verify-email': typeof AuthVerifyEmailRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/portfolios/create': typeof PortfoliosCreateRoute
+  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -69,28 +115,47 @@ export interface FileRouteTypes {
     | '/'
     | '/dashboard'
     | '/portfolios'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
+    | '/auth/reset-password/confirm'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/dashboard'
     | '/portfolios'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
+    | '/auth/reset-password/confirm'
   id:
     | '__root__'
     | '/'
     | '/dashboard'
     | '/portfolios'
+    | '/auth/login'
+    | '/auth/register'
+    | '/auth/reset-password'
+    | '/auth/verify-email'
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
+    | '/auth/reset-password/confirm'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   DashboardRoute: typeof DashboardRoute
   PortfoliosRoute: typeof PortfoliosRouteWithChildren
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
+  AuthResetPasswordRoute: typeof AuthResetPasswordRouteWithChildren
+  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -130,6 +195,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
       parentRoute: typeof PortfoliosRoute
     }
+    '/auth/verify-email': {
+      id: '/auth/verify-email'
+      path: '/auth/verify-email'
+      fullPath: '/auth/verify-email'
+      preLoaderRoute: typeof AuthVerifyEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password': {
+      id: '/auth/reset-password'
+      path: '/auth/reset-password'
+      fullPath: '/auth/reset-password'
+      preLoaderRoute: typeof AuthResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/auth/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/reset-password/confirm': {
+      id: '/auth/reset-password/confirm'
+      path: '/confirm'
+      fullPath: '/auth/reset-password/confirm'
+      preLoaderRoute: typeof AuthResetPasswordConfirmRouteImport
+      parentRoute: typeof AuthResetPasswordRoute
+    }
   }
 }
 
@@ -147,10 +247,25 @@ const PortfoliosRouteWithChildren = PortfoliosRoute._addFileChildren(
   PortfoliosRouteChildren,
 )
 
+interface AuthResetPasswordRouteChildren {
+  AuthResetPasswordConfirmRoute: typeof AuthResetPasswordConfirmRoute
+}
+
+const AuthResetPasswordRouteChildren: AuthResetPasswordRouteChildren = {
+  AuthResetPasswordConfirmRoute: AuthResetPasswordConfirmRoute,
+}
+
+const AuthResetPasswordRouteWithChildren =
+  AuthResetPasswordRoute._addFileChildren(AuthResetPasswordRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   DashboardRoute: DashboardRoute,
   PortfoliosRoute: PortfoliosRouteWithChildren,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
+  AuthResetPasswordRoute: AuthResetPasswordRouteWithChildren,
+  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

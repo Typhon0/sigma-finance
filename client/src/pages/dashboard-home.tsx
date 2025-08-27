@@ -29,10 +29,20 @@ const AssetAllocationChart = lazy(
 
 // Main dashboard content component
 function DashboardContent() {
-	const { user } = useAuth();
+	const { user, isLoading: authLoading } = useAuth();
 	const { data, loading, error, refetch } = usePortfolioAnalytics(
 		user?.id || "",
 	);
+
+	// Don't render anything if still checking authentication
+	if (authLoading) {
+		return <DashboardSkeleton />;
+	}
+
+	// Don't render if no user (should be handled by ProtectedRoute, but extra safety)
+	if (!user) {
+		return <DashboardSkeleton />;
+	}
 
 	// Show skeleton loading state while data is being fetched
 	if (loading) {

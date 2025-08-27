@@ -59,17 +59,9 @@ func (m *MockLockoutUserRepo) Delete(ctx context.Context, id uint) error {
 	return args.Error(0)
 }
 
-func (m *MockLockoutUserRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
-	args := m.Called(ctx, options)
-	return args.Get(0).(int), args.Error(1)
-}
-
-func (m *MockLockoutUserRepo) GetByStringID(ctx context.Context, id string) (*model.User, error) {
+func (m *MockLockoutUserRepo) DeleteByStringID(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.User), args.Error(1)
+	return args.Error(0)
 }
 
 func (m *MockLockoutUserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
@@ -82,6 +74,14 @@ func (m *MockLockoutUserRepo) GetByEmail(ctx context.Context, email string) (*mo
 
 func (m *MockLockoutUserRepo) GetByEmailWithAuthMethods(ctx context.Context, email string) (*model.User, error) {
 	args := m.Called(ctx, email)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+
+func (m *MockLockoutUserRepo) GetByStringID(ctx context.Context, id string) (*model.User, error) {
+	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -121,6 +121,11 @@ func (m *MockLockoutUserRepo) LockAccount(ctx context.Context, userID string, lo
 func (m *MockLockoutUserRepo) UnlockAccount(ctx context.Context, userID string) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
+}
+
+func (m *MockLockoutUserRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Get(0).(int), args.Error(1)
 }
 
 func (m *MockLockoutUserRepo) GetLockedUsers(ctx context.Context) ([]model.User, error) {

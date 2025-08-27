@@ -1,0 +1,137 @@
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Button } from '../ui/button';
+import { useAuth } from '../../lib/auth-context';
+import { loginSchema, type LoginFormData } from '../../lib/validations/auth.schemas';
+import { AuthFormWrapper } from './auth-form-wrapper';
+import { AuthFormField } from './auth-form-field';
+import { AuthButton } from './auth-button';
+import { useAuthErrorHandler } from '../../lib/auth-error-handler';
+import type { AuthError } from '../../lib/types/auth.types';
+
+interface LoginFormProps {
+  onSwitchToRegister?: () => void;
+  onSwitchToReset?: () => void;
+}
+
+export function LoginForm({ onSwitchToRegister, onSwitchToReset }: LoginFormProps) {
+  const [authErrors, setAuthErrors] = useState<AuthError[]>([]);
+  const { login, isLoading } = useAuth();
+  const { handleAuthResponse } = useAuthErrorHandler();
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+    watch,
+    reset,
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+  });
+
+  const watchedValues = watch();
+
+  const onSubmit = async (data: LoginFormData) => {
+    setAuthErrors([]);
+    try {
+      await login(data.email, data.password);
+      reset(); // Clear form on successful login
+    } catch (error: any) {
+      // Extract errors from the error object if available
+      if (error?.graphQLErrors?.[0]?.extensions?.errors) {
+        setAuthErrors(error.graphQLErrors[0].extensions.errors);
+      } else {
+        setAuthErrors([{
+          code: 'INTERNAL_ERROR',
+          message: 'Login failed. Please try again.',
+        }]);
+      }
+    }
+  };
+
+  const handleRetry = () => {
+    setAuthErrors([]);
+  };
+
+  const isFormLoading = isLoading || isSubmitting;
+
+  return (
+    <AuthFormWrapper
+      title="Sign In"
+      description="Enter your credentials to access your portfolio"
+      errors={authErrors}
+      isLoading={isFormLoading}
+      loadingType="login"
+      onRetry={handleRetry}
+    >
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+        <AuthFormField
+          id="email"
+          name="email"
+          type="email"
+          label="Email"
+          placeholder="Enter your email"
+          value={watchedValues.email || ''}
+          error={errors.email?.message}
+          disabled={isFormLoading}
+          required
+          autoComplete="email"
+          {...register('email')}
+        />
+
+        <AuthFormField
+          id="password"
+          name="password"
+          type="password"
+          label="Password"
+          placeholder="Enter your password"
+          value={watchedValues.password || ''}
+          error={errors.password?.message}
+          disabled={isFormLoading}
+          required
+          autoComplete="current-password"
+          showPasswordToggle
+          {...register('password')}
+        />
+
+        <AuthButton
+          type="submit"
+          authType="login"
+          isLoading={isFormLoading}
+          disabled={isFormLoading}
+          fullWidth
+        />
+
+        <div className="text-center space-y-2">
+          {onSwitchToReset && (
+            <Button
+              type="button"
+              variant="link"
+              className="text-sm"
+              onClick={onSwitchToReset}
+              disabled={isFormLoading}
+            >
+              Forgot your password?
+            </Button>
+          )}
+          
+          {onSwitchToRegister && (
+            <div className="text-sm text-muted-foreground">
+              Don't have an account?{' '}
+              <Button
+                type="button"
+                variant="link"
+                className="p-0 h-auto font-normal"
+                onClick={onSwitchToRegister}
+                disabled={isFormLoading}
+              >
+                Sign up
+              </Button>
+            </div>
+          )}
+        </div>
+      </form>
+    </AuthFormWrapper>
+  );
+}

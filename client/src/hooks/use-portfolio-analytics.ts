@@ -87,9 +87,4 @@ export const usePortfolioAnalytics = (userID: string, portfolioId?: string) => {
 		error,
 		refetch,
 	};
-	return {
-		data: calculatedData,
-		loading,
-		error,
-	};
 };
