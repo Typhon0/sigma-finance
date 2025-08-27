@@ -229,7 +229,10 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 	a.auditService.LogAuthEvent(ctx, event)
 
 	// Create session for the new user
-	return a.createUserSession(ctx, createdUser, "", "")
+	// Use default values for IP and user agent if not provided
+	ipAddress := "127.0.0.1" // Default for testing/registration
+	userAgent := "Registration-Client/1.0"
+	return a.createUserSession(ctx, createdUser, ipAddress, userAgent)
 }
 
 // Login authenticates a user and creates a session

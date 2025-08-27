@@ -1,0 +1,105 @@
+# internal/handler/graphql/schema/auth.graphqls
+
+# Authentication Types
+
+type AuthResponse {
+    success: Boolean!
+    data: AuthData
+    errors: [AuthError!]
+}
+
+type AuthData {
+    token: String!
+    refreshToken: String!
+    expiresAt: Time!
+    user: AuthUser!
+}
+
+type AuthUser {
+    id: ID!
+    email: String!
+    name: String!
+    emailVerified: Boolean!
+}
+
+type AuthError {
+    code: String!
+    message: String!
+    field: String
+}
+
+type LogoutResponse {
+    success: Boolean!
+    errors: [AuthError!]
+}
+
+type PasswordResetResponse {
+    success: Boolean!
+    errors: [AuthError!]
+}
+
+type EmailVerificationResponse {
+    success: Boolean!
+    errors: [AuthError!]
+}
+
+# Authentication Inputs
+
+input RegisterInput {
+    email: String!
+    password: String!
+    name: String!
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input LogoutInput {
+    token: String!
+}
+
+input PasswordResetInput {
+    email: String!
+}
+
+input PasswordResetConfirmInput {
+    token: String!
+    newPassword: String!
+}
+
+input EmailVerificationInput {
+    token: String!
+}
+
+input ResendVerificationInput {
+    email: String!
+}
+
+input RefreshTokenInput {
+    refreshToken: String!
+}
+
+# Authentication Mutations (added to main Mutation type)
+extend type Mutation {
+    # User registration
+    register(input: RegisterInput!): AuthResponse!
+    
+    # User login
+    login(input: LoginInput!): AuthResponse!
+    
+    # User logout
+    logout(input: LogoutInput!): LogoutResponse!
+    
+    # Password reset flow
+    resetPassword(input: PasswordResetInput!): PasswordResetResponse!
+    confirmPasswordReset(input: PasswordResetConfirmInput!): PasswordResetResponse!
+    
+    # Email verification flow
+    verifyEmail(input: EmailVerificationInput!): EmailVerificationResponse!
+    resendVerification(input: ResendVerificationInput!): EmailVerificationResponse!
+    
+    # Token refresh
+    refreshToken(input: RefreshTokenInput!): AuthResponse!
+}

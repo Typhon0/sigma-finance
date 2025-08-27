@@ -39,8 +39,67 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 	// Note: This is a simplified approach. In a real application, you might want
 	// to use the actual migration runner from the migrations package
 
-	// For now, we'll create the auth_event table directly for testing
+	// Create all authentication tables for testing
 	_, err := db.ExecContext(ctx, `
+		-- Drop and recreate user table with correct schema for authentication
+		DROP TABLE IF EXISTS sigma_finance.user CASCADE;
+		CREATE TABLE sigma_finance.user (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			email VARCHAR(255) UNIQUE NOT NULL,
+			email_verified BOOLEAN DEFAULT FALSE,
+			name VARCHAR(255),
+			password_hash VARCHAR(255),
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			last_login_at TIMESTAMP,
+			failed_login_count INTEGER DEFAULT 0,
+			locked_until TIMESTAMP
+		);
+
+		-- Create authentication methods table
+		CREATE TABLE IF NOT EXISTS sigma_finance.auth_method (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			provider VARCHAR(50) NOT NULL,
+			external_id VARCHAR(255),
+			metadata JSONB,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			UNIQUE(provider, external_id)
+		);
+
+		-- Create sessions table
+		CREATE TABLE IF NOT EXISTS sigma_finance.session (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			token TEXT UNIQUE NOT NULL,
+			refresh_token TEXT UNIQUE NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+			ip_address INET,
+			user_agent TEXT
+		);
+
+		-- Create password reset tokens table
+		CREATE TABLE IF NOT EXISTS sigma_finance.password_reset_token (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			token TEXT UNIQUE NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			used BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+
+		-- Create email verification tokens table
+		CREATE TABLE IF NOT EXISTS sigma_finance.email_verification_token (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID NOT NULL,
+			token TEXT UNIQUE NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			used BOOLEAN DEFAULT FALSE,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+
+		-- Create authentication audit log table
 		CREATE TABLE IF NOT EXISTS sigma_finance.auth_event (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			user_id UUID,
@@ -52,7 +111,19 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 			metadata JSONB,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		);
-		
+
+		-- Create indexes for performance
+		CREATE INDEX IF NOT EXISTS idx_user_email ON sigma_finance.user(email);
+		CREATE INDEX IF NOT EXISTS idx_user_email_verified ON sigma_finance.user(email_verified);
+		CREATE INDEX IF NOT EXISTS idx_auth_method_user_id ON sigma_finance.auth_method(user_id);
+		CREATE INDEX IF NOT EXISTS idx_auth_method_provider ON sigma_finance.auth_method(provider);
+		CREATE INDEX IF NOT EXISTS idx_session_token ON sigma_finance.session(token);
+		CREATE INDEX IF NOT EXISTS idx_session_user_id ON sigma_finance.session(user_id);
+		CREATE INDEX IF NOT EXISTS idx_session_expires_at ON sigma_finance.session(expires_at);
+		CREATE INDEX IF NOT EXISTS idx_password_reset_token_token ON sigma_finance.password_reset_token(token);
+		CREATE INDEX IF NOT EXISTS idx_password_reset_token_user_id ON sigma_finance.password_reset_token(user_id);
+		CREATE INDEX IF NOT EXISTS idx_email_verification_token_token ON sigma_finance.email_verification_token(token);
+		CREATE INDEX IF NOT EXISTS idx_email_verification_token_user_id ON sigma_finance.email_verification_token(user_id);
 		CREATE INDEX IF NOT EXISTS idx_auth_event_user_id ON sigma_finance.auth_event(user_id);
 		CREATE INDEX IF NOT EXISTS idx_auth_event_email ON sigma_finance.auth_event(email);
 		CREATE INDEX IF NOT EXISTS idx_auth_event_action ON sigma_finance.auth_event(action);

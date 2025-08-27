@@ -46,6 +46,32 @@ type AssetType struct {
 	Name string `json:"name"`
 }
 
+type AuthData struct {
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refreshToken"`
+	ExpiresAt    time.Time `json:"expiresAt"`
+	User         *AuthUser `json:"user"`
+}
+
+type AuthError struct {
+	Code    string  `json:"code"`
+	Message string  `json:"message"`
+	Field   *string `json:"field,omitempty"`
+}
+
+type AuthResponse struct {
+	Success bool         `json:"success"`
+	Data    *AuthData    `json:"data,omitempty"`
+	Errors  []*AuthError `json:"errors,omitempty"`
+}
+
+type AuthUser struct {
+	ID            string `json:"id"`
+	Email         string `json:"email"`
+	Name          string `json:"name"`
+	EmailVerified bool   `json:"emailVerified"`
+}
+
 type CreateCryptoInput struct {
 	Name              string     `json:"name"`
 	AssetTypeID       string     `json:"assetTypeID"`
@@ -135,6 +161,15 @@ type DuplicatePortfolioInput struct {
 	CopyAssets        bool    `json:"copyAssets"`
 }
 
+type EmailVerificationInput struct {
+	Token string `json:"token"`
+}
+
+type EmailVerificationResponse struct {
+	Success bool         `json:"success"`
+	Errors  []*AuthError `json:"errors,omitempty"`
+}
+
 type ExportPortfolioInput struct {
 	PortfolioID         string       `json:"portfolioID"`
 	Format              ExportFormat `json:"format"`
@@ -146,6 +181,20 @@ type ExportResult struct {
 	Success     bool    `json:"success"`
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	Error       *string `json:"error,omitempty"`
+}
+
+type LoginInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type LogoutInput struct {
+	Token string `json:"token"`
+}
+
+type LogoutResponse struct {
+	Success bool         `json:"success"`
+	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
 type Mutation struct {
@@ -160,6 +209,20 @@ type Ownership struct {
 type PaginationInput struct {
 	Limit  *int32 `json:"limit,omitempty"`
 	Offset *int32 `json:"offset,omitempty"`
+}
+
+type PasswordResetConfirmInput struct {
+	Token       string `json:"token"`
+	NewPassword string `json:"newPassword"`
+}
+
+type PasswordResetInput struct {
+	Email string `json:"email"`
+}
+
+type PasswordResetResponse struct {
+	Success bool         `json:"success"`
+	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
 type PerformancePoint struct {
@@ -239,9 +302,23 @@ type Position struct {
 type Query struct {
 }
 
+type RefreshTokenInput struct {
+	RefreshToken string `json:"refreshToken"`
+}
+
+type RegisterInput struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
 type ReorderPortfoliosInput struct {
 	UserID          string                 `json:"userID"`
 	PortfolioOrders []*PortfolioOrderInput `json:"portfolioOrders"`
+}
+
+type ResendVerificationInput struct {
+	Email string `json:"email"`
 }
 
 type RiskMetrics struct {

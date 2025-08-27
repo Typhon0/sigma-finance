@@ -14,13 +14,15 @@ import (
 // It holds all the services required to fulfill API requests. This struct is
 // embedded in the resolver implementations in other files.
 type Resolver struct {
-	PortfolioService   service.IPortfolioService
-	UserService        service.IUserService
-	AssetService       service.IAssetService
-	TagService         service.ITagService
-	TransactionService service.ITransactionService
-	WatchlistService   service.IWatchlistService
-	UOW                repository.IUnitOfWork
+	PortfolioService      service.IPortfolioService
+	UserService           service.IUserService
+	AssetService          service.IAssetService
+	TagService            service.ITagService
+	TransactionService    service.ITransactionService
+	WatchlistService      service.IWatchlistService
+	AuthenticationService service.AuthenticationService
+	SecurityService       service.SecurityService
+	UOW                   repository.IUnitOfWork
 
 	// Subscription broadcaster state
 	PortfolioSubscribers   map[string][]chan *gqlModel.PortfolioUpdatePayload

@@ -51,8 +51,8 @@ func mapPortfoliosToGQL(domainPortfolios []model.Portfolio) []*gqlModel.Portfoli
 // mapUserToGQL converts a domain User to a GraphQL User
 func mapUserToGQL(domainUser model.User) *gqlModel.User {
 	return &gqlModel.User{
-		ID:        strconv.Itoa(domainUser.ID),
-		Username:  domainUser.Username,
+		ID:        domainUser.ID,
+		Username:  domainUser.Name,
 		Email:     domainUser.Email,
 		CreatedAt: domainUser.CreatedAt,
 		UpdatedAt: domainUser.UpdatedAt,

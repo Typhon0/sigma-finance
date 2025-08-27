@@ -9,8 +9,8 @@ import (
 
 func ToGraphQLUser(user *model.User) *graphmodel.User {
 	return &graphmodel.User{
-		ID:        strconv.Itoa(user.ID),
-		Username:  user.Username,
+		ID:        user.ID,
+		Username:  user.Name,
 		Email:     user.Email,
 		CreatedAt: user.CreatedAt,
 		UpdatedAt: user.UpdatedAt,
@@ -78,7 +78,3 @@ func ToGraphQLWatchlist(w *model.Watchlist) *graphmodel.Watchlist {
 		Assets:    []graphmodel.Asset{}, // This should be populated by a dedicated resolver
 	}
 }
-
-
-
-
