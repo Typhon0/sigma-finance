@@ -67,10 +67,10 @@ func NewApp() (*AppContainer, error) {
 	// Initialize Fiber app
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "https://d7g9j7jl-5173.uks1.devtunnels.ms",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+		AllowOrigins:     "https://d7g9j7jl-5174.uks1.devtunnels.ms",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
-		AllowMethods: "GET, POST, HEAD, PUT, DELETE, PATCH",
+		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
 	}))
 	app.Use(logger.New())
 	app.Use(recover.New())

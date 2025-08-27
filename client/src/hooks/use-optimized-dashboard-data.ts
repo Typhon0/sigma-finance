@@ -1,13 +1,13 @@
 import { useLazyQuery, useQuery, useSubscription } from "@apollo/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-	DASHBOARD_DATA_SUBSCRIPTION,
 	GET_ASSET_PERFORMANCE_OPTIMIZED,
 	GET_DASHBOARD_CRITICAL,
 	GET_DASHBOARD_SECONDARY,
 	GET_PORTFOLIO_CARDS,
 	GET_RECENT_TRANSACTIONS_MINIMAL,
-} from "@/lib/graphql/optimized-dashboard.queries";
+} from "@/graphql/queries";
+import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 
 // Hook for critical dashboard data (loads first)
 export const useCriticalDashboardData = (userID: string) => {
@@ -85,7 +85,7 @@ export const useAssetPerformance = (userID: string, limit = 10) => {
 // Hook for real-time dashboard updates
 export const useDashboardSubscription = (userID: string, enabled = true) => {
 	const { data: subscriptionData } = useSubscription(
-		DASHBOARD_DATA_SUBSCRIPTION,
+		PORTFOLIO_UPDATE_SUBSCRIPTION,
 		{
 			variables: { userID },
 			skip: !userID || !enabled,

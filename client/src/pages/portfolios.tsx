@@ -48,8 +48,9 @@ import { useAuth } from "@/lib/auth-context";
 import {
 	DELETE_PORTFOLIO,
 	DUPLICATE_PORTFOLIO,
-} from "@/lib/graphql/portfolio.mutations";
-import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/lib/graphql/portfolios.queries";
+} from "@/graphql/mutations";
+import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
+import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 
 type Portfolio = GetPortfoliosWithAnalyticsQuery["portfolios"][0];
 
@@ -189,12 +190,12 @@ export default function PortfoliosPage() {
 					>
 						<Grid className="h-4 w-4" />
 					</Button>
-					<Link to="/portfolios/create">
+					<CreatePortfolioDialog>
 						<Button>
 							<PlusCircle className="mr-2 h-4 w-4" />
 							New Portfolio
 						</Button>
-					</Link>
+					</CreatePortfolioDialog>
 				</div>
 			</div>
 
@@ -207,12 +208,12 @@ export default function PortfoliosPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Link to="/portfolios/create">
+						<CreatePortfolioDialog>
 							<Button size="lg">
 								<PlusCircle className="mr-2 h-5 w-5" />
 								Create Portfolio
 							</Button>
-						</Link>
+						</CreatePortfolioDialog>
 					</CardContent>
 				</Card>
 			) : (

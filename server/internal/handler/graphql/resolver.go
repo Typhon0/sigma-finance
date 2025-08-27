@@ -23,7 +23,7 @@ type Resolver struct {
 	UOW                repository.IUnitOfWork
 
 	// Subscription broadcaster state
-	PortfolioSubscribers    map[string][]chan *gqlModel.PortfolioUpdatePayload
+	PortfolioSubscribers   map[string][]chan *gqlModel.PortfolioUpdatePayload
 	TransactionSubscribers map[string][]chan *gqlModel.TransactionUpdatePayload
 	BroadcasterMu          *sync.Mutex
 }

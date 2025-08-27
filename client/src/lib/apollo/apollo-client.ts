@@ -7,7 +7,7 @@ import {
 import { loadDevMessages, loadErrorMessages } from "@apollo/client/dev";
 import { onError } from "@apollo/client/link/error";
 import { RetryLink } from "@apollo/client/link/retry";
-import { GET_DASHBOARD_CRITICAL } from "../graphql/optimized-dashboard.queries";
+import { GET_DASHBOARD_CRITICAL } from "@/graphql/queries";
 import { apolloCacheConfig } from "./apollo-cache-config";
 
 if (import.meta.env.MODE === "development") {

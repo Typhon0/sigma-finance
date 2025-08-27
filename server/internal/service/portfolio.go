@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+var (
+	ErrPortfolioNameExists = errors.New("portfolio with this name already exists for the user")
+)
+
+// IPortfolioService defines the interface for portfolio-related services.
 type IPortfolioService interface {
 	GetByID(ctx context.Context, id uint) (model.Portfolio, error)
 	FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.Portfolio, error)
@@ -137,48 +142,54 @@ func (s *PortfolioService) FindAll(ctx context.Context, opts ...repository.Query
 	return s.uow.Portfolio().FindAllBy(ctx, opts...)
 }
 
-// CreatePortfolio handles the business logic for creating a new portfolio.
+// CreatePortfolio creates a new portfolio for a user, ensuring the operation is atomic.
 func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePortfolioInput) (model.Portfolio, error) {
-	// 1. --- Business Rule Validation ---
-	if len(input.Name) < 3 {
-		return model.Portfolio{}, errors.New("portfolio name must be at least 3 characters long")
-	}
-	if input.UserID == 0 {
-		return model.Portfolio{}, errors.New("a valid user ID is required to create a portfolio")
-	}
+	var portfolio model.Portfolio
 
-	// Check if the user exists before creating the portfolio.
-	_, err := s.uow.User().GetByID(ctx, input.UserID)
-	if err != nil {
-		if errors.Is(err, repository.ErrNotFound) {
-			return model.Portfolio{}, fmt.Errorf("user with ID %d not found", input.UserID)
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// Check if a portfolio with the same name already exists for this user
+		existing, err := uow.Portfolio().GetPortfolioByName(ctx, input.UserID, input.Name)
+		if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("failed to check for existing portfolio: %w", err)
 		}
-		return model.Portfolio{}, fmt.Errorf("failed to verify user: %w", err)
-	}
+		if existing != nil && existing.ID != 0 {
+			return ErrPortfolioNameExists
+		}
 
-	// 2. --- Data Mapping ---
-	newPortfolio := model.Portfolio{
-		UserID:    int(input.UserID),
-		Name:      input.Name,
-		SortOrder: 0, // Default sort order for new portfolios
-	}
+		// Get the highest sort order for the user's portfolios and add 1
+		maxSortOrder, err := uow.Portfolio().GetMaxSortOrder(ctx, input.UserID)
+		if err != nil {
+			return fmt.Errorf("failed to get max sort order: %w", err)
+		}
 
-	// Set description if provided
-	if input.Description != nil {
-		newPortfolio.Description = *input.Description
-	}
+		var description string
+		if input.Description != nil {
+			description = *input.Description
+		}
 
-	// 3. --- Persistence ---
-	// The Create method returns the full entity, including the new ID and timestamps.
-	createdPortfolio, err := s.uow.Portfolio().Create(ctx, &newPortfolio)
+		newPortfolio := model.Portfolio{
+			UserID:      int(input.UserID),
+			Name:        input.Name,
+			Description: description,
+			SortOrder:   maxSortOrder + 1,
+		}
+
+		createdPortfolio, err := uow.Portfolio().Create(ctx, &newPortfolio)
+		if err != nil {
+			return fmt.Errorf("failed to create portfolio in repository: %w", err)
+		}
+		portfolio = *createdPortfolio
+		return nil
+	})
+
 	if err != nil {
-		return model.Portfolio{}, fmt.Errorf("failed to create portfolio in repository: %w", err)
+		return model.Portfolio{}, err
 	}
 
-	return *createdPortfolio, nil
+	return portfolio, nil
 }
 
-// UpdatePortfolio handles the logic for updating an existing portfolio's details.
+// UpdatePortfolio updates an existing portfolio's details.
 func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id uint, input UpdatePortfolioInput) (model.Portfolio, error) {
 	// 1. --- Retrieve Existing Entity ---
 	portfolioToUpdate, err := s.uow.Portfolio().GetByID(ctx, id)
@@ -207,7 +218,7 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id uint, input U
 		}
 		portfolioToUpdate.SortOrder = *input.SortOrder
 	}
-	// Note: The UpdatedAt field is typically handled automatically by the database or ORM hook.
+	// Note: The UpdatedAt field is typically handled by the database or ORM hook.
 
 	// 3. --- Persistence ---
 	err = s.uow.Portfolio().Update(ctx, &portfolioToUpdate)

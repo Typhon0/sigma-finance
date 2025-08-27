@@ -10,6 +10,8 @@ import (
 // IPortfolioRepository defines the interface for portfolio-specific repository operations
 type IPortfolioRepository interface {
 	IRepository[model.Portfolio]
+	GetPortfolioByName(ctx context.Context, userID uint, name string) (*model.Portfolio, error)
+	GetMaxSortOrder(ctx context.Context, userID uint) (int, error)
 }
 
 // PortfolioRepository wraps the generic repository with portfolio-specific functionality
@@ -40,4 +42,24 @@ func (r *PortfolioRepository) Delete(ctx context.Context, id uint) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// GetPortfolioByName retrieves a portfolio by its name for a specific user.
+func (r *PortfolioRepository) GetPortfolioByName(ctx context.Context, userID uint, name string) (*model.Portfolio, error) {
+	var portfolio model.Portfolio
+	err := r.db.NewSelect().Model(&portfolio).Where("user_id = ? AND name = ?", userID, name).Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &portfolio, nil
+}
+
+// GetMaxSortOrder retrieves the maximum sort order for a user's portfolios.
+func (r *PortfolioRepository) GetMaxSortOrder(ctx context.Context, userID uint) (int, error) {
+	var maxSortOrder int
+	err := r.db.NewSelect().ColumnExpr("COALESCE(MAX(sort_order), 0)").Model((*model.Portfolio)(nil)).Where("user_id = ?", userID).Scan(ctx, &maxSortOrder)
+	if err != nil {
+		return 0, err
+	}
+	return maxSortOrder, nil
 }

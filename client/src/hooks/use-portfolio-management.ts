@@ -14,8 +14,8 @@ import {
 	DELETE_PORTFOLIO,
 	DUPLICATE_PORTFOLIO,
 	UPDATE_PORTFOLIO,
-} from "@/lib/graphql/portfolio.mutations";
-import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/lib/graphql/portfolios.queries";
+} from "@/graphql/mutations";
+import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const optimisticResponseGenerators = {

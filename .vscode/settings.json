@@ -10,5 +10,6 @@
 		"darwin-arm64": "./client/node_modules/@biomejs/cli-darwin-arm64/biome",
 		"typescript.tsdk": "./client/node_modules/typescript/lib",
 		"typescript.enablePromptUseWorkspaceTsdk": true
-	}
+	},
+	"typescript.tsdk": "node_modules/typescript/lib"
 }
