@@ -1,5 +1,5 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useMemo } from "react";
+import { useMemo, useCallback, useState } from "react";
 import type {
 	CreatePortfolioInput,
 	DuplicatePortfolioInput,
@@ -16,6 +16,7 @@ import {
 	UPDATE_PORTFOLIO,
 } from "@/graphql/mutations";
 import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
+import { useErrorHandling, getErrorMessage } from "./use-error-handling";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const optimisticResponseGenerators = {
@@ -173,10 +174,24 @@ const cacheInvalidationHelpers = {
 	},
 };
 
-// FIXED: Main Hook Implementation
+// Enhanced Portfolio Management Hook with improved error handling and loading states
 export function usePortfolioManagement() {
 	const { user } = useAuth();
 	const effectiveUserID = user?.id;
+
+	// Loading states for individual operations
+	const [operationLoading, setOperationLoading] = useState({
+		create: false,
+		update: false,
+		delete: false,
+		duplicate: false,
+	});
+
+	// Error handling
+	const errorHandling = useErrorHandling({
+		maxRetries: 3,
+		retryDelay: 1000,
+	});
 
 	const { data, loading, error, refetch } =
 		useQuery<GetPortfoliosWithAnalyticsQuery>(GET_PORTFOLIOS_WITH_ANALYTICS, {
@@ -187,12 +202,38 @@ export function usePortfolioManagement() {
 			nextFetchPolicy: "cache-first",
 			notifyOnNetworkStatusChange: true,
 			skip: !effectiveUserID,
+			onError: (error) => {
+				errorHandling.handleError(error);
+			},
 		});
 
-	// Create portfolio mutation with optimistic updates
+	// Create portfolio mutation with enhanced optimistic updates
 	const [createPortfolioMutation] = useMutation(CREATE_PORTFOLIO, {
-		optimisticResponse: (variables: { input: CreatePortfolioInput }) =>
-			optimisticResponseGenerators.createPortfolio(variables.input),
+		optimisticResponse: (variables: { input: CreatePortfolioInput }) => {
+			const optimisticPortfolio = {
+				__typename: "Portfolio" as const,
+				id: `temp-${Date.now()}`,
+				name: variables.input.name,
+				description: variables.input.description || null,
+				createdAt: new Date().toISOString(),
+				updatedAt: new Date().toISOString(),
+				sortOrder: (data?.portfolios?.length || 0) + 1,
+				assets: [],
+				analytics: null,
+				tags: [],
+				transactions: [],
+				user: {
+					__typename: "User" as const,
+					id: variables.input.userID,
+					name: user?.name || "",
+					email: user?.email || "",
+					emailVerified: true,
+				},
+			};
+			return {
+				createPortfolio: optimisticPortfolio,
+			};
+		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.createPortfolio) {
 				cacheUpdateUtils.addPortfolioToCache(
@@ -203,11 +244,16 @@ export function usePortfolioManagement() {
 			}
 		},
 		onError: (error) => {
-			console.error("Create portfolio error:", error);
+			errorHandling.handleError(error);
+			setOperationLoading(prev => ({ ...prev, create: false }));
+		},
+		onCompleted: () => {
+			setOperationLoading(prev => ({ ...prev, create: false }));
+			errorHandling.clearError();
 		},
 	});
 
-	// Update portfolio mutation with optimistic updates
+	// Update portfolio mutation with enhanced optimistic updates
 	const [updatePortfolioMutation] = useMutation(UPDATE_PORTFOLIO, {
 		optimisticResponse: (variables: {
 			id: string;
@@ -216,26 +262,20 @@ export function usePortfolioManagement() {
 			const currentPortfolio = data?.portfolios?.find(
 				(p) => p.id === variables.id,
 			) as Portfolio | undefined;
+			
+			if (!currentPortfolio) {
+				return null;
+			}
+
 			return {
 				updatePortfolio: {
-					__typename: "Portfolio" as const,
-					id: variables.id,
-					name: variables.input.name ?? currentPortfolio?.name ?? "",
-					description:
-						variables.input.description ??
-						currentPortfolio?.description ??
-						null,
+					...currentPortfolio,
+					name: variables.input.name ?? currentPortfolio.name,
+					description: variables.input.description !== undefined 
+						? variables.input.description 
+						: currentPortfolio.description,
+					sortOrder: variables.input.sortOrder ?? currentPortfolio.sortOrder,
 					updatedAt: new Date().toISOString(),
-					createdAt: currentPortfolio?.createdAt ?? new Date().toISOString(),
-					assets: currentPortfolio?.assets ?? [],
-					analytics: currentPortfolio?.analytics ?? null,
-					sortOrder: currentPortfolio?.sortOrder ?? 0,
-					tags: currentPortfolio?.tags ?? [],
-					transactions: currentPortfolio?.transactions ?? [],
-					user: currentPortfolio?.user ?? {
-						__typename: "User" as const,
-						id: user?.id ?? "temp-user-id",
-					},
 				},
 			};
 		},
@@ -249,14 +289,20 @@ export function usePortfolioManagement() {
 			}
 		},
 		onError: (error) => {
-			console.error("Update portfolio error:", error);
+			errorHandling.handleError(error);
+			setOperationLoading(prev => ({ ...prev, update: false }));
+		},
+		onCompleted: () => {
+			setOperationLoading(prev => ({ ...prev, update: false }));
+			errorHandling.clearError();
 		},
 	});
 
-	// Delete portfolio mutation with optimistic updates
+	// Delete portfolio mutation with enhanced optimistic updates
 	const [deletePortfolioMutation] = useMutation(DELETE_PORTFOLIO, {
-		optimisticResponse: (variables: { id: string }) =>
-			optimisticResponseGenerators.deletePortfolio(variables.id),
+		optimisticResponse: (variables: { id: string }) => ({
+			deletePortfolio: variables.id,
+		}),
 		update: (cache, { data: mutationData }, { variables }) => {
 			if (mutationData?.deletePortfolio && variables?.id) {
 				cacheUpdateUtils.removePortfolioFromCache(cache, variables.id);
@@ -265,15 +311,47 @@ export function usePortfolioManagement() {
 			}
 		},
 		onError: (error) => {
-			console.error("Delete portfolio error:", error);
+			errorHandling.handleError(error);
+			setOperationLoading(prev => ({ ...prev, delete: false }));
+			// Refetch to restore the optimistically removed portfolio
 			if (refetch) refetch();
+		},
+		onCompleted: () => {
+			setOperationLoading(prev => ({ ...prev, delete: false }));
+			errorHandling.clearError();
 		},
 	});
 
-	// Duplicate portfolio mutation with optimistic updates
+	// Duplicate portfolio mutation with enhanced optimistic updates
 	const [duplicatePortfolioMutation] = useMutation(DUPLICATE_PORTFOLIO, {
-		optimisticResponse: (variables: { input: DuplicatePortfolioInput }) =>
-			optimisticResponseGenerators.duplicatePortfolio(variables.input),
+		optimisticResponse: (variables: { input: DuplicatePortfolioInput }) => {
+			const sourcePortfolio = data?.portfolios?.find(
+				(p) => p.id === variables.input.sourcePortfolioID,
+			);
+			
+			return {
+				duplicatePortfolio: {
+					__typename: "Portfolio" as const,
+					id: `temp-duplicate-${Date.now()}`,
+					name: variables.input.newName,
+					description: variables.input.description || sourcePortfolio?.description || null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					sortOrder: (data?.portfolios?.length || 0) + 1,
+					assets: variables.input.copyAssets ? (sourcePortfolio?.assets || []) : [],
+					analytics: null,
+					tags: sourcePortfolio?.tags || [],
+					transactions: [],
+					user: sourcePortfolio?.user || {
+						__typename: "User" as const,
+						id: user?.id || "",
+						name: user?.name || "",
+						email: user?.email || "",
+						emailVerified: true,
+					},
+				},
+			};
+		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.duplicatePortfolio) {
 				cacheUpdateUtils.addPortfolioToCache(
@@ -284,64 +362,123 @@ export function usePortfolioManagement() {
 			}
 		},
 		onError: (error) => {
-			console.error("Duplicate portfolio error:", error);
-			if (refetch) refetch();
+			errorHandling.handleError(error);
+			setOperationLoading(prev => ({ ...prev, duplicate: false }));
+		},
+		onCompleted: () => {
+			setOperationLoading(prev => ({ ...prev, duplicate: false }));
+			errorHandling.clearError();
 		},
 	});
 
-	// Wrapper functions for mutations
-	const createPortfolio = async (input: CreatePortfolioInput) => {
+	// Enhanced wrapper functions for mutations with proper loading states and error handling
+	const createPortfolio = useCallback(async (input: CreatePortfolioInput) => {
+		if (!effectiveUserID) {
+			throw new Error("User must be authenticated to create a portfolio");
+		}
+
+		setOperationLoading(prev => ({ ...prev, create: true }));
+		errorHandling.clearError();
+
 		try {
 			const result = await createPortfolioMutation({
-				variables: { input },
+				variables: { 
+					input: {
+						...input,
+						userID: effectiveUserID,
+					}
+				},
 			});
-			return result;
-		} catch (error) {
-			console.error("Error creating portfolio:", error);
-			throw error;
-		}
-	};
 
-	const updatePortfolio = async (id: string, input: UpdatePortfolioInput) => {
+			if (result.errors) {
+				throw new Error(result.errors[0]?.message || "Failed to create portfolio");
+			}
+
+			return result.data?.createPortfolio;
+		} catch (error) {
+			const errorMessage = getErrorMessage(error as Error);
+			throw new Error(errorMessage);
+		}
+	}, [createPortfolioMutation, effectiveUserID, errorHandling]);
+
+	const updatePortfolio = useCallback(async (id: string, input: UpdatePortfolioInput) => {
+		if (!effectiveUserID) {
+			throw new Error("User must be authenticated to update a portfolio");
+		}
+
+		setOperationLoading(prev => ({ ...prev, update: true }));
+		errorHandling.clearError();
+
 		try {
 			const result = await updatePortfolioMutation({
 				variables: { id, input },
 			});
-			return result;
-		} catch (error) {
-			console.error("Error updating portfolio:", error);
-			throw error;
-		}
-	};
 
-	const deletePortfolio = async (id: string) => {
+			if (result.errors) {
+				throw new Error(result.errors[0]?.message || "Failed to update portfolio");
+			}
+
+			return result.data?.updatePortfolio;
+		} catch (error) {
+			const errorMessage = getErrorMessage(error as Error);
+			throw new Error(errorMessage);
+		}
+	}, [updatePortfolioMutation, effectiveUserID, errorHandling]);
+
+	const deletePortfolio = useCallback(async (id: string) => {
+		if (!effectiveUserID) {
+			throw new Error("User must be authenticated to delete a portfolio");
+		}
+
+		setOperationLoading(prev => ({ ...prev, delete: true }));
+		errorHandling.clearError();
+
 		try {
 			const result = await deletePortfolioMutation({
 				variables: { id },
 			});
-			return result;
-		} catch (error) {
-			console.error("Error deleting portfolio:", error);
-			throw error;
-		}
-	};
 
-	const duplicatePortfolio = async (input: DuplicatePortfolioInput) => {
+			if (result.errors) {
+				throw new Error(result.errors[0]?.message || "Failed to delete portfolio");
+			}
+
+			return result.data?.deletePortfolio;
+		} catch (error) {
+			const errorMessage = getErrorMessage(error as Error);
+			throw new Error(errorMessage);
+		}
+	}, [deletePortfolioMutation, effectiveUserID, errorHandling]);
+
+	const duplicatePortfolio = useCallback(async (input: DuplicatePortfolioInput) => {
+		if (!effectiveUserID) {
+			throw new Error("User must be authenticated to duplicate a portfolio");
+		}
+
+		setOperationLoading(prev => ({ ...prev, duplicate: true }));
+		errorHandling.clearError();
+
 		try {
 			const result = await duplicatePortfolioMutation({
 				variables: { input },
 			});
-			return result;
-		} catch (error) {
-			console.error("Error duplicating portfolio:", error);
-			throw error;
-		}
-	};
 
-	// Undo delete portfolio stub (not implemented)
-	const undoDeletePortfolio = async (_portfolio: Portfolio) => {
-		throw new Error("Undo delete portfolio is not implemented");
-	};
+			if (result.errors) {
+				throw new Error(result.errors[0]?.message || "Failed to duplicate portfolio");
+			}
+
+			return result.data?.duplicatePortfolio;
+		} catch (error) {
+			const errorMessage = getErrorMessage(error as Error);
+			throw new Error(errorMessage);
+		}
+	}, [duplicatePortfolioMutation, effectiveUserID, errorHandling]);
+
+	// Retry function for failed operations
+	const retryLastOperation = useCallback(async () => {
+		if (errorHandling.canRetry) {
+			await errorHandling.retry(refetch);
+		}
+	}, [errorHandling, refetch]);
 
 	// Memoized data transformation
 	const transformedData = useMemo(() => {
@@ -351,16 +488,40 @@ export function usePortfolioManagement() {
 		};
 	}, [data]);
 
+	// Combined loading state
+	const isLoading = loading || Object.values(operationLoading).some(Boolean);
+
+	// Enhanced return object with better UX
 	return {
+		// Data
 		portfolios: transformedData?.portfolios,
-		loading,
-		error,
-		refetch,
+		
+		// Loading states
+		loading: isLoading,
+		operationLoading,
+		
+		// Error handling
+		error: error || errorHandling.error,
+		hasError: !!error || errorHandling.hasError,
+		canRetry: errorHandling.canRetry,
+		retryCount: errorHandling.retryCount,
+		
+		// Operations
 		createPortfolio,
 		updatePortfolio,
 		deletePortfolio,
 		duplicatePortfolio,
-		undoDeletePortfolio,
+		
+		// Utility functions
+		refetch,
+		retry: retryLastOperation,
+		clearError: errorHandling.clearError,
+		
+		// Status helpers
+		isCreating: operationLoading.create,
+		isUpdating: operationLoading.update,
+		isDeleting: operationLoading.delete,
+		isDuplicating: operationLoading.duplicate,
 	};
 }
 
@@ -371,6 +532,110 @@ export type { Portfolio } from "./use-portfolio-analytics";
 // Additional utility hooks for portfolio management
 // Re-export the analytics hook from the dedicated file
 export { usePortfolioAnalytics } from "./use-portfolio-analytics";
+
+/**
+ * Hook for managing a single portfolio with enhanced UX
+ */
+export function usePortfolioOperations(portfolioId?: string) {
+	const portfolioManagement = usePortfolioManagement();
+	const [lastOperation, setLastOperation] = useState<{
+		type: 'create' | 'update' | 'delete' | 'duplicate';
+		timestamp: number;
+	} | null>(null);
+
+	const portfolio = useMemo(() => {
+		if (!portfolioId || !portfolioManagement.portfolios) return null;
+		return portfolioManagement.portfolios.find(p => p.id === portfolioId) || null;
+	}, [portfolioId, portfolioManagement.portfolios]);
+
+	const updatePortfolio = useCallback(async (input: UpdatePortfolioInput) => {
+		if (!portfolioId) {
+			throw new Error("Portfolio ID is required for update operation");
+		}
+
+		setLastOperation({ type: 'update', timestamp: Date.now() });
+		return await portfolioManagement.updatePortfolio(portfolioId, input);
+	}, [portfolioId, portfolioManagement]);
+
+	const deletePortfolio = useCallback(async () => {
+		if (!portfolioId) {
+			throw new Error("Portfolio ID is required for delete operation");
+		}
+
+		setLastOperation({ type: 'delete', timestamp: Date.now() });
+		return await portfolioManagement.deletePortfolio(portfolioId);
+	}, [portfolioId, portfolioManagement]);
+
+	const duplicatePortfolio = useCallback(async (newName: string, options?: {
+		copyAssets?: boolean;
+		description?: string;
+	}) => {
+		if (!portfolioId) {
+			throw new Error("Portfolio ID is required for duplicate operation");
+		}
+
+		setLastOperation({ type: 'duplicate', timestamp: Date.now() });
+		return await portfolioManagement.duplicatePortfolio({
+			sourcePortfolioID: portfolioId,
+			newName,
+			copyAssets: options?.copyAssets ?? false,
+			description: options?.description,
+		});
+	}, [portfolioId, portfolioManagement]);
+
+	return {
+		portfolio,
+		updatePortfolio,
+		deletePortfolio,
+		duplicatePortfolio,
+		lastOperation,
+		isLoading: portfolioManagement.isUpdating || portfolioManagement.isDeleting || portfolioManagement.isDuplicating,
+		error: portfolioManagement.error,
+		hasError: portfolioManagement.hasError,
+		retry: portfolioManagement.retry,
+		clearError: portfolioManagement.clearError,
+	};
+}
+
+/**
+ * Hook for portfolio creation with form-friendly interface
+ */
+export function usePortfolioCreation() {
+	const portfolioManagement = usePortfolioManagement();
+	const [createdPortfolio, setCreatedPortfolio] = useState<Portfolio | null>(null);
+
+	const createPortfolio = useCallback(async (data: {
+		name: string;
+		description?: string;
+	}) => {
+		const result = await portfolioManagement.createPortfolio({
+			name: data.name,
+			description: data.description || null,
+			userID: "", // This will be set by the hook
+		});
+
+		if (result) {
+			setCreatedPortfolio(result);
+		}
+
+		return result;
+	}, [portfolioManagement]);
+
+	const resetCreatedPortfolio = useCallback(() => {
+		setCreatedPortfolio(null);
+	}, []);
+
+	return {
+		createPortfolio,
+		createdPortfolio,
+		resetCreatedPortfolio,
+		isCreating: portfolioManagement.isCreating,
+		error: portfolioManagement.error,
+		hasError: portfolioManagement.hasError,
+		retry: portfolioManagement.retry,
+		clearError: portfolioManagement.clearError,
+	};
+}
 
 export function usePortfolioExport() {
 	// This would be implemented when export functionality is added

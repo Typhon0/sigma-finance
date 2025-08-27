@@ -1,383 +1,405 @@
+import { useState } from 'react';
+import { Link } from '@tanstack/react-router';
+import { 
+  MoreHorizontal, 
+  Trash2, 
+  Copy, 
+  TrendingUp, 
+  TrendingDown, 
+  Minus,
+  Calendar,
+  DollarSign,
+  PieChart
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-	Copy,
-	Download,
-	Edit,
-	GripVertical,
-	MoreHorizontal,
-	Trash,
-} from "lucide-react";
-import type React from "react";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Separator } from "@/components/ui/separator";
-import type { Portfolio as CodegenPortfolio } from "@/gql/graphql";
-import { cn } from "@/lib/utils";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { usePortfolioOperations } from '@/hooks/use-portfolio-management';
+import { useToast } from '@/components/ui/use-toast';
+import type { GetPortfoliosWithAnalyticsQuery } from '@/gql/graphql';
 
-// This type was previously in use-portfolio-management but is more specific to component-level data shaping.
-// It represents a single asset within a portfolio's context.
-export type PortfolioPosition = {
-	__typename?: "Position";
-	id: string;
-	quantity: number;
-	ownershipPct: number;
-	averagePurchasePrice: number;
-	asset: {
-		__typename?: "Asset";
-		id: string;
-		name: string;
-		symbol?: string | null;
-		currentValue: number;
-	};
-};
+type Portfolio = GetPortfoliosWithAnalyticsQuery["portfolios"][0];
 
-export type Portfolio = CodegenPortfolio & {
-	// Add any client-side specific properties here
-};
+export type ViewMode = 'list' | 'grid';
+export type PortfolioAction = 'edit' | 'delete' | 'duplicate' | 'view';
 
 export interface PortfolioCardProps {
-	portfolio: Portfolio;
-	viewMode: ViewMode;
-	isSelected: boolean;
-	onSelect: (selected: boolean) => void;
-	onAction: (action: PortfolioAction, portfolioId: string) => void;
-	isDragging?: boolean;
-	dragHandleProps?: Record<string, unknown>;
-	className?: string;
-	accessibilityProps?: React.HTMLProps<HTMLDivElement>;
-	assets?: import("@/hooks/use-asset-management").Asset[];
+  portfolio: Portfolio;
+  viewMode: ViewMode;
+  isSelected?: boolean;
+  onSelect?: (selected: boolean) => void;
+  onAction?: (action: PortfolioAction, portfolioId: string) => void;
+  isDragging?: boolean;
+  assets?: any[];
 }
 
-export type PortfolioAction =
-	| "edit"
-	| "delete"
-	| "duplicate"
-	| "export"
-	| "view";
-export type ViewMode = "grid" | "list";
-
-interface PortfolioAnalytics {
-	totalValue: number;
-	totalCost: number;
-	totalGainLoss: number;
-	totalGainLossPercent: number;
-	assetCount: number;
-}
-
-export function PortfolioCard({
-	portfolio,
-	viewMode,
-	isSelected,
-	onSelect,
-	onAction,
-	isDragging = false,
-	dragHandleProps,
-	className,
-	accessibilityProps = {},
+export function PortfolioCard({ 
+  portfolio, 
+  viewMode, 
+  isSelected = false,
+  onSelect,
+  onAction,
+  isDragging = false,
+  assets
 }: PortfolioCardProps) {
-	// Calculate analytics from portfolio assets if not provided
-	const analytics =
-		portfolio.analytics ||
-		calculatePortfolioAnalytics(
-			portfolio.assets as unknown as PortfolioPosition[],
-		);
+  const { toast } = useToast();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  const {
+    deletePortfolio,
+    duplicatePortfolio,
+    isLoading,
+  } = usePortfolioOperations(portfolio.id);
 
-	// Find assets belonging to this portfolio
-	const portfolioAssets =
-		(portfolio.assets as unknown as PortfolioPosition[]) || [];
+  const handleDelete = async () => {
+    if (onAction) {
+      onAction('delete', portfolio.id);
+      setShowDeleteDialog(false);
+    } else {
+      try {
+        await deletePortfolio();
+        toast("Portfolio Deleted", {
+          description: `"${portfolio.name}" has been successfully deleted.`,
+        });
+        setShowDeleteDialog(false);
+      } catch (error) {
+        toast.error("Error Deleting Portfolio", {
+          description: error instanceof Error ? error.message : "Failed to delete portfolio",
+        });
+      }
+    }
+  };
 
-	const handleCardClick = (e: React.MouseEvent | React.KeyboardEvent) => {
-		// Don't trigger card click if clicking on interactive elements
-		const target = e.target as HTMLElement;
-		if (
-			target.closest('[data-slot="dropdown-menu-trigger"]') ||
-			target.closest('[data-slot="checkbox"]') ||
-			target.closest("[data-drag-handle]")
-		) {
-			return;
-		}
-		onSelect(!isSelected);
-	};
+  const handleDuplicate = async () => {
+    if (onAction) {
+      onAction('duplicate', portfolio.id);
+    } else {
+      const newName = `${portfolio.name} (Copy)`;
+      try {
+        await duplicatePortfolio(newName, { copyAssets: true });
+        toast("Portfolio Duplicated", {
+          description: `A copy of "${portfolio.name}" has been created.`,
+        });
+      } catch (error) {
+        toast.error("Error Duplicating Portfolio", {
+          description: error instanceof Error ? error.message : "Failed to duplicate portfolio",
+        });
+      }
+    }
+  };
 
-	// Dummy handlers for missing functions (fix errors)
-	const handleCheckboxChange = (checked: boolean) => {
-		onSelect(checked);
-	};
-	const handleActionClick = (action: PortfolioAction) => {
-		onAction(action, portfolio.id);
-	};
+  // Calculate portfolio metrics
+  const totalValue = portfolio.analytics?.totalValue || 0;
+  const totalGainLoss = portfolio.analytics?.totalGainLoss || 0;
+  const totalGainLossPercent = portfolio.analytics?.totalGainLossPercent || 0;
+  const assetCount = portfolio.assets?.length || 0;
 
-	return (
-		<li
-			className={cn(
-				"w-full list-none",
-				isDragging && "opacity-50 rotate-2 shadow-lg",
-				className,
-			)}
-		>
-			<Card
-				className={cn(
-					"cursor-pointer transition-all hover:shadow-md w-full",
-					isSelected && "ring-2 ring-primary",
-					viewMode === "list" && "flex-row",
-				)}
-				onClick={handleCardClick}
-				tabIndex={accessibilityProps?.tabIndex ?? 0}
-				aria-label={accessibilityProps?.["aria-label"]}
-				aria-posinset={accessibilityProps?.["aria-posinset"]}
-				aria-setsize={accessibilityProps?.["aria-setsize"]}
-				aria-selected={accessibilityProps?.["aria-selected"]}
-				onKeyDown={(e) => {
-					if (e.key === "Enter" || e.key === " ") {
-						handleCardClick(e);
-					}
-				}}
-				data-assets={portfolio.assets ? "true" : "false"}
-			>
-				<CardHeader
-					className={cn(
-						"flex flex-row items-center justify-between space-y-0 pb-2",
-						viewMode === "list" && "flex-1",
-					)}
-				>
-					<div className="flex items-center space-x-2 flex-1 min-w-0">
-						<Checkbox
-							checked={isSelected}
-							onCheckedChange={handleCheckboxChange}
-							onClick={(e) => e.stopPropagation()}
-						/>
+  // Format currency values
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  };
 
-						<div
-							{...dragHandleProps}
-							data-drag-handle
-							className="cursor-grab active:cursor-grabbing"
-						>
-							<GripVertical className="h-4 w-4 text-muted-foreground" />
-						</div>
+  // Format percentage
+  const formatPercentage = (value: number) => {
+    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  };
 
-						<div className="flex-1 min-w-0">
-							<CardTitle className="text-sm font-medium truncate">
-								{portfolio.name}
-							</CardTitle>
-							{portfolio.description && viewMode === "grid" && (
-								<CardDescription className="mt-1 line-clamp-2">
-									{portfolio.description}
-								</CardDescription>
-							)}
-						</div>
-					</div>
+  // Get gain/loss color and icon
+  const getGainLossDisplay = () => {
+    if (totalGainLoss > 0) {
+      return {
+        color: 'text-green-600',
+        bgColor: 'bg-green-50',
+        icon: TrendingUp,
+      };
+    } else if (totalGainLoss < 0) {
+      return {
+        color: 'text-red-600',
+        bgColor: 'bg-red-50',
+        icon: TrendingDown,
+      };
+    } else {
+      return {
+        color: 'text-gray-600',
+        bgColor: 'bg-gray-50',
+        icon: Minus,
+      };
+    }
+  };
 
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-							<Button variant="ghost" size="sm">
-								<MoreHorizontal className="h-4 w-4" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem onClick={() => handleActionClick("edit")}>
-								<Edit className="mr-2 h-4 w-4" />
-								Edit
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => handleActionClick("duplicate")}>
-								<Copy className="mr-2 h-4 w-4" />
-								Duplicate
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => handleActionClick("export")}>
-								<Download className="mr-2 h-4 w-4" />
-								Export
-							</DropdownMenuItem>
-							<DropdownMenuSeparator />
-							<DropdownMenuItem
-								onClick={() => handleActionClick("delete")}
-								variant="destructive"
-							>
-								<Trash className="mr-2 h-4 w-4" />
-								Delete
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
-				</CardHeader>
+  const gainLossDisplay = getGainLossDisplay();
+  const GainLossIcon = gainLossDisplay.icon;
 
-				<CardContent
-					className={cn(
-						"pt-0",
-						viewMode === "list" && "flex items-center space-x-6",
-					)}
-				>
-					{viewMode === "list" && portfolio.description && (
-						<div className="flex-1 min-w-0">
-							<p className="text-sm text-muted-foreground truncate">
-								{portfolio.description}
-							</p>
-						</div>
-					)}
+  if (viewMode === 'list') {
+    return (
+      <>
+        <Card className={`hover:shadow-md transition-shadow ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4 flex-1">
+                {onSelect && (
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(e) => onSelect(e.target.checked)}
+                    className="rounded"
+                  />
+                )}
+                <div className="flex-1">
+                  <Link
+                    to="/portfolios/$portfolioId"
+                    params={{ portfolioId: portfolio.id }}
+                    className="font-semibold text-lg hover:underline"
+                    onClick={() => onAction?.('view', portfolio.id)}
+                  >
+                    {portfolio.name}
+                  </Link>
+                  {portfolio.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {portfolio.description}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex items-center space-x-6 text-sm">
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Total Value</p>
+                    <p className="font-semibold">{formatCurrency(totalValue)}</p>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Gain/Loss</p>
+                    <div className={`flex items-center gap-1 ${gainLossDisplay.color}`}>
+                      <GainLossIcon className="h-3 w-3" />
+                      <span className="font-semibold">
+                        {formatCurrency(totalGainLoss)} ({formatPercentage(totalGainLossPercent)})
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-center">
+                    <p className="text-muted-foreground">Assets</p>
+                    <p className="font-semibold">{assetCount}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <PortfolioActions
+                onDuplicate={handleDuplicate}
+                onDelete={() => setShowDeleteDialog(true)}
+                isLoading={isLoading}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
-					<div
-						className={cn(
-							"space-y-2",
-							viewMode === "list" && "flex items-center space-x-6 space-y-0",
-						)}
-					>
-						<div
-							className={cn(
-								"flex justify-between items-center",
-								viewMode === "list" && "flex-col items-end space-y-1",
-							)}
-						>
-							<span className="text-sm text-muted-foreground">Total Value</span>
-							<span className="font-semibold">
-								{formatCurrency(analytics.totalValue)}
-							</span>
-						</div>
+        <DeleteConfirmationDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          portfolioName={portfolio.name}
+          onConfirm={handleDelete}
+          isLoading={isLoading}
+        />
+      </>
+    );
+  }
 
-						<div
-							className={cn(
-								"flex justify-between items-center",
-								viewMode === "list" && "flex-col items-end space-y-1",
-							)}
-						>
-							<span className="text-sm text-muted-foreground">Performance</span>
-							<div className="text-right">
-								<Badge
-									variant={getPerformanceVariant(
-										analytics.totalGainLossPercent,
-									)}
-								>
-									{formatPercentage(analytics.totalGainLossPercent)}
-								</Badge>
-								{viewMode === "grid" && (
-									<div
-										className={cn(
-											"text-sm mt-1",
-											getPerformanceColor(analytics.totalGainLoss),
-										)}
-									>
-										{formatCurrency(analytics.totalGainLoss)}
-									</div>
-								)}
-							</div>
-						</div>
+  // Grid view
+  return (
+    <>
+      <Card className={`hover:shadow-md transition-shadow ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+        <CardHeader className="pb-3">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start space-x-2 flex-1">
+              {onSelect && (
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={(e) => onSelect(e.target.checked)}
+                  className="rounded mt-1"
+                />
+              )}
+              <div className="flex-1">
+                <CardTitle className="text-lg">
+                  <Link
+                    to="/portfolios/$portfolioId"
+                    params={{ portfolioId: portfolio.id }}
+                    className="hover:underline"
+                    onClick={() => onAction?.('view', portfolio.id)}
+                  >
+                    {portfolio.name}
+                  </Link>
+                </CardTitle>
+              {portfolio.description && (
+                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                  {portfolio.description}
+                </p>
+              )}
+            </div>
+            
+            <PortfolioActions
+              onDuplicate={handleDuplicate}
+              onDelete={() => setShowDeleteDialog(true)}
+              isLoading={isLoading}
+            />
+          </div>
+        </CardHeader>
+        
+        <CardContent className="pt-0">
+          <div className="space-y-3">
+            {/* Total Value */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <DollarSign className="h-4 w-4" />
+                <span>Total Value</span>
+              </div>
+              <span className="font-semibold text-lg">{formatCurrency(totalValue)}</span>
+            </div>
+            
+            {/* Gain/Loss */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <TrendingUp className="h-4 w-4" />
+                <span>Gain/Loss</span>
+              </div>
+              <div className={`flex items-center gap-1 ${gainLossDisplay.color}`}>
+                <GainLossIcon className="h-3 w-3" />
+                <span className="font-semibold text-sm">
+                  {formatCurrency(totalGainLoss)}
+                </span>
+              </div>
+            </div>
+            
+            {/* Performance Badge */}
+            {totalGainLossPercent !== 0 && (
+              <div className="flex justify-center">
+                <Badge 
+                  variant="secondary" 
+                  className={`${gainLossDisplay.bgColor} ${gainLossDisplay.color} border-0`}
+                >
+                  {formatPercentage(totalGainLossPercent)}
+                </Badge>
+              </div>
+            )}
+            
+            {/* Asset Count and Created Date */}
+            <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
+              <div className="flex items-center gap-1">
+                <PieChart className="h-3 w-3" />
+                <span>{assetCount} assets</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span>{new Date(portfolio.createdAt).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-						{viewMode === "grid" && <Separator />}
-
-						<div
-							className={cn(
-								"flex justify-between items-center",
-								viewMode === "list" && "flex-col items-end space-y-1",
-							)}
-						>
-							<span className="text-sm text-muted-foreground">Assets</span>
-							<Badge variant="secondary">{portfolioAssets.length}</Badge>
-						</div>
-						{portfolioAssets.length > 0 && (
-							<div className="mt-2 text-xs text-muted-foreground">
-								{portfolioAssets.slice(0, 3).map((a) => (
-									<span key={a.asset.id} className="mr-2">
-										{a.asset.name}
-									</span>
-								))}
-								{portfolioAssets.length > 3 && (
-									<span>+{portfolioAssets.length - 3} more</span>
-								)}
-							</div>
-						)}
-
-						{viewMode === "grid" && (
-							<div className="flex justify-between items-center text-xs text-muted-foreground">
-								<span>Created</span>
-								<span>{formatDate(portfolio.createdAt)}</span>
-							</div>
-						)}
-					</div>
-				</CardContent>
-			</Card>
-		</li>
-	);
+      <DeleteConfirmationDialog
+        open={showDeleteDialog}
+        onOpenChange={setShowDeleteDialog}
+        portfolioName={portfolio.name}
+        onConfirm={handleDelete}
+        isLoading={isLoading}
+      />
+    </>
+  );
 }
 
-// Utility functions
-function calculatePortfolioAnalytics(
-	assets: PortfolioPosition[],
-): PortfolioAnalytics {
-	if (!assets || assets.length === 0) {
-		return {
-			totalValue: 0,
-			totalCost: 0,
-			totalGainLoss: 0,
-			totalGainLossPercent: 0,
-			assetCount: 0,
-		};
-	}
-
-	let totalValue = 0;
-	let totalCost = 0;
-
-	assets.forEach((asset) => {
-		const currentValue =
-			asset.asset.currentValue * asset.quantity * (asset.ownershipPct / 100);
-		const cost =
-			asset.averagePurchasePrice * asset.quantity * (asset.ownershipPct / 100);
-
-		totalValue += currentValue;
-		totalCost += cost;
-	});
-
-	const totalGainLoss = totalValue - totalCost;
-	const totalGainLossPercent =
-		totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
-
-	return {
-		totalValue,
-		totalCost,
-		totalGainLoss,
-		totalGainLossPercent,
-		assetCount: assets.length,
-	};
+function PortfolioActions({ 
+  onDuplicate, 
+  onDelete, 
+  isLoading 
+}: {
+  onDuplicate: () => void;
+  onDelete: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" disabled={isLoading}>
+          <MoreHorizontal className="h-4 w-4" />
+          <span className="sr-only">Portfolio actions</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={onDuplicate} disabled={isLoading}>
+          <Copy className="mr-2 h-4 w-4" />
+          Duplicate
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem 
+          onClick={onDelete} 
+          disabled={isLoading}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 className="mr-2 h-4 w-4" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
 
-function formatCurrency(amount: number): string {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: "USD",
-	}).format(amount);
-}
-
-function formatPercentage(percent: number): string {
-	return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`;
-}
-
-function formatDate(dateString: string): string {
-	return new Date(dateString).toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
-}
-
-function getPerformanceColor(value: number): string {
-	if (value > 0) return "text-green-600";
-	if (value < 0) return "text-red-600";
-	return "text-muted-foreground";
-}
-
-function getPerformanceVariant(
-	percent: number,
-): "default" | "secondary" | "destructive" {
-	if (percent > 0) return "default"; // Green for positive
-	if (percent < 0) return "destructive"; // Red for negative
-	return "secondary"; // Gray for neutral
+function DeleteConfirmationDialog({
+  open,
+  onOpenChange,
+  portfolioName,
+  onConfirm,
+  isLoading,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  portfolioName: string;
+  onConfirm: () => void;
+  isLoading: boolean;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the "{portfolioName}" 
+            portfolio and all its associated positions and data.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={onConfirm} 
+            disabled={isLoading}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isLoading ? "Deleting..." : "Delete Portfolio"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
