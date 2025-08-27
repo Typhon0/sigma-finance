@@ -6,12 +6,16 @@ package graphql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"strconv"
+	"strings"
+
+	"github.com/uptrace/bun"
 )
 
 // CreateUser is the resolver for the createUser field.
@@ -65,51 +69,120 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, e
 
 // CreatePortfolio is the resolver for the createPortfolio field.
 func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.CreatePortfolioInput) (*gqlModel.Portfolio, error) {
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("authentication required: %w", err)
+	}
+
+	// 2. Validate user authorization - ensure user can only create portfolios for themselves
+	if input.UserID != user.ID {
+		return nil, fmt.Errorf("unauthorized: cannot create portfolio for another user")
+	}
+
+	// 3. Input validation and sanitization
+	if err := validatePortfolioName(input.Name); err != nil {
+		return nil, fmt.Errorf("invalid portfolio name: %w", err)
+	}
+
+	var description *string
+	if input.Description != nil {
+		sanitized := sanitizeDescription(*input.Description)
+		description = &sanitized
+	}
+
+	// 4. Create portfolio through service layer
 	portfolioInput := service.CreatePortfolioInput{
 		UserID:      input.UserID,
-		Name:        input.Name,
-		Description: input.Description,
+		Name:        sanitizePortfolioName(input.Name),
+		Description: description,
 	}
+
 	createdPortfolio, err := r.PortfolioService.CreatePortfolio(ctx, portfolioInput)
 	if err != nil {
-		return nil, err
+		return nil, handlePortfolioServiceError(err)
 	}
+
 	return ToGraphQLPortfolio(&createdPortfolio), nil
 }
 
 // UpdatePortfolio is the resolver for the updatePortfolio field.
 func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input gqlModel.UpdatePortfolioInput) (*gqlModel.Portfolio, error) {
-	portfolioID, err := strconv.ParseUint(id, 10, 32)
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid portfolio ID: %w", err)
+		return nil, fmt.Errorf("authentication required: %w", err)
 	}
-	var sortOrder *int
-	if input.SortOrder != nil {
-		so := int(*input.SortOrder)
-		sortOrder = &so
-	}
-	portfolioInput := service.UpdatePortfolioInput{
-		Name:        input.Name,
-		Description: input.Description,
-		SortOrder:   sortOrder,
-	}
-	updatedPortfolio, err := r.PortfolioService.UpdatePortfolio(ctx, uint(portfolioID), portfolioInput)
+
+	// 2. Validate and parse portfolio ID
+	portfolioID, err := parsePortfolioID(id)
 	if err != nil {
 		return nil, err
 	}
+
+	// 3. Validate user authorization - ensure user owns the portfolio
+	if err := r.validatePortfolioOwnership(ctx, portfolioID, user.ID); err != nil {
+		return nil, err
+	}
+
+	// 4. Input validation and sanitization
+	portfolioInput := service.UpdatePortfolioInput{}
+
+	if input.Name != nil {
+		if err := validatePortfolioName(*input.Name); err != nil {
+			return nil, fmt.Errorf("invalid portfolio name: %w", err)
+		}
+		sanitized := sanitizePortfolioName(*input.Name)
+		portfolioInput.Name = &sanitized
+	}
+
+	if input.Description != nil {
+		sanitized := sanitizeDescription(*input.Description)
+		portfolioInput.Description = &sanitized
+	}
+
+	if input.SortOrder != nil {
+		if *input.SortOrder < 0 {
+			return nil, fmt.Errorf("sort order must be non-negative")
+		}
+		so := int(*input.SortOrder)
+		portfolioInput.SortOrder = &so
+	}
+
+	// 5. Update portfolio through service layer
+	updatedPortfolio, err := r.PortfolioService.UpdatePortfolio(ctx, portfolioID, portfolioInput)
+	if err != nil {
+		return nil, handlePortfolioServiceError(err)
+	}
+
 	return ToGraphQLPortfolio(&updatedPortfolio), nil
 }
 
 // DeletePortfolio is the resolver for the deletePortfolio field.
 func (r *mutationResolver) DeletePortfolio(ctx context.Context, id string) (string, error) {
-	portfolioID, err := strconv.ParseUint(id, 10, 32)
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return "", fmt.Errorf("invalid portfolio ID: %w", err)
+		return "", fmt.Errorf("authentication required: %w", err)
 	}
-	err = r.PortfolioService.DeletePortfolio(ctx, uint(portfolioID))
+
+	// 2. Validate and parse portfolio ID
+	portfolioID, err := parsePortfolioID(id)
 	if err != nil {
 		return "", err
 	}
+
+	// 3. Validate user authorization - ensure user owns the portfolio
+	if err := r.validatePortfolioOwnership(ctx, portfolioID, user.ID); err != nil {
+		return "", err
+	}
+
+	// 4. Delete portfolio through service layer
+	err = r.PortfolioService.DeletePortfolio(ctx, portfolioID)
+	if err != nil {
+		return "", handlePortfolioServiceError(err)
+	}
+
 	return id, nil
 }
 
@@ -230,48 +303,102 @@ func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID strin
 
 // DuplicatePortfolio is the resolver for the duplicatePortfolio field.
 func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlModel.DuplicatePortfolioInput) (*gqlModel.Portfolio, error) {
-	sourceID, err := strconv.ParseUint(input.SourcePortfolioID, 10, 32)
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("authentication required: %w", err)
+	}
+
+	// 2. Validate and parse source portfolio ID
+	sourceID, err := parsePortfolioID(input.SourcePortfolioID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid source portfolio ID: %w", err)
 	}
+
+	// 3. Validate user authorization - ensure user owns the source portfolio
+	if err := r.validatePortfolioOwnership(ctx, sourceID, user.ID); err != nil {
+		return nil, fmt.Errorf("source portfolio access denied: %w", err)
+	}
+
+	// 4. Input validation and sanitization
+	if err := validatePortfolioName(input.NewName); err != nil {
+		return nil, fmt.Errorf("invalid new portfolio name: %w", err)
+	}
+
 	var desc string
 	if input.Description != nil {
-		desc = *input.Description
+		desc = sanitizeDescription(*input.Description)
 	}
+
+	// 5. Duplicate portfolio through service layer
 	dupInput := service.DuplicatePortfolioInput{
-		SourcePortfolioID: uint(sourceID),
-		NewName:           input.NewName,
+		SourcePortfolioID: sourceID,
+		NewName:           sanitizePortfolioName(input.NewName),
 		Description:       desc,
 		CopyAssets:        input.CopyAssets,
 	}
+
 	newPortfolio, err := r.PortfolioService.DuplicatePortfolio(ctx, dupInput)
 	if err != nil {
-		return nil, err
+		return nil, handlePortfolioServiceError(err)
 	}
+
 	return ToGraphQLPortfolio(&newPortfolio), nil
 }
 
 // ReorderPortfolios is the resolver for the reorderPortfolios field.
 func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel.ReorderPortfoliosInput) ([]*gqlModel.Portfolio, error) {
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("authentication required: %w", err)
+	}
+
+	// 2. Validate user authorization - ensure user can only reorder their own portfolios
+	if input.UserID != user.ID {
+		return nil, fmt.Errorf("unauthorized: cannot reorder another user's portfolios")
+	}
+
+	// 3. Input validation
+	if len(input.PortfolioOrders) == 0 {
+		return nil, fmt.Errorf("no portfolio orders provided")
+	}
+
+	// 4. Parse and validate portfolio IDs and sort orders
 	orders := make([]service.PortfolioOrderInput, len(input.PortfolioOrders))
 	for i, o := range input.PortfolioOrders {
-		portfolioID, err := strconv.ParseUint(o.PortfolioID, 10, 32)
+		portfolioID, err := parsePortfolioID(o.PortfolioID)
 		if err != nil {
-			return nil, fmt.Errorf("invalid portfolio ID: %w", err)
+			return nil, fmt.Errorf("invalid portfolio ID at index %d: %w", i, err)
 		}
+
+		if o.SortOrder < 0 {
+			return nil, fmt.Errorf("sort order must be non-negative at index %d", i)
+		}
+
+		// Validate user owns each portfolio
+		if err := r.validatePortfolioOwnership(ctx, portfolioID, user.ID); err != nil {
+			return nil, fmt.Errorf("portfolio access denied at index %d: %w", i, err)
+		}
+
 		orders[i] = service.PortfolioOrderInput{
-			PortfolioID: uint(portfolioID),
+			PortfolioID: portfolioID,
 			SortOrder:   int(o.SortOrder),
 		}
 	}
+
+	// 5. Reorder portfolios through service layer
 	portfolios, err := r.PortfolioService.ReorderPortfolios(ctx, input.UserID, orders)
 	if err != nil {
-		return nil, err
+		return nil, handlePortfolioServiceError(err)
 	}
+
+	// 6. Convert to GraphQL format
 	gqlPortfolios := make([]*gqlModel.Portfolio, len(portfolios))
 	for i, p := range portfolios {
 		gqlPortfolios[i] = ToGraphQLPortfolio(&p)
 	}
+
 	return gqlPortfolios, nil
 }
 
@@ -504,27 +631,58 @@ func (r *queryResolver) Users(ctx context.Context, filter *gqlModel.UserFilter, 
 
 // Portfolio is the resolver for the portfolio field.
 func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Portfolio, error) {
-	portfolioID, err := strconv.ParseUint(id, 10, 32)
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("invalid portfolio ID: %w", err)
+		return nil, fmt.Errorf("authentication required: %w", err)
 	}
-	portfolio, err := r.PortfolioService.GetByID(ctx, uint(portfolioID))
+
+	// 2. Validate and parse portfolio ID
+	portfolioID, err := parsePortfolioID(id)
 	if err != nil {
 		return nil, err
 	}
+
+	// 3. Get portfolio through service layer
+	portfolio, err := r.PortfolioService.GetByID(ctx, portfolioID)
+	if err != nil {
+		return nil, handlePortfolioServiceError(err)
+	}
+
+	// 4. Validate user authorization - ensure user owns the portfolio
+	if portfolio.UserID != user.ID {
+		return nil, fmt.Errorf("unauthorized: portfolio not found")
+	}
+
 	return ToGraphQLPortfolio(&portfolio), nil
 }
 
 // GetPortfoliosWithAnalytics is the resolver for the GetPortfoliosWithAnalytics field.
 func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID string) ([]*gqlModel.Portfolio, error) {
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("authentication required: %w", err)
+	}
+
+	// 2. Validate user authorization - ensure user can only access their own portfolios
+	if userID != user.ID {
+		return nil, fmt.Errorf("unauthorized: cannot access another user's portfolios")
+	}
+
+	// 3. Get portfolios through service layer
 	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, userID, "")
 	if err != nil {
-		return nil, err
+		return nil, handlePortfolioServiceError(err)
 	}
+
+	// 4. Build response with analytics
 	var gqlPortfolios []*gqlModel.Portfolio
 	for i := range portfolios {
 		p := portfolios[i]
 		gqlP := ToGraphQLPortfolio(&p)
+
+		// Get analytics for each portfolio
 		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID)
 		if err == nil {
 			gqlP.Analytics = &gqlModel.PortfolioAnalytics{
@@ -536,23 +694,64 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 		}
 		gqlPortfolios = append(gqlPortfolios, gqlP)
 	}
+
 	return gqlPortfolios, nil
 }
 
 // Portfolios is the resolver for the portfolios field.
 func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) ([]*gqlModel.Portfolio, error) {
-	var opts []repository.QueryOption
-	if filter != nil && filter.UserID != nil {
-		opts = append(opts, repository.ByColumn("user_id", *filter.UserID))
-	}
-	portfolios, err := r.Resolver.PortfolioService.FindAll(ctx, opts...)
+	// 1. Validate user authentication
+	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("authentication required: %w", err)
 	}
+
+	// 2. Build query options - always filter by authenticated user
+	var opts []repository.QueryOption
+	opts = append(opts, repository.ByColumn("user_id", user.ID))
+
+	// 3. Apply additional filters if provided
+	if filter != nil {
+		// Ignore filter.UserID since we always use authenticated user
+		if filter.NameContains != nil && *filter.NameContains != "" {
+			// Use a custom query option for LIKE filtering
+			nameFilter := *filter.NameContains
+			opts = append(opts, func(q *bun.SelectQuery) *bun.SelectQuery {
+				return q.Where("name ILIKE ?", "%"+nameFilter+"%")
+			})
+		}
+		// TODO: Implement tag filtering when needed
+	}
+
+	// 4. Apply ordering
+	orderClause := "sort_order ASC" // Default ordering
+	if orderBy != nil {
+		orderClause = buildPortfolioOrderClause(*orderBy)
+	}
+	opts = append(opts, repository.WithOrder(orderClause))
+
+	// 5. Apply pagination
+	if pagination != nil {
+		if pagination.Limit != nil && *pagination.Limit > 0 {
+			opts = append(opts, repository.WithLimit(int(*pagination.Limit)))
+		}
+		if pagination.Offset != nil && *pagination.Offset > 0 {
+			opts = append(opts, repository.WithOffset(int(*pagination.Offset)))
+		}
+	}
+
+	// 6. Get portfolios through service layer
+	portfolios, err := r.PortfolioService.FindAll(ctx, opts...)
+	if err != nil {
+		return nil, handlePortfolioServiceError(err)
+	}
+
+	// 7. Convert to GraphQL format
 	var gqlPortfolios []*gqlModel.Portfolio
 	for i := range portfolios {
 		gqlPortfolios = append(gqlPortfolios, ToGraphQLPortfolio(&portfolios[i]))
 	}
+
 	return gqlPortfolios, nil
 }
 
@@ -720,3 +919,152 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// Portfolio validation and helper functions
+
+// validatePortfolioName validates portfolio name input
+func validatePortfolioName(name string) error {
+	if name == "" {
+		return fmt.Errorf("portfolio name is required")
+	}
+	if len(name) < 3 {
+		return fmt.Errorf("portfolio name must be at least 3 characters long")
+	}
+	if len(name) > 100 {
+		return fmt.Errorf("portfolio name must be less than 100 characters")
+	}
+	return nil
+}
+
+// sanitizePortfolioName sanitizes portfolio name input
+func sanitizePortfolioName(name string) string {
+	// Trim whitespace and normalize spaces
+	name = strings.TrimSpace(name)
+	// Replace multiple spaces with single space
+	name = strings.Join(strings.Fields(name), " ")
+	return name
+}
+
+// sanitizeDescription sanitizes description input
+func sanitizeDescription(description string) string {
+	// Trim whitespace
+	description = strings.TrimSpace(description)
+	// Limit length
+	if len(description) > 500 {
+		description = description[:500]
+	}
+	return description
+}
+
+// parsePortfolioID validates and parses portfolio ID
+func parsePortfolioID(id string) (uint, error) {
+	if id == "" {
+		return 0, fmt.Errorf("portfolio ID is required")
+	}
+	portfolioID, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf("invalid portfolio ID format: %w", err)
+	}
+	if portfolioID == 0 {
+		return 0, fmt.Errorf("portfolio ID must be greater than 0")
+	}
+	return uint(portfolioID), nil
+}
+
+// validatePortfolioOwnership validates that the user owns the portfolio
+func (r *Resolver) validatePortfolioOwnership(ctx context.Context, portfolioID uint, userID string) error {
+	portfolio, err := r.PortfolioService.GetByID(ctx, portfolioID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("portfolio not found")
+		}
+		return fmt.Errorf("failed to verify portfolio ownership: %w", err)
+	}
+
+	if portfolio.UserID != userID {
+		return fmt.Errorf("unauthorized: access denied")
+	}
+
+	return nil
+}
+
+// buildPortfolioOrderClause builds SQL order clause from GraphQL order input
+func buildPortfolioOrderClause(orderBy gqlModel.PortfolioOrder) string {
+	var field string
+	switch orderBy.Field {
+	case gqlModel.PortfolioOrderFieldName:
+		field = "name"
+	case gqlModel.PortfolioOrderFieldSortOrder:
+		field = "sort_order"
+	case gqlModel.PortfolioOrderFieldCreatedAt:
+		field = "created_at"
+	case gqlModel.PortfolioOrderFieldUpdatedAt:
+		field = "updated_at"
+	default:
+		field = "sort_order"
+	}
+
+	direction := "ASC"
+	if orderBy.Direction == gqlModel.SortDirectionDesc {
+		direction = "DESC"
+	}
+
+	return fmt.Sprintf("%s %s", field, direction)
+}
+
+// handlePortfolioServiceError converts service errors to appropriate GraphQL errors
+func handlePortfolioServiceError(err error) error {
+	if err == nil {
+		return nil
+	}
+
+	// Handle specific portfolio service errors
+	if errors.Is(err, service.ErrPortfolioNotFound) {
+		return fmt.Errorf("portfolio not found")
+	}
+
+	if errors.Is(err, service.ErrPortfolioNameExists) {
+		return fmt.Errorf("portfolio name already exists")
+	}
+
+	if errors.Is(err, service.ErrPortfolioUnauthorized) {
+		return fmt.Errorf("unauthorized: access denied to portfolio")
+	}
+
+	if errors.Is(err, service.ErrPortfolioInvalidName) {
+		return fmt.Errorf("invalid portfolio name: %s", strings.TrimPrefix(err.Error(), "portfolio name is invalid: "))
+	}
+
+	if errors.Is(err, service.ErrPortfolioInvalidInput) {
+		return fmt.Errorf("invalid input: %s", strings.TrimPrefix(err.Error(), "invalid input provided: "))
+	}
+
+	if errors.Is(err, service.ErrPortfolioHasPositions) {
+		return fmt.Errorf("cannot delete portfolio: portfolio contains positions")
+	}
+
+	// Handle legacy repository errors for backward compatibility
+	if errors.Is(err, repository.ErrNotFound) {
+		return fmt.Errorf("portfolio not found")
+	}
+
+	// Handle validation errors by checking error message patterns
+	if strings.Contains(err.Error(), "portfolio name must be") {
+		return fmt.Errorf("validation error: %s", err.Error())
+	}
+
+	if strings.Contains(err.Error(), "sort order must be") {
+		return fmt.Errorf("validation error: %s", err.Error())
+	}
+
+	if strings.Contains(err.Error(), "description must be") {
+		return fmt.Errorf("validation error: %s", err.Error())
+	}
+
+	if strings.Contains(err.Error(), "user ID") {
+		return fmt.Errorf("validation error: %s", err.Error())
+	}
+
+	// Generic error handling
+	return fmt.Errorf("portfolio operation failed: %w", err)
+}

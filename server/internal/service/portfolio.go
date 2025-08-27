@@ -7,11 +7,29 @@ import (
 	"math"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"strings"
 	"time"
 )
 
+// Portfolio-specific error types for better error handling and user experience
 var (
+	// ErrPortfolioNotFound indicates that a requested portfolio does not exist
+	ErrPortfolioNotFound = errors.New("portfolio not found")
+
+	// ErrPortfolioNameExists indicates that a portfolio with the same name already exists for the user
 	ErrPortfolioNameExists = errors.New("portfolio with this name already exists for the user")
+
+	// ErrPortfolioUnauthorized indicates that the user is not authorized to access the portfolio
+	ErrPortfolioUnauthorized = errors.New("user not authorized to access this portfolio")
+
+	// ErrPortfolioInvalidName indicates that the portfolio name is invalid
+	ErrPortfolioInvalidName = errors.New("portfolio name is invalid")
+
+	// ErrPortfolioInvalidInput indicates that the input provided is invalid
+	ErrPortfolioInvalidInput = errors.New("invalid input provided")
+
+	// ErrPortfolioHasPositions indicates that the portfolio contains positions and cannot be deleted
+	ErrPortfolioHasPositions = errors.New("portfolio contains positions and cannot be deleted")
 )
 
 // IPortfolioService defines the interface for portfolio-related services.
@@ -27,6 +45,9 @@ type IPortfolioService interface {
 	TagPortfolio(ctx context.Context, portfolioID, tagID uint) error
 	UntagPortfolio(ctx context.Context, portfolioID, tagID uint) error
 	GetPortfolioAssets(ctx context.Context, portfolioID uint) ([]model.PortfolioAsset, error)
+
+	// Authorization and validation
+	ValidatePortfolioOwnership(ctx context.Context, portfolioID uint, userID string) error
 
 	// Enhanced functionality
 	DuplicatePortfolio(ctx context.Context, input DuplicatePortfolioInput) (model.Portfolio, error)
@@ -49,6 +70,92 @@ func NewPortfolioService(uow repository.IUnitOfWork) *PortfolioService {
 	return &PortfolioService{
 		uow: uow,
 	}
+}
+
+// --- Input Validation Functions ---
+
+// validatePortfolioName validates portfolio name according to business rules
+func validatePortfolioName(name string) error {
+	if name == "" {
+		return fmt.Errorf("%w: portfolio name is required", ErrPortfolioInvalidName)
+	}
+
+	// Trim whitespace for validation
+	trimmed := strings.TrimSpace(name)
+	if len(trimmed) < 3 {
+		return fmt.Errorf("%w: portfolio name must be at least 3 characters long", ErrPortfolioInvalidName)
+	}
+
+	if len(trimmed) > 100 {
+		return fmt.Errorf("%w: portfolio name must be less than 100 characters", ErrPortfolioInvalidName)
+	}
+
+	// Check for invalid characters (basic validation)
+	if strings.ContainsAny(trimmed, "<>\"'&") {
+		return fmt.Errorf("%w: portfolio name contains invalid characters", ErrPortfolioInvalidName)
+	}
+
+	return nil
+}
+
+// validateUserID validates user ID format and presence
+func validateUserID(userID string) error {
+	if userID == "" {
+		return fmt.Errorf("%w: user ID is required", ErrPortfolioInvalidInput)
+	}
+
+	// Trim whitespace
+	trimmed := strings.TrimSpace(userID)
+	if len(trimmed) == 0 {
+		return fmt.Errorf("%w: user ID cannot be empty", ErrPortfolioInvalidInput)
+	}
+
+	return nil
+}
+
+// validateSortOrder validates sort order value
+func validateSortOrder(sortOrder int) error {
+	if sortOrder < 0 {
+		return fmt.Errorf("%w: sort order must be non-negative", ErrPortfolioInvalidInput)
+	}
+
+	return nil
+}
+
+// validatePortfolioID validates portfolio ID
+func validatePortfolioID(id uint) error {
+	if id == 0 {
+		return fmt.Errorf("%w: portfolio ID must be greater than 0", ErrPortfolioInvalidInput)
+	}
+
+	return nil
+}
+
+// ValidatePortfolioOwnership checks if a user owns a specific portfolio
+// Returns ErrPortfolioNotFound if the portfolio doesn't exist
+// Returns ErrPortfolioUnauthorized if the user doesn't own the portfolio
+func (s *PortfolioService) ValidatePortfolioOwnership(ctx context.Context, portfolioID uint, userID string) error {
+	if err := validatePortfolioID(portfolioID); err != nil {
+		return err
+	}
+
+	if err := validateUserID(userID); err != nil {
+		return err
+	}
+
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return ErrPortfolioNotFound
+		}
+		return fmt.Errorf("failed to retrieve portfolio for ownership validation: %w", err)
+	}
+
+	if portfolio.UserID != userID {
+		return ErrPortfolioUnauthorized
+	}
+
+	return nil
 }
 
 // --- Input Structs for Service Methods (keeps method signatures clean) ---
@@ -131,9 +238,22 @@ type PerformanceBenchmark struct {
 // --- Method Implementations ---
 
 // GetByID retrieves a single portfolio by its primary key.
-// This is a simple pass-through to the repository.
+// Returns ErrPortfolioNotFound if the portfolio doesn't exist.
 func (s *PortfolioService) GetByID(ctx context.Context, id uint) (model.Portfolio, error) {
-	return s.uow.Portfolio().GetByID(ctx, id)
+	// Input validation
+	if err := validatePortfolioID(id); err != nil {
+		return model.Portfolio{}, err
+	}
+
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return model.Portfolio{}, ErrPortfolioNotFound
+		}
+		return model.Portfolio{}, fmt.Errorf("failed to retrieve portfolio: %w", err)
+	}
+
+	return portfolio, nil
 }
 
 // FindAll retrieves a list of portfolios based on a dynamic set of query options.
@@ -143,12 +263,27 @@ func (s *PortfolioService) FindAll(ctx context.Context, opts ...repository.Query
 }
 
 // CreatePortfolio creates a new portfolio for a user, ensuring the operation is atomic.
+// Returns ErrPortfolioNameExists if a portfolio with the same name already exists for the user.
 func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePortfolioInput) (model.Portfolio, error) {
+	// Input validation
+	if err := validateUserID(input.UserID); err != nil {
+		return model.Portfolio{}, err
+	}
+
+	if err := validatePortfolioName(input.Name); err != nil {
+		return model.Portfolio{}, err
+	}
+
+	// Validate description length if provided
+	if input.Description != nil && len(*input.Description) > 500 {
+		return model.Portfolio{}, fmt.Errorf("%w: description must be less than 500 characters", ErrPortfolioInvalidInput)
+	}
+
 	var portfolio model.Portfolio
 
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Check if a portfolio with the same name already exists for this user
-		existing, err := uow.Portfolio().GetPortfolioByName(ctx, input.UserID, input.Name)
+		existing, err := uow.Portfolio().GetPortfolioByName(ctx, input.UserID, strings.TrimSpace(input.Name))
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check for existing portfolio: %w", err)
 		}
@@ -164,12 +299,12 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 
 		var description string
 		if input.Description != nil {
-			description = *input.Description
+			description = strings.TrimSpace(*input.Description)
 		}
 
 		newPortfolio := model.Portfolio{
 			UserID:      input.UserID,
-			Name:        input.Name,
+			Name:        strings.TrimSpace(input.Name),
 			Description: description,
 			SortOrder:   maxSortOrder + 1,
 		}
@@ -190,47 +325,93 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 }
 
 // UpdatePortfolio updates an existing portfolio's details.
+// Returns ErrPortfolioNotFound if the portfolio doesn't exist.
+// Returns ErrPortfolioNameExists if the new name conflicts with another portfolio.
 func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id uint, input UpdatePortfolioInput) (model.Portfolio, error) {
-	// 1. --- Retrieve Existing Entity ---
-	portfolioToUpdate, err := s.uow.Portfolio().GetByID(ctx, id)
-	if err != nil {
-		// The error from the repo (e.g., ErrNotFound) is returned directly.
+	// Input validation
+	if err := validatePortfolioID(id); err != nil {
 		return model.Portfolio{}, err
 	}
 
-	// 2. --- Apply Changes ---
 	if input.Name != nil {
-		// Validation
-		if len(*input.Name) < 3 {
-			return model.Portfolio{}, errors.New("portfolio name must be at least 3 characters long")
+		if err := validatePortfolioName(*input.Name); err != nil {
+			return model.Portfolio{}, err
 		}
-		portfolioToUpdate.Name = *input.Name
 	}
 
-	if input.Description != nil {
-		portfolioToUpdate.Description = *input.Description
+	if input.Description != nil && len(*input.Description) > 500 {
+		return model.Portfolio{}, fmt.Errorf("%w: description must be less than 500 characters", ErrPortfolioInvalidInput)
 	}
 
 	if input.SortOrder != nil {
-		// Validation for sort order (should be non-negative)
-		if *input.SortOrder < 0 {
-			return model.Portfolio{}, errors.New("sort order must be non-negative")
+		if err := validateSortOrder(*input.SortOrder); err != nil {
+			return model.Portfolio{}, err
 		}
-		portfolioToUpdate.SortOrder = *input.SortOrder
 	}
-	// Note: The UpdatedAt field is typically handled by the database or ORM hook.
 
-	// 3. --- Persistence ---
-	err = s.uow.Portfolio().Update(ctx, &portfolioToUpdate)
+	var portfolioToUpdate model.Portfolio
+
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// 1. --- Retrieve Existing Entity ---
+		existing, err := uow.Portfolio().GetByID(ctx, id)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return ErrPortfolioNotFound
+			}
+			return fmt.Errorf("failed to retrieve portfolio: %w", err)
+		}
+		portfolioToUpdate = existing
+
+		// 2. --- Check for name conflicts if name is being updated ---
+		if input.Name != nil {
+			trimmedName := strings.TrimSpace(*input.Name)
+			if trimmedName != existing.Name {
+				// Check if another portfolio with this name exists for the same user
+				conflicting, err := uow.Portfolio().GetPortfolioByName(ctx, existing.UserID, trimmedName)
+				if err != nil && !errors.Is(err, repository.ErrNotFound) {
+					return fmt.Errorf("failed to check for name conflicts: %w", err)
+				}
+				if conflicting != nil && conflicting.ID != 0 && conflicting.ID != existing.ID {
+					return ErrPortfolioNameExists
+				}
+			}
+			portfolioToUpdate.Name = trimmedName
+		}
+
+		// 3. --- Apply Other Changes ---
+		if input.Description != nil {
+			portfolioToUpdate.Description = strings.TrimSpace(*input.Description)
+		}
+
+		if input.SortOrder != nil {
+			portfolioToUpdate.SortOrder = *input.SortOrder
+		}
+
+		// 4. --- Persistence ---
+		err = uow.Portfolio().Update(ctx, &portfolioToUpdate)
+		if err != nil {
+			return fmt.Errorf("failed to update portfolio: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return model.Portfolio{}, fmt.Errorf("failed to update portfolio: %w", err)
+		return model.Portfolio{}, err
 	}
 
 	return portfolioToUpdate, nil
 }
 
 // DeletePortfolio handles the removal of a portfolio.
+// Returns ErrPortfolioNotFound if the portfolio doesn't exist.
+// Returns ErrPortfolioHasPositions if the portfolio contains positions (optional check).
 func (s *PortfolioService) DeletePortfolio(ctx context.Context, id uint) error {
+	// Input validation
+	if err := validatePortfolioID(id); err != nil {
+		return err
+	}
+
 	// Use transaction to ensure cascade deletion is atomic
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		portfolioID := int(id) // Convert uint to int for repository calls
@@ -238,7 +419,10 @@ func (s *PortfolioService) DeletePortfolio(ctx context.Context, id uint) error {
 		// 1. Check if portfolio exists
 		_, err := uow.Portfolio().GetByID(ctx, id)
 		if err != nil {
-			return fmt.Errorf("portfolio not found: %w", err)
+			if errors.Is(err, repository.ErrNotFound) {
+				return ErrPortfolioNotFound
+			}
+			return fmt.Errorf("failed to retrieve portfolio: %w", err)
 		}
 
 		// 2. Get all portfolio assets to delete them first
@@ -591,6 +775,11 @@ func (s *PortfolioService) ReorderPortfolios(ctx context.Context, userID string,
 
 // GetPortfoliosByUser retrieves all portfolios for a user with custom ordering
 func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID string, orderBy string) ([]model.Portfolio, error) {
+	// Input validation
+	if err := validateUserID(userID); err != nil {
+		return nil, err
+	}
+
 	// 1. --- Input Validation ---
 	validOrderBy := map[string]string{
 		"name":         "name ASC",
@@ -623,11 +812,16 @@ func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID strin
 
 // GetPortfolioAnalytics calculates comprehensive analytics for a portfolio
 func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID uint) (PortfolioAnalytics, error) {
+	// Input validation
+	if err := validatePortfolioID(portfolioID); err != nil {
+		return PortfolioAnalytics{}, err
+	}
+
 	// 1. --- Verify Portfolio Exists ---
 	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return PortfolioAnalytics{}, fmt.Errorf("portfolio with ID %d not found", portfolioID)
+			return PortfolioAnalytics{}, ErrPortfolioNotFound
 		}
 		return PortfolioAnalytics{}, fmt.Errorf("failed to retrieve portfolio: %w", err)
 	}
