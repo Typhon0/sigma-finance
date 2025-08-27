@@ -334,6 +334,14 @@ func (m *MockSessionRepository) RefreshSession(ctx context.Context, sessionID st
 	return args.Error(0)
 }
 
+func (m *MockSessionRepository) GetByStringID(ctx context.Context, id string) (*model.Session, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
+}
+
 // IRepository interface methods for MockSessionRepository
 func (m *MockSessionRepository) GetDB() bun.IDB {
 	args := m.Called()

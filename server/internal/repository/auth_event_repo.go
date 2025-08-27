@@ -41,11 +41,11 @@ type AuthEventRepository interface {
 
 // authEventRepository implements AuthEventRepository
 type authEventRepository struct {
-	db *bun.DB
+	db bun.IDB
 }
 
 // NewAuthEventRepository creates a new AuthEventRepository instance
-func NewAuthEventRepository(db *bun.DB) AuthEventRepository {
+func NewAuthEventRepository(db bun.IDB) AuthEventRepository {
 	return &authEventRepository{
 		db: db,
 	}

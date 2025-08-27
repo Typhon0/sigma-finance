@@ -27,6 +27,11 @@ type IUnitOfWork interface {
 	AssetType() IAssetTypeRepository
 	PortfolioTag() IPortfolioTagRepository
 	AssetTag() IAssetTagRepository
+	// Authentication repositories
+	Session() ISessionRepository
+	AuthEvent() AuthEventRepository
+	PasswordResetToken() IPasswordResetTokenRepository
+	EmailVerificationToken() IEmailVerificationTokenRepository
 }
 
 // UnitOfWork is the concrete implementation of IUnitOfWork
@@ -45,25 +50,34 @@ type UnitOfWork struct {
 	assetType      IAssetTypeRepository
 	portfolioTag   IPortfolioTagRepository
 	assetTag       IAssetTagRepository
+	// Authentication repositories
+	session                ISessionRepository
+	authEvent              AuthEventRepository
+	passwordResetToken     IPasswordResetTokenRepository
+	emailVerificationToken IEmailVerificationTokenRepository
 }
 
 // NewUnitOfWork creates a new UnitOfWork
 func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 	return &UnitOfWork{
-		db:             db,
-		user:           NewUserRepository(db),
-		portfolio:      NewPortfolioRepository(db),
-		asset:          NewAssetRepository(db),
-		transaction:    NewTransactionRepository(NewRepository[model.Transaction](db)),
-		watchlist:      NewWatchlistRepository(NewRepository[model.Watchlist](db), NewRepository[model.WatchlistAsset](db), NewRepository[model.Asset](db)),
-		watchlistAsset: NewWatchlistAssetRepository(db),
-		tag:            NewTagRepository(db),
-		portfolioAsset: NewPortfolioAssetRepository(db),
-		stock:          NewStockRepository(db),
-		crypto:         NewCryptoRepository(db),
-		assetType:      NewAssetTypeRepository(db),
-		portfolioTag:   NewPortfolioTagRepository(db),
-		assetTag:       NewAssetTagRepository(db),
+		db:                     db,
+		user:                   NewUserRepository(db),
+		portfolio:              NewPortfolioRepository(db),
+		asset:                  NewAssetRepository(db),
+		transaction:            NewTransactionRepository(NewRepository[model.Transaction](db)),
+		watchlist:              NewWatchlistRepository(NewRepository[model.Watchlist](db), NewRepository[model.WatchlistAsset](db), NewRepository[model.Asset](db)),
+		watchlistAsset:         NewWatchlistAssetRepository(db),
+		tag:                    NewTagRepository(db),
+		portfolioAsset:         NewPortfolioAssetRepository(db),
+		stock:                  NewStockRepository(db),
+		crypto:                 NewCryptoRepository(db),
+		assetType:              NewAssetTypeRepository(db),
+		portfolioTag:           NewPortfolioTagRepository(db),
+		assetTag:               NewAssetTagRepository(db),
+		session:                NewSessionRepository(db),
+		authEvent:              NewAuthEventRepository(db),
+		passwordResetToken:     NewPasswordResetTokenRepository(db),
+		emailVerificationToken: NewEmailVerificationTokenRepository(db),
 	}
 }
 
@@ -76,20 +90,24 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 
 	// Create a new UoW with the transaction
 	txUow := &txUnitOfWork{
-		tx:             tx,
-		user:           NewUserRepository(&tx),
-		portfolio:      NewPortfolioRepository(&tx),
-		asset:          NewAssetRepository(&tx),
-		transaction:    NewTransactionRepository(NewRepository[model.Transaction](&tx)),
-		watchlist:      NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
-		watchlistAsset: NewWatchlistAssetRepository(&tx),
-		tag:            NewTagRepository(&tx),
-		portfolioAsset: NewPortfolioAssetRepository(&tx),
-		stock:          NewStockRepository(&tx),
-		crypto:         NewCryptoRepository(&tx),
-		assetType:      NewAssetTypeRepository(&tx),
-		portfolioTag:   NewPortfolioTagRepository(&tx),
-		assetTag:       NewAssetTagRepository(&tx),
+		tx:                     tx,
+		user:                   NewUserRepository(&tx),
+		portfolio:              NewPortfolioRepository(&tx),
+		asset:                  NewAssetRepository(&tx),
+		transaction:            NewTransactionRepository(NewRepository[model.Transaction](&tx)),
+		watchlist:              NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
+		watchlistAsset:         NewWatchlistAssetRepository(&tx),
+		tag:                    NewTagRepository(&tx),
+		portfolioAsset:         NewPortfolioAssetRepository(&tx),
+		stock:                  NewStockRepository(&tx),
+		crypto:                 NewCryptoRepository(&tx),
+		assetType:              NewAssetTypeRepository(&tx),
+		portfolioTag:           NewPortfolioTagRepository(&tx),
+		assetTag:               NewAssetTagRepository(&tx),
+		session:                NewSessionRepository(&tx),
+		authEvent:              NewAuthEventRepository(&tx),
+		passwordResetToken:     NewPasswordResetTokenRepository(&tx),
+		emailVerificationToken: NewEmailVerificationTokenRepository(&tx),
 	}
 
 	if err := fn(txUow); err != nil {
@@ -167,22 +185,46 @@ func (uow *UnitOfWork) AssetTag() IAssetTagRepository {
 	return uow.assetTag
 }
 
+// Session returns the session repository
+func (uow *UnitOfWork) Session() ISessionRepository {
+	return uow.session
+}
+
+// AuthEvent returns the auth event repository
+func (uow *UnitOfWork) AuthEvent() AuthEventRepository {
+	return uow.authEvent
+}
+
+// PasswordResetToken returns the password reset token repository
+func (uow *UnitOfWork) PasswordResetToken() IPasswordResetTokenRepository {
+	return uow.passwordResetToken
+}
+
+// EmailVerificationToken returns the email verification token repository
+func (uow *UnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepository {
+	return uow.emailVerificationToken
+}
+
 // txUnitOfWork is the implementation of IUnitOfWork for transactions
 type txUnitOfWork struct {
-	tx             bun.Tx
-	user           IUserRepository
-	portfolio      IPortfolioRepository
-	asset          IAssetRepository
-	transaction    ITransactionRepository
-	watchlist      IWatchlistRepository
-	watchlistAsset IWatchlistAssetRepository
-	tag            ITagRepository
-	portfolioAsset IPortfolioAssetRepository
-	stock          IStockRepository
-	crypto         ICryptoRepository
-	assetType      IAssetTypeRepository
-	portfolioTag   IPortfolioTagRepository
-	assetTag       IAssetTagRepository
+	tx                     bun.Tx
+	user                   IUserRepository
+	portfolio              IPortfolioRepository
+	asset                  IAssetRepository
+	transaction            ITransactionRepository
+	watchlist              IWatchlistRepository
+	watchlistAsset         IWatchlistAssetRepository
+	tag                    ITagRepository
+	portfolioAsset         IPortfolioAssetRepository
+	stock                  IStockRepository
+	crypto                 ICryptoRepository
+	assetType              IAssetTypeRepository
+	portfolioTag           IPortfolioTagRepository
+	assetTag               IAssetTagRepository
+	session                ISessionRepository
+	authEvent              AuthEventRepository
+	passwordResetToken     IPasswordResetTokenRepository
+	emailVerificationToken IEmailVerificationTokenRepository
 }
 
 func (uow *txUnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) error {
@@ -240,4 +282,20 @@ func (uow *txUnitOfWork) PortfolioTag() IPortfolioTagRepository {
 
 func (uow *txUnitOfWork) AssetTag() IAssetTagRepository {
 	return uow.assetTag
+}
+
+func (uow *txUnitOfWork) Session() ISessionRepository {
+	return uow.session
+}
+
+func (uow *txUnitOfWork) AuthEvent() AuthEventRepository {
+	return uow.authEvent
+}
+
+func (uow *txUnitOfWork) PasswordResetToken() IPasswordResetTokenRepository {
+	return uow.passwordResetToken
+}
+
+func (uow *txUnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepository {
+	return uow.emailVerificationToken
 }

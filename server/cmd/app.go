@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sigma_finance/cmd/bun/migrations"
+	"sigma_finance/internal/config"
 	"sigma_finance/internal/handler/graphql"
 	"sigma_finance/internal/infrastructure"
 	"sigma_finance/internal/repository"
@@ -34,6 +35,9 @@ func NewApp() (*AppContainer, error) {
 		log.Println("No .env file found, using environment variables")
 	}
 
+	// Load configuration
+	cfg := config.LoadConfig()
+
 	// Initialize database
 	db, err := infrastructure.NewDB()
 	if err != nil {
@@ -51,7 +55,7 @@ func NewApp() (*AppContainer, error) {
 	uow := repository.NewUnitOfWork(db)
 
 	// Initialize services
-	serviceContainer := service.NewServiceContainer(uow)
+	serviceContainer := service.NewServiceContainer(uow, cfg)
 
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{

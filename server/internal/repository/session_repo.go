@@ -12,6 +12,7 @@ import (
 type ISessionRepository interface {
 	IRepository[model.Session]
 	// Session-specific methods
+	GetByStringID(ctx context.Context, id string) (*model.Session, error)
 	GetByToken(ctx context.Context, token string) (*model.Session, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (*model.Session, error)
 	GetByUserID(ctx context.Context, userID string) ([]model.Session, error)

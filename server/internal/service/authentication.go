@@ -70,7 +70,7 @@ type SessionInfo struct {
 // authenticationService implements AuthenticationService
 type authenticationService struct {
 	userRepo                   repository.IUserRepository
-	sessionRepo                repository.ISessionRepository
+	sessionService             SessionService
 	passwordResetTokenRepo     repository.IPasswordResetTokenRepository
 	emailVerificationTokenRepo repository.IEmailVerificationTokenRepository
 	securityService            SecurityService
@@ -100,7 +100,7 @@ func DefaultAuthenticationServiceConfig() AuthenticationServiceConfig {
 // NewAuthenticationService creates a new AuthenticationService instance
 func NewAuthenticationService(
 	userRepo repository.IUserRepository,
-	sessionRepo repository.ISessionRepository,
+	sessionService SessionService,
 	passwordResetTokenRepo repository.IPasswordResetTokenRepository,
 	emailVerificationTokenRepo repository.IEmailVerificationTokenRepository,
 	securityService SecurityService,
@@ -116,7 +116,7 @@ func NewAuthenticationService(
 
 	return &authenticationService{
 		userRepo:                   userRepo,
-		sessionRepo:                sessionRepo,
+		sessionService:             sessionService,
 		passwordResetTokenRepo:     passwordResetTokenRepo,
 		emailVerificationTokenRepo: emailVerificationTokenRepo,
 		securityService:            securityService,
@@ -321,66 +321,28 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 
 // Logout invalidates a user session
 func (a *authenticationService) Logout(ctx context.Context, userID string, token string) error {
-	// Get user for audit logging
-	user, err := a.userRepo.GetByStringID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// Revoke the session
-	if err := a.sessionRepo.RevokeSession(ctx, token); err != nil {
-		return fmt.Errorf("failed to revoke session: %w", err)
-	}
-
-	// Log logout event
-	event := CreateLogoutEvent(&userID, user.Email, "", "", true, map[string]interface{}{
-		"user_id": userID,
-	})
-	a.auditService.LogAuthEvent(ctx, event)
-
-	return nil
+	// Revoke the session using SessionService
+	return a.sessionService.RevokeSession(ctx, token)
 }
 
 // createUserSession creates a new session for a user
 func (a *authenticationService) createUserSession(ctx context.Context, user *model.User, ipAddress, userAgent string) (*AuthResponse, error) {
-	config := DefaultAuthenticationServiceConfig()
-
-	// Generate JWT token
-	expiresAt := time.Now().Add(config.JWTExpiration)
-	token, err := a.securityService.GenerateJWT(user.ID, expiresAt)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate JWT token: %w", err)
-	}
-
-	// Generate refresh token
-	refreshToken, err := a.securityService.GenerateSecureToken()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
-	}
-
-	// Create session
-	session := &model.Session{
-		UserID:       user.ID,
-		Token:        token,
-		RefreshToken: refreshToken,
-		ExpiresAt:    time.Now().Add(config.RefreshTokenExpiration),
-		IPAddress:    ipAddress,
-		UserAgent:    userAgent,
-	}
-
-	if err := session.Validate(); err != nil {
-		return nil, err
-	}
-
-	_, err = a.sessionRepo.Create(ctx, session)
+	// Create session using SessionService
+	session, err := a.sessionService.CreateSession(ctx, user.ID, ipAddress, userAgent)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
+	// Extract JWT expiration from token (we need to validate it to get claims)
+	claims, err := a.securityService.ValidateJWT(session.Token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate generated token: %w", err)
+	}
+
 	return &AuthResponse{
-		Token:        token,
-		RefreshToken: refreshToken,
-		ExpiresAt:    expiresAt,
+		Token:        session.Token,
+		RefreshToken: session.RefreshToken,
+		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
 			ID:            user.ID,
 			Email:         user.Email,
@@ -500,7 +462,7 @@ func (a *authenticationService) ConfirmPasswordReset(ctx context.Context, token,
 	}
 
 	// Revoke all user sessions for security
-	if err := a.sessionRepo.RevokeAllUserSessions(ctx, user.ID); err != nil {
+	if err := a.sessionService.RevokeAllUserSessions(ctx, user.ID); err != nil {
 		// Log but don't fail
 		a.auditService.LogSecurityEvent(ctx, "session_revoke_failed", "", "", map[string]interface{}{
 			"user_id": user.ID,
@@ -621,62 +583,28 @@ func (a *authenticationService) ResendVerification(ctx context.Context, email st
 
 // RefreshToken refreshes an access token using a refresh token
 func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken string) (*AuthResponse, error) {
-	if refreshToken == "" {
-		return nil, NewAuthError(ErrInvalidInput, "Refresh token is required", "refreshToken")
-	}
-
-	// Get session by refresh token
-	session, err := a.sessionRepo.GetByRefreshToken(ctx, refreshToken)
+	// Refresh session using SessionService
+	session, err := a.sessionService.RefreshSession(ctx, refreshToken)
 	if err != nil {
-		return nil, NewAuthError(ErrInvalidToken, "Invalid refresh token", "refreshToken")
+		return nil, err
 	}
 
-	// Check if session is expired
-	if session.IsExpired() {
-		return nil, NewAuthError(ErrTokenExpired, "Refresh token has expired", "refreshToken")
-	}
-
-	// Get user
+	// Get user for response
 	user, err := a.userRepo.GetByStringID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	// Check if user account is locked
-	if user.IsAccountLocked() {
-		return nil, NewAuthError(ErrAccountLocked, "Account is locked", "")
-	}
-
-	// Generate new tokens
-	config := DefaultAuthenticationServiceConfig()
-	expiresAt := time.Now().Add(config.JWTExpiration)
-	newToken, err := a.securityService.GenerateJWT(user.ID, expiresAt)
+	// Extract JWT expiration from token
+	claims, err := a.securityService.ValidateJWT(session.Token)
 	if err != nil {
-		return nil, fmt.Errorf("failed to generate JWT token: %w", err)
+		return nil, fmt.Errorf("failed to validate refreshed token: %w", err)
 	}
-
-	newRefreshToken, err := a.securityService.GenerateSecureToken()
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
-	}
-
-	// Update session with new tokens
-	newSessionExpiry := time.Now().Add(config.RefreshTokenExpiration)
-	if err := a.sessionRepo.RefreshSession(ctx, session.ID, newToken, newRefreshToken, newSessionExpiry); err != nil {
-		return nil, fmt.Errorf("failed to refresh session: %w", err)
-	}
-
-	// Log token refresh
-	event := model.NewAuthEvent(&user.ID, user.Email, model.AuthActionTokenRefresh, true, "", "", map[string]interface{}{
-		"user_id":    user.ID,
-		"session_id": session.ID,
-	})
-	a.auditService.LogAuthEvent(ctx, event)
 
 	return &AuthResponse{
-		Token:        newToken,
-		RefreshToken: newRefreshToken,
-		ExpiresAt:    expiresAt,
+		Token:        session.Token,
+		RefreshToken: session.RefreshToken,
+		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
 			ID:            user.ID,
 			Email:         user.Email,
@@ -688,36 +616,22 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 
 // ValidateSession validates a JWT token and returns session information
 func (a *authenticationService) ValidateSession(ctx context.Context, token string) (*SessionInfo, error) {
-	if token == "" {
-		return nil, NewAuthError(ErrInvalidInput, "Token is required", "token")
+	// Validate session using SessionService
+	session, err := a.sessionService.ValidateSession(ctx, token)
+	if err != nil {
+		return nil, err
 	}
 
-	// Validate JWT token
+	// Get user for additional info
+	user, err := a.userRepo.GetByStringID(ctx, session.UserID)
+	if err != nil {
+		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
+	}
+
+	// Extract JWT expiration from token
 	claims, err := a.securityService.ValidateJWT(token)
 	if err != nil {
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
-	}
-
-	// Get user
-	user, err := a.userRepo.GetByStringID(ctx, claims.UserID)
-	if err != nil {
-		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
-	}
-
-	// Check if user account is locked
-	if user.IsAccountLocked() {
-		return nil, NewAuthError(ErrAccountLocked, "Account is locked", "")
-	}
-
-	// Get session to verify it still exists
-	session, err := a.sessionRepo.GetByToken(ctx, token)
-	if err != nil {
-		return nil, NewAuthError(ErrInvalidToken, "Session not found", "token")
-	}
-
-	// Check if session is expired
-	if session.IsExpired() {
-		return nil, NewAuthError(ErrTokenExpired, "Session has expired", "token")
 	}
 
 	return &SessionInfo{
@@ -730,26 +644,6 @@ func (a *authenticationService) ValidateSession(ctx context.Context, token strin
 
 // RevokeAllUserSessions revokes all sessions for a user
 func (a *authenticationService) RevokeAllUserSessions(ctx context.Context, userID string) error {
-	if userID == "" {
-		return NewAuthError(ErrInvalidInput, "User ID is required", "userID")
-	}
-
-	// Get user for audit logging
-	user, err := a.userRepo.GetByStringID(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("failed to get user: %w", err)
-	}
-
-	// Revoke all sessions
-	if err := a.sessionRepo.RevokeAllUserSessions(ctx, userID); err != nil {
-		return fmt.Errorf("failed to revoke user sessions: %w", err)
-	}
-
-	// Log session revocation
-	event := model.NewAuthEvent(&userID, user.Email, "sessions_revoked", true, "", "", map[string]interface{}{
-		"user_id": userID,
-	})
-	a.auditService.LogAuthEvent(ctx, event)
-
-	return nil
+	// Revoke all sessions using SessionService
+	return a.sessionService.RevokeAllUserSessions(ctx, userID)
 }
