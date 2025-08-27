@@ -11,6 +11,11 @@ import (
 )
 
 func TestNewSecurityService(t *testing.T) {
+	privateKeyPEM, publicKeyPEM, err := GenerateRSAKeyPair()
+	require.NoError(t, err)
+
+	rateLimiter := NewInMemoryRateLimiter()
+
 	tests := []struct {
 		name        string
 		config      SecurityConfig
@@ -19,8 +24,8 @@ func TestNewSecurityService(t *testing.T) {
 		{
 			name: "valid configuration",
 			config: SecurityConfig{
-				JWTPrivateKey: getTestPrivateKey(),
-				JWTPublicKey:  getTestPublicKey(),
+				JWTPrivateKey: privateKeyPEM,
+				JWTPublicKey:  publicKeyPEM,
 				BCryptCost:    12,
 			},
 			expectError: false,
@@ -29,7 +34,7 @@ func TestNewSecurityService(t *testing.T) {
 			name: "invalid private key",
 			config: SecurityConfig{
 				JWTPrivateKey: "invalid-key",
-				JWTPublicKey:  getTestPublicKey(),
+				JWTPublicKey:  publicKeyPEM,
 				BCryptCost:    12,
 			},
 			expectError: true,
@@ -37,7 +42,7 @@ func TestNewSecurityService(t *testing.T) {
 		{
 			name: "invalid public key",
 			config: SecurityConfig{
-				JWTPrivateKey: getTestPrivateKey(),
+				JWTPrivateKey: privateKeyPEM,
 				JWTPublicKey:  "invalid-key",
 				BCryptCost:    12,
 			},
@@ -46,8 +51,8 @@ func TestNewSecurityService(t *testing.T) {
 		{
 			name: "low bcrypt cost gets adjusted to minimum",
 			config: SecurityConfig{
-				JWTPrivateKey: getTestPrivateKey(),
-				JWTPublicKey:  getTestPublicKey(),
+				JWTPrivateKey: privateKeyPEM,
+				JWTPublicKey:  publicKeyPEM,
 				BCryptCost:    4, // Below minimum
 			},
 			expectError: false,
@@ -56,7 +61,7 @@ func TestNewSecurityService(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service, err := NewSecurityService(tt.config)
+			service, err := NewSecurityService(tt.config, rateLimiter)
 
 			if tt.expectError {
 				assert.Error(t, err)
@@ -219,9 +224,7 @@ func TestSecurityService_ValidateJWT(t *testing.T) {
 	validToken, err := service.GenerateJWT(userID, time.Now().Add(time.Hour))
 	require.NoError(t, err)
 
-	// Generate an expired token
-	expiredToken, err := service.GenerateJWT(userID, time.Now().Add(-time.Hour))
-	require.Error(t, err) // Should fail due to past expiration
+	// Note: We can't generate an expired token because GenerateJWT validates expiration time
 
 	tests := []struct {
 		name        string
@@ -294,9 +297,73 @@ func TestSecurityService_CheckRateLimit(t *testing.T) {
 	service := createTestSecurityService(t)
 	ctx := context.Background()
 
-	// Test placeholder implementation
-	err := service.CheckRateLimit(ctx, "test-key", 5, time.Minute)
-	assert.NoError(t, err, "Rate limit check should pass (placeholder implementation)")
+	t.Run("allows requests within limit", func(t *testing.T) {
+		key := "test-key"
+		limit := 3
+		window := time.Minute
+
+		// Should allow first 3 requests
+		for i := 0; i < limit; i++ {
+			err := service.CheckRateLimit(ctx, key, limit, window)
+			assert.NoError(t, err, "Request %d should be allowed", i+1)
+		}
+	})
+
+	t.Run("blocks requests exceeding limit", func(t *testing.T) {
+		key := "test-key-2"
+		limit := 2
+		window := time.Minute
+
+		// Use up the limit
+		for i := 0; i < limit; i++ {
+			err := service.CheckRateLimit(ctx, key, limit, window)
+			require.NoError(t, err)
+		}
+
+		// Next request should be blocked
+		err := service.CheckRateLimit(ctx, key, limit, window)
+		assert.Error(t, err)
+		assert.True(t, IsRateLimitError(err))
+	})
+
+	t.Run("reset rate limit", func(t *testing.T) {
+		key := "test-key-3"
+		limit := 1
+		window := time.Minute
+
+		// Use up the limit
+		err := service.CheckRateLimit(ctx, key, limit, window)
+		require.NoError(t, err)
+
+		// Should be blocked
+		err = service.CheckRateLimit(ctx, key, limit, window)
+		assert.Error(t, err)
+
+		// Reset and try again
+		err = service.ResetRateLimit(ctx, key)
+		assert.NoError(t, err)
+
+		// Should be allowed again
+		err = service.CheckRateLimit(ctx, key, limit, window)
+		assert.NoError(t, err)
+	})
+
+	t.Run("get rate limit attempts", func(t *testing.T) {
+		key := "test-key-4"
+		limit := 5
+		window := time.Minute
+
+		// Make 3 requests
+		for i := 0; i < 3; i++ {
+			err := service.CheckRateLimit(ctx, key, limit, window)
+			require.NoError(t, err)
+		}
+
+		// Check attempt count
+		attempts, err := service.GetRateLimitAttempts(ctx, key)
+		assert.NoError(t, err)
+		assert.Equal(t, 3, attempts)
+	})
 }
 
 func TestGenerateRSAKeyPair(t *testing.T) {
@@ -313,7 +380,8 @@ func TestGenerateRSAKeyPair(t *testing.T) {
 		BCryptCost:    12,
 	}
 
-	service, err := NewSecurityService(config)
+	rateLimiter := NewInMemoryRateLimiter()
+	service, err := NewSecurityService(config, rateLimiter)
 	assert.NoError(t, err)
 	assert.NotNil(t, service)
 
@@ -329,13 +397,17 @@ func TestGenerateRSAKeyPair(t *testing.T) {
 
 // Helper function to create a test security service
 func createTestSecurityService(t *testing.T) SecurityService {
+	privateKeyPEM, publicKeyPEM, err := GenerateRSAKeyPair()
+	require.NoError(t, err)
+
 	config := SecurityConfig{
-		JWTPrivateKey: getTestPrivateKey(),
-		JWTPublicKey:  getTestPublicKey(),
+		JWTPrivateKey: privateKeyPEM,
+		JWTPublicKey:  publicKeyPEM,
 		BCryptCost:    12,
 	}
 
-	service, err := NewSecurityService(config)
+	rateLimiter := NewInMemoryRateLimiter()
+	service, err := NewSecurityService(config, rateLimiter)
 	require.NoError(t, err)
 	return service
 }

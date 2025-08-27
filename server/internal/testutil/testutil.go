@@ -17,15 +17,49 @@ type TestDB struct {
 	t  *testing.T
 }
 
-// NewTestDB creates a new test database connection
+// NewTestDB creates a new test database connection and runs migrations
 func NewTestDB(t *testing.T) *TestDB {
 	db, err := config.NewTestDB()
 	require.NoError(t, err, "Failed to create test database connection")
+
+	// Run migrations to ensure tables exist
+	ctx := context.Background()
+	err = runTestMigrations(ctx, db)
+	require.NoError(t, err, "Failed to run test migrations")
 
 	return &TestDB{
 		DB: db,
 		t:  t,
 	}
+}
+
+// runTestMigrations runs the database migrations for testing
+func runTestMigrations(ctx context.Context, db *bun.DB) error {
+	// Import migrations package to register migrations
+	// Note: This is a simplified approach. In a real application, you might want
+	// to use the actual migration runner from the migrations package
+
+	// For now, we'll create the auth_event table directly for testing
+	_, err := db.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS sigma_finance.auth_event (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID,
+			email VARCHAR(255) NOT NULL,
+			action VARCHAR(50) NOT NULL,
+			success BOOLEAN NOT NULL,
+			ip_address INET,
+			user_agent TEXT,
+			metadata JSONB,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+		);
+		
+		CREATE INDEX IF NOT EXISTS idx_auth_event_user_id ON sigma_finance.auth_event(user_id);
+		CREATE INDEX IF NOT EXISTS idx_auth_event_email ON sigma_finance.auth_event(email);
+		CREATE INDEX IF NOT EXISTS idx_auth_event_action ON sigma_finance.auth_event(action);
+		CREATE INDEX IF NOT EXISTS idx_auth_event_created_at ON sigma_finance.auth_event(created_at);
+	`)
+
+	return err
 }
 
 // Close closes the test database connection
@@ -38,6 +72,7 @@ func (tdb *TestDB) Close() {
 // CleanupTables removes all data from test tables
 func (tdb *TestDB) CleanupTables(ctx context.Context) {
 	tables := []string{
+		"sigma_finance.auth_event",
 		"sigma_finance.email_verification_token",
 		"sigma_finance.password_reset_token",
 		"sigma_finance.session",

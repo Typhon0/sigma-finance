@@ -21,6 +21,7 @@ type ISessionRepository interface {
 	RevokeExpiredSessions(ctx context.Context) (int, error)
 	UpdateSessionExpiry(ctx context.Context, sessionID string, expiresAt time.Time) error
 	GetExpiredSessions(ctx context.Context) ([]model.Session, error)
+	RefreshSession(ctx context.Context, sessionID string, newToken, newRefreshToken string, expiresAt time.Time) error
 }
 
 // SessionRepository wraps the generic repository with session-specific functionality

@@ -29,6 +29,8 @@ type SecurityService interface {
 
 	// Rate limiting
 	CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) error
+	ResetRateLimit(ctx context.Context, key string) error
+	GetRateLimitAttempts(ctx context.Context, key string) (int, error)
 }
 
 // JWTClaims represents the claims in a JWT token
@@ -46,13 +48,14 @@ type SecurityConfig struct {
 
 // securityService implements SecurityService
 type securityService struct {
-	privateKey *rsa.PrivateKey
-	publicKey  *rsa.PublicKey
-	bcryptCost int
+	privateKey  *rsa.PrivateKey
+	publicKey   *rsa.PublicKey
+	bcryptCost  int
+	rateLimiter RateLimiter
 }
 
 // NewSecurityService creates a new SecurityService instance
-func NewSecurityService(config SecurityConfig) (SecurityService, error) {
+func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (SecurityService, error) {
 	// Parse private key
 	privateKeyBlock, _ := pem.Decode([]byte(config.JWTPrivateKey))
 	if privateKeyBlock == nil {
@@ -87,9 +90,10 @@ func NewSecurityService(config SecurityConfig) (SecurityService, error) {
 	}
 
 	return &securityService{
-		privateKey: privateKey,
-		publicKey:  publicKey,
-		bcryptCost: bcryptCost,
+		privateKey:  privateKey,
+		publicKey:   publicKey,
+		bcryptCost:  bcryptCost,
+		rateLimiter: rateLimiter,
 	}, nil
 }
 
@@ -200,12 +204,18 @@ func (s *securityService) GenerateSecureToken() (string, error) {
 }
 
 // CheckRateLimit checks if a rate limit has been exceeded
-// This is a placeholder implementation - in production, this would use Redis or similar
 func (s *securityService) CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) error {
-	// TODO: Implement actual rate limiting with Redis or in-memory store
-	// For now, this is a placeholder that always allows requests
-	// This will be implemented in task 5: "Implement rate limiting and security middleware"
-	return nil
+	return s.rateLimiter.CheckRateLimit(ctx, key, limit, window)
+}
+
+// ResetRateLimit clears the rate limit for a specific key
+func (s *securityService) ResetRateLimit(ctx context.Context, key string) error {
+	return s.rateLimiter.Reset(ctx, key)
+}
+
+// GetRateLimitAttempts returns the current number of attempts for a key
+func (s *securityService) GetRateLimitAttempts(ctx context.Context, key string) (int, error) {
+	return s.rateLimiter.GetAttempts(ctx, key)
 }
 
 // GenerateRSAKeyPair generates a new RSA key pair for JWT signing

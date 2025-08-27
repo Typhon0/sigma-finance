@@ -51,9 +51,9 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (mo
 		return model.User{}, errors.New("email is required")
 	}
 	newUser := model.User{
-		Username: input.Username,
-		Email:    input.Email,
-		Password: input.Password, // In real code, hash the password!
+		Name:  input.Username, // Map Username to Name field
+		Email: input.Email,
+		// PasswordHash will be set by authentication service
 	}
 	createdUser, err := s.uow.User().Create(ctx, &newUser)
 	if err != nil {
@@ -73,7 +73,8 @@ func (s *UserService) UpdateUser(ctx context.Context, id uint, input UpdateUserI
 		userToUpdate.Email = *input.Email
 	}
 	if input.Password != nil {
-		userToUpdate.Password = *input.Password // In real code, hash the password!
+		// Password updates should be handled by authentication service
+		// userToUpdate.PasswordHash = hashedPassword
 	}
 
 	err = s.uow.User().Update(ctx, &userToUpdate)
