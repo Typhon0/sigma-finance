@@ -1,31 +1,26 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { useEffect } from 'react';
-import { AuthPage } from '../components/auth/auth-page';
-import { useAuth } from '../lib/auth-context';
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { AuthPage } from "../components/auth/auth-page";
+import { useAuth } from "../lib/auth-context";
 
-export const Route = createFileRoute('/auth/reset-password')({
-  component: ResetPasswordPage,
+export const Route = createFileRoute("/auth/reset-password")({
+	component: ResetPasswordPage,
 });
 
 function ResetPasswordPage() {
-  const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+	const navigate = useNavigate();
+	const { isAuthenticated } = useAuth();
 
-  // Redirect to dashboard if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate({ to: '/dashboard' });
-    }
-  }, [isAuthenticated, navigate]);
+	// Redirect to dashboard if already authenticated
+	useEffect(() => {
+		if (isAuthenticated) {
+			navigate({ to: "/dashboard" });
+		}
+	}, [isAuthenticated, navigate]);
 
-  const handleSuccess = () => {
-    navigate({ to: '/auth/login' });
-  };
+	const handleSuccess = () => {
+		navigate({ to: "/auth/login" });
+	};
 
-  return (
-    <AuthPage 
-      initialMode="reset" 
-      onSuccess={handleSuccess}
-    />
-  );
+	return <AuthPage initialMode="reset" onSuccess={handleSuccess} />;
 }

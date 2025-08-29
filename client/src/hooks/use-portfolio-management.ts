@@ -1,5 +1,5 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
-import { useMemo, useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type {
 	CreatePortfolioInput,
 	DuplicatePortfolioInput,
@@ -7,8 +7,6 @@ import type {
 	Portfolio,
 	UpdatePortfolioInput,
 } from "@/gql/graphql";
-import { apolloClient } from "@/lib/apollo/apollo-client";
-import { useAuth } from "@/lib/auth-context";
 import {
 	CREATE_PORTFOLIO,
 	DELETE_PORTFOLIO,
@@ -16,7 +14,9 @@ import {
 	UPDATE_PORTFOLIO,
 } from "@/graphql/mutations";
 import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
-import { useErrorHandling, getErrorMessage } from "./use-error-handling";
+import { apolloClient } from "@/lib/apollo/apollo-client";
+import { useAuth } from "@/lib/auth-context";
+import { getErrorMessage, useErrorHandling } from "./use-error-handling";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const optimisticResponseGenerators = {
@@ -245,10 +245,10 @@ export function usePortfolioManagement() {
 		},
 		onError: (error) => {
 			errorHandling.handleError(error);
-			setOperationLoading(prev => ({ ...prev, create: false }));
+			setOperationLoading((prev) => ({ ...prev, create: false }));
 		},
 		onCompleted: () => {
-			setOperationLoading(prev => ({ ...prev, create: false }));
+			setOperationLoading((prev) => ({ ...prev, create: false }));
 			errorHandling.clearError();
 		},
 	});
@@ -262,7 +262,7 @@ export function usePortfolioManagement() {
 			const currentPortfolio = data?.portfolios?.find(
 				(p) => p.id === variables.id,
 			) as Portfolio | undefined;
-			
+
 			if (!currentPortfolio) {
 				return null;
 			}
@@ -271,9 +271,10 @@ export function usePortfolioManagement() {
 				updatePortfolio: {
 					...currentPortfolio,
 					name: variables.input.name ?? currentPortfolio.name,
-					description: variables.input.description !== undefined 
-						? variables.input.description 
-						: currentPortfolio.description,
+					description:
+						variables.input.description !== undefined
+							? variables.input.description
+							: currentPortfolio.description,
 					sortOrder: variables.input.sortOrder ?? currentPortfolio.sortOrder,
 					updatedAt: new Date().toISOString(),
 				},
@@ -290,10 +291,10 @@ export function usePortfolioManagement() {
 		},
 		onError: (error) => {
 			errorHandling.handleError(error);
-			setOperationLoading(prev => ({ ...prev, update: false }));
+			setOperationLoading((prev) => ({ ...prev, update: false }));
 		},
 		onCompleted: () => {
-			setOperationLoading(prev => ({ ...prev, update: false }));
+			setOperationLoading((prev) => ({ ...prev, update: false }));
 			errorHandling.clearError();
 		},
 	});
@@ -312,12 +313,12 @@ export function usePortfolioManagement() {
 		},
 		onError: (error) => {
 			errorHandling.handleError(error);
-			setOperationLoading(prev => ({ ...prev, delete: false }));
+			setOperationLoading((prev) => ({ ...prev, delete: false }));
 			// Refetch to restore the optimistically removed portfolio
 			if (refetch) refetch();
 		},
 		onCompleted: () => {
-			setOperationLoading(prev => ({ ...prev, delete: false }));
+			setOperationLoading((prev) => ({ ...prev, delete: false }));
 			errorHandling.clearError();
 		},
 	});
@@ -328,17 +329,20 @@ export function usePortfolioManagement() {
 			const sourcePortfolio = data?.portfolios?.find(
 				(p) => p.id === variables.input.sourcePortfolioID,
 			);
-			
+
 			return {
 				duplicatePortfolio: {
 					__typename: "Portfolio" as const,
 					id: `temp-duplicate-${Date.now()}`,
 					name: variables.input.newName,
-					description: variables.input.description || sourcePortfolio?.description || null,
+					description:
+						variables.input.description || sourcePortfolio?.description || null,
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					sortOrder: (data?.portfolios?.length || 0) + 1,
-					assets: variables.input.copyAssets ? (sourcePortfolio?.assets || []) : [],
+					assets: variables.input.copyAssets
+						? sourcePortfolio?.assets || []
+						: [],
 					analytics: null,
 					tags: sourcePortfolio?.tags || [],
 					transactions: [],
@@ -363,115 +367,135 @@ export function usePortfolioManagement() {
 		},
 		onError: (error) => {
 			errorHandling.handleError(error);
-			setOperationLoading(prev => ({ ...prev, duplicate: false }));
+			setOperationLoading((prev) => ({ ...prev, duplicate: false }));
 		},
 		onCompleted: () => {
-			setOperationLoading(prev => ({ ...prev, duplicate: false }));
+			setOperationLoading((prev) => ({ ...prev, duplicate: false }));
 			errorHandling.clearError();
 		},
 	});
 
 	// Enhanced wrapper functions for mutations with proper loading states and error handling
-	const createPortfolio = useCallback(async (input: CreatePortfolioInput) => {
-		if (!effectiveUserID) {
-			throw new Error("User must be authenticated to create a portfolio");
-		}
-
-		setOperationLoading(prev => ({ ...prev, create: true }));
-		errorHandling.clearError();
-
-		try {
-			const result = await createPortfolioMutation({
-				variables: { 
-					input: {
-						...input,
-						userID: effectiveUserID,
-					}
-				},
-			});
-
-			if (result.errors) {
-				throw new Error(result.errors[0]?.message || "Failed to create portfolio");
+	const createPortfolio = useCallback(
+		async (input: CreatePortfolioInput) => {
+			if (!effectiveUserID) {
+				throw new Error("User must be authenticated to create a portfolio");
 			}
 
-			return result.data?.createPortfolio;
-		} catch (error) {
-			const errorMessage = getErrorMessage(error as Error);
-			throw new Error(errorMessage);
-		}
-	}, [createPortfolioMutation, effectiveUserID, errorHandling]);
+			setOperationLoading((prev) => ({ ...prev, create: true }));
+			errorHandling.clearError();
 
-	const updatePortfolio = useCallback(async (id: string, input: UpdatePortfolioInput) => {
-		if (!effectiveUserID) {
-			throw new Error("User must be authenticated to update a portfolio");
-		}
+			try {
+				const result = await createPortfolioMutation({
+					variables: {
+						input: {
+							...input,
+							userID: effectiveUserID,
+						},
+					},
+				});
 
-		setOperationLoading(prev => ({ ...prev, update: true }));
-		errorHandling.clearError();
+				if (result.errors) {
+					throw new Error(
+						result.errors[0]?.message || "Failed to create portfolio",
+					);
+				}
 
-		try {
-			const result = await updatePortfolioMutation({
-				variables: { id, input },
-			});
+				return result.data?.createPortfolio;
+			} catch (error) {
+				const errorMessage = getErrorMessage(error as Error);
+				throw new Error(errorMessage);
+			}
+		},
+		[createPortfolioMutation, effectiveUserID, errorHandling],
+	);
 
-			if (result.errors) {
-				throw new Error(result.errors[0]?.message || "Failed to update portfolio");
+	const updatePortfolio = useCallback(
+		async (id: string, input: UpdatePortfolioInput) => {
+			if (!effectiveUserID) {
+				throw new Error("User must be authenticated to update a portfolio");
 			}
 
-			return result.data?.updatePortfolio;
-		} catch (error) {
-			const errorMessage = getErrorMessage(error as Error);
-			throw new Error(errorMessage);
-		}
-	}, [updatePortfolioMutation, effectiveUserID, errorHandling]);
+			setOperationLoading((prev) => ({ ...prev, update: true }));
+			errorHandling.clearError();
 
-	const deletePortfolio = useCallback(async (id: string) => {
-		if (!effectiveUserID) {
-			throw new Error("User must be authenticated to delete a portfolio");
-		}
+			try {
+				const result = await updatePortfolioMutation({
+					variables: { id, input },
+				});
 
-		setOperationLoading(prev => ({ ...prev, delete: true }));
-		errorHandling.clearError();
+				if (result.errors) {
+					throw new Error(
+						result.errors[0]?.message || "Failed to update portfolio",
+					);
+				}
 
-		try {
-			const result = await deletePortfolioMutation({
-				variables: { id },
-			});
+				return result.data?.updatePortfolio;
+			} catch (error) {
+				const errorMessage = getErrorMessage(error as Error);
+				throw new Error(errorMessage);
+			}
+		},
+		[updatePortfolioMutation, effectiveUserID, errorHandling],
+	);
 
-			if (result.errors) {
-				throw new Error(result.errors[0]?.message || "Failed to delete portfolio");
+	const deletePortfolio = useCallback(
+		async (id: string) => {
+			if (!effectiveUserID) {
+				throw new Error("User must be authenticated to delete a portfolio");
 			}
 
-			return result.data?.deletePortfolio;
-		} catch (error) {
-			const errorMessage = getErrorMessage(error as Error);
-			throw new Error(errorMessage);
-		}
-	}, [deletePortfolioMutation, effectiveUserID, errorHandling]);
+			setOperationLoading((prev) => ({ ...prev, delete: true }));
+			errorHandling.clearError();
 
-	const duplicatePortfolio = useCallback(async (input: DuplicatePortfolioInput) => {
-		if (!effectiveUserID) {
-			throw new Error("User must be authenticated to duplicate a portfolio");
-		}
+			try {
+				const result = await deletePortfolioMutation({
+					variables: { id },
+				});
 
-		setOperationLoading(prev => ({ ...prev, duplicate: true }));
-		errorHandling.clearError();
+				if (result.errors) {
+					throw new Error(
+						result.errors[0]?.message || "Failed to delete portfolio",
+					);
+				}
 
-		try {
-			const result = await duplicatePortfolioMutation({
-				variables: { input },
-			});
+				return result.data?.deletePortfolio;
+			} catch (error) {
+				const errorMessage = getErrorMessage(error as Error);
+				throw new Error(errorMessage);
+			}
+		},
+		[deletePortfolioMutation, effectiveUserID, errorHandling],
+	);
 
-			if (result.errors) {
-				throw new Error(result.errors[0]?.message || "Failed to duplicate portfolio");
+	const duplicatePortfolio = useCallback(
+		async (input: DuplicatePortfolioInput) => {
+			if (!effectiveUserID) {
+				throw new Error("User must be authenticated to duplicate a portfolio");
 			}
 
-			return result.data?.duplicatePortfolio;
-		} catch (error) {
-			const errorMessage = getErrorMessage(error as Error);
-			throw new Error(errorMessage);
-		}
-	}, [duplicatePortfolioMutation, effectiveUserID, errorHandling]);
+			setOperationLoading((prev) => ({ ...prev, duplicate: true }));
+			errorHandling.clearError();
+
+			try {
+				const result = await duplicatePortfolioMutation({
+					variables: { input },
+				});
+
+				if (result.errors) {
+					throw new Error(
+						result.errors[0]?.message || "Failed to duplicate portfolio",
+					);
+				}
+
+				return result.data?.duplicatePortfolio;
+			} catch (error) {
+				const errorMessage = getErrorMessage(error as Error);
+				throw new Error(errorMessage);
+			}
+		},
+		[duplicatePortfolioMutation, effectiveUserID, errorHandling],
+	);
 
 	// Retry function for failed operations
 	const retryLastOperation = useCallback(async () => {
@@ -495,28 +519,28 @@ export function usePortfolioManagement() {
 	return {
 		// Data
 		portfolios: transformedData?.portfolios,
-		
+
 		// Loading states
 		loading: isLoading,
 		operationLoading,
-		
+
 		// Error handling
 		error: error || errorHandling.error,
 		hasError: !!error || errorHandling.hasError,
 		canRetry: errorHandling.canRetry,
 		retryCount: errorHandling.retryCount,
-		
+
 		// Operations
 		createPortfolio,
 		updatePortfolio,
 		deletePortfolio,
 		duplicatePortfolio,
-		
+
 		// Utility functions
 		refetch,
 		retry: retryLastOperation,
 		clearError: errorHandling.clearError,
-		
+
 		// Status helpers
 		isCreating: operationLoading.create,
 		isUpdating: operationLoading.update,
@@ -539,49 +563,60 @@ export { usePortfolioAnalytics } from "./use-portfolio-analytics";
 export function usePortfolioOperations(portfolioId?: string) {
 	const portfolioManagement = usePortfolioManagement();
 	const [lastOperation, setLastOperation] = useState<{
-		type: 'create' | 'update' | 'delete' | 'duplicate';
+		type: "create" | "update" | "delete" | "duplicate";
 		timestamp: number;
 	} | null>(null);
 
 	const portfolio = useMemo(() => {
 		if (!portfolioId || !portfolioManagement.portfolios) return null;
-		return portfolioManagement.portfolios.find(p => p.id === portfolioId) || null;
+		return (
+			portfolioManagement.portfolios.find((p) => p.id === portfolioId) || null
+		);
 	}, [portfolioId, portfolioManagement.portfolios]);
 
-	const updatePortfolio = useCallback(async (input: UpdatePortfolioInput) => {
-		if (!portfolioId) {
-			throw new Error("Portfolio ID is required for update operation");
-		}
+	const updatePortfolio = useCallback(
+		async (input: UpdatePortfolioInput) => {
+			if (!portfolioId) {
+				throw new Error("Portfolio ID is required for update operation");
+			}
 
-		setLastOperation({ type: 'update', timestamp: Date.now() });
-		return await portfolioManagement.updatePortfolio(portfolioId, input);
-	}, [portfolioId, portfolioManagement]);
+			setLastOperation({ type: "update", timestamp: Date.now() });
+			return await portfolioManagement.updatePortfolio(portfolioId, input);
+		},
+		[portfolioId, portfolioManagement],
+	);
 
 	const deletePortfolio = useCallback(async () => {
 		if (!portfolioId) {
 			throw new Error("Portfolio ID is required for delete operation");
 		}
 
-		setLastOperation({ type: 'delete', timestamp: Date.now() });
+		setLastOperation({ type: "delete", timestamp: Date.now() });
 		return await portfolioManagement.deletePortfolio(portfolioId);
 	}, [portfolioId, portfolioManagement]);
 
-	const duplicatePortfolio = useCallback(async (newName: string, options?: {
-		copyAssets?: boolean;
-		description?: string;
-	}) => {
-		if (!portfolioId) {
-			throw new Error("Portfolio ID is required for duplicate operation");
-		}
+	const duplicatePortfolio = useCallback(
+		async (
+			newName: string,
+			options?: {
+				copyAssets?: boolean;
+				description?: string;
+			},
+		) => {
+			if (!portfolioId) {
+				throw new Error("Portfolio ID is required for duplicate operation");
+			}
 
-		setLastOperation({ type: 'duplicate', timestamp: Date.now() });
-		return await portfolioManagement.duplicatePortfolio({
-			sourcePortfolioID: portfolioId,
-			newName,
-			copyAssets: options?.copyAssets ?? false,
-			description: options?.description,
-		});
-	}, [portfolioId, portfolioManagement]);
+			setLastOperation({ type: "duplicate", timestamp: Date.now() });
+			return await portfolioManagement.duplicatePortfolio({
+				sourcePortfolioID: portfolioId,
+				newName,
+				copyAssets: options?.copyAssets ?? false,
+				description: options?.description,
+			});
+		},
+		[portfolioId, portfolioManagement],
+	);
 
 	return {
 		portfolio,
@@ -589,7 +624,10 @@ export function usePortfolioOperations(portfolioId?: string) {
 		deletePortfolio,
 		duplicatePortfolio,
 		lastOperation,
-		isLoading: portfolioManagement.isUpdating || portfolioManagement.isDeleting || portfolioManagement.isDuplicating,
+		isLoading:
+			portfolioManagement.isUpdating ||
+			portfolioManagement.isDeleting ||
+			portfolioManagement.isDuplicating,
 		error: portfolioManagement.error,
 		hasError: portfolioManagement.hasError,
 		retry: portfolioManagement.retry,
@@ -602,24 +640,26 @@ export function usePortfolioOperations(portfolioId?: string) {
  */
 export function usePortfolioCreation() {
 	const portfolioManagement = usePortfolioManagement();
-	const [createdPortfolio, setCreatedPortfolio] = useState<Portfolio | null>(null);
+	const [createdPortfolio, setCreatedPortfolio] = useState<Portfolio | null>(
+		null,
+	);
 
-	const createPortfolio = useCallback(async (data: {
-		name: string;
-		description?: string;
-	}) => {
-		const result = await portfolioManagement.createPortfolio({
-			name: data.name,
-			description: data.description || null,
-			userID: "", // This will be set by the hook
-		});
+	const createPortfolio = useCallback(
+		async (data: { name: string; description?: string }) => {
+			const result = await portfolioManagement.createPortfolio({
+				name: data.name,
+				description: data.description || null,
+				userID: "", // This will be set by the hook
+			});
 
-		if (result) {
-			setCreatedPortfolio(result);
-		}
+			if (result) {
+				setCreatedPortfolio(result);
+			}
 
-		return result;
-	}, [portfolioManagement]);
+			return result;
+		},
+		[portfolioManagement],
+	);
 
 	const resetCreatedPortfolio = useCallback(() => {
 		setCreatedPortfolio(null);

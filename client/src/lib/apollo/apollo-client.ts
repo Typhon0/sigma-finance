@@ -9,7 +9,7 @@ import { onError } from "@apollo/client/link/error";
 import { RetryLink } from "@apollo/client/link/retry";
 import { GET_DASHBOARD_CRITICAL } from "@/graphql/queries";
 import { apolloCacheConfig } from "./apollo-cache-config";
-import { authLink, authErrorLink } from "./auth-link";
+import { authErrorLink, authLink } from "./auth-link";
 
 if (import.meta.env.MODE === "development") {
 	loadDevMessages();
@@ -20,7 +20,7 @@ if (import.meta.env.MODE === "development") {
 
 // HTTP link to the GraphQL server
 const httpLink = createHttpLink({
-	uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || 'http://localhost:8080/graphql',
+	uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql",
 	credentials: "include",
 });
 const retryLink = new RetryLink({

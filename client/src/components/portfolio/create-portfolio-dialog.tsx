@@ -1,138 +1,325 @@
-"use client";
-
-import { useMutation } from "@apollo/client";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
-
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { CREATE_PORTFOLIO } from "@/graphql/mutations";
-import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
-import { useAuth } from "@/lib/auth-context";
-import { useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
+import { AlertCircle, CheckCircle, PlusCircle } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Button } from "../ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
+import { useAuth } from "@/lib/auth-context";
+import type { PortfolioFormData } from "@/lib/validations/portfolio.schemas";
+import { CompactPortfolioForm } from "./compact-portfolio-form";
 
-interface CreatePortfolioDialogProps {
-  children: React.ReactNode;
+export interface CreatePortfolioDialogProps {
+	/** Dialog trigger element */
+	children: React.ReactNode;
+	/** Existing portfolio names for validation */
+	existingPortfolioNames?: string[];
+	/** Dialog title override */
+	title?: string;
+	/** Dialog description override */
+	description?: string;
+	/** Success callback - called after successful creation */
+	onSuccess?: (portfolio: any) => void;
+	/** Error callback - called when creation fails */
+	onError?: (error: Error) => void;
+	/** Open state control */
+	open?: boolean;
+	/** Open state change handler */
+	onOpenChange?: (open: boolean) => void;
+	/** Navigate to portfolio detail after creation */
+	navigateAfterCreate?: boolean;
+	/** Navigate to portfolios list after creation */
+	navigateToList?: boolean;
+	/** Show success toast notification */
+	showSuccessToast?: boolean;
+	/** Show error toast notification */
+	showErrorToast?: boolean;
+	/** Custom success message */
+	successMessage?: string;
+	/** Auto-close dialog after success */
+	autoCloseAfterSuccess?: boolean;
+	/** Auto-close delay in milliseconds */
+	autoCloseDelay?: number;
 }
 
-const formSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters."),
-  description: z.string().optional(),
-});
+export function CreatePortfolioDialog({
+	children,
+	existingPortfolioNames = [],
+	title = "Create Portfolio",
+	description = "Enter the details for your new portfolio.",
+	onSuccess,
+	onError,
+	open: controlledOpen,
+	onOpenChange: controlledOnOpenChange,
+	navigateAfterCreate = false,
+	navigateToList = false,
+	showSuccessToast = true,
+	showErrorToast = true,
+	successMessage = "Portfolio created successfully!",
+	autoCloseAfterSuccess = true,
+	autoCloseDelay = 1500,
+}: CreatePortfolioDialogProps) {
+	const navigate = useNavigate();
+	const { user } = useAuth();
+	const { createPortfolio, portfolios, isCreating } = usePortfolioManagement();
 
-export function CreatePortfolioDialog({ children }: CreatePortfolioDialogProps) {
-  const { user } = useAuth();
-  const [open, setOpen] = useState(false);
-  const [createPortfolio, { loading }] = useMutation(CREATE_PORTFOLIO, {
-    refetchQueries: [
-      {
-        query: GET_PORTFOLIOS_WITH_ANALYTICS,
-        variables: { userID: user?.id ?? "" },
-      },
-    ],
-  });
+	// Dialog state management
+	const [internalOpen, setInternalOpen] = useState(false);
+	const [successState, setSuccessState] = useState<{
+		show: boolean;
+		portfolio?: any;
+	}>({ show: false });
+	const [errorMessage, setErrorMessage] = useState<string>("");
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
-  });
+	const isControlled = controlledOpen !== undefined;
+	const open = isControlled ? controlledOpen : internalOpen;
+	const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    if (!user) {
-      toast.error("You must be logged in to create a portfolio.");
-      return;
-    }
-    try {
-      await createPortfolio({
-        variables: {
-          input: {
-            userID: user.id,
-            name: values.name,
-            description: values.description,
-          },
-        },
-      });
-      toast.success("Portfolio created successfully!");
-      setOpen(false);
-      form.reset();
-    } catch (error) {
-      toast.error("Failed to create portfolio.");
-      console.error(error);
-    }
-  };
+	// Get existing portfolio names from the portfolios data if not provided
+	const finalExistingNames = useMemo(() => {
+		if (existingPortfolioNames.length > 0) {
+			return existingPortfolioNames;
+		}
+		return portfolios?.map((p) => p.name) || [];
+	}, [existingPortfolioNames, portfolios]);
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Create Portfolio</DialogTitle>
-          <DialogDescription>
-            Enter the details for your new portfolio.
-          </DialogDescription>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Tech Stocks" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="A brief description of your portfolio."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="submit" disabled={loading}>
-                {loading ? "Creating..." : "Create"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
+	const handleSubmit = useCallback(
+		async (data: PortfolioFormData) => {
+			if (!user?.id) {
+				const error = new Error(
+					"User not authenticated. Please log in and try again.",
+				);
+				setErrorMessage(error.message);
+				if (showErrorToast) {
+					toast.error(error.message);
+				}
+				onError?.(error);
+				return;
+			}
+
+			setErrorMessage("");
+			setSuccessState({ show: false });
+
+			try {
+				const result = await createPortfolio({
+					userID: user.id,
+					name: data.name,
+					description: data.description || undefined,
+				});
+
+				if (result) {
+					// Show success state
+					setSuccessState({ show: true, portfolio: result });
+
+					// Show success toast
+					if (showSuccessToast) {
+						toast.success(successMessage);
+					}
+
+					// Call success callback
+					onSuccess?.(result);
+
+					// Handle navigation and dialog closing
+					if (autoCloseAfterSuccess) {
+						setTimeout(() => {
+							setOpen(false);
+							setSuccessState({ show: false });
+
+							// Navigate after closing dialog
+							if (navigateAfterCreate && result.id) {
+								navigate({ to: `/portfolios/${result.id}` });
+							} else if (navigateToList) {
+								navigate({ to: "/portfolios" });
+							}
+						}, autoCloseDelay);
+					}
+				} else {
+					throw new Error("Failed to create portfolio. Please try again.");
+				}
+			} catch (error: any) {
+				console.error("Error creating portfolio:", error);
+
+				// Handle specific error types
+				let errorMsg = "Failed to create portfolio. Please try again.";
+
+				if (
+					error.message?.includes("duplicate") ||
+					error.message?.includes("already exists")
+				) {
+					errorMsg =
+						"A portfolio with this name already exists. Please choose a different name.";
+				} else if (error.message?.includes("validation")) {
+					errorMsg = "Please check your input and try again.";
+				} else if (error.message) {
+					errorMsg = error.message;
+				}
+
+				setErrorMessage(errorMsg);
+
+				if (showErrorToast) {
+					toast.error(errorMsg);
+				}
+
+				const formError = new Error(errorMsg);
+				onError?.(formError);
+			}
+		},
+		[
+			user?.id,
+			createPortfolio,
+			onSuccess,
+			onError,
+			showSuccessToast,
+			showErrorToast,
+			successMessage,
+			autoCloseAfterSuccess,
+			autoCloseDelay,
+			navigateAfterCreate,
+			navigateToList,
+			navigate,
+			setOpen,
+		],
+	);
+
+	const handleCancel = useCallback(() => {
+		setOpen(false);
+		setErrorMessage("");
+		setSuccessState({ show: false });
+	}, [setOpen]);
+
+	const handleOpenChange = useCallback(
+		(newOpen: boolean) => {
+			setOpen(newOpen);
+
+			// Clear messages when dialog closes
+			if (!newOpen) {
+				setErrorMessage("");
+				setSuccessState({ show: false });
+			}
+		},
+		[setOpen],
+	);
+
+	const handleFormSuccess = useCallback((data: PortfolioFormData) => {
+		// Success is handled in handleSubmit
+	}, []);
+
+	const handleFormError = useCallback((error: Error) => {
+		// Error is handled in handleSubmit
+	}, []);
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogTrigger asChild>{children}</DialogTrigger>
+			<DialogContent className="sm:max-w-[500px]">
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>{description}</DialogDescription>
+				</DialogHeader>
+
+				{/* Success Message */}
+				{successState.show && (
+					<Alert
+						variant="default"
+						className="border-green-200 bg-green-50 text-green-800"
+					>
+						<CheckCircle className="h-4 w-4 text-green-600" />
+						<AlertDescription>{successMessage}</AlertDescription>
+					</Alert>
+				)}
+
+				{/* Error Message */}
+				{errorMessage && (
+					<Alert variant="destructive">
+						<AlertCircle className="h-4 w-4" />
+						<AlertDescription>{errorMessage}</AlertDescription>
+					</Alert>
+				)}
+
+				<CompactPortfolioForm
+					mode="create"
+					onSubmit={handleSubmit}
+					onCancel={handleCancel}
+					existingPortfolioNames={finalExistingNames}
+					isLoading={isCreating}
+					submitButtonText="Create Portfolio"
+					cancelButtonText="Cancel"
+					showCancelButton={true}
+					autoFocus={true}
+					onSuccess={handleFormSuccess}
+					onError={handleFormError}
+				/>
+			</DialogContent>
+		</Dialog>
+	);
+}
+
+// Convenience component for quick portfolio creation
+export interface QuickCreatePortfolioDialogProps {
+	/** Dialog trigger element */
+	children?: React.ReactNode;
+	/** Success callback */
+	onSuccess?: (portfolio: any) => void;
+	/** Navigate to portfolio detail after creation */
+	navigateAfterCreate?: boolean;
+}
+
+export function QuickCreatePortfolioDialog({
+	children,
+	onSuccess,
+	navigateAfterCreate = true,
+}: QuickCreatePortfolioDialogProps) {
+	const defaultTrigger = (
+		<Button>
+			<PlusCircle className="mr-2 h-4 w-4" />
+			Create Portfolio
+		</Button>
+	);
+
+	return (
+		<CreatePortfolioDialog
+			onSuccess={onSuccess}
+			navigateAfterCreate={navigateAfterCreate}
+			showSuccessToast={true}
+			showErrorToast={true}
+			autoCloseAfterSuccess={true}
+			autoCloseDelay={1500}
+		>
+			{children || defaultTrigger}
+		</CreatePortfolioDialog>
+	);
+}
+
+// Component for creating portfolio with navigation to list
+export interface CreatePortfolioWithListNavigationProps {
+	/** Dialog trigger element */
+	children: React.ReactNode;
+	/** Success callback */
+	onSuccess?: (portfolio: any) => void;
+}
+
+export function CreatePortfolioWithListNavigation({
+	children,
+	onSuccess,
+}: CreatePortfolioWithListNavigationProps) {
+	return (
+		<CreatePortfolioDialog
+			onSuccess={onSuccess}
+			navigateToList={true}
+			showSuccessToast={true}
+			showErrorToast={true}
+			autoCloseAfterSuccess={true}
+			autoCloseDelay={1000}
+		>
+			{children}
+		</CreatePortfolioDialog>
+	);
 }

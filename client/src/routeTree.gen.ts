@@ -8,298 +8,298 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
-import { Route as rootRouteImport } from './routes/__root'
-import { Route as PortfoliosRouteImport } from './routes/portfolios'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as PortfoliosCreateRouteImport } from './routes/portfolios.create'
-import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios.$portfolioId'
-import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
-import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
-import { Route as AuthRegisterRouteImport } from './routes/auth.register'
-import { Route as AuthLoginRouteImport } from './routes/auth.login'
-import { Route as PortfoliosPortfolioIdEditRouteImport } from './routes/portfolios.$portfolioId.edit'
-import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
+import { Route as rootRouteImport } from "./routes/__root";
+import { Route as AuthLoginRouteImport } from "./routes/auth.login";
+import { Route as AuthRegisterRouteImport } from "./routes/auth.register";
+import { Route as AuthResetPasswordRouteImport } from "./routes/auth.reset-password";
+import { Route as AuthResetPasswordConfirmRouteImport } from "./routes/auth.reset-password.confirm";
+import { Route as AuthVerifyEmailRouteImport } from "./routes/auth.verify-email";
+import { Route as DashboardRouteImport } from "./routes/dashboard";
+import { Route as IndexRouteImport } from "./routes/index";
+import { Route as PortfoliosRouteImport } from "./routes/portfolios";
+import { Route as PortfoliosPortfolioIdRouteImport } from "./routes/portfolios.$portfolioId";
+import { Route as PortfoliosPortfolioIdEditRouteImport } from "./routes/portfolios.$portfolioId.edit";
+import { Route as PortfoliosCreateRouteImport } from "./routes/portfolios.create";
 
 const PortfoliosRoute = PortfoliosRouteImport.update({
-  id: '/portfolios',
-  path: '/portfolios',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/portfolios",
+	path: "/portfolios",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/dashboard",
+	path: "/dashboard",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/",
+	path: "/",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const PortfoliosCreateRoute = PortfoliosCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => PortfoliosRoute,
-} as any)
+	id: "/create",
+	path: "/create",
+	getParentRoute: () => PortfoliosRoute,
+} as any);
 const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
-  id: '/$portfolioId',
-  path: '/$portfolioId',
-  getParentRoute: () => PortfoliosRoute,
-} as any)
+	id: "/$portfolioId",
+	path: "/$portfolioId",
+	getParentRoute: () => PortfoliosRoute,
+} as any);
 const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
-  id: '/auth/verify-email',
-  path: '/auth/verify-email',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/auth/verify-email",
+	path: "/auth/verify-email",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
-  id: '/auth/reset-password',
-  path: '/auth/reset-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/auth/reset-password",
+	path: "/auth/reset-password",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
-  id: '/auth/register',
-  path: '/auth/register',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/auth/register",
+	path: "/auth/register",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
+	id: "/auth/login",
+	path: "/auth/login",
+	getParentRoute: () => rootRouteImport,
+} as any);
 const PortfoliosPortfolioIdEditRoute =
-  PortfoliosPortfolioIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => PortfoliosPortfolioIdRoute,
-  } as any)
+	PortfoliosPortfolioIdEditRouteImport.update({
+		id: "/edit",
+		path: "/edit",
+		getParentRoute: () => PortfoliosPortfolioIdRoute,
+	} as any);
 const AuthResetPasswordConfirmRoute =
-  AuthResetPasswordConfirmRouteImport.update({
-    id: '/confirm',
-    path: '/confirm',
-    getParentRoute: () => AuthResetPasswordRoute,
-  } as any)
+	AuthResetPasswordConfirmRouteImport.update({
+		id: "/confirm",
+		path: "/confirm",
+		getParentRoute: () => AuthResetPasswordRoute,
+	} as any);
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
-  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+	"/": typeof IndexRoute;
+	"/dashboard": typeof DashboardRoute;
+	"/portfolios": typeof PortfoliosRouteWithChildren;
+	"/auth/login": typeof AuthLoginRoute;
+	"/auth/register": typeof AuthRegisterRoute;
+	"/auth/reset-password": typeof AuthResetPasswordRouteWithChildren;
+	"/auth/verify-email": typeof AuthVerifyEmailRoute;
+	"/portfolios/$portfolioId": typeof PortfoliosPortfolioIdRouteWithChildren;
+	"/portfolios/create": typeof PortfoliosCreateRoute;
+	"/auth/reset-password/confirm": typeof AuthResetPasswordConfirmRoute;
+	"/portfolios/$portfolioId/edit": typeof PortfoliosPortfolioIdEditRoute;
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
-  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+	"/": typeof IndexRoute;
+	"/dashboard": typeof DashboardRoute;
+	"/portfolios": typeof PortfoliosRouteWithChildren;
+	"/auth/login": typeof AuthLoginRoute;
+	"/auth/register": typeof AuthRegisterRoute;
+	"/auth/reset-password": typeof AuthResetPasswordRouteWithChildren;
+	"/auth/verify-email": typeof AuthVerifyEmailRoute;
+	"/portfolios/$portfolioId": typeof PortfoliosPortfolioIdRouteWithChildren;
+	"/portfolios/create": typeof PortfoliosCreateRoute;
+	"/auth/reset-password/confirm": typeof AuthResetPasswordConfirmRoute;
+	"/portfolios/$portfolioId/edit": typeof PortfoliosPortfolioIdEditRoute;
 }
 export interface FileRoutesById {
-  __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/dashboard': typeof DashboardRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
-  '/auth/login': typeof AuthLoginRoute
-  '/auth/register': typeof AuthRegisterRoute
-  '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
-  '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
-  '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+	__root__: typeof rootRouteImport;
+	"/": typeof IndexRoute;
+	"/dashboard": typeof DashboardRoute;
+	"/portfolios": typeof PortfoliosRouteWithChildren;
+	"/auth/login": typeof AuthLoginRoute;
+	"/auth/register": typeof AuthRegisterRoute;
+	"/auth/reset-password": typeof AuthResetPasswordRouteWithChildren;
+	"/auth/verify-email": typeof AuthVerifyEmailRoute;
+	"/portfolios/$portfolioId": typeof PortfoliosPortfolioIdRouteWithChildren;
+	"/portfolios/create": typeof PortfoliosCreateRoute;
+	"/auth/reset-password/confirm": typeof AuthResetPasswordConfirmRoute;
+	"/portfolios/$portfolioId/edit": typeof PortfoliosPortfolioIdEditRoute;
 }
 export interface FileRouteTypes {
-  fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths:
-    | '/'
-    | '/dashboard'
-    | '/portfolios'
-    | '/auth/login'
-    | '/auth/register'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
-    | '/portfolios/$portfolioId'
-    | '/portfolios/create'
-    | '/auth/reset-password/confirm'
-    | '/portfolios/$portfolioId/edit'
-  fileRoutesByTo: FileRoutesByTo
-  to:
-    | '/'
-    | '/dashboard'
-    | '/portfolios'
-    | '/auth/login'
-    | '/auth/register'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
-    | '/portfolios/$portfolioId'
-    | '/portfolios/create'
-    | '/auth/reset-password/confirm'
-    | '/portfolios/$portfolioId/edit'
-  id:
-    | '__root__'
-    | '/'
-    | '/dashboard'
-    | '/portfolios'
-    | '/auth/login'
-    | '/auth/register'
-    | '/auth/reset-password'
-    | '/auth/verify-email'
-    | '/portfolios/$portfolioId'
-    | '/portfolios/create'
-    | '/auth/reset-password/confirm'
-    | '/portfolios/$portfolioId/edit'
-  fileRoutesById: FileRoutesById
+	fileRoutesByFullPath: FileRoutesByFullPath;
+	fullPaths:
+		| "/"
+		| "/dashboard"
+		| "/portfolios"
+		| "/auth/login"
+		| "/auth/register"
+		| "/auth/reset-password"
+		| "/auth/verify-email"
+		| "/portfolios/$portfolioId"
+		| "/portfolios/create"
+		| "/auth/reset-password/confirm"
+		| "/portfolios/$portfolioId/edit";
+	fileRoutesByTo: FileRoutesByTo;
+	to:
+		| "/"
+		| "/dashboard"
+		| "/portfolios"
+		| "/auth/login"
+		| "/auth/register"
+		| "/auth/reset-password"
+		| "/auth/verify-email"
+		| "/portfolios/$portfolioId"
+		| "/portfolios/create"
+		| "/auth/reset-password/confirm"
+		| "/portfolios/$portfolioId/edit";
+	id:
+		| "__root__"
+		| "/"
+		| "/dashboard"
+		| "/portfolios"
+		| "/auth/login"
+		| "/auth/register"
+		| "/auth/reset-password"
+		| "/auth/verify-email"
+		| "/portfolios/$portfolioId"
+		| "/portfolios/create"
+		| "/auth/reset-password/confirm"
+		| "/portfolios/$portfolioId/edit";
+	fileRoutesById: FileRoutesById;
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  DashboardRoute: typeof DashboardRoute
-  PortfoliosRoute: typeof PortfoliosRouteWithChildren
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthRegisterRoute: typeof AuthRegisterRoute
-  AuthResetPasswordRoute: typeof AuthResetPasswordRouteWithChildren
-  AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
+	IndexRoute: typeof IndexRoute;
+	DashboardRoute: typeof DashboardRoute;
+	PortfoliosRoute: typeof PortfoliosRouteWithChildren;
+	AuthLoginRoute: typeof AuthLoginRoute;
+	AuthRegisterRoute: typeof AuthRegisterRoute;
+	AuthResetPasswordRoute: typeof AuthResetPasswordRouteWithChildren;
+	AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute;
 }
 
-declare module '@tanstack/react-router' {
-  interface FileRoutesByPath {
-    '/portfolios': {
-      id: '/portfolios'
-      path: '/portfolios'
-      fullPath: '/portfolios'
-      preLoaderRoute: typeof PortfoliosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portfolios/create': {
-      id: '/portfolios/create'
-      path: '/create'
-      fullPath: '/portfolios/create'
-      preLoaderRoute: typeof PortfoliosCreateRouteImport
-      parentRoute: typeof PortfoliosRoute
-    }
-    '/portfolios/$portfolioId': {
-      id: '/portfolios/$portfolioId'
-      path: '/$portfolioId'
-      fullPath: '/portfolios/$portfolioId'
-      preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
-      parentRoute: typeof PortfoliosRoute
-    }
-    '/auth/verify-email': {
-      id: '/auth/verify-email'
-      path: '/auth/verify-email'
-      fullPath: '/auth/verify-email'
-      preLoaderRoute: typeof AuthVerifyEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/reset-password': {
-      id: '/auth/reset-password'
-      path: '/auth/reset-password'
-      fullPath: '/auth/reset-password'
-      preLoaderRoute: typeof AuthResetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/register': {
-      id: '/auth/register'
-      path: '/auth/register'
-      fullPath: '/auth/register'
-      preLoaderRoute: typeof AuthRegisterRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/login': {
-      id: '/auth/login'
-      path: '/auth/login'
-      fullPath: '/auth/login'
-      preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/portfolios/$portfolioId/edit': {
-      id: '/portfolios/$portfolioId/edit'
-      path: '/edit'
-      fullPath: '/portfolios/$portfolioId/edit'
-      preLoaderRoute: typeof PortfoliosPortfolioIdEditRouteImport
-      parentRoute: typeof PortfoliosPortfolioIdRoute
-    }
-    '/auth/reset-password/confirm': {
-      id: '/auth/reset-password/confirm'
-      path: '/confirm'
-      fullPath: '/auth/reset-password/confirm'
-      preLoaderRoute: typeof AuthResetPasswordConfirmRouteImport
-      parentRoute: typeof AuthResetPasswordRoute
-    }
-  }
+declare module "@tanstack/react-router" {
+	interface FileRoutesByPath {
+		"/portfolios": {
+			id: "/portfolios";
+			path: "/portfolios";
+			fullPath: "/portfolios";
+			preLoaderRoute: typeof PortfoliosRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/dashboard": {
+			id: "/dashboard";
+			path: "/dashboard";
+			fullPath: "/dashboard";
+			preLoaderRoute: typeof DashboardRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/": {
+			id: "/";
+			path: "/";
+			fullPath: "/";
+			preLoaderRoute: typeof IndexRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/portfolios/create": {
+			id: "/portfolios/create";
+			path: "/create";
+			fullPath: "/portfolios/create";
+			preLoaderRoute: typeof PortfoliosCreateRouteImport;
+			parentRoute: typeof PortfoliosRoute;
+		};
+		"/portfolios/$portfolioId": {
+			id: "/portfolios/$portfolioId";
+			path: "/$portfolioId";
+			fullPath: "/portfolios/$portfolioId";
+			preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport;
+			parentRoute: typeof PortfoliosRoute;
+		};
+		"/auth/verify-email": {
+			id: "/auth/verify-email";
+			path: "/auth/verify-email";
+			fullPath: "/auth/verify-email";
+			preLoaderRoute: typeof AuthVerifyEmailRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/auth/reset-password": {
+			id: "/auth/reset-password";
+			path: "/auth/reset-password";
+			fullPath: "/auth/reset-password";
+			preLoaderRoute: typeof AuthResetPasswordRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/auth/register": {
+			id: "/auth/register";
+			path: "/auth/register";
+			fullPath: "/auth/register";
+			preLoaderRoute: typeof AuthRegisterRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/auth/login": {
+			id: "/auth/login";
+			path: "/auth/login";
+			fullPath: "/auth/login";
+			preLoaderRoute: typeof AuthLoginRouteImport;
+			parentRoute: typeof rootRouteImport;
+		};
+		"/portfolios/$portfolioId/edit": {
+			id: "/portfolios/$portfolioId/edit";
+			path: "/edit";
+			fullPath: "/portfolios/$portfolioId/edit";
+			preLoaderRoute: typeof PortfoliosPortfolioIdEditRouteImport;
+			parentRoute: typeof PortfoliosPortfolioIdRoute;
+		};
+		"/auth/reset-password/confirm": {
+			id: "/auth/reset-password/confirm";
+			path: "/confirm";
+			fullPath: "/auth/reset-password/confirm";
+			preLoaderRoute: typeof AuthResetPasswordConfirmRouteImport;
+			parentRoute: typeof AuthResetPasswordRoute;
+		};
+	}
 }
 
 interface PortfoliosPortfolioIdRouteChildren {
-  PortfoliosPortfolioIdEditRoute: typeof PortfoliosPortfolioIdEditRoute
+	PortfoliosPortfolioIdEditRoute: typeof PortfoliosPortfolioIdEditRoute;
 }
 
 const PortfoliosPortfolioIdRouteChildren: PortfoliosPortfolioIdRouteChildren = {
-  PortfoliosPortfolioIdEditRoute: PortfoliosPortfolioIdEditRoute,
-}
+	PortfoliosPortfolioIdEditRoute: PortfoliosPortfolioIdEditRoute,
+};
 
 const PortfoliosPortfolioIdRouteWithChildren =
-  PortfoliosPortfolioIdRoute._addFileChildren(
-    PortfoliosPortfolioIdRouteChildren,
-  )
+	PortfoliosPortfolioIdRoute._addFileChildren(
+		PortfoliosPortfolioIdRouteChildren,
+	);
 
 interface PortfoliosRouteChildren {
-  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRouteWithChildren
-  PortfoliosCreateRoute: typeof PortfoliosCreateRoute
+	PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRouteWithChildren;
+	PortfoliosCreateRoute: typeof PortfoliosCreateRoute;
 }
 
 const PortfoliosRouteChildren: PortfoliosRouteChildren = {
-  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRouteWithChildren,
-  PortfoliosCreateRoute: PortfoliosCreateRoute,
-}
+	PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRouteWithChildren,
+	PortfoliosCreateRoute: PortfoliosCreateRoute,
+};
 
 const PortfoliosRouteWithChildren = PortfoliosRoute._addFileChildren(
-  PortfoliosRouteChildren,
-)
+	PortfoliosRouteChildren,
+);
 
 interface AuthResetPasswordRouteChildren {
-  AuthResetPasswordConfirmRoute: typeof AuthResetPasswordConfirmRoute
+	AuthResetPasswordConfirmRoute: typeof AuthResetPasswordConfirmRoute;
 }
 
 const AuthResetPasswordRouteChildren: AuthResetPasswordRouteChildren = {
-  AuthResetPasswordConfirmRoute: AuthResetPasswordConfirmRoute,
-}
+	AuthResetPasswordConfirmRoute: AuthResetPasswordConfirmRoute,
+};
 
 const AuthResetPasswordRouteWithChildren =
-  AuthResetPasswordRoute._addFileChildren(AuthResetPasswordRouteChildren)
+	AuthResetPasswordRoute._addFileChildren(AuthResetPasswordRouteChildren);
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  DashboardRoute: DashboardRoute,
-  PortfoliosRoute: PortfoliosRouteWithChildren,
-  AuthLoginRoute: AuthLoginRoute,
-  AuthRegisterRoute: AuthRegisterRoute,
-  AuthResetPasswordRoute: AuthResetPasswordRouteWithChildren,
-  AuthVerifyEmailRoute: AuthVerifyEmailRoute,
-}
+	IndexRoute: IndexRoute,
+	DashboardRoute: DashboardRoute,
+	PortfoliosRoute: PortfoliosRouteWithChildren,
+	AuthLoginRoute: AuthLoginRoute,
+	AuthRegisterRoute: AuthRegisterRoute,
+	AuthResetPasswordRoute: AuthResetPasswordRouteWithChildren,
+	AuthVerifyEmailRoute: AuthVerifyEmailRoute,
+};
 export const routeTree = rootRouteImport
-  ._addFileChildren(rootRouteChildren)
-  ._addFileTypes<FileRouteTypes>()
+	._addFileChildren(rootRouteChildren)
+	._addFileTypes<FileRouteTypes>();

@@ -16,10 +16,10 @@ import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
-import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
 import { PortfolioDeleteDialog } from "@/components/portfolio/portfolio-delete-dialog";
-import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
 import { PortfolioDetailSkeleton } from "@/components/portfolio/portfolio-detail-skeleton";
+import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
+import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,19 +42,13 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import type { PortfolioAsset } from "@/gql/graphql";
+import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 
 export default function PortfolioDetailPage() {
 	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId" });
-	const {
-		portfolio,
-		loading,
-		error,
-		isUnauthorized,
-		navigateToList,
-		retry,
-	} = usePortfolioDetail({ portfolioId });
+	const { portfolio, loading, error, isUnauthorized, navigateToList, retry } =
+		usePortfolioDetail({ portfolioId });
 
 	return (
 		<SidebarProvider>
@@ -71,9 +65,9 @@ export default function PortfolioDetailPage() {
 						/>
 					</div>
 				</header>
-				
+
 				{loading && <PortfolioDetailSkeleton />}
-				
+
 				{(error || isUnauthorized) && (
 					<PortfolioErrorDisplay
 						error={error || null}
@@ -84,7 +78,7 @@ export default function PortfolioDetailPage() {
 						loading={loading}
 					/>
 				)}
-				
+
 				{!loading && !error && !isUnauthorized && portfolio && (
 					<PortfolioDetailContent portfolioId={portfolioId} />
 				)}
@@ -328,7 +322,8 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 												Quantity: {asset.quantity.toLocaleString()}
 											</div>
 											<div className="text-sm text-muted-foreground">
-												Avg Price: {formatCurrency(asset.averagePurchasePrice || 0)}
+												Avg Price:{" "}
+												{formatCurrency(asset.averagePurchasePrice || 0)}
 											</div>
 											{(asset.ownershipPct || 0) < 100 && (
 												<div className="text-sm text-muted-foreground">
@@ -352,7 +347,9 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem
-													onClick={() => console.log("Edit asset:", asset.asset.id)}
+													onClick={() =>
+														console.log("Edit asset:", asset.asset.id)
+													}
 												>
 													<Edit className="mr-2 h-4 w-4" />
 													Edit Position
