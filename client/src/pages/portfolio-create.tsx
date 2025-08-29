@@ -6,7 +6,7 @@ import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
-import { PortfolioForm } from "@/components/portfolio/portfolio-form";
+import { EnhancedPortfolioForm, type PortfolioFormData } from "@/components/portfolio";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -52,7 +52,7 @@ function PortfolioCreateContent() {
 	const [errorMessage, setErrorMessage] = useState<string>("");
 	const [showSuccess, setShowSuccess] = useState(false);
 
-	const handleSubmit = async (data: { name: string; description?: string }) => {
+	const handleSubmit = async (data: PortfolioFormData) => {
 		if (!user?.id) {
 			setErrorMessage("User not authenticated. Please log in and try again.");
 			return;
@@ -135,7 +135,8 @@ function PortfolioCreateContent() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<PortfolioForm
+						<EnhancedPortfolioForm
+							mode="create"
 							onSubmit={handleSubmit}
 							onCancel={handleCancel}
 							isLoading={isLoading}

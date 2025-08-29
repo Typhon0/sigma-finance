@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RequireAuth } from "@/lib/auth-context";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import PortfolioDetailPage from "@/pages/portfolio-detail";
 
 export const Route = createFileRoute("/portfolios/$portfolioId")({
 	component: () => (
-		<RequireAuth>
+		<ProtectedRoute>
 			<PortfolioDetailPage />
-		</RequireAuth>
+		</ProtectedRoute>
 	),
 });

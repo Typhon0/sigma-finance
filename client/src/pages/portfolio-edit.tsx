@@ -6,7 +6,7 @@ import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
-import { PortfolioForm } from "@/components/portfolio/portfolio-form";
+import { EnhancedPortfolioForm, type PortfolioFormData } from "@/components/portfolio";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,10 +68,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 		}
 	}, [loading, portfolio]);
 
-	const handleSubmit = async (formData: {
-		name: string;
-		description?: string;
-	}) => {
+	const handleSubmit = async (formData: PortfolioFormData) => {
 		if (!portfolio) {
 			setErrorMessage("Portfolio not found.");
 			return;
@@ -206,11 +203,13 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<PortfolioForm
+						<EnhancedPortfolioForm
 							portfolio={{
+								id: portfolio.id,
 								name: portfolio.name,
 								description: portfolio.description,
 							}}
+							mode="edit"
 							onSubmit={handleSubmit}
 							onCancel={handleCancel}
 							isLoading={isLoading}

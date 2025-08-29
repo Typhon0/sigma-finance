@@ -57,7 +57,7 @@ export function PortfolioCard({
   onSelect,
   onAction,
   isDragging = false,
-  assets
+  assets: _assets
 }: PortfolioCardProps) {
   const { toast } = useToast();
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -252,11 +252,12 @@ export function PortfolioCard({
                     {portfolio.name}
                   </Link>
                 </CardTitle>
-              {portfolio.description && (
-                <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
-                  {portfolio.description}
-                </p>
-              )}
+                {portfolio.description && (
+                  <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                    {portfolio.description}
+                  </p>
+                )}
+              </div>
             </div>
             
             <PortfolioActions
