@@ -5,7 +5,7 @@ import {
 	PlusCircle,
 	RefreshCw,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { PortfolioCard } from "@/components/portfolio/portfolio-card";
 import { PortfolioListErrorBoundary } from "@/components/portfolio/portfolio-error-boundary";
@@ -15,6 +15,7 @@ import {
 	AsyncOperationIndicator, 
 	PortfolioOperationStatus 
 } from "@/components/portfolio/portfolio-loading-indicators";
+import { PortfolioSearch } from "@/components/portfolio/portfolio-search";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -25,6 +26,8 @@ import {
 } from "@/components/ui/card";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
+import { useAdvancedSearch } from "@/hooks/use-debounced-search";
+import type { Portfolio } from "@/gql/graphql";
 
 interface PortfolioListPageProps {
 	className?: string;
@@ -47,6 +50,39 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 		isDeleting,
 		isDuplicating,
 	} = usePortfolioManagement();
+
+	// Enhanced search and filtering
+	const searchablePortfolios = useMemo(() => {
+		if (!portfolios) return [];
+		
+		// Add computed fields for filtering
+		return portfolios.map((portfolio) => ({
+			...portfolio,
+			hasAssets: portfolio.assets && portfolio.assets.length > 0,
+			totalValue: portfolio.analytics?.totalValue || 0,
+		}));
+	}, [portfolios]);
+
+	const {
+		searchTerm,
+		setSearchTerm,
+		filters,
+		updateFilter,
+		removeFilter,
+		clearAllFilters,
+		sortConfig,
+		setSortConfig,
+		toggleSort,
+		filteredItems: filteredPortfolios,
+		resultCount,
+		hasResults,
+		isSearching,
+		hasActiveFilters,
+	} = useAdvancedSearch(searchablePortfolios, ["name", "description"], {
+		debounceDelay: 300,
+		caseSensitive: false,
+		exactMatch: false,
+	});
 
 	// Enhanced retry mechanism for portfolio operations
 	const portfolioRetry = usePortfolioRetry({
@@ -145,6 +181,24 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 					)}
 				</div>
 
+				{/* Search and Filter Controls */}
+				{hasPortfolios && (
+					<div className="mb-6">
+						<PortfolioSearch
+							searchTerm={searchTerm}
+							onSearchChange={setSearchTerm}
+							onFilterChange={updateFilter}
+							onSortChange={setSortConfig}
+							filters={filters}
+							sortConfig={sortConfig}
+							resultCount={resultCount}
+							totalCount={portfolios.length}
+							isSearching={isSearching}
+							onClearAll={clearAllFilters}
+						/>
+					</div>
+				)}
+
 				{/* Enhanced error banner (when there's cached data) */}
 				{hasError && portfolios && (
 					<AsyncOperationIndicator
@@ -182,10 +236,10 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 					</div>
 				)}
 
-				{/* Empty state */}
+				{/* Results */}
 				{!hasPortfolios ? (
 					<EmptyPortfolioState />
-				) : (
+				) : hasResults ? (
 					/* Portfolio list */
 					<div
 						className={
@@ -194,7 +248,7 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 								: "space-y-3 sm:space-y-4"
 						}
 					>
-						{portfolios.map((portfolio) => (
+						{filteredPortfolios.map((portfolio) => (
 							<PortfolioCard
 								key={portfolio.id}
 								portfolio={portfolio}
@@ -202,6 +256,25 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 							/>
 						))}
 					</div>
+				) : hasActiveFilters ? (
+					/* No results with active filters */
+					<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
+						<CardHeader className="px-4 sm:px-6">
+							<CardTitle className="text-lg sm:text-xl">
+								No portfolios found
+							</CardTitle>
+							<CardDescription className="text-sm sm:text-base">
+								No portfolios match your current search and filter criteria.
+							</CardDescription>
+						</CardHeader>
+						<CardContent className="px-4 sm:px-6">
+							<Button variant="outline" onClick={clearAllFilters} className="touch-manipulation">
+								Clear all filters
+							</Button>
+						</CardContent>
+					</Card>
+				) : (
+					<EmptyPortfolioState />
 				)}
 			</div>
 		</PortfolioListErrorBoundary>

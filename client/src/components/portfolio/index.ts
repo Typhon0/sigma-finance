@@ -82,3 +82,10 @@ export {
 	PortfolioCardLoadingSkeleton,
 	PortfolioFormLoadingSkeleton,
 } from "./portfolio-loading-indicators";
+
+// Search and filtering
+export { PortfolioSearch } from "./portfolio-search";
+
+// List and card components
+export { PortfolioListPage } from "./portfolio-list-page";
+export { PortfolioCard } from "./portfolio-card";

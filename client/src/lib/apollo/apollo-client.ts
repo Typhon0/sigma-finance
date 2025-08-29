@@ -51,11 +51,25 @@ const errorLink = onError(({ graphQLErrors, networkError }) => {
 });
 const cache = apolloCacheConfig;
 
-// Apollo Client configuration with caching policies and error handling
+// Apollo Client configuration with enhanced caching and performance optimizations
 export const apolloClient = new ApolloClient({
 	link: from([authErrorLink, errorLink, retryLink, authLink, httpLink]),
 	credentials: "include",
-	cache: new InMemoryCache(),
+	cache: apolloCacheConfig,
+	defaultOptions: {
+		watchQuery: {
+			fetchPolicy: "cache-and-network",
+			nextFetchPolicy: "cache-first",
+			notifyOnNetworkStatusChange: true,
+		},
+		query: {
+			fetchPolicy: "cache-first",
+			errorPolicy: "all",
+		},
+		mutate: {
+			errorPolicy: "all",
+		},
+	},
 });
 // Cache management utilities
 export const clearCache = () => {

@@ -13,15 +13,41 @@ export const apolloCacheConfig = new InMemoryCache({
 			fields: {
 				portfolios: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
-						// Pagination: replace or append based on args
+					merge(existing = [], incoming, { args }) {
+						// Enhanced caching for portfolio operations
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
+					},
+					read(existing, { args, canRead }) {
+						// Return cached data if available and fresh
+						if (existing && canRead) {
+							return existing;
+						}
+						return existing;
+					},
+				},
+				portfolio: {
+					keyArgs: ["id"],
+					merge(existing, incoming) {
+						// Always use the latest data for individual portfolio queries
+						return incoming;
+					},
+					read(existing, { args, toReference }) {
+						// Try to read from cache first
+						if (args?.id && existing) {
+							return existing;
+						}
+						// Fallback to reference lookup
+						if (args?.id) {
+							return toReference({
+								__typename: "Portfolio",
+								id: args.id,
+							});
+						}
+						return existing;
 					},
 				},
 				transactions: {
@@ -89,7 +115,7 @@ export const apolloCacheConfig = new InMemoryCache({
 		Portfolio: {
 			keyFields: ["id"],
 			fields: {
-				positions: {
+				assets: {
 					merge(_existing: Reference[] = [], incoming: Reference[]) {
 						return incoming;
 					},
@@ -97,6 +123,28 @@ export const apolloCacheConfig = new InMemoryCache({
 				tags: {
 					merge(_existing: Reference[] = [], incoming: Reference[]) {
 						return incoming;
+					},
+				},
+				analytics: {
+					merge(existing: any, incoming: any) {
+						// Cache analytics data with timestamp for freshness checking
+						return {
+							...existing,
+							...incoming,
+							_cachedAt: Date.now(),
+						};
+					},
+					read(existing) {
+						// Check if analytics data is fresh (5 minutes)
+						if (existing && existing._cachedAt) {
+							const age = Date.now() - existing._cachedAt;
+							const maxAge = 5 * 60 * 1000; // 5 minutes
+							if (age > maxAge) {
+								// Data is stale, return undefined to trigger refetch
+								return undefined;
+							}
+						}
+						return existing;
 					},
 				},
 			},

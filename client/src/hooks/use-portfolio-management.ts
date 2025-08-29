@@ -17,6 +17,7 @@ import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
 import { apolloClient } from "@/lib/apollo/apollo-client";
 import { useAuth } from "@/lib/auth-context";
 import { getErrorMessage, useErrorHandling } from "./use-error-handling";
+import { usePerformanceMonitoring } from "./use-performance-monitoring";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const optimisticResponseGenerators = {
@@ -179,6 +180,9 @@ export function usePortfolioManagement() {
 	const { user } = useAuth();
 	const effectiveUserID = user?.id;
 
+	// Performance monitoring
+	const { startQuery, endQuery, startMutation, endMutation, getQueryStats } = usePerformanceMonitoring();
+
 	// Loading states for individual operations
 	const [operationLoading, setOperationLoading] = useState({
 		create: false,
@@ -202,7 +206,14 @@ export function usePortfolioManagement() {
 			nextFetchPolicy: "cache-first",
 			notifyOnNetworkStatusChange: true,
 			skip: !effectiveUserID,
+			// Performance optimizations
+			pollInterval: 0, // Disable polling, use subscriptions instead
+			returnPartialData: true, // Return partial data while loading
+			onCompleted: (data) => {
+				endQuery("GetPortfoliosWithAnalytics", false);
+			},
 			onError: (error) => {
+				endQuery("GetPortfoliosWithAnalytics", false);
 				errorHandling.handleError(error);
 			},
 		});
