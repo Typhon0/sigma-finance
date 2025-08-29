@@ -69,18 +69,48 @@ export function usePortfolioDetail({
 		setIsDeleting(true);
 		try {
 			await deletePortfolio(portfolioId);
-			toast.success(`Portfolio "${portfolio.name}" has been deleted`);
+			
+			// Show success message with portfolio name
+			toast.success(`Portfolio "${portfolio.name}" has been deleted`, {
+				description: "All associated positions and data have been removed.",
+			});
+			
 			setShowDeleteDialog(false);
 
 			// Call success callback or navigate to list
 			if (onDeleteSuccess) {
 				onDeleteSuccess();
 			} else {
-				navigateToList();
+				// Add a small delay to allow the toast to be seen before navigation
+				setTimeout(() => {
+					navigateToList();
+				}, 500);
 			}
 		} catch (error) {
 			console.error("Failed to delete portfolio:", error);
-			toast.error("Failed to delete portfolio. Please try again.");
+			
+			// Enhanced error handling with specific error messages
+			let errorMessage = "Failed to delete portfolio. Please try again.";
+			let errorDescription = "";
+			
+			if (error instanceof Error) {
+				if (error.message.includes("positions")) {
+					errorMessage = "Cannot delete portfolio with positions";
+					errorDescription = "Please remove all assets from this portfolio before deleting it.";
+				} else if (error.message.includes("unauthorized")) {
+					errorMessage = "Not authorized to delete this portfolio";
+					errorDescription = "You don't have permission to delete this portfolio.";
+				} else if (error.message.includes("not found")) {
+					errorMessage = "Portfolio not found";
+					errorDescription = "This portfolio may have already been deleted.";
+				} else {
+					errorDescription = error.message;
+				}
+			}
+			
+			toast.error(errorMessage, {
+				description: errorDescription,
+			});
 		} finally {
 			setIsDeleting(false);
 		}

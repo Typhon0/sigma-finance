@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import {
+	AlertTriangle,
 	Calendar,
 	Copy,
 	DollarSign,
@@ -400,13 +401,35 @@ function DeleteConfirmationDialog({
 }) {
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>
-			<AlertDialogContent>
+			<AlertDialogContent className="max-w-md">
 				<AlertDialogHeader>
-					<AlertDialogTitle>Are you sure?</AlertDialogTitle>
-					<AlertDialogDescription>
-						This action cannot be undone. This will permanently delete the "
-						{portfolioName}" portfolio and all its associated positions and
-						data.
+					<AlertDialogTitle className="flex items-center gap-2 text-destructive">
+						<AlertTriangle className="h-5 w-5" />
+						Delete Portfolio
+					</AlertDialogTitle>
+					<AlertDialogDescription asChild>
+						<div className="space-y-4">
+							<p>
+								Are you sure you want to delete{" "}
+								<span className="font-semibold">"{portfolioName}"</span>?
+							</p>
+
+							<div className="rounded-lg border border-muted bg-muted/30 p-3">
+								<div className="text-sm font-medium mb-2">
+									This will permanently delete:
+								</div>
+								<ul className="text-sm space-y-1 text-muted-foreground">
+									<li>• Portfolio "{portfolioName}"</li>
+									<li>• All asset positions</li>
+									<li>• All transaction records</li>
+									<li>• Performance analytics and historical data</li>
+								</ul>
+							</div>
+
+							<p className="text-sm font-medium text-destructive">
+								This action cannot be undone.
+							</p>
+						</div>
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
