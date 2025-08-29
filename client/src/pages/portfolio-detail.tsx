@@ -1,4 +1,4 @@
-import { useNavigate, useParams } from "@tanstack/react-router";
+import { useParams } from "@tanstack/react-router";
 import {
 	ArrowLeft,
 	Copy,
@@ -17,6 +17,9 @@ import {
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
 import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
+import { PortfolioDeleteDialog } from "@/components/portfolio/portfolio-delete-dialog";
+import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
+import { PortfolioDetailSkeleton } from "@/components/portfolio/portfolio-detail-skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,14 +42,19 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
-import {
-	type PortfolioAsset,
-	usePortfolioManagement,
-} from "@/hooks/use-portfolio-management";
+import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
+import type { PortfolioAsset } from "@/gql/graphql";
 
 export default function PortfolioDetailPage() {
 	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId" });
-	const _navigate = useNavigate();
+	const {
+		portfolio,
+		loading,
+		error,
+		isUnauthorized,
+		navigateToList,
+		retry,
+	} = usePortfolioDetail({ portfolioId });
 
 	return (
 		<SidebarProvider>
@@ -63,48 +71,52 @@ export default function PortfolioDetailPage() {
 						/>
 					</div>
 				</header>
-				<PortfolioDetailContent portfolioId={portfolioId} />
+				
+				{loading && <PortfolioDetailSkeleton />}
+				
+				{(error || isUnauthorized) && (
+					<PortfolioErrorDisplay
+						error={error || null}
+						portfolioId={portfolioId}
+						isUnauthorized={isUnauthorized || false}
+						onRetry={retry}
+						onNavigateBack={navigateToList}
+						loading={loading}
+					/>
+				)}
+				
+				{!loading && !error && !isUnauthorized && portfolio && (
+					<PortfolioDetailContent portfolioId={portfolioId} />
+				)}
 			</SidebarInset>
 		</SidebarProvider>
 	);
 }
 
 function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
-	const navigate = useNavigate();
-	const { data, loading, error, refetch } = usePortfolioManagement();
+	const {
+		portfolio,
+		loading,
+		error,
+		isUnauthorized,
+		showDeleteDialog,
+		isDeleting,
+		navigateToEdit,
+		navigateToList,
+		handleDeleteClick,
+		handleDeleteCancel,
+		handleDeleteConfirm,
+		handleExport,
+		handleDuplicate,
+		refetch,
+	} = usePortfolioDetail({ portfolioId });
 
-	// Dialog states
+	// Dialog states for asset management
 	const [showAddAssetDialog, setShowAddAssetDialog] = useState(false);
 	const [showRemoveAssetDialog, setShowRemoveAssetDialog] = useState(false);
 	const [selectedAsset, setSelectedAsset] = useState<PortfolioAsset | null>(
 		null,
 	);
-
-	// Find the specific portfolio
-	const portfolio = data?.portfolios.find((p) => p.id === portfolioId);
-
-	const handleBack = () => {
-		navigate({ to: "/portfolios" });
-	};
-
-	const handleEdit = () => {
-		navigate({ to: `/portfolios/${portfolioId}/edit` });
-	};
-
-	const handleDelete = () => {
-		// TODO: Show delete confirmation dialog
-		console.log("Delete portfolio:", portfolioId);
-	};
-
-	const handleDuplicate = () => {
-		// TODO: Show duplicate dialog
-		console.log("Duplicate portfolio:", portfolioId);
-	};
-
-	const handleExport = () => {
-		// TODO: Show export dialog
-		console.log("Export portfolio:", portfolioId);
-	};
 
 	const handleAddAsset = () => {
 		setShowAddAssetDialog(true);
@@ -120,38 +132,9 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 		refetch();
 	};
 
-	if (loading) {
-		return (
-			<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-				<div className="animate-pulse space-y-4">
-					<div className="h-8 bg-muted rounded w-1/4"></div>
-					<div className="h-32 bg-muted rounded"></div>
-					<div className="h-64 bg-muted rounded"></div>
-				</div>
-			</div>
-		);
-	}
-
-	if (error || !portfolio) {
-		return (
-			<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-				<Card className="p-6">
-					<CardHeader>
-						<CardTitle className="text-destructive">
-							{error ? "Error Loading Portfolio" : "Portfolio Not Found"}
-						</CardTitle>
-						<CardDescription>
-							{error
-								? "There was an error loading the portfolio details."
-								: "The requested portfolio could not be found."}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<Button onClick={handleBack}>Back to Portfolios</Button>
-					</CardContent>
-				</Card>
-			</div>
-		);
+	// Early returns are handled in the parent component
+	if (loading || error || isUnauthorized || !portfolio) {
+		return null;
 	}
 
 	// Mock analytics data
@@ -187,7 +170,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 				<Button
 					variant="ghost"
 					size="sm"
-					onClick={handleBack}
+					onClick={navigateToList}
 					className="gap-2"
 				>
 					<ArrowLeft className="h-4 w-4" />
@@ -219,7 +202,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 
 				{/* Action Buttons */}
 				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" onClick={handleEdit}>
+					<Button variant="outline" size="sm" onClick={navigateToEdit}>
 						<Edit className="mr-2 h-4 w-4" />
 						Edit
 					</Button>
@@ -234,11 +217,12 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 					<Button
 						variant="outline"
 						size="sm"
-						onClick={handleDelete}
+						onClick={handleDeleteClick}
 						className="text-destructive hover:text-destructive"
+						disabled={isDeleting}
 					>
 						<Trash2 className="mr-2 h-4 w-4" />
-						Delete
+						{isDeleting ? "Deleting..." : "Delete"}
 					</Button>
 				</div>
 			</div>
@@ -320,9 +304,9 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 				<CardContent>
 					{portfolio.assets && portfolio.assets.length > 0 ? (
 						<div className="space-y-4">
-							{portfolio.assets.map((asset) => (
+							{portfolio.assets.map((asset, index) => (
 								<div
-									key={asset.id}
+									key={asset.asset.id || index}
 									className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
 								>
 									<div className="flex items-center gap-4">
@@ -344,11 +328,11 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 												Quantity: {asset.quantity.toLocaleString()}
 											</div>
 											<div className="text-sm text-muted-foreground">
-												Avg Price: {formatCurrency(asset.averagePurchasePrice)}
+												Avg Price: {formatCurrency(asset.averagePurchasePrice || 0)}
 											</div>
-											{asset.ownershipPct < 100 && (
+											{(asset.ownershipPct || 0) < 100 && (
 												<div className="text-sm text-muted-foreground">
-													Ownership: {asset.ownershipPct}%
+													Ownership: {asset.ownershipPct || 0}%
 												</div>
 											)}
 											{asset.asset.currentValue && (
@@ -368,7 +352,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem
-													onClick={() => console.log("Edit asset:", asset.id)}
+													onClick={() => console.log("Edit asset:", asset.asset.id)}
 												>
 													<Edit className="mr-2 h-4 w-4" />
 													Edit Position
@@ -418,6 +402,13 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 						portfolioName={portfolio.name}
 						asset={selectedAsset}
 						onSuccess={handleAssetSuccess}
+					/>
+					<PortfolioDeleteDialog
+						open={showDeleteDialog}
+						onOpenChange={handleDeleteCancel}
+						portfolio={portfolio}
+						onConfirm={handleDeleteConfirm}
+						isDeleting={isDeleting}
 					/>
 				</>
 			)}

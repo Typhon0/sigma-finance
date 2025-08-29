@@ -1,89 +1,120 @@
+import { ChevronRight, Home, Folder } from "lucide-react";
 import { Link } from "@tanstack/react-router";
-import { Slash } from "lucide-react";
-import React from "react";
 import {
-	Breadcrumb,
-	BreadcrumbItem,
-	BreadcrumbLink,
-	BreadcrumbList,
-	BreadcrumbPage,
-	BreadcrumbSeparator,
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-interface BreadcrumbItemProps {
-	label: string;
-	href?: string;
-	isActive?: boolean;
+interface BreadcrumbItem {
+  label: string;
+  href?: string;
+  icon?: React.ReactNode;
 }
 
 interface PortfolioBreadcrumbProps {
-	items: BreadcrumbItemProps[];
+  items: BreadcrumbItem[];
 }
 
 export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
-	return (
-		<Breadcrumb>
-			<BreadcrumbList>
-				{items.map((item, index) => (
-					<React.Fragment key={item.href || index}>
-						<BreadcrumbItem className={index === 0 ? "hidden md:block" : ""}>
-							{item.isActive ? (
-								<BreadcrumbPage>{item.label}</BreadcrumbPage>
-							) : (
-								<BreadcrumbLink asChild>
-									<Link to={item.href}>{item.label}</Link>
-								</BreadcrumbLink>
-							)}
-						</BreadcrumbItem>
-						{index < items.length - 1 && (
-							<BreadcrumbSeparator>
-								<Slash />
-							</BreadcrumbSeparator>
-						)}
-					</React.Fragment>
-				))}
-			</BreadcrumbList>
-		</Breadcrumb>
-	);
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        {items.map((item, index) => (
+          <div key={index} className="flex items-center">
+            <BreadcrumbItem>
+              {item.href ? (
+                <BreadcrumbLink asChild>
+                  <Link to={item.href} className="flex items-center gap-1">
+                    {item.icon}
+                    {item.label}
+                  </Link>
+                </BreadcrumbLink>
+              ) : (
+                <BreadcrumbPage className="flex items-center gap-1">
+                  {item.icon}
+                  {item.label}
+                </BreadcrumbPage>
+              )}
+            </BreadcrumbItem>
+            {index < items.length - 1 && (
+              <BreadcrumbSeparator>
+                <ChevronRight className="h-4 w-4" />
+              </BreadcrumbSeparator>
+            )}
+          </div>
+        ))}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
 }
 
-// Predefined breadcrumb configurations for common portfolio pages
+// Utility functions for common breadcrumb patterns
 export const portfolioBreadcrumbs = {
-	dashboard: [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Dashboard", isActive: true },
-	],
-
-	portfolios: [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Portfolios", isActive: true },
-	],
-
-	portfolioDetail: (portfolioName: string) => [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Portfolios", href: "/portfolios" },
-		{ label: portfolioName, isActive: true },
-	],
-
-	portfolioEdit: (portfolioName: string) => [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Portfolios", href: "/portfolios" },
-		{
-			label: portfolioName,
-			href: `/portfolios/${portfolioName.toLowerCase().replace(/\s+/g, "-")}`,
-		},
-		{ label: "Edit", isActive: true },
-	],
-
-	portfolioCreate: [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Portfolios", href: "/portfolios" },
-		{ label: "Create Portfolio", isActive: true },
-	],
-
-	portfolioAnalytics: [
-		{ label: "Portfolio Tracker", href: "/dashboard" },
-		{ label: "Portfolios", href: "/portfolios" },
-		{ label: "Analytics", isActive: true },
-	],
+  portfolioList: () => [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
+      label: "Portfolios",
+      icon: <Folder className="h-4 w-4" />,
+    },
+  ],
+  
+  portfolioDetail: (portfolioName: string) => [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
+      label: "Portfolios",
+      href: "/portfolios",
+      icon: <Folder className="h-4 w-4" />,
+    },
+    {
+      label: portfolioName,
+    },
+  ],
+  
+  portfolioEdit: (portfolioName: string) => [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
+      label: "Portfolios",
+      href: "/portfolios",
+      icon: <Folder className="h-4 w-4" />,
+    },
+    {
+      label: portfolioName,
+      href: `/portfolios/${portfolioName}`, // This would need the actual ID
+    },
+    {
+      label: "Edit",
+    },
+  ],
+  
+  portfolioCreate: () => [
+    {
+      label: "Dashboard",
+      href: "/dashboard",
+      icon: <Home className="h-4 w-4" />,
+    },
+    {
+      label: "Portfolios",
+      href: "/portfolios",
+      icon: <Folder className="h-4 w-4" />,
+    },
+    {
+      label: "Create Portfolio",
+    },
+  ],
 };

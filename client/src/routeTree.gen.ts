@@ -18,6 +18,7 @@ import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
+import { Route as PortfoliosPortfolioIdEditRouteImport } from './routes/portfolios.$portfolioId.edit'
 import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
 
 const PortfoliosRoute = PortfoliosRouteImport.update({
@@ -65,6 +66,12 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortfoliosPortfolioIdEditRoute =
+  PortfoliosPortfolioIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => PortfoliosPortfolioIdRoute,
+  } as any)
 const AuthResetPasswordConfirmRoute =
   AuthResetPasswordConfirmRouteImport.update({
     id: '/confirm',
@@ -80,9 +87,10 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
   '/portfolios/create': typeof PortfoliosCreateRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -92,9 +100,10 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
   '/portfolios/create': typeof PortfoliosCreateRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -105,9 +114,10 @@ export interface FileRoutesById {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
+  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
   '/portfolios/create': typeof PortfoliosCreateRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
     | '/auth/reset-password/confirm'
+    | '/portfolios/$portfolioId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
     | '/auth/reset-password/confirm'
+    | '/portfolios/$portfolioId/edit'
   id:
     | '__root__'
     | '/'
@@ -146,6 +158,7 @@ export interface FileRouteTypes {
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
     | '/auth/reset-password/confirm'
+    | '/portfolios/$portfolioId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -223,6 +236,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portfolios/$portfolioId/edit': {
+      id: '/portfolios/$portfolioId/edit'
+      path: '/edit'
+      fullPath: '/portfolios/$portfolioId/edit'
+      preLoaderRoute: typeof PortfoliosPortfolioIdEditRouteImport
+      parentRoute: typeof PortfoliosPortfolioIdRoute
+    }
     '/auth/reset-password/confirm': {
       id: '/auth/reset-password/confirm'
       path: '/confirm'
@@ -233,13 +253,26 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface PortfoliosPortfolioIdRouteChildren {
+  PortfoliosPortfolioIdEditRoute: typeof PortfoliosPortfolioIdEditRoute
+}
+
+const PortfoliosPortfolioIdRouteChildren: PortfoliosPortfolioIdRouteChildren = {
+  PortfoliosPortfolioIdEditRoute: PortfoliosPortfolioIdEditRoute,
+}
+
+const PortfoliosPortfolioIdRouteWithChildren =
+  PortfoliosPortfolioIdRoute._addFileChildren(
+    PortfoliosPortfolioIdRouteChildren,
+  )
+
 interface PortfoliosRouteChildren {
-  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
+  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRouteWithChildren
   PortfoliosCreateRoute: typeof PortfoliosCreateRoute
 }
 
 const PortfoliosRouteChildren: PortfoliosRouteChildren = {
-  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
+  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRouteWithChildren,
   PortfoliosCreateRoute: PortfoliosCreateRoute,
 }
 
