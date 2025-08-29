@@ -32,11 +32,18 @@ export {
 export {
 	CreatePortfolioDialog,
 	type CreatePortfolioDialogProps,
-	EditPortfolioDialog,
-	type EditPortfolioDialogProps,
+	EditPortfolioDialog as EditPortfolioFormDialog,
+	type EditPortfolioDialogProps as EditPortfolioFormDialogProps,
 	PortfolioFormDialog,
 	type PortfolioFormDialogProps,
 } from "./portfolio-form-dialog";
+
+export {
+	EditPortfolioButton,
+	type EditPortfolioButtonProps,
+	EditPortfolioDialog,
+	type EditPortfolioDialogProps,
+} from "./edit-portfolio-dialog";
 export {
 	PortfolioDescriptionField,
 	type PortfolioDescriptionFieldProps,

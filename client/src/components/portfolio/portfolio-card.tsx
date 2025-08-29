@@ -4,6 +4,7 @@ import {
 	Calendar,
 	Copy,
 	DollarSign,
+	Edit,
 	Minus,
 	MoreHorizontal,
 	PieChart,
@@ -35,6 +36,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import type { GetPortfoliosWithAnalyticsQuery } from "@/gql/graphql";
 import { usePortfolioOperations } from "@/hooks/use-portfolio-management";
+import { EditPortfolioDialog } from "./edit-portfolio-dialog";
 
 type Portfolio = GetPortfoliosWithAnalyticsQuery["portfolios"][0];
 
@@ -218,6 +220,7 @@ export function PortfolioCard({
 							</div>
 
 							<PortfolioActions
+								portfolioId={portfolio.id}
 								onDuplicate={handleDuplicate}
 								onDelete={() => setShowDeleteDialog(true)}
 								isLoading={isLoading}
@@ -274,6 +277,7 @@ export function PortfolioCard({
 						</div>
 
 						<PortfolioActions
+							portfolioId={portfolio.id}
 							onDuplicate={handleDuplicate}
 							onDelete={() => setShowDeleteDialog(true)}
 							isLoading={isLoading}
@@ -351,10 +355,12 @@ export function PortfolioCard({
 }
 
 function PortfolioActions({
+	portfolioId,
 	onDuplicate,
 	onDelete,
 	isLoading,
 }: {
+	portfolioId: string;
 	onDuplicate: () => void;
 	onDelete: () => void;
 	isLoading: boolean;
@@ -368,6 +374,12 @@ function PortfolioActions({
 				</Button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end">
+				<EditPortfolioDialog portfolioId={portfolioId}>
+					<DropdownMenuItem onSelect={(e) => e.preventDefault()} disabled={isLoading}>
+						<Edit className="mr-2 h-4 w-4" />
+						Edit
+					</DropdownMenuItem>
+				</EditPortfolioDialog>
 				<DropdownMenuItem onClick={onDuplicate} disabled={isLoading}>
 					<Copy className="mr-2 h-4 w-4" />
 					Duplicate

@@ -12,6 +12,7 @@ import {
 import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AddAssetDialog } from "@/components/portfolio/add-asset-dialog";
+import { EditPortfolioDialog } from "@/components/portfolio/edit-portfolio-dialog";
 import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
@@ -196,10 +197,18 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 
 				{/* Action Buttons */}
 				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" onClick={navigateToEdit}>
-						<Edit className="mr-2 h-4 w-4" />
-						Edit
-					</Button>
+					<EditPortfolioDialog
+						portfolioId={portfolioId}
+						onSuccess={() => {
+							// Refetch portfolio data to show updated information
+							refetch();
+						}}
+					>
+						<Button variant="outline" size="sm">
+							<Edit className="mr-2 h-4 w-4" />
+							Edit
+						</Button>
+					</EditPortfolioDialog>
 					<Button variant="outline" size="sm" onClick={handleDuplicate}>
 						<Copy className="mr-2 h-4 w-4" />
 						Duplicate

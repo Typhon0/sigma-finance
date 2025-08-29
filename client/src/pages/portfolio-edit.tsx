@@ -1,6 +1,7 @@
 import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, ArrowLeft } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import {
 	EnhancedPortfolioForm,
@@ -25,6 +26,7 @@ import {
 	SidebarProvider,
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { useAuth } from "@/lib/auth-context";
 
@@ -53,23 +55,52 @@ export default function PortfolioEditPage() {
 
 function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 	const navigate = useNavigate();
-	const { data, loading, error, updatePortfolio } = usePortfolioManagement();
+	const { portfolios, loading: portfoliosLoading } = usePortfolioManagement();
+	const { 
+		portfolio, 
+		loading: portfolioLoading, 
+		error: portfolioError, 
+		handleUpdate,
+		isOwner,
+		isUnauthorized 
+	} = usePortfolioDetail({
+		portfolioId,
+		onUpdateSuccess: () => {
+			toast.success("Portfolio updated successfully!");
+			// Navigate back to portfolio detail page after a brief delay
+			setTimeout(() => {
+				navigate({ to: `/portfolios/${portfolioId}` });
+			}, 1000);
+		},
+	});
 	const { user } = useAuth();
 	const [isLoading, setIsLoading] = useState(false);
 	const [errorMessage, setErrorMessage] = useState<string>("");
 	const [showSuccess, setShowSuccess] = useState(false);
 
-	// Find the specific portfolio
-	const portfolio = data?.portfolios.find((p) => p.id === portfolioId);
+	// Get existing portfolio names for validation (excluding current portfolio)
+	const existingPortfolioNames = useMemo(() => {
+		if (!portfolios || !portfolio) return [];
+		return portfolios
+			.filter((p) => p.id !== portfolioId)
+			.map((p) => p.name);
+	}, [portfolios, portfolio, portfolioId]);
+
+	// Combined loading state
+	const loading = portfoliosLoading || portfolioLoading;
 
 	useEffect(() => {
-		// If portfolio is not found and we're not loading, show error
-		if (!loading && !portfolio) {
+		// Handle authorization errors
+		if (isUnauthorized) {
 			setErrorMessage(
-				"Portfolio not found or you do not have permission to edit it.",
+				"You do not have permission to edit this portfolio.",
+			);
+		} else if (portfolioError && !portfolio) {
+			setErrorMessage(
+				"Portfolio not found or could not be loaded.",
 			);
 		}
-	}, [loading, portfolio]);
+	}, [isUnauthorized, portfolioError, portfolio]);
 
 	const handleSubmit = async (formData: PortfolioFormData) => {
 		if (!portfolio) {
@@ -82,30 +113,35 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 			return;
 		}
 
+		if (!isOwner) {
+			setErrorMessage("You do not have permission to edit this portfolio.");
+			return;
+		}
+
 		setIsLoading(true);
 		setErrorMessage("");
 
 		try {
-			const result = await updatePortfolio(portfolioId, {
+			await handleUpdate({
 				name: formData.name,
 				description: formData.description || undefined,
 			});
 
-			if (result.data?.updatePortfolio) {
-				setShowSuccess(true);
-				// Navigate back to portfolio detail page after a brief delay
-				setTimeout(() => {
-					navigate({ to: `/portfolios/${portfolioId}` });
-				}, 1500);
-			} else {
-				setErrorMessage("Failed to update portfolio. Please try again.");
-			}
+			setShowSuccess(true);
 		} catch (error) {
 			if (error instanceof Error) {
 				console.error("Error updating portfolio:", error);
-				setErrorMessage(
-					`Failed to update portfolio. Server responded with: ${error.message}`,
-				);
+				
+				// Handle specific error cases
+				if (error.message.includes("unique") || error.message.includes("exists")) {
+					setErrorMessage("A portfolio with this name already exists. Please choose a different name.");
+				} else if (error.message.includes("unauthorized") || error.message.includes("permission")) {
+					setErrorMessage("You do not have permission to edit this portfolio.");
+				} else if (error.message.includes("not found")) {
+					setErrorMessage("Portfolio not found. It may have been deleted.");
+				} else {
+					setErrorMessage(error.message || "Failed to update portfolio. Please try again.");
+				}
 			} else {
 				console.error("An unknown error occurred:", error);
 				setErrorMessage("An unknown error occurred while updating portfolio.");
@@ -130,7 +166,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 		);
 	}
 
-	if (error || !portfolio) {
+	if (portfolioError || !portfolio || isUnauthorized) {
 		return (
 			<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
 				{/* Header Section */}
@@ -149,12 +185,14 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 				<Card className="p-6">
 					<CardHeader>
 						<CardTitle className="text-destructive">
-							{error ? "Error Loading Portfolio" : "Portfolio Not Found"}
+							{portfolioError ? "Error Loading Portfolio" : isUnauthorized ? "Access Denied" : "Portfolio Not Found"}
 						</CardTitle>
 						<CardDescription>
-							{error
+							{portfolioError
 								? "There was an error loading the portfolio details."
-								: "The requested portfolio could not be found or you do not have permission to edit it."}
+								: isUnauthorized
+								? "You do not have permission to edit this portfolio."
+								: "The requested portfolio could not be found."}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -218,6 +256,9 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 							isLoading={isLoading}
 							showSuccessMessage={showSuccess}
 							errorMessage={errorMessage}
+							existingPortfolioNames={existingPortfolioNames}
+							showCancelConfirmation={true}
+							autoFocus={true}
 						/>
 					</CardContent>
 				</Card>
