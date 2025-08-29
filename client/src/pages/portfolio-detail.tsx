@@ -20,6 +20,12 @@ import {
 import { PortfolioDeleteDialog } from "@/components/portfolio/portfolio-delete-dialog";
 import { PortfolioDetailSkeleton } from "@/components/portfolio/portfolio-detail-skeleton";
 import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
+import { PortfolioDetailErrorBoundary } from "@/components/portfolio/portfolio-error-boundary";
+import { 
+	LoadingIndicator, 
+	AsyncOperationIndicator,
+	InlineLoading 
+} from "@/components/portfolio/portfolio-loading-indicators";
 import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,46 +51,92 @@ import {
 } from "@/components/ui/sidebar";
 import type { PortfolioAsset } from "@/gql/graphql";
 import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
+import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
 
 export default function PortfolioDetailPage() {
 	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId" });
 	const { portfolio, loading, error, isUnauthorized, navigateToList, retry } =
 		usePortfolioDetail({ portfolioId });
 
+	// Enhanced retry mechanism for portfolio detail operations
+	const portfolioRetry = usePortfolioRetry({
+		maxRetries: 3,
+		onRetryAttempt: (attempt) => {
+			console.log(`Portfolio detail retry attempt ${attempt}`);
+		},
+	});
+
 	return (
-		<SidebarProvider>
-			<AppSidebar />
-			<SidebarInset>
-				<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
-					<div className="flex items-center gap-2 px-4">
-						<SidebarTrigger className="-ml-1" />
-						<Separator orientation="vertical" className="mr-2 h-4" />
-						<PortfolioBreadcrumb
-							items={portfolioBreadcrumbs.portfolioDetail(
-								portfolio?.name || "Portfolio Details",
+		<PortfolioDetailErrorBoundary onRetry={async () => {
+			await portfolioRetry.executeWithRetry(async () => {
+				await retry();
+			});
+		}}>
+			<SidebarProvider>
+				<AppSidebar />
+				<SidebarInset>
+					<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
+						<div className="flex items-center gap-2 px-4">
+							<SidebarTrigger className="-ml-1" />
+							<Separator orientation="vertical" className="mr-2 h-4" />
+							<InlineLoading isLoading={loading && !portfolio} loadingText="Loading...">
+								<PortfolioBreadcrumb
+									items={portfolioBreadcrumbs.portfolioDetail(
+										portfolio?.name || "Portfolio Details",
+									)}
+								/>
+							</InlineLoading>
+						</div>
+					</header>
+
+					{/* Enhanced loading state */}
+					{loading && !portfolio && <PortfolioDetailSkeleton />}
+
+					{/* Enhanced error display with retry functionality */}
+					{(error || isUnauthorized) && (
+						<div className="space-y-4">
+							{portfolioRetry.isRetrying && (
+								<div className="p-4">
+									<LoadingIndicator 
+										message={`Retrying... (${portfolioRetry.retryCount}/${portfolioRetry.maxRetries})`}
+										variant="dots"
+									/>
+								</div>
 							)}
-						/>
-					</div>
-				</header>
+							<PortfolioErrorDisplay
+								error={error || null}
+								portfolioId={portfolioId}
+								isUnauthorized={isUnauthorized || false}
+								onRetry={async () => {
+									await portfolioRetry.executeWithRetry(async () => {
+										await retry();
+									});
+								}}
+								onNavigateBack={navigateToList}
+								loading={loading || portfolioRetry.isRetrying}
+							/>
+						</div>
+					)}
 
-				{loading && <PortfolioDetailSkeleton />}
-
-				{(error || isUnauthorized) && (
-					<PortfolioErrorDisplay
-						error={error || null}
-						portfolioId={portfolioId}
-						isUnauthorized={isUnauthorized || false}
-						onRetry={retry}
-						onNavigateBack={navigateToList}
-						loading={loading}
-					/>
-				)}
-
-				{!loading && !error && !isUnauthorized && portfolio && (
-					<PortfolioDetailContent portfolioId={portfolioId} />
-				)}
-			</SidebarInset>
-		</SidebarProvider>
+					{/* Portfolio content with loading overlay */}
+					{!error && !isUnauthorized && (
+						<>
+							{loading && portfolio && (
+								<div className="p-4">
+									<AsyncOperationIndicator
+										isLoading={true}
+										loadingMessage="Refreshing portfolio data..."
+									/>
+								</div>
+							)}
+							{portfolio && (
+								<PortfolioDetailContent portfolioId={portfolioId} />
+							)}
+						</>
+					)}
+				</SidebarInset>
+			</SidebarProvider>
+		</PortfolioDetailErrorBoundary>
 	);
 }
 

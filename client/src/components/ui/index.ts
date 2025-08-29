@@ -16,6 +16,7 @@ export * from "./error-boundary";
 export * from "./form";
 export * from "./input";
 export * from "./label";
+export * from "./progress";
 export * from "./select";
 export * from "./separator";
 export * from "./sheet";

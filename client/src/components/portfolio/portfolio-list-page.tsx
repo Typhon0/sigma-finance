@@ -2,14 +2,19 @@ import {
 	AlertTriangle,
 	Grid,
 	List,
-	Loader2,
 	PlusCircle,
 	RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { PortfolioCard } from "@/components/portfolio/portfolio-card";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { PortfolioListErrorBoundary } from "@/components/portfolio/portfolio-error-boundary";
+import { PortfolioListLoadingSkeleton } from "@/components/portfolio/portfolio-list-skeleton";
+import { 
+	LoadingIndicator, 
+	AsyncOperationIndicator, 
+	PortfolioOperationStatus 
+} from "@/components/portfolio/portfolio-loading-indicators";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -18,8 +23,8 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
+import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
 
 interface PortfolioListPageProps {
 	className?: string;
@@ -43,135 +48,163 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 		isDuplicating,
 	} = usePortfolioManagement();
 
+	// Enhanced retry mechanism for portfolio operations
+	const portfolioRetry = usePortfolioRetry({
+		maxRetries: 3,
+		onRetryAttempt: (attempt) => {
+			console.log(`Portfolio retry attempt ${attempt}`);
+		},
+		onMaxRetriesReached: (error) => {
+			console.error("Max retries reached for portfolio operation:", error);
+		},
+	});
+
 	// Show loading skeleton on initial load
 	if (loading && !portfolios) {
-		return <PortfolioListSkeleton />;
+		return <PortfolioListLoadingSkeleton />;
 	}
 
 	// Show error state if there's an error and no cached data
 	if (hasError && !portfolios) {
 		return (
-			<div className={`container mx-auto p-4 md:p-6 ${className || ""}`}>
-				<div className="flex items-center justify-between mb-6">
-					<h1 className="text-2xl md:text-3xl font-bold">Your Portfolios</h1>
+			<PortfolioListErrorBoundary onRetry={async () => {
+				await portfolioRetry.executeWithRetry(async () => {
+					await refetch();
+				});
+			}}>
+				<div className={`container mx-auto p-4 md:p-6 ${className || ""}`}>
+					<div className="flex items-center justify-between mb-6">
+						<h1 className="text-2xl md:text-3xl font-bold">Your Portfolios</h1>
+					</div>
+					<ErrorState
+						error={error}
+						canRetry={canRetry && portfolioRetry.canRetry}
+						onRetry={async () => {
+							await portfolioRetry.executeWithRetry(async () => {
+								await retry();
+							});
+						}}
+						onClearError={clearError}
+						onRefresh={refetch}
+						isRetrying={portfolioRetry.isRetrying}
+						retryCount={portfolioRetry.retryCount}
+					/>
 				</div>
-				<ErrorState
-					error={error}
-					canRetry={canRetry}
-					onRetry={retry}
-					onClearError={clearError}
-					onRefresh={refetch}
-				/>
-			</div>
+			</PortfolioListErrorBoundary>
 		);
 	}
 
 	const hasPortfolios = portfolios && portfolios.length > 0;
 
 	return (
-		<div className={`container mx-auto p-3 sm:p-4 lg:p-6 ${className || ""}`}>
-			{/* Header */}
-			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-				<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
-					Your Portfolios
-				</h1>
+		<PortfolioListErrorBoundary onRetry={async () => {
+			await portfolioRetry.executeWithRetry(async () => {
+				await refetch();
+			});
+		}}>
+			<div className={`container mx-auto p-3 sm:p-4 lg:p-6 ${className || ""}`}>
+				{/* Header */}
+				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+					<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+						Your Portfolios
+					</h1>
 
-				{hasPortfolios && (
-					<div className="flex items-center gap-2 justify-end sm:justify-start">
-						{/* View mode toggle - Hidden on mobile, shown on larger screens */}
-						<div className="hidden sm:flex items-center gap-2">
-							<Button
-								variant={viewMode === "list" ? "secondary" : "outline"}
-								size="icon"
-								onClick={() => setViewMode("list")}
-								disabled={loading}
-								className="touch-manipulation"
-							>
-								<List className="h-4 w-4" />
-							</Button>
-							<Button
-								variant={viewMode === "grid" ? "secondary" : "outline"}
-								size="icon"
-								onClick={() => setViewMode("grid")}
-								disabled={loading}
-								className="touch-manipulation"
-							>
-								<Grid className="h-4 w-4" />
-							</Button>
+					{hasPortfolios && (
+						<div className="flex items-center gap-2 justify-end sm:justify-start">
+							{/* View mode toggle - Hidden on mobile, shown on larger screens */}
+							<div className="hidden sm:flex items-center gap-2">
+								<Button
+									variant={viewMode === "list" ? "secondary" : "outline"}
+									size="icon"
+									onClick={() => setViewMode("list")}
+									disabled={loading}
+									className="touch-manipulation"
+								>
+									<List className="h-4 w-4" />
+								</Button>
+								<Button
+									variant={viewMode === "grid" ? "secondary" : "outline"}
+									size="icon"
+									onClick={() => setViewMode("grid")}
+									disabled={loading}
+									className="touch-manipulation"
+								>
+									<Grid className="h-4 w-4" />
+								</Button>
+							</div>
+
+							{/* Create portfolio button */}
+							<CreatePortfolioDialog>
+								<Button disabled={isCreating} className="touch-manipulation">
+									<PlusCircle className="mr-2 h-4 w-4" />
+									<span className="hidden sm:inline">New Portfolio</span>
+									<span className="sm:hidden">New</span>
+								</Button>
+							</CreatePortfolioDialog>
 						</div>
+					)}
+				</div>
 
-						{/* Create portfolio button */}
-						<CreatePortfolioDialog>
-							<Button disabled={isCreating} className="touch-manipulation">
-								<PlusCircle className="mr-2 h-4 w-4" />
-								<span className="hidden sm:inline">New Portfolio</span>
-								<span className="sm:hidden">New</span>
-							</Button>
-						</CreatePortfolioDialog>
+				{/* Enhanced error banner (when there's cached data) */}
+				{hasError && portfolios && (
+					<AsyncOperationIndicator
+						isLoading={portfolioRetry.isRetrying}
+						error={error}
+						errorMessage={error?.message || "Failed to sync with server"}
+						onRetry={async () => {
+							await portfolioRetry.executeWithRetry(async () => {
+								await retry();
+							});
+						}}
+						canRetry={canRetry && portfolioRetry.canRetry}
+						className="mb-6"
+					/>
+				)}
+
+				{/* Enhanced loading indicator for background operations */}
+				<PortfolioOperationStatus
+					operations={{
+						create: isCreating,
+						update: isUpdating,
+						delete: isDeleting,
+						duplicate: isDuplicating,
+						loading: loading,
+					}}
+				/>
+
+				{/* Retry status indicator */}
+				{portfolioRetry.isRetrying && (
+					<div className="mb-4">
+						<LoadingIndicator 
+							message={`Retrying... (${portfolioRetry.retryCount}/${portfolioRetry.maxRetries})`}
+							variant="dots"
+						/>
+					</div>
+				)}
+
+				{/* Empty state */}
+				{!hasPortfolios ? (
+					<EmptyPortfolioState />
+				) : (
+					/* Portfolio list */
+					<div
+						className={
+							viewMode === "grid"
+								? "grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6"
+								: "space-y-3 sm:space-y-4"
+						}
+					>
+						{portfolios.map((portfolio) => (
+							<PortfolioCard
+								key={portfolio.id}
+								portfolio={portfolio}
+								viewMode={viewMode}
+							/>
+						))}
 					</div>
 				)}
 			</div>
-
-			{/* Error banner (when there's cached data) */}
-			{hasError && portfolios && (
-				<Alert variant="destructive" className="mb-6">
-					<AlertTriangle className="h-4 w-4" />
-					<AlertTitle>Connection Error</AlertTitle>
-					<AlertDescription className="flex items-center justify-between">
-						<span>{error?.message || "Failed to sync with server"}</span>
-						<div className="flex gap-2">
-							{canRetry && (
-								<Button variant="outline" size="sm" onClick={retry}>
-									<RefreshCw className="h-3 w-3 mr-1" />
-									Retry
-								</Button>
-							)}
-							<Button variant="ghost" size="sm" onClick={clearError}>
-								Dismiss
-							</Button>
-						</div>
-					</AlertDescription>
-				</Alert>
-			)}
-
-			{/* Loading indicator for background operations */}
-			{(loading || isCreating || isUpdating || isDeleting || isDuplicating) && (
-				<div className="mb-4">
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
-						<Loader2 className="h-4 w-4 animate-spin" />
-						<span>
-							{loading && "Loading portfolios..."}
-							{isCreating && "Creating portfolio..."}
-							{isUpdating && "Updating portfolio..."}
-							{isDeleting && "Deleting portfolio..."}
-							{isDuplicating && "Duplicating portfolio..."}
-						</span>
-					</div>
-				</div>
-			)}
-
-			{/* Empty state */}
-			{!hasPortfolios ? (
-				<EmptyPortfolioState />
-			) : (
-				/* Portfolio list */
-				<div
-					className={
-						viewMode === "grid"
-							? "grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6"
-							: "space-y-3 sm:space-y-4"
-					}
-				>
-					{portfolios.map((portfolio) => (
-						<PortfolioCard
-							key={portfolio.id}
-							portfolio={portfolio}
-							viewMode={viewMode}
-						/>
-					))}
-				</div>
-			)}
-		</div>
+		</PortfolioListErrorBoundary>
 	);
 }
 
@@ -205,12 +238,16 @@ function ErrorState({
 	onRetry,
 	onClearError,
 	onRefresh,
+	isRetrying = false,
+	retryCount = 0,
 }: {
 	error: Error | null;
 	canRetry: boolean;
-	onRetry: () => void;
+	onRetry: () => Promise<void> | void;
 	onClearError: () => void;
 	onRefresh?: () => void;
+	isRetrying?: boolean;
+	retryCount?: number;
 }) {
 	return (
 		<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
@@ -224,67 +261,52 @@ function ErrorState({
 						"Something went wrong while loading your portfolios."}
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="flex flex-col sm:flex-row justify-center gap-2 px-4 sm:px-6">
-				{canRetry && (
-					<Button
-						onClick={onRetry}
-						variant="outline"
-						className="touch-manipulation"
-					>
-						<RefreshCw className="mr-2 h-4 w-4" />
-						Retry
-					</Button>
+			<CardContent className="space-y-4 px-4 sm:px-6">
+				{retryCount > 0 && (
+					<div className="text-sm text-muted-foreground text-center">
+						Retry attempt: {retryCount}/3
+					</div>
 				)}
-				{onRefresh && (
-					<Button
-						onClick={onRefresh}
-						variant="outline"
-						className="touch-manipulation"
-					>
-						<RefreshCw className="mr-2 h-4 w-4" />
-						Refresh
-					</Button>
+				
+				{isRetrying && (
+					<div className="flex justify-center">
+						<LoadingIndicator message="Retrying..." size="sm" />
+					</div>
 				)}
-				<Button
-					onClick={onClearError}
-					variant="ghost"
-					className="touch-manipulation"
-				>
-					Dismiss
-				</Button>
+
+				<div className="flex flex-col sm:flex-row justify-center gap-2">
+					{canRetry && !isRetrying && (
+						<Button
+							onClick={onRetry}
+							variant="outline"
+							className="touch-manipulation"
+						>
+							<RefreshCw className="mr-2 h-4 w-4" />
+							Retry
+						</Button>
+					)}
+					{onRefresh && !isRetrying && (
+						<Button
+							onClick={onRefresh}
+							variant="outline"
+							className="touch-manipulation"
+						>
+							<RefreshCw className="mr-2 h-4 w-4" />
+							Refresh
+						</Button>
+					)}
+					<Button
+						onClick={onClearError}
+						variant="ghost"
+						className="touch-manipulation"
+						disabled={isRetrying}
+					>
+						Dismiss
+					</Button>
+				</div>
 			</CardContent>
 		</Card>
 	);
 }
 
-function PortfolioListSkeleton() {
-	return (
-		<div className="container mx-auto p-4 md:p-6">
-			<div className="flex items-center justify-between mb-6">
-				<Skeleton className="h-8 w-48" />
-				<div className="flex items-center gap-2">
-					<Skeleton className="h-10 w-10" />
-					<Skeleton className="h-10 w-10" />
-					<Skeleton className="h-10 w-36" />
-				</div>
-			</div>
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{[...Array(6)].map((_, i) => (
-					<Card key={i}>
-						<CardHeader>
-							<Skeleton className="h-6 w-3/4" />
-							<Skeleton className="h-4 w-1/2" />
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-2">
-								<Skeleton className="h-4 w-full" />
-								<Skeleton className="h-4 w-2/3" />
-								<Skeleton className="h-8 w-1/3" />
-							</div>
-						</CardContent>
-					</Card>
-				))}
-			</div>
-		</div>
-	);
-}
+
