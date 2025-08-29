@@ -138,19 +138,24 @@ export function CompactPortfolioForm({
 				/>
 
 				{/* Form Actions */}
-				<div className="flex justify-end space-x-2 pt-4">
+				<div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-2 pt-4">
 					{showCancelButton && onCancel && (
 						<Button
 							type="button"
 							variant="outline"
 							onClick={onCancel}
 							disabled={isFormDisabled}
+							className="touch-manipulation order-2 sm:order-1"
 						>
 							{cancelButtonText}
 						</Button>
 					)}
 
-					<Button type="submit" disabled={!canSubmit}>
+					<Button
+						type="submit"
+						disabled={!canSubmit}
+						className="touch-manipulation order-1 sm:order-2"
+					>
 						{isFormDisabled && (
 							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
 						)}

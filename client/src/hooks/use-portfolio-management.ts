@@ -455,15 +455,28 @@ export function usePortfolioManagement() {
 
 				if (result.errors) {
 					// Enhanced error handling for specific deletion scenarios
-					const errorMessage = result.errors[0]?.message || "Failed to delete portfolio";
-					
+					const errorMessage =
+						result.errors[0]?.message || "Failed to delete portfolio";
+
 					// Check for specific error types
-					if (errorMessage.includes("positions") || errorMessage.includes("assets")) {
-						throw new Error("Cannot delete portfolio that contains positions. Please remove all assets first.");
-					} else if (errorMessage.includes("unauthorized") || errorMessage.includes("permission")) {
-						throw new Error("You don't have permission to delete this portfolio.");
+					if (
+						errorMessage.includes("positions") ||
+						errorMessage.includes("assets")
+					) {
+						throw new Error(
+							"Cannot delete portfolio that contains positions. Please remove all assets first.",
+						);
+					} else if (
+						errorMessage.includes("unauthorized") ||
+						errorMessage.includes("permission")
+					) {
+						throw new Error(
+							"You don't have permission to delete this portfolio.",
+						);
 					} else if (errorMessage.includes("not found")) {
-						throw new Error("Portfolio not found. It may have already been deleted.");
+						throw new Error(
+							"Portfolio not found. It may have already been deleted.",
+						);
 					} else {
 						throw new Error(errorMessage);
 					}

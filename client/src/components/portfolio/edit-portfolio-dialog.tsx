@@ -11,11 +11,9 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import type {
-	PortfolioFormData,
-} from "@/lib/validations/portfolio.schemas";
 import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
+import type { PortfolioFormData } from "@/lib/validations/portfolio.schemas";
 import { CompactPortfolioForm } from "./compact-portfolio-form";
 
 export interface EditPortfolioDialogProps {
@@ -58,12 +56,12 @@ export function EditPortfolioDialog({
 
 	// Get portfolio data and existing portfolio names
 	const { portfolios, updatePortfolio } = usePortfolioManagement();
-	const { 
-		portfolio, 
-		loading: portfolioLoading, 
+	const {
+		portfolio,
+		loading: portfolioLoading,
 		error: portfolioError,
 		isOwner,
-		isUnauthorized 
+		isUnauthorized,
 	} = usePortfolioDetail({
 		portfolioId,
 		onUpdateSuccess: () => {
@@ -89,9 +87,7 @@ export function EditPortfolioDialog({
 
 	// Get existing portfolio names for validation (excluding current portfolio)
 	const existingPortfolioNames = portfolios
-		? portfolios
-			.filter((p) => p.id !== portfolioId)
-			.map((p) => p.name)
+		? portfolios.filter((p) => p.id !== portfolioId).map((p) => p.name)
 		: [];
 
 	const defaultTitle = "Edit Portfolio";
@@ -109,7 +105,9 @@ export function EditPortfolioDialog({
 		}
 
 		if (!isOwner) {
-			const error = new Error("You do not have permission to edit this portfolio");
+			const error = new Error(
+				"You do not have permission to edit this portfolio",
+			);
 			setErrorMessage(error.message);
 			onError?.(error);
 			return;
@@ -140,13 +138,20 @@ export function EditPortfolioDialog({
 			}, 1500);
 		} catch (error) {
 			console.error("Failed to update portfolio:", error);
-			
+
 			let errorMsg = "An error occurred while updating the portfolio.";
-			
+
 			if (error instanceof Error) {
-				if (error.message.includes("unique") || error.message.includes("exists")) {
-					errorMsg = "A portfolio with this name already exists. Please choose a different name.";
-				} else if (error.message.includes("unauthorized") || error.message.includes("permission")) {
+				if (
+					error.message.includes("unique") ||
+					error.message.includes("exists")
+				) {
+					errorMsg =
+						"A portfolio with this name already exists. Please choose a different name.";
+				} else if (
+					error.message.includes("unauthorized") ||
+					error.message.includes("permission")
+				) {
 					errorMsg = "You do not have permission to edit this portfolio.";
 				} else if (error.message.includes("not found")) {
 					errorMsg = "Portfolio not found. It may have been deleted.";
@@ -154,9 +159,9 @@ export function EditPortfolioDialog({
 					errorMsg = error.message;
 				}
 			}
-			
+
 			setErrorMessage(errorMsg);
-			
+
 			// Call error callback
 			const formError = error instanceof Error ? error : new Error(errorMsg);
 			onError?.(formError);
@@ -186,7 +191,7 @@ export function EditPortfolioDialog({
 		return (
 			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogTrigger asChild>{children}</DialogTrigger>
-				<DialogContent className="sm:max-w-[500px]">
+				<DialogContent className="sm:max-w-[500px] mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle className="text-destructive">
 							{isUnauthorized ? "Access Denied" : "Error"}
@@ -198,7 +203,11 @@ export function EditPortfolioDialog({
 						</DialogDescription>
 					</DialogHeader>
 					<div className="flex justify-end">
-						<Button variant="outline" onClick={() => setOpen(false)}>
+						<Button
+							variant="outline"
+							onClick={() => setOpen(false)}
+							className="touch-manipulation"
+						>
 							Close
 						</Button>
 					</div>
@@ -212,7 +221,7 @@ export function EditPortfolioDialog({
 		return (
 			<Dialog open={open} onOpenChange={handleOpenChange}>
 				<DialogTrigger asChild>{children}</DialogTrigger>
-				<DialogContent className="sm:max-w-[500px]">
+				<DialogContent className="sm:max-w-[500px] mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
 						<DialogTitle>Loading...</DialogTitle>
 						<DialogDescription>Loading portfolio data...</DialogDescription>
@@ -228,7 +237,7 @@ export function EditPortfolioDialog({
 	return (
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogTrigger asChild>{children}</DialogTrigger>
-			<DialogContent className="sm:max-w-[500px]">
+			<DialogContent className="sm:max-w-[500px] mx-4 sm:mx-0 max-h-[90vh] overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>{finalTitle}</DialogTitle>
 					<DialogDescription>{finalDescription}</DialogDescription>

@@ -159,36 +159,37 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 	};
 
 	return (
-		<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+		<div className="flex flex-1 flex-col gap-3 sm:gap-4 p-3 sm:p-4 pt-0">
 			{/* Header Section */}
-			<div className="flex items-center gap-4">
+			<div className="flex items-center gap-2 sm:gap-4">
 				<Button
 					variant="ghost"
 					size="sm"
 					onClick={navigateToList}
-					className="gap-2"
+					className="gap-2 touch-manipulation"
 				>
 					<ArrowLeft className="h-4 w-4" />
-					Back to Portfolios
+					<span className="hidden sm:inline">Back to Portfolios</span>
+					<span className="sm:hidden">Back</span>
 				</Button>
 			</div>
 
 			{/* Portfolio Header */}
-			<div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-				<div className="space-y-2">
-					<h1 className="text-3xl font-bold tracking-tight">
+			<div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
+				<div className="space-y-2 min-w-0 flex-1">
+					<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight break-words">
 						{portfolio.name}
 					</h1>
 					{portfolio.description && (
-						<p className="text-muted-foreground max-w-2xl">
+						<p className="text-muted-foreground text-sm sm:text-base max-w-2xl">
 							{portfolio.description}
 						</p>
 					)}
-					<div className="flex items-center gap-2 text-sm text-muted-foreground">
+					<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
 						<span>
 							Created {new Date(portfolio.createdAt).toLocaleDateString()}
 						</span>
-						<Separator orientation="vertical" className="h-4" />
+						<Separator orientation="vertical" className="h-4 hidden sm:block" />
 						<span>
 							Last updated {new Date(portfolio.updatedAt).toLocaleDateString()}
 						</span>
@@ -196,96 +197,124 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 				</div>
 
 				{/* Action Buttons */}
-				<div className="flex flex-wrap gap-2">
-					<EditPortfolioDialog
-						portfolioId={portfolioId}
-						onSuccess={() => {
-							// Refetch portfolio data to show updated information
-							refetch();
-						}}
-					>
-						<Button variant="outline" size="sm">
-							<Edit className="mr-2 h-4 w-4" />
-							Edit
+				<div className="flex flex-col sm:flex-row gap-2 sm:gap-2 lg:flex-shrink-0">
+					<div className="grid grid-cols-2 sm:flex gap-2">
+						<EditPortfolioDialog
+							portfolioId={portfolioId}
+							onSuccess={() => {
+								// Refetch portfolio data to show updated information
+								refetch();
+							}}
+						>
+							<Button
+								variant="outline"
+								size="sm"
+								className="touch-manipulation"
+							>
+								<Edit className="mr-2 h-4 w-4" />
+								<span className="hidden sm:inline">Edit</span>
+								<span className="sm:hidden">Edit</span>
+							</Button>
+						</EditPortfolioDialog>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleDuplicate}
+							className="touch-manipulation"
+						>
+							<Copy className="mr-2 h-4 w-4" />
+							<span className="hidden sm:inline">Duplicate</span>
+							<span className="sm:hidden">Copy</span>
 						</Button>
-					</EditPortfolioDialog>
-					<Button variant="outline" size="sm" onClick={handleDuplicate}>
-						<Copy className="mr-2 h-4 w-4" />
-						Duplicate
-					</Button>
-					<Button variant="outline" size="sm" onClick={handleExport}>
-						<Download className="mr-2 h-4 w-4" />
-						Export
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleDeleteClick}
-						className="text-destructive hover:text-destructive"
-						disabled={isDeleting}
-					>
-						<Trash2 className="mr-2 h-4 w-4" />
-						{isDeleting ? "Deleting..." : "Delete"}
-					</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleExport}
+							className="touch-manipulation"
+						>
+							<Download className="mr-2 h-4 w-4" />
+							<span className="hidden sm:inline">Export</span>
+							<span className="sm:hidden">Export</span>
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={handleDeleteClick}
+							className="text-destructive hover:text-destructive touch-manipulation"
+							disabled={isDeleting}
+						>
+							<Trash2 className="mr-2 h-4 w-4" />
+							{isDeleting ? (
+								<span className="hidden sm:inline">Deleting...</span>
+							) : (
+								<>
+									<span className="hidden sm:inline">Delete</span>
+									<span className="sm:hidden">Delete</span>
+								</>
+							)}
+						</Button>
+					</div>
 				</div>
 			</div>
 
 			{/* Portfolio Metrics */}
-			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-				<Card>
+			<div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
+				<Card className="touch-manipulation">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
+						<CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
 							Total Value
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
+						<div className="text-lg sm:text-xl lg:text-2xl font-bold">
 							{formatCurrency(mockAnalytics.totalValue)}
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card>
+				<Card className="touch-manipulation">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
+						<CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
 							Total Cost
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
+						<div className="text-lg sm:text-xl lg:text-2xl font-bold">
 							{formatCurrency(mockAnalytics.totalCost)}
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card>
+				<Card className="touch-manipulation">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
+						<CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
 							Gain/Loss
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div
-							className={`text-2xl font-bold ${getPerformanceColor(mockAnalytics.totalGainLoss)}`}
+							className={`text-lg sm:text-xl lg:text-2xl font-bold ${getPerformanceColor(mockAnalytics.totalGainLoss)}`}
 						>
 							{formatCurrency(mockAnalytics.totalGainLoss)}
 						</div>
 						<div
-							className={`text-sm ${getPerformanceColor(mockAnalytics.totalGainLossPercent)}`}
+							className={`text-xs sm:text-sm ${getPerformanceColor(mockAnalytics.totalGainLossPercent)}`}
 						>
 							{formatPercentage(mockAnalytics.totalGainLossPercent)}
 						</div>
 					</CardContent>
 				</Card>
 
-				<Card>
+				<Card className="touch-manipulation">
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium text-muted-foreground">
+						<CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
 							Assets
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">{mockAnalytics.assetCount}</div>
+						<div className="text-lg sm:text-xl lg:text-2xl font-bold">
+							{mockAnalytics.assetCount}
+						</div>
 					</CardContent>
 				</Card>
 			</div>
@@ -293,12 +322,17 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 			{/* Portfolio Assets */}
 			<Card>
 				<CardHeader>
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div>
-							<CardTitle>Assets</CardTitle>
-							<CardDescription>Assets in this portfolio</CardDescription>
+							<CardTitle className="text-lg sm:text-xl">Assets</CardTitle>
+							<CardDescription className="text-sm">
+								Assets in this portfolio
+							</CardDescription>
 						</div>
-						<Button onClick={handleAddAsset}>
+						<Button
+							onClick={handleAddAsset}
+							className="touch-manipulation w-full sm:w-auto"
+						>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Asset
 						</Button>
@@ -306,42 +340,55 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 				</CardHeader>
 				<CardContent>
 					{portfolio.assets && portfolio.assets.length > 0 ? (
-						<div className="space-y-4">
+						<div className="space-y-3 sm:space-y-4">
 							{portfolio.assets.map((asset, index) => (
 								<div
 									key={asset.asset.id || index}
-									className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+									className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border rounded-lg hover:bg-muted/50 transition-colors"
 								>
-									<div className="flex items-center gap-4">
-										<div>
-											<h4 className="font-medium">{asset.asset.name}</h4>
+									<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 flex-1">
+										<div className="min-w-0 flex-1">
+											<h4 className="font-medium text-sm sm:text-base truncate">
+												{asset.asset.name}
+											</h4>
 											{asset.asset.symbol && (
-												<p className="text-sm text-muted-foreground">
+												<p className="text-xs sm:text-sm text-muted-foreground">
 													{asset.asset.symbol}
 												</p>
 											)}
 										</div>
-										<Badge variant="secondary">
+										<Badge
+											variant="secondary"
+											className="text-xs self-start sm:self-center"
+										>
 											{asset.asset.assetType.name}
 										</Badge>
 									</div>
-									<div className="flex items-center gap-4">
-										<div className="text-right">
-											<div className="font-medium">
-												Quantity: {asset.quantity.toLocaleString()}
+									<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+										<div className="grid grid-cols-2 sm:block sm:text-right gap-2 sm:gap-0">
+											<div className="text-xs sm:text-sm">
+												<span className="text-muted-foreground sm:hidden">
+													Qty:{" "}
+												</span>
+												<span className="font-medium">
+													{asset.quantity.toLocaleString()}
+												</span>
 											</div>
-											<div className="text-sm text-muted-foreground">
-												Avg Price:{" "}
+											<div className="text-xs sm:text-sm text-muted-foreground">
+												<span className="sm:hidden">Avg: </span>
 												{formatCurrency(asset.averagePurchasePrice || 0)}
 											</div>
 											{(asset.ownershipPct || 0) < 100 && (
-												<div className="text-sm text-muted-foreground">
-													Ownership: {asset.ownershipPct || 0}%
+												<div className="text-xs sm:text-sm text-muted-foreground col-span-2 sm:col-span-1">
+													<span className="sm:hidden">Own: </span>
+													{asset.ownershipPct || 0}%
 												</div>
 											)}
 											{asset.asset.currentValue && (
-												<div className="text-sm font-medium">
-													Current:{" "}
+												<div className="text-xs sm:text-sm font-medium col-span-2 sm:col-span-1">
+													<span className="text-muted-foreground sm:hidden">
+														Current:{" "}
+													</span>
 													{formatCurrency(
 														asset.asset.currentValue * asset.quantity,
 													)}
@@ -350,15 +397,20 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 										</div>
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
-												<Button variant="ghost" size="sm">
+												<Button
+													variant="ghost"
+													size="sm"
+													className="touch-manipulation"
+												>
 													<MoreHorizontal className="h-4 w-4" />
 												</Button>
 											</DropdownMenuTrigger>
-											<DropdownMenuContent align="end">
+											<DropdownMenuContent align="end" className="w-48">
 												<DropdownMenuItem
 													onClick={() =>
 														console.log("Edit asset:", asset.asset.id)
 													}
+													className="touch-manipulation py-3"
 												>
 													<Edit className="mr-2 h-4 w-4" />
 													Edit Position
@@ -366,7 +418,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
 													onClick={() => handleRemoveAsset(asset)}
-													className="text-destructive"
+													className="text-destructive touch-manipulation py-3"
 												>
 													<Minus className="mr-2 h-4 w-4" />
 													Remove Asset
@@ -378,11 +430,14 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 							))}
 						</div>
 					) : (
-						<div className="text-center py-8">
-							<p className="text-muted-foreground mb-4">
+						<div className="text-center py-6 sm:py-8">
+							<p className="text-muted-foreground mb-4 text-sm sm:text-base">
 								No assets in this portfolio yet.
 							</p>
-							<Button onClick={handleAddAsset}>
+							<Button
+								onClick={handleAddAsset}
+								className="touch-manipulation w-full sm:w-auto"
+							>
 								<Plus className="mr-2 h-4 w-4" />
 								Add Your First Asset
 							</Button>

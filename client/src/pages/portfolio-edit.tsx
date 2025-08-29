@@ -56,13 +56,13 @@ export default function PortfolioEditPage() {
 function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 	const navigate = useNavigate();
 	const { portfolios, loading: portfoliosLoading } = usePortfolioManagement();
-	const { 
-		portfolio, 
-		loading: portfolioLoading, 
-		error: portfolioError, 
+	const {
+		portfolio,
+		loading: portfolioLoading,
+		error: portfolioError,
 		handleUpdate,
 		isOwner,
-		isUnauthorized 
+		isUnauthorized,
 	} = usePortfolioDetail({
 		portfolioId,
 		onUpdateSuccess: () => {
@@ -81,9 +81,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 	// Get existing portfolio names for validation (excluding current portfolio)
 	const existingPortfolioNames = useMemo(() => {
 		if (!portfolios || !portfolio) return [];
-		return portfolios
-			.filter((p) => p.id !== portfolioId)
-			.map((p) => p.name);
+		return portfolios.filter((p) => p.id !== portfolioId).map((p) => p.name);
 	}, [portfolios, portfolio, portfolioId]);
 
 	// Combined loading state
@@ -92,13 +90,9 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 	useEffect(() => {
 		// Handle authorization errors
 		if (isUnauthorized) {
-			setErrorMessage(
-				"You do not have permission to edit this portfolio.",
-			);
+			setErrorMessage("You do not have permission to edit this portfolio.");
 		} else if (portfolioError && !portfolio) {
-			setErrorMessage(
-				"Portfolio not found or could not be loaded.",
-			);
+			setErrorMessage("Portfolio not found or could not be loaded.");
 		}
 	}, [isUnauthorized, portfolioError, portfolio]);
 
@@ -131,16 +125,26 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 		} catch (error) {
 			if (error instanceof Error) {
 				console.error("Error updating portfolio:", error);
-				
+
 				// Handle specific error cases
-				if (error.message.includes("unique") || error.message.includes("exists")) {
-					setErrorMessage("A portfolio with this name already exists. Please choose a different name.");
-				} else if (error.message.includes("unauthorized") || error.message.includes("permission")) {
+				if (
+					error.message.includes("unique") ||
+					error.message.includes("exists")
+				) {
+					setErrorMessage(
+						"A portfolio with this name already exists. Please choose a different name.",
+					);
+				} else if (
+					error.message.includes("unauthorized") ||
+					error.message.includes("permission")
+				) {
 					setErrorMessage("You do not have permission to edit this portfolio.");
 				} else if (error.message.includes("not found")) {
 					setErrorMessage("Portfolio not found. It may have been deleted.");
 				} else {
-					setErrorMessage(error.message || "Failed to update portfolio. Please try again.");
+					setErrorMessage(
+						error.message || "Failed to update portfolio. Please try again.",
+					);
 				}
 			} else {
 				console.error("An unknown error occurred:", error);
@@ -185,14 +189,18 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 				<Card className="p-6">
 					<CardHeader>
 						<CardTitle className="text-destructive">
-							{portfolioError ? "Error Loading Portfolio" : isUnauthorized ? "Access Denied" : "Portfolio Not Found"}
+							{portfolioError
+								? "Error Loading Portfolio"
+								: isUnauthorized
+									? "Access Denied"
+									: "Portfolio Not Found"}
 						</CardTitle>
 						<CardDescription>
 							{portfolioError
 								? "There was an error loading the portfolio details."
 								: isUnauthorized
-								? "You do not have permission to edit this portfolio."
-								: "The requested portfolio could not be found."}
+									? "You do not have permission to edit this portfolio."
+									: "The requested portfolio could not be found."}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

@@ -1,7 +1,7 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { PortfolioDeleteDialog } from "../portfolio-delete-dialog";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portfolio } from "@/gql/graphql";
+import { PortfolioDeleteDialog } from "../portfolio-delete-dialog";
 
 // Mock portfolio data
 const mockPortfolioEmpty: Portfolio = {
@@ -124,7 +124,9 @@ describe("PortfolioDeleteDialog", () => {
 		expect(screen.getByRole("alertdialog")).toBeInTheDocument();
 		expect(screen.getByText('"Empty Portfolio"')).toBeInTheDocument();
 		expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: "Delete Portfolio" })).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: "Delete Portfolio" }),
+		).toBeInTheDocument();
 	});
 
 	it("should show warning for portfolio with assets", () => {
@@ -142,12 +144,16 @@ describe("PortfolioDeleteDialog", () => {
 		).toBeInTheDocument();
 		expect(screen.getByText("Asset positions:")).toBeInTheDocument();
 		expect(screen.getByText("Transaction records:")).toBeInTheDocument();
-		
+
 		// Check for the specific counts in their context
-		const assetPositionsRow = screen.getByText("Asset positions:").closest("div");
+		const assetPositionsRow = screen
+			.getByText("Asset positions:")
+			.closest("div");
 		expect(assetPositionsRow).toHaveTextContent("2");
-		
-		const transactionRecordsRow = screen.getByText("Transaction records:").closest("div");
+
+		const transactionRecordsRow = screen
+			.getByText("Transaction records:")
+			.closest("div");
 		expect(transactionRecordsRow).toHaveTextContent("2");
 	});
 
@@ -182,9 +188,7 @@ describe("PortfolioDeleteDialog", () => {
 			screen.getByText('• Portfolio "Portfolio with Assets"'),
 		).toBeInTheDocument();
 		expect(screen.getByText("• All 2 asset positions")).toBeInTheDocument();
-		expect(
-			screen.getByText("• All 2 transaction records"),
-		).toBeInTheDocument();
+		expect(screen.getByText("• All 2 transaction records")).toBeInTheDocument();
 		expect(
 			screen.getByText("• Performance analytics and historical data"),
 		).toBeInTheDocument();
@@ -203,7 +207,9 @@ describe("PortfolioDeleteDialog", () => {
 			/>,
 		);
 
-		expect(screen.getByText("This action cannot be undone.")).toBeInTheDocument();
+		expect(
+			screen.getByText("This action cannot be undone."),
+		).toBeInTheDocument();
 	});
 
 	it("should call onConfirm when delete button is clicked", async () => {

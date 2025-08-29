@@ -1,9 +1,9 @@
-import { renderHook, act, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useAuth } from "@/lib/auth-context";
 import { usePortfolioDetail } from "../use-portfolio-detail";
 import { usePortfolioManagement } from "../use-portfolio-management";
-import { useAuth } from "@/lib/auth-context";
-import { toast } from "sonner";
 
 // Mock dependencies
 vi.mock("../use-portfolio-management");
@@ -112,7 +112,9 @@ describe("usePortfolioDetail - Delete Functionality", () => {
 	});
 
 	it("should handle unauthorized deletion error", async () => {
-		const error = new Error("You don't have permission to delete this portfolio");
+		const error = new Error(
+			"You don't have permission to delete this portfolio",
+		);
 		mockDeletePortfolio.mockRejectedValue(error);
 
 		const { result } = renderHook(() =>

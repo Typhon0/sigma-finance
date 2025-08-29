@@ -24,11 +24,16 @@ export {
 	type QuickCreatePortfolioFormProps,
 } from "./compact-portfolio-form";
 export {
+	EditPortfolioButton,
+	type EditPortfolioButtonProps,
+	EditPortfolioDialog,
+	type EditPortfolioDialogProps,
+} from "./edit-portfolio-dialog";
+export {
 	EnhancedPortfolioForm,
 	type EnhancedPortfolioFormProps,
 	PortfolioForm,
 } from "./enhanced-portfolio-form";
-
 export {
 	CreatePortfolioDialog,
 	type CreatePortfolioDialogProps,
@@ -37,13 +42,6 @@ export {
 	PortfolioFormDialog,
 	type PortfolioFormDialogProps,
 } from "./portfolio-form-dialog";
-
-export {
-	EditPortfolioButton,
-	type EditPortfolioButtonProps,
-	EditPortfolioDialog,
-	type EditPortfolioDialogProps,
-} from "./edit-portfolio-dialog";
 export {
 	PortfolioDescriptionField,
 	type PortfolioDescriptionFieldProps,

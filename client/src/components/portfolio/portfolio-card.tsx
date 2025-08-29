@@ -162,69 +162,98 @@ export function PortfolioCard({
 		return (
 			<>
 				<Card
-					className={`hover:shadow-md transition-shadow ${isDragging ? "opacity-50" : ""} ${isSelected ? "ring-2 ring-primary" : ""}`}
+					className={`hover:shadow-md transition-shadow touch-manipulation ${isDragging ? "opacity-50" : ""} ${isSelected ? "ring-2 ring-primary" : ""}`}
 				>
-					<CardContent className="p-4">
-						<div className="flex items-center justify-between">
-							<div className="flex items-center space-x-4 flex-1">
+					<CardContent className="p-3 sm:p-4">
+						<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+							<div className="flex items-start sm:items-center space-x-3 sm:space-x-4 flex-1 min-w-0">
 								{onSelect && (
 									<input
 										type="checkbox"
 										checked={isSelected}
 										onChange={(e) => onSelect(e.target.checked)}
-										className="rounded"
+										className="rounded touch-manipulation mt-1 sm:mt-0 flex-shrink-0"
 									/>
 								)}
-								<div className="flex-1">
+								<div className="flex-1 min-w-0">
 									<Link
 										to="/portfolios/$portfolioId"
 										params={{ portfolioId: portfolio.id }}
-										className="font-semibold text-lg hover:underline"
+										className="font-semibold text-base sm:text-lg hover:underline block truncate"
 										onClick={() => onAction?.("view", portfolio.id)}
 									>
 										{portfolio.name}
 									</Link>
 									{portfolio.description && (
-										<p className="text-sm text-muted-foreground mt-1">
+										<p className="text-sm text-muted-foreground mt-1 line-clamp-2 sm:line-clamp-1">
 											{portfolio.description}
 										</p>
 									)}
 								</div>
+							</div>
 
-								<div className="flex items-center space-x-6 text-sm">
-									<div className="text-center">
-										<p className="text-muted-foreground">Total Value</p>
-										<p className="font-semibold">
+							{/* Mobile: Stack metrics vertically */}
+							<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
+								<div className="grid grid-cols-3 gap-4 sm:contents">
+									<div className="text-center sm:text-left">
+										<p className="text-muted-foreground text-xs sm:text-sm">
+											Total Value
+										</p>
+										<p className="font-semibold text-sm sm:text-base">
 											{formatCurrency(totalValue)}
 										</p>
 									</div>
 
-									<div className="text-center">
-										<p className="text-muted-foreground">Gain/Loss</p>
+									<div className="text-center sm:text-left">
+										<p className="text-muted-foreground text-xs sm:text-sm">
+											Gain/Loss
+										</p>
 										<div
-											className={`flex items-center gap-1 ${gainLossDisplay.color}`}
+											className={`flex items-center justify-center sm:justify-start gap-1 ${gainLossDisplay.color}`}
 										>
 											<GainLossIcon className="h-3 w-3" />
-											<span className="font-semibold">
-												{formatCurrency(totalGainLoss)} (
-												{formatPercentage(totalGainLossPercent)})
+											<span className="font-semibold text-xs sm:text-sm">
+												{formatCurrency(totalGainLoss)}
 											</span>
+										</div>
+										<div
+											className={`text-xs ${gainLossDisplay.color} sm:hidden`}
+										>
+											{formatPercentage(totalGainLossPercent)}
 										</div>
 									</div>
 
-									<div className="text-center">
-										<p className="text-muted-foreground">Assets</p>
-										<p className="font-semibold">{assetCount}</p>
+									<div className="text-center sm:text-left">
+										<p className="text-muted-foreground text-xs sm:text-sm">
+											Assets
+										</p>
+										<p className="font-semibold text-sm sm:text-base">
+											{assetCount}
+										</p>
+									</div>
+								</div>
+
+								{/* Desktop: Show percentage inline */}
+								<div className="hidden sm:block text-center">
+									<p className="text-muted-foreground text-xs sm:text-sm">
+										Performance
+									</p>
+									<div
+										className={`font-semibold text-sm ${gainLossDisplay.color}`}
+									>
+										{formatPercentage(totalGainLossPercent)}
 									</div>
 								</div>
 							</div>
 
-							<PortfolioActions
-								portfolioId={portfolio.id}
-								onDuplicate={handleDuplicate}
-								onDelete={() => setShowDeleteDialog(true)}
-								isLoading={isLoading}
-							/>
+							<div className="flex justify-end sm:block">
+								<PortfolioActions
+									portfolioId={portfolio.id}
+									onDuplicate={handleDuplicate}
+									onDelete={() => setShowDeleteDialog(true)}
+									isLoading={isLoading}
+								/>
+							</div>
 						</div>
 					</CardContent>
 				</Card>
@@ -244,71 +273,73 @@ export function PortfolioCard({
 	return (
 		<>
 			<Card
-				className={`hover:shadow-md transition-shadow ${isDragging ? "opacity-50" : ""} ${isSelected ? "ring-2 ring-primary" : ""}`}
+				className={`hover:shadow-md transition-shadow touch-manipulation ${isDragging ? "opacity-50" : ""} ${isSelected ? "ring-2 ring-primary" : ""} h-full flex flex-col`}
 			>
-				<CardHeader className="pb-3">
-					<div className="flex items-start justify-between">
-						<div className="flex items-start space-x-2 flex-1">
+				<CardHeader className="pb-2 sm:pb-3 flex-shrink-0">
+					<div className="flex items-start justify-between gap-2">
+						<div className="flex items-start space-x-2 flex-1 min-w-0">
 							{onSelect && (
 								<input
 									type="checkbox"
 									checked={isSelected}
 									onChange={(e) => onSelect(e.target.checked)}
-									className="rounded mt-1"
+									className="rounded mt-1 touch-manipulation flex-shrink-0"
 								/>
 							)}
-							<div className="flex-1">
-								<CardTitle className="text-lg">
+							<div className="flex-1 min-w-0">
+								<CardTitle className="text-base sm:text-lg leading-tight">
 									<Link
 										to="/portfolios/$portfolioId"
 										params={{ portfolioId: portfolio.id }}
-										className="hover:underline"
+										className="hover:underline block"
 										onClick={() => onAction?.("view", portfolio.id)}
 									>
-										{portfolio.name}
+										<span className="line-clamp-2">{portfolio.name}</span>
 									</Link>
 								</CardTitle>
 								{portfolio.description && (
-									<p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+									<p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">
 										{portfolio.description}
 									</p>
 								)}
 							</div>
 						</div>
 
-						<PortfolioActions
-							portfolioId={portfolio.id}
-							onDuplicate={handleDuplicate}
-							onDelete={() => setShowDeleteDialog(true)}
-							isLoading={isLoading}
-						/>
+						<div className="flex-shrink-0">
+							<PortfolioActions
+								portfolioId={portfolio.id}
+								onDuplicate={handleDuplicate}
+								onDelete={() => setShowDeleteDialog(true)}
+								isLoading={isLoading}
+							/>
+						</div>
 					</div>
 				</CardHeader>
 
-				<CardContent className="pt-0">
-					<div className="space-y-3">
+				<CardContent className="pt-0 flex-1 flex flex-col justify-between">
+					<div className="space-y-2 sm:space-y-3">
 						{/* Total Value */}
 						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<DollarSign className="h-4 w-4" />
+							<div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+								<DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
 								<span>Total Value</span>
 							</div>
-							<span className="font-semibold text-lg">
+							<span className="font-semibold text-sm sm:text-lg">
 								{formatCurrency(totalValue)}
 							</span>
 						</div>
 
 						{/* Gain/Loss */}
 						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<TrendingUp className="h-4 w-4" />
+							<div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
+								<TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
 								<span>Gain/Loss</span>
 							</div>
 							<div
 								className={`flex items-center gap-1 ${gainLossDisplay.color}`}
 							>
 								<GainLossIcon className="h-3 w-3" />
-								<span className="font-semibold text-sm">
+								<span className="font-semibold text-xs sm:text-sm">
 									{formatCurrency(totalGainLoss)}
 								</span>
 							</div>
@@ -316,28 +347,34 @@ export function PortfolioCard({
 
 						{/* Performance Badge */}
 						{totalGainLossPercent !== 0 && (
-							<div className="flex justify-center">
+							<div className="flex justify-center py-1">
 								<Badge
 									variant="secondary"
-									className={`${gainLossDisplay.bgColor} ${gainLossDisplay.color} border-0`}
+									className={`${gainLossDisplay.bgColor} ${gainLossDisplay.color} border-0 text-xs`}
 								>
 									{formatPercentage(totalGainLossPercent)}
 								</Badge>
 							</div>
 						)}
+					</div>
 
-						{/* Asset Count and Created Date */}
-						<div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-							<div className="flex items-center gap-1">
-								<PieChart className="h-3 w-3" />
-								<span>{assetCount} assets</span>
-							</div>
-							<div className="flex items-center gap-1">
-								<Calendar className="h-3 w-3" />
-								<span>
-									{new Date(portfolio.createdAt).toLocaleDateString()}
-								</span>
-							</div>
+					{/* Asset Count and Created Date */}
+					<div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t mt-2 sm:mt-3">
+						<div className="flex items-center gap-1">
+							<PieChart className="h-3 w-3" />
+							<span>{assetCount} assets</span>
+						</div>
+						<div className="flex items-center gap-1">
+							<Calendar className="h-3 w-3" />
+							<span className="hidden sm:inline">
+								{new Date(portfolio.createdAt).toLocaleDateString()}
+							</span>
+							<span className="sm:hidden">
+								{new Date(portfolio.createdAt).toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+								})}
+							</span>
 						</div>
 					</div>
 				</CardContent>
@@ -368,19 +405,32 @@ function PortfolioActions({
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button variant="ghost" size="icon" disabled={isLoading}>
+				<Button
+					variant="ghost"
+					size="icon"
+					disabled={isLoading}
+					className="touch-manipulation h-8 w-8 sm:h-10 sm:w-10"
+				>
 					<MoreHorizontal className="h-4 w-4" />
 					<span className="sr-only">Portfolio actions</span>
 				</Button>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent align="end">
+			<DropdownMenuContent align="end" className="w-48">
 				<EditPortfolioDialog portfolioId={portfolioId}>
-					<DropdownMenuItem onSelect={(e) => e.preventDefault()} disabled={isLoading}>
+					<DropdownMenuItem
+						onSelect={(e) => e.preventDefault()}
+						disabled={isLoading}
+						className="touch-manipulation py-3"
+					>
 						<Edit className="mr-2 h-4 w-4" />
-						Edit
+						Edit Portfolio
 					</DropdownMenuItem>
 				</EditPortfolioDialog>
-				<DropdownMenuItem onClick={onDuplicate} disabled={isLoading}>
+				<DropdownMenuItem
+					onClick={onDuplicate}
+					disabled={isLoading}
+					className="touch-manipulation py-3"
+				>
 					<Copy className="mr-2 h-4 w-4" />
 					Duplicate
 				</DropdownMenuItem>
@@ -388,10 +438,10 @@ function PortfolioActions({
 				<DropdownMenuItem
 					onClick={onDelete}
 					disabled={isLoading}
-					className="text-destructive focus:text-destructive"
+					className="text-destructive focus:text-destructive touch-manipulation py-3"
 				>
 					<Trash2 className="mr-2 h-4 w-4" />
-					Delete
+					Delete Portfolio
 				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>

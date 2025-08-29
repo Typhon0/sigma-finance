@@ -22,27 +22,34 @@ interface PortfolioBreadcrumbProps {
 export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
 	return (
 		<Breadcrumb>
-			<BreadcrumbList>
+			<BreadcrumbList className="flex-wrap">
 				{items.map((item, index) => (
 					<div key={index} className="flex items-center">
 						<BreadcrumbItem>
 							{item.href ? (
 								<BreadcrumbLink asChild>
-									<Link to={item.href} className="flex items-center gap-1">
-										{item.icon}
-										{item.label}
+									<Link
+										to={item.href}
+										className="flex items-center gap-1 touch-manipulation"
+									>
+										<span className="hidden sm:inline">{item.icon}</span>
+										<span className="text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">
+											{item.label}
+										</span>
 									</Link>
 								</BreadcrumbLink>
 							) : (
 								<BreadcrumbPage className="flex items-center gap-1">
-									{item.icon}
-									{item.label}
+									<span className="hidden sm:inline">{item.icon}</span>
+									<span className="text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">
+										{item.label}
+									</span>
 								</BreadcrumbPage>
 							)}
 						</BreadcrumbItem>
 						{index < items.length - 1 && (
 							<BreadcrumbSeparator>
-								<ChevronRight className="h-4 w-4" />
+								<ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
 							</BreadcrumbSeparator>
 						)}
 					</div>

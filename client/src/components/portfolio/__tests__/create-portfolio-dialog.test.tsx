@@ -1,199 +1,201 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import { MockedProvider } from '@apollo/client/testing';
-import { CreatePortfolioDialog } from '../create-portfolio-dialog';
-import { useAuth } from '@/lib/auth-context';
-import { usePortfolioManagement } from '@/hooks/use-portfolio-management';
+import { MockedProvider } from "@apollo/client/testing";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
+import { useAuth } from "@/lib/auth-context";
+import { CreatePortfolioDialog } from "../create-portfolio-dialog";
 
 // Mock the hooks
-vi.mock('@/lib/auth-context');
-vi.mock('@/hooks/use-portfolio-management');
+vi.mock("@/lib/auth-context");
+vi.mock("@/hooks/use-portfolio-management");
 
 const mockUser = {
-  id: 'user-1',
-  name: 'Test User',
-  email: 'test@example.com',
-  emailVerified: true,
+	id: "user-1",
+	name: "Test User",
+	email: "test@example.com",
+	emailVerified: true,
 };
 
 const mockCreatePortfolio = vi.fn();
 const mockPortfolios = [
-  { id: '1', name: 'Existing Portfolio', description: 'Test portfolio' }
+	{ id: "1", name: "Existing Portfolio", description: "Test portfolio" },
 ];
 
-describe('CreatePortfolioDialog', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    
-    vi.mocked(useAuth).mockReturnValue({
-      user: mockUser,
-      isLoading: false,
-      isAuthenticated: true,
-      login: vi.fn(),
-      register: vi.fn(),
-      logout: vi.fn(),
-      confirmPasswordReset: vi.fn(),
-      requestPasswordReset: vi.fn(),
-      resendVerification: vi.fn(),
-      refreshToken: vi.fn(),
-      clearError: vi.fn(),
-      error: null,
-    });
+describe("CreatePortfolioDialog", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
 
-    vi.mocked(usePortfolioManagement).mockReturnValue({
-      portfolios: mockPortfolios,
-      loading: false,
-      operationLoading: {
-        create: false,
-        update: false,
-        delete: false,
-        duplicate: false,
-      },
-      error: null,
-      hasError: false,
-      canRetry: false,
-      retryCount: 0,
-      createPortfolio: mockCreatePortfolio,
-      updatePortfolio: vi.fn(),
-      deletePortfolio: vi.fn(),
-      duplicatePortfolio: vi.fn(),
-      refetch: vi.fn(),
-      retry: vi.fn(),
-      clearError: vi.fn(),
-      isCreating: false,
-      isUpdating: false,
-      isDeleting: false,
-      isDuplicating: false,
-    });
-  });
+		vi.mocked(useAuth).mockReturnValue({
+			user: mockUser,
+			isLoading: false,
+			isAuthenticated: true,
+			login: vi.fn(),
+			register: vi.fn(),
+			logout: vi.fn(),
+			confirmPasswordReset: vi.fn(),
+			requestPasswordReset: vi.fn(),
+			resendVerification: vi.fn(),
+			refreshToken: vi.fn(),
+			clearError: vi.fn(),
+			error: null,
+		});
 
-  it('renders the dialog trigger', () => {
-    render(
-      <MockedProvider>
-        <CreatePortfolioDialog>
-          <button>Create Portfolio</button>
-        </CreatePortfolioDialog>
-      </MockedProvider>
-    );
+		vi.mocked(usePortfolioManagement).mockReturnValue({
+			portfolios: mockPortfolios,
+			loading: false,
+			operationLoading: {
+				create: false,
+				update: false,
+				delete: false,
+				duplicate: false,
+			},
+			error: null,
+			hasError: false,
+			canRetry: false,
+			retryCount: 0,
+			createPortfolio: mockCreatePortfolio,
+			updatePortfolio: vi.fn(),
+			deletePortfolio: vi.fn(),
+			duplicatePortfolio: vi.fn(),
+			refetch: vi.fn(),
+			retry: vi.fn(),
+			clearError: vi.fn(),
+			isCreating: false,
+			isUpdating: false,
+			isDeleting: false,
+			isDuplicating: false,
+		});
+	});
 
-    expect(screen.getByText('Create Portfolio')).toBeInTheDocument();
-  });
+	it("renders the dialog trigger", () => {
+		render(
+			<MockedProvider>
+				<CreatePortfolioDialog>
+					<button>Create Portfolio</button>
+				</CreatePortfolioDialog>
+			</MockedProvider>,
+		);
 
-  it('opens dialog when trigger is clicked', async () => {
-    render(
-      <MockedProvider>
-        <CreatePortfolioDialog>
-          <button>Create Portfolio</button>
-        </CreatePortfolioDialog>
-      </MockedProvider>
-    );
+		expect(screen.getByText("Create Portfolio")).toBeInTheDocument();
+	});
 
-    fireEvent.click(screen.getByText('Create Portfolio'));
+	it("opens dialog when trigger is clicked", async () => {
+		render(
+			<MockedProvider>
+				<CreatePortfolioDialog>
+					<button>Create Portfolio</button>
+				</CreatePortfolioDialog>
+			</MockedProvider>,
+		);
 
-    await waitFor(() => {
-      expect(screen.getByText('Enter the details for your new portfolio.')).toBeInTheDocument();
-    });
-  });
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-  it('calls createPortfolio when form is submitted', async () => {
-    const mockResult = {
-      id: 'new-portfolio-id',
-      name: 'New Portfolio',
-      description: 'Test description',
-    };
-    
-    mockCreatePortfolio.mockResolvedValue(mockResult);
+		await waitFor(() => {
+			expect(
+				screen.getByText("Enter the details for your new portfolio."),
+			).toBeInTheDocument();
+		});
+	});
 
-    render(
-      <MockedProvider>
-        <CreatePortfolioDialog>
-          <button>Create Portfolio</button>
-        </CreatePortfolioDialog>
-      </MockedProvider>
-    );
+	it("calls createPortfolio when form is submitted", async () => {
+		const mockResult = {
+			id: "new-portfolio-id",
+			name: "New Portfolio",
+			description: "Test description",
+		};
 
-    // Open dialog
-    fireEvent.click(screen.getByText('Create Portfolio'));
+		mockCreatePortfolio.mockResolvedValue(mockResult);
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
-    });
+		render(
+			<MockedProvider>
+				<CreatePortfolioDialog>
+					<button>Create Portfolio</button>
+				</CreatePortfolioDialog>
+			</MockedProvider>,
+		);
 
-    // Fill form
-    fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
-      target: { value: 'New Portfolio' }
-    });
+		// Open dialog
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-    fireEvent.change(screen.getByLabelText(/Description/), {
-      target: { value: 'Test description' }
-    });
+		await waitFor(() => {
+			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
+		});
 
-    // Submit form
-    fireEvent.click(screen.getByText('Create Portfolio'));
+		// Fill form
+		fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
+			target: { value: "New Portfolio" },
+		});
 
-    await waitFor(() => {
-      expect(mockCreatePortfolio).toHaveBeenCalledWith({
-        userID: mockUser.id,
-        name: 'New Portfolio',
-        description: 'Test description',
-      });
-    });
-  });
+		fireEvent.change(screen.getByLabelText(/Description/), {
+			target: { value: "Test description" },
+		});
 
-  it('shows error message when creation fails', async () => {
-    const errorMessage = 'Portfolio creation failed';
-    mockCreatePortfolio.mockRejectedValue(new Error(errorMessage));
+		// Submit form
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-    render(
-      <MockedProvider>
-        <CreatePortfolioDialog showErrorToast={false}>
-          <button>Create Portfolio</button>
-        </CreatePortfolioDialog>
-      </MockedProvider>
-    );
+		await waitFor(() => {
+			expect(mockCreatePortfolio).toHaveBeenCalledWith({
+				userID: mockUser.id,
+				name: "New Portfolio",
+				description: "Test description",
+			});
+		});
+	});
 
-    // Open dialog
-    fireEvent.click(screen.getByText('Create Portfolio'));
+	it("shows error message when creation fails", async () => {
+		const errorMessage = "Portfolio creation failed";
+		mockCreatePortfolio.mockRejectedValue(new Error(errorMessage));
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
-    });
+		render(
+			<MockedProvider>
+				<CreatePortfolioDialog showErrorToast={false}>
+					<button>Create Portfolio</button>
+				</CreatePortfolioDialog>
+			</MockedProvider>,
+		);
 
-    // Fill and submit form
-    fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
-      target: { value: 'New Portfolio' }
-    });
+		// Open dialog
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-    fireEvent.click(screen.getByText('Create Portfolio'));
+		await waitFor(() => {
+			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
+		});
 
-    await waitFor(() => {
-      expect(screen.getByText(errorMessage)).toBeInTheDocument();
-    });
-  });
+		// Fill and submit form
+		fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
+			target: { value: "New Portfolio" },
+		});
 
-  it('validates unique portfolio names', async () => {
-    render(
-      <MockedProvider>
-        <CreatePortfolioDialog>
-          <button>Create Portfolio</button>
-        </CreatePortfolioDialog>
-      </MockedProvider>
-    );
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-    // Open dialog
-    fireEvent.click(screen.getByText('Create Portfolio'));
+		await waitFor(() => {
+			expect(screen.getByText(errorMessage)).toBeInTheDocument();
+		});
+	});
 
-    await waitFor(() => {
-      expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
-    });
+	it("validates unique portfolio names", async () => {
+		render(
+			<MockedProvider>
+				<CreatePortfolioDialog>
+					<button>Create Portfolio</button>
+				</CreatePortfolioDialog>
+			</MockedProvider>,
+		);
 
-    // Try to use existing portfolio name
-    fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
-      target: { value: 'Existing Portfolio' }
-    });
+		// Open dialog
+		fireEvent.click(screen.getByText("Create Portfolio"));
 
-    await waitFor(() => {
-      expect(screen.getByText(/already exists/)).toBeInTheDocument();
-    });
-  });
+		await waitFor(() => {
+			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
+		});
+
+		// Try to use existing portfolio name
+		fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
+			target: { value: "Existing Portfolio" },
+		});
+
+		await waitFor(() => {
+			expect(screen.getByText(/already exists/)).toBeInTheDocument();
+		});
+	});
 });

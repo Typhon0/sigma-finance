@@ -19,7 +19,7 @@ import {
 	verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Grid3X3, List, SortAsc } from "lucide-react";
+import { Download, Grid3X3, List, SortAsc, Trash2 } from "lucide-react";
 import React, { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -221,9 +221,9 @@ export function PortfolioList({
 			aria-label="Portfolio selection and list"
 		>
 			{/* Controls Header */}
-			<div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0 w-full">
+			<div className="flex flex-col space-y-3 sm:space-y-4 lg:flex-row lg:items-center lg:justify-between lg:space-y-0 w-full">
 				{/* Selection Controls */}
-				<div className="flex items-center space-x-2 md:space-x-4 w-full">
+				<div className="flex items-center space-x-2 sm:space-x-4 w-full lg:w-auto">
 					{portfolios.length > 0 && (
 						<div className="flex items-center space-x-2">
 							<Checkbox
@@ -239,17 +239,23 @@ export function PortfolioList({
 										? "Deselect all portfolios"
 										: "Select all portfolios"
 								}
+								className="touch-manipulation"
 							/>
-							<span className="text-sm text-muted-foreground">
+							<span className="text-sm text-muted-foreground hidden sm:inline">
 								{selectedPortfolios.length > 0
 									? `${selectedPortfolios.length} selected`
 									: "Select all"}
+							</span>
+							<span className="text-xs text-muted-foreground sm:hidden">
+								{selectedPortfolios.length > 0
+									? `${selectedPortfolios.length}`
+									: "All"}
 							</span>
 						</div>
 					)}
 
 					{selectedPortfolios.length > 0 && (
-						<Badge variant="secondary">
+						<Badge variant="secondary" className="text-xs sm:text-sm">
 							{selectedPortfolios.length} portfolio
 							{selectedPortfolios.length !== 1 ? "s" : ""} selected
 						</Badge>
@@ -257,14 +263,14 @@ export function PortfolioList({
 				</div>
 
 				{/* View and Sort Controls */}
-				<div className="flex items-center space-x-2 md:space-x-4 w-full justify-end">
+				<div className="flex items-center space-x-2 sm:space-x-3 w-full lg:w-auto justify-end">
 					{/* Sort Selection */}
 					<Select
 						value={sortBy}
 						onValueChange={(value: SortBy) => onSortChange(value)}
 					>
-						<SelectTrigger className="w-full md:w-[180px]">
-							<SortAsc className="mr-2 h-4 w-4" />
+						<SelectTrigger className="w-full sm:w-[140px] lg:w-[180px] touch-manipulation">
+							<SortAsc className="mr-1 sm:mr-2 h-4 w-4" />
 							<SelectValue placeholder="Sort by" />
 						</SelectTrigger>
 						<SelectContent>
@@ -280,14 +286,20 @@ export function PortfolioList({
 						value={viewMode}
 						onValueChange={(value) => onViewModeChange(value as ViewMode)}
 					>
-						<TabsList className="grid w-full grid-cols-2 md:w-auto">
-							<TabsTrigger value="grid" className="flex items-center">
-								<Grid3X3 className="mr-2 h-4 w-4" />
-								Grid
+						<TabsList className="grid w-full grid-cols-2 sm:w-auto touch-manipulation">
+							<TabsTrigger
+								value="grid"
+								className="flex items-center px-2 sm:px-3"
+							>
+								<Grid3X3 className="h-4 w-4 sm:mr-2" />
+								<span className="hidden sm:inline">Grid</span>
 							</TabsTrigger>
-							<TabsTrigger value="list" className="flex items-center">
-								<List className="mr-2 h-4 w-4" />
-								List
+							<TabsTrigger
+								value="list"
+								className="flex items-center px-2 sm:px-3"
+							>
+								<List className="h-4 w-4 sm:mr-2" />
+								<span className="hidden sm:inline">List</span>
 							</TabsTrigger>
 						</TabsList>
 					</Tabs>
@@ -296,8 +308,8 @@ export function PortfolioList({
 
 			{/* Portfolio Grid/List */}
 			{/* Mobile drag-and-drop hint */}
-			<div className="md:hidden text-xs text-muted-foreground mb-2 px-2">
-				Tap and hold a card to reorder portfolios
+			<div className="lg:hidden text-xs text-muted-foreground mb-2 px-1 sm:px-2 bg-muted/30 rounded-md p-2 border border-dashed">
+				💡 Tap and hold a card to reorder portfolios
 			</div>
 			<DndContext
 				sensors={sensors}
@@ -317,10 +329,10 @@ export function PortfolioList({
 				>
 					<ul
 						className={cn(
-							"gap-4 w-full",
+							"w-full",
 							viewMode === "grid"
-								? "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
-								: "flex flex-col space-y-2",
+								? "grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6"
+								: "flex flex-col space-y-2 sm:space-y-3",
 						)}
 						aria-label="Portfolios"
 					>
@@ -362,35 +374,40 @@ export function PortfolioList({
 
 			{/* Bulk Actions */}
 			{selectedPortfolios.length > 0 && (
-				<div className="flex items-center justify-between p-4 bg-muted rounded-lg">
-					<span className="text-sm font-medium">
+				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 bg-muted rounded-lg border">
+					<span className="text-sm font-medium text-center sm:text-left">
 						{selectedPortfolios.length} portfolio
 						{selectedPortfolios.length !== 1 ? "s" : ""} selected
 					</span>
-					<div className="flex items-center space-x-2">
+					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-2">
 						<Button
 							variant="outline"
 							size="sm"
+							className="touch-manipulation"
 							onClick={() => {
 								// TODO: Implement bulk export
 								console.log("Bulk export:", selectedPortfolios);
 							}}
 						>
+							<Download className="mr-2 h-4 w-4" />
 							Export Selected
 						</Button>
 						<Button
 							variant="outline"
 							size="sm"
+							className="touch-manipulation text-destructive hover:text-destructive"
 							onClick={() => {
 								// TODO: Implement bulk delete
 								console.log("Bulk delete:", selectedPortfolios);
 							}}
 						>
+							<Trash2 className="mr-2 h-4 w-4" />
 							Delete Selected
 						</Button>
 						<Button
 							variant="ghost"
 							size="sm"
+							className="touch-manipulation"
 							onClick={() => onSelectionChange([])}
 						>
 							Clear Selection
@@ -406,30 +423,33 @@ export function PortfolioList({
 function PortfolioListSkeleton({ viewMode }: { viewMode: ViewMode }) {
 	const skeletonCount = 8;
 	return (
-		<div className="space-y-4">
-			<div className="flex justify-between items-center">
-				<div className="flex items-center space-x-4">
+		<div className="space-y-3 sm:space-y-4">
+			<div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+				<div className="flex items-center space-x-2 sm:space-x-4">
 					<div className="w-4 h-4 bg-muted rounded animate-pulse" />
-					<div className="w-20 h-4 bg-muted rounded animate-pulse" />
+					<div className="w-16 sm:w-20 h-4 bg-muted rounded animate-pulse" />
 				</div>
-				<div className="flex items-center space-x-4">
-					<div className="w-32 h-9 bg-muted rounded animate-pulse" />
-					<div className="w-24 h-9 bg-muted rounded animate-pulse" />
+				<div className="flex items-center space-x-2 sm:space-x-4">
+					<div className="w-24 sm:w-32 h-9 bg-muted rounded animate-pulse" />
+					<div className="w-20 sm:w-24 h-9 bg-muted rounded animate-pulse" />
 				</div>
 			</div>
 			{/* Portfolio grid skeleton */}
 			<div
 				className={cn(
-					"gap-4",
+					"gap-3 sm:gap-4",
 					viewMode === "grid"
-						? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-						: "space-y-4",
+						? "grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+						: "space-y-3 sm:space-y-4",
 				)}
 			>
 				{Array.from({ length: skeletonCount }).map((_, i) => (
 					<div
 						key={`portfolio-view-skeleton-${i}`}
-						className="bg-muted rounded-lg h-48 animate-pulse"
+						className={cn(
+							"bg-muted rounded-lg animate-pulse",
+							viewMode === "grid" ? "h-40 sm:h-48" : "h-20 sm:h-24",
+						)}
 					/>
 				))}
 			</div>

@@ -210,13 +210,13 @@ export function PortfolioForm({
 					)}
 
 					{/* Form Actions */}
-					<div className="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 space-y-2 space-y-reverse sm:space-y-0">
+					<div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3">
 						<Button
 							type="button"
 							variant="outline"
 							onClick={handleCancel}
 							disabled={isFormLoading}
-							className="w-full sm:w-auto"
+							className="w-full sm:w-auto touch-manipulation order-2 sm:order-1"
 						>
 							Cancel
 						</Button>
@@ -225,14 +225,14 @@ export function PortfolioForm({
 							variant="ghost"
 							onClick={() => setResetDialogOpen(true)}
 							disabled={isFormLoading || !form.formState.isDirty}
-							className="w-full sm:w-auto"
+							className="w-full sm:w-auto touch-manipulation order-3 sm:order-2"
 						>
 							Reset
 						</Button>
 						<Button
 							type="submit"
 							disabled={isFormLoading || !form.formState.isValid}
-							className="w-full sm:w-auto"
+							className="w-full sm:w-auto touch-manipulation order-1 sm:order-3"
 						>
 							{isFormLoading && (
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -69,36 +69,43 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 	const hasPortfolios = portfolios && portfolios.length > 0;
 
 	return (
-		<div className={`container mx-auto p-4 md:p-6 ${className || ""}`}>
+		<div className={`container mx-auto p-3 sm:p-4 lg:p-6 ${className || ""}`}>
 			{/* Header */}
-			<div className="flex items-center justify-between mb-6">
-				<h1 className="text-2xl md:text-3xl font-bold">Your Portfolios</h1>
+			<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
+				<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+					Your Portfolios
+				</h1>
 
 				{hasPortfolios && (
-					<div className="flex items-center gap-2">
-						{/* View mode toggle */}
-						<Button
-							variant={viewMode === "list" ? "secondary" : "outline"}
-							size="icon"
-							onClick={() => setViewMode("list")}
-							disabled={loading}
-						>
-							<List className="h-4 w-4" />
-						</Button>
-						<Button
-							variant={viewMode === "grid" ? "secondary" : "outline"}
-							size="icon"
-							onClick={() => setViewMode("grid")}
-							disabled={loading}
-						>
-							<Grid className="h-4 w-4" />
-						</Button>
+					<div className="flex items-center gap-2 justify-end sm:justify-start">
+						{/* View mode toggle - Hidden on mobile, shown on larger screens */}
+						<div className="hidden sm:flex items-center gap-2">
+							<Button
+								variant={viewMode === "list" ? "secondary" : "outline"}
+								size="icon"
+								onClick={() => setViewMode("list")}
+								disabled={loading}
+								className="touch-manipulation"
+							>
+								<List className="h-4 w-4" />
+							</Button>
+							<Button
+								variant={viewMode === "grid" ? "secondary" : "outline"}
+								size="icon"
+								onClick={() => setViewMode("grid")}
+								disabled={loading}
+								className="touch-manipulation"
+							>
+								<Grid className="h-4 w-4" />
+							</Button>
+						</div>
 
 						{/* Create portfolio button */}
 						<CreatePortfolioDialog>
-							<Button disabled={isCreating}>
+							<Button disabled={isCreating} className="touch-manipulation">
 								<PlusCircle className="mr-2 h-4 w-4" />
-								New Portfolio
+								<span className="hidden sm:inline">New Portfolio</span>
+								<span className="sm:hidden">New</span>
 							</Button>
 						</CreatePortfolioDialog>
 					</div>
@@ -151,8 +158,8 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 				<div
 					className={
 						viewMode === "grid"
-							? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-							: "space-y-4"
+							? "grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-6"
+							: "space-y-3 sm:space-y-4"
 					}
 				>
 					{portfolios.map((portfolio) => (
@@ -170,17 +177,19 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 
 function EmptyPortfolioState() {
 	return (
-		<Card className="text-center py-12">
-			<CardHeader>
-				<CardTitle>No portfolios found</CardTitle>
-				<CardDescription>
+		<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
+			<CardHeader className="px-4 sm:px-6">
+				<CardTitle className="text-lg sm:text-xl">
+					No portfolios found
+				</CardTitle>
+				<CardDescription className="text-sm sm:text-base">
 					Get started by creating your first portfolio to organize and track
 					your investments.
 				</CardDescription>
 			</CardHeader>
-			<CardContent>
+			<CardContent className="px-4 sm:px-6">
 				<CreatePortfolioDialog>
-					<Button size="lg">
+					<Button size="lg" className="touch-manipulation w-full sm:w-auto">
 						<PlusCircle className="mr-2 h-5 w-5" />
 						Create Portfolio
 					</Button>
@@ -204,31 +213,43 @@ function ErrorState({
 	onRefresh?: () => void;
 }) {
 	return (
-		<Card className="text-center py-12">
-			<CardHeader>
-				<CardTitle className="flex items-center justify-center gap-2 text-destructive">
+		<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
+			<CardHeader className="px-4 sm:px-6">
+				<CardTitle className="flex items-center justify-center gap-2 text-destructive text-lg sm:text-xl">
 					<AlertTriangle className="h-5 w-5" />
 					Error Loading Portfolios
 				</CardTitle>
-				<CardDescription>
+				<CardDescription className="text-sm sm:text-base">
 					{error?.message ||
 						"Something went wrong while loading your portfolios."}
 				</CardDescription>
 			</CardHeader>
-			<CardContent className="flex justify-center gap-2">
+			<CardContent className="flex flex-col sm:flex-row justify-center gap-2 px-4 sm:px-6">
 				{canRetry && (
-					<Button onClick={onRetry} variant="outline">
+					<Button
+						onClick={onRetry}
+						variant="outline"
+						className="touch-manipulation"
+					>
 						<RefreshCw className="mr-2 h-4 w-4" />
 						Retry
 					</Button>
 				)}
 				{onRefresh && (
-					<Button onClick={onRefresh} variant="outline">
+					<Button
+						onClick={onRefresh}
+						variant="outline"
+						className="touch-manipulation"
+					>
 						<RefreshCw className="mr-2 h-4 w-4" />
 						Refresh
 					</Button>
 				)}
-				<Button onClick={onClearError} variant="ghost">
+				<Button
+					onClick={onClearError}
+					variant="ghost"
+					className="touch-manipulation"
+				>
 					Dismiss
 				</Button>
 			</CardContent>
