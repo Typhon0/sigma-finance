@@ -1,0 +1,362 @@
+# internal/handler/graphql/schema/performance.graphqls
+
+# Performance and Analytics Types
+
+type PerformanceMetrics {
+    portfolioId: ID!
+    totalValue: Float!
+    totalCostBasis: Float!
+    unrealizedGainLoss: Float!
+    realizedGainLoss: Float!
+    totalReturnPercentage: Float!
+    timeWeightedReturn: Float!
+    isValid: Boolean!
+    validationErrors: [String!]!
+    dataQuality: DataQuality!
+    calculationMethod: CalculationMethod!
+    benchmarks: [BenchmarkResult!]!
+}
+
+type DataQuality {
+    score: Float!
+    missingDataPoints: Int!
+    staleDataPoints: Int!
+    estimatedDataPoints: Int!
+    lastUpdated: Time!
+}
+
+type CalculationMethod {
+    method: String!
+    parameters: [MethodParameter!]!
+    assumptions: [String!]!
+}
+
+type MethodParameter {
+    key: String!
+    value: String!
+}
+
+type BenchmarkResult {
+    name: String!
+    value: Float!
+}
+
+type AllocationBreakdown {
+    portfolioId: ID!
+    totalValue: Float!
+    allocations: [AssetAllocation!]!
+    rebalanceRecommendations: [RebalanceRecommendation!]!
+    riskAnalysis: AllocationRiskAnalysis!
+    diversificationScore: Float!
+}
+
+type RebalanceRecommendation {
+    assetType: String!
+    currentWeight: Float!
+    targetWeight: Float!
+    recommendedAction: String!
+    amount: Float!
+    reason: String!
+}
+
+type AllocationRiskAnalysis {
+    concentrationRisk: Float!
+    correlationRisk: Float!
+    liquidityRisk: Float!
+    riskByAssetType: [AssetTypeRisk!]!
+}
+
+type AssetTypeRisk {
+    assetType: String!
+    riskLevel: Float!
+}
+
+# RiskMetrics is already defined in portfolio.graphqls
+# We'll extend it with additional fields through resolvers
+
+type PerformanceSnapshot {
+    id: ID!
+    portfolioId: ID!
+    totalValue: Float!
+    totalCostBasis: Float!
+    unrealizedGainLoss: Float!
+    realizedGainLoss: Float!
+    returnPercentage: Float!
+    snapshotDate: Time!
+    createdAt: Time!
+    dataQuality: DataQuality!
+}
+
+type ChartDataPoint {
+    timestamp: Time!
+    value: Float!
+    volume: Float
+    metadata: ChartMetadata
+}
+
+type ChartMetadata {
+    label: String
+    color: String
+    additionalData: [KeyValuePair!]
+}
+
+type KeyValuePair {
+    key: String!
+    value: String!
+}
+
+type TimeSeriesData {
+    portfolioId: ID
+    assetId: ID
+    dataPoints: [ChartDataPoint!]!
+    timeRange: TimeRange!
+    aggregation: TimeAggregation!
+}
+
+type TimeRange {
+    start: Time!
+    end: Time!
+}
+
+enum TimeAggregation {
+    MINUTE
+    HOUR
+    DAY
+    WEEK
+    MONTH
+    QUARTER
+    YEAR
+}
+
+type BenchmarkComparison {
+    portfolioId: ID!
+    benchmarkAssetId: ID!
+    portfolioReturn: Float!
+    benchmarkReturn: Float!
+    alpha: Float!
+    beta: Float!
+    correlation: Float!
+    trackingError: Float!
+    informationRatio: Float!
+    outperformancePeriods: [TimeRange!]!
+    riskAdjustedAlpha: Float!
+}
+
+type PerformanceReport {
+    id: ID!
+    portfolioId: ID!
+    reportType: ReportType!
+    timeRange: TimeRange!
+    generatedAt: Time!
+    metrics: PerformanceMetrics!
+    allocation: AllocationBreakdown!
+    riskMetrics: RiskMetrics!
+    topPerformers: [PositionPerformance!]!
+    worstPerformers: [PositionPerformance!]!
+    benchmarks: [BenchmarkComparison!]!
+    recommendations: [String!]!
+    dataQuality: DataQuality!
+    downloadUrl: String
+}
+
+type PositionPerformance {
+    positionId: ID!
+    assetName: String!
+    assetSymbol: String
+    returnPercentage: Float!
+    gainLoss: Float!
+    contribution: Float!
+}
+
+enum ReportType {
+    DAILY
+    WEEKLY
+    MONTHLY
+    QUARTERLY
+    ANNUAL
+    CUSTOM
+}
+
+# Alert Management Types
+
+type Alert {
+    id: ID!
+    userId: ID!
+    assetId: ID
+    portfolioId: ID
+    alertType: AlertType!
+    conditionType: ConditionType!
+    thresholdValue: Float
+    thresholdPercentage: Float
+    isActive: Boolean!
+    lastTriggered: Time
+    createdAt: Time!
+    updatedAt: Time!
+    notificationMethods: [AlertNotificationMethod!]!
+}
+
+enum AlertType {
+    PRICE
+    PERCENTAGE_CHANGE
+    PORTFOLIO_VALUE
+    ALLOCATION
+    PERFORMANCE
+}
+
+enum ConditionType {
+    ABOVE
+    BELOW
+    INCREASE_BY
+    DECREASE_BY
+    EQUALS
+}
+
+enum AlertNotificationMethod {
+    EMAIL
+    PUSH
+    SMS
+    IN_APP
+}
+
+type AlertTriggerEvent {
+    id: ID!
+    alertId: ID!
+    triggeredAt: Time!
+    currentValue: Float!
+    thresholdValue: Float!
+    message: String!
+    acknowledged: Boolean!
+    acknowledgedAt: Time
+}
+
+# Export Types
+
+type ExportData {
+    portfolioId: ID!
+    format: ExportFormat!
+    data: String!
+    downloadUrl: String!
+    generatedAt: Time!
+    expiresAt: Time!
+}
+
+# Input Types
+
+input PerformanceTimeRangeInput {
+    start: Time!
+    end: Time!
+}
+
+input ChartDataInput {
+    portfolioId: ID
+    assetId: ID
+    timeRange: PerformanceTimeRangeInput!
+    aggregation: TimeAggregation!
+    includeVolume: Boolean = false
+}
+
+input CreateAlertInput {
+    assetId: ID
+    portfolioId: ID
+    alertType: AlertType!
+    conditionType: ConditionType!
+    thresholdValue: Float
+    thresholdPercentage: Float
+    notificationMethods: [AlertNotificationMethod!]!
+}
+
+input UpdateAlertInput {
+    alertType: AlertType
+    conditionType: ConditionType
+    thresholdValue: Float
+    thresholdPercentage: Float
+    isActive: Boolean
+    notificationMethods: [AlertNotificationMethod!]
+}
+
+input AlertFilter {
+    alertType: AlertType
+    assetId: ID
+    portfolioId: ID
+    isActive: Boolean
+    triggeredAfter: Time
+}
+
+input GenerateReportInput {
+    portfolioId: ID!
+    reportType: ReportType!
+    timeRange: PerformanceTimeRangeInput!
+    includeComparisons: Boolean = false
+    benchmarkAssetIds: [ID!]
+}
+
+input ExportDataInput {
+    portfolioId: ID!
+    format: ExportFormat!
+    includeTransactions: Boolean = true
+    includePerformance: Boolean = true
+    includeAllocations: Boolean = true
+    timeRange: PerformanceTimeRangeInput
+}
+
+# Query Extensions
+
+extend type Query {
+    # Performance Calculations
+    portfolioPerformance(portfolioId: ID!, asOfDate: Time): PerformanceMetrics! @auth
+    portfolioAllocation(portfolioId: ID!, asOfDate: Time): AllocationBreakdown! @auth
+    portfolioRiskMetrics(portfolioId: ID!, timeRange: PerformanceTimeRangeInput!): RiskMetrics! @auth
+    
+    # Performance Snapshots
+    performanceSnapshots(portfolioId: ID!, timeRange: PerformanceTimeRangeInput!): [PerformanceSnapshot!]! @auth
+    latestPerformanceSnapshot(portfolioId: ID!): PerformanceSnapshot @auth
+    
+    # Chart Data
+    portfolioChartData(input: ChartDataInput!): TimeSeriesData! @auth
+    assetChartData(input: ChartDataInput!): TimeSeriesData! @auth
+    allocationChartData(portfolioId: ID!, timeRange: PerformanceTimeRangeInput): [ChartDataPoint!]! @auth
+    
+    # Comparative Analysis
+    comparePortfolios(portfolioIds: [ID!]!, timeRange: PerformanceTimeRangeInput!): [PerformanceMetrics!]! @auth
+    benchmarkComparison(portfolioId: ID!, benchmarkAssetId: ID!, timeRange: PerformanceTimeRangeInput!): BenchmarkComparison! @auth
+    topPerformingAssets(portfolioId: ID!, limit: Int = 10, timeRange: PerformanceTimeRangeInput!): [PositionPerformance!]! @auth
+    worstPerformingAssets(portfolioId: ID!, limit: Int = 10, timeRange: PerformanceTimeRangeInput!): [PositionPerformance!]! @auth
+    
+    # Reports
+    generatePerformanceReport(input: GenerateReportInput!): PerformanceReport! @auth
+    
+    # Alerts
+    alerts(filter: AlertFilter, pagination: PaginationInput): [Alert!]! @auth
+    alert(id: ID!): Alert @auth
+    alertHistory(userId: ID!, filter: AlertFilter, pagination: PaginationInput): [AlertTriggerEvent!]! @auth
+    
+    # Export
+    exportPortfolioData(input: ExportDataInput!): ExportData! @auth
+}
+
+# Mutation Extensions
+
+extend type Mutation {
+    # Performance Snapshots
+    createPerformanceSnapshot(portfolioId: ID!, asOfDate: Time!): PerformanceSnapshot! @auth
+    updatePerformanceSnapshots(portfolioIds: [ID!]!, asOfDate: Time!): Boolean! @auth
+    
+    # Alerts
+    createAlert(input: CreateAlertInput!): Alert! @auth
+    updateAlert(id: ID!, input: UpdateAlertInput!): Alert! @auth
+    deleteAlert(id: ID!): Boolean! @auth
+    acknowledgeAlert(id: ID!): Boolean! @auth
+    
+    # Batch Operations
+    createBatchAlerts(alerts: [CreateAlertInput!]!): [Alert!]! @auth
+    deactivateBatchAlerts(alertIds: [ID!]!): Boolean! @auth
+}
+
+# Subscription Extensions
+
+extend type Subscription {
+    # Real-time Performance Updates
+    portfolioPerformanceUpdates(portfolioId: ID!): PerformanceMetrics! @auth
+    alertTriggered(userId: ID!): AlertTriggerEvent! @auth
+    priceUpdates(assetIds: [ID!]!): ChartDataPoint! @auth
+}

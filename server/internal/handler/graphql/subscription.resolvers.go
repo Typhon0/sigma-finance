@@ -1,7 +1,3 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
@@ -10,55 +6,18 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 )
 
 // PortfolioUpdates is the resolver for the portfolioUpdates field.
 func (r *subscriptionResolver) PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error) {
-	updates := make(chan *gqlModel.PortfolioUpdatePayload, 1)
-	r.Resolver.BroadcasterMu.Lock()
-	r.Resolver.PortfolioSubscribers[userID] = append(r.Resolver.PortfolioSubscribers[userID], updates)
-	r.Resolver.BroadcasterMu.Unlock()
-
-	go func() {
-		<-ctx.Done()
-		// Remove channel from subscribers on disconnect
-		r.Resolver.BroadcasterMu.Lock()
-		subs := r.Resolver.PortfolioSubscribers[userID]
-		for i, ch := range subs {
-			if ch == updates {
-				r.Resolver.PortfolioSubscribers[userID] = append(subs[:i], subs[i+1:]...)
-				break
-			}
-		}
-		r.Resolver.BroadcasterMu.Unlock()
-		close(updates)
-	}()
-	return updates, nil
+	panic(fmt.Errorf("not implemented: PortfolioUpdates - portfolioUpdates"))
 }
 
 // TransactionUpdates is the resolver for the transactionUpdates field.
 func (r *subscriptionResolver) TransactionUpdates(ctx context.Context, userID string) (<-chan *gqlModel.TransactionUpdatePayload, error) {
-	updates := make(chan *gqlModel.TransactionUpdatePayload, 1)
-	r.Resolver.BroadcasterMu.Lock()
-	r.Resolver.TransactionSubscribers[userID] = append(r.Resolver.TransactionSubscribers[userID], updates)
-	r.Resolver.BroadcasterMu.Unlock()
-
-	go func() {
-		<-ctx.Done()
-		// Remove channel from subscribers on disconnect
-		r.Resolver.BroadcasterMu.Lock()
-		subs := r.Resolver.TransactionSubscribers[userID]
-		for i, ch := range subs {
-			if ch == updates {
-				r.Resolver.TransactionSubscribers[userID] = append(subs[:i], subs[i+1:]...)
-				break
-			}
-		}
-		r.Resolver.BroadcasterMu.Unlock()
-		close(updates)
-	}()
-	return updates, nil
+	panic(fmt.Errorf("not implemented: TransactionUpdates - transactionUpdates"))
 }
 
 // Subscription returns SubscriptionResolver implementation.

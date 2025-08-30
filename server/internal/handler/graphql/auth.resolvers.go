@@ -1,7 +1,3 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
@@ -12,182 +8,46 @@ import (
 	"context"
 	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
-	"sigma_finance/internal/service"
 )
 
 // Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input gqlModel.RegisterInput) (*gqlModel.AuthResponse, error) {
-	// Convert GraphQL input to service request
-	req := service.RegisterRequest{
-		Email:    input.Email,
-		Password: input.Password,
-		Name:     input.Name,
-	}
-
-	// Call authentication service
-	authResponse, err := r.AuthenticationService.Register(ctx, req)
-	if err != nil {
-		return convertAuthErrorToGraphQL(err), nil
-	}
-
-	// Convert service response to GraphQL response
-	return &gqlModel.AuthResponse{
-		Success: true,
-		Data: &gqlModel.AuthData{
-			Token:        authResponse.Token,
-			RefreshToken: authResponse.RefreshToken,
-			ExpiresAt:    authResponse.ExpiresAt,
-			User: &gqlModel.AuthUser{
-				ID:            authResponse.User.ID,
-				Email:         authResponse.User.Email,
-				Name:          authResponse.User.Name,
-				EmailVerified: authResponse.User.EmailVerified,
-			},
-		},
-	}, nil
+	panic(fmt.Errorf("not implemented: Register - register"))
 }
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input gqlModel.LoginInput) (*gqlModel.AuthResponse, error) {
-	// Extract IP address and user agent from context if available
-	// In a real implementation, these would be extracted from HTTP headers
-	ipAddress := extractIPFromContext(ctx)
-	userAgent := extractUserAgentFromContext(ctx)
-
-	// Convert GraphQL input to service request
-	req := service.LoginRequest{
-		Email:     input.Email,
-		Password:  input.Password,
-		IPAddress: ipAddress,
-		UserAgent: userAgent,
-	}
-
-	// Call authentication service
-	authResponse, err := r.AuthenticationService.Login(ctx, req)
-	if err != nil {
-		return convertAuthErrorToGraphQL(err), nil
-	}
-
-	// Convert service response to GraphQL response
-	return &gqlModel.AuthResponse{
-		Success: true,
-		Data: &gqlModel.AuthData{
-			Token:        authResponse.Token,
-			RefreshToken: authResponse.RefreshToken,
-			ExpiresAt:    authResponse.ExpiresAt,
-			User: &gqlModel.AuthUser{
-				ID:            authResponse.User.ID,
-				Email:         authResponse.User.Email,
-				Name:          authResponse.User.Name,
-				EmailVerified: authResponse.User.EmailVerified,
-			},
-		},
-	}, nil
+	panic(fmt.Errorf("not implemented: Login - login"))
 }
 
 // Logout is the resolver for the logout field.
 func (r *mutationResolver) Logout(ctx context.Context, input gqlModel.LogoutInput) (*gqlModel.LogoutResponse, error) {
-	// Extract user ID from token
-	userID := r.extractUserIDFromToken(input.Token)
-	if userID == "" {
-		return &gqlModel.LogoutResponse{
-			Success: false,
-			Errors: []*gqlModel.AuthError{
-				{
-					Code:    "INVALID_TOKEN",
-					Message: "Invalid token",
-					Field:   stringPtr("token"),
-				},
-			},
-		}, nil
-	}
-
-	// Call authentication service
-	err := r.AuthenticationService.Logout(ctx, userID, input.Token)
-	if err != nil {
-		return convertLogoutErrorToGraphQL(err), nil
-	}
-
-	return &gqlModel.LogoutResponse{
-		Success: true,
-	}, nil
+	panic(fmt.Errorf("not implemented: Logout - logout"))
 }
 
 // ResetPassword is the resolver for the resetPassword field.
 func (r *mutationResolver) ResetPassword(ctx context.Context, input gqlModel.PasswordResetInput) (*gqlModel.PasswordResetResponse, error) {
-	// Call authentication service
-	err := r.AuthenticationService.ResetPassword(ctx, input.Email)
-	if err != nil {
-		return convertPasswordResetErrorToGraphQL(err), nil
-	}
-
-	return &gqlModel.PasswordResetResponse{
-		Success: true,
-	}, nil
+	panic(fmt.Errorf("not implemented: ResetPassword - resetPassword"))
 }
 
 // ConfirmPasswordReset is the resolver for the confirmPasswordReset field.
 func (r *mutationResolver) ConfirmPasswordReset(ctx context.Context, input gqlModel.PasswordResetConfirmInput) (*gqlModel.PasswordResetResponse, error) {
-	// Call authentication service
-	err := r.AuthenticationService.ConfirmPasswordReset(ctx, input.Token, input.NewPassword)
-	if err != nil {
-		return convertPasswordResetErrorToGraphQL(err), nil
-	}
-
-	return &gqlModel.PasswordResetResponse{
-		Success: true,
-	}, nil
+	panic(fmt.Errorf("not implemented: ConfirmPasswordReset - confirmPasswordReset"))
 }
 
 // VerifyEmail is the resolver for the verifyEmail field.
 func (r *mutationResolver) VerifyEmail(ctx context.Context, input gqlModel.EmailVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
-	// Call authentication service
-	err := r.AuthenticationService.VerifyEmail(ctx, input.Token)
-	if err != nil {
-		return convertEmailVerificationErrorToGraphQL(err), nil
-	}
-
-	return &gqlModel.EmailVerificationResponse{
-		Success: true,
-	}, nil
+	panic(fmt.Errorf("not implemented: VerifyEmail - verifyEmail"))
 }
 
 // ResendVerification is the resolver for the resendVerification field.
 func (r *mutationResolver) ResendVerification(ctx context.Context, input gqlModel.ResendVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
-	// Call authentication service
-	err := r.AuthenticationService.ResendVerification(ctx, input.Email)
-	if err != nil {
-		return convertEmailVerificationErrorToGraphQL(err), nil
-	}
-
-	return &gqlModel.EmailVerificationResponse{
-		Success: true,
-	}, nil
+	panic(fmt.Errorf("not implemented: ResendVerification - resendVerification"))
 }
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.RefreshTokenInput) (*gqlModel.AuthResponse, error) {
-	// Call authentication service
-	authResponse, err := r.AuthenticationService.RefreshToken(ctx, input.RefreshToken)
-	if err != nil {
-		return convertAuthErrorToGraphQL(err), nil
-	}
-
-	// Convert service response to GraphQL response
-	return &gqlModel.AuthResponse{
-		Success: true,
-		Data: &gqlModel.AuthData{
-			Token:        authResponse.Token,
-			RefreshToken: authResponse.RefreshToken,
-			ExpiresAt:    authResponse.ExpiresAt,
-			User: &gqlModel.AuthUser{
-				ID:            authResponse.User.ID,
-				Email:         authResponse.User.Email,
-				Name:          authResponse.User.Name,
-				EmailVerified: authResponse.User.EmailVerified,
-			},
-		},
-	}, nil
+	panic(fmt.Errorf("not implemented: RefreshToken - refreshToken"))
 }
 
 // Me is the resolver for the me field.

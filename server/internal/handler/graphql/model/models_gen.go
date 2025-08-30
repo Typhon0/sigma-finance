@@ -22,6 +22,57 @@ type Asset interface {
 	GetPositions() []*Position
 }
 
+type Alert struct {
+	ID                  string                    `json:"id"`
+	UserID              string                    `json:"userId"`
+	AssetID             *string                   `json:"assetId,omitempty"`
+	PortfolioID         *string                   `json:"portfolioId,omitempty"`
+	AlertType           AlertType                 `json:"alertType"`
+	ConditionType       ConditionType             `json:"conditionType"`
+	ThresholdValue      *float64                  `json:"thresholdValue,omitempty"`
+	ThresholdPercentage *float64                  `json:"thresholdPercentage,omitempty"`
+	IsActive            bool                      `json:"isActive"`
+	LastTriggered       *time.Time                `json:"lastTriggered,omitempty"`
+	CreatedAt           time.Time                 `json:"createdAt"`
+	UpdatedAt           time.Time                 `json:"updatedAt"`
+	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
+}
+
+type AlertFilter struct {
+	AlertType      *AlertType `json:"alertType,omitempty"`
+	AssetID        *string    `json:"assetId,omitempty"`
+	PortfolioID    *string    `json:"portfolioId,omitempty"`
+	IsActive       *bool      `json:"isActive,omitempty"`
+	TriggeredAfter *time.Time `json:"triggeredAfter,omitempty"`
+}
+
+type AlertTriggerEvent struct {
+	ID             string     `json:"id"`
+	AlertID        string     `json:"alertId"`
+	TriggeredAt    time.Time  `json:"triggeredAt"`
+	CurrentValue   float64    `json:"currentValue"`
+	ThresholdValue float64    `json:"thresholdValue"`
+	Message        string     `json:"message"`
+	Acknowledged   bool       `json:"acknowledged"`
+	AcknowledgedAt *time.Time `json:"acknowledgedAt,omitempty"`
+}
+
+type AllocationBreakdown struct {
+	PortfolioID              string                     `json:"portfolioId"`
+	TotalValue               float64                    `json:"totalValue"`
+	Allocations              []*AssetAllocation         `json:"allocations"`
+	RebalanceRecommendations []*RebalanceRecommendation `json:"rebalanceRecommendations"`
+	RiskAnalysis             *AllocationRiskAnalysis    `json:"riskAnalysis"`
+	DiversificationScore     float64                    `json:"diversificationScore"`
+}
+
+type AllocationRiskAnalysis struct {
+	ConcentrationRisk float64          `json:"concentrationRisk"`
+	CorrelationRisk   float64          `json:"correlationRisk"`
+	LiquidityRisk     float64          `json:"liquidityRisk"`
+	RiskByAssetType   []*AssetTypeRisk `json:"riskByAssetType"`
+}
+
 type AssetAllocation struct {
 	AssetType  string  `json:"assetType"`
 	Value      float64 `json:"value"`
@@ -44,6 +95,11 @@ type AssetOrder struct {
 type AssetType struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+type AssetTypeRisk struct {
+	AssetType string  `json:"assetType"`
+	RiskLevel float64 `json:"riskLevel"`
 }
 
 type AuthData struct {
@@ -72,6 +128,31 @@ type AuthUser struct {
 	EmailVerified bool   `json:"emailVerified"`
 }
 
+type BenchmarkComparison struct {
+	PortfolioID           string       `json:"portfolioId"`
+	BenchmarkAssetID      string       `json:"benchmarkAssetId"`
+	PortfolioReturn       float64      `json:"portfolioReturn"`
+	BenchmarkReturn       float64      `json:"benchmarkReturn"`
+	Alpha                 float64      `json:"alpha"`
+	Beta                  float64      `json:"beta"`
+	Correlation           float64      `json:"correlation"`
+	TrackingError         float64      `json:"trackingError"`
+	InformationRatio      float64      `json:"informationRatio"`
+	OutperformancePeriods []*TimeRange `json:"outperformancePeriods"`
+	RiskAdjustedAlpha     float64      `json:"riskAdjustedAlpha"`
+}
+
+type BenchmarkResult struct {
+	Name  string  `json:"name"`
+	Value float64 `json:"value"`
+}
+
+type CalculationMethod struct {
+	Method      string             `json:"method"`
+	Parameters  []*MethodParameter `json:"parameters"`
+	Assumptions []string           `json:"assumptions"`
+}
+
 type Candle struct {
 	Symbol    string    `json:"symbol"`
 	AssetType string    `json:"assetType"`
@@ -83,6 +164,37 @@ type Candle struct {
 	Volume    *float64  `json:"volume,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 	Source    string    `json:"source"`
+}
+
+type ChartDataInput struct {
+	PortfolioID   *string                    `json:"portfolioId,omitempty"`
+	AssetID       *string                    `json:"assetId,omitempty"`
+	TimeRange     *PerformanceTimeRangeInput `json:"timeRange"`
+	Aggregation   TimeAggregation            `json:"aggregation"`
+	IncludeVolume *bool                      `json:"includeVolume,omitempty"`
+}
+
+type ChartDataPoint struct {
+	Timestamp time.Time      `json:"timestamp"`
+	Value     float64        `json:"value"`
+	Volume    *float64       `json:"volume,omitempty"`
+	Metadata  *ChartMetadata `json:"metadata,omitempty"`
+}
+
+type ChartMetadata struct {
+	Label          *string         `json:"label,omitempty"`
+	Color          *string         `json:"color,omitempty"`
+	AdditionalData []*KeyValuePair `json:"additionalData,omitempty"`
+}
+
+type CreateAlertInput struct {
+	AssetID             *string                   `json:"assetId,omitempty"`
+	PortfolioID         *string                   `json:"portfolioId,omitempty"`
+	AlertType           AlertType                 `json:"alertType"`
+	ConditionType       ConditionType             `json:"conditionType"`
+	ThresholdValue      *float64                  `json:"thresholdValue,omitempty"`
+	ThresholdPercentage *float64                  `json:"thresholdPercentage,omitempty"`
+	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
 }
 
 type CreateCryptoInput struct {
@@ -167,6 +279,14 @@ func (this Crypto) GetPositions() []*Position {
 	return interfaceSlice
 }
 
+type DataQuality struct {
+	Score               float64   `json:"score"`
+	MissingDataPoints   int32     `json:"missingDataPoints"`
+	StaleDataPoints     int32     `json:"staleDataPoints"`
+	EstimatedDataPoints int32     `json:"estimatedDataPoints"`
+	LastUpdated         time.Time `json:"lastUpdated"`
+}
+
 type DuplicatePortfolioInput struct {
 	SourcePortfolioID string  `json:"sourcePortfolioID"`
 	NewName           string  `json:"newName"`
@@ -183,6 +303,24 @@ type EmailVerificationResponse struct {
 	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
+type ExportData struct {
+	PortfolioID string       `json:"portfolioId"`
+	Format      ExportFormat `json:"format"`
+	Data        string       `json:"data"`
+	DownloadURL string       `json:"downloadUrl"`
+	GeneratedAt time.Time    `json:"generatedAt"`
+	ExpiresAt   time.Time    `json:"expiresAt"`
+}
+
+type ExportDataInput struct {
+	PortfolioID         string                     `json:"portfolioId"`
+	Format              ExportFormat               `json:"format"`
+	IncludeTransactions *bool                      `json:"includeTransactions,omitempty"`
+	IncludePerformance  *bool                      `json:"includePerformance,omitempty"`
+	IncludeAllocations  *bool                      `json:"includeAllocations,omitempty"`
+	TimeRange           *PerformanceTimeRangeInput `json:"timeRange,omitempty"`
+}
+
 type ExportPortfolioInput struct {
 	PortfolioID         string       `json:"portfolioID"`
 	Format              ExportFormat `json:"format"`
@@ -194,6 +332,19 @@ type ExportResult struct {
 	Success     bool    `json:"success"`
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	Error       *string `json:"error,omitempty"`
+}
+
+type GenerateReportInput struct {
+	PortfolioID        string                     `json:"portfolioId"`
+	ReportType         ReportType                 `json:"reportType"`
+	TimeRange          *PerformanceTimeRangeInput `json:"timeRange"`
+	IncludeComparisons *bool                      `json:"includeComparisons,omitempty"`
+	BenchmarkAssetIds  []string                   `json:"benchmarkAssetIds,omitempty"`
+}
+
+type KeyValuePair struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type LoginInput struct {
@@ -215,6 +366,11 @@ type MarketDataCredential struct {
 	Provider  string    `json:"provider"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type MethodParameter struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 type Mutation struct {
@@ -245,9 +401,59 @@ type PasswordResetResponse struct {
 	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
+type PerformanceMetrics struct {
+	PortfolioID           string             `json:"portfolioId"`
+	TotalValue            float64            `json:"totalValue"`
+	TotalCostBasis        float64            `json:"totalCostBasis"`
+	UnrealizedGainLoss    float64            `json:"unrealizedGainLoss"`
+	RealizedGainLoss      float64            `json:"realizedGainLoss"`
+	TotalReturnPercentage float64            `json:"totalReturnPercentage"`
+	TimeWeightedReturn    float64            `json:"timeWeightedReturn"`
+	IsValid               bool               `json:"isValid"`
+	ValidationErrors      []string           `json:"validationErrors"`
+	DataQuality           *DataQuality       `json:"dataQuality"`
+	CalculationMethod     *CalculationMethod `json:"calculationMethod"`
+	Benchmarks            []*BenchmarkResult `json:"benchmarks"`
+}
+
 type PerformancePoint struct {
 	Date  time.Time `json:"date"`
 	Value float64   `json:"value"`
+}
+
+type PerformanceReport struct {
+	ID              string                 `json:"id"`
+	PortfolioID     string                 `json:"portfolioId"`
+	ReportType      ReportType             `json:"reportType"`
+	TimeRange       *TimeRange             `json:"timeRange"`
+	GeneratedAt     time.Time              `json:"generatedAt"`
+	Metrics         *PerformanceMetrics    `json:"metrics"`
+	Allocation      *AllocationBreakdown   `json:"allocation"`
+	RiskMetrics     *RiskMetrics           `json:"riskMetrics"`
+	TopPerformers   []*PositionPerformance `json:"topPerformers"`
+	WorstPerformers []*PositionPerformance `json:"worstPerformers"`
+	Benchmarks      []*BenchmarkComparison `json:"benchmarks"`
+	Recommendations []string               `json:"recommendations"`
+	DataQuality     *DataQuality           `json:"dataQuality"`
+	DownloadURL     *string                `json:"downloadUrl,omitempty"`
+}
+
+type PerformanceSnapshot struct {
+	ID                 string       `json:"id"`
+	PortfolioID        string       `json:"portfolioId"`
+	TotalValue         float64      `json:"totalValue"`
+	TotalCostBasis     float64      `json:"totalCostBasis"`
+	UnrealizedGainLoss float64      `json:"unrealizedGainLoss"`
+	RealizedGainLoss   float64      `json:"realizedGainLoss"`
+	ReturnPercentage   float64      `json:"returnPercentage"`
+	SnapshotDate       time.Time    `json:"snapshotDate"`
+	CreatedAt          time.Time    `json:"createdAt"`
+	DataQuality        *DataQuality `json:"dataQuality"`
+}
+
+type PerformanceTimeRangeInput struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
 }
 
 type Portfolio struct {
@@ -319,6 +525,15 @@ type Position struct {
 	OwnershipPct         *float64   `json:"ownershipPct,omitempty"`
 }
 
+type PositionPerformance struct {
+	PositionID       string  `json:"positionId"`
+	AssetName        string  `json:"assetName"`
+	AssetSymbol      *string `json:"assetSymbol,omitempty"`
+	ReturnPercentage float64 `json:"returnPercentage"`
+	GainLoss         float64 `json:"gainLoss"`
+	Contribution     float64 `json:"contribution"`
+}
+
 type ProviderHealth struct {
 	Provider    string    `json:"provider"`
 	Healthy     bool      `json:"healthy"`
@@ -342,6 +557,15 @@ type RateLimit struct {
 	RequestsPerMinute int32 `json:"requestsPerMinute"`
 	RequestsPerDay    int32 `json:"requestsPerDay"`
 	BurstLimit        int32 `json:"burstLimit"`
+}
+
+type RebalanceRecommendation struct {
+	AssetType         string  `json:"assetType"`
+	CurrentWeight     float64 `json:"currentWeight"`
+	TargetWeight      float64 `json:"targetWeight"`
+	RecommendedAction string  `json:"recommendedAction"`
+	Amount            float64 `json:"amount"`
+	Reason            string  `json:"reason"`
 }
 
 type RefreshTokenInput struct {
@@ -422,6 +646,19 @@ type Tag struct {
 	Name string `json:"name"`
 }
 
+type TimeRange struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
+}
+
+type TimeSeriesData struct {
+	PortfolioID *string           `json:"portfolioId,omitempty"`
+	AssetID     *string           `json:"assetId,omitempty"`
+	DataPoints  []*ChartDataPoint `json:"dataPoints"`
+	TimeRange   *TimeRange        `json:"timeRange"`
+	Aggregation TimeAggregation   `json:"aggregation"`
+}
+
 type Transaction struct {
 	ID              string          `json:"id"`
 	Portfolio       *Portfolio      `json:"portfolio"`
@@ -450,6 +687,15 @@ type TransactionOrder struct {
 type TransactionUpdatePayload struct {
 	Type        string       `json:"type"`
 	Transaction *Transaction `json:"transaction"`
+}
+
+type UpdateAlertInput struct {
+	AlertType           *AlertType                `json:"alertType,omitempty"`
+	ConditionType       *ConditionType            `json:"conditionType,omitempty"`
+	ThresholdValue      *float64                  `json:"thresholdValue,omitempty"`
+	ThresholdPercentage *float64                  `json:"thresholdPercentage,omitempty"`
+	IsActive            *bool                     `json:"isActive,omitempty"`
+	NotificationMethods []AlertNotificationMethod `json:"notificationMethods,omitempty"`
 }
 
 type UpdatePortfolioInput struct {
@@ -503,6 +749,98 @@ type WatchlistFilter struct {
 	UserID string `json:"userID"`
 }
 
+type AlertNotificationMethod string
+
+const (
+	AlertNotificationMethodEmail AlertNotificationMethod = "EMAIL"
+	AlertNotificationMethodPush  AlertNotificationMethod = "PUSH"
+	AlertNotificationMethodSms   AlertNotificationMethod = "SMS"
+	AlertNotificationMethodInApp AlertNotificationMethod = "IN_APP"
+)
+
+var AllAlertNotificationMethod = []AlertNotificationMethod{
+	AlertNotificationMethodEmail,
+	AlertNotificationMethodPush,
+	AlertNotificationMethodSms,
+	AlertNotificationMethodInApp,
+}
+
+func (e AlertNotificationMethod) IsValid() bool {
+	switch e {
+	case AlertNotificationMethodEmail, AlertNotificationMethodPush, AlertNotificationMethodSms, AlertNotificationMethodInApp:
+		return true
+	}
+	return false
+}
+
+func (e AlertNotificationMethod) String() string {
+	return string(e)
+}
+
+func (e *AlertNotificationMethod) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlertNotificationMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlertNotificationMethod", str)
+	}
+	return nil
+}
+
+func (e AlertNotificationMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type AlertType string
+
+const (
+	AlertTypePrice            AlertType = "PRICE"
+	AlertTypePercentageChange AlertType = "PERCENTAGE_CHANGE"
+	AlertTypePortfolioValue   AlertType = "PORTFOLIO_VALUE"
+	AlertTypeAllocation       AlertType = "ALLOCATION"
+	AlertTypePerformance      AlertType = "PERFORMANCE"
+)
+
+var AllAlertType = []AlertType{
+	AlertTypePrice,
+	AlertTypePercentageChange,
+	AlertTypePortfolioValue,
+	AlertTypeAllocation,
+	AlertTypePerformance,
+}
+
+func (e AlertType) IsValid() bool {
+	switch e {
+	case AlertTypePrice, AlertTypePercentageChange, AlertTypePortfolioValue, AlertTypeAllocation, AlertTypePerformance:
+		return true
+	}
+	return false
+}
+
+func (e AlertType) String() string {
+	return string(e)
+}
+
+func (e *AlertType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlertType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlertType", str)
+	}
+	return nil
+}
+
+func (e AlertType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type AssetOrderField string
 
 const (
@@ -543,6 +881,53 @@ func (e *AssetOrderField) UnmarshalGQL(v interface{}) error {
 }
 
 func (e AssetOrderField) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type ConditionType string
+
+const (
+	ConditionTypeAbove      ConditionType = "ABOVE"
+	ConditionTypeBelow      ConditionType = "BELOW"
+	ConditionTypeIncreaseBy ConditionType = "INCREASE_BY"
+	ConditionTypeDecreaseBy ConditionType = "DECREASE_BY"
+	ConditionTypeEquals     ConditionType = "EQUALS"
+)
+
+var AllConditionType = []ConditionType{
+	ConditionTypeAbove,
+	ConditionTypeBelow,
+	ConditionTypeIncreaseBy,
+	ConditionTypeDecreaseBy,
+	ConditionTypeEquals,
+}
+
+func (e ConditionType) IsValid() bool {
+	switch e {
+	case ConditionTypeAbove, ConditionTypeBelow, ConditionTypeIncreaseBy, ConditionTypeDecreaseBy, ConditionTypeEquals:
+		return true
+	}
+	return false
+}
+
+func (e ConditionType) String() string {
+	return string(e)
+}
+
+func (e *ConditionType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ConditionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ConditionType", str)
+	}
+	return nil
+}
+
+func (e ConditionType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
@@ -634,6 +1019,55 @@ func (e PortfolioOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 
+type ReportType string
+
+const (
+	ReportTypeDaily     ReportType = "DAILY"
+	ReportTypeWeekly    ReportType = "WEEKLY"
+	ReportTypeMonthly   ReportType = "MONTHLY"
+	ReportTypeQuarterly ReportType = "QUARTERLY"
+	ReportTypeAnnual    ReportType = "ANNUAL"
+	ReportTypeCustom    ReportType = "CUSTOM"
+)
+
+var AllReportType = []ReportType{
+	ReportTypeDaily,
+	ReportTypeWeekly,
+	ReportTypeMonthly,
+	ReportTypeQuarterly,
+	ReportTypeAnnual,
+	ReportTypeCustom,
+}
+
+func (e ReportType) IsValid() bool {
+	switch e {
+	case ReportTypeDaily, ReportTypeWeekly, ReportTypeMonthly, ReportTypeQuarterly, ReportTypeAnnual, ReportTypeCustom:
+		return true
+	}
+	return false
+}
+
+func (e ReportType) String() string {
+	return string(e)
+}
+
+func (e *ReportType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ReportType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ReportType", str)
+	}
+	return nil
+}
+
+func (e ReportType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
 type SortDirection string
 
 const (
@@ -672,6 +1106,57 @@ func (e *SortDirection) UnmarshalGQL(v interface{}) error {
 }
 
 func (e SortDirection) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TimeAggregation string
+
+const (
+	TimeAggregationMinute  TimeAggregation = "MINUTE"
+	TimeAggregationHour    TimeAggregation = "HOUR"
+	TimeAggregationDay     TimeAggregation = "DAY"
+	TimeAggregationWeek    TimeAggregation = "WEEK"
+	TimeAggregationMonth   TimeAggregation = "MONTH"
+	TimeAggregationQuarter TimeAggregation = "QUARTER"
+	TimeAggregationYear    TimeAggregation = "YEAR"
+)
+
+var AllTimeAggregation = []TimeAggregation{
+	TimeAggregationMinute,
+	TimeAggregationHour,
+	TimeAggregationDay,
+	TimeAggregationWeek,
+	TimeAggregationMonth,
+	TimeAggregationQuarter,
+	TimeAggregationYear,
+}
+
+func (e TimeAggregation) IsValid() bool {
+	switch e {
+	case TimeAggregationMinute, TimeAggregationHour, TimeAggregationDay, TimeAggregationWeek, TimeAggregationMonth, TimeAggregationQuarter, TimeAggregationYear:
+		return true
+	}
+	return false
+}
+
+func (e TimeAggregation) String() string {
+	return string(e)
+}
+
+func (e *TimeAggregation) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TimeAggregation(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TimeAggregation", str)
+	}
+	return nil
+}
+
+func (e TimeAggregation) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
 

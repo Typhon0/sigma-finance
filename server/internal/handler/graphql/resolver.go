@@ -1,9 +1,6 @@
 // Package graphql contains the GraphQL API layer.
 // This file defines the main Resolver struct which holds the dependencies
 // needed by all resolver implementations.
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
 
 package graphql
 
@@ -27,6 +24,8 @@ type Resolver struct {
 	AuthenticationService service.AuthenticationService
 	SecurityService       service.SecurityService
 	MarketDataService     service.MarketDataService
+	PerformanceService    service.IPerformanceService
+	AlertService          service.IAlertService
 	UOW                   repository.IUnitOfWork
 
 	// Subscription broadcaster state

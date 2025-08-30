@@ -60,7 +60,7 @@ export function PortfolioSummaryCards({
 
 	const handlePortfolioClick = (portfolio: Portfolio) => {
 		if (onPortfolioSelect) {
-			// Use inline viewing if callback is provided
+			// Use inline viewing if callback is provided (dashboard-centric approach)
 			onPortfolioSelect(portfolio);
 		} else {
 			// Fallback to navigation for backward compatibility
@@ -161,16 +161,7 @@ export function PortfolioSummaryCards({
 									onClick={(e) => e.stopPropagation()}
 								>
 									<DropdownMenuItem
-										onSelect={() => {
-											if (onPortfolioSelect) {
-												onPortfolioSelect(portfolio);
-											} else {
-												navigate({
-													to: "/portfolios/$portfolioId",
-													params: { portfolioId: portfolio.id },
-												});
-											}
-										}}
+										onSelect={() => handlePortfolioClick(portfolio)}
 									>
 										<Eye className="mr-2 h-4 w-4" />
 										View
