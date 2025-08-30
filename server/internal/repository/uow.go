@@ -69,7 +69,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		user:                   NewUserRepository(db),
 		portfolio:              NewPortfolioRepository(db),
 		asset:                  NewAssetRepository(db),
-		transaction:            NewTransactionRepository(NewRepository[model.Transaction](db)),
+		transaction:            NewTransactionRepository(db),
 		watchlist:              NewWatchlistRepository(NewRepository[model.Watchlist](db), NewRepository[model.WatchlistAsset](db), NewRepository[model.Asset](db)),
 		watchlistAsset:         NewWatchlistAssetRepository(db),
 		tag:                    NewTagRepository(db),
@@ -96,20 +96,20 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 
 	// Create a new UoW with the transaction
 	txUow := &txUnitOfWork{
-		tx:                     tx,
-		user:                   NewUserRepository(&tx),
-		portfolio:              NewPortfolioRepository(&tx),
-		asset:                  NewAssetRepository(&tx),
-		transaction:            NewTransactionRepository(NewRepository[model.Transaction](&tx)),
-		watchlist:              NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
-		watchlistAsset:         NewWatchlistAssetRepository(&tx),
-		tag:                    NewTagRepository(&tx),
-		portfolioAsset:         NewPortfolioAssetRepository(&tx),
-		stock:                  NewStockRepository(&tx),
-		crypto:                 NewCryptoRepository(&tx),
-		assetType:              NewAssetTypeRepository(&tx),
-		portfolioTag:           NewPortfolioTagRepository(&tx),
-		assetTag:               NewAssetTagRepository(&tx),
+		tx:             tx,
+		user:           NewUserRepository(&tx),
+		portfolio:      NewPortfolioRepository(&tx),
+		asset:          NewAssetRepository(&tx),
+		transaction:    NewTransactionRepository(&tx),
+		watchlist:      NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
+		watchlistAsset: NewWatchlistAssetRepository(&tx),
+		tag:            NewTagRepository(&tx),
+		portfolioAsset: NewPortfolioAssetRepository(&tx),
+		stock:          NewStockRepository(&tx),
+		crypto:         NewCryptoRepository(&tx),
+		assetType:      NewAssetTypeRepository(&tx),
+		portfolioTag:   NewPortfolioTagRepository(&tx),
+		assetTag:       NewAssetTagRepository(&tx),
 		// market data credentials not tied to tx; reuse main connection via wrapper if needed (simplified: nil)
 		mdCred:                 nil,
 		session:                NewSessionRepository(&tx),
@@ -295,7 +295,7 @@ func (uow *txUnitOfWork) AssetTag() IAssetTagRepository {
 	return uow.assetTag
 }
 
-func (uow *UnitOfWork) MarketDataCredential() IMarketDataCredentialRepository { return uow.mdCred }
+func (uow *UnitOfWork) MarketDataCredential() IMarketDataCredentialRepository   { return uow.mdCred }
 func (uow *txUnitOfWork) MarketDataCredential() IMarketDataCredentialRepository { return uow.mdCred }
 
 func (uow *txUnitOfWork) Session() ISessionRepository {
