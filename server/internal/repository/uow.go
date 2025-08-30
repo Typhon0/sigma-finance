@@ -27,6 +27,7 @@ type IUnitOfWork interface {
 	AssetType() IAssetTypeRepository
 	PortfolioTag() IPortfolioTagRepository
 	AssetTag() IAssetTagRepository
+	MarketDataCredential() IMarketDataCredentialRepository
 	// Authentication repositories
 	Session() ISessionRepository
 	AuthEvent() AuthEventRepository
@@ -50,12 +51,16 @@ type UnitOfWork struct {
 	assetType      IAssetTypeRepository
 	portfolioTag   IPortfolioTagRepository
 	assetTag       IAssetTagRepository
+	mdCred         IMarketDataCredentialRepository
 	// Authentication repositories
 	session                ISessionRepository
 	authEvent              AuthEventRepository
 	passwordResetToken     IPasswordResetTokenRepository
 	emailVerificationToken IEmailVerificationTokenRepository
 }
+
+// Expose DB for internal wiring (not part of interface to preserve abstraction)
+func (uow *UnitOfWork) GetDB() *bun.DB { return uow.db }
 
 // NewUnitOfWork creates a new UnitOfWork
 func NewUnitOfWork(db *bun.DB) IUnitOfWork {
@@ -74,6 +79,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		assetType:              NewAssetTypeRepository(db),
 		portfolioTag:           NewPortfolioTagRepository(db),
 		assetTag:               NewAssetTagRepository(db),
+		mdCred:                 NewMarketDataCredentialRepository(db),
 		session:                NewSessionRepository(db),
 		authEvent:              NewAuthEventRepository(db),
 		passwordResetToken:     NewPasswordResetTokenRepository(db),
@@ -104,6 +110,8 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		assetType:              NewAssetTypeRepository(&tx),
 		portfolioTag:           NewPortfolioTagRepository(&tx),
 		assetTag:               NewAssetTagRepository(&tx),
+		// market data credentials not tied to tx; reuse main connection via wrapper if needed (simplified: nil)
+		mdCred:                 nil,
 		session:                NewSessionRepository(&tx),
 		authEvent:              NewAuthEventRepository(&tx),
 		passwordResetToken:     NewPasswordResetTokenRepository(&tx),
@@ -205,6 +213,8 @@ func (uow *UnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepositor
 	return uow.emailVerificationToken
 }
 
+// MarketDataCredential returns the market data credential repository
+
 // txUnitOfWork is the implementation of IUnitOfWork for transactions
 type txUnitOfWork struct {
 	tx                     bun.Tx
@@ -221,6 +231,7 @@ type txUnitOfWork struct {
 	assetType              IAssetTypeRepository
 	portfolioTag           IPortfolioTagRepository
 	assetTag               IAssetTagRepository
+	mdCred                 IMarketDataCredentialRepository
 	session                ISessionRepository
 	authEvent              AuthEventRepository
 	passwordResetToken     IPasswordResetTokenRepository
@@ -283,6 +294,9 @@ func (uow *txUnitOfWork) PortfolioTag() IPortfolioTagRepository {
 func (uow *txUnitOfWork) AssetTag() IAssetTagRepository {
 	return uow.assetTag
 }
+
+func (uow *UnitOfWork) MarketDataCredential() IMarketDataCredentialRepository { return uow.mdCred }
+func (uow *txUnitOfWork) MarketDataCredential() IMarketDataCredentialRepository { return uow.mdCred }
 
 func (uow *txUnitOfWork) Session() ISessionRepository {
 	return uow.session

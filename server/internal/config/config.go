@@ -16,6 +16,7 @@ type Config struct {
 	JWT      JWTConfig
 	Security SecurityConfig
 	Auth     AuthConfig
+	MarketData MarketDataConfig
 }
 
 // DatabaseConfig holds database configuration
@@ -67,6 +68,14 @@ type AuthConfig struct {
 	AllowRegistration        bool
 }
 
+// MarketDataConfig holds settings for market data hardening
+type MarketDataConfig struct {
+	// Base64 (raw or std) encoded 32-byte key for AES-256 encryption of user API keys
+	EncryptionKey string
+	// Per-user candle request limit per minute (across providers)
+	CandleRequestsPerMinute int
+}
+
 // LoadConfig loads configuration from environment variables
 func LoadConfig() *Config {
 	config := &Config{
@@ -108,6 +117,10 @@ func LoadConfig() *Config {
 			PasswordResetExpiry:      getEnvDurationOrDefault("PASSWORD_RESET_EXPIRY", 1*time.Hour),
 			RequireEmailVerification: getEnvBoolOrDefault("REQUIRE_EMAIL_VERIFICATION", true),
 			AllowRegistration:        getEnvBoolOrDefault("ALLOW_REGISTRATION", true),
+		},
+		MarketData: MarketDataConfig{
+			EncryptionKey:            getEnvOrDefault("MARKET_DATA_ENCRYPTION_KEY", ""),
+			CandleRequestsPerMinute:  getEnvIntOrDefault("CANDLE_REQUESTS_PER_MINUTE", 60),
 		},
 	}
 
@@ -185,6 +198,15 @@ func (c *Config) Validate() error {
 		if c.Email.SMTPPassword == "" {
 			return fmt.Errorf("SMTP password is required when SMTP host is configured")
 		}
+	}
+
+	// Validate MarketData config
+	if c.MarketData.CandleRequestsPerMinute <= 0 { return fmt.Errorf("CANDLE_REQUESTS_PER_MINUTE must be positive") }
+	if c.MarketData.EncryptionKey == "" {
+		// Generate ephemeral dev key (not persisted) – warn via stdout
+		gen := generateSecureSecret()
+		fmt.Println("WARN: MARKET_DATA_ENCRYPTION_KEY not set – using ephemeral key (dev only)")
+		c.MarketData.EncryptionKey = gen
 	}
 
 	return nil

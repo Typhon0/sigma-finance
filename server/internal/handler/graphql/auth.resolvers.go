@@ -6,6 +6,7 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
 )
@@ -185,14 +186,7 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.Refr
 	}, nil
 }
 
-// !!! WARNING !!!
-// The code below was going to be deleted when updating resolvers. It has been copied here so you have
-// one last chance to move it out of harms way if you want. There are two reasons this happens:
-//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
-//    it when you're done.
-//  - You have helper methods in this file. Move them out to keep these resolver files clean.
-/*
-	func stringPtr(s string) *string {
-	return &s
+// Me is the resolver for the me field.
+func (r *queryResolver) Me(ctx context.Context) (*gqlModel.AuthUser, error) {
+	panic(fmt.Errorf("not implemented: Me - me"))
 }
-*/

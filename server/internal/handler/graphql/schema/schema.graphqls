@@ -38,6 +38,8 @@ type Query {
     
     transaction(id: ID!): Transaction @auth
     transactions(filter: TransactionFilter, pagination: PaginationInput, orderBy: TransactionOrder): [Transaction!]! @auth
+
+
 }
 
 # The root of all write operations.
@@ -71,4 +73,7 @@ type Mutation {
     deleteWatchlist(id: ID!): ID! @auth
     addAssetToWatchlist(watchlistID: ID!, assetID: ID!): Watchlist! @auth
     removeAssetFromWatchlist(watchlistID: ID!, assetID: ID!): Watchlist! @auth
+
+
 }
+

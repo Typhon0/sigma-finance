@@ -88,6 +88,7 @@ func NewApp() (*AppContainer, error) {
 		WatchlistService:      serviceContainer.Watchlist,
 		AuthenticationService: serviceContainer.Authentication,
 		SecurityService:       serviceContainer.Security,
+		MarketDataService:     serviceContainer.MarketData,
 		UOW:                   uow,
 	}
 

@@ -24,6 +24,7 @@ type ServiceContainer struct {
 	Session        SessionService
 	Email          EmailService
 	Security       SecurityService
+	MarketData     MarketDataService
 }
 
 // NewServiceContainer creates a new service container with all services initialized
@@ -45,6 +46,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		JWTSecretKey: cfg.JWT.SecretKey,
 		JWTAlgorithm: cfg.JWT.Algorithm,
 		BCryptCost:   cfg.Security.BcryptCost,
+		SymmetricKey: cfg.MarketData.EncryptionKey,
 	}
 
 	// If using RSA algorithms, generate keys (for now, we'll use HMAC)
@@ -103,6 +105,13 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		Session:        sessionService,
 		Email:          emailService,
 		Security:       securityService,
+		MarketData: NewMarketDataService(
+			uow,
+			repository.NewCandleRepository(uow.(*repository.UnitOfWork).GetDB()),
+			uow.MarketDataCredential(),
+			securityService,
+			rateLimiter,
+		),
 	}
 }
 

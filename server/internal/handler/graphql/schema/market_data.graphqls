@@ -1,0 +1,65 @@
+# Market Data Schema
+
+extend type Query {
+    # Market Data
+    candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]! @auth
+    marketDataCredentials: [MarketDataCredential!]! @auth
+    supportedProviders(assetType: String!): [ProviderInfo!]! @auth
+    providerHealth: [ProviderHealth!]! @auth
+    realTimePrice(symbol: String!, assetType: String!): Candle @auth
+}
+
+extend type Mutation {
+    # Market Data
+    upsertMarketDataCredential(provider: String!, apiKey: String!): MarketDataCredential! @auth
+    deleteMarketDataCredential(provider: String!): ID! @auth
+    validateProviderCredentials(provider: String!, apiKey: String!): ValidationResult! @auth
+}
+
+# Market Data Types
+type Candle {
+    symbol: String!
+    assetType: String!
+    interval: String!
+    open: Float!
+    high: Float!
+    low: Float!
+    close: Float!
+    volume: Float
+    timestamp: Time!
+    source: String!
+}
+
+type MarketDataCredential {
+    id: ID!
+    provider: String!
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+type ProviderInfo {
+    id: String!
+    name: String!
+    type: String!
+    requiresKey: Boolean!
+    intervals: [String!]!
+    rateLimit: RateLimit!
+    supportsRealtime: Boolean!
+}
+
+type RateLimit {
+    requestsPerMinute: Int!
+    requestsPerDay: Int!
+    burstLimit: Int!
+}
+
+type ProviderHealth {
+    provider: String!
+    healthy: Boolean!
+    lastChecked: Time!
+}
+
+type ValidationResult {
+    valid: Boolean!
+    message: String
+}

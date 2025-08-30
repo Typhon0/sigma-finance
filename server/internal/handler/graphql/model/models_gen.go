@@ -72,6 +72,19 @@ type AuthUser struct {
 	EmailVerified bool   `json:"emailVerified"`
 }
 
+type Candle struct {
+	Symbol    string    `json:"symbol"`
+	AssetType string    `json:"assetType"`
+	Interval  string    `json:"interval"`
+	Open      float64   `json:"open"`
+	High      float64   `json:"high"`
+	Low       float64   `json:"low"`
+	Close     float64   `json:"close"`
+	Volume    *float64  `json:"volume,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
+}
+
 type CreateCryptoInput struct {
 	Name              string     `json:"name"`
 	AssetTypeID       string     `json:"assetTypeID"`
@@ -197,6 +210,13 @@ type LogoutResponse struct {
 	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
+type MarketDataCredential struct {
+	ID        string    `json:"id"`
+	Provider  string    `json:"provider"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
 type Mutation struct {
 }
 
@@ -299,7 +319,29 @@ type Position struct {
 	OwnershipPct         *float64   `json:"ownershipPct,omitempty"`
 }
 
+type ProviderHealth struct {
+	Provider    string    `json:"provider"`
+	Healthy     bool      `json:"healthy"`
+	LastChecked time.Time `json:"lastChecked"`
+}
+
+type ProviderInfo struct {
+	ID               string     `json:"id"`
+	Name             string     `json:"name"`
+	Type             string     `json:"type"`
+	RequiresKey      bool       `json:"requiresKey"`
+	Intervals        []string   `json:"intervals"`
+	RateLimit        *RateLimit `json:"rateLimit"`
+	SupportsRealtime bool       `json:"supportsRealtime"`
+}
+
 type Query struct {
+}
+
+type RateLimit struct {
+	RequestsPerMinute int32 `json:"requestsPerMinute"`
+	RequestsPerDay    int32 `json:"requestsPerDay"`
+	BurstLimit        int32 `json:"burstLimit"`
 }
 
 type RefreshTokenInput struct {
@@ -441,6 +483,11 @@ type UserFilter struct {
 type UserOrder struct {
 	Field     UserOrderField `json:"field"`
 	Direction SortDirection  `json:"direction"`
+}
+
+type ValidationResult struct {
+	Valid   bool    `json:"valid"`
+	Message *string `json:"message,omitempty"`
 }
 
 type Watchlist struct {

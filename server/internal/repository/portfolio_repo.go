@@ -28,12 +28,12 @@ func NewPortfolioRepository(db bun.IDB) *PortfolioRepository {
 
 // GetByID overrides the generic GetByID to use the correct primary key column
 func (r *PortfolioRepository) GetByID(ctx context.Context, id uint) (model.Portfolio, error) {
-	return r.FindOneBy(ctx, ByColumn("portfolio_id", id))
+	return r.FindOneBy(ctx, ByColumn("id", id))
 }
 
 // Delete overrides the generic Delete to use the correct primary key column
 func (r *PortfolioRepository) Delete(ctx context.Context, id uint) error {
-	res, err := r.db.NewDelete().Model((*model.Portfolio)(nil)).Where("portfolio_id = ?", id).Exec(ctx)
+	res, err := r.db.NewDelete().Model((*model.Portfolio)(nil)).Where("id = ?", id).Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -47,12 +47,9 @@ func (r *PortfolioRepository) Delete(ctx context.Context, id uint) error {
 // GetPortfolioByName retrieves a portfolio by its name for a specific user.
 // Uses optimized index on (user_id, name) for fast lookups
 func (r *PortfolioRepository) GetPortfolioByName(ctx context.Context, userID string, name string) (*model.Portfolio, error) {
-	var portfolio model.Portfolio
-	err := r.db.NewSelect().
-		Model(&portfolio).
-		Where("user_id = ? AND name = ?", userID, name).
-		Limit(1). // Optimize for single result
-		Scan(ctx)
+	portfolio, err := r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("user_id = ? AND name = ?", userID, name)
+	})
 	if err != nil {
 		return nil, err
 	}

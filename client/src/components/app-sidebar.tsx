@@ -61,12 +61,12 @@ const data = {
 		},
 		{
 			title: "Portfolios",
-			url: "/portfolios",
+			url: "/dashboard",
 			icon: Wallet,
 			items: [
 				{
-					title: "All Portfolios",
-					url: "/portfolios",
+					title: "Dashboard",
+					url: "/dashboard",
 				},
 				{
 					title: "Create Portfolio",

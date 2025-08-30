@@ -20,12 +20,14 @@ import type { PortfolioMetrics } from "@/lib/utils/portfolio-calculations";
 interface PortfolioSummaryCardsProps {
 	portfolios: Portfolio[];
 	portfolioMetrics: Record<string, PortfolioMetrics>;
+	onPortfolioSelect?: (portfolio: Portfolio) => void;
 	onPortfolioDelete: (id: string) => void;
 }
 
 export function PortfolioSummaryCards({
 	portfolios,
 	portfolioMetrics,
+	onPortfolioSelect,
 	onPortfolioDelete,
 }: PortfolioSummaryCardsProps) {
 	const navigate = useNavigate();
@@ -56,8 +58,14 @@ export function PortfolioSummaryCards({
 		);
 	}
 
-	const handlePortfolioClick = (portfolioId: string) => {
-		navigate({ to: "/portfolios/$portfolioId", params: { portfolioId } });
+	const handlePortfolioClick = (portfolio: Portfolio) => {
+		if (onPortfolioSelect) {
+			// Use inline viewing if callback is provided
+			onPortfolioSelect(portfolio);
+		} else {
+			// Fallback to navigation for backward compatibility
+			navigate({ to: "/portfolios/$portfolioId", params: { portfolioId: portfolio.id } });
+		}
 	};
 
 	const totalOverallValue = portfolios.reduce(
@@ -101,7 +109,7 @@ export function PortfolioSummaryCards({
 					>
 						<button
 							type="button"
-							onClick={() => handlePortfolioClick(portfolio.id)}
+							onClick={() => handlePortfolioClick(portfolio)}
 							className="h-full w-full text-left p-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 							aria-label={`View details for ${portfolio.name}. Value: ${formatCurrency(metrics.totalValue)}. ${assetCount} assets. ${allocationPercentage.toFixed(1)}% of total portfolio.`}
 						>
@@ -153,12 +161,16 @@ export function PortfolioSummaryCards({
 									onClick={(e) => e.stopPropagation()}
 								>
 									<DropdownMenuItem
-										onSelect={() =>
-											navigate({
-												to: "/portfolios/$portfolioId",
-												params: { portfolioId: portfolio.id },
-											})
-										}
+										onSelect={() => {
+											if (onPortfolioSelect) {
+												onPortfolioSelect(portfolio);
+											} else {
+												navigate({
+													to: "/portfolios/$portfolioId",
+													params: { portfolioId: portfolio.id },
+												});
+											}
+										}}
 									>
 										<Eye className="mr-2 h-4 w-4" />
 										View

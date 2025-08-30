@@ -52,62 +52,72 @@ export const apolloCacheConfig = new InMemoryCache({
 				},
 				transactions: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
+					merge(existing = [], incoming, { args }) {
+						// Handle direct array response from GraphQL
+						if (!incoming) {
+							return existing;
+						}
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
 					},
 				},
 				assets: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
+					merge(existing = [], incoming, { args }) {
+						// Handle direct array response from GraphQL
+						if (!incoming) {
+							return existing;
+						}
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
 					},
 				},
 				watchlists: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
+					merge(existing = [], incoming, { args }) {
+						// Handle direct array response from GraphQL
+						if (!incoming) {
+							return existing;
+						}
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
 					},
 				},
 				alerts: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
+					merge(existing = [], incoming, { args }) {
+						// Handle direct array response from GraphQL
+						if (!incoming) {
+							return existing;
+						}
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
 					},
 				},
 				reports: {
 					keyArgs: ["filter", "sort"],
-					merge(existing = { items: [], pageInfo: {} }, incoming, { args }) {
+					merge(existing = [], incoming, { args }) {
+						// Handle direct array response from GraphQL
+						if (!incoming) {
+							return existing;
+						}
 						if (!args || !args.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
-						return {
-							...incoming,
-							items: [...existing.items, ...incoming.items],
-						};
+						// For pagination, append new items
+						return [...existing, ...incoming];
 					},
 				},
 			},

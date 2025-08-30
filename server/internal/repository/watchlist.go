@@ -70,7 +70,7 @@ func (r *watchlistRepository) FindByUserIDWithAssets(ctx context.Context, userID
 // FindWithAssets retrieves a watchlist with its associated assets
 func (r *watchlistRepository) FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error) {
 	return r.FindOneBy(ctx,
-		ByColumn("watchlist_id", watchlistID),
+		ByColumn("id", watchlistID),
 		WithPreload("Assets"),
 	)
 }

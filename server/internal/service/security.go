@@ -2,12 +2,16 @@ package service
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
+	"errors"
 	"fmt"
+	"io"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -31,6 +35,10 @@ type SecurityService interface {
 	CheckRateLimit(ctx context.Context, key string, limit int, window time.Duration) error
 	ResetRateLimit(ctx context.Context, key string) error
 	GetRateLimitAttempts(ctx context.Context, key string) (int, error)
+
+	// Symmetric encryption (AES-256-GCM) for sensitive secrets
+	EncryptString(plaintext string) (string, error)
+	DecryptString(ciphertext string) (string, error)
 }
 
 // JWTClaims represents the claims in a JWT token
@@ -46,6 +54,7 @@ type SecurityConfig struct {
 	JWTPublicKey  string // For RSA algorithms
 	JWTAlgorithm  string // Algorithm to use (HS256, RS256, etc.)
 	BCryptCost    int
+	SymmetricKey  string // base64 encoded 32 bytes
 }
 
 // securityService implements SecurityService
@@ -56,6 +65,7 @@ type securityService struct {
 	algorithm   string
 	bcryptCost  int
 	rateLimiter RateLimiter
+	symmKey     []byte
 }
 
 // NewSecurityService creates a new SecurityService instance
@@ -70,6 +80,25 @@ func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (Securit
 		algorithm:   config.JWTAlgorithm,
 		bcryptCost:  bcryptCost,
 		rateLimiter: rateLimiter,
+	}
+
+	// Load symmetric key if provided
+	if config.SymmetricKey != "" {
+		// Accept raw 32-byte or base64 encoded
+		decoded, err := base64.StdEncoding.DecodeString(config.SymmetricKey)
+		if err != nil {
+			// Try URL encoding or treat as raw
+			decodedURL, err2 := base64.URLEncoding.DecodeString(config.SymmetricKey)
+			if err2 == nil {
+				decoded = decodedURL
+			} else {
+				decoded = []byte(config.SymmetricKey)
+			}
+		}
+		if len(decoded) != 32 {
+			return nil, fmt.Errorf("symmetric key must be 32 bytes after decoding, got %d", len(decoded))
+		}
+		service.symmKey = decoded
 	}
 
 	// Configure JWT signing based on algorithm
@@ -252,6 +281,31 @@ func (s *securityService) ValidateJWT(tokenString string) (*JWTClaims, error) {
 	}
 
 	return claims, nil
+}
+
+// EncryptString encrypts plaintext with AES-256-GCM returning base64(nonce||ciphertext)
+func (s *securityService) EncryptString(plaintext string) (string, error) {
+	if s.symmKey == nil { return "", errors.New("symmetric key not configured") }
+	block, err := aes.NewCipher(s.symmKey); if err != nil { return "", err }
+	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil { return "", err }
+	ct := gcm.Seal(nil, nonce, []byte(plaintext), nil)
+	out := append(nonce, ct...)
+	return base64.StdEncoding.EncodeToString(out), nil
+}
+
+// DecryptString decrypts base64(nonce||ciphertext) returning plaintext
+func (s *securityService) DecryptString(ciphertext string) (string, error) {
+	if s.symmKey == nil { return "", errors.New("symmetric key not configured") }
+	raw, err := base64.StdEncoding.DecodeString(ciphertext); if err != nil { return "", err }
+	block, err := aes.NewCipher(s.symmKey); if err != nil { return "", err }
+	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
+	if len(raw) < gcm.NonceSize() { return "", errors.New("ciphertext too short") }
+	nonce := raw[:gcm.NonceSize()]
+	ct := raw[gcm.NonceSize():]
+	pt, err := gcm.Open(nil, nonce, ct, nil); if err != nil { return "", err }
+	return string(pt), nil
 }
 
 // GenerateSecureToken generates a cryptographically secure random token

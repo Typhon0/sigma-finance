@@ -23,4 +23,16 @@ export default defineConfig({
 	optimizeDeps: {
 		exclude: ["@tanstack/router-devtools"],
 	},
+	server: {
+		proxy: {
+			'/graphql': {
+				target: 'http://localhost:8080',
+				changeOrigin: true,
+			},
+			'/playground': {
+				target: 'http://localhost:8080',
+				changeOrigin: true,
+			},
+		},
+	},
 });

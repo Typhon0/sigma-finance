@@ -22,6 +22,7 @@ type Resolver struct {
 	WatchlistService      service.IWatchlistService
 	AuthenticationService service.AuthenticationService
 	SecurityService       service.SecurityService
+	MarketDataService     service.MarketDataService
 	UOW                   repository.IUnitOfWork
 
 	// Subscription broadcaster state
