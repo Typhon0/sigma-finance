@@ -1,15 +1,31 @@
-import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { ArrowLeft, Plus, TrendingDown, TrendingUp, Minus, Calculator, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Portfolio } from '@/gql/graphql';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { TransactionManagement } from '@/components/transactions';
+import { AlertDashboardIntegration } from './alert-dashboard-integration';
+import { RealTimePortfolioValue, useOptimisticPortfolioUpdate } from './RealTimePortfolioValue';
+import { RealTimeChart } from '@/components/charts/RealTimeChart';
+import { RealTimeAlertNotifications } from '@/components/alerts/RealTimeAlertNotifications';
+import { ConnectionStatus } from './ConnectionStatus';
+import { useRealTimeDashboard } from '@/contexts/RealTimeDashboardContext';
+import type { Portfolio, Transaction, Position } from '@/gql/graphql';
 import type { Asset } from '@/hooks/use-dashboard-state';
+import type { TransactionFormData, BulkTransactionData, TransactionFilterData } from '@/components/transactions';
 import { formatCurrency, formatPercentage } from '@/lib/utils';
 
 interface InlinePortfolioDetailProps {
   portfolio: Portfolio;
   onBack: () => void;
   onAssetSelect?: (asset: Asset) => void;
+  transactions?: Transaction[];
+  positions?: Position[];
+  onAddTransaction?: (data: TransactionFormData) => Promise<void>;
+  onEditTransaction?: (id: string, data: TransactionFormData) => Promise<void>;
+  onDeleteTransaction?: (id: string) => Promise<void>;
+  onBulkImport?: (data: BulkTransactionData) => Promise<void>;
+  onExportTransactions?: (filters: TransactionFilterData) => Promise<void>;
 }
 
 interface MetricCardProps {
@@ -170,28 +186,47 @@ function AssetList({ assets, onAssetClick, showInlineActions = false }: AssetLis
 export function InlinePortfolioDetail({ 
   portfolio, 
   onBack, 
-  onAssetSelect 
+  onAssetSelect,
+  transactions = [],
+  positions = [],
+  onAddTransaction,
+  onEditTransaction,
+  onDeleteTransaction,
+  onBulkImport,
+  onExportTransactions,
 }: InlinePortfolioDetailProps) {
+  const { state, actions } = useRealTimeDashboard();
+  const { updatePortfolioOptimistically } = useOptimisticPortfolioUpdate(portfolio.id);
+  
   // Calculate portfolio metrics (simplified - in real app this would come from GraphQL)
   const assets = portfolio.assets || [];
-  const totalValue = assets.reduce((sum, position) => {
+  
+  // Get real-time portfolio data if available
+  const realTimePortfolioData = actions.getPortfolioValue(portfolio.id);
+  
+  // Use real-time data if available, otherwise calculate from assets
+  const totalValue = realTimePortfolioData?.totalValue || assets.reduce((sum, position) => {
     const quantity = position.quantity || 0;
     const price = position.averagePurchasePrice || 0;
     return sum + (quantity * price);
   }, 0);
   
-  const totalCost = totalValue; // Simplified - would be actual cost basis
-  const gainLoss = totalValue - totalCost;
-  const gainLossPercent = totalCost > 0 ? (gainLoss / totalCost) * 100 : 0;
+  const totalCost = realTimePortfolioData?.totalCost || totalValue; // Simplified - would be actual cost basis
+  const gainLoss = realTimePortfolioData?.gainLoss || (totalValue - totalCost);
+  const gainLossPercent = realTimePortfolioData?.gainLossPercent || (totalCost > 0 ? (gainLoss / totalCost) * 100 : 0);
+
+  // Extract asset IDs for real-time price tracking
+  const assetIds = assets.map(position => position.asset.id).filter(Boolean);
 
   return (
     <div className="space-y-6">
-      {/* Portfolio Header with Back Navigation */}
-      <div className="flex items-center gap-4">
+      {/* Portfolio Header with Back Navigation and Connection Status */}
+      <div className="flex items-center justify-between">
         <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Button>
+        <ConnectionStatus variant="badge" />
       </div>
 
       {/* Portfolio Title and Description */}
@@ -202,27 +237,23 @@ export function InlinePortfolioDetail({
         )}
       </div>
 
-      {/* Portfolio Metrics Cards */}
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
-        <MetricCard 
-          title="Total Value" 
-          value={formatCurrency(totalValue)}
-          change={gainLoss}
-          changePercent={gainLossPercent}
+      {/* Real-Time Portfolio Metrics */}
+      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <RealTimePortfolioValue
+          portfolioId={portfolio.id}
+          portfolioName={portfolio.name}
+          showDetailedMetrics={true}
         />
-        <MetricCard 
-          title="Total Cost" 
-          value={formatCurrency(totalCost)} 
-        />
-        <MetricCard 
-          title="Gain/Loss" 
-          value={formatCurrency(gainLoss)}
-          changePercent={gainLossPercent}
-        />
-        <MetricCard 
-          title="Assets" 
-          value={assets.length.toString()} 
-        />
+        <div className="grid gap-4 grid-cols-2">
+          <MetricCard 
+            title="Total Cost" 
+            value={formatCurrency(totalCost)} 
+          />
+          <MetricCard 
+            title="Assets" 
+            value={assets.length.toString()} 
+          />
+        </div>
       </div>
 
       {/* Assets Section */}
@@ -245,30 +276,137 @@ export function InlinePortfolioDetail({
         </CardContent>
       </Card>
 
-      {/* Performance Charts Placeholder */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Performance Chart</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">Performance chart will be implemented in task 15</p>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader>
-            <CardTitle>Asset Allocation</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
-              <p className="text-muted-foreground">Allocation chart will be implemented in task 15</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Portfolio Management Tabs */}
+      <Tabs defaultValue="overview" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="transactions">
+            Transactions
+            {transactions.length > 0 && (
+              <Badge variant="secondary" className="ml-2">
+                {transactions.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="alerts">
+            <Bell className="h-4 w-4 mr-2" />
+            Alerts
+          </TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-6">
+          {/* Real-Time Charts */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Show real-time charts for tradeable assets */}
+            {assets.length > 0 && assets.some(position => position.asset.symbol) ? (
+              assets
+                .filter(position => position.asset.symbol)
+                .slice(0, 2) // Show first 2 tradeable assets
+                .map(position => (
+                  <RealTimeChart
+                    key={position.asset.id}
+                    assetId={position.asset.id}
+                    symbol={position.asset.symbol!}
+                    chartType="line"
+                    height={250}
+                  />
+                ))
+            ) : (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Chart</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
+                      <p className="text-muted-foreground">Add tradeable assets to see real-time charts</p>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Asset Allocation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
+                      <p className="text-muted-foreground">Allocation chart will be implemented in task 15</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+          </div>
+
+          {/* Real-Time Alerts for this Portfolio */}
+          <RealTimeAlertNotifications 
+            showInline={true}
+            maxVisible={3}
+          />
+        </TabsContent>
+
+        <TabsContent value="transactions" className="space-y-6">
+          {/* Transaction Management */}
+          {onAddTransaction && onEditTransaction && onDeleteTransaction ? (
+            <TransactionManagement
+              portfolio={portfolio}
+              assets={assets.map(position => position.asset)}
+              transactions={transactions}
+              positions={positions}
+              onAddTransaction={onAddTransaction}
+              onEditTransaction={onEditTransaction}
+              onDeleteTransaction={onDeleteTransaction}
+              onBulkImport={onBulkImport || (async () => {})}
+              onExportTransactions={onExportTransactions || (async () => {})}
+            />
+          ) : (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Calculator className="h-5 w-5" />
+                  Transaction Management
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <Calculator className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-muted-foreground mb-2">
+                    Transaction Management
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    Transaction management functionality will be available once GraphQL resolvers are implemented.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="alerts" className="space-y-6">
+          {/* Alert Management for Portfolio */}
+          <AlertDashboardIntegration
+            portfolios={[portfolio]}
+            assets={assets.map(position => position.asset)}
+            currentPortfolio={portfolio}
+          />
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Portfolio Analytics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">
+                  Advanced analytics and performance metrics will be available here.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

@@ -30,3 +30,5 @@ export * from "./toggle";
 export * from "./toggle-group";
 export * from "./tooltip";
 export * from "./use-toast";
+export * from "./popover";
+export * from "./calendar";
