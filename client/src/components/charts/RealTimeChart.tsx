@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createChart, IChartApi, ISeriesApi, LineData, CandlestickData } from 'lightweight-charts';
 import { useRealTimeDashboard } from '@/contexts/RealTimeDashboardContext';
+import { useResponsiveDashboard } from '@/hooks/use-responsive-dashboard';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, Minus, Wifi, WifiOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface RealTimeChartProps {
   assetId: string;
@@ -28,6 +30,7 @@ export function RealTimeChart({
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   
   const { state, actions } = useRealTimeDashboard();
+  const [responsiveState] = useResponsiveDashboard();
   const [lastPrice, setLastPrice] = useState<number | null>(null);
   const [priceDirection, setPriceDirection] = useState<'up' | 'down' | 'neutral'>('neutral');
 
@@ -41,21 +44,43 @@ export function RealTimeChart({
       layout: {
         background: { color: 'transparent' },
         textColor: '#333',
+        fontSize: responsiveState.isMobile ? 10 : 12,
       },
       grid: {
         vertLines: { color: '#f0f0f0' },
         horzLines: { color: '#f0f0f0' },
       },
       crosshair: {
-        mode: 1,
+        mode: responsiveState.isMobile ? 0 : 1, // Disable crosshair on mobile for better touch interaction
       },
       rightPriceScale: {
         borderColor: '#cccccc',
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+        // Adjust price scale width for mobile
+        width: responsiveState.isMobile ? 50 : 60,
       },
       timeScale: {
         borderColor: '#cccccc',
         timeVisible: true,
         secondsVisible: false,
+        // Better touch interaction on mobile
+        rightOffset: responsiveState.isMobile ? 5 : 12,
+        barSpacing: responsiveState.isMobile ? 3 : 6,
+      },
+      // Handle touch events better on mobile
+      handleScroll: {
+        mouseWheel: !responsiveState.isMobile,
+        pressedMouseMove: true,
+        horzTouchDrag: responsiveState.isMobile,
+        vertTouchDrag: responsiveState.isMobile,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: !responsiveState.isMobile,
+        pinch: responsiveState.isMobile,
       },
     });
 
@@ -197,41 +222,72 @@ export function RealTimeChart({
   };
 
   return (
-    <Card className={className}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
+    <Card className={cn(className, "relative")}>
+      <CardHeader className={cn(
+        "pb-2",
+        // Smaller padding on mobile
+        responsiveState.isMobile && "p-4 pb-2"
+      )}>
+        <div className={cn(
+          "flex items-center justify-between",
+          // Stack on mobile for better layout
+          responsiveState.isMobile && "flex-col gap-2 items-start"
+        )}>
           <div className="flex items-center gap-2">
-            <CardTitle className="text-lg">{symbol}</CardTitle>
+            <CardTitle className={cn(
+              responsiveState.isMobile ? "text-base" : "text-lg"
+            )}>
+              {symbol}
+            </CardTitle>
             {getTrendIcon()}
-            <Badge variant={isConnected ? 'default' : 'destructive'} className="ml-auto">
-              {isConnected ? (
-                <>
-                  <Wifi className="h-3 w-3 mr-1" />
-                  Live
-                </>
-              ) : (
-                <>
-                  <WifiOff className="h-3 w-3 mr-1" />
-                  Offline
-                </>
-              )}
-            </Badge>
           </div>
+          <Badge 
+            variant={isConnected ? 'default' : 'destructive'} 
+            className={cn(
+              responsiveState.isMobile && "self-end"
+            )}
+          >
+            {isConnected ? (
+              <>
+                <Wifi className="h-3 w-3 mr-1" />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff className="h-3 w-3 mr-1" />
+                Offline
+              </>
+            )}
+          </Badge>
         </div>
         
         {currentPrice && (
-          <div className="flex items-center gap-4">
-            <span className="text-2xl font-bold">
+          <div className={cn(
+            "flex items-center gap-2 sm:gap-4",
+            // Stack on very small screens
+            responsiveState.screenSize === 'xs' && "flex-col items-start gap-1"
+          )}>
+            <span className={cn(
+              "font-bold",
+              responsiveState.isMobile ? "text-xl" : "text-2xl"
+            )}>
               {formatPrice(currentPrice.price)}
             </span>
-            <span className={`text-sm font-medium ${getChangeColor(currentPrice.change)}`}>
+            <span className={cn(
+              "text-sm font-medium",
+              getChangeColor(currentPrice.change)
+            )}>
               {formatChange(currentPrice.change, currentPrice.changePercent)}
             </span>
           </div>
         )}
       </CardHeader>
       
-      <CardContent className="p-0">
+      <CardContent className={cn(
+        "p-0 relative",
+        // Add touch-action for better mobile interaction
+        responsiveState.isMobile && "touch-pan-x touch-pan-y"
+      )}>
         <div 
           ref={chartContainerRef} 
           className="w-full"
@@ -241,9 +297,19 @@ export function RealTimeChart({
         {!isConnected && (
           <div className="absolute inset-0 bg-gray-50/80 flex items-center justify-center">
             <div className="text-center">
-              <WifiOff className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-600">Connection lost</p>
-              <p className="text-xs text-gray-500">Showing last known data</p>
+              <WifiOff className={cn(
+                "text-gray-400 mx-auto mb-2",
+                responsiveState.isMobile ? "h-6 w-6" : "h-8 w-8"
+              )} />
+              <p className={cn(
+                "text-gray-600",
+                responsiveState.isMobile ? "text-xs" : "text-sm"
+              )}>
+                Connection lost
+              </p>
+              <p className="text-xs text-gray-500">
+                {responsiveState.isMobile ? "Last known data" : "Showing last known data"}
+              </p>
             </div>
           </div>
         )}

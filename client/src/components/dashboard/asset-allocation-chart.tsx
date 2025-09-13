@@ -15,6 +15,11 @@ import {
 	type AssetAllocationData,
 	formatCurrency,
 } from "@/lib/utils/portfolio-calculations";
+import { 
+	ChartErrorFallback,
+	InlineChartSkeleton,
+	useComponentErrorHandler,
+} from "@/components/dashboard/error-handling";
 
 // Helper function to format asset type names for display
 function formatAssetTypeName(assetType: string): string {
@@ -37,6 +42,7 @@ function AssetAllocationChartComponent({
 	onAssetTypeClick,
 	className,
 }: AssetAllocationChartProps) {
+	const { handleErrorWithRetry } = useComponentErrorHandler('AssetAllocationChart', 'chart');
 	const chartData = useMemo(() => {
 		if (!allocationData || allocationData.length === 0) {
 			return [];
@@ -60,27 +66,22 @@ function AssetAllocationChartComponent({
 	}, [allocationData]);
 
 	// Handle pie chart click events
-	const handlePieClick = (data: any) => {
+	const handlePieClick = async (data: any) => {
 		if (onAssetTypeClick && data && data.assetType) {
-			onAssetTypeClick(data.assetType);
+			await handleErrorWithRetry(async () => {
+				onAssetTypeClick(data.assetType);
+			});
 		}
 	};
 
 	// Loading state
 	if (isLoading) {
 		return (
-			<Card className={className}>
-				<CardHeader>
-					<Skeleton className="h-6 w-3/4" />
-				</CardHeader>
-				<CardContent className="flex flex-col items-center justify-center h-80">
-					<Skeleton className="h-48 w-48 rounded-full" />
-					<div className="w-full mt-4 space-y-2">
-						<Skeleton className="h-4 w-full" />
-						<Skeleton className="h-4 w-5/6" />
-					</div>
-				</CardContent>
-			</Card>
+			<InlineChartSkeleton 
+				height={320}
+				title="Asset Allocation"
+				className={className}
+			/>
 		);
 	}
 

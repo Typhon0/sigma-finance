@@ -17,6 +17,7 @@ type Config struct {
 	Security SecurityConfig
 	Auth     AuthConfig
 	MarketData MarketDataConfig
+	Performance PerformanceConfig
 }
 
 // DatabaseConfig holds database configuration
@@ -122,6 +123,7 @@ func LoadConfig() *Config {
 			EncryptionKey:            getEnvOrDefault("MARKET_DATA_ENCRYPTION_KEY", ""),
 			CandleRequestsPerMinute:  getEnvIntOrDefault("CANDLE_REQUESTS_PER_MINUTE", 60),
 		},
+		Performance: *LoadPerformanceConfig(),
 	}
 
 	// Validate configuration

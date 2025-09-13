@@ -15,6 +15,11 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
+import { 
+	AssetListSkeleton,
+	useComponentErrorHandler,
+	OfflineDataWrapper,
+} from "@/components/dashboard/error-handling";
 
 const getPerformanceColorClass = (change: number) => {
 	if (change > 0) return "text-green-500";
@@ -46,6 +51,7 @@ export function AssetPerformance({
 	isLoading,
 	onAssetClick,
 }: AssetPerformanceProps) {
+	const { handleErrorWithRetry } = useComponentErrorHandler('AssetPerformance', 'component');
 	const sortedAssets = useMemo(() => {
 		if (!assets) return [];
 		return [...assets].sort((a, b) => {
@@ -65,23 +71,7 @@ export function AssetPerformance({
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<div className="space-y-4">
-						{[...Array(5)].map((_, i) => (
-							<div key={i} className="flex items-center justify-between">
-								<div className="flex items-center gap-4">
-									<Skeleton className="h-10 w-10 rounded-full" />
-									<div className="space-y-1">
-										<Skeleton className="h-4 w-24" />
-										<Skeleton className="h-3 w-16" />
-									</div>
-								</div>
-								<div className="text-right space-y-1">
-									<Skeleton className="h-4 w-20" />
-									<Skeleton className="h-3 w-12" />
-								</div>
-							</div>
-						))}
-					</div>
+					<AssetListSkeleton count={5} showActions={false} />
 				</CardContent>
 			</Card>
 		);
@@ -119,7 +109,11 @@ export function AssetPerformance({
 						<button
 							key={asset.id}
 							type="button"
-							onClick={() => onAssetClick(asset.id)}
+							onClick={async () => {
+								await handleErrorWithRetry(async () => {
+									onAssetClick(asset.id);
+								});
+							}}
 							className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
 						>
 							<div className="flex items-center gap-4">

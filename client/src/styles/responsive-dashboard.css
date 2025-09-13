@@ -1,0 +1,272 @@
+/* Responsive Dashboard Styles */
+
+/* Safe area support for mobile devices */
+@supports (padding: max(0px)) {
+    .pb-safe-area-inset-bottom {
+        padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    }
+
+    .pt-safe-area-inset-top {
+        padding-top: max(1rem, env(safe-area-inset-top));
+    }
+
+    .pl-safe-area-inset-left {
+        padding-left: max(1rem, env(safe-area-inset-left));
+    }
+
+    .pr-safe-area-inset-right {
+        padding-right: max(1rem, env(safe-area-inset-right));
+    }
+}
+
+/* Touch optimization */
+.touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Improved touch targets for mobile */
+@media (max-width: 767px) {
+
+    /* Minimum touch target size */
+    .touch-target {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    /* Better button spacing on mobile */
+    .mobile-button-spacing>*+* {
+        margin-top: 0.75rem;
+    }
+
+    /* Larger text inputs on mobile */
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="number"],
+    input[type="tel"],
+    input[type="url"],
+    textarea,
+    select {
+        font-size: 16px;
+        /* Prevents zoom on iOS */
+    }
+
+    /* Improved scrolling on mobile */
+    .mobile-scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+
+    /* Better focus states for mobile */
+    .mobile-focus:focus {
+        outline: 2px solid hsl(var(--ring));
+        outline-offset: 2px;
+    }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1023px) {
+
+    /* Slightly larger touch targets for tablet */
+    .tablet-touch-target {
+        min-height: 40px;
+        min-width: 40px;
+    }
+}
+
+/* Desktop optimizations */
+@media (min-width: 1024px) {
+
+    /* Hover states only on devices that support hover */
+    .desktop-hover:hover {
+        background-color: hsl(var(--muted) / 0.5);
+    }
+}
+
+/* Chart container responsive styles */
+.chart-container {
+    position: relative;
+    width: 100%;
+    height: auto;
+}
+
+@media (max-width: 767px) {
+    .chart-container {
+        /* Ensure charts don't overflow on mobile */
+        overflow: hidden;
+        border-radius: 0.5rem;
+    }
+
+    /* Hide chart controls on very small screens */
+    .chart-controls {
+        display: none;
+    }
+}
+
+/* Responsive grid utilities */
+.responsive-grid-1 {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+}
+
+@media (min-width: 640px) {
+    .responsive-grid-1 {
+        gap: 1.5rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .responsive-grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1024px) {
+    .responsive-grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .responsive-grid-4 {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Mobile-first sidebar styles */
+.mobile-sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 40;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+}
+
+.mobile-sidebar-overlay.open {
+    opacity: 1;
+}
+
+/* Swipe gesture indicators */
+.swipe-indicator {
+    position: fixed;
+    top: 50%;
+    left: 0;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 60px;
+    background: linear-gradient(to right, transparent, hsl(var(--primary)));
+    border-radius: 0 4px 4px 0;
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+    pointer-events: none;
+    z-index: 50;
+}
+
+.swipe-indicator.visible {
+    opacity: 0.6;
+}
+
+/* Responsive typography */
+@media (max-width: 767px) {
+    .responsive-title {
+        font-size: 1.5rem;
+        line-height: 2rem;
+    }
+
+    .responsive-subtitle {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+
+    .responsive-body {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .responsive-title {
+        font-size: 1.875rem;
+        line-height: 2.25rem;
+    }
+
+    .responsive-subtitle {
+        font-size: 1rem;
+        line-height: 1.5rem;
+    }
+
+    .responsive-body {
+        font-size: 0.875rem;
+        line-height: 1.25rem;
+    }
+}
+
+/* Loading states optimized for mobile */
+.mobile-skeleton {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@media (max-width: 767px) {
+    .mobile-skeleton {
+        border-radius: 0.375rem;
+        min-height: 2.5rem;
+    }
+}
+
+/* Accessibility improvements for mobile */
+@media (max-width: 767px) {
+
+    /* Larger focus rings on mobile */
+    .mobile-focus-ring:focus-visible {
+        outline: 3px solid hsl(var(--ring));
+        outline-offset: 3px;
+    }
+
+    /* Better contrast for mobile */
+    .mobile-high-contrast {
+        color: hsl(var(--foreground));
+        background-color: hsl(var(--background));
+    }
+}
+
+/* Performance optimizations */
+.gpu-accelerated {
+    transform: translateZ(0);
+    will-change: transform;
+}
+
+.smooth-scroll {
+    scroll-behavior: smooth;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Responsive spacing utilities */
+.responsive-padding {
+    padding: 0.75rem;
+}
+
+@media (min-width: 640px) {
+    .responsive-padding {
+        padding: 1rem;
+    }
+}
+
+@media (min-width: 768px) {
+    .responsive-padding {
+        padding: 1.5rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .responsive-padding {
+        padding: 2rem;
+    }
+}

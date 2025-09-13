@@ -7,6 +7,10 @@ import { withErrorBoundary } from "@/components/ui/error-boundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "@/gql/graphql";
 import { formatCurrency } from "@/lib/utils/portfolio-calculations";
+import { 
+	TransactionListSkeleton,
+	useComponentErrorHandler,
+} from "@/components/dashboard/error-handling";
 
 interface RecentTransactionsProps {
 	transactions: Transaction[];
@@ -30,6 +34,7 @@ export function RecentTransactions({
 	onTransactionClick,
 	onViewAllTransactions,
 }: RecentTransactionsProps) {
+	const { handleErrorWithRetry } = useComponentErrorHandler('RecentTransactions', 'component');
 	/**
 	 * Format relative timestamp
 	 * Requirements: 4.2 - Show timestamp
@@ -53,25 +58,8 @@ export function RecentTransactions({
 					</CardTitle>
 					<Skeleton className="h-9 w-32" />
 				</CardHeader>
-				<CardContent className="space-y-4">
-					{Array.from({ length: 5 }).map((_, index) => (
-						<div
-							key={`recent-transaction-skeleton-${index}`}
-							className="flex items-center justify-between p-3 rounded-lg border"
-						>
-							<div className="flex items-center gap-3">
-								<Skeleton className="h-8 w-8 rounded-full" />
-								<div className="space-y-1.5">
-									<Skeleton className="h-4 w-20" />
-									<Skeleton className="h-3 w-24" />
-								</div>
-							</div>
-							<div className="text-right space-y-1.5">
-								<Skeleton className="h-4 w-16" />
-								<Skeleton className="h-3 w-12" />
-							</div>
-						</div>
-					))}
+				<CardContent>
+					<TransactionListSkeleton count={5} />
 				</CardContent>
 			</Card>
 		);
@@ -139,7 +127,13 @@ export function RecentTransactions({
 							type="button"
 							key={transaction.id}
 							className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer text-left"
-							onClick={() => onTransactionClick?.(transaction.id)}
+							onClick={async () => {
+								if (onTransactionClick) {
+									await handleErrorWithRetry(async () => {
+										onTransactionClick(transaction.id);
+									});
+								}
+							}}
 						>
 							<div className="flex items-center gap-3">
 								{/* Transaction type icon and badge */}

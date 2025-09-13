@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ExportQuickActions, QuickExportButton } from '@/components/export/export-quick-actions';
 import { TransactionManagement } from '@/components/transactions';
 import { AlertDashboardIntegration } from './alert-dashboard-integration';
 import { RealTimePortfolioValue, useOptimisticPortfolioUpdate } from './RealTimePortfolioValue';
@@ -10,10 +11,11 @@ import { RealTimeChart } from '@/components/charts/RealTimeChart';
 import { RealTimeAlertNotifications } from '@/components/alerts/RealTimeAlertNotifications';
 import { ConnectionStatus } from './ConnectionStatus';
 import { useRealTimeDashboard } from '@/contexts/RealTimeDashboardContext';
+import { useResponsiveDashboard, useResponsiveChartDimensions } from '@/hooks/use-responsive-dashboard';
 import type { Portfolio, Transaction, Position } from '@/gql/graphql';
 import type { Asset } from '@/hooks/use-dashboard-state';
 import type { TransactionFormData, BulkTransactionData, TransactionFilterData } from '@/components/transactions';
-import { formatCurrency, formatPercentage } from '@/lib/utils';
+import { formatCurrency, formatPercentage, cn } from '@/lib/utils';
 
 interface InlinePortfolioDetailProps {
   portfolio: Portfolio;
@@ -97,91 +99,9 @@ function MetricCard({ title, value, change, changePercent, icon }: MetricCardPro
   );
 }
 
-interface AssetListProps {
-  assets: any[];
-  onAssetClick?: (asset: Asset) => void;
-  showInlineActions?: boolean;
-}
 
-function AssetList({ assets, onAssetClick, showInlineActions = false }: AssetListProps) {
-  if (!assets || assets.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground mb-4">No assets in this portfolio yet.</p>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Your First Asset
-        </Button>
-      </div>
-    );
-  }
 
-  return (
-    <div className="space-y-3">
-      {assets.map((position, index) => {
-        const asset = position.asset;
-        const quantity = position.quantity || 0;
-        const averagePrice = position.averagePurchasePrice || 0;
-        const currentValue = quantity * averagePrice; // Simplified calculation
-        
-        return (
-          <div
-            key={asset.id || index}
-            className={`flex items-center justify-between p-4 border rounded-lg transition-colors ${
-              onAssetClick ? 'hover:bg-muted/50 cursor-pointer' : ''
-            }`}
-            onClick={() => {
-              if (onAssetClick) {
-                onAssetClick({
-                  id: asset.id,
-                  name: asset.name,
-                  symbol: asset.symbol,
-                  type: asset.type || 'UNKNOWN'
-                });
-              }
-            }}
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <div>
-                  <h4 className="font-medium">{asset.name}</h4>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    {asset.symbol && (
-                      <span className="font-mono">{asset.symbol}</span>
-                    )}
-                    {asset.type && (
-                      <Badge variant="outline" className="text-xs">
-                        {asset.type}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="text-right">
-              <div className="font-medium">{formatCurrency(currentValue)}</div>
-              <div className="text-sm text-muted-foreground">
-                {quantity.toLocaleString()} @ {formatCurrency(averagePrice)}
-              </div>
-            </div>
-            
-            {showInlineActions && (
-              <div className="ml-4 flex items-center gap-2">
-                <Button variant="ghost" size="sm">
-                  Edit
-                </Button>
-                <Button variant="ghost" size="sm" className="text-destructive">
-                  Remove
-                </Button>
-              </div>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
+import { ResponsiveAssetList } from './responsive-asset-list';
 
 export function InlinePortfolioDetail({ 
   portfolio, 
@@ -197,6 +117,8 @@ export function InlinePortfolioDetail({
 }: InlinePortfolioDetailProps) {
   const { state, actions } = useRealTimeDashboard();
   const { updatePortfolioOptimistically } = useOptimisticPortfolioUpdate(portfolio.id);
+  const [responsiveState] = useResponsiveDashboard();
+  const { getChartConfig } = useResponsiveChartDimensions();
   
   // Calculate portfolio metrics (simplified - in real app this would come from GraphQL)
   const assets = portfolio.assets || [];
@@ -219,14 +141,42 @@ export function InlinePortfolioDetail({
   const assetIds = assets.map(position => position.asset.id).filter(Boolean);
 
   return (
-    <div className="space-y-6">
+    <div className={cn(
+      "space-y-4 sm:space-y-6",
+      // Add safe area padding on mobile
+      responsiveState.isMobile && "pb-safe-area-inset-bottom"
+    )}>
       {/* Portfolio Header with Back Navigation and Connection Status */}
-      <div className="flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-2">
+      <div className={cn(
+        "flex items-center justify-between",
+        // Stack on mobile for better touch targets
+        responsiveState.isMobile ? "flex-col gap-3 items-start" : "flex-row"
+      )}>
+        <Button 
+          variant="ghost" 
+          size={responsiveState.isMobile ? "default" : "sm"} 
+          onClick={onBack} 
+          className={cn(
+            "gap-2 touch-manipulation",
+            // Larger touch target on mobile
+            responsiveState.isMobile && "h-11 px-4"
+          )}
+        >
           <ArrowLeft className="h-4 w-4" />
           Back to Dashboard
         </Button>
-        <ConnectionStatus variant="badge" />
+        <div className={cn(
+          "flex items-center gap-2",
+          responsiveState.isMobile && "w-full justify-between"
+        )}>
+          <ExportQuickActions 
+            portfolioId={portfolio.id}
+            portfolioName={portfolio.name}
+            variant="outline"
+            size={responsiveState.isMobile ? "default" : "sm"}
+          />
+          <ConnectionStatus variant="badge" />
+        </div>
       </div>
 
       {/* Portfolio Title and Description */}
@@ -238,13 +188,21 @@ export function InlinePortfolioDetail({
       </div>
 
       {/* Real-Time Portfolio Metrics */}
-      <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+      <div className={cn(
+        "grid gap-4",
+        // Responsive grid: single column on mobile, two columns on larger screens
+        "grid-cols-1 lg:grid-cols-2"
+      )}>
         <RealTimePortfolioValue
           portfolioId={portfolio.id}
           portfolioName={portfolio.name}
           showDetailedMetrics={true}
         />
-        <div className="grid gap-4 grid-cols-2">
+        <div className={cn(
+          "grid gap-4",
+          // Always two columns for metric cards, but smaller on mobile
+          "grid-cols-2"
+        )}>
           <MetricCard 
             title="Total Cost" 
             value={formatCurrency(totalCost)} 
@@ -259,59 +217,133 @@ export function InlinePortfolioDetail({
       {/* Assets Section */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className={cn(
+            "flex items-center",
+            // Stack on mobile for better layout
+            responsiveState.isMobile ? "flex-col gap-3 items-start" : "flex-row justify-between"
+          )}>
             <CardTitle>Assets</CardTitle>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Asset
-            </Button>
+            <div className={cn(
+              "flex items-center gap-2",
+              responsiveState.isMobile && "w-full justify-between"
+            )}>
+              <QuickExportButton
+                type="portfolio-data"
+                portfolioId={portfolio.id}
+                portfolioName={portfolio.name}
+                variant="ghost"
+                size={responsiveState.isMobile ? "default" : "sm"}
+              />
+              <Button 
+                size={responsiveState.isMobile ? "default" : "sm"}
+                className={cn(
+                  "touch-manipulation",
+                  responsiveState.isMobile && "h-11"
+                )}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {responsiveState.isMobile ? "Add" : "Add Asset"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <AssetList 
+          <ResponsiveAssetList 
             assets={assets} 
             onAssetClick={onAssetSelect}
-            showInlineActions={true}
+            showInlineActions={!responsiveState.isMobile} // Hide inline actions on mobile for cleaner UI
+            emptyAction={
+              <Button className={cn(
+                "touch-manipulation",
+                responsiveState.isMobile && "h-11"
+              )}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Your First Asset
+              </Button>
+            }
           />
         </CardContent>
       </Card>
 
       {/* Portfolio Management Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="transactions">
-            Transactions
+        <TabsList className={cn(
+          "grid w-full",
+          // Responsive tabs: 2x2 grid on mobile, single row on larger screens
+          responsiveState.isMobile ? "grid-cols-2 grid-rows-2 h-auto" : "grid-cols-4"
+        )}>
+          <TabsTrigger 
+            value="overview"
+            className={cn(
+              "touch-manipulation",
+              responsiveState.isMobile && "h-11"
+            )}
+          >
+            Overview
+          </TabsTrigger>
+          <TabsTrigger 
+            value="transactions"
+            className={cn(
+              "touch-manipulation",
+              responsiveState.isMobile && "h-11"
+            )}
+          >
+            {responsiveState.isMobile ? "Txns" : "Transactions"}
             {transactions.length > 0 && (
-              <Badge variant="secondary" className="ml-2">
+              <Badge variant="secondary" className={cn(
+                responsiveState.isMobile ? "ml-1 text-xs" : "ml-2"
+              )}>
                 {transactions.length}
               </Badge>
             )}
           </TabsTrigger>
-          <TabsTrigger value="alerts">
-            <Bell className="h-4 w-4 mr-2" />
+          <TabsTrigger 
+            value="alerts"
+            className={cn(
+              "touch-manipulation",
+              responsiveState.isMobile && "h-11"
+            )}
+          >
+            <Bell className="h-4 w-4 mr-1 sm:mr-2" />
             Alerts
           </TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger 
+            value="analytics"
+            className={cn(
+              "touch-manipulation",
+              responsiveState.isMobile && "h-11"
+            )}
+          >
+            Analytics
+          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
+        <TabsContent value="overview" className={cn(
+          responsiveState.isMobile ? "space-y-4" : "space-y-6"
+        )}>
           {/* Real-Time Charts */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className={cn(
+            "grid gap-4 sm:gap-6",
+            // Single column on mobile/tablet, two columns on desktop
+            "grid-cols-1 lg:grid-cols-2"
+          )}>
             {/* Show real-time charts for tradeable assets */}
             {assets.length > 0 && assets.some(position => position.asset.symbol) ? (
               assets
                 .filter(position => position.asset.symbol)
-                .slice(0, 2) // Show first 2 tradeable assets
-                .map(position => (
-                  <RealTimeChart
-                    key={position.asset.id}
-                    assetId={position.asset.id}
-                    symbol={position.asset.symbol!}
-                    chartType="line"
-                    height={250}
-                  />
-                ))
+                .slice(0, responsiveState.isMobile ? 1 : 2) // Show only 1 chart on mobile
+                .map(position => {
+                  const chartConfig = getChartConfig(250);
+                  return (
+                    <RealTimeChart
+                      key={position.asset.id}
+                      assetId={position.asset.id}
+                      symbol={position.asset.symbol!}
+                      chartType="line"
+                      height={chartConfig.height}
+                    />
+                  );
+                })
             ) : (
               <>
                 <Card>
@@ -319,22 +351,31 @@ export function InlinePortfolioDetail({
                     <CardTitle>Performance Chart</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
-                      <p className="text-muted-foreground">Add tradeable assets to see real-time charts</p>
+                    <div className={cn(
+                      "flex items-center justify-center bg-muted/30 rounded-lg",
+                      responsiveState.isMobile ? "h-48" : "h-64"
+                    )}>
+                      <p className="text-muted-foreground text-center text-sm">
+                        Add tradeable assets to see real-time charts
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
                 
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Asset Allocation</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
-                      <p className="text-muted-foreground">Allocation chart will be implemented in task 15</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {!responsiveState.isMobile && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Asset Allocation</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-64 flex items-center justify-center bg-muted/30 rounded-lg">
+                        <p className="text-muted-foreground text-center text-sm">
+                          Allocation chart will be implemented in task 15
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </div>

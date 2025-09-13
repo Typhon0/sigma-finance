@@ -16,6 +16,10 @@ import {
 import type { Portfolio } from "@/gql/graphql";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import type { PortfolioMetrics } from "@/lib/utils/portfolio-calculations";
+import { 
+	useComponentErrorHandler,
+	MetricCardsSkeleton,
+} from "@/components/dashboard/error-handling";
 
 interface PortfolioSummaryCardsProps {
 	portfolios: Portfolio[];
@@ -31,6 +35,7 @@ export function PortfolioSummaryCards({
 	onPortfolioDelete,
 }: PortfolioSummaryCardsProps) {
 	const navigate = useNavigate();
+	const { handleErrorWithRetry } = useComponentErrorHandler('PortfolioSummaryCards', 'component');
 
 	if (portfolios.length === 0) {
 		return (
@@ -58,14 +63,16 @@ export function PortfolioSummaryCards({
 		);
 	}
 
-	const handlePortfolioClick = (portfolio: Portfolio) => {
-		if (onPortfolioSelect) {
-			// Use inline viewing if callback is provided (dashboard-centric approach)
-			onPortfolioSelect(portfolio);
-		} else {
-			// Fallback to navigation for backward compatibility
-			navigate({ to: "/portfolios/$portfolioId", params: { portfolioId: portfolio.id } });
-		}
+	const handlePortfolioClick = async (portfolio: Portfolio) => {
+		await handleErrorWithRetry(async () => {
+			if (onPortfolioSelect) {
+				// Use inline viewing if callback is provided (dashboard-centric approach)
+				onPortfolioSelect(portfolio);
+			} else {
+				// Fallback to navigation for backward compatibility
+				navigate({ to: "/portfolios/$portfolioId", params: { portfolioId: portfolio.id } });
+			}
+		});
 	};
 
 	const totalOverallValue = portfolios.reduce(

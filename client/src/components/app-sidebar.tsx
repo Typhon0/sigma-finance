@@ -187,19 +187,23 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	return (
-		<Sidebar collapsible="icon" {...props}>
-			<SidebarHeader>
-				<h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight lg:text-5xl ">
+		<Sidebar 
+			collapsible="icon" 
+			{...props}
+			className="touch-manipulation"
+		>
+			<SidebarHeader className="touch-manipulation">
+				<h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight lg:text-5xl select-none">
 					ΣFinance
 				</h1>
-				<h1 className="group-data-[state=open]/collapsible:hidden">ΣF</h1>
+				<h1 className="group-data-[state=open]/collapsible:hidden select-none">ΣF</h1>
 				{/* <TeamSwitcher teams={data.teams} /> */}
 			</SidebarHeader>
-			<SidebarContent>
+			<SidebarContent className="touch-manipulation">
 				<NavMain items={data.navMain} />
 				<NavProjects projects={data.projects} />
 			</SidebarContent>
-			<SidebarFooter>
+			<SidebarFooter className="touch-manipulation">
 				<NavUser />
 			</SidebarFooter>
 			<SidebarRail />
