@@ -1,0 +1,153 @@
+# Alert Management Schema
+
+# Alert Types
+
+type Alert {
+    id: ID!
+    userId: ID!
+    assetId: ID
+    portfolioId: ID
+    alertType: AlertType!
+    conditionType: ConditionType!
+    thresholdValue: Float
+    thresholdPercentage: Float
+    isActive: Boolean!
+    lastTriggered: Time
+    createdAt: Time!
+    updatedAt: Time!
+    notificationMethods: [AlertNotificationMethod!]!
+}
+
+enum AlertType {
+    PRICE
+    PERCENTAGE_CHANGE
+    PORTFOLIO_VALUE
+    ALLOCATION
+    PERFORMANCE
+}
+
+enum ConditionType {
+    ABOVE
+    BELOW
+    INCREASE_BY
+    DECREASE_BY
+    EQUALS
+}
+
+enum AlertNotificationMethod {
+    EMAIL
+    PUSH
+    SMS
+    IN_APP
+}
+
+type AlertTriggerEvent {
+    id: ID!
+    alertId: ID!
+    triggeredAt: Time!
+    currentValue: Float!
+    thresholdValue: Float!
+    message: String!
+    acknowledged: Boolean!
+    acknowledgedAt: Time
+}
+
+type BatchAlertResult {
+    successfulAlerts: [Alert!]!
+    failedAlerts: [AlertError!]!
+    totalProcessed: Int!
+    successCount: Int!
+    failureCount: Int!
+}
+
+type AlertError {
+    index: Int!
+    message: String!
+}
+
+type BatchDeactivateResult {
+    successfulIds: [String!]!
+    failedDeactivations: [DeactivationError!]!
+    totalProcessed: Int!
+    successCount: Int!
+    failureCount: Int!
+}
+
+type DeactivationError {
+    alertId: String!
+    message: String!
+}
+
+# Input Types
+
+input CreateAlertInput {
+    assetId: ID
+    portfolioId: ID
+    alertType: AlertType!
+    conditionType: ConditionType!
+    thresholdValue: Float
+    thresholdPercentage: Float
+    notificationMethods: [AlertNotificationMethod!]!
+}
+
+input UpdateAlertInput {
+    alertType: AlertType
+    conditionType: ConditionType
+    thresholdValue: Float
+    thresholdPercentage: Float
+    isActive: Boolean
+    notificationMethods: [AlertNotificationMethod!]
+}
+
+input AlertFilter {
+    alertType: AlertType
+    assetId: ID
+    portfolioId: ID
+    isActive: Boolean
+    triggeredAfter: Time
+}
+
+input AlertHistoryFilter {
+    alertType: AlertType
+    assetId: ID
+    portfolioId: ID
+    timeRange: PerformanceTimeRangeInput
+}
+
+input BatchAlertInput {
+    alerts: [CreateAlertInput!]!
+}
+
+input BatchDeactivateInput {
+    alertIds: [ID!]!
+}
+
+# Query Extensions
+
+extend type Query {
+    # Alerts
+    alerts(filter: AlertFilter, pagination: PaginationInput): [Alert!]! @auth
+    alert(id: ID!): Alert @auth
+    alertHistory(userId: ID, filter: AlertHistoryFilter, pagination: PaginationInput): [AlertTriggerEvent!]! @auth
+}
+
+# Mutation Extensions
+
+extend type Mutation {
+    # Alerts
+    createAlert(input: CreateAlertInput!): Alert! @auth
+    updateAlert(id: ID!, input: UpdateAlertInput!): Alert! @auth
+    deleteAlert(id: ID!): Boolean! @auth
+    acknowledgeAlert(alertId: ID!): Boolean! @auth
+    
+    # Batch Operations
+    createBatchAlerts(input: BatchAlertInput!): BatchAlertResult! @auth
+    deactivateBatchAlerts(input: BatchDeactivateInput!): BatchDeactivateResult! @auth
+}
+
+# Subscription Extensions
+
+extend type Subscription {
+    # Alert Updates
+    alertTriggered(userId: ID!): AlertTriggerEvent! @auth
+}

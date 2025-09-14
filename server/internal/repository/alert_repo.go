@@ -99,6 +99,9 @@ type IAlertRepository interface {
 	CreateBatch(ctx context.Context, alerts []UserAlert) error
 	UpdateBatch(ctx context.Context, alerts []UserAlert) error
 	DeactivateBatch(ctx context.Context, alertIDs []uuid.UUID) error
+	
+	// UUID-based operations
+	DeleteByUUID(ctx context.Context, id uuid.UUID) error
 }
 
 // AlertRepository is the concrete implementation of IAlertRepository
@@ -455,4 +458,26 @@ func (r *AlertRepository) DeactivateBatch(ctx context.Context, alertIDs []uuid.U
 		Exec(ctx)
 
 	return err
+}
+
+// DeleteByUUID deletes an alert by its UUID
+func (r *AlertRepository) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
+	res, err := r.db.NewDelete().
+		Model((*UserAlert)(nil)).
+		Where("id = ?", id).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }

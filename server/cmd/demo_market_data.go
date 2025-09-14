@@ -4,6 +4,6 @@ import (
 	"sigma_finance/internal/service"
 )
 
-func main() {
+func demoMain() {
 	service.DemoMarketDataAssetPriceFeatures()
 }

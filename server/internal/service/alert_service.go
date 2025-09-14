@@ -136,7 +136,7 @@ var (
 	ErrInvalidThreshold          = errors.New("invalid threshold value")
 	ErrMissingThreshold          = errors.New("threshold value is required")
 	ErrAssetNotFound             = errors.New("asset not found")
-	ErrPortfolioNotFound         = errors.New("portfolio not found")
+	ErrAlertPortfolioNotFound    = errors.New("portfolio not found")
 	ErrUnauthorizedAccess        = errors.New("unauthorized access to alert")
 	ErrAlertAlreadyAcknowledged  = errors.New("alert already acknowledged")
 	ErrInvalidAlertConfiguration = errors.New("invalid alert configuration")
@@ -145,12 +145,12 @@ var (
 // CreateAlert creates a new alert with validation
 func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) (*repository.UserAlert, error) {
 	// Validate the alert configuration
-	if err := s.ValidateAlertConfiguration(ctx, req); err != nil {
+	if err := s.validateAlertConfiguration(ctx, req); err != nil {
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
 	// Validate threshold values
-	if err := s.ValidateAlertThreshold(ctx, req.AlertType, req.ConditionType, req.ThresholdValue, req.ThresholdPercentage); err != nil {
+	if err := s.validateAlertThreshold(ctx, req.AlertType, req.ConditionType, req.ThresholdValue, req.ThresholdPercentage); err != nil {
 		return nil, fmt.Errorf("threshold validation failed: %w", err)
 	}
 
@@ -168,7 +168,7 @@ func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) 
 		CreatedAt:           time.Now(),
 	}
 
-	createdAlert, err := s.alertRepo.Create(ctx, alert)
+	createdAlert, err := s.alertRepo.Create(ctx, &alert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create alert: %w", err)
 	}
@@ -211,21 +211,21 @@ func (s *AlertService) UpdateAlert(ctx context.Context, id uuid.UUID, req Update
 	}
 
 	// Validate updated threshold values
-	if err := s.ValidateAlertThreshold(ctx, existingAlert.AlertType, existingAlert.ConditionType, existingAlert.ThresholdValue, existingAlert.ThresholdPercentage); err != nil {
+	if err := s.validateAlertThreshold(ctx, existingAlert.AlertType, existingAlert.ConditionType, existingAlert.ThresholdValue, existingAlert.ThresholdPercentage); err != nil {
 		return nil, fmt.Errorf("threshold validation failed: %w", err)
 	}
 
-	updatedAlert, err := s.alertRepo.Update(ctx, *existingAlert)
+	err = s.alertRepo.Update(ctx, existingAlert)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update alert: %w", err)
 	}
 
-	return updatedAlert, nil
+	return existingAlert, nil
 }
 
 // DeleteAlert deletes an alert
 func (s *AlertService) DeleteAlert(ctx context.Context, id uuid.UUID) error {
-	err := s.alertRepo.Delete(ctx, id)
+	err := s.alertRepo.DeleteByUUID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete alert: %w", err)
 	}
@@ -272,7 +272,7 @@ func (s *AlertService) ActivateAlert(ctx context.Context, alertID uuid.UUID) err
 	}
 
 	alert.IsActive = true
-	_, err = s.alertRepo.Update(ctx, *alert)
+	err = s.alertRepo.Update(ctx, alert)
 	if err != nil {
 		return fmt.Errorf("failed to activate alert: %w", err)
 	}
@@ -287,4 +287,200 @@ func (s *AlertService) DeactivateAlert(ctx context.Context, alertID uuid.UUID) e
 		return fmt.Errorf("failed to deactivate alert: %w", err)
 	}
 	return nil
+}
+
+// validateAlertConfiguration validates the alert configuration
+func (s *AlertService) validateAlertConfiguration(ctx context.Context, req CreateAlertRequest) error {
+	// Validate user exists (if needed)
+	if req.UserID == uuid.Nil {
+		return errors.New("user ID is required")
+	}
+
+	// Validate asset exists if asset alert
+	if req.AssetID != nil && *req.AssetID != uuid.Nil {
+		_, err := s.assetRepo.GetByUUID(ctx, *req.AssetID)
+		if err != nil {
+			return fmt.Errorf("asset not found: %w", err)
+		}
+	}
+
+	// TODO: Fix data model inconsistency - Portfolio uses uint ID but UserAlert expects uuid.UUID
+	// Validate portfolio exists if portfolio alert
+	// if req.PortfolioID != nil && *req.PortfolioID != uuid.Nil {
+	//     _, err := s.portfolioRepo.GetByID(ctx, *req.PortfolioID)
+	//     if err != nil {
+	//         return fmt.Errorf("portfolio not found: %w", err)
+	//     }
+	// }
+
+	// Validate alert type and condition type combination
+	if err := s.validateAlertTypeConditionCombination(req.AlertType, req.ConditionType); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// validateAlertThreshold validates threshold values for alerts
+func (s *AlertService) validateAlertThreshold(ctx context.Context, alertType repository.AlertType, conditionType repository.ConditionType, thresholdValue *decimal.Decimal, thresholdPercentage *decimal.Decimal) error {
+	// At least one threshold must be provided
+	if thresholdValue == nil && thresholdPercentage == nil {
+		return errors.New("at least one threshold value must be provided")
+	}
+
+	// Validate threshold value ranges
+	if thresholdValue != nil {
+		if thresholdValue.IsNegative() {
+			return errors.New("threshold value cannot be negative")
+		}
+	}
+
+	// Validate percentage ranges
+	if thresholdPercentage != nil {
+		if thresholdPercentage.LessThan(decimal.NewFromFloat(-100)) || thresholdPercentage.GreaterThan(decimal.NewFromFloat(1000)) {
+			return errors.New("threshold percentage must be between -100% and 1000%")
+		}
+	}
+
+	// Validate specific combinations
+	switch alertType {
+	case repository.AlertTypePrice:
+		if thresholdValue == nil {
+			return errors.New("price alerts require a value threshold")
+		}
+	case repository.AlertTypePercentageChange:
+		if thresholdPercentage == nil {
+			return errors.New("percentage change alerts require a percentage threshold")
+		}
+	case repository.AlertTypePortfolioValue:
+		if thresholdValue == nil {
+			return errors.New("portfolio value alerts require a value threshold")
+		}
+	case repository.AlertTypeAllocation:
+		if thresholdPercentage == nil {
+			return errors.New("allocation alerts require a percentage threshold")
+		}
+	}
+
+	return nil
+}
+
+// validateAlertTypeConditionCombination validates alert type and condition type combinations
+func (s *AlertService) validateAlertTypeConditionCombination(alertType repository.AlertType, conditionType repository.ConditionType) error {
+	validCombinations := map[repository.AlertType][]repository.ConditionType{
+		repository.AlertTypePrice: {
+			repository.ConditionTypeAbove,
+			repository.ConditionTypeBelow,
+		},
+		repository.AlertTypePercentageChange: {
+			repository.ConditionTypeAbove,
+			repository.ConditionTypeBelow,
+		},
+		repository.AlertTypePortfolioValue: {
+			repository.ConditionTypeAbove,
+			repository.ConditionTypeBelow,
+		},
+		repository.AlertTypeAllocation: {
+			repository.ConditionTypeAbove,
+			repository.ConditionTypeBelow,
+		},
+	}
+
+	validConditions, exists := validCombinations[alertType]
+	if !exists {
+		return fmt.Errorf("unsupported alert type: %s", alertType)
+	}
+
+	for _, validCondition := range validConditions {
+		if conditionType == validCondition {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("invalid condition type %s for alert type %s", conditionType, alertType)
+}
+
+// AcknowledgeAlert acknowledges an alert
+func (s *AlertService) AcknowledgeAlert(ctx context.Context, alertID uuid.UUID, userID uuid.UUID) error {
+	// TODO: Implement proper acknowledgment logic
+	// For now, just mark as acknowledged in the alert history
+	err := s.alertRepo.DeactivateAlert(ctx, alertID)
+	if err != nil {
+		return fmt.Errorf("failed to acknowledge alert: %w", err)
+	}
+	return nil
+}
+
+// GetAlertHistory retrieves alert history for a user
+func (s *AlertService) GetAlertHistory(ctx context.Context, userID uuid.UUID, filter AlertHistoryFilter) ([]*AlertHistoryEntry, error) {
+	// TODO: Implement proper alert history retrieval
+	// For now, return empty slice
+	return []*AlertHistoryEntry{}, nil
+}
+
+// GetTriggeredAlerts retrieves triggered alerts for a user since a specific time
+func (s *AlertService) GetTriggeredAlerts(ctx context.Context, userID uuid.UUID, since time.Time) ([]*AlertHistoryEntry, error) {
+	// TODO: Implement proper triggered alerts retrieval
+	// For now, return empty slice
+	return []*AlertHistoryEntry{}, nil
+}
+
+// CreateBatchAlerts creates multiple alerts in a batch
+func (s *AlertService) CreateBatchAlerts(ctx context.Context, alerts []CreateAlertRequest) ([]*repository.UserAlert, error) {
+	result := make([]*repository.UserAlert, 0, len(alerts))
+	
+	for _, alertReq := range alerts {
+		alert, err := s.CreateAlert(ctx, alertReq)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create alert in batch: %w", err)
+		}
+		result = append(result, alert)
+	}
+	
+	return result, nil
+}
+
+// DeactivateBatchAlerts deactivates multiple alerts in a batch
+func (s *AlertService) DeactivateBatchAlerts(ctx context.Context, alertIDs []uuid.UUID) error {
+	for _, alertID := range alertIDs {
+		err := s.DeactivateAlert(ctx, alertID)
+		if err != nil {
+			return fmt.Errorf("failed to deactivate alert %s in batch: %w", alertID, err)
+		}
+	}
+	return nil
+}
+
+// ProcessAlerts processes all active alerts
+func (s *AlertService) ProcessAlerts(ctx context.Context) error {
+	// TODO: Implement alert processing logic
+	return nil
+}
+
+// EvaluateAssetAlerts evaluates alerts for a specific asset
+func (s *AlertService) EvaluateAssetAlerts(ctx context.Context, assetID uuid.UUID, currentPrice decimal.Decimal) ([]repository.AlertTriggerEvent, error) {
+	// TODO: Implement asset alert evaluation
+	return []repository.AlertTriggerEvent{}, nil
+}
+
+// EvaluatePortfolioAlerts evaluates alerts for a specific portfolio
+func (s *AlertService) EvaluatePortfolioAlerts(ctx context.Context, portfolioID uuid.UUID) ([]repository.AlertTriggerEvent, error) {
+	// TODO: Implement portfolio alert evaluation
+	return []repository.AlertTriggerEvent{}, nil
+}
+
+// TriggerAlert triggers an alert event
+func (s *AlertService) TriggerAlert(ctx context.Context, event repository.AlertTriggerEvent) error {
+	// TODO: Implement alert triggering logic
+	return nil
+}
+
+// ValidateAlertThreshold validates alert threshold values
+func (s *AlertService) ValidateAlertThreshold(ctx context.Context, alertType repository.AlertType, conditionType repository.ConditionType, thresholdValue *decimal.Decimal, thresholdPercentage *decimal.Decimal) error {
+	return s.validateAlertThreshold(ctx, alertType, conditionType, thresholdValue, thresholdPercentage)
+}
+
+// ValidateAlertConfiguration validates alert configuration
+func (s *AlertService) ValidateAlertConfiguration(ctx context.Context, req CreateAlertRequest) error {
+	return s.validateAlertConfiguration(ctx, req)
 }

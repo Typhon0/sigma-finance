@@ -1,7 +1,3 @@
-// TODO: This service layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until service layer task is implemented
-//go:build ignore
-
 package service
 
 import (
@@ -101,8 +97,8 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	return &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
-		Asset:          NewAssetService(uow),
-		Transaction:    NewTransactionService(uow),
+		Asset:          NewAssetService(uow.Asset()),
+		Transaction:    NewTransactionService(uow.Transaction(), nil, uow.Asset()), // Use nil for missing position repo for now
 		Watchlist:      NewWatchlistService(uow),
 		Tag:            NewTagService(uow),
 		Authentication: authService,
@@ -113,6 +109,8 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 			uow,
 			repository.NewCandleRepository(uow.(*repository.UnitOfWork).GetDB()),
 			uow.MarketDataCredential(),
+			nil, // Use nil for missing price repo for now
+			uow.Asset(),
 			securityService,
 			rateLimiter,
 		),

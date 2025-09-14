@@ -35,7 +35,7 @@ func NewPerformanceService(
 // IPerformanceService defines the interface for performance calculation operations
 type IPerformanceService interface {
 	// Performance calculations
-	CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate *time.Time) (*PerformanceMetrics, error)
+	CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate *time.Time) (*ServicePerformanceMetrics, error)
 	CalculateTimeWeightedReturn(ctx context.Context, portfolioID uuid.UUID, timeRange PerformanceTimeRange) (decimal.Decimal, error)
 	CalculateVolatility(ctx context.Context, portfolioID uuid.UUID, days int) (decimal.Decimal, error)
 	CalculateSharpeRatio(ctx context.Context, portfolioID uuid.UUID, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error)
@@ -43,9 +43,9 @@ type IPerformanceService interface {
 
 	// Asset allocation calculations
 	CalculateAssetAllocation(ctx context.Context, portfolioID uuid.UUID, asOfDate *time.Time) (*AllocationBreakdown, error)
-	CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
-	CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
-	CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
+	CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error)
+	CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error)
+	CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error)
 
 	// Performance snapshots
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID uuid.UUID, asOfDate time.Time) (*PerformanceSnapshot, error)
@@ -54,7 +54,7 @@ type IPerformanceService interface {
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []uuid.UUID, asOfDate time.Time) error
 
 	// Comparative analysis
-	ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, timeRange PerformanceTimeRange) (map[uuid.UUID]*PerformanceMetrics, error)
+	ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, timeRange PerformanceTimeRange) (map[uuid.UUID]*ServicePerformanceMetrics, error)
 	GetTopPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange PerformanceTimeRange) ([]model.Position, error)
 	GetWorstPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange PerformanceTimeRange) ([]model.Position, error)
 
@@ -62,14 +62,14 @@ type IPerformanceService interface {
 	CalculateBenchmarkComparison(ctx context.Context, portfolioID uuid.UUID, benchmarkAssetID uuid.UUID, timeRange PerformanceTimeRange) (*BenchmarkComparison, error)
 
 	// Performance analytics
-	CalculateRiskMetrics(ctx context.Context, portfolioID uuid.UUID, timeRange PerformanceTimeRange) (*RiskMetrics, error)
+	CalculateRiskMetrics(ctx context.Context, portfolioID uuid.UUID, timeRange PerformanceTimeRange) (*ServiceRiskMetrics, error)
 	GeneratePerformanceReport(ctx context.Context, portfolioID uuid.UUID, reportType ReportType, timeRange PerformanceTimeRange) (*PerformanceReport, error)
 }
 
 // Service-level types that wrap repository types with additional business logic
 
-// PerformanceMetrics represents calculated performance metrics with business validation
-type PerformanceMetrics struct {
+// ServicePerformanceMetrics represents calculated performance metrics with business validation
+type ServicePerformanceMetrics struct {
 	*repository.PerformanceMetrics
 	IsValid           bool                       `json:"is_valid"`
 	ValidationErrors  []string                   `json:"validation_errors,omitempty"`
@@ -86,8 +86,8 @@ type AllocationBreakdown struct {
 	DiversificationScore     decimal.Decimal           `json:"diversification_score"`
 }
 
-// AssetAllocation represents individual asset allocation with enhanced metrics
-type AssetAllocation struct {
+// ServiceAssetAllocation represents individual asset allocation with enhanced metrics
+type ServiceAssetAllocation struct {
 	*repository.AssetAllocation
 	PerformanceContribution decimal.Decimal  `json:"performance_contribution"`
 	RiskContribution        decimal.Decimal  `json:"risk_contribution"`
@@ -145,7 +145,7 @@ type AllocationRiskAnalysis struct {
 	RiskByAssetType   map[model.AssetType]decimal.Decimal `json:"risk_by_asset_type"`
 }
 
-type RiskMetrics struct {
+type ServiceRiskMetrics struct {
 	Volatility        decimal.Decimal `json:"volatility"`
 	SharpeRatio       decimal.Decimal `json:"sharpe_ratio"`
 	SortinoRatio      decimal.Decimal `json:"sortino_ratio"`
@@ -176,9 +176,9 @@ type PerformanceReport struct {
 	ReportType      ReportType                      `json:"report_type"`
 	TimeRange       PerformanceTimeRange            `json:"time_range"`
 	GeneratedAt     time.Time                       `json:"generated_at"`
-	Metrics         *PerformanceMetrics             `json:"metrics"`
+	Metrics         *ServicePerformanceMetrics      `json:"metrics"`
 	Allocation      *AllocationBreakdown            `json:"allocation"`
-	RiskMetrics     *RiskMetrics                    `json:"risk_metrics"`
+	RiskMetrics     *ServiceRiskMetrics             `json:"risk_metrics"`
 	TopPerformers   []model.Position                `json:"top_performers"`
 	WorstPerformers []model.Position                `json:"worst_performers"`
 	Benchmarks      map[string]*BenchmarkComparison `json:"benchmarks"`
@@ -187,7 +187,7 @@ type PerformanceReport struct {
 }
 
 // CalculatePortfolioPerformance calculates comprehensive performance metrics for a portfolio
-func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate *time.Time) (*PerformanceMetrics, error) {
+func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate *time.Time) (*ServicePerformanceMetrics, error) {
 	if portfolioID == uuid.Nil {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -224,7 +224,7 @@ func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, 
 	benchmarks := make(map[string]decimal.Decimal)
 	// TODO: Add common benchmark comparisons (S&P 500, etc.)
 
-	return &PerformanceMetrics{
+	return &ServicePerformanceMetrics{
 		PerformanceMetrics: repoMetrics,
 		IsValid:            len(validationErrors) == 0,
 		ValidationErrors:   validationErrors,
@@ -352,7 +352,7 @@ func (s *PerformanceService) CalculateAssetAllocation(ctx context.Context, portf
 }
 
 // CalculateAllocationByType calculates allocation breakdown by asset type
-func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error) {
 	if portfolioID == uuid.Nil {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -363,9 +363,9 @@ func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, port
 	}
 
 	// Enhance with business metrics
-	result := make([]AssetAllocation, len(repoAllocations))
+	result := make([]ServiceAssetAllocation, len(repoAllocations))
 	for i, alloc := range repoAllocations {
-		result[i] = AssetAllocation{
+		result[i] = ServiceAssetAllocation{
 			AssetAllocation: &alloc,
 			// TODO: Calculate performance and risk contributions
 			PerformanceContribution: decimal.Zero,
@@ -377,7 +377,7 @@ func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, port
 }
 
 // CalculateAllocationBySector calculates allocation breakdown by sector
-func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error) {
 	if portfolioID == uuid.Nil {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -388,9 +388,9 @@ func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, po
 	}
 
 	// Convert to service-level type
-	result := make([]AssetAllocation, len(repoAllocations))
+	result := make([]ServiceAssetAllocation, len(repoAllocations))
 	for i, alloc := range repoAllocations {
-		result[i] = AssetAllocation{
+		result[i] = ServiceAssetAllocation{
 			AssetAllocation: &alloc,
 		}
 	}
@@ -399,7 +399,7 @@ func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, po
 }
 
 // CalculateAllocationByGeography calculates allocation breakdown by geography
-func (s *PerformanceService) CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (s *PerformanceService) CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]ServiceAssetAllocation, error) {
 	if portfolioID == uuid.Nil {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -410,9 +410,9 @@ func (s *PerformanceService) CalculateAllocationByGeography(ctx context.Context,
 	}
 
 	// Convert to service-level type
-	result := make([]AssetAllocation, len(repoAllocations))
+	result := make([]ServiceAssetAllocation, len(repoAllocations))
 	for i, alloc := range repoAllocations {
-		result[i] = AssetAllocation{
+		result[i] = ServiceAssetAllocation{
 			AssetAllocation: &alloc,
 		}
 	}
@@ -520,7 +520,7 @@ func (s *PerformanceService) UpdatePerformanceSnapshots(ctx context.Context, por
 }
 
 // ComparePortfolioPerformance compares performance across multiple portfolios
-func (s *PerformanceService) ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, timeRange PerformanceTimeRange) (map[uuid.UUID]*PerformanceMetrics, error) {
+func (s *PerformanceService) ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, timeRange PerformanceTimeRange) (map[uuid.UUID]*ServicePerformanceMetrics, error) {
 	if len(portfolioIDs) == 0 {
 		return nil, errors.New("at least one portfolio ID is required")
 	}
@@ -535,11 +535,11 @@ func (s *PerformanceService) ComparePortfolioPerformance(ctx context.Context, po
 	}
 
 	// Convert to service-level type with enhanced metrics
-	result := make(map[uuid.UUID]*PerformanceMetrics)
+	result := make(map[uuid.UUID]*ServicePerformanceMetrics)
 	for portfolioID, metrics := range repoMetrics {
 		dataQuality, validationErrors := s.validatePerformanceData(ctx, portfolioID, timeRange.End)
 
-		result[portfolioID] = &PerformanceMetrics{
+		result[portfolioID] = &ServicePerformanceMetrics{
 			PerformanceMetrics: metrics,
 			IsValid:            len(validationErrors) == 0,
 			ValidationErrors:   validationErrors,
@@ -647,7 +647,7 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 }
 
 // CalculateRiskMetrics calculates comprehensive risk metrics for a portfolio
-func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolioID uuid.UUID, timeRange PerformanceTimeRange) (*RiskMetrics, error) {
+func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolioID uuid.UUID, timeRange PerformanceTimeRange) (*ServiceRiskMetrics, error) {
 	if portfolioID == uuid.Nil {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -682,7 +682,7 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 	calmarRatio := s.calculateCalmarRatio(sharpeRatio, maxDrawdown)
 	downsideDeviation := s.calculateDownsideDeviation(ctx, portfolioID, days)
 
-	return &RiskMetrics{
+	return &ServiceRiskMetrics{
 		Volatility:        volatility,
 		SharpeRatio:       sharpeRatio,
 		SortinoRatio:      sortinoRatio,
@@ -882,7 +882,7 @@ func (s *PerformanceService) calculateDownsideDeviation(ctx context.Context, por
 	return decimal.Zero
 }
 
-func (s *PerformanceService) generateRecommendations(metrics *PerformanceMetrics, allocation *AllocationBreakdown, riskMetrics *RiskMetrics) []string {
+func (s *PerformanceService) generateRecommendations(metrics *ServicePerformanceMetrics, allocation *AllocationBreakdown, riskMetrics *ServiceRiskMetrics) []string {
 	var recommendations []string
 
 	// TODO: Implement intelligent recommendation engine

@@ -36,8 +36,8 @@ type RefreshRequest struct {
 	RetryCount int
 }
 
-// PerformanceMetrics represents cached performance data
-type PerformanceMetrics struct {
+// CachedPerformanceMetrics represents cached performance data
+type CachedPerformanceMetrics struct {
 	PortfolioID     string                 `json:"portfolio_id"`
 	TotalValue      int64                  `json:"total_value"`
 	TotalReturn     float64                `json:"total_return"`
@@ -82,12 +82,12 @@ func NewPerformanceCacheService(cache *cache.RedisCache, computeService Performa
 }
 
 // GetPortfolioPerformance retrieves portfolio performance with caching
-func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context, portfolioID string, forceRefresh bool) (*PerformanceMetrics, error) {
+func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context, portfolioID string, forceRefresh bool) (*CachedPerformanceMetrics, error) {
 	cacheKey := fmt.Sprintf("portfolio:%s", portfolioID)
 
 	// Try cache first unless force refresh is requested
 	if !forceRefresh {
-		var cached PerformanceMetrics
+		var cached CachedPerformanceMetrics
 		err := pcs.cache.Get(ctx, cache.PerformanceKey, cacheKey, &cached)
 		if err == nil {
 			pcs.incrementCacheHits()
@@ -134,7 +134,7 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 }
 
 // GetMultiplePortfolioPerformance retrieves performance for multiple portfolios efficiently
-func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.Context, portfolioIDs []string) (map[string]*PerformanceMetrics, error) {
+func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.Context, portfolioIDs []string) (map[string]*CachedPerformanceMetrics, error) {
 	// Prepare cache requests
 	requests := make([]cache.CacheRequest, len(portfolioIDs))
 	for i, id := range portfolioIDs {
@@ -150,14 +150,14 @@ func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.
 		log.Printf("Batch cache retrieval error: %v", err)
 	}
 
-	results := make(map[string]*PerformanceMetrics)
+	results := make(map[string]*CachedPerformanceMetrics)
 	var missingIDs []string
 
 	// Process cached results
 	for _, portfolioID := range portfolioIDs {
 		cacheKey := fmt.Sprintf("portfolio:%s", portfolioID)
 		if data, exists := cached[cacheKey]; exists {
-			if metrics, ok := data.(*PerformanceMetrics); ok {
+			if metrics, ok := data.(*CachedPerformanceMetrics); ok {
 				results[portfolioID] = metrics
 				pcs.incrementCacheHits()
 				continue
@@ -224,10 +224,10 @@ func (pcs *PerformanceCacheService) GetChartData(ctx context.Context, portfolioI
 }
 
 // computePortfolioPerformance computes fresh portfolio performance data
-func (pcs *PerformanceCacheService) computePortfolioPerformance(ctx context.Context, portfolioID string) (*PerformanceMetrics, error) {
+func (pcs *PerformanceCacheService) computePortfolioPerformance(ctx context.Context, portfolioID string) (*CachedPerformanceMetrics, error) {
 	// This would call the original performance service
 	// For now, return mock data
-	return &PerformanceMetrics{
+	return &CachedPerformanceMetrics{
 		PortfolioID:  portfolioID,
 		TotalValue:   100000, // $1000.00
 		TotalReturn:  0.15,   // 15%
@@ -239,8 +239,8 @@ func (pcs *PerformanceCacheService) computePortfolioPerformance(ctx context.Cont
 }
 
 // computeMultiplePortfolioPerformance computes performance for multiple portfolios
-func (pcs *PerformanceCacheService) computeMultiplePortfolioPerformance(ctx context.Context, portfolioIDs []string) (map[string]*PerformanceMetrics, error) {
-	results := make(map[string]*PerformanceMetrics)
+func (pcs *PerformanceCacheService) computeMultiplePortfolioPerformance(ctx context.Context, portfolioIDs []string) (map[string]*CachedPerformanceMetrics, error) {
+	results := make(map[string]*CachedPerformanceMetrics)
 	
 	for _, id := range portfolioIDs {
 		metrics, err := pcs.computePortfolioPerformance(ctx, id)
@@ -353,7 +353,7 @@ func (pcs *PerformanceCacheService) scheduleRefresh(req RefreshRequest) {
 }
 
 // cacheMultipleResults caches multiple results in batch
-func (pcs *PerformanceCacheService) cacheMultipleResults(portfolioIDs []string, results map[string]*PerformanceMetrics) {
+func (pcs *PerformanceCacheService) cacheMultipleResults(portfolioIDs []string, results map[string]*CachedPerformanceMetrics) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 

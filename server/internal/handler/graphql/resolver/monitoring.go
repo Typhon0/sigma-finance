@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/portfolio-tracker/server/internal/service"
+	"sigma_finance/internal/service"
 )
 
 // MonitoringResolver handles monitoring-related GraphQL operations

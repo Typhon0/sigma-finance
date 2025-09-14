@@ -177,57 +177,7 @@ enum ReportType {
     CUSTOM
 }
 
-# Alert Management Types
 
-type Alert {
-    id: ID!
-    userId: ID!
-    assetId: ID
-    portfolioId: ID
-    alertType: AlertType!
-    conditionType: ConditionType!
-    thresholdValue: Float
-    thresholdPercentage: Float
-    isActive: Boolean!
-    lastTriggered: Time
-    createdAt: Time!
-    updatedAt: Time!
-    notificationMethods: [AlertNotificationMethod!]!
-}
-
-enum AlertType {
-    PRICE
-    PERCENTAGE_CHANGE
-    PORTFOLIO_VALUE
-    ALLOCATION
-    PERFORMANCE
-}
-
-enum ConditionType {
-    ABOVE
-    BELOW
-    INCREASE_BY
-    DECREASE_BY
-    EQUALS
-}
-
-enum AlertNotificationMethod {
-    EMAIL
-    PUSH
-    SMS
-    IN_APP
-}
-
-type AlertTriggerEvent {
-    id: ID!
-    alertId: ID!
-    triggeredAt: Time!
-    currentValue: Float!
-    thresholdValue: Float!
-    message: String!
-    acknowledged: Boolean!
-    acknowledgedAt: Time
-}
 
 # Export Types
 
@@ -255,32 +205,7 @@ input ChartDataInput {
     includeVolume: Boolean = false
 }
 
-input CreateAlertInput {
-    assetId: ID
-    portfolioId: ID
-    alertType: AlertType!
-    conditionType: ConditionType!
-    thresholdValue: Float
-    thresholdPercentage: Float
-    notificationMethods: [AlertNotificationMethod!]!
-}
 
-input UpdateAlertInput {
-    alertType: AlertType
-    conditionType: ConditionType
-    thresholdValue: Float
-    thresholdPercentage: Float
-    isActive: Boolean
-    notificationMethods: [AlertNotificationMethod!]
-}
-
-input AlertFilter {
-    alertType: AlertType
-    assetId: ID
-    portfolioId: ID
-    isActive: Boolean
-    triggeredAfter: Time
-}
 
 input GenerateReportInput {
     portfolioId: ID!
@@ -325,10 +250,7 @@ extend type Query {
     # Reports
     generatePerformanceReport(input: GenerateReportInput!): PerformanceReport! @auth
     
-    # Alerts
-    alerts(filter: AlertFilter, pagination: PaginationInput): [Alert!]! @auth
-    alert(id: ID!): Alert @auth
-    alertHistory(userId: ID!, filter: AlertFilter, pagination: PaginationInput): [AlertTriggerEvent!]! @auth
+
     
     # Export
     exportPortfolioData(input: ExportDataInput!): ExportData! @auth
@@ -341,15 +263,7 @@ extend type Mutation {
     createPerformanceSnapshot(portfolioId: ID!, asOfDate: Time!): PerformanceSnapshot! @auth
     updatePerformanceSnapshots(portfolioIds: [ID!]!, asOfDate: Time!): Boolean! @auth
     
-    # Alerts
-    createAlert(input: CreateAlertInput!): Alert! @auth
-    updateAlert(id: ID!, input: UpdateAlertInput!): Alert! @auth
-    deleteAlert(id: ID!): Boolean! @auth
-    acknowledgeAlert(id: ID!): Boolean! @auth
-    
-    # Batch Operations
-    createBatchAlerts(alerts: [CreateAlertInput!]!): [Alert!]! @auth
-    deactivateBatchAlerts(alertIds: [ID!]!): Boolean! @auth
+
 }
 
 # Subscription Extensions
@@ -357,6 +271,6 @@ extend type Mutation {
 extend type Subscription {
     # Real-time Performance Updates
     portfolioPerformanceUpdates(portfolioId: ID!): PerformanceMetrics! @auth
-    alertTriggered(userId: ID!): AlertTriggerEvent! @auth
+
     priceUpdates(assetIds: [ID!]!): ChartDataPoint! @auth
 }

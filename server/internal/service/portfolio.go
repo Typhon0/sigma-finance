@@ -1,6 +1,5 @@
 // TODO: This service layer needs to be updated for the new asset management schema
 // Temporarily excluded from build until service layer task is implemented
-//go:build ignore
 
 package service
 

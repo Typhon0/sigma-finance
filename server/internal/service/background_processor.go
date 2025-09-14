@@ -64,11 +64,11 @@ type RefreshJob struct {
 type CalculationType string
 
 const (
-	PortfolioPerformance CalculationType = "portfolio_performance"
-	AssetAllocation      CalculationType = "asset_allocation"
-	RiskMetrics          CalculationType = "risk_metrics"
-	ChartData            CalculationType = "chart_data"
-	MarketDataUpdate     CalculationType = "market_data_update"
+	PortfolioPerformanceCalc CalculationType = "portfolio_performance"
+	AssetAllocationCalc      CalculationType = "asset_allocation"
+	RiskMetricsCalc          CalculationType = "risk_metrics"
+	ChartDataCalc            CalculationType = "chart_data"
+	MarketDataUpdateCalc     CalculationType = "market_data_update"
 )
 
 // WorkerPool manages a pool of background workers
@@ -310,7 +310,7 @@ func (bp *BackgroundProcessor) schedulePerformanceUpdates() {
 	// For now, create a sample job
 	job := CalculationJob{
 		ID:          fmt.Sprintf("perf_update_%d", time.Now().Unix()),
-		Type:        PortfolioPerformance,
+		Type:        PortfolioPerformanceCalc,
 		Priority:    2,
 		CreatedAt:   time.Now(),
 		MaxRetries:  3,
@@ -340,7 +340,7 @@ func (bp *BackgroundProcessor) scheduleCacheCleanup() {
 func (bp *BackgroundProcessor) scheduleMarketDataUpdates() {
 	job := CalculationJob{
 		ID:          fmt.Sprintf("market_data_%d", time.Now().Unix()),
-		Type:        MarketDataUpdate,
+		Type:        MarketDataUpdateCalc,
 		Priority:    3,
 		CreatedAt:   time.Now(),
 		MaxRetries:  2,
@@ -405,15 +405,15 @@ func (bp *BackgroundProcessor) ProcessCalculation(ctx context.Context, job Calcu
 	}()
 
 	switch job.Type {
-	case PortfolioPerformance:
+	case PortfolioPerformanceCalc:
 		return bp.processPortfolioPerformance(ctx, job)
-	case AssetAllocation:
+	case AssetAllocationCalc:
 		return bp.processAssetAllocation(ctx, job)
-	case RiskMetrics:
+	case RiskMetricsCalc:
 		return bp.processRiskMetrics(ctx, job)
-	case ChartData:
+	case ChartDataCalc:
 		return bp.processChartData(ctx, job)
-	case MarketDataUpdate:
+	case MarketDataUpdateCalc:
 		return bp.processMarketDataUpdate(ctx, job)
 	default:
 		return nil, fmt.Errorf("unknown calculation type: %s", job.Type)

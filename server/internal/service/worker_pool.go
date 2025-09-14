@@ -2,8 +2,8 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"log"
-	"sync"
 	"time"
 )
 
@@ -163,5 +163,3 @@ func (wp *WorkerPool) handleResult(result JobResult) {
 	}
 }
 
-// Add missing import
-import "fmt"

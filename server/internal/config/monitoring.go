@@ -3,15 +3,15 @@ package config
 import (
 	"time"
 
-	"github.com/portfolio-tracker/server/internal/service"
+	"sigma_finance/internal/domain"
 )
 
 // MonitoringConfig holds monitoring configuration
 type MonitoringConfig struct {
 	Enabled                bool                              `json:"enabled"`
 	MetricsRetentionPeriod time.Duration                     `json:"metrics_retention_period"`
-	AlertRules             []service.AlertRule               `json:"alert_rules"`
-	MarketDataThresholds   service.MarketDataAlertThresholds `json:"market_data_thresholds"`
+	AlertRules             []domain.AlertRule               `json:"alert_rules"`
+	MarketDataThresholds   domain.MarketDataAlertThresholds `json:"market_data_thresholds"`
 	PerformanceThresholds  PerformanceThresholds             `json:"performance_thresholds"`
 	SamplingRates          SamplingRates                     `json:"sampling_rates"`
 }
@@ -41,7 +41,7 @@ func GetDefaultMonitoringConfig() MonitoringConfig {
 		Enabled:                true,
 		MetricsRetentionPeriod: 30 * 24 * time.Hour, // 30 days
 		AlertRules:             getDefaultAlertRules(),
-		MarketDataThresholds: service.MarketDataAlertThresholds{
+		MarketDataThresholds: domain.MarketDataAlertThresholds{
 			MaxLatency:        5 * time.Second,
 			MinSuccessRate:    0.95,
 			MaxStaleDataAge:   15 * time.Minute,
@@ -68,8 +68,8 @@ func GetDefaultMonitoringConfig() MonitoringConfig {
 }
 
 // getDefaultAlertRules returns default alert rules
-func getDefaultAlertRules() []service.AlertRule {
-	return []service.AlertRule{
+func getDefaultAlertRules() []domain.AlertRule {
+	return []domain.AlertRule{
 		{
 			ID:         "high_error_rate",
 			Name:       "High Error Rate",
@@ -78,7 +78,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  10,
 			Duration:   5 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -96,7 +96,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  2.0, // 2 seconds average
 			Duration:   10 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -114,7 +114,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  5.0, // 5 seconds P95
 			Duration:   15 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -132,7 +132,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  5,
 			Duration:   5 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -150,7 +150,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  80.0,
 			Duration:   10 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -168,7 +168,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  400000000, // 400MB
 			Duration:   5 * time.Minute,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -186,7 +186,7 @@ func getDefaultAlertRules() []service.AlertRule {
 			Threshold:  10,
 			Duration:   1 * time.Hour,
 			Labels:     map[string]string{},
-			Actions: []service.AlertAction{
+			Actions: []domain.AlertAction{
 				{
 					Type: "log",
 					Config: map[string]interface{}{
@@ -197,22 +197,6 @@ func getDefaultAlertRules() []service.AlertRule {
 			Enabled: true,
 		},
 	}
-}
-
-// MonitoringSetup initializes monitoring services with configuration
-func MonitoringSetup(config MonitoringConfig) (*service.MonitoringService, *service.MarketDataMonitor) {
-	// Create monitoring service
-	monitoringService := service.NewMonitoringService()
-
-	// Add alert rules
-	for _, rule := range config.AlertRules {
-		monitoringService.AddAlertRule(rule)
-	}
-
-	// Create market data monitor
-	marketDataMonitor := service.NewMarketDataMonitor(monitoringService)
-
-	return monitoringService, marketDataMonitor
 }
 
 // ShouldSample determines if an event should be sampled based on sampling rates
@@ -239,7 +223,7 @@ func (c *MonitoringConfig) ShouldSample(eventType string) bool {
 
 	// Simple sampling based on rate
 	// In production, you might want to use more sophisticated sampling
-	return rate >= 1.0 || (rate > 0 && (time.Now().UnixNano()%1000000)/1000000.0 < rate)
+	return rate >= 1.0 || (rate > 0 && float64(time.Now().UnixNano()%1000000)/1000000.0 < rate)
 }
 
 // GetPerformanceThresholds returns performance thresholds
@@ -248,16 +232,11 @@ func (c *MonitoringConfig) GetPerformanceThresholds() PerformanceThresholds {
 }
 
 // GetMarketDataThresholds returns market data thresholds
-func (c *MonitoringConfig) GetMarketDataThresholds() service.MarketDataAlertThresholds {
+func (c *MonitoringConfig) GetMarketDataThresholds() domain.MarketDataAlertThresholds {
 	return c.MarketDataThresholds
 }
 
 // IsMonitoringEnabled returns whether monitoring is enabled
 func (c *MonitoringConfig) IsMonitoringEnabled() bool {
 	return c.Enabled
-}
-
-// GetMetricsRetentionPeriod returns metrics retention period
-func (c *MonitoringConfig) GetMetricsRetentionPeriod() time.Duration {
-	return c.MetricsRetentionPeriod
 }

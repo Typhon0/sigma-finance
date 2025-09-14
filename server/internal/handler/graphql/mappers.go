@@ -24,6 +24,8 @@ func ToGraphQLTag(tag *model.Tag) *graphmodel.Tag {
 	}
 }
 
+// TODO: Fix these mappers to work with the new domain models
+/*
 func ToGraphQLAsset(asset *model.Asset) graphmodel.Asset {
 	tags := make([]*graphmodel.Tag, len(asset.Tags))
 	for i, t := range asset.Tags {
@@ -53,6 +55,7 @@ func ToGraphQLTransaction(transaction *model.Transaction) *graphmodel.Transactio
 		Notes:           &transaction.Notes,
 	}
 }
+*/
 
 func ToGraphQLPortfolio(p *model.Portfolio) *graphmodel.Portfolio {
 	return &graphmodel.Portfolio{

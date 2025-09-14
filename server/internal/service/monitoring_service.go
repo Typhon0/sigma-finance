@@ -1,20 +1,18 @@
 package service
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
-	"github.com/shopspring/decimal"
+	"sigma_finance/internal/domain"
 )
 
 // MonitoringService handles performance monitoring and analytics
 type MonitoringService struct {
 	metrics      map[string]*MetricCollector
-	alerts       []AlertRule
+	alerts       []domain.AlertRule
 	mu           sync.RWMutex
 	eventChannel chan MonitoringEvent
 }
@@ -49,31 +47,13 @@ type MonitoringEvent struct {
 	Timestamp time.Time              `json:"timestamp"`
 }
 
-// AlertRule defines conditions for triggering alerts
-type AlertRule struct {
-	ID          string                 `json:"id"`
-	Name        string                 `json:"name"`
-	MetricName  string                 `json:"metric_name"`
-	Condition   string                 `json:"condition"` // "gt", "lt", "eq"
-	Threshold   float64                `json:"threshold"`
-	Duration    time.Duration          `json:"duration"`
-	Labels      map[string]string      `json:"labels"`
-	Actions     []AlertAction          `json:"actions"`
-	LastFired   *time.Time             `json:"last_fired,omitempty"`
-	Enabled     bool                   `json:"enabled"`
-}
-
-// AlertAction defines what to do when an alert fires
-type AlertAction struct {
-	Type   string                 `json:"type"` // "log", "webhook", "email"
-	Config map[string]interface{} `json:"config"`
-}
+// Note: AlertRule and AlertAction types are now defined in domain package
 
 // NewMonitoringService creates a new monitoring service
 func NewMonitoringService() *MonitoringService {
 	ms := &MonitoringService{
 		metrics:      make(map[string]*MetricCollector),
-		alerts:       make([]AlertRule, 0),
+		alerts:       make([]domain.AlertRule, 0),
 		eventChannel: make(chan MonitoringEvent, 1000),
 	}
 
@@ -151,7 +131,7 @@ func (ms *MonitoringService) GetMetric(name string) (*MetricCollector, bool) {
 }
 
 // AddAlertRule adds a new alert rule
-func (ms *MonitoringService) AddAlertRule(rule AlertRule) {
+func (ms *MonitoringService) AddAlertRule(rule domain.AlertRule) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -366,7 +346,7 @@ func (ms *MonitoringService) processAlerts() {
 // checkAlerts checks all alert rules
 func (ms *MonitoringService) checkAlerts() {
 	ms.mu.RLock()
-	alerts := make([]AlertRule, len(ms.alerts))
+	alerts := make([]domain.AlertRule, len(ms.alerts))
 	copy(alerts, ms.alerts)
 	ms.mu.RUnlock()
 
@@ -380,7 +360,7 @@ func (ms *MonitoringService) checkAlerts() {
 }
 
 // checkAlert checks a specific alert rule
-func (ms *MonitoringService) checkAlert(alert AlertRule) {
+func (ms *MonitoringService) checkAlert(alert domain.AlertRule) {
 	metric, exists := ms.GetMetric(alert.MetricName)
 	if !exists || len(metric.Values) == 0 {
 		return
@@ -426,7 +406,7 @@ func (ms *MonitoringService) checkAlert(alert AlertRule) {
 }
 
 // fireAlert fires an alert
-func (ms *MonitoringService) fireAlert(alert AlertRule, currentValue float64) {
+func (ms *MonitoringService) fireAlert(alert domain.AlertRule, currentValue float64) {
 	now := time.Now()
 
 	// Check if alert was recently fired (avoid spam)
@@ -454,7 +434,7 @@ func (ms *MonitoringService) fireAlert(alert AlertRule, currentValue float64) {
 }
 
 // executeAlertAction executes an alert action
-func (ms *MonitoringService) executeAlertAction(action AlertAction, alert AlertRule, currentValue float64) {
+func (ms *MonitoringService) executeAlertAction(action domain.AlertAction, alert domain.AlertRule, currentValue float64) {
 	switch action.Type {
 	case "log":
 		log.Printf("ALERT: %s - Current value: %f, Threshold: %f", 
@@ -469,13 +449,13 @@ func (ms *MonitoringService) executeAlertAction(action AlertAction, alert AlertR
 }
 
 // sendWebhookAlert sends a webhook alert (placeholder)
-func (ms *MonitoringService) sendWebhookAlert(config map[string]interface{}, alert AlertRule, currentValue float64) {
+func (ms *MonitoringService) sendWebhookAlert(config map[string]interface{}, alert domain.AlertRule, currentValue float64) {
 	// Implementation would send HTTP POST to webhook URL
 	log.Printf("Webhook alert would be sent for: %s", alert.Name)
 }
 
 // sendEmailAlert sends an email alert (placeholder)
-func (ms *MonitoringService) sendEmailAlert(config map[string]interface{}, alert AlertRule, currentValue float64) {
+func (ms *MonitoringService) sendEmailAlert(config map[string]interface{}, alert domain.AlertRule, currentValue float64) {
 	// Implementation would send email notification
 	log.Printf("Email alert would be sent for: %s", alert.Name)
 }

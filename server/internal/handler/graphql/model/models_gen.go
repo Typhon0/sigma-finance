@@ -38,12 +38,24 @@ type Alert struct {
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
 }
 
+type AlertError struct {
+	Index   int32  `json:"index"`
+	Message string `json:"message"`
+}
+
 type AlertFilter struct {
 	AlertType      *AlertType `json:"alertType,omitempty"`
 	AssetID        *string    `json:"assetId,omitempty"`
 	PortfolioID    *string    `json:"portfolioId,omitempty"`
 	IsActive       *bool      `json:"isActive,omitempty"`
 	TriggeredAfter *time.Time `json:"triggeredAfter,omitempty"`
+}
+
+type AlertHistoryFilter struct {
+	AlertType   *AlertType                 `json:"alertType,omitempty"`
+	AssetID     *string                    `json:"assetId,omitempty"`
+	PortfolioID *string                    `json:"portfolioId,omitempty"`
+	TimeRange   *PerformanceTimeRangeInput `json:"timeRange,omitempty"`
 }
 
 type AlertTriggerEvent struct {
@@ -126,6 +138,30 @@ type AuthUser struct {
 	Email         string `json:"email"`
 	Name          string `json:"name"`
 	EmailVerified bool   `json:"emailVerified"`
+}
+
+type BatchAlertInput struct {
+	Alerts []*CreateAlertInput `json:"alerts"`
+}
+
+type BatchAlertResult struct {
+	SuccessfulAlerts []*Alert      `json:"successfulAlerts"`
+	FailedAlerts     []*AlertError `json:"failedAlerts"`
+	TotalProcessed   int32         `json:"totalProcessed"`
+	SuccessCount     int32         `json:"successCount"`
+	FailureCount     int32         `json:"failureCount"`
+}
+
+type BatchDeactivateInput struct {
+	AlertIds []string `json:"alertIds"`
+}
+
+type BatchDeactivateResult struct {
+	SuccessfulIds       []string             `json:"successfulIds"`
+	FailedDeactivations []*DeactivationError `json:"failedDeactivations"`
+	TotalProcessed      int32                `json:"totalProcessed"`
+	SuccessCount        int32                `json:"successCount"`
+	FailureCount        int32                `json:"failureCount"`
 }
 
 type BenchmarkComparison struct {
@@ -285,6 +321,11 @@ type DataQuality struct {
 	StaleDataPoints     int32     `json:"staleDataPoints"`
 	EstimatedDataPoints int32     `json:"estimatedDataPoints"`
 	LastUpdated         time.Time `json:"lastUpdated"`
+}
+
+type DeactivationError struct {
+	AlertID string `json:"alertId"`
+	Message string `json:"message"`
 }
 
 type DuplicatePortfolioInput struct {

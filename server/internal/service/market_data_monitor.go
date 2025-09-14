@@ -1,13 +1,13 @@
 package service
 
 import (
-	"context"
 	"fmt"
 	"log"
 	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
+	"sigma_finance/internal/domain"
 )
 
 // MarketDataMonitor monitors market data quality and performance
@@ -15,7 +15,7 @@ type MarketDataMonitor struct {
 	monitoringService *MonitoringService
 	sources          map[string]*DataSourceMetrics
 	mu               sync.RWMutex
-	alertThresholds  MarketDataAlertThresholds
+	alertThresholds  domain.MarketDataAlertThresholds
 }
 
 // DataSourceMetrics tracks metrics for a specific market data source
@@ -61,35 +61,14 @@ type UptimeMetrics struct {
 	DowntimeDuration time.Duration `json:"downtime_duration"`
 }
 
-// MarketDataAlertThresholds defines alert thresholds for market data monitoring
-type MarketDataAlertThresholds struct {
-	MaxLatency        time.Duration `json:"max_latency"`
-	MinSuccessRate    float64       `json:"min_success_rate"`
-	MaxStaleDataAge   time.Duration `json:"max_stale_data_age"`
-	MinQualityScore   float64       `json:"min_quality_score"`
-	MaxOutlierRate    float64       `json:"max_outlier_rate"`
-	MinUptimePercent  float64       `json:"min_uptime_percent"`
-}
-
-// MarketDataUpdate represents a market data update event
-type MarketDataUpdate struct {
-	Source      string          `json:"source"`
-	AssetID     string          `json:"asset_id"`
-	AssetType   string          `json:"asset_type"`
-	Price       decimal.Decimal `json:"price"`
-	Volume      *decimal.Decimal `json:"volume,omitempty"`
-	Timestamp   time.Time       `json:"timestamp"`
-	Latency     time.Duration   `json:"latency"`
-	Success     bool            `json:"success"`
-	Error       error           `json:"error,omitempty"`
-}
+// MarketDataAlertThresholds and MarketDataUpdate types are defined in domain package
 
 // NewMarketDataMonitor creates a new market data monitor
 func NewMarketDataMonitor(monitoringService *MonitoringService) *MarketDataMonitor {
 	monitor := &MarketDataMonitor{
 		monitoringService: monitoringService,
 		sources:          make(map[string]*DataSourceMetrics),
-		alertThresholds: MarketDataAlertThresholds{
+		alertThresholds: domain.MarketDataAlertThresholds{
 			MaxLatency:        5 * time.Second,
 			MinSuccessRate:    0.95,
 			MaxStaleDataAge:   15 * time.Minute,
@@ -108,7 +87,7 @@ func NewMarketDataMonitor(monitoringService *MonitoringService) *MarketDataMonit
 }
 
 // RecordMarketDataUpdate records a market data update event
-func (mdm *MarketDataMonitor) RecordMarketDataUpdate(update MarketDataUpdate) {
+func (mdm *MarketDataMonitor) RecordMarketDataUpdate(update domain.MarketDataUpdate) {
 	mdm.mu.Lock()
 	defer mdm.mu.Unlock()
 
@@ -185,7 +164,7 @@ func (mdm *MarketDataMonitor) RecordMarketDataUpdate(update MarketDataUpdate) {
 }
 
 // validatePriceData validates price data quality
-func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, update MarketDataUpdate) {
+func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, update domain.MarketDataUpdate) {
 	// Check for negative prices
 	if update.Price.IsNegative() {
 		source.PriceValidation.NegativePriceCount++
@@ -262,7 +241,7 @@ func (mdm *MarketDataMonitor) calculateQualityScore(source *DataSourceMetrics) f
 
 	// Deduct points for stale data
 	if source.DataQuality.StaleDataCount > 0 {
-		score -= math.Min(float64(source.DataQuality.StaleDataCount)*2, 20) // Max 20 points deduction
+		score -= minFloat64(float64(source.DataQuality.StaleDataCount)*2, 20) // Max 20 points deduction
 	}
 
 	// Deduct points for invalid prices
@@ -278,10 +257,10 @@ func (mdm *MarketDataMonitor) calculateQualityScore(source *DataSourceMetrics) f
 	// Deduct points for high latency
 	if source.AvgLatency > mdm.alertThresholds.MaxLatency {
 		latencyPenalty := float64(source.AvgLatency-mdm.alertThresholds.MaxLatency) / float64(mdm.alertThresholds.MaxLatency) * 15
-		score -= math.Min(latencyPenalty, 15) // Max 15 points deduction for latency
+		score -= minFloat64(latencyPenalty, 15) // Max 15 points deduction for latency
 	}
 
-	return math.Max(score, 0)
+	return maxFloat64(score, 0)
 }
 
 // runUptimeMonitoring monitors source uptime
@@ -462,15 +441,15 @@ func (mdm *MarketDataMonitor) GetMarketDataHealthSummary() map[string]interface{
 	}
 }
 
-// Helper function for math.Min and math.Max (since they're not available for all types)
-func math.Min(a, b float64) float64 {
+// Helper functions for min and max
+func minFloat64(a, b float64) float64 {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func math.Max(a, b float64) float64 {
+func maxFloat64(a, b float64) float64 {
 	if a > b {
 		return a
 	}

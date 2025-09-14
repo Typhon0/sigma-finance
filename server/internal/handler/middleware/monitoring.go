@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/portfolio-tracker/server/internal/service"
+	"sigma_finance/internal/service"
 )
 
 // MonitoringMiddleware creates middleware for monitoring HTTP requests
