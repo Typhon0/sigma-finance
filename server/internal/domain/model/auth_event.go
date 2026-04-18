@@ -25,6 +25,14 @@ type AuthEvent struct {
 	User *User `bun:"rel:belongs-to,join:user_id=id"`
 }
 
+// Implement Entity interface
+func (ae AuthEvent) GetID() string             { return ae.ID }
+func (ae *AuthEvent) SetID(id string)          { ae.ID = id }
+func (ae AuthEvent) GetCreatedAt() time.Time   { return ae.CreatedAt }
+func (ae *AuthEvent) SetCreatedAt(t time.Time) { ae.CreatedAt = t }
+func (ae AuthEvent) GetUpdatedAt() time.Time   { return ae.CreatedAt } // AuthEvents are immutable audit logs
+func (ae *AuthEvent) SetUpdatedAt(t time.Time) {}
+
 // Authentication action constants
 const (
 	AuthActionLogin         = "login"

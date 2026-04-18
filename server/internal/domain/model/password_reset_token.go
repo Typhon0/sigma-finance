@@ -21,6 +21,14 @@ type PasswordResetToken struct {
 	User *User `bun:"rel:belongs-to,join:user_id=id"`
 }
 
+// Implement Entity interface
+func (prt PasswordResetToken) GetID() string             { return prt.ID }
+func (prt *PasswordResetToken) SetID(id string)          { prt.ID = id }
+func (prt PasswordResetToken) GetCreatedAt() time.Time   { return prt.CreatedAt }
+func (prt *PasswordResetToken) SetCreatedAt(t time.Time) { prt.CreatedAt = t }
+func (prt PasswordResetToken) GetUpdatedAt() time.Time   { return prt.CreatedAt } // PasswordResetTokens usually aren't updated
+func (prt *PasswordResetToken) SetUpdatedAt(t time.Time) {}
+
 // IsExpired checks if the token has expired
 func (prt *PasswordResetToken) IsExpired() bool {
 	return time.Now().After(prt.ExpiresAt)

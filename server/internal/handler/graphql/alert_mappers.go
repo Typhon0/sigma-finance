@@ -13,8 +13,8 @@ func mapAlertToGQL(alert *repository.UserAlert) *gqlModel.Alert {
 	}
 
 	gqlAlert := &gqlModel.Alert{
-		ID:                  alert.ID.String(),
-		UserID:              alert.UserID.String(),
+		ID:                  alert.ID,
+		UserID:              alert.UserID,
 		AlertType:           mapServiceAlertTypeToGQL(alert.AlertType),
 		ConditionType:       mapServiceConditionTypeToGQL(alert.ConditionType),
 		IsActive:            alert.IsActive,
@@ -25,12 +25,12 @@ func mapAlertToGQL(alert *repository.UserAlert) *gqlModel.Alert {
 
 	// Set optional fields
 	if alert.AssetID != nil {
-		assetIDStr := alert.AssetID.String()
+		assetIDStr := *alert.AssetID
 		gqlAlert.AssetID = &assetIDStr
 	}
 
 	if alert.PortfolioID != nil {
-		portfolioIDStr := alert.PortfolioID.String()
+		portfolioIDStr := *alert.PortfolioID
 		gqlAlert.PortfolioID = &portfolioIDStr
 	}
 
@@ -61,8 +61,8 @@ func mapAlertHistoryToGQL(entry *service.AlertHistoryEntry) *gqlModel.AlertTrigg
 	thresholdValue, _ := entry.ThresholdValue.Float64()
 
 	gqlEvent := &gqlModel.AlertTriggerEvent{
-		ID:             entry.AlertID.String(), // Using AlertID as ID for simplicity
-		AlertID:        entry.AlertID.String(),
+		ID:             entry.AlertID, // Using AlertID as ID for simplicity
+		AlertID:        entry.AlertID,
 		CurrentValue:   currentValue,
 		ThresholdValue: thresholdValue,
 		TriggeredAt:    entry.TriggeredAt,

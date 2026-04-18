@@ -7,19 +7,17 @@ import {
 	ResponsiveContainer,
 	Tooltip,
 } from "recharts";
+import {
+	InlineChartSkeleton,
+	useComponentErrorHandler,
+} from "@/components/dashboard/error-handling";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withErrorBoundary } from "@/components/ui/error-boundary";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getAssetTypeColor } from "@/lib/chart-colors";
 import {
 	type AssetAllocationData,
 	formatCurrency,
 } from "@/lib/utils/portfolio-calculations";
-import { 
-	ChartErrorFallback,
-	InlineChartSkeleton,
-	useComponentErrorHandler,
-} from "@/components/dashboard/error-handling";
 
 // Helper function to format asset type names for display
 function formatAssetTypeName(assetType: string): string {
@@ -42,7 +40,10 @@ function AssetAllocationChartComponent({
 	onAssetTypeClick,
 	className,
 }: AssetAllocationChartProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler('AssetAllocationChart', 'chart');
+	const { handleErrorWithRetry } = useComponentErrorHandler(
+		"AssetAllocationChart",
+		"chart",
+	);
 	const chartData = useMemo(() => {
 		if (!allocationData || allocationData.length === 0) {
 			return [];
@@ -67,7 +68,7 @@ function AssetAllocationChartComponent({
 
 	// Handle pie chart click events
 	const handlePieClick = async (data: any) => {
-		if (onAssetTypeClick && data && data.assetType) {
+		if (onAssetTypeClick && data?.assetType) {
 			await handleErrorWithRetry(async () => {
 				onAssetTypeClick(data.assetType);
 			});
@@ -77,7 +78,7 @@ function AssetAllocationChartComponent({
 	// Loading state
 	if (isLoading) {
 		return (
-			<InlineChartSkeleton 
+			<InlineChartSkeleton
 				height={320}
 				title="Asset Allocation"
 				className={className}
@@ -115,7 +116,7 @@ function AssetAllocationChartComponent({
 						<PieChart>
 							<Tooltip
 								content={({ active, payload }) => {
-									if (active && payload && payload.length) {
+									if (active && payload?.length) {
 										const data = payload[0].payload;
 										return (
 											<div className="rounded-lg border bg-background p-2.5 text-sm shadow-lg">

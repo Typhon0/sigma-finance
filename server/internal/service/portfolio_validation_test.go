@@ -92,11 +92,11 @@ func TestPortfolioValidationFunctions(t *testing.T) {
 	t.Run("validatePortfolioID", func(t *testing.T) {
 		tests := []struct {
 			name      string
-			input     uint
+			input     string
 			expectErr bool
 		}{
-			{"valid portfolio ID", 123, false},
-			{"zero portfolio ID", 0, true},
+			{"valid portfolio ID", "123", false},
+			{"empty portfolio ID", "", true},
 		}
 
 		for _, tt := range tests {

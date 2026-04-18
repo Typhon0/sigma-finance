@@ -9,7 +9,7 @@ import (
 type Watchlist struct {
 	bun.BaseModel `bun:"table:sigma_finance.watchlist"`
 
-	ID        int       `bun:"id,pk,autoincrement"`
+	ID        string    `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	UserID    string    `bun:"user_id,notnull,type:uuid"`
 	Name      string    `bun:"name,notnull"`
 	CreatedAt time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`

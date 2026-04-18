@@ -76,7 +76,7 @@ func (s *sessionService) CreateSession(ctx context.Context, userID string, ipAdd
 	}
 
 	// Verify user exists
-	user, err := s.userRepo.GetByStringID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -173,7 +173,7 @@ func (s *sessionService) ValidateSession(ctx context.Context, token string) (*mo
 	}
 
 	// Verify user still exists and is not locked
-	user, err := s.userRepo.GetByStringID(ctx, claims.UserID)
+	user, err := s.userRepo.GetByID(ctx, claims.UserID)
 	if err != nil {
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
@@ -203,7 +203,7 @@ func (s *sessionService) RefreshSession(ctx context.Context, refreshToken string
 	}
 
 	// Get user to verify account status
-	user, err := s.userRepo.GetByStringID(ctx, session.UserID)
+	user, err := s.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -231,7 +231,7 @@ func (s *sessionService) RefreshSession(ctx context.Context, refreshToken string
 	}
 
 	// Get updated session
-	updatedSession, err := s.sessionRepo.GetByStringID(ctx, session.ID)
+	updatedSession, err := s.sessionRepo.GetByID(ctx, session.ID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get updated session: %w", err)
 	}
@@ -265,7 +265,7 @@ func (s *sessionService) RevokeSession(ctx context.Context, token string) error 
 	}
 
 	// Get user for audit logging
-	user, err := s.userRepo.GetByStringID(ctx, session.UserID)
+	user, err := s.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		// Log without user info if user not found
 		event := model.NewAuthEvent(&session.UserID, "", model.AuthActionLogout, true, session.IPAddress, session.UserAgent, map[string]interface{}{
@@ -293,7 +293,7 @@ func (s *sessionService) RevokeAllUserSessions(ctx context.Context, userID strin
 	}
 
 	// Get user for audit logging
-	user, err := s.userRepo.GetByStringID(ctx, userID)
+	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -366,7 +366,7 @@ func (s *sessionService) ExtendSession(ctx context.Context, sessionID string, du
 	}
 
 	// Get session to verify it exists
-	session, err := s.sessionRepo.GetByStringID(ctx, sessionID)
+	session, err := s.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {
 		return fmt.Errorf("failed to get session: %w", err)
 	}

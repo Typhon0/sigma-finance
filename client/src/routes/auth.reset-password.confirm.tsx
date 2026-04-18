@@ -33,6 +33,7 @@ function ResetPasswordConfirmPage() {
 						The password reset link is invalid or missing.
 					</p>
 					<button
+						type="button"
 						onClick={() => navigate({ to: "/auth/reset-password" })}
 						className="text-primary hover:underline"
 					>

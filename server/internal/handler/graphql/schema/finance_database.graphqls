@@ -1,0 +1,72 @@
+extend type Query {
+	financeDatabaseSyncStatus: FinanceDatabaseSyncStatusPayload! @auth
+	financeDatabaseSyncHistory(limit: Int): [FinanceDatabaseSyncHistoryEntry!]! @auth
+	financeDatabasePreview(assetType: AssetSyncType!, search: String, limit: Int): [FinanceDatabasePreviewItem!]! @auth
+}
+
+extend type Mutation {
+	triggerFinanceDatabaseSync(assetType: AssetSyncType!): TriggerFinanceDatabaseSyncPayload! @auth
+	updateFinanceDatabaseSyncEnabled(assetType: AssetSyncType!, enabled: Boolean!): FinanceDatabaseSyncItem! @auth
+	importFinanceDatabaseAssets(assetType: AssetSyncType!, symbols: [String!]!): ImportFinanceDatabaseAssetsPayload! @auth
+}
+
+enum AssetSyncType {
+	EQUITIES
+	ETFS
+	FUNDS
+	INDICES
+	CRYPTOCURRENCIES
+	CURRENCIES
+	MONEY_MARKETS
+}
+
+enum SyncStatus {
+	IDLE
+	SYNCING
+	COMPLETE
+	ERROR
+}
+
+type FinanceDatabaseSyncStatusPayload {
+	assetTypes: [FinanceDatabaseSyncItem!]!
+}
+
+type FinanceDatabaseSyncItem {
+	assetType: AssetSyncType!
+	isEnabled: Boolean!
+	lastSynced: Time
+	recordCount: Int!
+	syncStatus: SyncStatus!
+	progress: Int
+	currentRecord: String
+	errorMessage: String
+}
+
+type FinanceDatabaseSyncHistoryEntry {
+	id: ID!
+	timestamp: Time!
+	assetType: AssetSyncType!
+	recordCount: Int!
+	status: SyncStatus!
+	errorMessage: String
+}
+
+type FinanceDatabasePreviewItem {
+	symbol: String!
+	name: String!
+	exchange: String!
+	sector: String
+	country: String
+}
+
+type TriggerFinanceDatabaseSyncPayload {
+	success: Boolean!
+	message: String!
+	syncStatus: FinanceDatabaseSyncItem!
+}
+
+type ImportFinanceDatabaseAssetsPayload {
+	success: Boolean!
+	importedCount: Int!
+	errors: [String!]!
+}

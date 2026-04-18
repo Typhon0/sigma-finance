@@ -1,7 +1,7 @@
-import { Search, X, Filter, SortAsc, SortDesc } from "lucide-react";
+import { Filter, Search, SortAsc, SortDesc, X } from "lucide-react";
 import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import type { Portfolio } from "@/gql/graphql";
 import type { SortConfig } from "@/hooks/use-debounced-search";
 
@@ -41,7 +41,8 @@ export function PortfolioSearch({
 }: PortfolioSearchProps) {
 	const [showFilters, setShowFilters] = useState(false);
 
-	const hasActiveFilters = Object.keys(filters).length > 0 || searchTerm.trim() !== "";
+	const hasActiveFilters =
+		Object.keys(filters).length > 0 || searchTerm.trim() !== "";
 
 	const sortOptions: Array<{
 		label: string;
@@ -56,7 +57,10 @@ export function PortfolioSearch({
 		{ label: "Updated (Oldest)", field: "updatedAt", direction: "asc" },
 	];
 
-	const handleSortSelect = (field: keyof Portfolio, direction: "asc" | "desc") => {
+	const handleSortSelect = (
+		field: keyof Portfolio,
+		direction: "asc" | "desc",
+	) => {
 		onSortChange({ field, direction });
 	};
 
@@ -155,7 +159,9 @@ export function PortfolioSearch({
 							{sortOptions.map((option) => (
 								<DropdownMenuItem
 									key={`${option.field}-${option.direction}`}
-									onClick={() => handleSortSelect(option.field, option.direction)}
+									onClick={() =>
+										handleSortSelect(option.field, option.direction)
+									}
 									className={
 										sortConfig?.field === option.field &&
 										sortConfig?.direction === option.direction

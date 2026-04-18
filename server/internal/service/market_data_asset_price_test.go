@@ -101,7 +101,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("valid price data", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		price := &model.AssetPrice{
 			AssetID:   assetID,
 			Price:     decimal.NewFromFloat(150.0),
@@ -120,7 +120,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	})
 
 	t.Run("zero price", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		price := &model.AssetPrice{
 			AssetID:   assetID,
 			Price:     decimal.Zero,
@@ -134,7 +134,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	})
 
 	t.Run("negative price", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		price := &model.AssetPrice{
 			AssetID:   assetID,
 			Price:     decimal.NewFromFloat(-10.0),
@@ -148,7 +148,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	})
 
 	t.Run("negative volume", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		volume := int64(-1000)
 		price := &model.AssetPrice{
 			AssetID:   assetID,
@@ -164,7 +164,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	})
 
 	t.Run("future timestamp", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		price := &model.AssetPrice{
 			AssetID:   assetID,
 			Price:     decimal.NewFromFloat(150.0),
@@ -178,7 +178,7 @@ func TestMarketDataService_ValidateAssetPriceData(t *testing.T) {
 	})
 
 	t.Run("empty source", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.New().String()
 		price := &model.AssetPrice{
 			AssetID:   assetID,
 			Price:     decimal.NewFromFloat(150.0),

@@ -18,6 +18,11 @@ type MockLockoutUserRepo struct {
 	mock.Mock
 }
 
+func (m *MockLockoutUserRepo) GetDB() bun.IDB {
+	args := m.Called()
+	return args.Get(0).(bun.IDB)
+}
+
 func (m *MockLockoutUserRepo) Create(ctx context.Context, entity *model.User) (*model.User, error) {
 	args := m.Called(ctx, entity)
 	if args.Get(0) == nil {
@@ -26,42 +31,45 @@ func (m *MockLockoutUserRepo) Create(ctx context.Context, entity *model.User) (*
 	return args.Get(0).(*model.User), args.Error(1)
 }
 
-func (m *MockLockoutUserRepo) GetByID(ctx context.Context, id uint) (model.User, error) {
-	args := m.Called(ctx, id)
-	return args.Get(0).(model.User), args.Error(1)
-}
-
 func (m *MockLockoutUserRepo) Update(ctx context.Context, entity *model.User) error {
 	args := m.Called(ctx, entity)
 	return args.Error(0)
 }
 
-func (m *MockLockoutUserRepo) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.User, error) {
-	args := m.Called(ctx, options)
-	return args.Get(0).(model.User), args.Error(1)
+func (m *MockLockoutUserRepo) Delete(ctx context.Context, id string) error {
+	args := m.Called(ctx, id)
+	return args.Error(0)
 }
 
-func (m *MockLockoutUserRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.User, error) {
+func (m *MockLockoutUserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+
+func (m *MockLockoutUserRepo) GetAll(ctx context.Context) ([]model.User, error) {
+	args := m.Called(ctx)
+	return args.Get(0).([]model.User), args.Error(1)
+}
+
+func (m *MockLockoutUserRepo) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.User, error) {
 	args := m.Called(ctx, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
+	return args.Get(0).(*model.User), args.Error(1)
+}
+
+func (m *MockLockoutUserRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.User, error) {
+	args := m.Called(ctx, options)
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
-func (m *MockLockoutUserRepo) GetDB() bun.IDB {
-	args := m.Called()
-	return args.Get(0).(bun.IDB)
-}
-
-func (m *MockLockoutUserRepo) Delete(ctx context.Context, id uint) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
-}
-
-func (m *MockLockoutUserRepo) DeleteByStringID(ctx context.Context, id string) error {
-	args := m.Called(ctx, id)
-	return args.Error(0)
+func (m *MockLockoutUserRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Int(0), args.Error(1)
 }
 
 func (m *MockLockoutUserRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
@@ -74,14 +82,6 @@ func (m *MockLockoutUserRepo) GetByEmail(ctx context.Context, email string) (*mo
 
 func (m *MockLockoutUserRepo) GetByEmailWithAuthMethods(ctx context.Context, email string) (*model.User, error) {
 	args := m.Called(ctx, email)
-	if args.Get(0) == nil {
-		return nil, args.Error(1)
-	}
-	return args.Get(0).(*model.User), args.Error(1)
-}
-
-func (m *MockLockoutUserRepo) GetByStringID(ctx context.Context, id string) (*model.User, error) {
-	args := m.Called(ctx, id)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -103,8 +103,8 @@ func (m *MockLockoutUserRepo) UpdateLastLogin(ctx context.Context, userID string
 	return args.Error(0)
 }
 
-func (m *MockLockoutUserRepo) IncrementFailedLoginCount(ctx context.Context, userID string) error {
-	args := m.Called(ctx, userID)
+func (m *MockLockoutUserRepo) IncrementFailedLoginCount(ctx context.Context, userID string, maxFailedAttempts int) error {
+	args := m.Called(ctx, userID, maxFailedAttempts)
 	return args.Error(0)
 }
 
@@ -121,11 +121,6 @@ func (m *MockLockoutUserRepo) LockAccount(ctx context.Context, userID string, lo
 func (m *MockLockoutUserRepo) UnlockAccount(ctx context.Context, userID string) error {
 	args := m.Called(ctx, userID)
 	return args.Error(0)
-}
-
-func (m *MockLockoutUserRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
-	args := m.Called(ctx, options)
-	return args.Get(0).(int), args.Error(1)
 }
 
 func (m *MockLockoutUserRepo) GetLockedUsers(ctx context.Context) ([]model.User, error) {
@@ -192,7 +187,7 @@ func TestAccountLockoutService_CheckAccountLockout(t *testing.T) {
 			LockedUntil:      nil,
 		}
 
-		mockUserRepo.On("GetByStringID", ctx, "user1").Return(user, nil).Once()
+		mockUserRepo.On("GetByID", ctx, "user1").Return(user, nil).Once()
 
 		err := service.CheckAccountLockout(ctx, "user1")
 		assert.NoError(t, err)
@@ -210,7 +205,7 @@ func TestAccountLockoutService_CheckAccountLockout(t *testing.T) {
 		}
 
 		mockUserRepo.ExpectedCalls = nil // Reset expectations
-		mockUserRepo.On("GetByStringID", ctx, "user2").Return(user, nil).Once()
+		mockUserRepo.On("GetByID", ctx, "user2").Return(user, nil).Once()
 
 		err := service.CheckAccountLockout(ctx, "user2")
 		assert.Error(t, err)
@@ -243,8 +238,8 @@ func TestAccountLockoutService_HandleFailedLogin(t *testing.T) {
 			LockedUntil:      nil,
 		}
 
-		mockUserRepo.On("IncrementFailedLoginCount", ctx, userID).Return(nil).Once()
-		mockUserRepo.On("GetByStringID", ctx, userID).Return(userAfter, nil).Once()
+		mockUserRepo.On("IncrementFailedLoginCount", ctx, userID, 5).Return(nil).Once()
+		mockUserRepo.On("GetByID", ctx, userID).Return(userAfter, nil).Once()
 		mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Once()
 
 		err := service.HandleFailedLogin(ctx, userID, email, ipAddress, userAgent)
@@ -272,8 +267,8 @@ func TestAccountLockoutService_HandleFailedLogin(t *testing.T) {
 			LockedUntil:      &lockUntil,
 		}
 
-		mockUserRepo.On("IncrementFailedLoginCount", ctx, userID).Return(nil).Once()
-		mockUserRepo.On("GetByStringID", ctx, userID).Return(userAfter, nil).Once()
+		mockUserRepo.On("IncrementFailedLoginCount", ctx, userID, 5).Return(nil).Once()
+		mockUserRepo.On("GetByID", ctx, userID).Return(userAfter, nil).Once()
 		mockAudit.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil).Times(2) // Login event + lock event
 
 		err := service.HandleFailedLogin(ctx, userID, email, ipAddress, userAgent)

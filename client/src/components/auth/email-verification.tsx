@@ -1,12 +1,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../../lib/auth-context";
 import type { AuthError } from "../../lib/types/auth.types";
-import { Button } from "../ui/button";
 import { AuthButton } from "./auth-button";
-import { AuthErrorDisplay } from "./auth-error-display";
 import { AuthFormWrapper } from "./auth-form-wrapper";
-import { AuthLoadingDisplay } from "./auth-loading-display";
-import { AuthSuccessDisplay } from "./auth-success-display";
 
 interface EmailVerificationProps {
 	token?: string;

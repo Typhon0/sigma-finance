@@ -18,9 +18,9 @@ func DemoMarketDataAssetPriceFeatures() {
 	fmt.Println("\n1. Asset Price Cache Demo:")
 	cache := NewAssetPriceCache()
 
-	assetID := uuid.New()
+	assetUUID := uuid.MustParse("00000000-0000-0000-0000-000000000001")
 	priceData := &AssetPriceData{
-		AssetID:   assetID,
+		AssetID:   assetUUID,
 		Price:     decimal.NewFromFloat(150.50),
 		Volume:    int64Ptr(1000000),
 		MarketCap: int64Ptr(2500000000000),
@@ -30,11 +30,11 @@ func DemoMarketDataAssetPriceFeatures() {
 	}
 
 	// Set price in cache
-	cache.Set(assetID, priceData, 5*time.Minute)
-	fmt.Printf("✓ Cached price for asset %s: $%.2f\n", assetID.String()[:8], priceData.Price.InexactFloat64())
+	cache.Set(assetUUID, priceData, 5*time.Minute)
+	fmt.Printf("✓ Cached price for asset %s: $%.2f\n", assetUUID.String()[:8], priceData.Price.InexactFloat64())
 
 	// Get price from cache
-	cached := cache.Get(assetID)
+	cached := cache.Get(assetUUID)
 	if cached != nil {
 		fmt.Printf("✓ Retrieved cached price: $%.2f (Source: %s)\n", cached.Price.InexactFloat64(), cached.Source)
 	}
@@ -50,7 +50,7 @@ func DemoMarketDataAssetPriceFeatures() {
 
 	// Valid price
 	validPrice := &model.AssetPrice{
-		AssetID:   assetID,
+		AssetID:   assetUUID.String(),
 		Price:     decimal.NewFromFloat(150.50),
 		Timestamp: time.Now(),
 		Source:    "demo",
@@ -64,7 +64,7 @@ func DemoMarketDataAssetPriceFeatures() {
 
 	// Invalid price (negative)
 	invalidPrice := &model.AssetPrice{
-		AssetID:   assetID,
+		AssetID:   assetUUID.String(),
 		Price:     decimal.NewFromFloat(-10.0),
 		Timestamp: time.Now(),
 		Source:    "demo",

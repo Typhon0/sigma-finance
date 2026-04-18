@@ -22,7 +22,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [registeredEmail, setRegisteredEmail] = useState("");
 	const { register: registerUser, isLoading, resendVerification } = useAuth();
-	const { handleAuthResponse } = useAuthErrorHandler();
+	const { _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,

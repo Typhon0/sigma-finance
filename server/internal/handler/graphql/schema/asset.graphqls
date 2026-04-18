@@ -15,6 +15,10 @@ interface Asset {
     purchasePrice: Float
     tags: [Tag!]!
     positions: [Position!]!
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
 }
 
 type Stock implements Asset {
@@ -29,7 +33,11 @@ type Stock implements Asset {
 
     ticker: String!
     quantity: Float!
-    buyingPrice: Float # Note: Redundant with purchase_price in asset table
+    buyingPrice: Float
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
     positions: [Position!]!
 }
 
@@ -46,6 +54,170 @@ type Crypto implements Asset {
     walletAddress: String
     blockchainNetwork: String
     quantity: Float!
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type Fund implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    ticker: String!
+    quantity: Float!
+    buyingPrice: Float
+    sector: String
+    exchange: String
+    fundType: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type BankAccount implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    accountType: String!
+    institution: String!
+    accountNumber: String!
+    currency: String!
+    interestRate: Float
+    balance: Float
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type RealEstate implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    propertyType: String!
+    address: String!
+    city: String!
+    state: String
+    country: String!
+    zipCode: String
+    squareFeet: Int
+    yearBuilt: Int
+    bedrooms: Int
+    bathrooms: Float
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type LifeInsurance implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    policyNumber: String!
+    insurer: String!
+    policyType: String!
+    coverageAmount: Float!
+    premiumAmount: Float!
+    premiumFrequency: String!
+    beneficiaries: [String!]!
+    maturityDate: Time
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type Watch implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    brand: String!
+    model: String!
+    serialNumber: String
+    referenceNumber: String
+    condition: String!
+    yearMade: Int
+    material: String!
+    movement: String!
+    caseSize: Float
+    waterResistance: Int
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
+    positions: [Position!]!
+}
+
+type Loan implements Asset {
+    id: ID!
+    name: String!
+    symbol: String
+    assetType: AssetType!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    tags: [Tag!]!
+
+    description: String
+    loanType: String!
+    loanAmount: Float!
+    remainingBalance: Float!
+    interestRate: Float!
+    durationMonths: Int!
+    monthlyPayment: Float!
+    startDate: String!
+    endDate: String
+    lender: String!
+    loanNumber: String
+    currency: String!
+    downPayment: Float
+    status: String!
+    ownershipMode: String
+    applicationFee: Float
+    brokerFee: Float
+    insuranceFee: Float
+    otherFees: Float
+    earlyRepaymentFee: Float
+    sector: String
+    exchange: String
+    dayChange: Float
+    dayChangePercent: Float
     positions: [Position!]!
 }
 
@@ -75,6 +247,115 @@ input CreateCryptoInput {
     walletAddress: String
     blockchainNetwork: String
     quantity: Float!
+}
+
+# Input for creating a new Fund asset
+input CreateFundInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    ticker: String!
+    quantity: Float!
+}
+
+# Input for creating a new BankAccount asset
+input CreateBankAccountInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    accountType: String!
+    institution: String!
+    accountNumber: String!
+    currency: String!
+    interestRate: Float
+}
+
+# Input for creating a new RealEstate asset
+input CreateRealEstateInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    propertyType: String!
+    address: String!
+    city: String!
+    state: String
+    country: String!
+    zipCode: String
+    squareFeet: Int
+    yearBuilt: Int
+    bedrooms: Int
+    bathrooms: Float
+}
+
+# Input for creating a new LifeInsurance asset
+input CreateLifeInsuranceInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    policyNumber: String!
+    insurer: String!
+    policyType: String!
+    coverageAmount: Float!
+    premiumAmount: Float!
+    premiumFrequency: String!
+    beneficiaries: [String!]!
+    maturityDate: Time
+}
+
+# Input for creating a new Loan asset
+input CreateLoanInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    description: String
+    loanType: String!
+    loanAmount: Float!
+    remainingBalance: Float!
+    interestRate: Float!
+    durationMonths: Int!
+    monthlyPayment: Float!
+    startDate: String!
+    endDate: String
+    lender: String!
+    loanNumber: String
+    currency: String!
+    downPayment: Float
+    status: String!
+    ownershipMode: String
+    applicationFee: Float
+    brokerFee: Float
+    insuranceFee: Float
+    otherFees: Float
+    earlyRepaymentFee: Float
+}
+
+# Input for creating a new Watch asset
+input CreateWatchInput {
+    name: String!
+    assetTypeID: ID!
+    currentValue: Float
+    purchaseDate: Time
+    purchasePrice: Float
+    brand: String!
+    model: String!
+    serialNumber: String
+    referenceNumber: String
+    condition: String!
+    yearMade: Int
+    material: String!
+    movement: String!
+    caseSize: Float
+    waterResistance: Int
 }
 
 input AssetFilter {

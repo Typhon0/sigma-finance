@@ -9,8 +9,8 @@ import (
 )
 
 func TestPosition_Validate(t *testing.T) {
-	portfolioID := uuid.New()
-	assetID := uuid.New()
+	portfolioID := uuid.New().String()
+	assetID := uuid.New().String()
 
 	tests := []struct {
 		name     string
@@ -21,7 +21,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "valid position",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
@@ -34,7 +34,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "valid position with partial ownership",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(50.0),
@@ -47,7 +47,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "invalid position - missing portfolio ID",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -60,7 +60,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "invalid position - missing asset ID",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -73,7 +73,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "invalid position - negative quantity",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(-10.0),
@@ -87,7 +87,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "invalid position - zero ownership percentage",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
@@ -101,7 +101,7 @@ func TestPosition_Validate(t *testing.T) {
 		{
 			name: "invalid position - ownership percentage over 100",
 			position: &Position{
-				ID:                  uuid.New(),
+				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
@@ -130,9 +130,9 @@ func TestPosition_Validate(t *testing.T) {
 
 func TestPosition_UpdateCostBasis(t *testing.T) {
 	position := &Position{
-		ID:                  uuid.New(),
-		PortfolioID:         uuid.New(),
-		AssetID:             uuid.New(),
+		ID:                  uuid.New().String(),
+		PortfolioID:         uuid.New().String(),
+		AssetID:             uuid.New().String(),
 		Quantity:            decimal.Zero,
 		OwnershipPercentage: decimal.NewFromFloat(100.0),
 		CreatedAt:           time.Now(),
@@ -185,9 +185,9 @@ func TestPosition_UpdateCostBasis(t *testing.T) {
 func TestPosition_UpdateCostBasis_Sell(t *testing.T) {
 	// Set up position with existing holdings
 	position := &Position{
-		ID:                  uuid.New(),
-		PortfolioID:         uuid.New(),
-		AssetID:             uuid.New(),
+		ID:                  uuid.New().String(),
+		PortfolioID:         uuid.New().String(),
+		AssetID:             uuid.New().String(),
 		Quantity:            decimal.NewFromFloat(100.0),
 		OwnershipPercentage: decimal.NewFromFloat(100.0),
 		AverageCostBasis:    decimalPtr(decimal.NewFromFloat(0.50)), // $0.50 per share
@@ -221,9 +221,9 @@ func TestPosition_UpdateCostBasis_Sell(t *testing.T) {
 
 func TestPosition_CalculateRealizedGains(t *testing.T) {
 	position := &Position{
-		ID:                  uuid.New(),
-		PortfolioID:         uuid.New(),
-		AssetID:             uuid.New(),
+		ID:                  uuid.New().String(),
+		PortfolioID:         uuid.New().String(),
+		AssetID:             uuid.New().String(),
 		Quantity:            decimal.NewFromFloat(100.0),
 		OwnershipPercentage: decimal.NewFromFloat(100.0),
 		AverageCostBasis:    decimalPtr(decimal.NewFromFloat(0.50)), // $0.50 per share
@@ -259,9 +259,9 @@ func TestPosition_CalculateRealizedGains(t *testing.T) {
 
 func TestPosition_CalculateValue(t *testing.T) {
 	position := &Position{
-		ID:                  uuid.New(),
-		PortfolioID:         uuid.New(),
-		AssetID:             uuid.New(),
+		ID:                  uuid.New().String(),
+		PortfolioID:         uuid.New().String(),
+		AssetID:             uuid.New().String(),
 		Quantity:            decimal.NewFromFloat(100.0),
 		OwnershipPercentage: decimal.NewFromFloat(100.0),
 		AverageCostBasis:    decimalPtr(decimal.NewFromFloat(0.50)), // $0.50 per share

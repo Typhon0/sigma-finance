@@ -9,33 +9,49 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PortfoliosRouteImport } from './routes/portfolios'
 import { Route as MarketDataTestRouteImport } from './routes/market-data-test'
-import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ChartsRouteImport } from './routes/charts'
+import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PortfoliosCreateRouteImport } from './routes/portfolios.create'
-import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios.$portfolioId'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
 import { Route as AuthLoginRouteImport } from './routes/auth.login'
-import { Route as PortfoliosPortfolioIdEditRouteImport } from './routes/portfolios.$portfolioId.edit'
+import { Route as AppSettingsRouteImport } from './routes/_app.settings'
+import { Route as AppPortfoliosRouteImport } from './routes/_app.portfolios'
+import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
+import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
+import { Route as AppSettingsMarketDataRouteImport } from './routes/_app.settings.market-data'
+import { Route as AppSettingsManualInstrumentsRouteImport } from './routes/_app.settings.manual-instruments'
+import { Route as AppSettingsFinanceDatabaseRouteImport } from './routes/_app.settings.finance-database'
+import { Route as AppSettingsDisplayRouteImport } from './routes/_app.settings.display'
+import { Route as AppSettingsDataRouteImport } from './routes/_app.settings.data'
+import { Route as AppSettingsAccountRouteImport } from './routes/_app.settings.account'
+import { Route as AppPortfoliosCreateRouteImport } from './routes/_app.portfolios.create'
+import { Route as AppPortfoliosPortfolioIdRouteImport } from './routes/_app.portfolios.$portfolioId'
+import { Route as AppDashboardWatchlistRouteImport } from './routes/_app.dashboard.watchlist'
+import { Route as AppDashboardTransactionsRouteImport } from './routes/_app.dashboard.transactions'
+import { Route as AppDashboardStockMarketOverviewRouteImport } from './routes/_app.dashboard.stock-market-overview'
+import { Route as AppDashboardOverviewRouteImport } from './routes/_app.dashboard.overview'
+import { Route as AppDashboardMarketHeatmapsRouteImport } from './routes/_app.dashboard.market-heatmaps'
+import { Route as AppDashboardMarketCalendarRouteImport } from './routes/_app.dashboard.market-calendar'
+import { Route as AppDashboardCryptoMarketOverviewRouteImport } from './routes/_app.dashboard.crypto-market-overview'
+import { Route as AppDashboardAnalyticsRouteImport } from './routes/_app.dashboard.analytics'
+import { Route as AppAssetsStocksRouteImport } from './routes/_app.assets.stocks'
+import { Route as AppAssetsSavingsRouteImport } from './routes/_app.assets.savings'
+import { Route as AppAssetsRealEstateRouteImport } from './routes/_app.assets.real-estate'
+import { Route as AppAssetsLoansRouteImport } from './routes/_app.assets.loans'
+import { Route as AppAssetsInsuranceRouteImport } from './routes/_app.assets.insurance'
+import { Route as AppAssetsCryptoRouteImport } from './routes/_app.assets.crypto'
+import { Route as AppAssetsCollectiblesRouteImport } from './routes/_app.assets.collectibles'
+import { Route as AppAssetsAccountsRouteImport } from './routes/_app.assets.accounts'
+import { Route as AppPortfoliosPortfolioIdEditRouteImport } from './routes/_app.portfolios.$portfolioId.edit'
+import { Route as AppAssetsSavingsSavingIdRouteImport } from './routes/_app.assets.savings.$savingId'
 
-const PortfoliosRoute = PortfoliosRouteImport.update({
-  id: '/portfolios',
-  path: '/portfolios',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MarketDataTestRoute = MarketDataTestRouteImport.update({
   id: '/market-data-test',
   path: '/market-data-test',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChartsRoute = ChartsRouteImport.update({
@@ -43,20 +59,14 @@ const ChartsRoute = ChartsRouteImport.update({
   path: '/charts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
-} as any)
-const PortfoliosCreateRoute = PortfoliosCreateRouteImport.update({
-  id: '/create',
-  path: '/create',
-  getParentRoute: () => PortfoliosRoute,
-} as any)
-const PortfoliosPortfolioIdRoute = PortfoliosPortfolioIdRouteImport.update({
-  id: '/$portfolioId',
-  path: '/$portfolioId',
-  getParentRoute: () => PortfoliosRoute,
 } as any)
 const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   id: '/auth/verify-email',
@@ -78,119 +88,424 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PortfoliosPortfolioIdEditRoute =
-  PortfoliosPortfolioIdEditRouteImport.update({
-    id: '/edit',
-    path: '/edit',
-    getParentRoute: () => PortfoliosPortfolioIdRoute,
-  } as any)
+const AppSettingsRoute = AppSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPortfoliosRoute = AppPortfoliosRouteImport.update({
+  id: '/portfolios',
+  path: '/portfolios',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAssetsRoute = AppAssetsRouteImport.update({
+  id: '/assets',
+  path: '/assets',
+  getParentRoute: () => AppRoute,
+} as any)
 const AuthResetPasswordConfirmRoute =
   AuthResetPasswordConfirmRouteImport.update({
     id: '/confirm',
     path: '/confirm',
     getParentRoute: () => AuthResetPasswordRoute,
   } as any)
+const AppSettingsMarketDataRoute = AppSettingsMarketDataRouteImport.update({
+  id: '/market-data',
+  path: '/market-data',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsManualInstrumentsRoute =
+  AppSettingsManualInstrumentsRouteImport.update({
+    id: '/manual-instruments',
+    path: '/manual-instruments',
+    getParentRoute: () => AppSettingsRoute,
+  } as any)
+const AppSettingsFinanceDatabaseRoute =
+  AppSettingsFinanceDatabaseRouteImport.update({
+    id: '/finance-database',
+    path: '/finance-database',
+    getParentRoute: () => AppSettingsRoute,
+  } as any)
+const AppSettingsDisplayRoute = AppSettingsDisplayRouteImport.update({
+  id: '/display',
+  path: '/display',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsDataRoute = AppSettingsDataRouteImport.update({
+  id: '/data',
+  path: '/data',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsAccountRoute = AppSettingsAccountRouteImport.update({
+  id: '/account',
+  path: '/account',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppPortfoliosCreateRoute = AppPortfoliosCreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => AppPortfoliosRoute,
+} as any)
+const AppPortfoliosPortfolioIdRoute =
+  AppPortfoliosPortfolioIdRouteImport.update({
+    id: '/$portfolioId',
+    path: '/$portfolioId',
+    getParentRoute: () => AppPortfoliosRoute,
+  } as any)
+const AppDashboardWatchlistRoute = AppDashboardWatchlistRouteImport.update({
+  id: '/watchlist',
+  path: '/watchlist',
+  getParentRoute: () => AppDashboardRoute,
+} as any)
+const AppDashboardTransactionsRoute =
+  AppDashboardTransactionsRouteImport.update({
+    id: '/transactions',
+    path: '/transactions',
+    getParentRoute: () => AppDashboardRoute,
+  } as any)
+const AppDashboardStockMarketOverviewRoute =
+  AppDashboardStockMarketOverviewRouteImport.update({
+    id: '/stock-market-overview',
+    path: '/stock-market-overview',
+    getParentRoute: () => AppDashboardRoute,
+  } as any)
+const AppDashboardOverviewRoute = AppDashboardOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AppDashboardRoute,
+} as any)
+const AppDashboardMarketHeatmapsRoute =
+  AppDashboardMarketHeatmapsRouteImport.update({
+    id: '/market-heatmaps',
+    path: '/market-heatmaps',
+    getParentRoute: () => AppDashboardRoute,
+  } as any)
+const AppDashboardMarketCalendarRoute =
+  AppDashboardMarketCalendarRouteImport.update({
+    id: '/market-calendar',
+    path: '/market-calendar',
+    getParentRoute: () => AppDashboardRoute,
+  } as any)
+const AppDashboardCryptoMarketOverviewRoute =
+  AppDashboardCryptoMarketOverviewRouteImport.update({
+    id: '/crypto-market-overview',
+    path: '/crypto-market-overview',
+    getParentRoute: () => AppDashboardRoute,
+  } as any)
+const AppDashboardAnalyticsRoute = AppDashboardAnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => AppDashboardRoute,
+} as any)
+const AppAssetsStocksRoute = AppAssetsStocksRouteImport.update({
+  id: '/stocks',
+  path: '/stocks',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsSavingsRoute = AppAssetsSavingsRouteImport.update({
+  id: '/savings',
+  path: '/savings',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsRealEstateRoute = AppAssetsRealEstateRouteImport.update({
+  id: '/real-estate',
+  path: '/real-estate',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsLoansRoute = AppAssetsLoansRouteImport.update({
+  id: '/loans',
+  path: '/loans',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsInsuranceRoute = AppAssetsInsuranceRouteImport.update({
+  id: '/insurance',
+  path: '/insurance',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsCryptoRoute = AppAssetsCryptoRouteImport.update({
+  id: '/crypto',
+  path: '/crypto',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsCollectiblesRoute = AppAssetsCollectiblesRouteImport.update({
+  id: '/collectibles',
+  path: '/collectibles',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppAssetsAccountsRoute = AppAssetsAccountsRouteImport.update({
+  id: '/accounts',
+  path: '/accounts',
+  getParentRoute: () => AppAssetsRoute,
+} as any)
+const AppPortfoliosPortfolioIdEditRoute =
+  AppPortfoliosPortfolioIdEditRouteImport.update({
+    id: '/edit',
+    path: '/edit',
+    getParentRoute: () => AppPortfoliosPortfolioIdRoute,
+  } as any)
+const AppAssetsSavingsSavingIdRoute =
+  AppAssetsSavingsSavingIdRouteImport.update({
+    id: '/$savingId',
+    path: '/$savingId',
+    getParentRoute: () => AppAssetsSavingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/charts': typeof ChartsRoute
-  '/dashboard': typeof DashboardRoute
   '/market-data-test': typeof MarketDataTestRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
+  '/assets': typeof AppAssetsRouteWithChildren
+  '/dashboard': typeof AppDashboardRouteWithChildren
+  '/portfolios': typeof AppPortfoliosRouteWithChildren
+  '/settings': typeof AppSettingsRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
+  '/assets/accounts': typeof AppAssetsAccountsRoute
+  '/assets/collectibles': typeof AppAssetsCollectiblesRoute
+  '/assets/crypto': typeof AppAssetsCryptoRoute
+  '/assets/insurance': typeof AppAssetsInsuranceRoute
+  '/assets/loans': typeof AppAssetsLoansRoute
+  '/assets/real-estate': typeof AppAssetsRealEstateRoute
+  '/assets/savings': typeof AppAssetsSavingsRouteWithChildren
+  '/assets/stocks': typeof AppAssetsStocksRoute
+  '/dashboard/analytics': typeof AppDashboardAnalyticsRoute
+  '/dashboard/crypto-market-overview': typeof AppDashboardCryptoMarketOverviewRoute
+  '/dashboard/market-calendar': typeof AppDashboardMarketCalendarRoute
+  '/dashboard/market-heatmaps': typeof AppDashboardMarketHeatmapsRoute
+  '/dashboard/overview': typeof AppDashboardOverviewRoute
+  '/dashboard/stock-market-overview': typeof AppDashboardStockMarketOverviewRoute
+  '/dashboard/transactions': typeof AppDashboardTransactionsRoute
+  '/dashboard/watchlist': typeof AppDashboardWatchlistRoute
+  '/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
+  '/portfolios/create': typeof AppPortfoliosCreateRoute
+  '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/data': typeof AppSettingsDataRoute
+  '/settings/display': typeof AppSettingsDisplayRoute
+  '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
+  '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+  '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
+  '/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/charts': typeof ChartsRoute
-  '/dashboard': typeof DashboardRoute
   '/market-data-test': typeof MarketDataTestRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
+  '/assets': typeof AppAssetsRouteWithChildren
+  '/dashboard': typeof AppDashboardRouteWithChildren
+  '/portfolios': typeof AppPortfoliosRouteWithChildren
+  '/settings': typeof AppSettingsRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
+  '/assets/accounts': typeof AppAssetsAccountsRoute
+  '/assets/collectibles': typeof AppAssetsCollectiblesRoute
+  '/assets/crypto': typeof AppAssetsCryptoRoute
+  '/assets/insurance': typeof AppAssetsInsuranceRoute
+  '/assets/loans': typeof AppAssetsLoansRoute
+  '/assets/real-estate': typeof AppAssetsRealEstateRoute
+  '/assets/savings': typeof AppAssetsSavingsRouteWithChildren
+  '/assets/stocks': typeof AppAssetsStocksRoute
+  '/dashboard/analytics': typeof AppDashboardAnalyticsRoute
+  '/dashboard/crypto-market-overview': typeof AppDashboardCryptoMarketOverviewRoute
+  '/dashboard/market-calendar': typeof AppDashboardMarketCalendarRoute
+  '/dashboard/market-heatmaps': typeof AppDashboardMarketHeatmapsRoute
+  '/dashboard/overview': typeof AppDashboardOverviewRoute
+  '/dashboard/stock-market-overview': typeof AppDashboardStockMarketOverviewRoute
+  '/dashboard/transactions': typeof AppDashboardTransactionsRoute
+  '/dashboard/watchlist': typeof AppDashboardWatchlistRoute
+  '/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
+  '/portfolios/create': typeof AppPortfoliosCreateRoute
+  '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/data': typeof AppSettingsDataRoute
+  '/settings/display': typeof AppSettingsDisplayRoute
+  '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
+  '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+  '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
+  '/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_app': typeof AppRouteWithChildren
   '/charts': typeof ChartsRoute
-  '/dashboard': typeof DashboardRoute
   '/market-data-test': typeof MarketDataTestRoute
-  '/portfolios': typeof PortfoliosRouteWithChildren
+  '/_app/assets': typeof AppAssetsRouteWithChildren
+  '/_app/dashboard': typeof AppDashboardRouteWithChildren
+  '/_app/portfolios': typeof AppPortfoliosRouteWithChildren
+  '/_app/settings': typeof AppSettingsRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
-  '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRouteWithChildren
-  '/portfolios/create': typeof PortfoliosCreateRoute
+  '/_app/assets/accounts': typeof AppAssetsAccountsRoute
+  '/_app/assets/collectibles': typeof AppAssetsCollectiblesRoute
+  '/_app/assets/crypto': typeof AppAssetsCryptoRoute
+  '/_app/assets/insurance': typeof AppAssetsInsuranceRoute
+  '/_app/assets/loans': typeof AppAssetsLoansRoute
+  '/_app/assets/real-estate': typeof AppAssetsRealEstateRoute
+  '/_app/assets/savings': typeof AppAssetsSavingsRouteWithChildren
+  '/_app/assets/stocks': typeof AppAssetsStocksRoute
+  '/_app/dashboard/analytics': typeof AppDashboardAnalyticsRoute
+  '/_app/dashboard/crypto-market-overview': typeof AppDashboardCryptoMarketOverviewRoute
+  '/_app/dashboard/market-calendar': typeof AppDashboardMarketCalendarRoute
+  '/_app/dashboard/market-heatmaps': typeof AppDashboardMarketHeatmapsRoute
+  '/_app/dashboard/overview': typeof AppDashboardOverviewRoute
+  '/_app/dashboard/stock-market-overview': typeof AppDashboardStockMarketOverviewRoute
+  '/_app/dashboard/transactions': typeof AppDashboardTransactionsRoute
+  '/_app/dashboard/watchlist': typeof AppDashboardWatchlistRoute
+  '/_app/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
+  '/_app/portfolios/create': typeof AppPortfoliosCreateRoute
+  '/_app/settings/account': typeof AppSettingsAccountRoute
+  '/_app/settings/data': typeof AppSettingsDataRoute
+  '/_app/settings/display': typeof AppSettingsDisplayRoute
+  '/_app/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/_app/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
+  '/_app/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
-  '/portfolios/$portfolioId/edit': typeof PortfoliosPortfolioIdEditRoute
+  '/_app/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
+  '/_app/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/charts'
-    | '/dashboard'
     | '/market-data-test'
+    | '/assets'
+    | '/dashboard'
     | '/portfolios'
+    | '/settings'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/assets/accounts'
+    | '/assets/collectibles'
+    | '/assets/crypto'
+    | '/assets/insurance'
+    | '/assets/loans'
+    | '/assets/real-estate'
+    | '/assets/savings'
+    | '/assets/stocks'
+    | '/dashboard/analytics'
+    | '/dashboard/crypto-market-overview'
+    | '/dashboard/market-calendar'
+    | '/dashboard/market-heatmaps'
+    | '/dashboard/overview'
+    | '/dashboard/stock-market-overview'
+    | '/dashboard/transactions'
+    | '/dashboard/watchlist'
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
+    | '/settings/account'
+    | '/settings/data'
+    | '/settings/display'
+    | '/settings/finance-database'
+    | '/settings/manual-instruments'
+    | '/settings/market-data'
     | '/auth/reset-password/confirm'
+    | '/assets/savings/$savingId'
     | '/portfolios/$portfolioId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/charts'
-    | '/dashboard'
     | '/market-data-test'
+    | '/assets'
+    | '/dashboard'
     | '/portfolios'
+    | '/settings'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/assets/accounts'
+    | '/assets/collectibles'
+    | '/assets/crypto'
+    | '/assets/insurance'
+    | '/assets/loans'
+    | '/assets/real-estate'
+    | '/assets/savings'
+    | '/assets/stocks'
+    | '/dashboard/analytics'
+    | '/dashboard/crypto-market-overview'
+    | '/dashboard/market-calendar'
+    | '/dashboard/market-heatmaps'
+    | '/dashboard/overview'
+    | '/dashboard/stock-market-overview'
+    | '/dashboard/transactions'
+    | '/dashboard/watchlist'
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
+    | '/settings/account'
+    | '/settings/data'
+    | '/settings/display'
+    | '/settings/finance-database'
+    | '/settings/manual-instruments'
+    | '/settings/market-data'
     | '/auth/reset-password/confirm'
+    | '/assets/savings/$savingId'
     | '/portfolios/$portfolioId/edit'
   id:
     | '__root__'
     | '/'
+    | '/_app'
     | '/charts'
-    | '/dashboard'
     | '/market-data-test'
-    | '/portfolios'
+    | '/_app/assets'
+    | '/_app/dashboard'
+    | '/_app/portfolios'
+    | '/_app/settings'
     | '/auth/login'
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
-    | '/portfolios/$portfolioId'
-    | '/portfolios/create'
+    | '/_app/assets/accounts'
+    | '/_app/assets/collectibles'
+    | '/_app/assets/crypto'
+    | '/_app/assets/insurance'
+    | '/_app/assets/loans'
+    | '/_app/assets/real-estate'
+    | '/_app/assets/savings'
+    | '/_app/assets/stocks'
+    | '/_app/dashboard/analytics'
+    | '/_app/dashboard/crypto-market-overview'
+    | '/_app/dashboard/market-calendar'
+    | '/_app/dashboard/market-heatmaps'
+    | '/_app/dashboard/overview'
+    | '/_app/dashboard/stock-market-overview'
+    | '/_app/dashboard/transactions'
+    | '/_app/dashboard/watchlist'
+    | '/_app/portfolios/$portfolioId'
+    | '/_app/portfolios/create'
+    | '/_app/settings/account'
+    | '/_app/settings/data'
+    | '/_app/settings/display'
+    | '/_app/settings/finance-database'
+    | '/_app/settings/manual-instruments'
+    | '/_app/settings/market-data'
     | '/auth/reset-password/confirm'
-    | '/portfolios/$portfolioId/edit'
+    | '/_app/assets/savings/$savingId'
+    | '/_app/portfolios/$portfolioId/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
   ChartsRoute: typeof ChartsRoute
-  DashboardRoute: typeof DashboardRoute
   MarketDataTestRoute: typeof MarketDataTestRoute
-  PortfoliosRoute: typeof PortfoliosRouteWithChildren
   AuthLoginRoute: typeof AuthLoginRoute
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRouteWithChildren
@@ -199,25 +514,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/portfolios': {
-      id: '/portfolios'
-      path: '/portfolios'
-      fullPath: '/portfolios'
-      preLoaderRoute: typeof PortfoliosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/market-data-test': {
       id: '/market-data-test'
       path: '/market-data-test'
       fullPath: '/market-data-test'
       preLoaderRoute: typeof MarketDataTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/charts': {
@@ -227,26 +528,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChartsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/portfolios/create': {
-      id: '/portfolios/create'
-      path: '/create'
-      fullPath: '/portfolios/create'
-      preLoaderRoute: typeof PortfoliosCreateRouteImport
-      parentRoute: typeof PortfoliosRoute
-    }
-    '/portfolios/$portfolioId': {
-      id: '/portfolios/$portfolioId'
-      path: '/$portfolioId'
-      fullPath: '/portfolios/$portfolioId'
-      preLoaderRoute: typeof PortfoliosPortfolioIdRouteImport
-      parentRoute: typeof PortfoliosRoute
     }
     '/auth/verify-email': {
       id: '/auth/verify-email'
@@ -276,12 +570,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/portfolios/$portfolioId/edit': {
-      id: '/portfolios/$portfolioId/edit'
-      path: '/edit'
-      fullPath: '/portfolios/$portfolioId/edit'
-      preLoaderRoute: typeof PortfoliosPortfolioIdEditRouteImport
-      parentRoute: typeof PortfoliosPortfolioIdRoute
+    '/_app/settings': {
+      id: '/_app/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AppSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/portfolios': {
+      id: '/_app/portfolios'
+      path: '/portfolios'
+      fullPath: '/portfolios'
+      preLoaderRoute: typeof AppPortfoliosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/dashboard': {
+      id: '/_app/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/assets': {
+      id: '/_app/assets'
+      path: '/assets'
+      fullPath: '/assets'
+      preLoaderRoute: typeof AppAssetsRouteImport
+      parentRoute: typeof AppRoute
     }
     '/auth/reset-password/confirm': {
       id: '/auth/reset-password/confirm'
@@ -290,35 +605,319 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthResetPasswordConfirmRouteImport
       parentRoute: typeof AuthResetPasswordRoute
     }
+    '/_app/settings/market-data': {
+      id: '/_app/settings/market-data'
+      path: '/market-data'
+      fullPath: '/settings/market-data'
+      preLoaderRoute: typeof AppSettingsMarketDataRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/manual-instruments': {
+      id: '/_app/settings/manual-instruments'
+      path: '/manual-instruments'
+      fullPath: '/settings/manual-instruments'
+      preLoaderRoute: typeof AppSettingsManualInstrumentsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/finance-database': {
+      id: '/_app/settings/finance-database'
+      path: '/finance-database'
+      fullPath: '/settings/finance-database'
+      preLoaderRoute: typeof AppSettingsFinanceDatabaseRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/display': {
+      id: '/_app/settings/display'
+      path: '/display'
+      fullPath: '/settings/display'
+      preLoaderRoute: typeof AppSettingsDisplayRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/data': {
+      id: '/_app/settings/data'
+      path: '/data'
+      fullPath: '/settings/data'
+      preLoaderRoute: typeof AppSettingsDataRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/account': {
+      id: '/_app/settings/account'
+      path: '/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof AppSettingsAccountRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/portfolios/create': {
+      id: '/_app/portfolios/create'
+      path: '/create'
+      fullPath: '/portfolios/create'
+      preLoaderRoute: typeof AppPortfoliosCreateRouteImport
+      parentRoute: typeof AppPortfoliosRoute
+    }
+    '/_app/portfolios/$portfolioId': {
+      id: '/_app/portfolios/$portfolioId'
+      path: '/$portfolioId'
+      fullPath: '/portfolios/$portfolioId'
+      preLoaderRoute: typeof AppPortfoliosPortfolioIdRouteImport
+      parentRoute: typeof AppPortfoliosRoute
+    }
+    '/_app/dashboard/watchlist': {
+      id: '/_app/dashboard/watchlist'
+      path: '/watchlist'
+      fullPath: '/dashboard/watchlist'
+      preLoaderRoute: typeof AppDashboardWatchlistRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/transactions': {
+      id: '/_app/dashboard/transactions'
+      path: '/transactions'
+      fullPath: '/dashboard/transactions'
+      preLoaderRoute: typeof AppDashboardTransactionsRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/stock-market-overview': {
+      id: '/_app/dashboard/stock-market-overview'
+      path: '/stock-market-overview'
+      fullPath: '/dashboard/stock-market-overview'
+      preLoaderRoute: typeof AppDashboardStockMarketOverviewRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/overview': {
+      id: '/_app/dashboard/overview'
+      path: '/overview'
+      fullPath: '/dashboard/overview'
+      preLoaderRoute: typeof AppDashboardOverviewRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/market-heatmaps': {
+      id: '/_app/dashboard/market-heatmaps'
+      path: '/market-heatmaps'
+      fullPath: '/dashboard/market-heatmaps'
+      preLoaderRoute: typeof AppDashboardMarketHeatmapsRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/market-calendar': {
+      id: '/_app/dashboard/market-calendar'
+      path: '/market-calendar'
+      fullPath: '/dashboard/market-calendar'
+      preLoaderRoute: typeof AppDashboardMarketCalendarRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/crypto-market-overview': {
+      id: '/_app/dashboard/crypto-market-overview'
+      path: '/crypto-market-overview'
+      fullPath: '/dashboard/crypto-market-overview'
+      preLoaderRoute: typeof AppDashboardCryptoMarketOverviewRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/dashboard/analytics': {
+      id: '/_app/dashboard/analytics'
+      path: '/analytics'
+      fullPath: '/dashboard/analytics'
+      preLoaderRoute: typeof AppDashboardAnalyticsRouteImport
+      parentRoute: typeof AppDashboardRoute
+    }
+    '/_app/assets/stocks': {
+      id: '/_app/assets/stocks'
+      path: '/stocks'
+      fullPath: '/assets/stocks'
+      preLoaderRoute: typeof AppAssetsStocksRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/savings': {
+      id: '/_app/assets/savings'
+      path: '/savings'
+      fullPath: '/assets/savings'
+      preLoaderRoute: typeof AppAssetsSavingsRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/real-estate': {
+      id: '/_app/assets/real-estate'
+      path: '/real-estate'
+      fullPath: '/assets/real-estate'
+      preLoaderRoute: typeof AppAssetsRealEstateRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/loans': {
+      id: '/_app/assets/loans'
+      path: '/loans'
+      fullPath: '/assets/loans'
+      preLoaderRoute: typeof AppAssetsLoansRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/insurance': {
+      id: '/_app/assets/insurance'
+      path: '/insurance'
+      fullPath: '/assets/insurance'
+      preLoaderRoute: typeof AppAssetsInsuranceRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/crypto': {
+      id: '/_app/assets/crypto'
+      path: '/crypto'
+      fullPath: '/assets/crypto'
+      preLoaderRoute: typeof AppAssetsCryptoRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/collectibles': {
+      id: '/_app/assets/collectibles'
+      path: '/collectibles'
+      fullPath: '/assets/collectibles'
+      preLoaderRoute: typeof AppAssetsCollectiblesRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/assets/accounts': {
+      id: '/_app/assets/accounts'
+      path: '/accounts'
+      fullPath: '/assets/accounts'
+      preLoaderRoute: typeof AppAssetsAccountsRouteImport
+      parentRoute: typeof AppAssetsRoute
+    }
+    '/_app/portfolios/$portfolioId/edit': {
+      id: '/_app/portfolios/$portfolioId/edit'
+      path: '/edit'
+      fullPath: '/portfolios/$portfolioId/edit'
+      preLoaderRoute: typeof AppPortfoliosPortfolioIdEditRouteImport
+      parentRoute: typeof AppPortfoliosPortfolioIdRoute
+    }
+    '/_app/assets/savings/$savingId': {
+      id: '/_app/assets/savings/$savingId'
+      path: '/$savingId'
+      fullPath: '/assets/savings/$savingId'
+      preLoaderRoute: typeof AppAssetsSavingsSavingIdRouteImport
+      parentRoute: typeof AppAssetsSavingsRoute
+    }
   }
 }
 
-interface PortfoliosPortfolioIdRouteChildren {
-  PortfoliosPortfolioIdEditRoute: typeof PortfoliosPortfolioIdEditRoute
+interface AppAssetsSavingsRouteChildren {
+  AppAssetsSavingsSavingIdRoute: typeof AppAssetsSavingsSavingIdRoute
 }
 
-const PortfoliosPortfolioIdRouteChildren: PortfoliosPortfolioIdRouteChildren = {
-  PortfoliosPortfolioIdEditRoute: PortfoliosPortfolioIdEditRoute,
+const AppAssetsSavingsRouteChildren: AppAssetsSavingsRouteChildren = {
+  AppAssetsSavingsSavingIdRoute: AppAssetsSavingsSavingIdRoute,
 }
 
-const PortfoliosPortfolioIdRouteWithChildren =
-  PortfoliosPortfolioIdRoute._addFileChildren(
-    PortfoliosPortfolioIdRouteChildren,
+const AppAssetsSavingsRouteWithChildren =
+  AppAssetsSavingsRoute._addFileChildren(AppAssetsSavingsRouteChildren)
+
+interface AppAssetsRouteChildren {
+  AppAssetsAccountsRoute: typeof AppAssetsAccountsRoute
+  AppAssetsCollectiblesRoute: typeof AppAssetsCollectiblesRoute
+  AppAssetsCryptoRoute: typeof AppAssetsCryptoRoute
+  AppAssetsInsuranceRoute: typeof AppAssetsInsuranceRoute
+  AppAssetsLoansRoute: typeof AppAssetsLoansRoute
+  AppAssetsRealEstateRoute: typeof AppAssetsRealEstateRoute
+  AppAssetsSavingsRoute: typeof AppAssetsSavingsRouteWithChildren
+  AppAssetsStocksRoute: typeof AppAssetsStocksRoute
+}
+
+const AppAssetsRouteChildren: AppAssetsRouteChildren = {
+  AppAssetsAccountsRoute: AppAssetsAccountsRoute,
+  AppAssetsCollectiblesRoute: AppAssetsCollectiblesRoute,
+  AppAssetsCryptoRoute: AppAssetsCryptoRoute,
+  AppAssetsInsuranceRoute: AppAssetsInsuranceRoute,
+  AppAssetsLoansRoute: AppAssetsLoansRoute,
+  AppAssetsRealEstateRoute: AppAssetsRealEstateRoute,
+  AppAssetsSavingsRoute: AppAssetsSavingsRouteWithChildren,
+  AppAssetsStocksRoute: AppAssetsStocksRoute,
+}
+
+const AppAssetsRouteWithChildren = AppAssetsRoute._addFileChildren(
+  AppAssetsRouteChildren,
+)
+
+interface AppDashboardRouteChildren {
+  AppDashboardAnalyticsRoute: typeof AppDashboardAnalyticsRoute
+  AppDashboardCryptoMarketOverviewRoute: typeof AppDashboardCryptoMarketOverviewRoute
+  AppDashboardMarketCalendarRoute: typeof AppDashboardMarketCalendarRoute
+  AppDashboardMarketHeatmapsRoute: typeof AppDashboardMarketHeatmapsRoute
+  AppDashboardOverviewRoute: typeof AppDashboardOverviewRoute
+  AppDashboardStockMarketOverviewRoute: typeof AppDashboardStockMarketOverviewRoute
+  AppDashboardTransactionsRoute: typeof AppDashboardTransactionsRoute
+  AppDashboardWatchlistRoute: typeof AppDashboardWatchlistRoute
+}
+
+const AppDashboardRouteChildren: AppDashboardRouteChildren = {
+  AppDashboardAnalyticsRoute: AppDashboardAnalyticsRoute,
+  AppDashboardCryptoMarketOverviewRoute: AppDashboardCryptoMarketOverviewRoute,
+  AppDashboardMarketCalendarRoute: AppDashboardMarketCalendarRoute,
+  AppDashboardMarketHeatmapsRoute: AppDashboardMarketHeatmapsRoute,
+  AppDashboardOverviewRoute: AppDashboardOverviewRoute,
+  AppDashboardStockMarketOverviewRoute: AppDashboardStockMarketOverviewRoute,
+  AppDashboardTransactionsRoute: AppDashboardTransactionsRoute,
+  AppDashboardWatchlistRoute: AppDashboardWatchlistRoute,
+}
+
+const AppDashboardRouteWithChildren = AppDashboardRoute._addFileChildren(
+  AppDashboardRouteChildren,
+)
+
+interface AppPortfoliosPortfolioIdRouteChildren {
+  AppPortfoliosPortfolioIdEditRoute: typeof AppPortfoliosPortfolioIdEditRoute
+}
+
+const AppPortfoliosPortfolioIdRouteChildren: AppPortfoliosPortfolioIdRouteChildren =
+  {
+    AppPortfoliosPortfolioIdEditRoute: AppPortfoliosPortfolioIdEditRoute,
+  }
+
+const AppPortfoliosPortfolioIdRouteWithChildren =
+  AppPortfoliosPortfolioIdRoute._addFileChildren(
+    AppPortfoliosPortfolioIdRouteChildren,
   )
 
-interface PortfoliosRouteChildren {
-  PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRouteWithChildren
-  PortfoliosCreateRoute: typeof PortfoliosCreateRoute
+interface AppPortfoliosRouteChildren {
+  AppPortfoliosPortfolioIdRoute: typeof AppPortfoliosPortfolioIdRouteWithChildren
+  AppPortfoliosCreateRoute: typeof AppPortfoliosCreateRoute
 }
 
-const PortfoliosRouteChildren: PortfoliosRouteChildren = {
-  PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRouteWithChildren,
-  PortfoliosCreateRoute: PortfoliosCreateRoute,
+const AppPortfoliosRouteChildren: AppPortfoliosRouteChildren = {
+  AppPortfoliosPortfolioIdRoute: AppPortfoliosPortfolioIdRouteWithChildren,
+  AppPortfoliosCreateRoute: AppPortfoliosCreateRoute,
 }
 
-const PortfoliosRouteWithChildren = PortfoliosRoute._addFileChildren(
-  PortfoliosRouteChildren,
+const AppPortfoliosRouteWithChildren = AppPortfoliosRoute._addFileChildren(
+  AppPortfoliosRouteChildren,
 )
+
+interface AppSettingsRouteChildren {
+  AppSettingsAccountRoute: typeof AppSettingsAccountRoute
+  AppSettingsDataRoute: typeof AppSettingsDataRoute
+  AppSettingsDisplayRoute: typeof AppSettingsDisplayRoute
+  AppSettingsFinanceDatabaseRoute: typeof AppSettingsFinanceDatabaseRoute
+  AppSettingsManualInstrumentsRoute: typeof AppSettingsManualInstrumentsRoute
+  AppSettingsMarketDataRoute: typeof AppSettingsMarketDataRoute
+}
+
+const AppSettingsRouteChildren: AppSettingsRouteChildren = {
+  AppSettingsAccountRoute: AppSettingsAccountRoute,
+  AppSettingsDataRoute: AppSettingsDataRoute,
+  AppSettingsDisplayRoute: AppSettingsDisplayRoute,
+  AppSettingsFinanceDatabaseRoute: AppSettingsFinanceDatabaseRoute,
+  AppSettingsManualInstrumentsRoute: AppSettingsManualInstrumentsRoute,
+  AppSettingsMarketDataRoute: AppSettingsMarketDataRoute,
+}
+
+const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(
+  AppSettingsRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppAssetsRoute: typeof AppAssetsRouteWithChildren
+  AppDashboardRoute: typeof AppDashboardRouteWithChildren
+  AppPortfoliosRoute: typeof AppPortfoliosRouteWithChildren
+  AppSettingsRoute: typeof AppSettingsRouteWithChildren
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAssetsRoute: AppAssetsRouteWithChildren,
+  AppDashboardRoute: AppDashboardRouteWithChildren,
+  AppPortfoliosRoute: AppPortfoliosRouteWithChildren,
+  AppSettingsRoute: AppSettingsRouteWithChildren,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 interface AuthResetPasswordRouteChildren {
   AuthResetPasswordConfirmRoute: typeof AuthResetPasswordConfirmRoute
@@ -333,10 +932,9 @@ const AuthResetPasswordRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
   ChartsRoute: ChartsRoute,
-  DashboardRoute: DashboardRoute,
   MarketDataTestRoute: MarketDataTestRoute,
-  PortfoliosRoute: PortfoliosRouteWithChildren,
   AuthLoginRoute: AuthLoginRoute,
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRouteWithChildren,

@@ -21,6 +21,9 @@ type EmailService interface {
 
 	// SendWelcomeEmail sends a welcome email after successful registration
 	SendWelcomeEmail(ctx context.Context, email, name string) error
+
+	// SendAlertEmail sends an alert notification email
+	SendAlertEmail(ctx context.Context, to, subject, textBody, htmlBody string) error
 }
 
 // MockEmailService is a mock implementation for testing
@@ -86,6 +89,17 @@ func (m *MockEmailService) ClearSentEmails() {
 	m.SentEmails = make([]EmailRecord, 0)
 }
 
+// SendAlertEmail records an alert email send
+func (m *MockEmailService) SendAlertEmail(ctx context.Context, to, subject, textBody, htmlBody string) error {
+	m.SentEmails = append(m.SentEmails, EmailRecord{
+		Type:  "alert",
+		Email: to,
+		Name:  "",
+		Token: subject,
+	})
+	return nil
+}
+
 // SMTPEmailService implements EmailService using SMTP
 type SMTPEmailService struct {
 	config *config.EmailConfig
@@ -140,6 +154,11 @@ func (s *SMTPEmailService) SendWelcomeEmail(ctx context.Context, email, name str
 	textBody := s.renderWelcomeEmailText(name)
 
 	return s.sendEmail(email, subject, textBody, htmlBody)
+}
+
+// SendAlertEmail sends an alert notification email
+func (s *SMTPEmailService) SendAlertEmail(ctx context.Context, to, subject, textBody, htmlBody string) error {
+	return s.sendEmail(to, subject, textBody, htmlBody)
 }
 
 // sendEmail sends an email using SMTP

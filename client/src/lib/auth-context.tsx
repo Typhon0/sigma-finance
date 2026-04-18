@@ -60,17 +60,35 @@ const isTokenExpired = (expiresAt: string): boolean => {
 	return new Date(expiresAt) <= new Date();
 };
 
-const shouldRefreshToken = (expiresAt: string): boolean => {
+const _shouldRefreshToken = (expiresAt: string): boolean => {
 	const expiry = new Date(expiresAt);
 	const now = new Date();
 	const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 	return expiry.getTime() - now.getTime() < fiveMinutes;
 };
 
+// Timeout wrapper to prevent hanging requests
+const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(() => reject(new Error("Request timed out")), ms);
+		promise
+			.then((value) => {
+				clearTimeout(timer);
+				resolve(value);
+			})
+			.catch((err) => {
+				clearTimeout(timer);
+				reject(err);
+			});
+	});
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<AuthUser | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 	const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const refreshTokenActionRef = useRef<(() => Promise<void>) | null>(null);
+	const isLoggingOutRef = useRef(false);
 
 	// GraphQL mutations
 	const [loginMutation] = useLoginMutation();
@@ -92,7 +110,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				AuthErrorHandler.requiresLogout(error),
 			);
 			if (requiresLogout) {
-				logout();
+				clearStoredAuth();
+				setUser(null);
 			}
 
 			throw new Error(errors[0].message);
@@ -112,7 +131,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		if (timeUntilRefresh > 0) {
 			refreshTimeoutRef.current = setTimeout(async () => {
 				try {
-					await refreshToken();
+					await refreshTokenActionRef.current?.();
 				} catch (error) {
 					console.error("Automatic token refresh failed:", error);
 					// Don't logout automatically on refresh failure, let user continue until token actually expires
@@ -136,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					} catch (error) {
 						console.error("Token refresh failed on init:", error);
 						clearStoredAuth();
+						setUser(null);
 					}
 				} else {
 					// Token is still valid
@@ -163,11 +183,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		async (email: string, password: string) => {
 			setIsLoading(true);
 			try {
-				const { data } = await loginMutation({
-					variables: {
-						input: { email, password },
-					},
-				});
+				const { data } = await withTimeout(
+					loginMutation({
+						variables: {
+							input: { email, password },
+						},
+					}),
+					10000, // 10 second timeout
+				);
 
 				if (data?.login.success && data.login.data) {
 					const {
@@ -183,9 +206,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				} else {
 					handleAuthError(data?.login.errors);
 				}
-			} catch (error) {
+			} catch (error: unknown) {
 				console.error("Login error:", error);
-				toast.error("Login failed. Please try again.");
+				const errorMessage =
+					error instanceof Error
+						? error.message
+						: "Login failed. Please try again.";
+				toast.error(
+					errorMessage.includes("timed out")
+						? "Login request timed out. Please check your connection."
+						: "Login failed. Please try again.",
+				);
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -230,30 +261,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 	);
 
 	const logout = useCallback(async () => {
-		const token = getStoredToken();
-
-		// Clear refresh timeout
-		if (refreshTimeoutRef.current) {
-			clearTimeout(refreshTimeoutRef.current);
-			refreshTimeoutRef.current = null;
+		if (isLoggingOutRef.current) {
+			return;
 		}
+		isLoggingOutRef.current = true;
+		try {
+			const token = getStoredToken();
 
-		if (token) {
-			try {
-				await logoutMutation({
-					variables: {
-						input: { token },
-					},
-				});
-			} catch (error) {
-				console.error("Logout error:", error);
-				// Continue with logout even if server call fails
+			// Clear refresh timeout
+			if (refreshTimeoutRef.current) {
+				clearTimeout(refreshTimeoutRef.current);
+				refreshTimeoutRef.current = null;
 			}
-		}
 
-		clearStoredAuth();
-		setUser(null);
-		toast.success("Successfully logged out");
+			if (token) {
+				try {
+					await logoutMutation({
+						variables: {
+							input: { token },
+						},
+					});
+				} catch (error) {
+					console.error("Logout error:", error);
+					// Continue with logout even if server call fails
+				}
+			}
+
+			clearStoredAuth();
+			setUser(null);
+			toast.success("Successfully logged out");
+		} finally {
+			isLoggingOutRef.current = false;
+		}
 	}, [logoutMutation]);
 
 	const resetPassword = useCallback(
@@ -379,16 +418,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setupTokenRefresh(expiresAt);
 			} else {
 				handleAuthError(data?.refreshToken.errors);
-				// If refresh fails, logout user
-				await logout();
+				clearStoredAuth();
+				setUser(null);
+				throw new Error("Token refresh failed");
 			}
 		} catch (error) {
 			console.error("Token refresh error:", error);
-			// If refresh fails, logout user
-			await logout();
+			clearStoredAuth();
+			setUser(null);
 			throw error;
 		}
-	}, [refreshTokenMutation, logout]);
+	}, [refreshTokenMutation, setupTokenRefresh]);
+
+	useEffect(() => {
+		refreshTokenActionRef.current = refreshToken;
+	}, [refreshToken]);
 
 	const value: AuthContextType = {
 		user,

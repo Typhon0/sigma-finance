@@ -1,20 +1,14 @@
 import { ApolloError } from "@apollo/client";
-import {
-	AlertTriangle,
-	RefreshCw,
-	WifiOff,
-	Shield,
-	FileX,
-} from "lucide-react";
+import { AlertTriangle, FileX, RefreshCw, Shield, WifiOff } from "lucide-react";
 import type React from "react";
 import { Component, type ReactNode } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
 	getErrorMessage,
-	isNetworkError,
 	isGraphQLError,
+	isNetworkError,
 } from "@/hooks/use-error-handling";
 
 interface PortfolioErrorBoundaryProps {
@@ -62,7 +56,11 @@ export class PortfolioErrorBoundary extends Component<
 		this.setState({ errorInfo });
 
 		// Log error to monitoring service
-		console.error("Portfolio Error Boundary caught an error:", error, errorInfo);
+		console.error(
+			"Portfolio Error Boundary caught an error:",
+			error,
+			errorInfo,
+		);
 
 		// Report to external monitoring if available
 		if (typeof window !== "undefined" && (window as any).reportError) {
@@ -148,7 +146,8 @@ export const PortfolioErrorFallback = ({
 			return {
 				icon: WifiOff,
 				title: "Connection Error",
-				description: "Unable to connect to the server. Please check your internet connection.",
+				description:
+					"Unable to connect to the server. Please check your internet connection.",
 				variant: "network" as const,
 			};
 		}
@@ -173,7 +172,10 @@ export const PortfolioErrorFallback = ({
 			}
 		}
 
-		if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError")) {
+		if (
+			error.message?.includes("Failed to fetch") ||
+			error.message?.includes("NetworkError")
+		) {
 			return {
 				icon: WifiOff,
 				title: "Network Error",
@@ -215,7 +217,11 @@ export const PortfolioErrorFallback = ({
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<Alert variant={errorDetails.variant === "network" ? "destructive" : "default"}>
+				<Alert
+					variant={
+						errorDetails.variant === "network" ? "destructive" : "default"
+					}
+				>
 					<AlertDescription>{errorDetails.description}</AlertDescription>
 				</Alert>
 
@@ -232,7 +238,11 @@ export const PortfolioErrorFallback = ({
 							Try Again
 						</Button>
 					)}
-					<Button onClick={resetErrorBoundary} variant="outline" className="gap-2">
+					<Button
+						onClick={resetErrorBoundary}
+						variant="outline"
+						className="gap-2"
+					>
 						<RefreshCw className="h-4 w-4" />
 						Reset
 					</Button>

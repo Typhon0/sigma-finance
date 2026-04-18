@@ -27,6 +27,7 @@ func TestNewSecurityService(t *testing.T) {
 				JWTPrivateKey: privateKeyPEM,
 				JWTPublicKey:  publicKeyPEM,
 				BCryptCost:    12,
+				JWTAlgorithm:  "RS256",
 			},
 			expectError: false,
 		},
@@ -54,6 +55,7 @@ func TestNewSecurityService(t *testing.T) {
 				JWTPrivateKey: privateKeyPEM,
 				JWTPublicKey:  publicKeyPEM,
 				BCryptCost:    4, // Below minimum
+				JWTAlgorithm:  "RS256",
 			},
 			expectError: false,
 		},
@@ -64,11 +66,11 @@ func TestNewSecurityService(t *testing.T) {
 			service, err := NewSecurityService(tt.config, rateLimiter)
 
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Nil(t, service)
+				require.Error(t, err)
+				require.Nil(t, service)
 			} else {
-				assert.NoError(t, err)
-				assert.NotNil(t, service)
+				require.NoError(t, err)
+				require.NotNil(t, service)
 			}
 		})
 	}
@@ -94,7 +96,7 @@ func TestSecurityService_HashPassword(t *testing.T) {
 		{
 			name:        "long password",
 			password:    strings.Repeat("a", 100),
-			expectError: false,
+			expectError: true,
 		},
 	}
 
@@ -103,12 +105,11 @@ func TestSecurityService_HashPassword(t *testing.T) {
 			hash, err := service.HashPassword(tt.password)
 
 			if tt.expectError {
-				assert.Error(t, err)
-				assert.Empty(t, hash)
+				require.Error(t, err)
 			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, hash)
-				assert.True(t, strings.HasPrefix(hash, "$2a$12$"))
+				require.NoError(t, err)
+				require.NotEmpty(t, hash)
+				require.True(t, strings.HasPrefix(hash, "$2a$12$"))
 			}
 		})
 	}
@@ -378,12 +379,13 @@ func TestGenerateRSAKeyPair(t *testing.T) {
 		JWTPrivateKey: privateKeyPEM,
 		JWTPublicKey:  publicKeyPEM,
 		BCryptCost:    12,
+		JWTAlgorithm:  "RS256",
 	}
 
 	rateLimiter := NewInMemoryRateLimiter()
 	service, err := NewSecurityService(config, rateLimiter)
-	assert.NoError(t, err)
-	assert.NotNil(t, service)
+	require.NoError(t, err)
+	require.NotNil(t, service)
 
 	// Test that the generated keys work for JWT operations
 	userID := "test-user"
@@ -404,6 +406,7 @@ func createTestSecurityService(t *testing.T) SecurityService {
 		JWTPrivateKey: privateKeyPEM,
 		JWTPublicKey:  publicKeyPEM,
 		BCryptCost:    12,
+		JWTAlgorithm:  "RS256",
 	}
 
 	rateLimiter := NewInMemoryRateLimiter()

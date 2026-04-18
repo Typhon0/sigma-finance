@@ -1,5 +1,9 @@
 import { formatDistanceToNow } from "date-fns";
 import { ArrowDownLeft, ArrowUpRight, Clock, ExternalLink } from "lucide-react";
+import {
+	TransactionListSkeleton,
+	useComponentErrorHandler,
+} from "@/components/dashboard/error-handling";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +11,6 @@ import { withErrorBoundary } from "@/components/ui/error-boundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "@/gql/graphql";
 import { formatCurrency } from "@/lib/utils/portfolio-calculations";
-import { 
-	TransactionListSkeleton,
-	useComponentErrorHandler,
-} from "@/components/dashboard/error-handling";
 
 interface RecentTransactionsProps {
 	transactions: Transaction[];
@@ -34,7 +34,10 @@ export function RecentTransactions({
 	onTransactionClick,
 	onViewAllTransactions,
 }: RecentTransactionsProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler('RecentTransactions', 'component');
+	const { handleErrorWithRetry } = useComponentErrorHandler(
+		"RecentTransactions",
+		"component",
+	);
 	/**
 	 * Format relative timestamp
 	 * Requirements: 4.2 - Show timestamp

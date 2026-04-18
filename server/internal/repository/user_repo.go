@@ -14,12 +14,10 @@ type IUserRepository interface {
 	// Authentication-specific methods
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByEmailWithAuthMethods(ctx context.Context, email string) (*model.User, error)
-	GetByStringID(ctx context.Context, id string) (*model.User, error)
-	DeleteByStringID(ctx context.Context, id string) error
 	UpdatePasswordHash(ctx context.Context, userID string, passwordHash string) error
 	UpdateEmailVerified(ctx context.Context, userID string, verified bool) error
 	UpdateLastLogin(ctx context.Context, userID string, loginTime time.Time, ipAddress string) error
-	IncrementFailedLoginCount(ctx context.Context, userID string) error
+	IncrementFailedLoginCount(ctx context.Context, userID string, maxFailedAttempts int) error
 	ResetFailedLoginCount(ctx context.Context, userID string) error
 	LockAccount(ctx context.Context, userID string, lockUntil time.Time) error
 	UnlockAccount(ctx context.Context, userID string) error
@@ -39,53 +37,17 @@ func NewUserRepository(db bun.IDB) *UserRepository {
 	}
 }
 
-// GetByStringID retrieves a user by string ID (for authentication methods)
-func (r *UserRepository) GetByStringID(ctx context.Context, id string) (*model.User, error) {
-	user, err := r.FindOneBy(ctx, ByColumn("id", id))
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-// DeleteByStringID deletes a user by string ID
-func (r *UserRepository) DeleteByStringID(ctx context.Context, id string) error {
-	res, err := r.db.NewDelete().
-		Model((*model.User)(nil)).
-		Where("id = ?", id).
-		Exec(ctx)
-
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, _ := res.RowsAffected()
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
-}
-
 // GetByEmail retrieves a user by email address
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*model.User, error) {
-	user, err := r.FindOneBy(ctx, ByColumn("email", email))
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
+	return r.FindOneBy(ctx, ByColumn("email", email))
 }
 
 // GetByEmailWithAuthMethods retrieves a user by email with their authentication methods preloaded
 func (r *UserRepository) GetByEmailWithAuthMethods(ctx context.Context, email string) (*model.User, error) {
-	user, err := r.FindOneBy(ctx,
+	return r.FindOneBy(ctx,
 		ByColumn("email", email),
 		WithPreload("AuthMethods"),
 	)
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
 }
 
 // UpdatePasswordHash updates the password hash for a user
@@ -151,10 +113,12 @@ func (r *UserRepository) UpdateLastLogin(ctx context.Context, userID string, log
 	return nil
 }
 
-// IncrementFailedLoginCount increments the failed login count for a user
-func (r *UserRepository) IncrementFailedLoginCount(ctx context.Context, userID string) error {
+// IncrementFailedLoginCount increments the failed login count for a user.
+// maxFailedAttempts controls when the account is locked — when newCount >= maxFailedAttempts,
+// locked_until is set to 30 minutes from now.
+func (r *UserRepository) IncrementFailedLoginCount(ctx context.Context, userID string, maxFailedAttempts int) error {
 	// First get the current user to check failed login count
-	user, err := r.GetByStringID(ctx, userID)
+	user, err := r.GetByID(ctx, userID)
 	if err != nil {
 		return err
 	}
@@ -162,8 +126,8 @@ func (r *UserRepository) IncrementFailedLoginCount(ctx context.Context, userID s
 	newCount := user.FailedLoginCount + 1
 	var lockUntil *time.Time
 
-	// Lock account for 30 minutes after 5 failed attempts
-	if newCount >= 5 {
+	// Lock account for 30 minutes when threshold is reached
+	if newCount >= maxFailedAttempts {
 		lockTime := time.Now().Add(30 * time.Minute)
 		lockUntil = &lockTime
 	}

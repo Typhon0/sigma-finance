@@ -7,7 +7,6 @@ import (
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
@@ -29,33 +28,33 @@ func NewPositionService(positionRepo repository.IPositionRepository, assetRepo r
 type IPositionService interface {
 	// Core CRUD operations
 	CreatePosition(ctx context.Context, req CreatePositionRequest) (*model.Position, error)
-	GetPosition(ctx context.Context, id uuid.UUID) (*model.Position, error)
-	UpdatePosition(ctx context.Context, id uuid.UUID, req UpdatePositionRequest) (*model.Position, error)
-	DeletePosition(ctx context.Context, id uuid.UUID) error
+	GetPosition(ctx context.Context, id string) (*model.Position, error)
+	UpdatePosition(ctx context.Context, id string, req UpdatePositionRequest) (*model.Position, error)
+	DeletePosition(ctx context.Context, id string) error
 
 	// Query operations
-	GetPortfolioPositions(ctx context.Context, portfolioID uuid.UUID) ([]*model.Position, error)
-	GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID uuid.UUID) ([]*model.Position, error)
-	GetPositionByPortfolioAndAsset(ctx context.Context, portfolioID, assetID uuid.UUID) (*model.Position, error)
+	GetPortfolioPositions(ctx context.Context, portfolioID string) ([]*model.Position, error)
+	GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]*model.Position, error)
+	GetPositionByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error)
 
 	// Value calculations
 	CalculatePositionValue(ctx context.Context, position *model.Position, currentPrice *decimal.Decimal) (*model.PositionValue, error)
-	CalculatePortfolioValue(ctx context.Context, portfolioID uuid.UUID, priceMap map[uuid.UUID]decimal.Decimal) (*PortfolioValue, error)
+	CalculatePortfolioValue(ctx context.Context, portfolioID string, priceMap map[string]decimal.Decimal) (*PortfolioValue, error)
 
 	// Portfolio analytics
-	GetPortfolioAggregation(ctx context.Context, portfolioID uuid.UUID) (*repository.PortfolioAggregation, error)
-	GetAssetAllocation(ctx context.Context, portfolioID uuid.UUID) ([]repository.AssetAllocation, error)
+	GetPortfolioAggregation(ctx context.Context, portfolioID string) (*repository.PortfolioAggregation, error)
+	GetAssetAllocation(ctx context.Context, portfolioID string) ([]repository.AssetAllocation, error)
 
 	// Position management
-	UpdatePositionFromTransaction(ctx context.Context, positionID uuid.UUID, quantity decimal.Decimal, price decimal.Decimal, amount model.Money) error
-	CleanupEmptyPositions(ctx context.Context, portfolioID uuid.UUID) error
+	UpdatePositionFromTransaction(ctx context.Context, positionID string, quantity decimal.Decimal, price decimal.Decimal, amount model.Money) error
+	CleanupEmptyPositions(ctx context.Context, portfolioID string) error
 }
 
 // Request/Response structures
 
 type CreatePositionRequest struct {
-	PortfolioID         uuid.UUID        `json:"portfolio_id" validate:"required"`
-	AssetID             uuid.UUID        `json:"asset_id" validate:"required"`
+	PortfolioID         string           `json:"portfolio_id" validate:"required"`
+	AssetID             string           `json:"asset_id" validate:"required"`
 	Quantity            decimal.Decimal  `json:"quantity" validate:"required"`
 	OwnershipPercentage *decimal.Decimal `json:"ownership_percentage,omitempty"`
 	AverageCostBasis    *decimal.Decimal `json:"average_cost_basis,omitempty"`
@@ -72,7 +71,7 @@ type UpdatePositionRequest struct {
 }
 
 type PortfolioValue struct {
-	PortfolioID        uuid.UUID                    `json:"portfolio_id"`
+	PortfolioID        string                       `json:"portfolio_id"`
 	TotalValue         model.Money                  `json:"total_value"`
 	TotalCostBasis     model.Money                  `json:"total_cost_basis"`
 	UnrealizedGainLoss model.Money                  `json:"unrealized_gain_loss"`
@@ -83,10 +82,10 @@ type PortfolioValue struct {
 // CreatePosition creates a new position with validation
 func (s *PositionService) CreatePosition(ctx context.Context, req CreatePositionRequest) (*model.Position, error) {
 	// Validate required fields
-	if req.PortfolioID == uuid.Nil {
+	if req.PortfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
-	if req.AssetID == uuid.Nil {
+	if req.AssetID == "" {
 		return nil, errors.New("asset ID is required")
 	}
 	if req.Quantity.IsNegative() {
@@ -94,7 +93,7 @@ func (s *PositionService) CreatePosition(ctx context.Context, req CreatePosition
 	}
 
 	// Verify asset exists
-	asset, err := s.assetRepo.GetByUUID(ctx, req.AssetID)
+	asset, err := s.assetRepo.GetByID(ctx, req.AssetID)
 	if err != nil {
 		return nil, fmt.Errorf("asset not found: %w", err)
 	}
@@ -154,12 +153,12 @@ func (s *PositionService) CreatePosition(ctx context.Context, req CreatePosition
 }
 
 // GetPosition retrieves a position by ID
-func (s *PositionService) GetPosition(ctx context.Context, id uuid.UUID) (*model.Position, error) {
-	if id == uuid.Nil {
+func (s *PositionService) GetPosition(ctx context.Context, id string) (*model.Position, error) {
+	if id == "" {
 		return nil, errors.New("position ID is required")
 	}
 
-	position, err := s.positionRepo.GetByUUID(ctx, id)
+	position, err := s.positionRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get position: %w", err)
 	}
@@ -168,13 +167,13 @@ func (s *PositionService) GetPosition(ctx context.Context, id uuid.UUID) (*model
 }
 
 // UpdatePosition updates an existing position
-func (s *PositionService) UpdatePosition(ctx context.Context, id uuid.UUID, req UpdatePositionRequest) (*model.Position, error) {
-	if id == uuid.Nil {
+func (s *PositionService) UpdatePosition(ctx context.Context, id string, req UpdatePositionRequest) (*model.Position, error) {
+	if id == "" {
 		return nil, errors.New("position ID is required")
 	}
 
 	// Get existing position
-	position, err := s.positionRepo.GetByUUID(ctx, id)
+	position, err := s.positionRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get position: %w", err)
 	}
@@ -222,24 +221,19 @@ func (s *PositionService) UpdatePosition(ctx context.Context, id uuid.UUID, req 
 }
 
 // DeletePosition removes a position
-func (s *PositionService) DeletePosition(ctx context.Context, id uuid.UUID) error {
-	if id == uuid.Nil {
+func (s *PositionService) DeletePosition(ctx context.Context, id string) error {
+	if id == "" {
 		return errors.New("position ID is required")
 	}
 
 	// Check if position exists
-	_, err := s.positionRepo.GetByUUID(ctx, id)
+	position, err := s.positionRepo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get position: %w", err)
 	}
 
-	// Note: The base repository Delete method uses uint, but we need UUID support
-	// We'll need to use the repository's GetDB() method for custom deletion
-	_, err = s.positionRepo.GetDB().NewDelete().
-		Model((*model.Position)(nil)).
-		Where("id = ?", id).
-		Exec(ctx)
-	if err != nil {
+	// Use generic Delete method
+	if err := s.positionRepo.Delete(ctx, position.ID); err != nil {
 		return fmt.Errorf("failed to delete position: %w", err)
 	}
 
@@ -247,8 +241,8 @@ func (s *PositionService) DeletePosition(ctx context.Context, id uuid.UUID) erro
 }
 
 // GetPortfolioPositions retrieves all positions for a portfolio
-func (s *PositionService) GetPortfolioPositions(ctx context.Context, portfolioID uuid.UUID) ([]*model.Position, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) GetPortfolioPositions(ctx context.Context, portfolioID string) ([]*model.Position, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -267,8 +261,8 @@ func (s *PositionService) GetPortfolioPositions(ctx context.Context, portfolioID
 }
 
 // GetPortfolioPositionsWithAssets retrieves all positions for a portfolio with asset details
-func (s *PositionService) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID uuid.UUID) ([]*model.Position, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]*model.Position, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -287,11 +281,11 @@ func (s *PositionService) GetPortfolioPositionsWithAssets(ctx context.Context, p
 }
 
 // GetPositionByPortfolioAndAsset retrieves a position by portfolio and asset IDs
-func (s *PositionService) GetPositionByPortfolioAndAsset(ctx context.Context, portfolioID, assetID uuid.UUID) (*model.Position, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) GetPositionByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
-	if assetID == uuid.Nil {
+	if assetID == "" {
 		return nil, errors.New("asset ID is required")
 	}
 
@@ -316,8 +310,8 @@ func (s *PositionService) CalculatePositionValue(ctx context.Context, position *
 }
 
 // CalculatePortfolioValue calculates the total value of a portfolio
-func (s *PositionService) CalculatePortfolioValue(ctx context.Context, portfolioID uuid.UUID, priceMap map[uuid.UUID]decimal.Decimal) (*PortfolioValue, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) CalculatePortfolioValue(ctx context.Context, portfolioID string, priceMap map[string]decimal.Decimal) (*PortfolioValue, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -368,8 +362,8 @@ func (s *PositionService) CalculatePortfolioValue(ctx context.Context, portfolio
 }
 
 // GetPortfolioAggregation calculates aggregated data for a portfolio
-func (s *PositionService) GetPortfolioAggregation(ctx context.Context, portfolioID uuid.UUID) (*repository.PortfolioAggregation, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) GetPortfolioAggregation(ctx context.Context, portfolioID string) (*repository.PortfolioAggregation, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -382,8 +376,8 @@ func (s *PositionService) GetPortfolioAggregation(ctx context.Context, portfolio
 }
 
 // GetAssetAllocation calculates asset allocation for a portfolio
-func (s *PositionService) GetAssetAllocation(ctx context.Context, portfolioID uuid.UUID) ([]repository.AssetAllocation, error) {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) GetAssetAllocation(ctx context.Context, portfolioID string) ([]repository.AssetAllocation, error) {
+	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -396,13 +390,13 @@ func (s *PositionService) GetAssetAllocation(ctx context.Context, portfolioID uu
 }
 
 // UpdatePositionFromTransaction updates a position based on a transaction
-func (s *PositionService) UpdatePositionFromTransaction(ctx context.Context, positionID uuid.UUID, quantity decimal.Decimal, price decimal.Decimal, amount model.Money) error {
-	if positionID == uuid.Nil {
+func (s *PositionService) UpdatePositionFromTransaction(ctx context.Context, positionID string, quantity decimal.Decimal, price decimal.Decimal, amount model.Money) error {
+	if positionID == "" {
 		return errors.New("position ID is required")
 	}
 
 	// Get the position
-	position, err := s.positionRepo.GetByUUID(ctx, positionID)
+	position, err := s.positionRepo.GetByID(ctx, positionID)
 	if err != nil {
 		return fmt.Errorf("failed to get position: %w", err)
 	}
@@ -421,8 +415,8 @@ func (s *PositionService) UpdatePositionFromTransaction(ctx context.Context, pos
 }
 
 // CleanupEmptyPositions removes positions with zero quantity
-func (s *PositionService) CleanupEmptyPositions(ctx context.Context, portfolioID uuid.UUID) error {
-	if portfolioID == uuid.Nil {
+func (s *PositionService) CleanupEmptyPositions(ctx context.Context, portfolioID string) error {
+	if portfolioID == "" {
 		return errors.New("portfolio ID is required")
 	}
 

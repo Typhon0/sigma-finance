@@ -152,9 +152,9 @@ func TestPerformanceService_RiskAdjustedAlpha(t *testing.T) {
 		beta := decimal.NewFromFloat(1.2)  // 1.2 beta
 
 		riskAdjustedAlpha := service.calculateRiskAdjustedAlpha(alpha, beta)
-		expected := alpha.Div(beta.Add(decimal.NewFromInt(1))) // 2 / (1.2 + 1) = 2 / 2.2 ≈ 0.909
+		expected := alpha.Div(beta) // 2 / 1.2 ≈ 1.667
 
-		assert.True(t, riskAdjustedAlpha.Sub(expected).Abs().LessThan(decimal.NewFromFloat(0.001)), "Risk adjusted alpha should be approximately 0.909")
+		assert.True(t, riskAdjustedAlpha.Sub(expected).Abs().LessThan(decimal.NewFromFloat(0.001)), "Risk adjusted alpha should be approximately 1.667")
 	})
 
 	t.Run("zero alpha", func(t *testing.T) {
@@ -171,9 +171,9 @@ func TestPerformanceService_RiskAdjustedAlpha(t *testing.T) {
 		beta := decimal.NewFromFloat(0.8)   // 0.8 beta
 
 		riskAdjustedAlpha := service.calculateRiskAdjustedAlpha(alpha, beta)
-		expected := alpha.Div(beta.Add(decimal.NewFromInt(1))) // -1 / (0.8 + 1) = -1 / 1.8 ≈ -0.556
+		expected := alpha.Div(beta) // -1 / 0.8 = -1.25
 
-		assert.True(t, riskAdjustedAlpha.Sub(expected).Abs().LessThan(decimal.NewFromFloat(0.001)), "Risk adjusted alpha should be approximately -0.556")
+		assert.True(t, riskAdjustedAlpha.Sub(expected).Abs().LessThan(decimal.NewFromFloat(0.001)), "Risk adjusted alpha should be approximately -1.25")
 	})
 }
 

@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // FinnhubProvider implements Provider for Finnhub Stock API
@@ -253,4 +255,102 @@ func (f *FinnhubProvider) mapInterval(interval model.CandleInterval) string {
 	default:
 		return ""
 	}
+}
+
+func (f *FinnhubProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	return nil, fmt.Errorf("technical indicators not supported by Finnhub provider")
+}
+
+func (f *FinnhubProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if req.APIKey == "" {
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "MISSING_API_KEY",
+			Message:   "Finnhub requires an API key",
+			Retryable: false,
+			Fallback:  false,
+		}
+	}
+
+	symbol, err := f.MapSymbol(req.Symbol, req.AssetType)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/quote", f.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := httpReq.URL.Query()
+	q.Set("symbol", symbol)
+	q.Set("token", req.APIKey)
+	httpReq.URL.RawQuery = q.Encode()
+
+	resp, err := f.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	// Handle rate limiting (429 Too Many Requests)
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "RATE_LIMITED",
+			Message:   "Finnhub rate limit exceeded",
+			HTTPCode:  http.StatusTooManyRequests,
+			Retryable: true,
+			Fallback:  true,
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "API_ERROR",
+			Message:   fmt.Sprintf("Finnhub API error: %d", resp.StatusCode),
+			HTTPCode:  resp.StatusCode,
+			Retryable: resp.StatusCode >= 500,
+			Fallback:  true,
+		}
+	}
+
+	var quote struct {
+		C  float64 `json:"c"`
+		H  float64 `json:"h"`
+		L  float64 `json:"l"`
+		O  float64 `json:"o"`
+		PC float64 `json:"pc"`
+		T  int64   `json:"t"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&quote); err != nil {
+		return nil, err
+	}
+
+	// If timestamp is 0, the symbol is likely not found
+	if quote.T == 0 {
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("Symbol %s not found", symbol),
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	timestamp := time.Unix(quote.T, 0)
+	lastPrice := decimal.NewFromFloat(quote.C)
+
+	return &QuoteResponse{
+		Symbol:    req.Symbol,
+		Bid:       lastPrice,
+		Ask:       lastPrice,
+		Last:      lastPrice,
+		Volume:    0, // Not provided in quote endpoint
+		Timestamp: timestamp,
+		Source:    f.ID(),
+	}, nil
 }

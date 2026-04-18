@@ -11,25 +11,25 @@ import (
 
 // ITagService defines the interface for tag management operations
 type ITagService interface {
-	GetByID(ctx context.Context, id uint) (model.Tag, error)
+	GetByID(ctx context.Context, id string) (*model.Tag, error)
 	FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.Tag, error)
-	FindByName(ctx context.Context, name string) (model.Tag, error)
-	CreateTag(ctx context.Context, input CreateTagInput) (model.Tag, error)
-	UpdateTag(ctx context.Context, id uint, input UpdateTagInput) (model.Tag, error)
-	DeleteTag(ctx context.Context, id uint) error
-	TagAsset(ctx context.Context, assetID, tagID int) error
-	UntagAsset(ctx context.Context, assetID, tagID int) error
-	TagPortfolio(ctx context.Context, portfolioID, tagID int) error
-	UntagPortfolio(ctx context.Context, portfolioID, tagID int) error
-	GetAssetTags(ctx context.Context, assetID int) ([]model.Tag, error)
-	GetPortfolioTags(ctx context.Context, portfolioID int) ([]model.Tag, error)
-	GetTaggedAssets(ctx context.Context, tagID int) ([]model.Asset, error)
-	GetTaggedPortfolios(ctx context.Context, tagID int) ([]model.Portfolio, error)
-	GetTagUsageStatistics(ctx context.Context, tagID int) (TagUsageStats, error)
-	FindOrCreateTag(ctx context.Context, name string) (model.Tag, error)
-	BulkTagAssets(ctx context.Context, assetIDs []int, tagID int) error
-	BulkTagPortfolios(ctx context.Context, portfolioIDs []int, tagID int) error
-	GetAssetsByTag(ctx context.Context, tagID int) ([]model.Asset, error)
+	FindByName(ctx context.Context, name string) (*model.Tag, error)
+	CreateTag(ctx context.Context, input CreateTagInput) (*model.Tag, error)
+	UpdateTag(ctx context.Context, id string, input UpdateTagInput) (*model.Tag, error)
+	DeleteTag(ctx context.Context, id string) error
+	TagAsset(ctx context.Context, assetID, tagID string) error
+	UntagAsset(ctx context.Context, assetID, tagID string) error
+	TagPortfolio(ctx context.Context, portfolioID, tagID string) error
+	UntagPortfolio(ctx context.Context, portfolioID, tagID string) error
+	GetAssetTags(ctx context.Context, assetID string) ([]model.Tag, error)
+	GetPortfolioTags(ctx context.Context, portfolioID string) ([]model.Tag, error)
+	GetTaggedAssets(ctx context.Context, tagID string) ([]model.Asset, error)
+	GetTaggedPortfolios(ctx context.Context, tagID string) ([]model.Portfolio, error)
+	GetTagUsageStatistics(ctx context.Context, tagID string) (TagUsageStats, error)
+	FindOrCreateTag(ctx context.Context, name string) (*model.Tag, error)
+	BulkTagAssets(ctx context.Context, assetIDs []string, tagID string) error
+	BulkTagPortfolios(ctx context.Context, portfolioIDs []string, tagID string) error
+	GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error)
 }
 
 // TagService is the concrete implementation of ITagService
@@ -53,7 +53,7 @@ type UpdateTagInput struct {
 
 // TagUsageStats represents usage statistics for a tag
 type TagUsageStats struct {
-	TagID           int
+	TagID           string
 	TagName         string
 	AssetCount      int
 	PortfolioCount  int
@@ -61,7 +61,7 @@ type TagUsageStats struct {
 }
 
 // GetByID retrieves a single tag by its ID
-func (s *TagService) GetByID(ctx context.Context, id uint) (model.Tag, error) {
+func (s *TagService) GetByID(ctx context.Context, id string) (*model.Tag, error) {
 	return s.uow.Tag().GetByID(ctx, id)
 }
 
@@ -71,15 +71,15 @@ func (s *TagService) FindAll(ctx context.Context, opts ...repository.QueryOption
 }
 
 // FindByName retrieves a tag by its name
-func (s *TagService) FindByName(ctx context.Context, name string) (model.Tag, error) {
+func (s *TagService) FindByName(ctx context.Context, name string) (*model.Tag, error) {
 	return s.uow.Tag().FindOneBy(ctx, repository.ByColumn("name", name))
 }
 
 // CreateTag creates a new tag with validation
-func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (model.Tag, error) {
+func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*model.Tag, error) {
 	// Validate input
 	if err := s.validateCreateTagInput(input); err != nil {
-		return model.Tag{}, err
+		return nil, err
 	}
 
 	// Normalize tag name
@@ -88,10 +88,10 @@ func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (model
 	// Check if tag already exists
 	_, err := s.FindByName(ctx, normalizedName)
 	if err == nil {
-		return model.Tag{}, fmt.Errorf("tag with name '%s' already exists", normalizedName)
+		return nil, fmt.Errorf("tag with name '%s' already exists", normalizedName)
 	}
 	if !errors.Is(err, repository.ErrNotFound) {
-		return model.Tag{}, fmt.Errorf("failed to check existing tag: %w", err)
+		return nil, fmt.Errorf("failed to check existing tag: %w", err)
 	}
 
 	// Create tag
@@ -101,23 +101,23 @@ func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (model
 
 	createdTag, err := s.uow.Tag().Create(ctx, &newTag)
 	if err != nil {
-		return model.Tag{}, fmt.Errorf("failed to create tag: %w", err)
+		return nil, fmt.Errorf("failed to create tag: %w", err)
 	}
 
-	return *createdTag, nil
+	return createdTag, nil
 }
 
 // UpdateTag updates an existing tag
-func (s *TagService) UpdateTag(ctx context.Context, id uint, input UpdateTagInput) (model.Tag, error) {
+func (s *TagService) UpdateTag(ctx context.Context, id string, input UpdateTagInput) (*model.Tag, error) {
 	// Validate input
 	if err := s.validateUpdateTagInput(input); err != nil {
-		return model.Tag{}, err
+		return nil, err
 	}
 
 	// Get existing tag
 	tagToUpdate, err := s.uow.Tag().GetByID(ctx, id)
 	if err != nil {
-		return model.Tag{}, err
+		return nil, err
 	}
 
 	// Normalize tag name
@@ -126,26 +126,26 @@ func (s *TagService) UpdateTag(ctx context.Context, id uint, input UpdateTagInpu
 	// Check if another tag with the same name exists (excluding current tag)
 	existingTag, err := s.FindByName(ctx, normalizedName)
 	if err == nil && existingTag.ID != tagToUpdate.ID {
-		return model.Tag{}, fmt.Errorf("tag with name '%s' already exists", normalizedName)
+		return nil, fmt.Errorf("tag with name '%s' already exists", normalizedName)
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
-		return model.Tag{}, fmt.Errorf("failed to check existing tag: %w", err)
+		return nil, fmt.Errorf("failed to check existing tag: %w", err)
 	}
 
 	// Apply updates
 	tagToUpdate.Name = normalizedName
 
 	// Save changes
-	err = s.uow.Tag().Update(ctx, &tagToUpdate)
+	err = s.uow.Tag().Update(ctx, tagToUpdate)
 	if err != nil {
-		return model.Tag{}, fmt.Errorf("failed to update tag: %w", err)
+		return nil, fmt.Errorf("failed to update tag: %w", err)
 	}
 
 	return tagToUpdate, nil
 }
 
 // DeleteTag removes a tag and all its associations
-func (s *TagService) DeleteTag(ctx context.Context, id uint) error {
+func (s *TagService) DeleteTag(ctx context.Context, id string) error {
 	// Use Unit of Work to ensure atomicity
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify tag exists
@@ -160,7 +160,7 @@ func (s *TagService) DeleteTag(ctx context.Context, id uint) error {
 			return fmt.Errorf("failed to get asset tags: %w", err)
 		}
 		for _, at := range assetTags {
-			err = uow.AssetTag().Remove(ctx, uint(at.AssetID), uint(at.TagID))
+			err = uow.AssetTag().Remove(ctx, at.AssetID, at.TagID)
 			if err != nil {
 				return fmt.Errorf("failed to remove asset tag association: %w", err)
 			}
@@ -173,7 +173,7 @@ func (s *TagService) DeleteTag(ctx context.Context, id uint) error {
 		}
 
 		for _, pt := range portfolioTags {
-			err = uow.PortfolioTag().Remove(ctx, uint(pt.PortfolioID), uint(pt.TagID))
+			err = uow.PortfolioTag().Remove(ctx, pt.PortfolioID, pt.TagID)
 			if err != nil {
 				return fmt.Errorf("failed to remove portfolio tag association: %w", err)
 			}
@@ -185,7 +185,7 @@ func (s *TagService) DeleteTag(ctx context.Context, id uint) error {
 }
 
 // TagAsset associates a tag with an asset
-func (s *TagService) TagAsset(ctx context.Context, assetID, tagID int) error {
+func (s *TagService) TagAsset(ctx context.Context, assetID, tagID string) error {
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
@@ -193,23 +193,23 @@ func (s *TagService) TagAsset(ctx context.Context, assetID, tagID int) error {
 
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify asset exists
-		if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("asset with ID %d not found", assetID)
+				return fmt.Errorf("asset with ID %s not found", assetID)
 			}
 			return fmt.Errorf("failed to verify asset: %w", err)
 		}
 
 		// Verify tag exists
-		if _, err := uow.Tag().GetByID(ctx, uint(tagID)); err != nil {
+		if _, err := uow.Tag().GetByID(ctx, tagID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("tag with ID %d not found", tagID)
+				return fmt.Errorf("tag with ID %s not found", tagID)
 			}
 			return fmt.Errorf("failed to verify tag: %w", err)
 		}
 
 		// Check if association already exists
-		existing, err := uow.AssetTag().FindByAssetID(ctx, uint(assetID))
+		existing, err := uow.AssetTag().FindByAssetID(ctx, assetID)
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing association: %w", err)
 		}
@@ -220,24 +220,24 @@ func (s *TagService) TagAsset(ctx context.Context, assetID, tagID int) error {
 		}
 
 		// Create association
-		return uow.AssetTag().Add(ctx, uint(assetID), uint(tagID))
+		return uow.AssetTag().Add(ctx, assetID, tagID)
 	})
 }
 
 // UntagAsset removes a tag association from an asset
-func (s *TagService) UntagAsset(ctx context.Context, assetID, tagID int) error {
+func (s *TagService) UntagAsset(ctx context.Context, assetID, tagID string) error {
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
 	}
 
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		return uow.AssetTag().Remove(ctx, uint(assetID), uint(tagID))
+		return uow.AssetTag().Remove(ctx, assetID, tagID)
 	})
 }
 
 // TagPortfolio associates a tag with a portfolio
-func (s *TagService) TagPortfolio(ctx context.Context, portfolioID, tagID int) error {
+func (s *TagService) TagPortfolio(ctx context.Context, portfolioID, tagID string) error {
 	// Validate inputs
 	if err := s.validateTagAssociation(portfolioID, tagID); err != nil {
 		return err
@@ -245,23 +245,23 @@ func (s *TagService) TagPortfolio(ctx context.Context, portfolioID, tagID int) e
 
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify portfolio exists
-		if _, err := uow.Portfolio().GetByID(ctx, uint(portfolioID)); err != nil {
+		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("portfolio with ID %d not found", portfolioID)
+				return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 			}
 			return fmt.Errorf("failed to verify portfolio: %w", err)
 		}
 
 		// Verify tag exists
-		if _, err := uow.Tag().GetByID(ctx, uint(tagID)); err != nil {
+		if _, err := uow.Tag().GetByID(ctx, tagID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("tag with ID %d not found", tagID)
+				return fmt.Errorf("tag with ID %s not found", tagID)
 			}
 			return fmt.Errorf("failed to verify tag: %w", err)
 		}
 
 		// Check if association already exists
-		existing, err := uow.PortfolioTag().FindByPortfolioID(ctx, uint(portfolioID))
+		existing, err := uow.PortfolioTag().FindByPortfolioID(ctx, portfolioID)
 		if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing association: %w", err)
 		}
@@ -272,25 +272,25 @@ func (s *TagService) TagPortfolio(ctx context.Context, portfolioID, tagID int) e
 		}
 
 		// Create association
-		return uow.PortfolioTag().Add(ctx, uint(portfolioID), uint(tagID))
+		return uow.PortfolioTag().Add(ctx, portfolioID, tagID)
 	})
 }
 
 // UntagPortfolio removes a tag association from a portfolio
-func (s *TagService) UntagPortfolio(ctx context.Context, portfolioID, tagID int) error {
+func (s *TagService) UntagPortfolio(ctx context.Context, portfolioID, tagID string) error {
 	// Validate inputs
 	if err := s.validateTagAssociation(portfolioID, tagID); err != nil {
 		return err
 	}
 
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		return uow.PortfolioTag().Remove(ctx, uint(portfolioID), uint(tagID))
+		return uow.PortfolioTag().Remove(ctx, portfolioID, tagID)
 	})
 }
 
 // GetAssetTags retrieves all tags for a given asset
-func (s *TagService) GetAssetTags(ctx context.Context, assetID int) ([]model.Tag, error) {
-	assetTags, err := s.uow.AssetTag().FindByAssetID(ctx, uint(assetID))
+func (s *TagService) GetAssetTags(ctx context.Context, assetID string) ([]model.Tag, error) {
+	assetTags, err := s.uow.AssetTag().FindByAssetID(ctx, assetID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset tags: %w", err)
 	}
@@ -299,27 +299,21 @@ func (s *TagService) GetAssetTags(ctx context.Context, assetID int) ([]model.Tag
 		return []model.Tag{}, nil
 	}
 
-	tagIDs := make([]uint, len(assetTags))
-	for i, at := range assetTags {
-		tagIDs[i] = uint(at.TagID)
-	}
-
-	// This is not efficient, but it's the best we can do without a proper join
 	var tags []model.Tag
-	for _, tagID := range tagIDs {
-		tag, err := s.uow.Tag().GetByID(ctx, tagID)
+	for _, at := range assetTags {
+		tag, err := s.uow.Tag().GetByID(ctx, at.TagID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tag %d: %w", tagID, err)
+			return nil, fmt.Errorf("failed to get tag %s: %w", at.TagID, err)
 		}
-		tags = append(tags, tag)
+		tags = append(tags, *tag)
 	}
 
 	return tags, nil
 }
 
 // GetPortfolioTags retrieves all tags for a given portfolio
-func (s *TagService) GetPortfolioTags(ctx context.Context, portfolioID int) ([]model.Tag, error) {
-	portfolioTags, err := s.uow.PortfolioTag().FindByPortfolioID(ctx, uint(portfolioID))
+func (s *TagService) GetPortfolioTags(ctx context.Context, portfolioID string) ([]model.Tag, error) {
+	portfolioTags, err := s.uow.PortfolioTag().FindByPortfolioID(ctx, portfolioID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get portfolio tags: %w", err)
 	}
@@ -328,26 +322,21 @@ func (s *TagService) GetPortfolioTags(ctx context.Context, portfolioID int) ([]m
 		return []model.Tag{}, nil
 	}
 
-	tagIDs := make([]uint, len(portfolioTags))
-	for i, pt := range portfolioTags {
-		tagIDs[i] = uint(pt.TagID)
-	}
-
 	var tags []model.Tag
-	for _, tagID := range tagIDs {
-		tag, err := s.uow.Tag().GetByID(ctx, tagID)
+	for _, pt := range portfolioTags {
+		tag, err := s.uow.Tag().GetByID(ctx, pt.TagID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get tag %d: %w", tagID, err)
+			return nil, fmt.Errorf("failed to get tag %s: %w", pt.TagID, err)
 		}
-		tags = append(tags, tag)
+		tags = append(tags, *tag)
 	}
 
 	return tags, nil
 }
 
 // GetTaggedAssets retrieves all assets with a given tag
-func (s *TagService) GetTaggedAssets(ctx context.Context, tagID int) ([]model.Asset, error) {
-	assetTags, err := s.uow.AssetTag().FindByTagID(ctx, uint(tagID))
+func (s *TagService) GetTaggedAssets(ctx context.Context, tagID string) ([]model.Asset, error) {
+	assetTags, err := s.uow.AssetTag().FindByTagID(ctx, tagID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset tags: %w", err)
 	}
@@ -356,26 +345,21 @@ func (s *TagService) GetTaggedAssets(ctx context.Context, tagID int) ([]model.As
 		return []model.Asset{}, nil
 	}
 
-	assetIDs := make([]uint, len(assetTags))
-	for i, at := range assetTags {
-		assetIDs[i] = uint(at.AssetID)
-	}
-
 	var assets []model.Asset
-	for _, assetID := range assetIDs {
-		asset, err := s.uow.Asset().GetByID(ctx, assetID)
+	for _, at := range assetTags {
+		asset, err := s.uow.Asset().GetByID(ctx, at.AssetID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get asset %d: %w", assetID, err)
+			return nil, fmt.Errorf("failed to get asset %s: %w", at.AssetID, err)
 		}
-		assets = append(assets, asset)
+		assets = append(assets, *asset)
 	}
 
 	return assets, nil
 }
 
 // GetTaggedPortfolios retrieves all portfolios with a given tag
-func (s *TagService) GetTaggedPortfolios(ctx context.Context, tagID int) ([]model.Portfolio, error) {
-	portfolioTags, err := s.uow.PortfolioTag().FindByTagID(ctx, uint(tagID))
+func (s *TagService) GetTaggedPortfolios(ctx context.Context, tagID string) ([]model.Portfolio, error) {
+	portfolioTags, err := s.uow.PortfolioTag().FindByTagID(ctx, tagID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get portfolio tags: %w", err)
 	}
@@ -384,44 +368,39 @@ func (s *TagService) GetTaggedPortfolios(ctx context.Context, tagID int) ([]mode
 		return []model.Portfolio{}, nil
 	}
 
-	portfolioIDs := make([]uint, len(portfolioTags))
-	for i, pt := range portfolioTags {
-		portfolioIDs[i] = uint(pt.PortfolioID)
-	}
-
 	var portfolios []model.Portfolio
-	for _, portfolioID := range portfolioIDs {
-		portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	for _, pt := range portfolioTags {
+		portfolio, err := s.uow.Portfolio().GetByID(ctx, pt.PortfolioID)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get portfolio %d: %w", portfolioID, err)
+			return nil, fmt.Errorf("failed to get portfolio %s: %w", pt.PortfolioID, err)
 		}
-		portfolios = append(portfolios, portfolio)
+		portfolios = append(portfolios, *portfolio)
 	}
 
 	return portfolios, nil
 }
 
 // GetTagUsageStatistics calculates usage statistics for a tag
-func (s *TagService) GetTagUsageStatistics(ctx context.Context, tagID int) (TagUsageStats, error) {
-	tag, err := s.uow.Tag().GetByID(ctx, uint(tagID))
+func (s *TagService) GetTagUsageStatistics(ctx context.Context, tagID string) (TagUsageStats, error) {
+	tag, err := s.uow.Tag().GetByID(ctx, tagID)
 	if err != nil {
 		return TagUsageStats{}, fmt.Errorf("failed to get tag: %w", err)
 	}
 
-	assetTags, err := s.uow.AssetTag().FindByTagID(ctx, uint(tagID))
+	assetTags, err := s.uow.AssetTag().FindByTagID(ctx, tagID)
 	if err != nil {
 		return TagUsageStats{}, fmt.Errorf("failed to count asset tags: %w", err)
 	}
 	assetCount := len(assetTags)
 
-	portfolioTags, err := s.uow.PortfolioTag().FindByTagID(ctx, uint(tagID))
+	portfolioTags, err := s.uow.PortfolioTag().FindByTagID(ctx, tagID)
 	if err != nil {
 		return TagUsageStats{}, fmt.Errorf("failed to count portfolio tags: %w", err)
 	}
 	portfolioCount := len(portfolioTags)
 
 	stats := TagUsageStats{
-		TagID:           int(tag.ID),
+		TagID:           tag.ID,
 		TagName:         tag.Name,
 		AssetCount:      assetCount,
 		PortfolioCount:  portfolioCount,
@@ -432,14 +411,14 @@ func (s *TagService) GetTagUsageStatistics(ctx context.Context, tagID int) (TagU
 }
 
 // FindOrCreateTag finds a tag by name or creates it if it doesn't exist
-func (s *TagService) FindOrCreateTag(ctx context.Context, name string) (model.Tag, error) {
+func (s *TagService) FindOrCreateTag(ctx context.Context, name string) (*model.Tag, error) {
 	normalizedName := s.normalizeTagName(name)
 	tag, err := s.FindByName(ctx, normalizedName)
 	if err == nil {
 		return tag, nil // Tag found
 	}
 	if !errors.Is(err, repository.ErrNotFound) {
-		return model.Tag{}, fmt.Errorf("failed to find tag: %w", err)
+		return nil, fmt.Errorf("failed to find tag: %w", err)
 	}
 
 	// Tag not found, create it
@@ -447,23 +426,23 @@ func (s *TagService) FindOrCreateTag(ctx context.Context, name string) (model.Ta
 }
 
 // BulkTagAssets associates a tag with multiple assets
-func (s *TagService) BulkTagAssets(ctx context.Context, assetIDs []int, tagID int) error {
+func (s *TagService) BulkTagAssets(ctx context.Context, assetIDs []string, tagID string) error {
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify tag exists
-		if _, err := uow.Tag().GetByID(ctx, uint(tagID)); err != nil {
-			return fmt.Errorf("tag with ID %d not found", tagID)
+		if _, err := uow.Tag().GetByID(ctx, tagID); err != nil {
+			return fmt.Errorf("tag with ID %s not found", tagID)
 		}
 
 		for _, assetID := range assetIDs {
 			// Verify asset exists
-			if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
-				return fmt.Errorf("asset with ID %d not found", assetID)
+			if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
+				return fmt.Errorf("asset with ID %s not found", assetID)
 			}
 
 			// Check if association already exists
-			existing, err := uow.AssetTag().FindByAssetID(ctx, uint(assetID))
+			existing, err := uow.AssetTag().FindByAssetID(ctx, assetID)
 			if err != nil && !errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("failed to check existing association for asset %d: %w", assetID, err)
+				return fmt.Errorf("failed to check existing association for asset %s: %w", assetID, err)
 			}
 
 			alreadyExists := false
@@ -475,8 +454,8 @@ func (s *TagService) BulkTagAssets(ctx context.Context, assetIDs []int, tagID in
 			}
 
 			if !alreadyExists {
-				if err := uow.AssetTag().Add(ctx, uint(assetID), uint(tagID)); err != nil {
-					return fmt.Errorf("failed to tag asset %d: %w", assetID, err)
+				if err := uow.AssetTag().Add(ctx, assetID, tagID); err != nil {
+					return fmt.Errorf("failed to tag asset %s: %w", assetID, err)
 				}
 			}
 		}
@@ -485,23 +464,23 @@ func (s *TagService) BulkTagAssets(ctx context.Context, assetIDs []int, tagID in
 }
 
 // BulkTagPortfolios associates a tag with multiple portfolios
-func (s *TagService) BulkTagPortfolios(ctx context.Context, portfolioIDs []int, tagID int) error {
+func (s *TagService) BulkTagPortfolios(ctx context.Context, portfolioIDs []string, tagID string) error {
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify tag exists
-		if _, err := uow.Tag().GetByID(ctx, uint(tagID)); err != nil {
-			return fmt.Errorf("tag with ID %d not found", tagID)
+		if _, err := uow.Tag().GetByID(ctx, tagID); err != nil {
+			return fmt.Errorf("tag with ID %s not found", tagID)
 		}
 
 		for _, portfolioID := range portfolioIDs {
 			// Verify portfolio exists
-			if _, err := uow.Portfolio().GetByID(ctx, uint(portfolioID)); err != nil {
-				return fmt.Errorf("portfolio with ID %d not found", portfolioID)
+			if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
+				return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 			}
 
 			// Check if association already exists
-			existing, err := uow.PortfolioTag().FindByPortfolioID(ctx, uint(portfolioID))
+			existing, err := uow.PortfolioTag().FindByPortfolioID(ctx, portfolioID)
 			if err != nil && !errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("failed to check existing association for portfolio %d: %w", portfolioID, err)
+				return fmt.Errorf("failed to check existing association for portfolio %s: %w", portfolioID, err)
 			}
 
 			alreadyExists := false
@@ -513,8 +492,8 @@ func (s *TagService) BulkTagPortfolios(ctx context.Context, portfolioIDs []int, 
 			}
 
 			if !alreadyExists {
-				if err := uow.PortfolioTag().Add(ctx, uint(portfolioID), uint(tagID)); err != nil {
-					return fmt.Errorf("failed to tag portfolio %d: %w", portfolioID, err)
+				if err := uow.PortfolioTag().Add(ctx, portfolioID, tagID); err != nil {
+					return fmt.Errorf("failed to tag portfolio %s: %w", portfolioID, err)
 				}
 			}
 		}
@@ -523,7 +502,7 @@ func (s *TagService) BulkTagPortfolios(ctx context.Context, portfolioIDs []int, 
 }
 
 // GetAssetsByTag retrieves all assets associated with a given tag.
-func (s *TagService) GetAssetsByTag(ctx context.Context, tagID int) ([]model.Asset, error) {
+func (s *TagService) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) {
 	return s.GetTaggedAssets(ctx, tagID)
 }
 
@@ -546,9 +525,9 @@ func (s *TagService) validateUpdateTagInput(input UpdateTagInput) error {
 }
 
 // validateTagAssociation validates IDs for tag associations
-func (s *TagService) validateTagAssociation(entityID, tagID int) error {
-	if entityID <= 0 || tagID <= 0 {
-		return errors.New("asset ID and tag ID must be positive integers")
+func (s *TagService) validateTagAssociation(entityID, tagID string) error {
+	if entityID == "" || tagID == "" {
+		return errors.New("entity ID and tag ID must not be empty")
 	}
 	return nil
 }

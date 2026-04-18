@@ -4,8 +4,8 @@ import "time"
 
 // Entity is a base interface that all model must implement
 type Entity interface {
-	GetID() int64
-	SetID(id int64)
+	GetID() string
+	SetID(id string)
 	GetCreatedAt() time.Time
 	SetCreatedAt(time.Time)
 	GetUpdatedAt() time.Time
@@ -14,16 +14,16 @@ type Entity interface {
 
 // BaseEntity is a base struct that implements Entity interface
 type BaseEntity struct {
-	ID        int64     `db:"id"`
+	ID        string    `db:"id"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
-func (e *BaseEntity) GetID() int64 {
+func (e *BaseEntity) GetID() string {
 	return e.ID
 }
 
-func (e *BaseEntity) SetID(id int64) {
+func (e *BaseEntity) SetID(id string) {
 	e.ID = id
 }
 

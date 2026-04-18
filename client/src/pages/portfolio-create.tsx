@@ -120,11 +120,11 @@ function PortfolioCreateContent() {
 		navigate({ to: "/portfolios" });
 	}, [navigate]);
 
-	const handleSuccess = useCallback((data: PortfolioFormData) => {
+	const handleSuccess = useCallback((_data: PortfolioFormData) => {
 		// Success is handled in handleSubmit
 	}, []);
 
-	const handleError = useCallback((error: Error) => {
+	const handleError = useCallback((_error: Error) => {
 		// Error is handled in handleSubmit
 	}, []);
 

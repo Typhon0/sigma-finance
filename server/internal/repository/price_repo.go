@@ -5,7 +5,6 @@ import (
 	"sigma_finance/internal/domain/model"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
@@ -18,8 +17,8 @@ type TimeRange struct {
 
 // PriceFilter defines filter criteria for price queries
 type PriceFilter struct {
-	AssetID   *uuid.UUID  `json:"asset_id,omitempty"`
-	AssetIDs  []uuid.UUID `json:"asset_ids,omitempty"`
+	AssetID   *string    `json:"asset_id,omitempty"`
+	AssetIDs  []string   `json:"asset_ids,omitempty"`
 	Source    *string     `json:"source,omitempty"`
 	TimeRange *TimeRange  `json:"time_range,omitempty"`
 	Limit     *int        `json:"limit,omitempty"`
@@ -28,7 +27,7 @@ type PriceFilter struct {
 
 // PriceAggregation represents aggregated price data
 type PriceAggregation struct {
-	AssetID    uuid.UUID       `json:"asset_id"`
+	AssetID    string          `json:"asset_id"`
 	Open       decimal.Decimal `json:"open"`
 	High       decimal.Decimal `json:"high"`
 	Low        decimal.Decimal `json:"low"`
@@ -42,7 +41,7 @@ type PriceAggregation struct {
 
 // PriceStatistics represents statistical data for price analysis
 type PriceStatistics struct {
-	AssetID       uuid.UUID        `json:"asset_id"`
+	AssetID       string           `json:"asset_id"`
 	CurrentPrice  decimal.Decimal  `json:"current_price"`
 	PreviousPrice decimal.Decimal  `json:"previous_price"`
 	Change        decimal.Decimal  `json:"change"`
@@ -64,28 +63,28 @@ type IPriceRepository interface {
 	IRepository[model.AssetPrice]
 
 	// Enhanced CRUD operations
-	GetLatestPrice(ctx context.Context, assetID uuid.UUID) (*model.AssetPrice, error)
-	GetLatestPrices(ctx context.Context, assetIDs []uuid.UUID) ([]model.AssetPrice, error)
-	GetPriceHistory(ctx context.Context, assetID uuid.UUID, timeRange TimeRange) ([]model.AssetPrice, error)
+	GetLatestPrice(ctx context.Context, assetID string) (*model.AssetPrice, error)
+	GetLatestPrices(ctx context.Context, assetIDs []string) ([]model.AssetPrice, error)
+	GetPriceHistory(ctx context.Context, assetID string, timeRange TimeRange) ([]model.AssetPrice, error)
 	FindWithFilters(ctx context.Context, filter PriceFilter) ([]model.AssetPrice, error)
 
 	// Time-series optimized queries
-	GetPricesByTimeRange(ctx context.Context, assetIDs []uuid.UUID, timeRange TimeRange) ([]model.AssetPrice, error)
-	GetOHLCData(ctx context.Context, assetID uuid.UUID, timeRange TimeRange, interval string) ([]PriceAggregation, error)
-	GetPriceStatistics(ctx context.Context, assetID uuid.UUID) (*PriceStatistics, error)
+	GetPricesByTimeRange(ctx context.Context, assetIDs []string, timeRange TimeRange) ([]model.AssetPrice, error)
+	GetOHLCData(ctx context.Context, assetID string, timeRange TimeRange, interval string) ([]PriceAggregation, error)
+	GetPriceStatistics(ctx context.Context, assetID string) (*PriceStatistics, error)
 
 	// Performance and analytics
-	GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]uuid.UUID, error)
-	GetAssetsRequiringUpdate(ctx context.Context, sources []string) ([]uuid.UUID, error)
-	GetPriceChanges(ctx context.Context, assetIDs []uuid.UUID, timeRange TimeRange) (map[uuid.UUID]decimal.Decimal, error)
+	GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]string, error)
+	GetAssetsRequiringUpdate(ctx context.Context, sources []string) ([]string, error)
+	GetPriceChanges(ctx context.Context, assetIDs []string, timeRange TimeRange) (map[string]decimal.Decimal, error)
 
 	// Batch operations
 	UpsertPrices(ctx context.Context, prices []model.AssetPrice) error
-	DeleteOldPrices(ctx context.Context, assetID uuid.UUID, olderThan time.Time) error
+	DeleteOldPrices(ctx context.Context, assetID string, olderThan time.Time) error
 
 	// Chart data optimization
-	GetSampledPriceData(ctx context.Context, assetID uuid.UUID, timeRange TimeRange, maxPoints int) ([]model.AssetPrice, error)
-	GetVolumeWeightedAveragePrice(ctx context.Context, assetID uuid.UUID, timeRange TimeRange) (*decimal.Decimal, error)
+	GetSampledPriceData(ctx context.Context, assetID string, timeRange TimeRange, maxPoints int) ([]model.AssetPrice, error)
+	GetVolumeWeightedAveragePrice(ctx context.Context, assetID string, timeRange TimeRange) (*decimal.Decimal, error)
 }
 
 // PriceRepository is the concrete implementation of IPriceRepository
@@ -101,7 +100,7 @@ func NewPriceRepository(db bun.IDB) *PriceRepository {
 }
 
 // GetLatestPrice retrieves the most recent price for an asset
-func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID uuid.UUID) (*model.AssetPrice, error) {
+func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID string) (*model.AssetPrice, error) {
 	var price model.AssetPrice
 	err := r.db.NewSelect().
 		Model(&price).
@@ -116,7 +115,7 @@ func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID uuid.UUID)
 }
 
 // GetLatestPrices retrieves the most recent prices for multiple assets
-func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []uuid.UUID) ([]model.AssetPrice, error) {
+func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []string) ([]model.AssetPrice, error) {
 	if len(assetIDs) == 0 {
 		return []model.AssetPrice{}, nil
 	}
@@ -133,7 +132,7 @@ func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []uuid.U
 }
 
 // GetPriceHistory retrieves price history for an asset within a time range
-func (r *PriceRepository) GetPriceHistory(ctx context.Context, assetID uuid.UUID, timeRange TimeRange) ([]model.AssetPrice, error) {
+func (r *PriceRepository) GetPriceHistory(ctx context.Context, assetID string, timeRange TimeRange) ([]model.AssetPrice, error) {
 	var prices []model.AssetPrice
 	err := r.db.NewSelect().
 		Model(&prices).
@@ -191,7 +190,7 @@ func (r *PriceRepository) applyPriceFilters(query *bun.SelectQuery, filter Price
 }
 
 // GetPricesByTimeRange retrieves prices for multiple assets within a time range
-func (r *PriceRepository) GetPricesByTimeRange(ctx context.Context, assetIDs []uuid.UUID, timeRange TimeRange) ([]model.AssetPrice, error) {
+func (r *PriceRepository) GetPricesByTimeRange(ctx context.Context, assetIDs []string, timeRange TimeRange) ([]model.AssetPrice, error) {
 	return r.FindWithFilters(ctx, PriceFilter{
 		AssetIDs:  assetIDs,
 		TimeRange: &timeRange,
@@ -199,7 +198,7 @@ func (r *PriceRepository) GetPricesByTimeRange(ctx context.Context, assetIDs []u
 }
 
 // GetOHLCData retrieves OHLC (Open, High, Low, Close) data for charting
-func (r *PriceRepository) GetOHLCData(ctx context.Context, assetID uuid.UUID, timeRange TimeRange, interval string) ([]PriceAggregation, error) {
+func (r *PriceRepository) GetOHLCData(ctx context.Context, assetID string, timeRange TimeRange, interval string) ([]PriceAggregation, error) {
 	var aggregations []struct {
 		Open       decimal.Decimal `bun:"open"`
 		High       decimal.Decimal `bun:"high"`
@@ -276,7 +275,7 @@ func (r *PriceRepository) GetOHLCData(ctx context.Context, assetID uuid.UUID, ti
 }
 
 // GetPriceStatistics calculates price statistics for an asset
-func (r *PriceRepository) GetPriceStatistics(ctx context.Context, assetID uuid.UUID) (*PriceStatistics, error) {
+func (r *PriceRepository) GetPriceStatistics(ctx context.Context, assetID string) (*PriceStatistics, error) {
 	now := time.Now()
 	dayAgo := now.AddDate(0, 0, -1)
 	weekAgo := now.AddDate(0, 0, -7)
@@ -369,10 +368,10 @@ func (r *PriceRepository) GetPriceStatistics(ctx context.Context, assetID uuid.U
 }
 
 // GetStaleAssets retrieves assets that haven't been updated within the specified duration
-func (r *PriceRepository) GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]uuid.UUID, error) {
+func (r *PriceRepository) GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]string, error) {
 	cutoffTime := time.Now().Add(-maxAge)
 
-	var assetIDs []uuid.UUID
+	var assetIDs []string
 	err := r.db.NewSelect().
 		ColumnExpr("DISTINCT asset_id").
 		Model((*model.AssetPrice)(nil)).
@@ -383,12 +382,12 @@ func (r *PriceRepository) GetStaleAssets(ctx context.Context, maxAge time.Durati
 }
 
 // GetAssetsRequiringUpdate retrieves assets that need price updates from specific sources
-func (r *PriceRepository) GetAssetsRequiringUpdate(ctx context.Context, sources []string) ([]uuid.UUID, error) {
+func (r *PriceRepository) GetAssetsRequiringUpdate(ctx context.Context, sources []string) ([]string, error) {
 	if len(sources) == 0 {
-		return []uuid.UUID{}, nil
+		return []string{}, nil
 	}
 
-	var assetIDs []uuid.UUID
+	var assetIDs []string
 	err := r.db.NewSelect().
 		ColumnExpr("DISTINCT a.id").
 		Model((*model.Asset)(nil)).
@@ -401,13 +400,13 @@ func (r *PriceRepository) GetAssetsRequiringUpdate(ctx context.Context, sources 
 }
 
 // GetPriceChanges calculates price changes for multiple assets within a time range
-func (r *PriceRepository) GetPriceChanges(ctx context.Context, assetIDs []uuid.UUID, timeRange TimeRange) (map[uuid.UUID]decimal.Decimal, error) {
+func (r *PriceRepository) GetPriceChanges(ctx context.Context, assetIDs []string, timeRange TimeRange) (map[string]decimal.Decimal, error) {
 	if len(assetIDs) == 0 {
-		return map[uuid.UUID]decimal.Decimal{}, nil
+		return map[string]decimal.Decimal{}, nil
 	}
 
 	var changes []struct {
-		AssetID       uuid.UUID       `bun:"asset_id"`
+		AssetID       string          `bun:"asset_id"`
 		StartPrice    decimal.Decimal `bun:"start_price"`
 		EndPrice      decimal.Decimal `bun:"end_price"`
 		ChangePercent decimal.Decimal `bun:"change_percent"`
@@ -428,7 +427,7 @@ func (r *PriceRepository) GetPriceChanges(ctx context.Context, assetIDs []uuid.U
 	}
 
 	// Convert to map
-	result := make(map[uuid.UUID]decimal.Decimal)
+	result := make(map[string]decimal.Decimal)
 	for _, change := range changes {
 		result[change.AssetID] = change.ChangePercent
 	}
@@ -455,7 +454,7 @@ func (r *PriceRepository) UpsertPrices(ctx context.Context, prices []model.Asset
 }
 
 // DeleteOldPrices removes price data older than the specified time
-func (r *PriceRepository) DeleteOldPrices(ctx context.Context, assetID uuid.UUID, olderThan time.Time) error {
+func (r *PriceRepository) DeleteOldPrices(ctx context.Context, assetID string, olderThan time.Time) error {
 	_, err := r.db.NewDelete().
 		Model((*model.AssetPrice)(nil)).
 		Where("asset_id = ? AND timestamp < ?", assetID, olderThan).
@@ -465,7 +464,7 @@ func (r *PriceRepository) DeleteOldPrices(ctx context.Context, assetID uuid.UUID
 }
 
 // GetSampledPriceData retrieves sampled price data for chart optimization
-func (r *PriceRepository) GetSampledPriceData(ctx context.Context, assetID uuid.UUID, timeRange TimeRange, maxPoints int) ([]model.AssetPrice, error) {
+func (r *PriceRepository) GetSampledPriceData(ctx context.Context, assetID string, timeRange TimeRange, maxPoints int) ([]model.AssetPrice, error) {
 	// Calculate sampling interval based on time range and max points
 	duration := timeRange.End.Sub(timeRange.Start)
 	intervalSeconds := int(duration.Seconds()) / maxPoints
@@ -488,7 +487,7 @@ func (r *PriceRepository) GetSampledPriceData(ctx context.Context, assetID uuid.
 }
 
 // GetVolumeWeightedAveragePrice calculates VWAP for an asset within a time range
-func (r *PriceRepository) GetVolumeWeightedAveragePrice(ctx context.Context, assetID uuid.UUID, timeRange TimeRange) (*decimal.Decimal, error) {
+func (r *PriceRepository) GetVolumeWeightedAveragePrice(ctx context.Context, assetID string, timeRange TimeRange) (*decimal.Decimal, error) {
 	var vwap decimal.Decimal
 	err := r.db.NewSelect().
 		ColumnExpr("SUM(price * COALESCE(volume, 0)) / NULLIF(SUM(COALESCE(volume, 0)), 0)").

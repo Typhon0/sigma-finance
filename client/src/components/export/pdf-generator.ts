@@ -1,44 +1,49 @@
-import { PortfolioExportData, TaxReportData } from './types';
+import type { PortfolioExportData, TaxReportData } from "./types";
 
 // Note: This is a simplified PDF generator interface
 // In a real implementation, you would use a library like jsPDF or Puppeteer
 export class PDFGenerator {
-  private static formatCurrency(amount: number): string {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount / 100); // Convert from cents
-  }
+	private static formatCurrency(amount: number): string {
+		return new Intl.NumberFormat("en-US", {
+			style: "currency",
+			currency: "USD",
+		}).format(amount / 100); // Convert from cents
+	}
 
-  private static formatPercentage(value: number): string {
-    return `${value.toFixed(2)}%`;
-  }
+	private static formatPercentage(value: number): string {
+		return `${value.toFixed(2)}%`;
+	}
 
-  private static formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US');
-  }
+	private static formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleDateString("en-US");
+	}
 
-  static async generatePortfolioReport(data: PortfolioExportData): Promise<Blob> {
-    // This would use a proper PDF library in production
-    const htmlContent = this.generatePortfolioHTML(data);
-    return this.htmlToPDF(htmlContent);
-  }
+	static async generatePortfolioReport(
+		data: PortfolioExportData,
+	): Promise<Blob> {
+		// This would use a proper PDF library in production
+		const htmlContent = PDFGenerator.generatePortfolioHTML(data);
+		return PDFGenerator.htmlToPDF(htmlContent);
+	}
 
-  static async generatePerformanceReport(
-    portfolioData: PortfolioExportData,
-    performanceMetrics: any
-  ): Promise<Blob> {
-    const htmlContent = this.generatePerformanceHTML(portfolioData, performanceMetrics);
-    return this.htmlToPDF(htmlContent);
-  }
+	static async generatePerformanceReport(
+		portfolioData: PortfolioExportData,
+		performanceMetrics: any,
+	): Promise<Blob> {
+		const htmlContent = PDFGenerator.generatePerformanceHTML(
+			portfolioData,
+			performanceMetrics,
+		);
+		return PDFGenerator.htmlToPDF(htmlContent);
+	}
 
-  static async generateTaxReport(data: TaxReportData): Promise<Blob> {
-    const htmlContent = this.generateTaxHTML(data);
-    return this.htmlToPDF(htmlContent);
-  }
+	static async generateTaxReport(data: TaxReportData): Promise<Blob> {
+		const htmlContent = PDFGenerator.generateTaxHTML(data);
+		return PDFGenerator.htmlToPDF(htmlContent);
+	}
 
-  private static generatePortfolioHTML(data: PortfolioExportData): string {
-    return `
+	private static generatePortfolioHTML(data: PortfolioExportData): string {
+		return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -65,16 +70,16 @@ export class PDFGenerator {
 
         <div class="summary">
           <h3>Portfolio Summary</h3>
-          <p><strong>Total Value:</strong> ${this.formatCurrency(data.portfolio.totalValue)}</p>
-          <p><strong>Total Cost:</strong> ${this.formatCurrency(data.portfolio.totalCost)}</p>
+          <p><strong>Total Value:</strong> ${PDFGenerator.formatCurrency(data.portfolio.totalValue)}</p>
+          <p><strong>Total Cost:</strong> ${PDFGenerator.formatCurrency(data.portfolio.totalCost)}</p>
           <p><strong>Gain/Loss:</strong> 
-            <span class="${data.portfolio.gainLoss >= 0 ? 'positive' : 'negative'}">
-              ${this.formatCurrency(data.portfolio.gainLoss)}
+            <span class="${data.portfolio.gainLoss >= 0 ? "positive" : "negative"}">
+              ${PDFGenerator.formatCurrency(data.portfolio.gainLoss)}
             </span>
           </p>
           <p><strong>Return:</strong> 
-            <span class="${data.portfolio.returnPercentage >= 0 ? 'positive' : 'negative'}">
-              ${this.formatPercentage(data.portfolio.returnPercentage)}
+            <span class="${data.portfolio.returnPercentage >= 0 ? "positive" : "negative"}">
+              ${PDFGenerator.formatPercentage(data.portfolio.returnPercentage)}
             </span>
           </p>
         </div>
@@ -94,21 +99,25 @@ export class PDFGenerator {
               </tr>
             </thead>
             <tbody>
-              ${data.positions.map(pos => `
+              ${data.positions
+								.map(
+									(pos) => `
                 <tr>
-                  <td>${pos.assetName} ${pos.symbol ? `(${pos.symbol})` : ''}</td>
+                  <td>${pos.assetName} ${pos.symbol ? `(${pos.symbol})` : ""}</td>
                   <td>${pos.assetType}</td>
                   <td>${pos.quantity}</td>
-                  <td>${this.formatCurrency(pos.currentValue)}</td>
-                  <td>${this.formatCurrency(pos.costBasis)}</td>
-                  <td class="${pos.gainLoss >= 0 ? 'positive' : 'negative'}">
-                    ${this.formatCurrency(pos.gainLoss)}
+                  <td>${PDFGenerator.formatCurrency(pos.currentValue)}</td>
+                  <td>${PDFGenerator.formatCurrency(pos.costBasis)}</td>
+                  <td class="${pos.gainLoss >= 0 ? "positive" : "negative"}">
+                    ${PDFGenerator.formatCurrency(pos.gainLoss)}
                   </td>
-                  <td class="${pos.returnPercentage >= 0 ? 'positive' : 'negative'}">
-                    ${this.formatPercentage(pos.returnPercentage)}
+                  <td class="${pos.returnPercentage >= 0 ? "positive" : "negative"}">
+                    ${PDFGenerator.formatPercentage(pos.returnPercentage)}
                   </td>
                 </tr>
-              `).join('')}
+              `,
+								)
+								.join("")}
             </tbody>
           </table>
         </div>
@@ -126,28 +135,33 @@ export class PDFGenerator {
               </tr>
             </thead>
             <tbody>
-              ${data.transactions.slice(0, 20).map(tx => `
+              ${data.transactions
+								.slice(0, 20)
+								.map(
+									(tx) => `
                 <tr>
-                  <td>${this.formatDate(tx.date)}</td>
+                  <td>${PDFGenerator.formatDate(tx.date)}</td>
                   <td>${tx.type}</td>
                   <td>${tx.assetName}</td>
-                  <td>${tx.quantity || '-'}</td>
-                  <td>${this.formatCurrency(tx.amount)}</td>
+                  <td>${tx.quantity || "-"}</td>
+                  <td>${PDFGenerator.formatCurrency(tx.amount)}</td>
                 </tr>
-              `).join('')}
+              `,
+								)
+								.join("")}
             </tbody>
           </table>
         </div>
       </body>
       </html>
     `;
-  }
+	}
 
-  private static generatePerformanceHTML(
-    portfolioData: PortfolioExportData,
-    performanceMetrics: any
-  ): string {
-    return `
+	private static generatePerformanceHTML(
+		portfolioData: PortfolioExportData,
+		_performanceMetrics: any,
+	): string {
+		return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -172,18 +186,18 @@ export class PDFGenerator {
         <div class="metrics">
           <div class="metric-card">
             <h4>Total Return</h4>
-            <p class="${portfolioData.portfolio.returnPercentage >= 0 ? 'positive' : 'negative'}">
-              ${this.formatPercentage(portfolioData.portfolio.returnPercentage)}
+            <p class="${portfolioData.portfolio.returnPercentage >= 0 ? "positive" : "negative"}">
+              ${PDFGenerator.formatPercentage(portfolioData.portfolio.returnPercentage)}
             </p>
           </div>
           <div class="metric-card">
             <h4>Total Value</h4>
-            <p>${this.formatCurrency(portfolioData.portfolio.totalValue)}</p>
+            <p>${PDFGenerator.formatCurrency(portfolioData.portfolio.totalValue)}</p>
           </div>
           <div class="metric-card">
             <h4>Unrealized Gain/Loss</h4>
-            <p class="${portfolioData.portfolio.gainLoss >= 0 ? 'positive' : 'negative'}">
-              ${this.formatCurrency(portfolioData.portfolio.gainLoss)}
+            <p class="${portfolioData.portfolio.gainLoss >= 0 ? "positive" : "negative"}">
+              ${PDFGenerator.formatCurrency(portfolioData.portfolio.gainLoss)}
             </p>
           </div>
           <div class="metric-card">
@@ -204,10 +218,10 @@ export class PDFGenerator {
       </body>
       </html>
     `;
-  }
+	}
 
-  private static generateTaxHTML(data: TaxReportData): string {
-    return `
+	private static generateTaxHTML(data: TaxReportData): string {
+		return `
       <!DOCTYPE html>
       <html>
       <head>
@@ -232,14 +246,14 @@ export class PDFGenerator {
 
         <div class="summary">
           <h3>Summary</h3>
-          <p><strong>Total Realized Gains:</strong> ${this.formatCurrency(data.summary.totalRealizedGains)}</p>
-          <p><strong>Total Realized Losses:</strong> ${this.formatCurrency(data.summary.totalRealizedLosses)}</p>
+          <p><strong>Total Realized Gains:</strong> ${PDFGenerator.formatCurrency(data.summary.totalRealizedGains)}</p>
+          <p><strong>Total Realized Losses:</strong> ${PDFGenerator.formatCurrency(data.summary.totalRealizedLosses)}</p>
           <p><strong>Net Gain/Loss:</strong> 
-            <span class="${data.summary.netGainLoss >= 0 ? 'positive' : 'negative'}">
-              ${this.formatCurrency(data.summary.netGainLoss)}
+            <span class="${data.summary.netGainLoss >= 0 ? "positive" : "negative"}">
+              ${PDFGenerator.formatCurrency(data.summary.netGainLoss)}
             </span>
           </p>
-          <p><strong>Total Dividends:</strong> ${this.formatCurrency(data.summary.totalDividends)}</p>
+          <p><strong>Total Dividends:</strong> ${PDFGenerator.formatCurrency(data.summary.totalDividends)}</p>
         </div>
 
         <div class="section">
@@ -258,32 +272,39 @@ export class PDFGenerator {
               </tr>
             </thead>
             <tbody>
-              ${data.realizedGains.map(gain => `
+              ${data.realizedGains
+								.map(
+									(gain) => `
                 <tr>
-                  <td>${gain.assetName} ${gain.symbol ? `(${gain.symbol})` : ''}</td>
-                  <td>${this.formatDate(gain.saleDate)}</td>
-                  <td>${this.formatDate(gain.purchaseDate)}</td>
+                  <td>${gain.assetName} ${gain.symbol ? `(${gain.symbol})` : ""}</td>
+                  <td>${PDFGenerator.formatDate(gain.saleDate)}</td>
+                  <td>${PDFGenerator.formatDate(gain.purchaseDate)}</td>
                   <td>${gain.quantity}</td>
-                  <td>${this.formatCurrency(gain.salePrice)}</td>
-                  <td>${this.formatCurrency(gain.costBasis)}</td>
-                  <td class="${gain.gainLoss >= 0 ? 'positive' : 'negative'}">
-                    ${this.formatCurrency(gain.gainLoss)}
+                  <td>${PDFGenerator.formatCurrency(gain.salePrice)}</td>
+                  <td>${PDFGenerator.formatCurrency(gain.costBasis)}</td>
+                  <td class="${gain.gainLoss >= 0 ? "positive" : "negative"}">
+                    ${PDFGenerator.formatCurrency(gain.gainLoss)}
                   </td>
                   <td>${gain.termType}</td>
                 </tr>
-              `).join('')}
+              `,
+								)
+								.join("")}
             </tbody>
           </table>
         </div>
       </body>
       </html>
     `;
-  }
+	}
 
-  private static async htmlToPDF(html: string): Promise<Blob> {
-    // In a real implementation, this would use a proper PDF generation library
-    // For now, we'll create a simple text blob as a placeholder
-    const pdfContent = `PDF Report\n\n${html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim()}`;
-    return new Blob([pdfContent], { type: 'application/pdf' });
-  }
+	private static async htmlToPDF(html: string): Promise<Blob> {
+		// In a real implementation, this would use a proper PDF generation library
+		// For now, we'll create a simple text blob as a placeholder
+		const pdfContent = `PDF Report\n\n${html
+			.replace(/<[^>]*>/g, "")
+			.replace(/\s+/g, " ")
+			.trim()}`;
+		return new Blob([pdfContent], { type: "application/pdf" });
+	}
 }

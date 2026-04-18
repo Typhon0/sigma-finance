@@ -13,7 +13,7 @@ func init() {
 			fmt.Print(" [up migration] Add market data credential & candle tables ")
 			_, err := db.ExecContext(ctx, `
                 CREATE TABLE IF NOT EXISTS sigma_finance.market_data_credential (
-                    id SERIAL PRIMARY KEY,
+                    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
                     user_id UUID NOT NULL REFERENCES sigma_finance.user(id) ON DELETE CASCADE,
                     provider TEXT NOT NULL,
                     api_key TEXT NOT NULL,

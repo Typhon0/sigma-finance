@@ -5,15 +5,14 @@ import (
 	"sigma_finance/internal/domain/model"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
 // PositionFilter defines filter criteria for position queries
 type PositionFilter struct {
-	PortfolioID  *uuid.UUID       `json:"portfolio_id,omitempty"`
-	AssetID      *uuid.UUID       `json:"asset_id,omitempty"`
+	PortfolioID  *string          `json:"portfolio_id,omitempty"`
+	AssetID      *string          `json:"asset_id,omitempty"`
 	AssetType    *model.AssetType `json:"asset_type,omitempty"`
 	MinQuantity  *decimal.Decimal `json:"min_quantity,omitempty"`
 	MaxQuantity  *decimal.Decimal `json:"max_quantity,omitempty"`
@@ -25,7 +24,7 @@ type PositionFilter struct {
 
 // PortfolioAggregation represents aggregated portfolio data
 type PortfolioAggregation struct {
-	PortfolioID    uuid.UUID               `json:"portfolio_id"`
+	PortfolioID    string                  `json:"portfolio_id"`
 	TotalPositions int                     `json:"total_positions"`
 	TotalCostBasis *model.Money            `json:"total_cost_basis,omitempty"`
 	AssetTypeCount map[model.AssetType]int `json:"asset_type_count"`
@@ -46,25 +45,24 @@ type IPositionRepository interface {
 	IRepository[model.Position]
 
 	// Enhanced CRUD operations
-	GetByUUID(ctx context.Context, id uuid.UUID) (*model.Position, error)
-	GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID uuid.UUID) (*model.Position, error)
+	GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error)
 	FindWithFilters(ctx context.Context, filter PositionFilter) ([]model.Position, error)
 	CountWithFilters(ctx context.Context, filter PositionFilter) (int, error)
 
 	// Portfolio aggregation queries
-	GetPortfolioPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error)
-	GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error)
-	GetPortfolioAggregation(ctx context.Context, portfolioID uuid.UUID) (*PortfolioAggregation, error)
-	GetAssetAllocation(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
+	GetPortfolioPositions(ctx context.Context, portfolioID string) ([]model.Position, error)
+	GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]model.Position, error)
+	GetPortfolioAggregation(ctx context.Context, portfolioID string) (*PortfolioAggregation, error)
+	GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
 
 	// Position value calculations
-	GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []uuid.UUID) ([]model.Position, error)
-	GetEmptyPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error)
+	GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []string) ([]model.Position, error)
+	GetEmptyPositions(ctx context.Context, portfolioID string) ([]model.Position, error)
 
 	// Batch operations
 	CreateBatch(ctx context.Context, positions []model.Position) error
 	UpdateBatch(ctx context.Context, positions []model.Position) error
-	DeleteEmptyPositions(ctx context.Context, portfolioID uuid.UUID) error
+	DeleteEmptyPositions(ctx context.Context, portfolioID string) error
 }
 
 // PositionRepository is the concrete implementation of IPositionRepository
@@ -79,21 +77,9 @@ func NewPositionRepository(db bun.IDB) *PositionRepository {
 	}
 }
 
-// GetByUUID retrieves a position by its UUID
-func (r *PositionRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*model.Position, error) {
-	var position model.Position
-	err := r.db.NewSelect().
-		Model(&position).
-		Where("id = ?", id).
-		Scan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &position, nil
-}
 
 // GetByPortfolioAndAsset retrieves a position by portfolio and asset IDs
-func (r *PositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID uuid.UUID) (*model.Position, error) {
+func (r *PositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error) {
 	var position model.Position
 	err := r.db.NewSelect().
 		Model(&position).
@@ -174,12 +160,12 @@ func (r *PositionRepository) applyPositionFilters(query *bun.SelectQuery, filter
 }
 
 // GetPortfolioPositions retrieves all positions for a portfolio
-func (r *PositionRepository) GetPortfolioPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (r *PositionRepository) GetPortfolioPositions(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	return r.FindWithFilters(ctx, PositionFilter{PortfolioID: &portfolioID})
 }
 
 // GetPortfolioPositionsWithAssets retrieves all positions for a portfolio with asset details
-func (r *PositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (r *PositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	var positions []model.Position
 	err := r.db.NewSelect().
 		Model(&positions).
@@ -191,7 +177,7 @@ func (r *PositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context
 }
 
 // GetPortfolioAggregation calculates aggregated data for a portfolio
-func (r *PositionRepository) GetPortfolioAggregation(ctx context.Context, portfolioID uuid.UUID) (*PortfolioAggregation, error) {
+func (r *PositionRepository) GetPortfolioAggregation(ctx context.Context, portfolioID string) (*PortfolioAggregation, error) {
 	// Get basic aggregation data
 	var result struct {
 		TotalPositions int       `bun:"total_positions"`
@@ -249,7 +235,7 @@ func (r *PositionRepository) GetPortfolioAggregation(ctx context.Context, portfo
 }
 
 // GetAssetAllocation calculates asset allocation for a portfolio
-func (r *PositionRepository) GetAssetAllocation(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (r *PositionRepository) GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error) {
 	var allocations []struct {
 		AssetType      model.AssetType `bun:"asset_type"`
 		PositionCount  int             `bun:"position_count"`
@@ -308,7 +294,7 @@ func (r *PositionRepository) GetAssetAllocation(ctx context.Context, portfolioID
 }
 
 // GetPositionsRequiringPriceUpdate retrieves positions for assets that need price updates
-func (r *PositionRepository) GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []uuid.UUID) ([]model.Position, error) {
+func (r *PositionRepository) GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []string) ([]model.Position, error) {
 	if len(assetIDs) == 0 {
 		return []model.Position{}, nil
 	}
@@ -326,7 +312,7 @@ func (r *PositionRepository) GetPositionsRequiringPriceUpdate(ctx context.Contex
 }
 
 // GetEmptyPositions retrieves positions with zero quantity
-func (r *PositionRepository) GetEmptyPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (r *PositionRepository) GetEmptyPositions(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	zeroQuantity := decimal.Zero
 	return r.FindWithFilters(ctx, PositionFilter{
 		PortfolioID: &portfolioID,
@@ -382,7 +368,7 @@ func (r *PositionRepository) UpdateBatch(ctx context.Context, positions []model.
 }
 
 // DeleteEmptyPositions removes positions with zero quantity
-func (r *PositionRepository) DeleteEmptyPositions(ctx context.Context, portfolioID uuid.UUID) error {
+func (r *PositionRepository) DeleteEmptyPositions(ctx context.Context, portfolioID string) error {
 	_, err := r.db.NewDelete().
 		Model((*model.Position)(nil)).
 		Where("portfolio_id = ? AND quantity = 0", portfolioID).

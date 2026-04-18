@@ -78,7 +78,6 @@ const SortablePortfolioCard = ({
 			{...attributes}
 			{...listeners}
 			aria-label={`Portfolio card for ${portfolio.name}`}
-			aria-selected={isSelected}
 			className="list-none"
 		>
 			<PortfolioCard
@@ -215,9 +214,8 @@ export function PortfolioList({
 	}
 
 	return (
-		<div
+		<section
 			className={cn("space-y-4", className, "w-full max-w-full")}
-			role="region"
 			aria-label="Portfolio selection and list"
 		>
 			{/* Controls Header */}
@@ -385,8 +383,11 @@ export function PortfolioList({
 							size="sm"
 							className="touch-manipulation"
 							onClick={() => {
-								// TODO: Implement bulk export
-								console.log("Bulk export:", selectedPortfolios);
+								// TODO: Implement actual bulk export API mutation
+								console.log(
+									"Bulk export not fully implemented, logging selection:",
+									selectedPortfolios,
+								);
 							}}
 						>
 							<Download className="mr-2 h-4 w-4" />
@@ -397,8 +398,11 @@ export function PortfolioList({
 							size="sm"
 							className="touch-manipulation text-destructive hover:text-destructive"
 							onClick={() => {
-								// TODO: Implement bulk delete
-								console.log("Bulk delete:", selectedPortfolios);
+								// TODO: Implement actual bulk delete API mutation
+								console.log(
+									"Bulk delete not fully implemented, logging selection:",
+									selectedPortfolios,
+								);
 							}}
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
@@ -415,7 +419,7 @@ export function PortfolioList({
 					</div>
 				</div>
 			)}
-		</div>
+		</section>
 	);
 }
 

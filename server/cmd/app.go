@@ -89,13 +89,14 @@ func NewApp() (*AppContainer, error) {
 		AuthenticationService: serviceContainer.Authentication,
 		SecurityService:       serviceContainer.Security,
 		MarketDataService:     serviceContainer.MarketData,
+		InstrumentService:     serviceContainer.Instrument,
 		UOW:                   uow,
 	}
 
 	// Initialize Fiber app
 	app := fiber.New()
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://d7g9j7jl-5174.uks1.devtunnels.ms,http://localhost:5173",
+		AllowOrigins:     "https://d7g9j7jl-5173.uks1.devtunnels.ms,https://d7g9j7jl-8080.uks1.devtunnels.ms,http://localhost:5173",
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
@@ -143,8 +144,8 @@ func NewApp() (*AppContainer, error) {
 					} else {
 						fmt.Printf("DEBUG: Fiber handler - Session valid for user: %s\n", session.UserID)
 
-						// Get user information using string ID
-						user, err := serviceContainer.User.GetByStringID(context.Background(), session.UserID)
+						// Get user information using ID
+						user, err := serviceContainer.User.GetByID(context.Background(), session.UserID)
 						if err != nil {
 							fmt.Printf("DEBUG: Fiber handler - User lookup failed: %v\n", err)
 						} else {

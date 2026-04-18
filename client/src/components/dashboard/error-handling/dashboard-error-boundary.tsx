@@ -1,10 +1,16 @@
 import { ApolloError } from "@apollo/client";
-import { AlertTriangle, RefreshCw, WifiOff, Home, ArrowLeft } from "lucide-react";
+import {
+	AlertTriangle,
+	ArrowLeft,
+	Home,
+	RefreshCw,
+	WifiOff,
+} from "lucide-react";
 import type React from "react";
 import { Component, type ReactNode } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { getErrorMessage, isNetworkError } from "@/hooks/use-error-handling";
 import { cn } from "@/lib/utils";
 
@@ -14,7 +20,12 @@ interface DashboardErrorBoundaryProps {
 	onReset?: () => void;
 	onNavigateHome?: () => void;
 	onNavigateBack?: () => void;
-	context?: 'overview' | 'portfolio-detail' | 'asset-detail' | 'chart' | 'component';
+	context?:
+		| "overview"
+		| "portfolio-detail"
+		| "asset-detail"
+		| "chart"
+		| "component";
 	componentName?: string;
 }
 
@@ -30,7 +41,7 @@ export interface DashboardErrorFallbackProps {
 	resetErrorBoundary: () => void;
 	onNavigateHome?: () => void;
 	onNavigateBack?: () => void;
-	context?: DashboardErrorBoundaryProps['context'];
+	context?: DashboardErrorBoundaryProps["context"];
 	componentName?: string;
 	retryCount: number;
 }
@@ -57,14 +68,18 @@ class DashboardErrorBoundary extends Component<
 		this.setState({ errorInfo });
 
 		// Log error to console in development
-		if (process.env.NODE_ENV === 'development') {
-			console.error('Dashboard Error Boundary caught an error:', error, errorInfo);
+		if (process.env.NODE_ENV === "development") {
+			console.error(
+				"Dashboard Error Boundary caught an error:",
+				error,
+				errorInfo,
+			);
 		}
 
 		// Report to monitoring service if available
 		if (typeof window !== "undefined" && (window as any).reportError) {
 			(window as any).reportError(error, {
-				context: this.props.context || 'dashboard',
+				context: this.props.context || "dashboard",
 				componentName: this.props.componentName,
 				errorInfo,
 				retryCount: this.state.retryCount,
@@ -74,23 +89,33 @@ class DashboardErrorBoundary extends Component<
 
 	reset = () => {
 		this.props.onReset?.();
-		this.setState({ 
-			error: null, 
+		this.setState({
+			error: null,
 			errorInfo: null,
-			retryCount: this.state.retryCount + 1
+			retryCount: this.state.retryCount + 1,
 		});
 	};
 
 	autoRetry = () => {
 		// Auto-retry for network errors after a delay
-		if (this.state.error && isNetworkError(this.state.error as ApolloError) && this.state.retryCount < 2) {
-			this.retryTimeoutId = setTimeout(() => {
-				this.reset();
-			}, 3000 + (this.state.retryCount * 2000)); // Exponential backoff
+		if (
+			this.state.error &&
+			isNetworkError(this.state.error as ApolloError) &&
+			this.state.retryCount < 2
+		) {
+			this.retryTimeoutId = setTimeout(
+				() => {
+					this.reset();
+				},
+				3000 + this.state.retryCount * 2000,
+			); // Exponential backoff
 		}
 	};
 
-	componentDidUpdate(prevProps: DashboardErrorBoundaryProps, prevState: DashboardErrorBoundaryState) {
+	componentDidUpdate(
+		_prevProps: DashboardErrorBoundaryProps,
+		prevState: DashboardErrorBoundaryState,
+	) {
 		// Trigger auto-retry when error occurs
 		if (!prevState.error && this.state.error) {
 			this.autoRetry();
@@ -105,7 +130,14 @@ class DashboardErrorBoundary extends Component<
 
 	render() {
 		const { error, errorInfo, retryCount } = this.state;
-		const { fallback: FallbackComponent, children, context, componentName, onNavigateHome, onNavigateBack } = this.props;
+		const {
+			fallback: FallbackComponent,
+			children,
+			context,
+			componentName,
+			onNavigateHome,
+			onNavigateBack,
+		} = this.props;
 
 		if (error) {
 			const fallbackProps: DashboardErrorFallbackProps = {
@@ -136,7 +168,7 @@ export const DashboardErrorFallback = ({
 	resetErrorBoundary,
 	onNavigateHome,
 	onNavigateBack,
-	context = 'component',
+	context = "component",
 	componentName,
 	retryCount,
 }: DashboardErrorFallbackProps) => {
@@ -148,48 +180,50 @@ export const DashboardErrorFallback = ({
 
 	const getContextTitle = () => {
 		switch (context) {
-			case 'overview':
-				return 'Dashboard Overview Error';
-			case 'portfolio-detail':
-				return 'Portfolio Details Error';
-			case 'asset-detail':
-				return 'Asset Details Error';
-			case 'chart':
-				return 'Chart Loading Error';
+			case "overview":
+				return "Dashboard Overview Error";
+			case "portfolio-detail":
+				return "Portfolio Details Error";
+			case "asset-detail":
+				return "Asset Details Error";
+			case "chart":
+				return "Chart Loading Error";
 			default:
-				return componentName ? `${componentName} Error` : 'Component Error';
+				return componentName ? `${componentName} Error` : "Component Error";
 		}
 	};
 
 	const getContextDescription = () => {
 		switch (context) {
-			case 'overview':
-				return 'Unable to load dashboard overview. Your data is safe.';
-			case 'portfolio-detail':
-				return 'Unable to load portfolio details. Try refreshing or go back to overview.';
-			case 'asset-detail':
-				return 'Unable to load asset details. The asset data may be temporarily unavailable.';
-			case 'chart':
-				return 'Chart data could not be loaded. This may be due to network issues.';
+			case "overview":
+				return "Unable to load dashboard overview. Your data is safe.";
+			case "portfolio-detail":
+				return "Unable to load portfolio details. Try refreshing or go back to overview.";
+			case "asset-detail":
+				return "Unable to load asset details. The asset data may be temporarily unavailable.";
+			case "chart":
+				return "Chart data could not be loaded. This may be due to network issues.";
 			default:
-				return 'This component encountered an error and needs to be reloaded.';
+				return "This component encountered an error and needs to be reloaded.";
 		}
 	};
 
 	const getErrorSeverity = () => {
-		if (isNetwork) return 'warning';
-		if (context === 'chart' || context === 'component') return 'minor';
-		return 'major';
+		if (isNetwork) return "warning";
+		if (context === "chart" || context === "component") return "minor";
+		return "major";
 	};
 
 	const severity = getErrorSeverity();
 
 	return (
-		<Card className={cn(
-			"border-destructive",
-			severity === 'minor' && "border-orange-200",
-			severity === 'warning' && "border-yellow-200"
-		)}>
+		<Card
+			className={cn(
+				"border-destructive",
+				severity === "minor" && "border-orange-200",
+				severity === "warning" && "border-yellow-200",
+			)}
+		>
 			<CardHeader className="pb-3">
 				<div className="flex items-center gap-3">
 					{isNetwork ? (
@@ -203,8 +237,8 @@ export const DashboardErrorFallback = ({
 							{getContextDescription()}
 						</p>
 					</div>
-					<Badge variant={severity === 'major' ? 'destructive' : 'secondary'}>
-						{isNetwork ? 'Network' : 'Error'}
+					<Badge variant={severity === "major" ? "destructive" : "secondary"}>
+						{isNetwork ? "Network" : "Error"}
 					</Badge>
 				</div>
 			</CardHeader>
@@ -226,10 +260,10 @@ export const DashboardErrorFallback = ({
 						<Button
 							onClick={resetErrorBoundary}
 							className="gap-2"
-							variant={severity === 'major' ? 'default' : 'outline'}
+							variant={severity === "major" ? "default" : "outline"}
 						>
 							<RefreshCw className="h-4 w-4" />
-							{retryCount > 0 ? 'Try Again' : 'Retry'}
+							{retryCount > 0 ? "Try Again" : "Retry"}
 						</Button>
 					)}
 
@@ -244,7 +278,7 @@ export const DashboardErrorFallback = ({
 						</Button>
 					)}
 
-					{onNavigateBack && context !== 'overview' && (
+					{onNavigateBack && context !== "overview" && (
 						<Button
 							onClick={onNavigateBack}
 							variant="outline"
@@ -255,7 +289,7 @@ export const DashboardErrorFallback = ({
 						</Button>
 					)}
 
-					{onNavigateHome && context !== 'overview' && (
+					{onNavigateHome && context !== "overview" && (
 						<Button
 							onClick={onNavigateHome}
 							variant="outline"
@@ -270,7 +304,7 @@ export const DashboardErrorFallback = ({
 				{isNetwork && (
 					<div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
 						<p className="text-sm text-orange-800">
-							<strong>Connection Issue:</strong> Check your internet connection. 
+							<strong>Connection Issue:</strong> Check your internet connection.
 							The app will automatically retry when connection is restored.
 						</p>
 					</div>
@@ -284,7 +318,9 @@ export const DashboardErrorFallback = ({
 						<div className="mt-2 p-3 bg-muted rounded text-xs font-mono">
 							<div className="mb-2">
 								<strong>Component Stack:</strong>
-								<pre className="mt-1 whitespace-pre-wrap">{errorInfo.componentStack}</pre>
+								<pre className="mt-1 whitespace-pre-wrap">
+									{errorInfo.componentStack}
+								</pre>
 							</div>
 							<div>
 								<strong>Error Stack:</strong>

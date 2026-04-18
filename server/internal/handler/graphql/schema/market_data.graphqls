@@ -1,12 +1,31 @@
 # Market Data Schema
 
 extend type Query {
-    # Market Data
-    candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]! @auth
-    marketDataCredentials: [MarketDataCredential!]! @auth
-    supportedProviders(assetType: String!): [ProviderInfo!]! @auth
-    providerHealth: [ProviderHealth!]! @auth
-    realTimePrice(symbol: String!, assetType: String!): Candle @auth
+  # Market Data
+  candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]! @auth
+  marketDataCredentials: [MarketDataCredential!]! @auth
+  supportedProviders(assetType: String): [ProviderInfo!]! @auth
+  providerHealth: [ProviderHealth!]! @auth
+  realTimePrice(symbol: String!, assetType: String!): Candle @auth
+
+  # Asset Price History (from database - for tracked assets)
+  assetPriceHistory(assetId: ID!, from: Time!, to: Time!, limit: Int): [AssetPricePoint!]! @auth
+  assetPriceStatistics(assetId: ID!): AssetPriceStatistics! @auth
+
+  # Technical Indicators (via Alpha Vantage)
+  technicalIndicator(
+    symbol: String!
+    assetType: String!
+    indicator: String!
+    interval: String!
+    timePeriod: Int!
+    seriesType: String!
+    from: Time
+    to: Time
+  ): TechnicalIndicatorResponse! @auth
+
+  # Provider routing preferences
+  providerRoutingPreferences: ProviderRoutingPreferences! @auth
 }
 
 extend type Mutation {
@@ -14,6 +33,13 @@ extend type Mutation {
     upsertMarketDataCredential(provider: String!, apiKey: String!): MarketDataCredential! @auth
     deleteMarketDataCredential(provider: String!): ID! @auth
     validateProviderCredentials(provider: String!, apiKey: String!): ValidationResult! @auth
+
+    # Asset price management
+    refreshAssetPrices(assetId: ID): RefreshAssetPricesResult! @auth
+    refreshSingleAssetPrice(assetId: ID!): AssetPricePoint! @auth
+
+    # Provider routing preferences
+    updateProviderRoutingPreferences(input: ProviderRoutingPreferencesInput!): ProviderRoutingPreferences! @auth
 }
 
 # Market Data Types
@@ -55,11 +81,99 @@ type RateLimit {
 
 type ProviderHealth {
     provider: String!
+    assetType: String!
     healthy: Boolean!
+    apiKeyValid: Boolean
     lastChecked: Time!
 }
 
 type ValidationResult {
     valid: Boolean!
     message: String
+}
+
+type RefreshAssetPricesResult {
+    success: Boolean!
+    message: String
+    updatedCount: Int
+    errors: [String!]
+}
+
+# Technical Indicator Types
+type TechnicalIndicatorResponse {
+    indicator: String!
+    symbol: String!
+    data: [TechnicalIndicatorPoint!]!
+    source: String!
+    timestamp: Time!
+}
+
+type TechnicalIndicatorPoint {
+    timestamp: Time!
+    value: Float!
+    signal: Float
+    histogram: Float
+    upperBand: Float
+    lowerBand: Float
+}
+
+# Provider Routing Preferences
+type ProviderRoutingPreferences {
+  id: ID!
+  userId: String!
+  preferredProviders: [ProviderPreference!]!
+  useIntelligentRouting: Boolean!
+  enableFallback: Boolean!
+  staleDataThresholdMinutes: Int!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type ProviderPreference {
+  provider: String!
+  priority: Int!
+  enabled: Boolean!
+}
+
+# Asset Price History Types
+type AssetPricePoint {
+  id: ID!
+  assetId: ID!
+  price: Float!
+  volume: Float
+  marketCap: Float
+  timestamp: Time!
+  source: String!
+}
+
+type AssetPriceStatistics {
+  assetId: ID!
+  currentPrice: Float!
+  previousPrice: Float!
+  change: Float!
+  changePercent: Float!
+  dayHigh: Float!
+  dayLow: Float!
+  weekHigh: Float!
+  weekLow: Float!
+  monthHigh: Float!
+  monthLow: Float!
+  yearHigh: Float!
+  yearLow: Float!
+  averageVolume: Float
+  lastUpdated: Time!
+  isStale: Boolean!
+}
+
+input ProviderRoutingPreferencesInput {
+  preferredProviders: [ProviderPreferenceInput!]!
+  useIntelligentRouting: Boolean
+  enableFallback: Boolean
+  staleDataThresholdMinutes: Int
+}
+
+input ProviderPreferenceInput {
+  provider: String!
+  priority: Int!
+  enabled: Boolean!
 }

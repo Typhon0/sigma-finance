@@ -12,7 +12,6 @@ import (
 type ISessionRepository interface {
 	IRepository[model.Session]
 	// Session-specific methods
-	GetByStringID(ctx context.Context, id string) (*model.Session, error)
 	GetByToken(ctx context.Context, token string) (*model.Session, error)
 	GetByRefreshToken(ctx context.Context, refreshToken string) (*model.Session, error)
 	GetByUserID(ctx context.Context, userID string) ([]model.Session, error)
@@ -37,31 +36,16 @@ func NewSessionRepository(db bun.IDB) *SessionRepository {
 	}
 }
 
-// GetByStringID retrieves a session by string ID
-func (r *SessionRepository) GetByStringID(ctx context.Context, id string) (*model.Session, error) {
-	session, err := r.FindOneBy(ctx, ByColumn("id", id))
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
-}
+
 
 // GetByToken retrieves a session by its token
 func (r *SessionRepository) GetByToken(ctx context.Context, token string) (*model.Session, error) {
-	session, err := r.FindOneBy(ctx, ByColumn("token", token))
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
+	return r.FindOneBy(ctx, ByColumn("token", token))
 }
 
 // GetByRefreshToken retrieves a session by its refresh token
 func (r *SessionRepository) GetByRefreshToken(ctx context.Context, refreshToken string) (*model.Session, error) {
-	session, err := r.FindOneBy(ctx, ByColumn("refresh_token", refreshToken))
-	if err != nil {
-		return nil, err
-	}
-	return &session, nil
+	return r.FindOneBy(ctx, ByColumn("refresh_token", refreshToken))
 }
 
 // GetByUserID retrieves all sessions for a specific user

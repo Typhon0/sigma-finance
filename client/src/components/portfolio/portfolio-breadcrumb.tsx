@@ -43,14 +43,15 @@ export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
 		<Breadcrumb>
 			<BreadcrumbList className="flex-wrap">
 				{items.map((item, index) => {
-					const displayText = item.title || item.label || '';
-					
+					const displayText = item.title || item.label || "";
+
 					return (
 						<div key={index} className="flex items-center">
 							<BreadcrumbItem>
 								{item.onClick ? (
 									<BreadcrumbLink asChild>
 										<button
+											type="button"
 											onClick={item.onClick}
 											className="flex items-center gap-1 touch-manipulation hover:underline"
 										>

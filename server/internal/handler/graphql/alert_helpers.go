@@ -3,18 +3,19 @@ package graphql
 import (
 	"context"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
-
-	"github.com/google/uuid"
 )
 
 // Helper functions for alert resolvers
 
-func getUserIDFromContext(ctx context.Context) (uuid.UUID, error) {
-	// This would typically extract the user ID from the authentication context
-	// For now, return a placeholder
-	return uuid.New(), nil
+func getUserIDFromContext(ctx context.Context) (string, error) {
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return "", err
+	}
+	return user.ID, nil
 }
 
 func filterAlerts(alerts []*repository.UserAlert, filter *gqlModel.AlertFilter) []*repository.UserAlert {

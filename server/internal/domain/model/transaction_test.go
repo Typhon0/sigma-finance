@@ -60,8 +60,8 @@ func TestTransactionType_RequiresQuantity(t *testing.T) {
 }
 
 func TestTransaction_Validate(t *testing.T) {
-	userID := uuid.New()
-	positionID := uuid.New()
+	userID := uuid.New().String()
+	positionID := uuid.New().String()
 	now := time.Now()
 
 	tests := []struct {
@@ -73,7 +73,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "valid buy transaction",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeBuy,
@@ -89,7 +89,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "valid sell transaction",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeSell,
@@ -105,7 +105,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "valid deposit transaction",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				Type:            TransactionTypeDeposit,
 				Amount:          Money(10000), // $100.00
@@ -118,7 +118,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid transaction - missing user ID",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				Type:            TransactionTypeBuy,
 				Amount:          Money(5000),
 				TransactionDate: now,
@@ -130,7 +130,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid transaction - invalid type",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				Type:            TransactionType("INVALID"),
 				Amount:          Money(5000),
@@ -143,7 +143,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid transaction - zero amount",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				Type:            TransactionTypeBuy,
 				Amount:          Money(0),
@@ -156,7 +156,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid buy - missing quantity",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeBuy,
@@ -171,7 +171,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid buy - missing price",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeBuy,
@@ -186,7 +186,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid buy - wrong amount sign",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeBuy,
@@ -202,7 +202,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid sell - wrong amount sign",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				PositionID:      &positionID,
 				Type:            TransactionTypeSell,
@@ -218,7 +218,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid - negative fee",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				Type:            TransactionTypeDeposit,
 				Amount:          Money(10000),
@@ -232,7 +232,7 @@ func TestTransaction_Validate(t *testing.T) {
 		{
 			name: "invalid - future date",
 			transaction: &Transaction{
-				ID:              uuid.New(),
+				ID:              uuid.New().String(),
 				UserID:          userID,
 				Type:            TransactionTypeDeposit,
 				Amount:          Money(10000),

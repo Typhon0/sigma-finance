@@ -49,7 +49,46 @@ export function calculatePortfolioMetrics(
 	const totalGainLossPercent =
 		totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
-	return { totalValue, totalCost, totalGainLoss, totalGainLossPercent };
+	return {
+		totalValue: Number.isNaN(totalValue) ? 0 : totalValue,
+		totalCost: Number.isNaN(totalCost) ? 0 : totalCost,
+		totalGainLoss: Number.isNaN(totalGainLoss) ? 0 : totalGainLoss,
+		totalGainLossPercent: Number.isNaN(totalGainLossPercent)
+			? 0
+			: totalGainLossPercent,
+	};
+}
+
+/**
+ * Calculates the total value and performance metrics for a single portfolio.
+ * @param portfolio - A single Portfolio object.
+ * @returns An object containing totalValue, totalCost, totalGainLoss, and totalGainLossPercent.
+ */
+export function calculateIndividualPortfolioMetrics(
+	portfolio: Portfolio,
+): PortfolioMetrics {
+	let totalValue = 0;
+	let totalCost = 0;
+
+	if (portfolio.assets && Array.isArray(portfolio.assets)) {
+		for (const position of portfolio.assets) {
+			totalValue += calculatePositionValue(position);
+			totalCost += calculatePositionCost(position);
+		}
+	}
+
+	const totalGainLoss = totalValue - totalCost;
+	const totalGainLossPercent =
+		totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+
+	return {
+		totalValue: Number.isNaN(totalValue) ? 0 : totalValue,
+		totalCost: Number.isNaN(totalCost) ? 0 : totalCost,
+		totalGainLoss: Number.isNaN(totalGainLoss) ? 0 : totalGainLoss,
+		totalGainLossPercent: Number.isNaN(totalGainLossPercent)
+			? 0
+			: totalGainLossPercent,
+	};
 }
 
 /**
@@ -58,10 +97,11 @@ export function calculatePortfolioMetrics(
  * @returns The current value of the position.
  */
 export function calculatePositionValue(position: PortfolioAsset): number {
-	const quantity = position.quantity || 0;
-	const currentValue = position.asset.currentValue || 0;
-	const ownershipPct = position.ownershipPct || 100;
-	return (quantity * currentValue * ownershipPct) / 100;
+	const quantity = position.quantity ?? 0;
+	const currentValue = position.asset?.currentValue ?? 0;
+	const ownershipPct = position.ownershipPct ?? 100;
+	const result = (quantity * currentValue * ownershipPct) / 100;
+	return Number.isNaN(result) ? 0 : result;
 }
 
 /**
@@ -70,10 +110,11 @@ export function calculatePositionValue(position: PortfolioAsset): number {
  * @returns The original cost of the position.
  */
 export function calculatePositionCost(position: PortfolioAsset): number {
-	const quantity = position.quantity || 0;
-	const purchasePrice = position.averagePurchasePrice || 0;
-	const ownershipPct = position.ownershipPct || 100;
-	return (quantity * purchasePrice * ownershipPct) / 100;
+	const quantity = position.quantity ?? 0;
+	const purchasePrice = position.averagePurchasePrice ?? 0;
+	const ownershipPct = position.ownershipPct ?? 100;
+	const result = (quantity * purchasePrice * ownershipPct) / 100;
+	return Number.isNaN(result) ? 0 : result;
 }
 
 /**

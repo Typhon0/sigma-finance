@@ -2,11 +2,12 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"sigma_finance/internal/domain/model"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/uptrace/bun"
 )
 
@@ -26,8 +27,8 @@ type IAssetRepository interface {
 	IRepository[model.Asset]
 
 	// Enhanced CRUD operations
-	GetByUUID(ctx context.Context, id uuid.UUID) (*model.Asset, error)
 	GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error)
+	GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error)
 	FindWithFilters(ctx context.Context, filter AssetFilter) ([]model.Asset, error)
 	CountWithFilters(ctx context.Context, filter AssetFilter) (int, error)
 
@@ -43,7 +44,7 @@ type IAssetRepository interface {
 
 	// Legacy methods for compatibility
 	GetAssetTypes(ctx context.Context) ([]model.AssetType, error)
-	GetAssetsByTag(ctx context.Context, tagID int) ([]model.Asset, error)
+	GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error)
 }
 
 // AssetRepository is the concrete implementation of IAssetRepository.
@@ -58,19 +59,6 @@ func NewAssetRepository(db bun.IDB) *AssetRepository {
 	}
 }
 
-// GetByUUID retrieves an asset by its UUID
-func (r *AssetRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*model.Asset, error) {
-	var asset model.Asset
-	err := r.db.NewSelect().
-		Model(&asset).
-		Where("id = ?", id).
-		Scan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &asset, nil
-}
-
 // GetBySymbol retrieves an asset by its symbol
 func (r *AssetRepository) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) {
 	var asset model.Asset
@@ -79,6 +67,25 @@ func (r *AssetRepository) GetBySymbol(ctx context.Context, symbol string) (*mode
 		Where("symbol = ? AND is_tradeable = true", symbol).
 		Scan(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &asset, nil
+}
+
+// GetByInstrumentID retrieves an asset by its linked instrument ID.
+func (r *AssetRepository) GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error) {
+	var asset model.Asset
+	err := r.db.NewSelect().
+		Model(&asset).
+		Where("instrument_id = ?", instrumentID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &asset, nil
@@ -92,7 +99,7 @@ func (r *AssetRepository) FindWithFilters(ctx context.Context, filter AssetFilte
 	query = r.applyAssetFilters(query, filter)
 
 	// Apply ordering - prioritize tradeable assets, then by name
-	query = query.Order("is_tradeable DESC, name ASC")
+	query = query.OrderExpr("is_tradeable DESC, name ASC")
 
 	// Apply pagination
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -244,14 +251,17 @@ func (r *AssetRepository) GetAssetTypes(ctx context.Context) ([]model.AssetType,
 }
 
 // GetAssetsByTag retrieves all assets associated with a given tag.
-func (r *AssetRepository) GetAssetsByTag(ctx context.Context, tagID int) ([]model.Asset, error) {
+func (r *AssetRepository) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) {
 	var assets []model.Asset
 	err := r.db.NewSelect().
 		Model(&assets).
-		Join("JOIN asset_tags at ON at.asset_id = asset.id").
+		Join("JOIN sigma_finance.asset_tag at ON at.asset_id = assets.id").
 		Where("at.tag_id = ?", tagID).
 		Scan(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []model.Asset{}, nil
+		}
 		return nil, err
 	}
 	return assets, nil

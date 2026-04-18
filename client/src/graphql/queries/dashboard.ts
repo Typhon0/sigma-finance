@@ -7,6 +7,47 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
       name
       analytics {
         totalValue
+        totalCost
+        totalGainLoss
+        totalGainLossPercent
+        assetAllocation {
+          assetType
+          value
+          percentage
+          count
+        }
+        riskMetrics {
+          volatility
+          sharpeRatio
+          maxDrawdown
+          diversification
+        }
+        performanceHistory {
+          date
+          value
+        }
+      }
+      assets {
+        quantity
+        averagePurchasePrice
+        currentValue
+        dayChange
+        dayChangePercent
+        asset {
+          id
+          name
+          symbol
+          currentValue
+          purchasePrice
+          sector
+          exchange
+          dayChange
+          dayChangePercent
+          assetType {
+            id
+            name
+          }
+        }
       }
     }
     watchlists(filter: { userID: $userID }) {
@@ -35,6 +76,8 @@ export const GET_PORTFOLIO_CARDS = graphql(/* GraphQL */ `
       name
       analytics {
         totalValue
+        totalCost
+        totalGainLoss
         totalGainLossPercent
       }
     }

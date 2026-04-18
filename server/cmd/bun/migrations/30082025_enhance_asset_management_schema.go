@@ -92,7 +92,7 @@ func init() {
 					is_tradeable BOOLEAN DEFAULT false,
 					market_data_source VARCHAR(100), -- API source for price data
 					created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-					updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+					updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 					
 					-- Constraints
 				);

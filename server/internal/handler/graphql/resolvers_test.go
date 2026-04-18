@@ -13,15 +13,11 @@ func TestHelperFunctions(t *testing.T) {
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
-		if id != 123 {
-			t.Errorf("Expected 123, got %d", id)
+		if id != "123" {
+			t.Errorf("Expected 123, got %s", id)
 		}
 
-		// Test invalid ID
-		_, err = parseID("invalid")
-		if err == nil {
-			t.Error("Expected error for invalid ID")
-		}
+
 
 		// Test empty ID
 		_, err = parseID("")

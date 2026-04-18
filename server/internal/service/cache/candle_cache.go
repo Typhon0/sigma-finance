@@ -3,6 +3,7 @@ package cache
 import (
 	"context"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"sync"
@@ -66,8 +67,8 @@ func NewCandleCache(candleRepo repository.ICandleRepository, maxMemoryEntries in
 }
 
 func (c *candleCache) GetCachedRange(ctx context.Context, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, []TimeRange, error) {
-	// First check in-memory cache
 	cacheKey := c.getCacheKey(symbol, assetType, interval)
+	log.Printf("[CandleCache.GetCachedRange] cacheKey=%s from=%v to=%v limit=%d", cacheKey, from, to, limit)
 
 	c.mutex.RLock()
 	entry, exists := c.memCache[cacheKey]
@@ -78,13 +79,17 @@ func (c *candleCache) GetCachedRange(ctx context.Context, symbol, assetType stri
 
 	if exists && time.Since(entry.LastFetch) < c.stalenessThreshold {
 		// Use in-memory cache
+		log.Printf("[CandleCache.GetCachedRange] using in-memory cache, entry.LastFetch=%v age=%v", entry.LastFetch, time.Since(entry.LastFetch))
 		cached = c.filterCandlesByRange(entry.Candles, from, to, limit)
 	} else {
 		// Fetch from database
+		log.Printf("[CandleCache.GetCachedRange] fetching from database")
 		cached, err = c.candleRepo.GetRange(ctx, symbol, assetType, interval, from, to, limit)
 		if err != nil {
+			log.Printf("[CandleCache.GetCachedRange] database error: %v", err)
 			return nil, nil, err
 		}
+		log.Printf("[CandleCache.GetCachedRange] database returned %d candles", len(cached))
 
 		// Update in-memory cache
 		c.updateMemoryCache(cacheKey, cached, symbol, assetType, interval)
@@ -92,6 +97,7 @@ func (c *candleCache) GetCachedRange(ctx context.Context, symbol, assetType stri
 
 	// Determine missing ranges
 	missingRanges := c.findMissingRanges(cached, from, to, interval)
+	log.Printf("[CandleCache.GetCachedRange] returning %d candles, missingRanges=%d", len(cached), len(missingRanges))
 
 	return cached, missingRanges, nil
 }

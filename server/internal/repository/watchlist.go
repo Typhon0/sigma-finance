@@ -19,19 +19,19 @@ type IWatchlistRepository interface {
 	FindByUserIDWithAssets(ctx context.Context, userID string) ([]model.Watchlist, error)
 
 	// FindWithAssets retrieves a watchlist with its associated assets
-	FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error)
+	FindWithAssets(ctx context.Context, watchlistID string) (*model.Watchlist, error)
 
 	// AddAssetToWatchlist adds an asset to a watchlist
-	AddAssetToWatchlist(ctx context.Context, watchlistID, assetID int) error
+	AddAssetToWatchlist(ctx context.Context, watchlistID, assetID string) error
 
 	// RemoveAssetFromWatchlist removes an asset from a watchlist
-	RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID int) error
+	RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID string) error
 
 	// GetWatchlistAssets retrieves all assets in a watchlist
-	GetWatchlistAssets(ctx context.Context, watchlistID int) ([]model.Asset, error)
+	GetWatchlistAssets(ctx context.Context, watchlistID string) ([]model.Asset, error)
 
 	// IsAssetInWatchlist checks if an asset is in a watchlist
-	IsAssetInWatchlist(ctx context.Context, watchlistID, assetID int) (bool, error)
+	IsAssetInWatchlist(ctx context.Context, watchlistID, assetID string) (bool, error)
 }
 
 // watchlistRepository is the concrete implementation of WatchlistRepository
@@ -68,7 +68,7 @@ func (r *watchlistRepository) FindByUserIDWithAssets(ctx context.Context, userID
 }
 
 // FindWithAssets retrieves a watchlist with its associated assets
-func (r *watchlistRepository) FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error) {
+func (r *watchlistRepository) FindWithAssets(ctx context.Context, watchlistID string) (*model.Watchlist, error) {
 	return r.FindOneBy(ctx,
 		ByColumn("id", watchlistID),
 		WithPreload("Assets"),
@@ -76,7 +76,7 @@ func (r *watchlistRepository) FindWithAssets(ctx context.Context, watchlistID in
 }
 
 // AddAssetToWatchlist adds an asset to a watchlist
-func (r *watchlistRepository) AddAssetToWatchlist(ctx context.Context, watchlistID, assetID int) error {
+func (r *watchlistRepository) AddAssetToWatchlist(ctx context.Context, watchlistID, assetID string) error {
 	// Check if the association already exists
 	exists, err := r.IsAssetInWatchlist(ctx, watchlistID, assetID)
 	if err != nil {
@@ -96,7 +96,7 @@ func (r *watchlistRepository) AddAssetToWatchlist(ctx context.Context, watchlist
 }
 
 // RemoveAssetFromWatchlist removes an asset from a watchlist
-func (r *watchlistRepository) RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID int) error {
+func (r *watchlistRepository) RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID string) error {
 	// Find the watchlist asset association
 	watchlistAssets, err := r.watchlistAssetRepo.FindAllBy(ctx,
 		ByColumn("watchlist_id", watchlistID),
@@ -116,7 +116,7 @@ func (r *watchlistRepository) RemoveAssetFromWatchlist(ctx context.Context, watc
 }
 
 // deleteWatchlistAsset is a helper method to delete watchlist asset associations
-func (r *watchlistRepository) deleteWatchlistAsset(ctx context.Context, watchlistID, assetID int) error {
+func (r *watchlistRepository) deleteWatchlistAsset(ctx context.Context, watchlistID, assetID string) error {
 	// Use the GetDB method to access the database connection
 	db := r.watchlistAssetRepo.GetDB()
 	_, err := db.NewDelete().
@@ -127,7 +127,7 @@ func (r *watchlistRepository) deleteWatchlistAsset(ctx context.Context, watchlis
 }
 
 // GetWatchlistAssets retrieves all assets in a watchlist
-func (r *watchlistRepository) GetWatchlistAssets(ctx context.Context, watchlistID int) ([]model.Asset, error) {
+func (r *watchlistRepository) GetWatchlistAssets(ctx context.Context, watchlistID string) ([]model.Asset, error) {
 	// Get watchlist asset associations
 	watchlistAssets, err := r.watchlistAssetRepo.FindAllBy(ctx, ByColumn("watchlist_id", watchlistID))
 	if err != nil {
@@ -139,19 +139,19 @@ func (r *watchlistRepository) GetWatchlistAssets(ctx context.Context, watchlistI
 	}
 
 	// Extract asset IDs
-	assetIDs := make([]int, len(watchlistAssets))
+	assetIDs := make([]string, len(watchlistAssets))
 	for i, wa := range watchlistAssets {
 		assetIDs[i] = wa.AssetID
 	}
 
 	// Get assets by IDs
 	return r.assetRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
-		return q.Where("asset_id IN (?)", bun.In(assetIDs))
+		return q.Where("id IN (?)", bun.In(assetIDs))
 	})
 }
 
 // IsAssetInWatchlist checks if an asset is in a watchlist
-func (r *watchlistRepository) IsAssetInWatchlist(ctx context.Context, watchlistID, assetID int) (bool, error) {
+func (r *watchlistRepository) IsAssetInWatchlist(ctx context.Context, watchlistID, assetID string) (bool, error) {
 	count, err := r.watchlistAssetRepo.Count(ctx,
 		ByColumn("watchlist_id", watchlistID),
 		ByColumn("asset_id", assetID),

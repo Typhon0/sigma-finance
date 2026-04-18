@@ -8,13 +8,17 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/pem"
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"os"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -83,18 +87,28 @@ func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (Securit
 	}
 
 	// Load symmetric key if provided
-	if config.SymmetricKey != "" {
-		// Accept raw 32-byte or base64 encoded
-		decoded, err := base64.StdEncoding.DecodeString(config.SymmetricKey)
+	keyStr := config.SymmetricKey
+	if keyStr == "" {
+		keyStr = os.Getenv("ENCRYPTION_KEY")
+	}
+	if keyStr != "" {
+		var decoded []byte
+		log.Printf("[DEBUG] Loading symmetric key, input length: %d", len(keyStr))
+		// Try hex first (most common for AES-256)
+		decoded, err := hex.DecodeString(keyStr)
 		if err != nil {
-			// Try URL encoding or treat as raw
-			decodedURL, err2 := base64.URLEncoding.DecodeString(config.SymmetricKey)
-			if err2 == nil {
-				decoded = decodedURL
-			} else {
-				decoded = []byte(config.SymmetricKey)
+			// Try base64
+			decoded, err = base64.StdEncoding.DecodeString(keyStr)
+			if err != nil {
+				// Try URL base64
+				decoded, err = base64.URLEncoding.DecodeString(keyStr)
+				if err != nil {
+					// Try raw string
+					decoded = []byte(keyStr)
+				}
 			}
 		}
+		log.Printf("[DEBUG] Decoded key length: %d", len(decoded))
 		if len(decoded) != 32 {
 			return nil, fmt.Errorf("symmetric key must be 32 bytes after decoding, got %d", len(decoded))
 		}
@@ -198,6 +212,7 @@ func (s *securityService) GenerateJWT(userID string, expiresAt time.Time) (strin
 	claims := JWTClaims{
 		UserID: userID,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        uuid.NewString(), // jti — ensures uniqueness across tokens for same user/second
 			ExpiresAt: jwt.NewNumericDate(expiresAt),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
@@ -285,11 +300,21 @@ func (s *securityService) ValidateJWT(tokenString string) (*JWTClaims, error) {
 
 // EncryptString encrypts plaintext with AES-256-GCM returning base64(nonce||ciphertext)
 func (s *securityService) EncryptString(plaintext string) (string, error) {
-	if s.symmKey == nil { return "", errors.New("symmetric key not configured") }
-	block, err := aes.NewCipher(s.symmKey); if err != nil { return "", err }
-	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
+	if s.symmKey == nil {
+		return "", errors.New("symmetric key not configured")
+	}
+	block, err := aes.NewCipher(s.symmKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
 	nonce := make([]byte, gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil { return "", err }
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return "", err
+	}
 	ct := gcm.Seal(nil, nonce, []byte(plaintext), nil)
 	out := append(nonce, ct...)
 	return base64.StdEncoding.EncodeToString(out), nil
@@ -297,14 +322,30 @@ func (s *securityService) EncryptString(plaintext string) (string, error) {
 
 // DecryptString decrypts base64(nonce||ciphertext) returning plaintext
 func (s *securityService) DecryptString(ciphertext string) (string, error) {
-	if s.symmKey == nil { return "", errors.New("symmetric key not configured") }
-	raw, err := base64.StdEncoding.DecodeString(ciphertext); if err != nil { return "", err }
-	block, err := aes.NewCipher(s.symmKey); if err != nil { return "", err }
-	gcm, err := cipher.NewGCM(block); if err != nil { return "", err }
-	if len(raw) < gcm.NonceSize() { return "", errors.New("ciphertext too short") }
+	if s.symmKey == nil {
+		return "", errors.New("symmetric key not configured")
+	}
+	raw, err := base64.StdEncoding.DecodeString(ciphertext)
+	if err != nil {
+		return "", err
+	}
+	block, err := aes.NewCipher(s.symmKey)
+	if err != nil {
+		return "", err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+	if len(raw) < gcm.NonceSize() {
+		return "", errors.New("ciphertext too short")
+	}
 	nonce := raw[:gcm.NonceSize()]
 	ct := raw[gcm.NonceSize():]
-	pt, err := gcm.Open(nil, nonce, ct, nil); if err != nil { return "", err }
+	pt, err := gcm.Open(nil, nonce, ct, nil)
+	if err != nil {
+		return "", err
+	}
 	return string(pt), nil
 }
 

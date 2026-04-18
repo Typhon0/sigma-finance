@@ -31,7 +31,7 @@ vi.mock("@apollo/client", () => ({
 
 const mockDeletePortfolio = vi.fn();
 const mockUpdatePortfolio = vi.fn();
-const mockNavigate = vi.fn();
+const _mockNavigate = vi.fn();
 
 describe("usePortfolioDetail - Delete Functionality", () => {
 	beforeEach(() => {
@@ -228,7 +228,7 @@ describe("usePortfolioDetail - Delete Functionality", () => {
 
 		// Complete deletion
 		await act(async () => {
-			resolveDelete!("1");
+			resolveDelete?.("1");
 			await deletePromise;
 		});
 

@@ -160,6 +160,7 @@ func TestAuthEventRepository_GetByUserID(t *testing.T) {
 func TestAuthEventRepository_GetByEmail(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 
@@ -191,6 +192,7 @@ func TestAuthEventRepository_GetByEmail(t *testing.T) {
 func TestAuthEventRepository_GetByIPAddress(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 
@@ -231,6 +233,7 @@ func TestAuthEventRepository_GetByIPAddress(t *testing.T) {
 func TestAuthEventRepository_GetFailedLoginAttempts(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 
@@ -267,6 +270,7 @@ func TestAuthEventRepository_GetFailedLoginAttempts(t *testing.T) {
 func TestAuthEventRepository_GetSuspiciousActivity(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 
@@ -312,6 +316,7 @@ func TestAuthEventRepository_GetSuspiciousActivity(t *testing.T) {
 func TestAuthEventRepository_DeleteOldEvents(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 
@@ -349,6 +354,7 @@ func TestAuthEventRepository_DeleteOldEvents(t *testing.T) {
 func TestAuthEventRepository_GetByAction(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
 	defer testDB.Close()
+	testDB.CleanupTables(context.Background())
 	repo := NewAuthEventRepository(testDB.DB)
 	ctx := context.Background()
 

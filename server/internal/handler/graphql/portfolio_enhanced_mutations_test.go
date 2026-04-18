@@ -23,7 +23,7 @@ func TestDuplicatePortfolioResolver(t *testing.T) {
 		// Verify input parsing would work
 		sourceID, err := parseID(input.SourcePortfolioID)
 		require.NoError(t, err)
-		assert.Equal(t, uint(1), sourceID)
+		assert.Equal(t, "1", sourceID)
 
 		// Verify service input creation
 		serviceInput := service.DuplicatePortfolioInput{
@@ -56,7 +56,7 @@ func TestReorderPortfoliosResolver(t *testing.T) {
 		// Verify user ID parsing
 		userID, err := parseID(input.UserID)
 		require.NoError(t, err)
-		assert.Equal(t, uint(1), userID)
+		assert.Equal(t, "1", userID)
 
 		// Verify portfolio orders parsing
 		var orders []service.PortfolioOrderInput
@@ -71,9 +71,9 @@ func TestReorderPortfoliosResolver(t *testing.T) {
 		}
 
 		assert.Len(t, orders, 2)
-		assert.Equal(t, uint(1), orders[0].PortfolioID)
+		assert.Equal(t, "1", orders[0].PortfolioID)
 		assert.Equal(t, 0, orders[0].SortOrder)
-		assert.Equal(t, uint(2), orders[1].PortfolioID)
+		assert.Equal(t, "2", orders[1].PortfolioID)
 		assert.Equal(t, 1, orders[1].SortOrder)
 	})
 }
@@ -91,7 +91,7 @@ func TestExportPortfolioResolver(t *testing.T) {
 		// Verify portfolio ID parsing
 		portfolioID, err := parseID(input.PortfolioID)
 		require.NoError(t, err)
-		assert.Equal(t, uint(1), portfolioID)
+		assert.Equal(t, "1", portfolioID)
 
 		// Verify format and options
 		assert.Equal(t, gqlModel.ExportFormatCSV, input.Format)
@@ -104,7 +104,7 @@ func TestPortfolioAnalyticsConverter(t *testing.T) {
 	// Test the analytics converter function
 	t.Run("should convert analytics correctly", func(t *testing.T) {
 		serviceAnalytics := service.PortfolioAnalytics{
-			PortfolioID:          1,
+			PortfolioID:          "1",
 			TotalValue:           10000.0,
 			TotalCost:            8000.0,
 			TotalGainLoss:        2000.0,

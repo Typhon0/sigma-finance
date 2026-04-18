@@ -142,8 +142,11 @@ export function useAdvancedSearch<T>(
 		exactMatch?: boolean;
 	} = {},
 ) {
-	const { debounceDelay = 300, caseSensitive = false, exactMatch = false } =
-		options;
+	const {
+		debounceDelay = 300,
+		caseSensitive = false,
+		exactMatch = false,
+	} = options;
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filters, setFilters] = useState<SearchFilters>({});
@@ -179,7 +182,11 @@ export function useAdvancedSearch<T>(
 
 		// Apply additional filters
 		Object.entries(filters).forEach(([key, filterValue]) => {
-			if (filterValue !== undefined && filterValue !== null && filterValue !== "") {
+			if (
+				filterValue !== undefined &&
+				filterValue !== null &&
+				filterValue !== ""
+			) {
 				result = result.filter((item) => {
 					const itemValue = (item as any)[key];
 					if (Array.isArray(filterValue)) {

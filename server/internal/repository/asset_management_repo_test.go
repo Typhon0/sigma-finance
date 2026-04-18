@@ -48,7 +48,7 @@ func TestPositionRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("PositionFilter validation", func(t *testing.T) {
-		portfolioID := uuid.New()
+		portfolioID := uuid.NewString()
 		filter := PositionFilter{
 			PortfolioID: &portfolioID,
 			AssetType:   &[]model.AssetType{model.AssetTypeCrypto}[0],
@@ -70,7 +70,7 @@ func TestTransactionRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("TransactionFilter validation", func(t *testing.T) {
-		userID := uuid.New()
+		userID := uuid.NewString()
 		transactionType := model.TransactionTypeBuy
 		filter := TransactionFilter{
 			UserID:          &userID,
@@ -105,7 +105,7 @@ func TestPriceRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("PriceFilter validation", func(t *testing.T) {
-		assetID := uuid.New()
+		assetID := uuid.NewString()
 		source := "test_source"
 		filter := PriceFilter{
 			AssetID: &assetID,
@@ -128,7 +128,7 @@ func TestPerformanceRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("PerformanceMetrics structure validation", func(t *testing.T) {
-		portfolioID := uuid.New()
+		portfolioID := uuid.NewString()
 		metrics := PerformanceMetrics{
 			PortfolioID:           portfolioID,
 			TotalValue:            model.Money(100000), // $1000.00
@@ -157,12 +157,12 @@ func TestAlertRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("UserAlert structure validation", func(t *testing.T) {
-		userID := uuid.New()
-		assetID := uuid.New()
+		userID := uuid.NewString()
+		assetID := uuid.NewString()
 		thresholdValue := decimal.NewFromFloat(100.50)
 
 		alert := UserAlert{
-			ID:             uuid.New(),
+			ID:             uuid.NewString(),
 			UserID:         userID,
 			AssetID:        &assetID,
 			AlertType:      AlertTypePrice,
@@ -181,7 +181,7 @@ func TestAlertRepositoryBasicOperations(t *testing.T) {
 	})
 
 	t.Run("AlertFilter validation", func(t *testing.T) {
-		userID := uuid.New()
+		userID := uuid.NewString()
 		alertType := AlertTypePrice
 		isActive := true
 
@@ -230,7 +230,7 @@ func TestRepositoryInterfaces(t *testing.T) {
 func TestDomainModelValidation(t *testing.T) {
 	t.Run("Asset model validation", func(t *testing.T) {
 		asset := model.Asset{
-			ID:          uuid.New(),
+			ID:          uuid.NewString(),
 			Type:        model.AssetTypeStock,
 			Symbol:      &[]string{"AAPL"}[0],
 			Name:        "Apple Inc.",
@@ -249,9 +249,9 @@ func TestDomainModelValidation(t *testing.T) {
 
 	t.Run("Position model validation", func(t *testing.T) {
 		position := model.Position{
-			ID:                  uuid.New(),
-			PortfolioID:         uuid.New(),
-			AssetID:             uuid.New(),
+			ID:                  uuid.NewString(),
+			PortfolioID:         uuid.NewString(),
+			AssetID:             uuid.NewString(),
 			Quantity:            decimal.NewFromInt(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
 			CreatedAt:           time.Now(),
@@ -267,9 +267,9 @@ func TestDomainModelValidation(t *testing.T) {
 
 	t.Run("Transaction model validation", func(t *testing.T) {
 		transaction := model.Transaction{
-			ID:              uuid.New(),
-			UserID:          uuid.New(),
-			PositionID:      &[]uuid.UUID{uuid.New()}[0],
+			ID:              uuid.NewString(),
+			UserID:          uuid.NewString(),
+			PositionID:      &[]string{uuid.NewString()}[0],
 			Type:            model.TransactionTypeBuy,
 			Amount:          model.Money(10000), // $100.00
 			Quantity:        &[]decimal.Decimal{decimal.NewFromInt(10)}[0],

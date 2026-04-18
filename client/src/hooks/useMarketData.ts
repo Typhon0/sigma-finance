@@ -1,164 +1,124 @@
-import { useState, useEffect, useCallback } from 'react';
+import { gql, useQuery } from "@apollo/client";
+import { useEffect, useState } from "react";
 
 interface MarketDataHookOptions {
-  symbol: string;
-  assetType: string;
-  interval?: string;
-  autoRefresh?: boolean;
-  refreshInterval?: number;
+	symbol: string;
+	assetType: string;
+	interval?: string;
+	from?: Date;
+	to?: Date;
+	autoRefresh?: boolean;
+	refreshInterval?: number;
 }
 
 interface MarketDataPoint {
-  timestamp: string;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume?: number;
+	timestamp: string;
+	open: number;
+	high: number;
+	low: number;
+	close: number;
+	volume?: number;
 }
 
 interface MarketDataState {
-  data: MarketDataPoint[];
-  currentPrice: number | null;
-  loading: boolean;
-  error: string | null;
-  lastUpdated: Date | null;
+	data: MarketDataPoint[];
+	currentPrice: number | null;
+	loading: boolean;
+	error: string | null;
+	lastUpdated: Date | null;
+	/** The timestamp of the price data from the provider (not fetch time) */
+	priceTimestamp: Date | null;
 }
 
+const MARKET_DATA_QUERY = gql`
+  query GetMarketData(
+    $symbol: String!
+    $assetType: String!
+    $interval: String!
+    $from: Time!
+    $to: Time!
+  ) {
+    candles(
+      symbol: $symbol
+      assetType: $assetType
+      interval: $interval
+      from: $from
+      to: $to
+      limit: 100
+    ) {
+      timestamp
+      open
+      high
+      low
+      close
+      volume
+    }
+    realTimePrice(symbol: $symbol, assetType: $assetType) {
+      close
+      timestamp
+    }
+  }
+`;
+
 export const useMarketData = ({
-  symbol,
-  assetType,
-  interval = '1D',
-  autoRefresh = false,
-  refreshInterval = 30000, // 30 seconds
+	symbol,
+	assetType,
+	interval = "1D",
+	from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+	to = new Date(),
+	autoRefresh = false,
+	refreshInterval = 30000, // 30 seconds
 }: MarketDataHookOptions) => {
-  const [state, setState] = useState<MarketDataState>({
-    data: [],
-    currentPrice: null,
-    loading: true,
-    error: null,
-    lastUpdated: null,
-  });
+	const { data, loading, error, refetch } = useQuery(MARKET_DATA_QUERY, {
+		variables: { symbol, assetType, interval, from, to },
+		pollInterval: autoRefresh ? refreshInterval : 0,
+		fetchPolicy: "network-only",
+	});
 
-  const fetchMarketData = useCallback(async () => {
-    try {
-      setState(prev => ({ ...prev, loading: true, error: null }));
+	const [state, setState] = useState<MarketDataState>({
+		data: [],
+		currentPrice: null,
+		loading: true,
+		error: null,
+		lastUpdated: null,
+		priceTimestamp: null,
+	});
 
-      // TODO: Replace with actual GraphQL query
-      const query = `
-        query GetMarketData($symbol: String!, $assetType: String!, $interval: String!) {
-          candles(symbol: $symbol, assetType: $assetType, interval: $interval, limit: 100) {
-            timestamp
-            open
-            high
-            low
-            close
-            volume
-          }
-          realTimePrice(symbol: $symbol, assetType: $assetType) {
-            close
-            timestamp
-          }
-        }
-      `;
+	useEffect(() => {
+		if (loading) {
+			setState((prev) => ({ ...prev, loading: true, error: null }));
+			return;
+		}
 
-      const variables = { symbol, assetType, interval };
+		if (error) {
+			console.error("Market data fetch error:", error);
+			setState((prev) => ({
+				...prev,
+				loading: false,
+				error: error.message || "Failed to load market data",
+			}));
+			return;
+		}
 
-      const response = await fetch('/graphql', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({ query, variables }),
-      });
+		if (data) {
+			const { candles, realTimePrice } = data;
+			// Extract the actual price timestamp from the API response
+			const priceTimestamp = realTimePrice?.timestamp
+				? new Date(realTimePrice.timestamp)
+				: null;
+			setState({
+				data: candles || [],
+				currentPrice: realTimePrice?.close || null,
+				loading: false,
+				error: null,
+				lastUpdated: new Date(), // When we fetched the data
+				priceTimestamp, // When the price was actually recorded
+			});
+		}
+	}, [data, loading, error]);
 
-      const result = await response.json();
-
-      if (result.errors) {
-        throw new Error(result.errors[0].message);
-      }
-
-      const { candles, realTimePrice } = result.data;
-
-      setState({
-        data: candles || [],
-        currentPrice: realTimePrice?.close || null,
-        loading: false,
-        error: null,
-        lastUpdated: new Date(),
-      });
-    } catch (error) {
-      console.error('Market data fetch error:', error);
-      
-      // Generate mock data for demo purposes
-      const mockData = generateMockData(symbol, assetType);
-      
-      setState({
-        data: mockData,
-        currentPrice: mockData[mockData.length - 1]?.close || null,
-        loading: false,
-        error: null, // Don't show error for demo
-        lastUpdated: new Date(),
-      });
-    }
-  }, [symbol, assetType, interval]);
-
-  // Generate mock data for demonstration
-  const generateMockData = (symbol: string, assetType: string): MarketDataPoint[] => {
-    const now = new Date();
-    const data: MarketDataPoint[] = [];
-    let basePrice = assetType === 'CRYPTO' ? 45000 : 150;
-    
-    // Adjust base price based on symbol
-    if (symbol.includes('ETH')) basePrice = 3000;
-    else if (symbol.includes('BNB')) basePrice = 300;
-    else if (symbol.includes('ADA')) basePrice = 0.5;
-    else if (symbol.includes('SOL')) basePrice = 100;
-    else if (symbol.includes('AAPL')) basePrice = 180;
-    else if (symbol.includes('MSFT')) basePrice = 350;
-    else if (symbol.includes('GOOGL')) basePrice = 140;
-    else if (symbol.includes('AMZN')) basePrice = 160;
-    else if (symbol.includes('TSLA')) basePrice = 250;
-
-    for (let i = 99; i >= 0; i--) {
-      const date = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
-      const variation = (Math.random() - 0.5) * 0.05; // 5% max variation
-      const open = basePrice;
-      const close = basePrice * (1 + variation);
-      const high = Math.max(open, close) * (1 + Math.random() * 0.02);
-      const low = Math.min(open, close) * (1 - Math.random() * 0.02);
-      
-      data.push({
-        timestamp: date.toISOString(),
-        open: Math.round(open * 100) / 100,
-        high: Math.round(high * 100) / 100,
-        low: Math.round(low * 100) / 100,
-        close: Math.round(close * 100) / 100,
-        volume: Math.floor(Math.random() * 1000000),
-      });
-      
-      basePrice = close;
-    }
-
-    return data;
-  };
-
-  // Initial fetch
-  useEffect(() => {
-    fetchMarketData();
-  }, [fetchMarketData]);
-
-  // Auto refresh
-  useEffect(() => {
-    if (!autoRefresh) return;
-
-    const interval = setInterval(fetchMarketData, refreshInterval);
-    return () => clearInterval(interval);
-  }, [autoRefresh, refreshInterval, fetchMarketData]);
-
-  return {
-    ...state,
-    refetch: fetchMarketData,
-  };
+	return {
+		...state,
+		refetch,
+	};
 };

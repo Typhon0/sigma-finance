@@ -65,6 +65,11 @@ type Mutation {
     # Asset Mutations
     createStockAsset(input: CreateStockInput!): Stock! @auth
     createCryptoAsset(input: CreateCryptoInput!): Crypto! @auth
+    createBankAccountAsset(input: CreateBankAccountInput!): BankAccount! @auth
+    createRealEstateAsset(input: CreateRealEstateInput!): RealEstate! @auth
+    createLifeInsuranceAsset(input: CreateLifeInsuranceInput!): LifeInsurance! @auth
+    createWatchAsset(input: CreateWatchInput!): Watch! @auth
+    createLoanAsset(input: CreateLoanInput!): Loan! @auth
     tagAsset(assetID: ID!, tagID: ID!): Asset! @auth
     untagAsset(assetID: ID!, tagID: ID!): Asset! @auth
 

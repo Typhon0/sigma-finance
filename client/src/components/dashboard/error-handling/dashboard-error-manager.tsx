@@ -1,14 +1,24 @@
-import { useState, useCallback, useEffect, createContext, useContext } from "react";
 import { ApolloError } from "@apollo/client";
+import {
+	createContext,
+	useCallback,
+	useContext,
+	useEffect,
+	useState,
+} from "react";
+import type { DashboardViewState } from "@/hooks/use-dashboard-state";
 import { useErrorHandling } from "@/hooks/use-error-handling";
 import { useOfflineHandler } from "./offline-handler";
-import { useRetryMechanism } from "./retry-mechanism";
-import type { DashboardViewState } from "@/hooks/use-dashboard-state";
 
 export interface DashboardError {
 	id: string;
 	error: Error | ApolloError;
-	context: 'overview' | 'portfolio-detail' | 'asset-detail' | 'chart' | 'component';
+	context:
+		| "overview"
+		| "portfolio-detail"
+		| "asset-detail"
+		| "chart"
+		| "component";
 	componentName?: string;
 	timestamp: Date;
 	resolved: boolean;
@@ -23,25 +33,36 @@ export interface DashboardErrorState {
 }
 
 export interface DashboardErrorActions {
-	reportError: (error: Error | ApolloError, context: DashboardError['context'], componentName?: string) => void;
+	reportError: (
+		error: Error | ApolloError,
+		context: DashboardError["context"],
+		componentName?: string,
+	) => void;
 	resolveError: (errorId: string) => void;
 	clearAllErrors: () => void;
 	retryError: (errorId: string, retryFn: () => Promise<void>) => Promise<void>;
-	handleViewTransitionError: (error: Error, fromView: string, toView: string) => void;
+	handleViewTransitionError: (
+		error: Error,
+		fromView: string,
+		toView: string,
+	) => void;
 }
 
 interface DashboardErrorManagerContextType {
 	errorState: DashboardErrorState;
 	actions: DashboardErrorActions;
-	offlineState: ReturnType<typeof useOfflineHandler>['offlineState'];
+	offlineState: ReturnType<typeof useOfflineHandler>["offlineState"];
 }
 
-const DashboardErrorManagerContext = createContext<DashboardErrorManagerContextType | null>(null);
+const DashboardErrorManagerContext =
+	createContext<DashboardErrorManagerContextType | null>(null);
 
 export function useDashboardErrorManager() {
 	const context = useContext(DashboardErrorManagerContext);
 	if (!context) {
-		throw new Error('useDashboardErrorManager must be used within DashboardErrorManagerProvider');
+		throw new Error(
+			"useDashboardErrorManager must be used within DashboardErrorManagerProvider",
+		);
 	}
 	return context;
 }
@@ -66,85 +87,98 @@ export function DashboardErrorManagerProvider({
 
 	const { offlineState } = useOfflineHandler();
 
-	const generateErrorId = () => `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+	const generateErrorId = () =>
+		`error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-	const isCriticalError = useCallback((error: Error | ApolloError, context: DashboardError['context']) => {
-		// Network errors are not critical if we have offline capabilities
-		if (error instanceof ApolloError && error.networkError) {
-			return false;
-		}
+	const isCriticalError = useCallback(
+		(error: Error | ApolloError, context: DashboardError["context"]) => {
+			// Network errors are not critical if we have offline capabilities
+			if (error instanceof ApolloError && error.networkError) {
+				return false;
+			}
 
-		// Overview context errors are more critical
-		if (context === 'overview') {
-			return true;
-		}
+			// Overview context errors are more critical
+			if (context === "overview") {
+				return true;
+			}
 
-		// Component errors are usually not critical
-		if (context === 'component' || context === 'chart') {
-			return false;
-		}
+			// Component errors are usually not critical
+			if (context === "component" || context === "chart") {
+				return false;
+			}
 
-		// Check for specific error patterns that indicate critical issues
-		const errorMessage = error.message.toLowerCase();
-		const criticalPatterns = [
-			'authentication',
-			'authorization',
-			'session expired',
-			'access denied',
-			'server error',
-			'internal error',
-		];
+			// Check for specific error patterns that indicate critical issues
+			const errorMessage = error.message.toLowerCase();
+			const criticalPatterns = [
+				"authentication",
+				"authorization",
+				"session expired",
+				"access denied",
+				"server error",
+				"internal error",
+			];
 
-		return criticalPatterns.some(pattern => errorMessage.includes(pattern));
-	}, []);
+			return criticalPatterns.some((pattern) => errorMessage.includes(pattern));
+		},
+		[],
+	);
 
-	const reportError = useCallback((
-		error: Error | ApolloError,
-		context: DashboardError['context'],
-		componentName?: string
-	) => {
-		const errorId = generateErrorId();
-		const newError: DashboardError = {
-			id: errorId,
-			error,
-			context,
-			componentName,
-			timestamp: new Date(),
-			resolved: false,
-			retryCount: 0,
-		};
-
-		setErrorState(prev => {
-			const updatedErrors = [...prev.errors, newError];
-			const activeErrors = updatedErrors.filter(e => !e.resolved);
-			const critical = isCriticalError(error, context) ? newError : prev.criticalError;
-
-			return {
-				...prev,
-				errors: updatedErrors,
-				hasActiveErrors: activeErrors.length > 0,
-				criticalError: critical,
+	const reportError = useCallback(
+		(
+			error: Error | ApolloError,
+			context: DashboardError["context"],
+			componentName?: string,
+		) => {
+			const errorId = generateErrorId();
+			const newError: DashboardError = {
+				id: errorId,
+				error,
+				context,
+				componentName,
+				timestamp: new Date(),
+				resolved: false,
+				retryCount: 0,
 			};
-		});
 
-		// Notify about critical errors
-		if (isCriticalError(error, context) && onCriticalError) {
-			onCriticalError(newError);
-		}
+			setErrorState((prev) => {
+				const updatedErrors = [...prev.errors, newError];
+				const activeErrors = updatedErrors.filter((e) => !e.resolved);
+				const critical = isCriticalError(error, context)
+					? newError
+					: prev.criticalError;
 
-		// Log error for monitoring
-		console.error(`Dashboard Error [${context}${componentName ? `:${componentName}` : ''}]:`, error);
+				return {
+					...prev,
+					errors: updatedErrors,
+					hasActiveErrors: activeErrors.length > 0,
+					criticalError: critical,
+				};
+			});
 
-		return errorId;
-	}, [isCriticalError, onCriticalError]);
+			// Notify about critical errors
+			if (isCriticalError(error, context) && onCriticalError) {
+				onCriticalError(newError);
+			}
+
+			// Log error for monitoring
+			console.error(
+				`Dashboard Error [${context}${componentName ? `:${componentName}` : ""}]:`,
+				error,
+			);
+
+			return errorId;
+		},
+		[isCriticalError, onCriticalError],
+	);
 
 	const resolveError = useCallback((errorId: string) => {
-		setErrorState(prev => {
-			const updatedErrors = prev.errors.map(error =>
-				error.id === errorId ? { ...error, resolved: true } : error
+		setErrorState((prev) => {
+			const updatedErrors = prev.errors.map((error) =>
+				error.id === errorId ? { ...error, resolved: true } : error,
 			);
-			const activeErrors = updatedErrors.filter(e => !e.resolved);
-			const criticalError = prev.criticalError?.id === errorId ? null : prev.criticalError;
+			const activeErrors = updatedErrors.filter((e) => !e.resolved);
+			const criticalError =
+				prev.criticalError?.id === errorId ? null : prev.criticalError;
 
 			return {
 				...prev,
@@ -164,63 +198,68 @@ export function DashboardErrorManagerProvider({
 		});
 	}, []);
 
-	const retryError = useCallback(async (errorId: string, retryFn: () => Promise<void>) => {
-		setErrorState(prev => ({
-			...prev,
-			isRecovering: true,
-		}));
-
-		try {
-			await retryFn();
-			
-			// Success - resolve the error
-			resolveError(errorId);
-			
-			setErrorState(prev => ({
+	const retryError = useCallback(
+		async (errorId: string, retryFn: () => Promise<void>) => {
+			setErrorState((prev) => ({
 				...prev,
-				isRecovering: false,
+				isRecovering: true,
 			}));
 
-			if (onRecovery) {
-				onRecovery();
+			try {
+				await retryFn();
+
+				// Success - resolve the error
+				resolveError(errorId);
+
+				setErrorState((prev) => ({
+					...prev,
+					isRecovering: false,
+				}));
+
+				if (onRecovery) {
+					onRecovery();
+				}
+			} catch (error) {
+				// Update retry count
+				setErrorState((prev) => ({
+					...prev,
+					errors: prev.errors.map((e) =>
+						e.id === errorId ? { ...e, retryCount: e.retryCount + 1 } : e,
+					),
+					isRecovering: false,
+				}));
+
+				throw error; // Re-throw to let retry mechanism handle it
 			}
-		} catch (error) {
-			// Update retry count
-			setErrorState(prev => ({
-				...prev,
-				errors: prev.errors.map(e =>
-					e.id === errorId ? { ...e, retryCount: e.retryCount + 1 } : e
-				),
-				isRecovering: false,
-			}));
-			
-			throw error; // Re-throw to let retry mechanism handle it
-		}
-	}, [resolveError, onRecovery]);
+		},
+		[resolveError, onRecovery],
+	);
 
-	const handleViewTransitionError = useCallback((
-		error: Error,
-		fromView: string,
-		toView: string
-	) => {
-		const errorId = reportError(
-			error,
-			'component',
-			`ViewTransition:${fromView}->${toView}`
-		);
+	const handleViewTransitionError = useCallback(
+		(error: Error, fromView: string, toView: string) => {
+			const errorId = reportError(
+				error,
+				"component",
+				`ViewTransition:${fromView}->${toView}`,
+			);
 
-		// For view transition errors, we might want to reset to a safe state
-		console.warn(`View transition error from ${fromView} to ${toView}:`, error);
-		
-		return errorId;
-	}, [reportError]);
+			// For view transition errors, we might want to reset to a safe state
+			console.warn(
+				`View transition error from ${fromView} to ${toView}:`,
+				error,
+			);
+
+			return errorId;
+		},
+		[reportError],
+	);
 
 	// Auto-cleanup resolved errors after 5 minutes
 	useEffect(() => {
 		const cleanup = setInterval(() => {
-			setErrorState(prev => ({
+			setErrorState((prev) => ({
 				...prev,
-				errors: prev.errors.filter(error => {
+				errors: prev.errors.filter((error) => {
 					if (!error.resolved) return true;
 					const age = Date.now() - error.timestamp.getTime();
 					return age < 5 * 60 * 1000; // Keep for 5 minutes
@@ -255,38 +294,38 @@ export function DashboardErrorManagerProvider({
 // Hook for component-level error handling with automatic reporting
 export function useComponentErrorHandler(
 	componentName: string,
-	context: DashboardError['context'] = 'component'
+	context: DashboardError["context"] = "component",
 ) {
 	const { actions } = useDashboardErrorManager();
-	
+
 	const errorHandling = useErrorHandling({
 		onError: (error) => {
 			actions.reportError(error, context, componentName);
 		},
 	});
 
-	const handleErrorWithRetry = useCallback(async (
-		operation: () => Promise<void>,
-		errorMessage?: string
-	) => {
-		try {
-			await operation();
-		} catch (error) {
-			const errorId = actions.reportError(
-				error as Error,
-				context,
-				componentName
-			);
-			
-			// Return error ID for potential retry
-			throw { ...error, errorId };
-		}
-	}, [actions, context, componentName]);
+	const handleErrorWithRetry = useCallback(
+		async (operation: () => Promise<void>, _errorMessage?: string) => {
+			try {
+				await operation();
+			} catch (error) {
+				const errorId = actions.reportError(
+					error as Error,
+					context,
+					componentName,
+				);
+
+				// Return error ID for potential retry
+				throw { ...error, errorId };
+			}
+		},
+		[actions, context, componentName],
+	);
 
 	return {
 		...errorHandling,
 		handleErrorWithRetry,
-		reportError: (error: Error | ApolloError) => 
+		reportError: (error: Error | ApolloError) =>
 			actions.reportError(error, context, componentName),
 	};
 }
@@ -295,16 +334,19 @@ export function useComponentErrorHandler(
 export function useViewTransitionErrorHandler() {
 	const { actions, errorState } = useDashboardErrorManager();
 
-	const handleTransitionError = useCallback((
-		error: Error,
-		fromView: DashboardViewState['viewMode'],
-		toView: DashboardViewState['viewMode']
-	) => {
-		return actions.handleViewTransitionError(error, fromView, toView);
-	}, [actions]);
+	const handleTransitionError = useCallback(
+		(
+			error: Error,
+			fromView: DashboardViewState["viewMode"],
+			toView: DashboardViewState["viewMode"],
+		) => {
+			return actions.handleViewTransitionError(error, fromView, toView);
+		},
+		[actions],
+	);
 
-	const hasTransitionErrors = errorState.errors.some(
-		error => error.componentName?.startsWith('ViewTransition:')
+	const hasTransitionErrors = errorState.errors.some((error) =>
+		error.componentName?.startsWith("ViewTransition:"),
 	);
 
 	return {

@@ -24,7 +24,7 @@ export function LoginForm({
 }: LoginFormProps) {
 	const [authErrors, setAuthErrors] = useState<AuthError[]>([]);
 	const { login, isLoading } = useAuth();
-	const { handleAuthResponse } = useAuthErrorHandler();
+	const { _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,

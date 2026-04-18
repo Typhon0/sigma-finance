@@ -67,7 +67,7 @@ func (m *MockLocalUserRepository) Update(ctx context.Context, user *model.User) 
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockUserRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
@@ -77,9 +77,12 @@ func (m *MockUserRepository) DeleteByStringID(ctx context.Context, id string) er
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) GetByID(ctx context.Context, id uint) (model.User, error) {
+func (m *MockUserRepository) GetByID(ctx context.Context, id string) (*model.User, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.User), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
 }
 
 func (m *MockUserRepository) GetAll(ctx context.Context) ([]model.User, error) {
@@ -126,8 +129,8 @@ func (m *MockUserRepository) UpdateLastLogin(ctx context.Context, userID string,
 	return args.Error(0)
 }
 
-func (m *MockUserRepository) IncrementFailedLoginCount(ctx context.Context, userID string) error {
-	args := m.Called(ctx, userID)
+func (m *MockUserRepository) IncrementFailedLoginCount(ctx context.Context, userID string, maxFailedAttempts int) error {
+	args := m.Called(ctx, userID, maxFailedAttempts)
 	return args.Error(0)
 }
 
@@ -162,9 +165,12 @@ func (m *MockUserRepository) GetDB() bun.IDB {
 	return args.Get(0).(bun.IDB)
 }
 
-func (m *MockUserRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.User, error) {
+func (m *MockUserRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.User, error) {
 	args := m.Called(ctx, options)
-	return args.Get(0).(model.User), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.User), args.Error(1)
 }
 
 func (m *MockUserRepository) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.User, error) {
@@ -225,6 +231,16 @@ func (m *MockSecurityService) GetRateLimitAttempts(ctx context.Context, key stri
 	return args.Int(0), args.Error(1)
 }
 
+func (m *MockSecurityService) DecryptString(encrypted string) (string, error) {
+	args := m.Called(encrypted)
+	return args.String(0), args.Error(1)
+}
+
+func (m *MockSecurityService) EncryptString(plaintext string) (string, error) {
+	args := m.Called(plaintext)
+	return args.String(0), args.Error(1)
+}
+
 // MockAuditService is a mock implementation of AuditService
 type MockAuditService struct {
 	mock.Mock
@@ -268,14 +284,17 @@ func (m *MockSessionRepository) Update(ctx context.Context, session *model.Sessi
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockSessionRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 
-func (m *MockSessionRepository) GetByID(ctx context.Context, id uint) (model.Session, error) {
+func (m *MockSessionRepository) GetByID(ctx context.Context, id string) (*model.Session, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.Session), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
 }
 
 func (m *MockSessionRepository) GetAll(ctx context.Context) ([]model.Session, error) {
@@ -353,9 +372,12 @@ func (m *MockSessionRepository) GetDB() bun.IDB {
 	return args.Get(0).(bun.IDB)
 }
 
-func (m *MockSessionRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.Session, error) {
+func (m *MockSessionRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Session, error) {
 	args := m.Called(ctx, options)
-	return args.Get(0).(model.Session), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Session), args.Error(1)
 }
 
 func (m *MockSessionRepository) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.Session, error) {
@@ -445,14 +467,17 @@ func (m *MockPasswordResetTokenRepository) Update(ctx context.Context, token *mo
 	return args.Error(0)
 }
 
-func (m *MockPasswordResetTokenRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockPasswordResetTokenRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 
-func (m *MockPasswordResetTokenRepository) GetByID(ctx context.Context, id uint) (model.PasswordResetToken, error) {
+func (m *MockPasswordResetTokenRepository) GetByID(ctx context.Context, id string) (*model.PasswordResetToken, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.PasswordResetToken), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.PasswordResetToken), args.Error(1)
 }
 
 func (m *MockPasswordResetTokenRepository) GetAll(ctx context.Context) ([]model.PasswordResetToken, error) {
@@ -507,9 +532,12 @@ func (m *MockPasswordResetTokenRepository) GetDB() bun.IDB {
 	return args.Get(0).(bun.IDB)
 }
 
-func (m *MockPasswordResetTokenRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.PasswordResetToken, error) {
+func (m *MockPasswordResetTokenRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.PasswordResetToken, error) {
 	args := m.Called(ctx, options)
-	return args.Get(0).(model.PasswordResetToken), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.PasswordResetToken), args.Error(1)
 }
 
 func (m *MockPasswordResetTokenRepository) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.PasswordResetToken, error) {
@@ -540,14 +568,17 @@ func (m *MockEmailVerificationTokenRepository) Update(ctx context.Context, token
 	return args.Error(0)
 }
 
-func (m *MockEmailVerificationTokenRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockEmailVerificationTokenRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
 
-func (m *MockEmailVerificationTokenRepository) GetByID(ctx context.Context, id uint) (model.EmailVerificationToken, error) {
+func (m *MockEmailVerificationTokenRepository) GetByID(ctx context.Context, id string) (*model.EmailVerificationToken, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.EmailVerificationToken), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.EmailVerificationToken), args.Error(1)
 }
 
 func (m *MockEmailVerificationTokenRepository) GetAll(ctx context.Context) ([]model.EmailVerificationToken, error) {
@@ -602,9 +633,12 @@ func (m *MockEmailVerificationTokenRepository) GetDB() bun.IDB {
 	return args.Get(0).(bun.IDB)
 }
 
-func (m *MockEmailVerificationTokenRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.EmailVerificationToken, error) {
+func (m *MockEmailVerificationTokenRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.EmailVerificationToken, error) {
 	args := m.Called(ctx, options)
-	return args.Get(0).(model.EmailVerificationToken), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.EmailVerificationToken), args.Error(1)
 }
 
 func (m *MockEmailVerificationTokenRepository) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.EmailVerificationToken, error) {
@@ -644,4 +678,10 @@ func createTestAuthService(t *testing.T) (AuthenticationService, *MockUserReposi
 // Helper function to create string pointer
 func stringPtr(s string) *string {
 	return &s
+}
+
+// moneyPtr is a helper for testing with model.Money pointers
+func moneyPtr(amount int64) *model.Money {
+	money := model.Money(amount)
+	return &money
 }

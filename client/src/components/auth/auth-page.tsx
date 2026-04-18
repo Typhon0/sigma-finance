@@ -13,7 +13,7 @@ interface AuthPageProps {
 export function AuthPage({ initialMode = "login", onSuccess }: AuthPageProps) {
 	const [mode, setMode] = useState<AuthMode>(initialMode);
 
-	const handleAuthSuccess = () => {
+	const _handleAuthSuccess = () => {
 		onSuccess?.();
 	};
 
@@ -23,7 +23,6 @@ export function AuthPage({ initialMode = "login", onSuccess }: AuthPageProps) {
 				return <RegisterForm onSwitchToLogin={() => setMode("login")} />;
 			case "reset":
 				return <PasswordResetForm onSwitchToLogin={() => setMode("login")} />;
-			case "login":
 			default:
 				return (
 					<LoginForm

@@ -5,14 +5,13 @@ import (
 	"sigma_finance/internal/domain/model"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
 // PerformanceMetrics represents calculated performance metrics
 type PerformanceMetrics struct {
-	PortfolioID           uuid.UUID       `json:"portfolio_id"`
+	PortfolioID           string          `json:"portfolio_id"`
 	TotalValue            model.Money     `json:"total_value"`
 	TotalCostBasis        model.Money     `json:"total_cost_basis"`
 	UnrealizedGainLoss    model.Money     `json:"unrealized_gain_loss"`
@@ -29,7 +28,7 @@ type PerformanceMetrics struct {
 
 // AllocationBreakdown represents asset allocation analysis
 type AllocationBreakdown struct {
-	PortfolioID     uuid.UUID         `json:"portfolio_id"`
+	PortfolioID     string            `json:"portfolio_id"`
 	TotalValue      model.Money       `json:"total_value"`
 	Allocations     []AssetAllocation `json:"allocations"`
 	CalculationDate time.Time         `json:"calculation_date"`
@@ -38,7 +37,7 @@ type AllocationBreakdown struct {
 // PerformanceSnapshot represents a daily performance snapshot
 type PerformanceSnapshot struct {
 	ID                 int64           `json:"id"`
-	PortfolioID        uuid.UUID       `json:"portfolio_id"`
+	PortfolioID        string          `json:"portfolio_id"`
 	TotalValue         model.Money     `json:"total_value"`
 	TotalCostBasis     model.Money     `json:"total_cost_basis"`
 	UnrealizedGainLoss model.Money     `json:"unrealized_gain_loss"`
@@ -48,39 +47,55 @@ type PerformanceSnapshot struct {
 	CreatedAt          time.Time       `json:"created_at"`
 }
 
+// PositionPerformanceResult carries position data with calculated performance metrics
+type PositionPerformanceResult struct {
+	PositionID       string           `bun:"position_id"`
+	AssetID          string           `bun:"asset_id"`
+	AssetName        string           `bun:"asset_name"`
+	AssetSymbol      *string          `bun:"asset_symbol"`
+	AssetType        model.AssetType  `bun:"asset_type"`
+	Quantity         decimal.Decimal  `bun:"quantity"`
+	AverageCostBasis *decimal.Decimal `bun:"average_cost_basis"` // cost per unit (decimal, like 150.25)
+	TotalCostBasis   *int64           `bun:"total_cost_basis"`   // total cost in cents
+	CurrentPrice     decimal.Decimal  `bun:"current_price"`      // latest market price
+	ReturnPercentage decimal.Decimal  `bun:"return_percentage"`  // (current - cost_basis) / cost_basis * 100
+	GainLoss         int64            `bun:"gain_loss"`          // in cents
+	Contribution     decimal.Decimal  `bun:"contribution"`       // % of portfolio
+}
+
 // IPerformanceRepository defines the interface for performance calculation operations
 type IPerformanceRepository interface {
 	// Performance calculations
-	CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate time.Time) (*PerformanceMetrics, error)
-	CalculateTimeWeightedReturn(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) (decimal.Decimal, error)
-	CalculateVolatility(ctx context.Context, portfolioID uuid.UUID, days int) (decimal.Decimal, error)
-	CalculateMaxDrawdown(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) (decimal.Decimal, error)
+	CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate time.Time) (*PerformanceMetrics, error)
+	CalculateTimeWeightedReturn(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error)
+	CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error)
+	CalculateMaxDrawdown(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error)
 
 	// Allocation calculations
-	CalculateAssetAllocation(ctx context.Context, portfolioID uuid.UUID, asOfDate time.Time) (*AllocationBreakdown, error)
-	CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
-	CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
-	CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error)
+	CalculateAssetAllocation(ctx context.Context, portfolioID string, asOfDate time.Time) (*AllocationBreakdown, error)
+	CalculateAllocationByType(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
+	CalculateAllocationBySector(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
+	CalculateAllocationByGeography(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
 
 	// Performance snapshots
 	CreatePerformanceSnapshot(ctx context.Context, snapshot *PerformanceSnapshot) error
-	GetPerformanceSnapshots(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) ([]PerformanceSnapshot, error)
-	GetLatestPerformanceSnapshot(ctx context.Context, portfolioID uuid.UUID) (*PerformanceSnapshot, error)
-	UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []uuid.UUID, asOfDate time.Time) error
+	GetPerformanceSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) ([]PerformanceSnapshot, error)
+	GetLatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*PerformanceSnapshot, error)
+	UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []string, asOfDate time.Time) error
 
 	// Comparative analysis
-	ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, startDate, endDate time.Time) (map[uuid.UUID]*PerformanceMetrics, error)
-	GetTopPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange TimeRange) ([]model.Position, error)
-	GetWorstPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange TimeRange) ([]model.Position, error)
+	ComparePortfolioPerformance(ctx context.Context, portfolioIDs []string, startDate, endDate time.Time) (map[string]*PerformanceMetrics, error)
+	GetTopPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange TimeRange) ([]PositionPerformanceResult, error)
+	GetWorstPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange TimeRange) ([]PositionPerformanceResult, error)
 
 	// Benchmark comparison
-	CalculateBenchmarkComparison(ctx context.Context, portfolioID uuid.UUID, benchmarkAssetID uuid.UUID, timeRange TimeRange) (*BenchmarkComparison, error)
+	CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange TimeRange) (*BenchmarkComparison, error)
 }
 
 // BenchmarkComparison represents performance comparison against a benchmark
 type BenchmarkComparison struct {
-	PortfolioID      uuid.UUID       `json:"portfolio_id"`
-	BenchmarkAssetID uuid.UUID       `json:"benchmark_asset_id"`
+	PortfolioID      string          `json:"portfolio_id"`
+	BenchmarkAssetID string          `json:"benchmark_asset_id"`
 	PortfolioReturn  decimal.Decimal `json:"portfolio_return"`
 	BenchmarkReturn  decimal.Decimal `json:"benchmark_return"`
 	Alpha            decimal.Decimal `json:"alpha"`
@@ -103,7 +118,7 @@ func NewPerformanceRepository(db bun.IDB) *PerformanceRepository {
 }
 
 // CalculatePortfolioPerformance calculates comprehensive performance metrics for a portfolio
-func (r *PerformanceRepository) CalculatePortfolioPerformance(ctx context.Context, portfolioID uuid.UUID, asOfDate time.Time) (*PerformanceMetrics, error) {
+func (r *PerformanceRepository) CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate time.Time) (*PerformanceMetrics, error) {
 	// Get current portfolio value and cost basis
 	var portfolioData struct {
 		TotalValue         int64 `bun:"total_value"`
@@ -201,7 +216,7 @@ func (r *PerformanceRepository) CalculatePortfolioPerformance(ctx context.Contex
 }
 
 // CalculateTimeWeightedReturn calculates the time-weighted return for a portfolio
-func (r *PerformanceRepository) CalculateTimeWeightedReturn(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) (decimal.Decimal, error) {
+func (r *PerformanceRepository) CalculateTimeWeightedReturn(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error) {
 	// Get performance snapshots for the period
 	snapshots, err := r.GetPerformanceSnapshots(ctx, portfolioID, startDate, endDate)
 	if err != nil || len(snapshots) < 2 {
@@ -230,7 +245,7 @@ func (r *PerformanceRepository) CalculateTimeWeightedReturn(ctx context.Context,
 }
 
 // CalculateVolatility calculates the volatility (standard deviation of returns) for a portfolio
-func (r *PerformanceRepository) CalculateVolatility(ctx context.Context, portfolioID uuid.UUID, days int) (decimal.Decimal, error) {
+func (r *PerformanceRepository) CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error) {
 	endDate := time.Now()
 	startDate := endDate.AddDate(0, 0, -days)
 
@@ -287,7 +302,7 @@ func (r *PerformanceRepository) CalculateVolatility(ctx context.Context, portfol
 }
 
 // CalculateMaxDrawdown calculates the maximum drawdown for a portfolio
-func (r *PerformanceRepository) CalculateMaxDrawdown(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) (decimal.Decimal, error) {
+func (r *PerformanceRepository) CalculateMaxDrawdown(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error) {
 	snapshots, err := r.GetPerformanceSnapshots(ctx, portfolioID, startDate, endDate)
 	if err != nil || len(snapshots) == 0 {
 		return decimal.Zero, err
@@ -316,7 +331,7 @@ func (r *PerformanceRepository) CalculateMaxDrawdown(ctx context.Context, portfo
 }
 
 // CalculateAssetAllocation calculates the asset allocation for a portfolio
-func (r *PerformanceRepository) CalculateAssetAllocation(ctx context.Context, portfolioID uuid.UUID, asOfDate time.Time) (*AllocationBreakdown, error) {
+func (r *PerformanceRepository) CalculateAssetAllocation(ctx context.Context, portfolioID string, asOfDate time.Time) (*AllocationBreakdown, error) {
 	allocations, err := r.CalculateAllocationByType(ctx, portfolioID)
 	if err != nil {
 		return nil, err
@@ -338,7 +353,7 @@ func (r *PerformanceRepository) CalculateAssetAllocation(ctx context.Context, po
 }
 
 // CalculateAllocationByType calculates allocation breakdown by asset type
-func (r *PerformanceRepository) CalculateAllocationByType(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (r *PerformanceRepository) CalculateAllocationByType(ctx context.Context, portfolioID string) ([]AssetAllocation, error) {
 	var allocations []struct {
 		AssetType      model.AssetType `bun:"asset_type"`
 		PositionCount  int             `bun:"position_count"`
@@ -398,14 +413,14 @@ func (r *PerformanceRepository) CalculateAllocationByType(ctx context.Context, p
 }
 
 // CalculateAllocationBySector calculates allocation breakdown by sector (for stocks)
-func (r *PerformanceRepository) CalculateAllocationBySector(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (r *PerformanceRepository) CalculateAllocationBySector(ctx context.Context, portfolioID string) ([]AssetAllocation, error) {
 	// This would require sector information in asset metadata
 	// For now, return empty slice as this requires more complex metadata queries
 	return []AssetAllocation{}, nil
 }
 
 // CalculateAllocationByGeography calculates allocation breakdown by geography
-func (r *PerformanceRepository) CalculateAllocationByGeography(ctx context.Context, portfolioID uuid.UUID) ([]AssetAllocation, error) {
+func (r *PerformanceRepository) CalculateAllocationByGeography(ctx context.Context, portfolioID string) ([]AssetAllocation, error) {
 	// This would require geographic information in asset metadata
 	// For now, return empty slice as this requires more complex metadata queries
 	return []AssetAllocation{}, nil
@@ -421,7 +436,7 @@ func (r *PerformanceRepository) CreatePerformanceSnapshot(ctx context.Context, s
 }
 
 // GetPerformanceSnapshots retrieves performance snapshots for a date range
-func (r *PerformanceRepository) GetPerformanceSnapshots(ctx context.Context, portfolioID uuid.UUID, startDate, endDate time.Time) ([]PerformanceSnapshot, error) {
+func (r *PerformanceRepository) GetPerformanceSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) ([]PerformanceSnapshot, error) {
 	var snapshots []PerformanceSnapshot
 	err := r.db.NewSelect().
 		Model(&snapshots).
@@ -435,7 +450,7 @@ func (r *PerformanceRepository) GetPerformanceSnapshots(ctx context.Context, por
 }
 
 // GetLatestPerformanceSnapshot retrieves the most recent performance snapshot
-func (r *PerformanceRepository) GetLatestPerformanceSnapshot(ctx context.Context, portfolioID uuid.UUID) (*PerformanceSnapshot, error) {
+func (r *PerformanceRepository) GetLatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*PerformanceSnapshot, error) {
 	var snapshot PerformanceSnapshot
 	err := r.db.NewSelect().
 		Model(&snapshot).
@@ -452,7 +467,7 @@ func (r *PerformanceRepository) GetLatestPerformanceSnapshot(ctx context.Context
 }
 
 // UpdatePerformanceSnapshots updates performance snapshots for multiple portfolios
-func (r *PerformanceRepository) UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []uuid.UUID, asOfDate time.Time) error {
+func (r *PerformanceRepository) UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []string, asOfDate time.Time) error {
 	for _, portfolioID := range portfolioIDs {
 		metrics, err := r.CalculatePortfolioPerformance(ctx, portfolioID, asOfDate)
 		if err != nil {
@@ -491,8 +506,8 @@ func (r *PerformanceRepository) UpdatePerformanceSnapshots(ctx context.Context, 
 }
 
 // ComparePortfolioPerformance compares performance across multiple portfolios
-func (r *PerformanceRepository) ComparePortfolioPerformance(ctx context.Context, portfolioIDs []uuid.UUID, startDate, endDate time.Time) (map[uuid.UUID]*PerformanceMetrics, error) {
-	result := make(map[uuid.UUID]*PerformanceMetrics)
+func (r *PerformanceRepository) ComparePortfolioPerformance(ctx context.Context, portfolioIDs []string, startDate, endDate time.Time) (map[string]*PerformanceMetrics, error) {
+	result := make(map[string]*PerformanceMetrics)
 
 	for _, portfolioID := range portfolioIDs {
 		metrics, err := r.CalculatePortfolioPerformance(ctx, portfolioID, endDate)
@@ -506,45 +521,67 @@ func (r *PerformanceRepository) ComparePortfolioPerformance(ctx context.Context,
 }
 
 // GetTopPerformingAssets retrieves the best performing assets in a portfolio
-func (r *PerformanceRepository) GetTopPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange TimeRange) ([]model.Position, error) {
-	var positions []model.Position
+func (r *PerformanceRepository) GetTopPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange TimeRange) ([]PositionPerformanceResult, error) {
+	var results []PositionPerformanceResult
 	err := r.db.NewSelect().
-		Model(&positions).
-		Relation("Asset").
-		ColumnExpr("position.*").
-		ColumnExpr("(COALESCE(ap_current.price, 0) - COALESCE(ap_start.price, 0)) / NULLIF(COALESCE(ap_start.price, 0), 0) * 100 as performance").
-		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = position.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_current ON true", timeRange.End).
-		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = position.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_start ON true", timeRange.Start).
-		Where("position.portfolio_id = ?", portfolioID).
-		Where("position.quantity > 0").
-		Order("performance DESC").
+		ColumnExpr("p.id as position_id").
+		ColumnExpr("p.asset_id").
+		ColumnExpr("a.name as asset_name").
+		ColumnExpr("a.symbol as asset_symbol").
+		ColumnExpr("a.type as asset_type").
+		ColumnExpr("p.quantity").
+		ColumnExpr("p.average_cost_basis").
+		ColumnExpr("p.total_cost_basis").
+		ColumnExpr("COALESCE(ap_current.price, 0) as current_price").
+		ColumnExpr("CASE WHEN COALESCE(p.average_cost_basis, 0) > 0 THEN (COALESCE(ap_current.price, 0) - p.average_cost_basis) / p.average_cost_basis * 100 WHEN COALESCE(ap_start.price, 0) > 0 THEN (COALESCE(ap_current.price, 0) - ap_start.price) / ap_start.price * 100 ELSE 0 END as return_percentage").
+		ColumnExpr("CAST(COALESCE(p.quantity, 0) * COALESCE(ap_current.price, 0) * COALESCE(p.ownership_percentage, 100) / 100 * 100 - COALESCE(p.total_cost_basis, 0) AS BIGINT) as gain_loss").
+		ColumnExpr("0 as contribution").
+		Model((*model.Position)(nil)).
+		TableExpr("sigma_finance.positions p").
+		Join("JOIN sigma_finance.assets a ON a.id = p.asset_id").
+		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = p.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_current ON true", timeRange.End).
+		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = p.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_start ON true", timeRange.Start).
+		Where("p.portfolio_id = ?", portfolioID).
+		Where("p.quantity > 0").
+		Order("return_percentage DESC").
 		Limit(limit).
 		Scan(ctx)
 
-	return positions, err
+	return results, err
 }
 
 // GetWorstPerformingAssets retrieves the worst performing assets in a portfolio
-func (r *PerformanceRepository) GetWorstPerformingAssets(ctx context.Context, portfolioID uuid.UUID, limit int, timeRange TimeRange) ([]model.Position, error) {
-	var positions []model.Position
+func (r *PerformanceRepository) GetWorstPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange TimeRange) ([]PositionPerformanceResult, error) {
+	var results []PositionPerformanceResult
 	err := r.db.NewSelect().
-		Model(&positions).
-		Relation("Asset").
-		ColumnExpr("position.*").
-		ColumnExpr("(COALESCE(ap_current.price, 0) - COALESCE(ap_start.price, 0)) / NULLIF(COALESCE(ap_start.price, 0), 0) * 100 as performance").
-		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = position.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_current ON true", timeRange.End).
-		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = position.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_start ON true", timeRange.Start).
-		Where("position.portfolio_id = ?", portfolioID).
-		Where("position.quantity > 0").
-		Order("performance ASC").
+		ColumnExpr("p.id as position_id").
+		ColumnExpr("p.asset_id").
+		ColumnExpr("a.name as asset_name").
+		ColumnExpr("a.symbol as asset_symbol").
+		ColumnExpr("a.type as asset_type").
+		ColumnExpr("p.quantity").
+		ColumnExpr("p.average_cost_basis").
+		ColumnExpr("p.total_cost_basis").
+		ColumnExpr("COALESCE(ap_current.price, 0) as current_price").
+		ColumnExpr("CASE WHEN COALESCE(p.average_cost_basis, 0) > 0 THEN (COALESCE(ap_current.price, 0) - p.average_cost_basis) / p.average_cost_basis * 100 WHEN COALESCE(ap_start.price, 0) > 0 THEN (COALESCE(ap_current.price, 0) - ap_start.price) / ap_start.price * 100 ELSE 0 END as return_percentage").
+		ColumnExpr("CAST(COALESCE(p.quantity, 0) * COALESCE(ap_current.price, 0) * COALESCE(p.ownership_percentage, 100) / 100 * 100 - COALESCE(p.total_cost_basis, 0) AS BIGINT) as gain_loss").
+		ColumnExpr("0 as contribution").
+		Model((*model.Position)(nil)).
+		TableExpr("sigma_finance.positions p").
+		Join("JOIN sigma_finance.assets a ON a.id = p.asset_id").
+		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = p.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_current ON true", timeRange.End).
+		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = p.asset_id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap_start ON true", timeRange.Start).
+		Where("p.portfolio_id = ?", portfolioID).
+		Where("p.quantity > 0").
+		Order("return_percentage ASC").
 		Limit(limit).
 		Scan(ctx)
 
-	return positions, err
+	return results, err
 }
 
 // CalculateBenchmarkComparison compares portfolio performance against a benchmark
-func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context, portfolioID uuid.UUID, benchmarkAssetID uuid.UUID, timeRange TimeRange) (*BenchmarkComparison, error) {
+func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange TimeRange) (*BenchmarkComparison, error) {
 	// Get portfolio performance snapshots
 	portfolioSnapshots, err := r.GetPerformanceSnapshots(ctx, portfolioID, timeRange.Start, timeRange.End)
 	if err != nil || len(portfolioSnapshots) < 2 {

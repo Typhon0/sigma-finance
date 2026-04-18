@@ -9,10 +9,10 @@ import (
 
 // IAssetTagRepository defines the interface for asset_tag data operations.
 type IAssetTagRepository interface {
-	Add(ctx context.Context, assetID, tagID uint) error
-	Remove(ctx context.Context, assetID, tagID uint) error
-	FindByAssetID(ctx context.Context, assetID uint) ([]*model.AssetTag, error)
-	FindByTagID(ctx context.Context, tagID uint) ([]*model.AssetTag, error)
+	Add(ctx context.Context, assetID, tagID string) error
+	Remove(ctx context.Context, assetID, tagID string) error
+	FindByAssetID(ctx context.Context, assetID string) ([]*model.AssetTag, error)
+	FindByTagID(ctx context.Context, tagID string) ([]*model.AssetTag, error)
 }
 
 // AssetTagRepository implements IAssetTagRepository.
@@ -26,17 +26,17 @@ func NewAssetTagRepository(db bun.IDB) *AssetTagRepository {
 }
 
 // Add creates a new association between an asset and a tag.
-func (r *AssetTagRepository) Add(ctx context.Context, assetID, tagID uint) error {
+func (r *AssetTagRepository) Add(ctx context.Context, assetID, tagID string) error {
 	assetTag := &model.AssetTag{
-		AssetID: int(assetID),
-		TagID:   int(tagID),
+		AssetID: assetID,
+		TagID:   tagID,
 	}
 	_, err := r.db.NewInsert().Model(assetTag).Exec(ctx)
 	return err
 }
 
 // Remove deletes an association between an asset and a tag.
-func (r *AssetTagRepository) Remove(ctx context.Context, assetID, tagID uint) error {
+func (r *AssetTagRepository) Remove(ctx context.Context, assetID, tagID string) error {
 	_, err := r.db.NewDelete().
 		Model((*model.AssetTag)(nil)).
 		Where("asset_id = ? AND tag_id = ?", assetID, tagID).
@@ -45,7 +45,7 @@ func (r *AssetTagRepository) Remove(ctx context.Context, assetID, tagID uint) er
 }
 
 // FindByAssetID finds all tags associated with a given asset.
-func (r *AssetTagRepository) FindByAssetID(ctx context.Context, assetID uint) ([]*model.AssetTag, error) {
+func (r *AssetTagRepository) FindByAssetID(ctx context.Context, assetID string) ([]*model.AssetTag, error) {
 	var assetTags []*model.AssetTag
 	err := r.db.NewSelect().
 		Model(&assetTags).
@@ -55,7 +55,7 @@ func (r *AssetTagRepository) FindByAssetID(ctx context.Context, assetID uint) ([
 }
 
 // FindByTagID finds all assets associated with a given tag.
-func (r *AssetTagRepository) FindByTagID(ctx context.Context, tagID uint) ([]*model.AssetTag, error) {
+func (r *AssetTagRepository) FindByTagID(ctx context.Context, tagID string) ([]*model.AssetTag, error) {
 	var assetTags []*model.AssetTag
 	err := r.db.NewSelect().
 		Model(&assetTags).

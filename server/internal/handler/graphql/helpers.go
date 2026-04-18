@@ -3,31 +3,14 @@ package graphql
 import (
 	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
-	"strconv"
 )
 
-// parseID converts a GraphQL string ID to uint
-// parseID parses a string ID, accepting both numeric and '1' style IDs.
-func parseID(id string) (uint, error) {
+// parseID converts a GraphQL string ID to its internal representation (string)
+func parseID(id string) (string, error) {
 	if len(id) == 0 {
-		return 0, fmt.Errorf("empty ID")
+		return "", fmt.Errorf("empty ID")
 	}
-	// Accept '1' or 'asset-2' style IDs
-	for i, c := range id {
-		if c >= '0' && c <= '9' {
-			parsed, err := strconv.ParseUint(id[i:], 10, 32)
-			if err != nil {
-				return 0, fmt.Errorf("invalid ID format: %w", err)
-			}
-			return uint(parsed), nil
-		}
-	}
-	// Fallback: try parsing the whole string
-	parsed, err := strconv.ParseUint(id, 10, 32)
-	if err != nil {
-		return 0, fmt.Errorf("invalid ID format: %w", err)
-	}
-	return uint(parsed), nil
+	return id, nil
 }
 
 // buildUserOrderString creates an ORDER BY clause for user queries
@@ -121,4 +104,43 @@ func buildTransactionOrderString(field gqlModel.TransactionOrderField, direction
 // stringPtr returns a pointer to the given string
 func stringPtr(s string) *string {
 	return &s
+}
+
+// getFloat64 dereferences a float64 pointer or returns 0.0
+func getFloat64(f *float64) float64 {
+	if f == nil {
+		return 0.0
+	}
+	return *f
+}
+
+// getStr dereferences a string pointer or returns empty string
+func getStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// int32Ptr returns a pointer to the given int32
+func int32Ptr(i int32) *int32 {
+	return &i
+}
+
+// intToInt32 converts *int to *int32
+func intToInt32(i *int) *int32 {
+	if i == nil {
+		return nil
+	}
+	v := int32(*i)
+	return &v
+}
+
+// int32ToInt converts *int32 to *int
+func int32ToInt(i *int32) *int {
+	if i == nil {
+		return nil
+	}
+	v := int(*i)
+	return &v
 }

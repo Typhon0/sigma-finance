@@ -20,7 +20,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 		{
 			name: "valid stock asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeStock,
 				Symbol:      stringPtr("AAPL"),
 				Name:        "Apple Inc.",
@@ -33,7 +33,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 		{
 			name: "valid crypto asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeCrypto,
 				Symbol:      stringPtr("BTC"),
 				Name:        "Bitcoin",
@@ -46,7 +46,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 		{
 			name: "valid bank account asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeBankAccount,
 				Name:        "Chase Checking",
 				Symbol:      stringPtr("CHASE"), // Will be cleared by validation
@@ -59,7 +59,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 		{
 			name: "invalid stock - missing symbol",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetTypeStock,
 				Name:      "Apple Inc.",
 				CreatedAt: time.Now(),
@@ -71,7 +71,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 		{
 			name: "invalid crypto - missing symbol",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetTypeCrypto,
 				Name:      "Bitcoin",
 				CreatedAt: time.Now(),
@@ -118,7 +118,7 @@ func TestAssetValidationRules_ValidateAssetForType(t *testing.T) {
 
 func TestPositionValidationRules_ValidateOwnershipPercentages(t *testing.T) {
 	rules := NewPositionValidationRules()
-	assetID := uuid.New()
+	assetID := uuid.New().String()
 
 	tests := []struct {
 		name      string
@@ -130,8 +130,8 @@ func TestPositionValidationRules_ValidateOwnershipPercentages(t *testing.T) {
 			name: "valid single position",
 			positions: []*Position{
 				{
-					ID:                  uuid.New(),
-					PortfolioID:         uuid.New(),
+					ID:                  uuid.New().String(),
+					PortfolioID:         uuid.New().String(),
 					AssetID:             assetID,
 					Quantity:            decimal.NewFromFloat(100.0),
 					OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -143,15 +143,15 @@ func TestPositionValidationRules_ValidateOwnershipPercentages(t *testing.T) {
 			name: "valid multiple positions under 100%",
 			positions: []*Position{
 				{
-					ID:                  uuid.New(),
-					PortfolioID:         uuid.New(),
+					ID:                  uuid.New().String(),
+					PortfolioID:         uuid.New().String(),
 					AssetID:             assetID,
 					Quantity:            decimal.NewFromFloat(50.0),
 					OwnershipPercentage: decimal.NewFromFloat(60.0),
 				},
 				{
-					ID:                  uuid.New(),
-					PortfolioID:         uuid.New(),
+					ID:                  uuid.New().String(),
+					PortfolioID:         uuid.New().String(),
 					AssetID:             assetID,
 					Quantity:            decimal.NewFromFloat(30.0),
 					OwnershipPercentage: decimal.NewFromFloat(40.0),
@@ -163,22 +163,22 @@ func TestPositionValidationRules_ValidateOwnershipPercentages(t *testing.T) {
 			name: "invalid - ownership exceeds 100%",
 			positions: []*Position{
 				{
-					ID:                  uuid.New(),
-					PortfolioID:         uuid.New(),
+					ID:                  uuid.New().String(),
+					PortfolioID:         uuid.New().String(),
 					AssetID:             assetID,
 					Quantity:            decimal.NewFromFloat(50.0),
 					OwnershipPercentage: decimal.NewFromFloat(70.0),
 				},
 				{
-					ID:                  uuid.New(),
-					PortfolioID:         uuid.New(),
+					ID:                  uuid.New().String(),
+					PortfolioID:         uuid.New().String(),
 					AssetID:             assetID,
 					Quantity:            decimal.NewFromFloat(30.0),
 					OwnershipPercentage: decimal.NewFromFloat(50.0),
 				},
 			},
 			wantErr: true,
-			errMsg:  "total ownership percentage for asset " + assetID.String() + " exceeds 100% (current: 120%)",
+			errMsg:  "total ownership percentage for asset " + assetID + " exceeds 100% (current: 120%)",
 		},
 	}
 

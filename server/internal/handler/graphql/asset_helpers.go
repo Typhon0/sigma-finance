@@ -1,21 +1,19 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/repository"
 )
 
 // getAssetWithDetails is a helper method to get asset with type-specific details
-func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID uint) (gqlModel.Asset, error) {
+func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gqlModel.Asset, error) {
 	// Get base asset
-	asset, err := r.AssetService.GetByID(ctx, assetID)
+	asset, err := r.AssetService.GetAsset(ctx, assetID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return nil, nil // GraphQL convention: return nil for not found
@@ -23,37 +21,93 @@ func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID uint) (gqlMo
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
 
-	// Get asset type
-	assetType, err := r.AssetService.GetAssetTypeByID(ctx, uint(asset.AssetTypeID))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get asset type: %w", err)
+	// Get tags (non-fatal: continue with empty tags on error)
+	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+
+	// Fetch latest price for CurrentValue
+	var currentValue *float64
+	latestPrice, err := r.UOW.AssetPrice().GetLatestPrice(ctx, asset.ID)
+	if err == nil && latestPrice != nil {
+		cv, _ := latestPrice.Price.Float64()
+		currentValue = &cv
 	}
 
-	// Get tags
-	tags, err := r.TagService.GetAssetTags(ctx, asset.ID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get asset tags: %w", err)
+	// Compute day change for tradeable assets
+	var dayChange, dayChangePercent *float64
+	if asset.IsTradeable {
+		stats, err := r.UOW.AssetPrice().GetPriceStatistics(ctx, asset.ID)
+		if err == nil && stats != nil {
+			dc, _ := stats.Change.Float64()
+			dcp, _ := stats.ChangePercent.Float64()
+			dayChange = &dc
+			dayChangePercent = &dcp
+		}
 	}
 
 	// Determine asset type and return appropriate concrete type
-	switch assetType.Name {
+	switch asset.Type {
 	case "STOCK":
-		stock, err := r.AssetService.GetStockByAssetID(ctx, assetID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get stock details: %w", err)
-		}
-		return mapStockToGQL(asset, stock, &assetType, tags), nil
+		stockDetails, _ := r.UOW.Stock().GetByID(ctx, asset.ID)
+		return mapStockToGQL(*asset, stockDetails, tags, dayChange, dayChangePercent, currentValue), nil
 
 	case "CRYPTO":
-		crypto, err := r.AssetService.GetCryptoByAssetID(ctx, assetID)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get crypto details: %w", err)
-		}
-		return mapCryptoToGQL(asset, crypto, &assetType, tags), nil
+		cryptoDetails, _ := r.UOW.Crypto().GetByID(ctx, asset.ID)
+		return mapCryptoToGQL(*asset, cryptoDetails, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "FUND":
+		fundDetails, _ := r.UOW.Fund().GetByID(ctx, asset.ID)
+		return mapFundToGQL(*asset, fundDetails, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "BANK_ACCOUNT":
+		return mapBankAccountToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "REAL_ESTATE":
+		return mapRealEstateToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "LIFE_INSURANCE":
+		return mapLifeInsuranceToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "WATCH":
+		return mapWatchToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil
+
+	case "LOAN":
+		return mapLoanToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil
 
 	default:
-		// For other asset types, we would need to implement additional concrete types
-		// For now, return an error
-		return nil, fmt.Errorf("unsupported asset type: %s", assetType.Name)
+		// Unsupported asset type: return nil without error so callers can skip gracefully
+		return nil, nil
 	}
+}
+
+// buildPortfolioAssets resolves all assets for a portfolio, skipping any whose
+// details cannot be loaded. This prevents a nil Asset from violating the
+// GraphQL schema's `asset: Asset!` (non-null) constraint, which would
+// cascade-null the entire portfolios response.
+func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string) []*gqlModel.PortfolioAsset {
+	pa, err := r.PortfolioService.GetPortfolioAssets(ctx, portfolioID)
+	if err != nil || len(pa) == 0 {
+		return nil
+	}
+
+	var assets []*gqlModel.PortfolioAsset
+	for _, domPa := range pa {
+		gqlAsset, gqlErr := r.getAssetWithDetails(ctx, domPa.AssetID)
+		if gqlErr != nil || gqlAsset == nil {
+			log.Printf("buildPortfolioAssets: skipping asset %s in portfolio %s: err=%v, asset=%v", domPa.AssetID, portfolioID, gqlErr, gqlAsset)
+			continue
+		}
+		avgPP := domPa.AveragePurchasePrice
+		var currentVal *float64
+		if cv := gqlAsset.GetCurrentValue(); cv != nil {
+			v := domPa.Quantity * (*cv)
+			currentVal = &v
+		}
+		assets = append(assets, &gqlModel.PortfolioAsset{
+			Asset:                gqlAsset,
+			Quantity:             domPa.Quantity,
+			AveragePurchasePrice: &avgPP,
+			CurrentValue:         currentVal,
+		})
+	}
+	return assets
 }

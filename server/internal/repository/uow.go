@@ -17,6 +17,7 @@ type IUnitOfWork interface {
 	User() IUserRepository
 	Portfolio() IPortfolioRepository
 	Asset() IAssetRepository
+	Position() IPositionRepository
 	Transaction() ITransactionRepository
 	Watchlist() IWatchlistRepository
 	WatchlistAsset() IWatchlistAssetRepository
@@ -24,6 +25,13 @@ type IUnitOfWork interface {
 	PortfolioAsset() IPortfolioAssetRepository
 	Stock() IStockRepository
 	Crypto() ICryptoRepository
+	Fund() IFundRepository
+	Instrument() IInstrumentRepository
+	InstrumentAlias() IInstrumentAliasRepository
+	InstrumentSyncState() IInstrumentSyncStateRepository
+	DiscoveryLog() IDiscoveryLogRepository
+	FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository
+	FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository
 	AssetType() IAssetTypeRepository
 	PortfolioTag() IPortfolioTagRepository
 	AssetTag() IAssetTagRepository
@@ -33,30 +41,68 @@ type IUnitOfWork interface {
 	AuthEvent() AuthEventRepository
 	PasswordResetToken() IPasswordResetTokenRepository
 	EmailVerificationToken() IEmailVerificationTokenRepository
+
+	// Performance and price repositories
+	AssetPrice() IPriceRepository
+	Performance() IPerformanceRepository
+
+	// Alert repository
+	Alert() IAlertRepository
+
+	// Notification repositories
+	NotificationPreferences() INotificationPreferencesRepository
+	NotificationLog() INotificationLogRepository
+	PushSubscription() IPushSubscriptionRepository
+
+	// Provider routing config repository
+	ProviderRoutingConfig() IProviderRoutingConfigRepository
 }
 
 // UnitOfWork is the concrete implementation of IUnitOfWork
 type UnitOfWork struct {
-	db             *bun.DB
-	user           IUserRepository
-	portfolio      IPortfolioRepository
-	asset          IAssetRepository
-	transaction    ITransactionRepository
-	watchlist      IWatchlistRepository
-	watchlistAsset IWatchlistAssetRepository
-	tag            ITagRepository
-	portfolioAsset IPortfolioAssetRepository
-	stock          IStockRepository
-	crypto         ICryptoRepository
-	assetType      IAssetTypeRepository
-	portfolioTag   IPortfolioTagRepository
-	assetTag       IAssetTagRepository
-	mdCred         IMarketDataCredentialRepository
+	db                         *bun.DB
+	user                       IUserRepository
+	portfolio                  IPortfolioRepository
+	asset                      IAssetRepository
+	position                   IPositionRepository
+	transaction                ITransactionRepository
+	watchlist                  IWatchlistRepository
+	watchlistAsset             IWatchlistAssetRepository
+	tag                        ITagRepository
+	portfolioAsset             IPortfolioAssetRepository
+	stock                      IStockRepository
+	crypto                     ICryptoRepository
+	fund                       IFundRepository
+	instrument                 IInstrumentRepository
+	instrumentAlias            IInstrumentAliasRepository
+	instrumentSyncState        IInstrumentSyncStateRepository
+	discoveryLog               IDiscoveryLogRepository
+	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
+	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
+	assetType                  IAssetTypeRepository
+	portfolioTag               IPortfolioTagRepository
+	assetTag                   IAssetTagRepository
+	mdCred                     IMarketDataCredentialRepository
 	// Authentication repositories
 	session                ISessionRepository
 	authEvent              AuthEventRepository
 	passwordResetToken     IPasswordResetTokenRepository
 	emailVerificationToken IEmailVerificationTokenRepository
+
+	// Performance and price repositories
+	assetPrice  IPriceRepository
+	performance IPerformanceRepository
+
+	// Alert repository
+	alert IAlertRepository
+
+	// Notification repositories
+	notificationPrefs INotificationPreferencesRepository
+	notificationLog   INotificationLogRepository
+	pushSubscription  IPushSubscriptionRepository
+
+	// Provider routing config repository
+	providerRoutingConfig IProviderRoutingConfigRepository
 }
 
 // Expose DB for internal wiring (not part of interface to preserve abstraction)
@@ -65,25 +111,40 @@ func (uow *UnitOfWork) GetDB() *bun.DB { return uow.db }
 // NewUnitOfWork creates a new UnitOfWork
 func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 	return &UnitOfWork{
-		db:                     db,
-		user:                   NewUserRepository(db),
-		portfolio:              NewPortfolioRepository(db),
-		asset:                  NewAssetRepository(db),
-		transaction:            NewTransactionRepository(db),
-		watchlist:              NewWatchlistRepository(NewRepository[model.Watchlist](db), NewRepository[model.WatchlistAsset](db), NewRepository[model.Asset](db)),
-		watchlistAsset:         NewWatchlistAssetRepository(db),
-		tag:                    NewTagRepository(db),
-		portfolioAsset:         NewPortfolioAssetRepository(db),
-		stock:                  NewStockRepository(db),
-		crypto:                 NewCryptoRepository(db),
-		assetType:              NewAssetTypeRepository(db),
-		portfolioTag:           NewPortfolioTagRepository(db),
-		assetTag:               NewAssetTagRepository(db),
-		mdCred:                 NewMarketDataCredentialRepository(db),
-		session:                NewSessionRepository(db),
-		authEvent:              NewAuthEventRepository(db),
-		passwordResetToken:     NewPasswordResetTokenRepository(db),
-		emailVerificationToken: NewEmailVerificationTokenRepository(db),
+		db:                         db,
+		user:                       NewUserRepository(db),
+		portfolio:                  NewPortfolioRepository(db),
+		asset:                      NewAssetRepository(db),
+		position:                   NewPositionRepository(db),
+		transaction:                NewTransactionRepository(db),
+		watchlist:                  NewWatchlistRepository(NewRepository[model.Watchlist](db), NewRepository[model.WatchlistAsset](db), NewRepository[model.Asset](db)),
+		watchlistAsset:             NewWatchlistAssetRepository(db),
+		tag:                        NewTagRepository(db),
+		portfolioAsset:             NewPortfolioAssetRepository(db),
+		stock:                      NewStockRepository(db),
+		crypto:                     NewCryptoRepository(db),
+		fund:                       NewFundRepository(db),
+		instrument:                 NewInstrumentRepository(db),
+		instrumentAlias:            NewInstrumentAliasRepository(db),
+		instrumentSyncState:        NewInstrumentSyncStateRepository(db),
+		discoveryLog:               NewDiscoveryLogRepository(db),
+		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(db),
+		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(db),
+		assetType:                  NewAssetTypeRepository(db),
+		portfolioTag:               NewPortfolioTagRepository(db),
+		assetTag:                   NewAssetTagRepository(db),
+		mdCred:                     NewMarketDataCredentialRepository(db),
+		session:                    NewSessionRepository(db),
+		authEvent:                  NewAuthEventRepository(db),
+		passwordResetToken:         NewPasswordResetTokenRepository(db),
+		emailVerificationToken:     NewEmailVerificationTokenRepository(db),
+		assetPrice:                 NewPriceRepository(db),
+		performance:                NewPerformanceRepository(db),
+		alert:                      NewAlertRepository(db),
+		notificationPrefs:          NewNotificationPreferencesRepository(db),
+		notificationLog:            NewNotificationLogRepository(db),
+		pushSubscription:           NewPushSubscriptionRepository(db),
+		providerRoutingConfig:      NewProviderRoutingConfigRepository(db),
 	}
 }
 
@@ -96,26 +157,41 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 
 	// Create a new UoW with the transaction
 	txUow := &txUnitOfWork{
-		tx:             tx,
-		user:           NewUserRepository(&tx),
-		portfolio:      NewPortfolioRepository(&tx),
-		asset:          NewAssetRepository(&tx),
-		transaction:    NewTransactionRepository(&tx),
-		watchlist:      NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
-		watchlistAsset: NewWatchlistAssetRepository(&tx),
-		tag:            NewTagRepository(&tx),
-		portfolioAsset: NewPortfolioAssetRepository(&tx),
-		stock:          NewStockRepository(&tx),
-		crypto:         NewCryptoRepository(&tx),
-		assetType:      NewAssetTypeRepository(&tx),
-		portfolioTag:   NewPortfolioTagRepository(&tx),
-		assetTag:       NewAssetTagRepository(&tx),
+		tx:                         tx,
+		user:                       NewUserRepository(&tx),
+		portfolio:                  NewPortfolioRepository(&tx),
+		asset:                      NewAssetRepository(&tx),
+		position:                   NewPositionRepository(&tx),
+		transaction:                NewTransactionRepository(&tx),
+		watchlist:                  NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
+		watchlistAsset:             NewWatchlistAssetRepository(&tx),
+		tag:                        NewTagRepository(&tx),
+		portfolioAsset:             NewPortfolioAssetRepository(&tx),
+		stock:                      NewStockRepository(&tx),
+		crypto:                     NewCryptoRepository(&tx),
+		fund:                       NewFundRepository(&tx),
+		instrument:                 NewInstrumentRepository(&tx),
+		instrumentAlias:            NewInstrumentAliasRepository(&tx),
+		instrumentSyncState:        NewInstrumentSyncStateRepository(&tx),
+		discoveryLog:               NewDiscoveryLogRepository(&tx),
+		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(&tx),
+		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(&tx),
+		assetType:                  NewAssetTypeRepository(&tx),
+		portfolioTag:               NewPortfolioTagRepository(&tx),
+		assetTag:                   NewAssetTagRepository(&tx),
 		// market data credentials not tied to tx; reuse main connection via wrapper if needed (simplified: nil)
 		mdCred:                 nil,
 		session:                NewSessionRepository(&tx),
 		authEvent:              NewAuthEventRepository(&tx),
 		passwordResetToken:     NewPasswordResetTokenRepository(&tx),
 		emailVerificationToken: NewEmailVerificationTokenRepository(&tx),
+		assetPrice:             NewPriceRepository(&tx),
+		performance:            NewPerformanceRepository(&tx),
+		alert:                  NewAlertRepository(&tx),
+		notificationPrefs:      NewNotificationPreferencesRepository(&tx),
+		notificationLog:        NewNotificationLogRepository(&tx),
+		pushSubscription:       NewPushSubscriptionRepository(&tx),
+		providerRoutingConfig:  NewProviderRoutingConfigRepository(&tx),
 	}
 
 	if err := fn(txUow); err != nil {
@@ -141,6 +217,11 @@ func (uow *UnitOfWork) Portfolio() IPortfolioRepository {
 // Asset returns the asset repository
 func (uow *UnitOfWork) Asset() IAssetRepository {
 	return uow.asset
+}
+
+// Position returns the position repository
+func (uow *UnitOfWork) Position() IPositionRepository {
+	return uow.position
 }
 
 // Transaction returns the transaction repository
@@ -176,6 +257,41 @@ func (uow *UnitOfWork) Stock() IStockRepository {
 // Crypto returns the crypto repository
 func (uow *UnitOfWork) Crypto() ICryptoRepository {
 	return uow.crypto
+}
+
+// Fund returns the fund repository
+func (uow *UnitOfWork) Fund() IFundRepository {
+	return uow.fund
+}
+
+// Instrument returns the instrument repository
+func (uow *UnitOfWork) Instrument() IInstrumentRepository {
+	return uow.instrument
+}
+
+// InstrumentAlias returns the instrument alias repository
+func (uow *UnitOfWork) InstrumentAlias() IInstrumentAliasRepository {
+	return uow.instrumentAlias
+}
+
+// InstrumentSyncState returns the instrument sync state repository
+func (uow *UnitOfWork) InstrumentSyncState() IInstrumentSyncStateRepository {
+	return uow.instrumentSyncState
+}
+
+// DiscoveryLog returns the discovery log repository
+func (uow *UnitOfWork) DiscoveryLog() IDiscoveryLogRepository {
+	return uow.discoveryLog
+}
+
+// FinanceDatabaseSyncSetting returns the finance database sync settings repository
+func (uow *UnitOfWork) FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository {
+	return uow.financeDatabaseSyncSetting
+}
+
+// FinanceDatabaseSyncHistory returns the finance database sync history repository
+func (uow *UnitOfWork) FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository {
+	return uow.financeDatabaseSyncHistory
 }
 
 // AssetType returns the asset type repository
@@ -217,25 +333,40 @@ func (uow *UnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepositor
 
 // txUnitOfWork is the implementation of IUnitOfWork for transactions
 type txUnitOfWork struct {
-	tx                     bun.Tx
-	user                   IUserRepository
-	portfolio              IPortfolioRepository
-	asset                  IAssetRepository
-	transaction            ITransactionRepository
-	watchlist              IWatchlistRepository
-	watchlistAsset         IWatchlistAssetRepository
-	tag                    ITagRepository
-	portfolioAsset         IPortfolioAssetRepository
-	stock                  IStockRepository
-	crypto                 ICryptoRepository
-	assetType              IAssetTypeRepository
-	portfolioTag           IPortfolioTagRepository
-	assetTag               IAssetTagRepository
-	mdCred                 IMarketDataCredentialRepository
-	session                ISessionRepository
-	authEvent              AuthEventRepository
-	passwordResetToken     IPasswordResetTokenRepository
-	emailVerificationToken IEmailVerificationTokenRepository
+	tx                         bun.Tx
+	user                       IUserRepository
+	portfolio                  IPortfolioRepository
+	asset                      IAssetRepository
+	position                   IPositionRepository
+	transaction                ITransactionRepository
+	watchlist                  IWatchlistRepository
+	watchlistAsset             IWatchlistAssetRepository
+	tag                        ITagRepository
+	portfolioAsset             IPortfolioAssetRepository
+	stock                      IStockRepository
+	crypto                     ICryptoRepository
+	fund                       IFundRepository
+	instrument                 IInstrumentRepository
+	instrumentAlias            IInstrumentAliasRepository
+	instrumentSyncState        IInstrumentSyncStateRepository
+	discoveryLog               IDiscoveryLogRepository
+	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
+	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
+	assetType                  IAssetTypeRepository
+	portfolioTag               IPortfolioTagRepository
+	assetTag                   IAssetTagRepository
+	mdCred                     IMarketDataCredentialRepository
+	session                    ISessionRepository
+	authEvent                  AuthEventRepository
+	passwordResetToken         IPasswordResetTokenRepository
+	emailVerificationToken     IEmailVerificationTokenRepository
+	assetPrice                 IPriceRepository
+	performance                IPerformanceRepository
+	alert                      IAlertRepository
+	notificationPrefs          INotificationPreferencesRepository
+	notificationLog            INotificationLogRepository
+	pushSubscription           IPushSubscriptionRepository
+	providerRoutingConfig      IProviderRoutingConfigRepository
 }
 
 func (uow *txUnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) error {
@@ -253,6 +384,10 @@ func (uow *txUnitOfWork) Portfolio() IPortfolioRepository {
 
 func (uow *txUnitOfWork) Asset() IAssetRepository {
 	return uow.asset
+}
+
+func (uow *txUnitOfWork) Position() IPositionRepository {
+	return uow.position
 }
 
 func (uow *txUnitOfWork) Transaction() ITransactionRepository {
@@ -281,6 +416,34 @@ func (uow *txUnitOfWork) Stock() IStockRepository {
 
 func (uow *txUnitOfWork) Crypto() ICryptoRepository {
 	return uow.crypto
+}
+
+func (uow *txUnitOfWork) Fund() IFundRepository {
+	return uow.fund
+}
+
+func (uow *txUnitOfWork) Instrument() IInstrumentRepository {
+	return uow.instrument
+}
+
+func (uow *txUnitOfWork) InstrumentAlias() IInstrumentAliasRepository {
+	return uow.instrumentAlias
+}
+
+func (uow *txUnitOfWork) InstrumentSyncState() IInstrumentSyncStateRepository {
+	return uow.instrumentSyncState
+}
+
+func (uow *txUnitOfWork) DiscoveryLog() IDiscoveryLogRepository {
+	return uow.discoveryLog
+}
+
+func (uow *txUnitOfWork) FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository {
+	return uow.financeDatabaseSyncSetting
+}
+
+func (uow *txUnitOfWork) FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository {
+	return uow.financeDatabaseSyncHistory
 }
 
 func (uow *txUnitOfWork) AssetType() IAssetTypeRepository {
@@ -312,4 +475,60 @@ func (uow *txUnitOfWork) PasswordResetToken() IPasswordResetTokenRepository {
 
 func (uow *txUnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepository {
 	return uow.emailVerificationToken
+}
+
+// AssetPrice returns the asset price repository
+func (uow *UnitOfWork) AssetPrice() IPriceRepository {
+	return uow.assetPrice
+}
+func (uow *txUnitOfWork) AssetPrice() IPriceRepository {
+	return uow.assetPrice
+}
+
+// Performance returns the performance repository
+func (uow *UnitOfWork) Performance() IPerformanceRepository {
+	return uow.performance
+}
+func (uow *txUnitOfWork) Performance() IPerformanceRepository {
+	return uow.performance
+}
+
+// Alert returns the alert repository
+func (uow *UnitOfWork) Alert() IAlertRepository {
+	return uow.alert
+}
+func (uow *txUnitOfWork) Alert() IAlertRepository {
+	return uow.alert
+}
+
+// NotificationPreferences returns the notification preferences repository
+func (uow *UnitOfWork) NotificationPreferences() INotificationPreferencesRepository {
+	return uow.notificationPrefs
+}
+func (uow *txUnitOfWork) NotificationPreferences() INotificationPreferencesRepository {
+	return uow.notificationPrefs
+}
+
+// NotificationLog returns the notification log repository
+func (uow *UnitOfWork) NotificationLog() INotificationLogRepository {
+	return uow.notificationLog
+}
+func (uow *txUnitOfWork) NotificationLog() INotificationLogRepository {
+	return uow.notificationLog
+}
+
+// PushSubscription returns the push subscription repository
+func (uow *UnitOfWork) PushSubscription() IPushSubscriptionRepository {
+	return uow.pushSubscription
+}
+func (uow *txUnitOfWork) PushSubscription() IPushSubscriptionRepository {
+	return uow.pushSubscription
+}
+
+// ProviderRoutingConfig returns the provider routing config repository
+func (uow *UnitOfWork) ProviderRoutingConfig() IProviderRoutingConfigRepository {
+	return uow.providerRoutingConfig
+}
+func (uow *txUnitOfWork) ProviderRoutingConfig() IProviderRoutingConfigRepository {
+	return uow.providerRoutingConfig
 }

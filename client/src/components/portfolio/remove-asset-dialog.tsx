@@ -1,13 +1,17 @@
-import { Minus } from "lucide-react";
+import { Loader2, Minus } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
 import type { PortfolioAsset } from "@/gql/graphql";
+import { useAssetManagement } from "@/hooks/use-asset-management";
 
 interface RemoveAssetDialogProps {
 	open: boolean;
@@ -26,55 +30,80 @@ export function RemoveAssetDialog({
 	asset,
 	onSuccess,
 }: RemoveAssetDialogProps) {
+	const { removeAssetFromPortfolio } = useAssetManagement();
+	const [isRemoving, setIsRemoving] = useState(false);
+
 	const handleClose = () => {
-		onOpenChange(false);
+		if (!isRemoving) {
+			onOpenChange(false);
+		}
 	};
 
-	const handleRemoveAsset = () => {
-		// TODO: Implement actual asset removal logic
-		console.log(
-			"Removing asset from portfolio:",
-			portfolioID,
-			asset?.asset?.id,
-		);
-		if (onSuccess) {
-			onSuccess();
+	const handleRemoveAsset = async () => {
+		if (!asset) return;
+
+		setIsRemoving(true);
+		try {
+			await removeAssetFromPortfolio(portfolioID, asset.asset.id);
+			toast.success(
+				`${asset.asset.symbol || asset.asset.name} removed from ${portfolioName}`,
+			);
+			onSuccess?.();
+			onOpenChange(false);
+		} catch {
+			toast.error("Failed to remove asset from portfolio. Please try again.");
+		} finally {
+			setIsRemoving(false);
 		}
-		handleClose();
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={handleClose}>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Remove Asset from {portfolioName}</DialogTitle>
 					<DialogDescription>
 						{asset
-							? `Remove ${asset.asset.name} from your portfolio.`
-							: "Remove asset from your portfolio."}{" "}
-						This feature is coming soon.
+							? `Remove ${asset.asset.name} from your portfolio. This action cannot be undone.`
+							: "Remove asset from your portfolio. This action cannot be undone."}
 					</DialogDescription>
 				</DialogHeader>
 
-				<div className="flex flex-col items-center justify-center py-8 text-center">
-					<Minus className="h-12 w-12 text-muted-foreground mb-4" />
-					<p className="text-muted-foreground mb-4">
-						Asset management functionality is being developed.
-					</p>
-					{asset && (
-						<p className="text-sm text-muted-foreground mb-4">
-							Asset: {asset.asset.name} ({asset.quantity} shares)
-						</p>
-					)}
-					<div className="flex gap-2">
-						<Button onClick={handleClose} variant="outline">
-							Cancel
-						</Button>
-						<Button onClick={handleRemoveAsset} variant="destructive">
-							Remove Asset (Demo)
-						</Button>
+				{asset && (
+					<div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+						<Minus className="h-5 w-5 text-muted-foreground" />
+						<div className="min-w-0 flex-1">
+							<p className="font-medium text-sm truncate">{asset.asset.name}</p>
+							<p className="text-xs text-muted-foreground">
+								{asset.asset.symbol && `${asset.asset.symbol} · `}
+								{asset.quantity} shares · {asset.asset.assetType.name}
+							</p>
+						</div>
 					</div>
-				</div>
+				)}
+
+				<DialogFooter>
+					<Button onClick={handleClose} variant="outline" disabled={isRemoving}>
+						Cancel
+					</Button>
+					<Button
+						onClick={handleRemoveAsset}
+						variant="destructive"
+						disabled={isRemoving || !asset}
+					>
+						{isRemoving ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Removing...
+							</>
+						) : (
+							<>
+								<Minus className="mr-2 h-4 w-4" />
+								Remove Asset
+							</>
+						)}
+					</Button>
+				</DialogFooter>
 			</DialogContent>
 		</Dialog>
 	);

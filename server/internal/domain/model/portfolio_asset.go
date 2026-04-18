@@ -10,9 +10,10 @@ import (
 type PortfolioAsset struct {
 	bun.BaseModel `bun:"table:sigma_finance.portfolio_asset"`
 
-	ID                   int       `bun:"id,pk,autoincrement"`
-	PortfolioID          int       `bun:"portfolio_id,notnull"`
-	AssetID              int       `bun:"asset_id,notnull"`
+	ID                   string    `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	PortfolioID          string    `bun:"portfolio_id,notnull,type:uuid"`
+	AssetID              string    `bun:"asset_id,notnull,type:uuid"`
+	InstrumentID         *string   `bun:"instrument_id,type:uuid"`
 	Quantity             float64   `bun:"quantity,notnull"`
 	AveragePurchasePrice float64   `bun:"average_purchase_price,notnull"`
 	CreatedAt            time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`

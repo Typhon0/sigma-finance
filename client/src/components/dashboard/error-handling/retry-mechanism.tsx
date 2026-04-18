@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef } from "react";
-import { RefreshCw, WifiOff, AlertCircle, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertCircle, CheckCircle, RefreshCw, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -31,7 +31,7 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 
 export function useRetryMechanism(
 	retryFn: () => Promise<void>,
-	config: Partial<RetryConfig> = {}
+	config: Partial<RetryConfig> = {},
 ) {
 	const fullConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
 	const [retryState, setRetryState] = useState<RetryState>({
@@ -45,25 +45,29 @@ export function useRetryMechanism(
 	const retryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-	const calculateDelay = useCallback((attempt: number): number => {
-		let delay = fullConfig.baseDelay * Math.pow(fullConfig.backoffMultiplier, attempt);
-		delay = Math.min(delay, fullConfig.maxDelay);
-		
-		if (fullConfig.jitter) {
-			delay = delay * (0.5 + Math.random() * 0.5);
-		}
-		
-		return Math.floor(delay);
-	}, [fullConfig]);
+	const calculateDelay = useCallback(
+		(attempt: number): number => {
+			let delay =
+				fullConfig.baseDelay * fullConfig.backoffMultiplier ** attempt;
+			delay = Math.min(delay, fullConfig.maxDelay);
+
+			if (fullConfig.jitter) {
+				delay = delay * (0.5 + Math.random() * 0.5);
+			}
+
+			return Math.floor(delay);
+		},
+		[fullConfig],
+	);
 
 	const startCountdown = useCallback((delay: number) => {
 		let remaining = Math.ceil(delay / 1000);
-		setRetryState(prev => ({ ...prev, nextRetryIn: remaining }));
+		setRetryState((prev) => ({ ...prev, nextRetryIn: remaining }));
 
 		countdownIntervalRef.current = setInterval(() => {
 			remaining -= 1;
-			setRetryState(prev => ({ ...prev, nextRetryIn: remaining }));
-			
+			setRetryState((prev) => ({ ...prev, nextRetryIn: remaining }));
+
 			if (remaining <= 0) {
 				if (countdownIntervalRef.current) {
 					clearInterval(countdownIntervalRef.current);
@@ -73,70 +77,73 @@ export function useRetryMechanism(
 		}, 1000);
 	}, []);
 
-	const retry = useCallback(async (immediate = false) => {
-		if (!retryState.canRetry || retryState.isRetrying) {
-			return;
-		}
-
-		const newRetryCount = retryState.retryCount + 1;
-		const canRetryAgain = newRetryCount < fullConfig.maxRetries;
-
-		setRetryState(prev => ({
-			...prev,
-			isRetrying: true,
-			retryCount: newRetryCount,
-			canRetry: canRetryAgain,
-			nextRetryIn: 0,
-		}));
-
-		// Clear any existing timers
-		if (retryTimeoutRef.current) {
-			clearTimeout(retryTimeoutRef.current);
-			retryTimeoutRef.current = null;
-		}
-		if (countdownIntervalRef.current) {
-			clearInterval(countdownIntervalRef.current);
-			countdownIntervalRef.current = null;
-		}
-
-		try {
-			if (!immediate && newRetryCount > 1) {
-				const delay = calculateDelay(newRetryCount - 1);
-				startCountdown(delay);
-				
-				await new Promise(resolve => {
-					retryTimeoutRef.current = setTimeout(resolve, delay);
-				});
+	const retry = useCallback(
+		async (immediate = false) => {
+			if (!retryState.canRetry || retryState.isRetrying) {
+				return;
 			}
 
-			await retryFn();
-			
-			// Success - reset retry state
-			setRetryState({
-				isRetrying: false,
-				retryCount: 0,
-				nextRetryIn: 0,
-				lastError: null,
-				canRetry: true,
-			});
-		} catch (error) {
-			setRetryState(prev => ({
+			const newRetryCount = retryState.retryCount + 1;
+			const canRetryAgain = newRetryCount < fullConfig.maxRetries;
+
+			setRetryState((prev) => ({
 				...prev,
-				isRetrying: false,
-				lastError: error as Error,
+				isRetrying: true,
+				retryCount: newRetryCount,
+				canRetry: canRetryAgain,
+				nextRetryIn: 0,
 			}));
 
-			// Auto-retry if we haven't reached max retries
-			if (canRetryAgain) {
-				const delay = calculateDelay(newRetryCount);
-				startCountdown(delay);
-				
-				retryTimeoutRef.current = setTimeout(() => {
-					retry();
-				}, delay);
+			// Clear any existing timers
+			if (retryTimeoutRef.current) {
+				clearTimeout(retryTimeoutRef.current);
+				retryTimeoutRef.current = null;
 			}
-		}
-	}, [retryState, fullConfig, retryFn, calculateDelay, startCountdown]);
+			if (countdownIntervalRef.current) {
+				clearInterval(countdownIntervalRef.current);
+				countdownIntervalRef.current = null;
+			}
+
+			try {
+				if (!immediate && newRetryCount > 1) {
+					const delay = calculateDelay(newRetryCount - 1);
+					startCountdown(delay);
+
+					await new Promise((resolve) => {
+						retryTimeoutRef.current = setTimeout(resolve, delay);
+					});
+				}
+
+				await retryFn();
+
+				// Success - reset retry state
+				setRetryState({
+					isRetrying: false,
+					retryCount: 0,
+					nextRetryIn: 0,
+					lastError: null,
+					canRetry: true,
+				});
+			} catch (error) {
+				setRetryState((prev) => ({
+					...prev,
+					isRetrying: false,
+					lastError: error as Error,
+				}));
+
+				// Auto-retry if we haven't reached max retries
+				if (canRetryAgain) {
+					const delay = calculateDelay(newRetryCount);
+					startCountdown(delay);
+
+					retryTimeoutRef.current = setTimeout(() => {
+						retry();
+					}, delay);
+				}
+			}
+		},
+		[retryState, fullConfig, retryFn, calculateDelay, startCountdown],
+	);
 
 	const reset = useCallback(() => {
 		if (retryTimeoutRef.current) {
@@ -183,8 +190,8 @@ export function useRetryMechanism(
 interface RetryButtonProps {
 	onRetry: () => void;
 	retryState: RetryState;
-	variant?: 'default' | 'outline' | 'ghost';
-	size?: 'sm' | 'default' | 'lg';
+	variant?: "default" | "outline" | "ghost";
+	size?: "sm" | "default" | "lg";
 	className?: string;
 	showCountdown?: boolean;
 }
@@ -192,8 +199,8 @@ interface RetryButtonProps {
 export function RetryButton({
 	onRetry,
 	retryState,
-	variant = 'outline',
-	size = 'sm',
+	variant = "outline",
+	size = "sm",
 	className,
 	showCountdown = true,
 }: RetryButtonProps) {
@@ -201,13 +208,13 @@ export function RetryButton({
 
 	const getButtonText = () => {
 		if (isRetrying && nextRetryIn > 0) {
-			return showCountdown ? `Retry in ${nextRetryIn}s` : 'Retrying...';
+			return showCountdown ? `Retry in ${nextRetryIn}s` : "Retrying...";
 		}
 		if (isRetrying) {
-			return 'Retrying...';
+			return "Retrying...";
 		}
 		if (retryCount === 0) {
-			return 'Retry';
+			return "Retry";
 		}
 		return `Retry (${retryCount})`;
 	};
@@ -239,14 +246,15 @@ export function RetryStatus({
 	className,
 	showProgress = true,
 }: RetryStatusProps) {
-	const { isRetrying, retryCount, nextRetryIn, lastError, canRetry } = retryState;
+	const { isRetrying, retryCount, nextRetryIn, lastError, canRetry } =
+		retryState;
 
 	const getStatusIcon = () => {
 		if (isRetrying) {
 			return <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />;
 		}
 		if (lastError) {
-			if (lastError.message.toLowerCase().includes('network')) {
+			if (lastError.message.toLowerCase().includes("network")) {
 				return <WifiOff className="h-4 w-4 text-orange-500" />;
 			}
 			return <AlertCircle className="h-4 w-4 text-red-500" />;
@@ -259,7 +267,7 @@ export function RetryStatus({
 			return `Retrying in ${nextRetryIn} seconds...`;
 		}
 		if (isRetrying) {
-			return 'Retrying now...';
+			return "Retrying now...";
 		}
 		if (lastError && !canRetry) {
 			return `Failed after ${config.maxRetries} attempts`;
@@ -267,19 +275,21 @@ export function RetryStatus({
 		if (lastError) {
 			return `Attempt ${retryCount}/${config.maxRetries} failed`;
 		}
-		return 'Connected';
+		return "Connected";
 	};
 
 	const getStatusVariant = () => {
-		if (isRetrying) return 'secondary';
-		if (lastError && !canRetry) return 'destructive';
-		if (lastError) return 'outline';
-		return 'default';
+		if (isRetrying) return "secondary";
+		if (lastError && !canRetry) return "destructive";
+		if (lastError) return "outline";
+		return "default";
 	};
 
-	const progressPercentage = showProgress && nextRetryIn > 0 
-		? ((config.baseDelay / 1000 - nextRetryIn) / (config.baseDelay / 1000)) * 100
-		: 0;
+	const progressPercentage =
+		showProgress && nextRetryIn > 0
+			? ((config.baseDelay / 1000 - nextRetryIn) / (config.baseDelay / 1000)) *
+				100
+			: 0;
 
 	return (
 		<div className={cn("space-y-2", className)}>
@@ -289,15 +299,13 @@ export function RetryStatus({
 					{getStatusText()}
 				</Badge>
 			</div>
-			
+
 			{showProgress && isRetrying && nextRetryIn > 0 && (
 				<Progress value={progressPercentage} className="h-1" />
 			)}
-			
+
 			{lastError && (
-				<p className="text-xs text-muted-foreground">
-					{lastError.message}
-				</p>
+				<p className="text-xs text-muted-foreground">{lastError.message}</p>
 			)}
 		</div>
 	);
@@ -320,30 +328,32 @@ export function AutoRetryWrapper({
 	showButton = true,
 	className,
 }: AutoRetryWrapperProps) {
-	const { retryState, retry, config: fullConfig } = useRetryMechanism(retryFn, config);
+	const {
+		retryState,
+		retry,
+		config: fullConfig,
+	} = useRetryMechanism(retryFn, config);
 
 	return (
 		<div className={cn("space-y-3", className)}>
 			{children}
-			
-			{(showStatus || showButton) && (retryState.lastError || retryState.isRetrying) && (
-				<div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
-					{showStatus && (
-						<RetryStatus 
-							retryState={retryState} 
-							config={fullConfig}
-							className="flex-1"
-						/>
-					)}
-					
-					{showButton && (
-						<RetryButton
-							onRetry={retry}
-							retryState={retryState}
-						/>
-					)}
-				</div>
-			)}
+
+			{(showStatus || showButton) &&
+				(retryState.lastError || retryState.isRetrying) && (
+					<div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
+						{showStatus && (
+							<RetryStatus
+								retryState={retryState}
+								config={fullConfig}
+								className="flex-1"
+							/>
+						)}
+
+						{showButton && (
+							<RetryButton onRetry={retry} retryState={retryState} />
+						)}
+					</div>
+				)}
 		</div>
 	);
 }

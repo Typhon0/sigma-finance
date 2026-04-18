@@ -8,7 +8,6 @@ import {
 	type PasswordResetFormData,
 	passwordResetSchema,
 } from "../../lib/validations/auth.schemas";
-import { Button } from "../ui/button";
 import { AuthButton } from "./auth-button";
 import { AuthFormField } from "./auth-form-field";
 import { AuthFormWrapper } from "./auth-form-wrapper";
@@ -22,7 +21,7 @@ export function PasswordResetForm({ onSwitchToLogin }: PasswordResetFormProps) {
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [submittedEmail, setSubmittedEmail] = useState("");
 	const { resetPassword } = useAuth();
-	const { handleAuthResponse } = useAuthErrorHandler();
+	const { _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,

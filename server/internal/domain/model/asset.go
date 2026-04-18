@@ -8,7 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
@@ -18,19 +17,21 @@ type AssetType string
 
 const (
 	AssetTypeStock         AssetType = "STOCK"
+	AssetTypeFund          AssetType = "FUND"
 	AssetTypeCrypto        AssetType = "CRYPTO"
 	AssetTypeBankAccount   AssetType = "BANK_ACCOUNT"
 	AssetTypeRealEstate    AssetType = "REAL_ESTATE"
 	AssetTypeLifeInsurance AssetType = "LIFE_INSURANCE"
 	AssetTypeWatch         AssetType = "WATCH"
+	AssetTypeLoan          AssetType = "LOAN"
 	AssetTypeOtherValuable AssetType = "OTHER_VALUABLE"
 )
 
 // IsValid checks if the asset type is valid
 func (at AssetType) IsValid() bool {
 	switch at {
-	case AssetTypeStock, AssetTypeCrypto, AssetTypeBankAccount,
-		AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeOtherValuable:
+	case AssetTypeStock, AssetTypeFund, AssetTypeCrypto, AssetTypeBankAccount,
+		AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeLoan, AssetTypeOtherValuable:
 		return true
 	}
 	return false
@@ -38,14 +39,15 @@ func (at AssetType) IsValid() bool {
 
 // IsTradeable returns true if the asset type has market data
 func (at AssetType) IsTradeable() bool {
-	return at == AssetTypeStock || at == AssetTypeCrypto
+	return at == AssetTypeStock || at == AssetTypeFund || at == AssetTypeCrypto
 }
 
 // Asset represents a financial asset or valuable item
 type Asset struct {
 	bun.BaseModel `bun:"table:sigma_finance.assets"`
 
-	ID               uuid.UUID       `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	ID               string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	InstrumentID     *string         `bun:"instrument_id,type:uuid"`
 	Type             AssetType       `bun:"type,notnull"`
 	Symbol           *string         `bun:"symbol"` // For tradeable assets
 	Name             string          `bun:"name,notnull"`
@@ -61,8 +63,8 @@ type Asset struct {
 type AssetPrice struct {
 	bun.BaseModel `bun:"table:sigma_finance.asset_prices"`
 
-	ID        int64           `bun:"id,pk"`
-	AssetID   uuid.UUID       `bun:"asset_id,notnull"`
+	ID        int64           `bun:"id,pk,autoincrement"`
+	AssetID   string          `bun:"asset_id,notnull"`
 	Price     decimal.Decimal `bun:"price,type:decimal(20,8),notnull"`
 	Volume    *int64          `bun:"volume"`
 	MarketCap *int64          `bun:"market_cap"`
@@ -76,13 +78,13 @@ type AssetPrice struct {
 // AssetDocument represents a document attached to an asset
 type AssetDocument struct {
 	DocumentID  int       `bun:"document_id"`
-	AssetID     uuid.UUID `bun:"asset_id"`
+	AssetID     string    `bun:"asset_id"`
 	FileName    string    `bun:"file_name"`
 	Description string    `bun:"description"`
 	StorageKey  string    `bun:"storage_key"`
 	ContentType string    `bun:"content_type"`
 	Size        int64     `bun:"size"`
-	UploadedBy  uuid.UUID `bun:"uploaded_by"`
+	UploadedBy  string    `bun:"uploaded_by"`
 	UploadedAt  time.Time `bun:"uploaded_at"`
 }
 
@@ -96,6 +98,14 @@ type StockMetadata struct {
 	MarketCap     *int64   `json:"market_cap,omitempty"`
 	PERatio       *float64 `json:"pe_ratio,omitempty"`
 	DividendYield *float64 `json:"dividend_yield,omitempty"`
+}
+
+// FundMetadata contains fund-specific information
+type FundMetadata struct {
+	Exchange string `json:"exchange"`
+	Sector   string `json:"sector"`
+	Industry string `json:"industry"`
+	FundType string `json:"fund_type"` // mutual_fund, etf, index_fund, hedge_fund
 }
 
 // CryptoMetadata contains cryptocurrency-specific information
@@ -154,6 +164,30 @@ type WatchMetadata struct {
 	Movement        string   `json:"movement"`                   // automatic, manual, quartz
 	CaseSize        *float64 `json:"case_size,omitempty"`        // in mm
 	WaterResistance *int     `json:"water_resistance,omitempty"` // in meters
+}
+
+// LoanMetadata contains loan/debt-specific information
+type LoanMetadata struct {
+	LoanType          string  `json:"loan_type"`                     // amortizing, in_fine, deferred_interest, deferred_total, step
+	LoanAmount        int64   `json:"loan_amount"`                   // in cents (original principal)
+	RemainingBalance  int64   `json:"remaining_balance"`             // in cents
+	InterestRate      float64 `json:"interest_rate"`                 // as percentage (e.g. 3.5)
+	DurationMonths    int     `json:"duration_months"`               // total loan duration
+	MonthlyPayment    int64   `json:"monthly_payment"`               // in cents
+	StartDate         string  `json:"start_date"`                    // ISO date
+	EndDate           string  `json:"end_date,omitempty"`            // ISO date
+	Lender            string  `json:"lender"`                        // bank/lender name
+	LoanNumber        string  `json:"loan_number,omitempty"`         // reference number
+	Currency          string  `json:"currency"`                      // EUR, USD, etc.
+	DownPayment       int64   `json:"down_payment,omitempty"`        // in cents
+	Status            string  `json:"status"`                        // active, paid_off, delinquent
+	OwnershipMode     string  `json:"ownership_mode"`                // personal, company
+	ApplicationFee    int64   `json:"application_fee,omitempty"`     // in cents
+	BrokerFee         int64   `json:"broker_fee,omitempty"`          // in cents
+	InsuranceFee      int64   `json:"insurance_fee,omitempty"`       // monthly, in cents
+	OtherFees         int64   `json:"other_fees,omitempty"`          // in cents
+	EarlyRepaymentFee float64 `json:"early_repayment_fee,omitempty"` // as percentage
+	Description       string  `json:"description,omitempty"`         // free-text notes
 }
 
 // OtherValuableMetadata contains information for other valuable items
@@ -215,6 +249,11 @@ func (a *Asset) validateSymbol(symbol string) error {
 		if matched, _ := regexp.MatchString(`^[A-Z]{1,5}$`, symbol); !matched {
 			return errors.New("stock symbol must be 1-5 uppercase letters")
 		}
+	case AssetTypeFund:
+		// Fund symbols: 1-5 characters, letters only (same as stocks)
+		if matched, _ := regexp.MatchString(`^[A-Z]{1,5}$`, symbol); !matched {
+			return errors.New("fund symbol must be 1-5 uppercase letters")
+		}
 	case AssetTypeCrypto:
 		// Crypto symbols: 2-10 characters, letters and numbers
 		if matched, _ := regexp.MatchString(`^[A-Z0-9]{2,10}$`, symbol); !matched {
@@ -239,6 +278,12 @@ func (a *Asset) validateMetadata() error {
 			return fmt.Errorf("invalid stock metadata: %w", err)
 		}
 		return a.validateStockMetadata(&metadata)
+	case AssetTypeFund:
+		var metadata FundMetadata
+		if err := json.Unmarshal(a.Metadata, &metadata); err != nil {
+			return fmt.Errorf("invalid fund metadata: %w", err)
+		}
+		return a.validateFundMetadata(&metadata)
 	case AssetTypeCrypto:
 		var metadata CryptoMetadata
 		if err := json.Unmarshal(a.Metadata, &metadata); err != nil {
@@ -269,6 +314,12 @@ func (a *Asset) validateMetadata() error {
 			return fmt.Errorf("invalid watch metadata: %w", err)
 		}
 		return a.validateWatchMetadata(&metadata)
+	case AssetTypeLoan:
+		var metadata LoanMetadata
+		if err := json.Unmarshal(a.Metadata, &metadata); err != nil {
+			return fmt.Errorf("invalid loan metadata: %w", err)
+		}
+		return a.validateLoanMetadata(&metadata)
 	case AssetTypeOtherValuable:
 		var metadata OtherValuableMetadata
 		if err := json.Unmarshal(a.Metadata, &metadata); err != nil {
@@ -291,6 +342,19 @@ func (a *Asset) validateStockMetadata(metadata *StockMetadata) error {
 	}
 	if metadata.DividendYield != nil && (*metadata.DividendYield < 0 || *metadata.DividendYield > 100) {
 		return errors.New("dividend yield must be between 0 and 100")
+	}
+	return nil
+}
+
+func (a *Asset) validateFundMetadata(metadata *FundMetadata) error {
+	validFundTypes := map[string]bool{
+		"mutual_fund": true, "etf": true, "index_fund": true, "hedge_fund": true,
+	}
+	if metadata.FundType == "" {
+		return errors.New("fund_type is required for fund metadata")
+	}
+	if !validFundTypes[metadata.FundType] {
+		return errors.New("invalid fund type")
 	}
 	return nil
 }
@@ -414,6 +478,36 @@ func (a *Asset) validateWatchMetadata(metadata *WatchMetadata) error {
 	return nil
 }
 
+func (a *Asset) validateLoanMetadata(metadata *LoanMetadata) error {
+	validLoanTypes := map[string]bool{
+		"amortizing": true, "in_fine": true, "deferred_interest": true, "deferred_total": true, "step": true,
+	}
+	if !validLoanTypes[metadata.LoanType] {
+		return errors.New("invalid loan type")
+	}
+	if metadata.LoanAmount <= 0 {
+		return errors.New("loan amount must be positive")
+	}
+	if metadata.InterestRate < 0 || metadata.InterestRate > 100 {
+		return errors.New("interest rate must be between 0 and 100")
+	}
+	if metadata.DurationMonths <= 0 {
+		return errors.New("duration months must be positive")
+	}
+	if metadata.Lender == "" {
+		return errors.New("lender is required for loan metadata")
+	}
+	validCurrencies := map[string]bool{"EUR": true, "USD": true, "GBP": true, "CHF": true}
+	if metadata.Currency == "" || !validCurrencies[metadata.Currency] {
+		return errors.New("valid currency is required for loan metadata")
+	}
+	validStatuses := map[string]bool{"active": true, "paid_off": true, "delinquent": true}
+	if metadata.Status != "" && !validStatuses[metadata.Status] {
+		return errors.New("invalid loan status")
+	}
+	return nil
+}
+
 func (a *Asset) validateOtherValuableMetadata(metadata *OtherValuableMetadata) error {
 	if metadata.Category == "" {
 		return errors.New("category is required for other valuable metadata")
@@ -431,8 +525,8 @@ func (a *Asset) validateOtherValuableMetadata(metadata *OtherValuableMetadata) e
 }
 
 // Implement Entity interface
-func (a Asset) GetID() int64              { return 0 } // UUID doesn't fit int64
-func (a *Asset) SetID(id int64)           {}           // UUID doesn't fit int64
+func (a Asset) GetID() string             { return a.ID }
+func (a *Asset) SetID(id string)          { a.ID = id }
 func (a Asset) GetCreatedAt() time.Time   { return a.CreatedAt }
 func (a *Asset) SetCreatedAt(t time.Time) { a.CreatedAt = t }
 func (a Asset) GetUpdatedAt() time.Time   { return a.UpdatedAt }

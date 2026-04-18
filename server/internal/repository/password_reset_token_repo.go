@@ -33,22 +33,11 @@ func NewPasswordResetTokenRepository(db bun.IDB) *PasswordResetTokenRepository {
 	}
 }
 
-// GetByStringID retrieves a password reset token by string ID
-func (r *PasswordResetTokenRepository) GetByStringID(ctx context.Context, id string) (*model.PasswordResetToken, error) {
-	token, err := r.FindOneBy(ctx, ByColumn("id", id))
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
-}
+
 
 // GetByToken retrieves a password reset token by its token value
 func (r *PasswordResetTokenRepository) GetByToken(ctx context.Context, token string) (*model.PasswordResetToken, error) {
-	resetToken, err := r.FindOneBy(ctx, ByColumn("token", token))
-	if err != nil {
-		return nil, err
-	}
-	return &resetToken, nil
+	return r.FindOneBy(ctx, ByColumn("token", token))
 }
 
 // GetByUserID retrieves all password reset tokens for a specific user
@@ -61,15 +50,11 @@ func (r *PasswordResetTokenRepository) GetByUserID(ctx context.Context, userID s
 
 // GetValidTokenByUserID retrieves the most recent valid (unused and not expired) token for a user
 func (r *PasswordResetTokenRepository) GetValidTokenByUserID(ctx context.Context, userID string) (*model.PasswordResetToken, error) {
-	token, err := r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+	return r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("user_id = ? AND used = false AND expires_at > ?", userID, time.Now()).
 			Order("created_at DESC").
 			Limit(1)
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
 }
 
 // MarkTokenAsUsed marks a password reset token as used
@@ -145,11 +130,7 @@ func (r *PasswordResetTokenRepository) CreateToken(ctx context.Context, token *m
 
 // GetValidToken retrieves a valid password reset token by its token value
 func (r *PasswordResetTokenRepository) GetValidToken(ctx context.Context, token string) (*model.PasswordResetToken, error) {
-	resetToken, err := r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+	return r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("token = ? AND used = false AND expires_at > ?", token, time.Now())
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &resetToken, nil
 }

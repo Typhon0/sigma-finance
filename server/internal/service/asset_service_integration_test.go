@@ -129,7 +129,7 @@ func TestPositionService_CalculatePositionValue_Integration(t *testing.T) {
 
 	t.Run("calculate value with current price", func(t *testing.T) {
 		position := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
 			TotalCostBasis:      moneyPtr(10000), // $100.00 in cents
@@ -149,7 +149,7 @@ func TestPositionService_CalculatePositionValue_Integration(t *testing.T) {
 
 	t.Run("calculate value without current price", func(t *testing.T) {
 		position := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			Quantity:            decimal.NewFromFloat(50),
 			OwnershipPercentage: decimal.NewFromInt(100),
 			TotalCostBasis:      moneyPtr(5000), // $50.00 in cents
@@ -166,7 +166,7 @@ func TestPositionService_CalculatePositionValue_Integration(t *testing.T) {
 
 	t.Run("calculate value with partial ownership", func(t *testing.T) {
 		position := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromFloat(50), // 50% ownership
 			TotalCostBasis:      moneyPtr(10000),          // $100.00 in cents
@@ -188,52 +188,47 @@ func TestTransactionService_BusinessLogic_Integration(t *testing.T) {
 
 	t.Run("validate buy transaction request", func(t *testing.T) {
 		req := BuyTransactionRequest{
-			UserID:       uuid.New(),
-			PortfolioID:  uuid.New(),
-			AssetID:      uuid.New(),
+			UserID:       uuid.NewString(),
+			PortfolioID:  uuid.NewString(),
+			AssetID:      uuid.NewString(),
 			Quantity:     decimal.NewFromFloat(100),
 			PricePerUnit: decimal.NewFromFloat(50),
 		}
 
 		// Basic validation should pass
-		assert.True(t, req.UserID != uuid.Nil)
-		assert.True(t, req.PortfolioID != uuid.Nil)
-		assert.True(t, req.AssetID != uuid.Nil)
+		assert.True(t, req.UserID != "")
+		assert.True(t, req.PortfolioID != "")
+		assert.True(t, req.AssetID != "")
 		assert.True(t, req.Quantity.IsPositive())
 		assert.True(t, req.PricePerUnit.IsPositive())
 	})
 
 	t.Run("validate sell transaction request", func(t *testing.T) {
 		req := SellTransactionRequest{
-			UserID:       uuid.New(),
-			PositionID:   uuid.New(),
+			UserID:       uuid.NewString(),
+			PositionID:   uuid.NewString(),
 			Quantity:     decimal.NewFromFloat(50),
 			PricePerUnit: decimal.NewFromFloat(75),
 		}
 
 		// Basic validation should pass
-		assert.True(t, req.UserID != uuid.Nil)
-		assert.True(t, req.PositionID != uuid.Nil)
+		assert.True(t, req.UserID != "")
+		assert.True(t, req.PositionID != "")
 		assert.True(t, req.Quantity.IsPositive())
 		assert.True(t, req.PricePerUnit.IsPositive())
 	})
 
 	t.Run("validate cash transaction request", func(t *testing.T) {
 		req := CashTransactionRequest{
-			UserID: uuid.New(),
+			UserID: uuid.NewString(),
 			Type:   model.TransactionTypeDeposit,
 			Amount: model.Money(10000), // $100.00
 		}
 
 		// Basic validation should pass
-		assert.True(t, req.UserID != uuid.Nil)
+		assert.True(t, req.UserID != "")
 		assert.True(t, req.Type.IsValid())
 		assert.True(t, req.Amount > 0)
 	})
 }
 
-// Helper function for tests
-func moneyPtr(amount int64) *model.Money {
-	money := model.Money(amount)
-	return &money
-}

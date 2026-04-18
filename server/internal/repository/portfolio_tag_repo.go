@@ -9,10 +9,10 @@ import (
 
 // IPortfolioTagRepository defines the interface for portfolio_tag data operations.
 type IPortfolioTagRepository interface {
-	Add(ctx context.Context, portfolioID, tagID uint) error
-	Remove(ctx context.Context, portfolioID, tagID uint) error
-	FindByPortfolioID(ctx context.Context, portfolioID uint) ([]*model.PortfolioTag, error)
-	FindByTagID(ctx context.Context, tagID uint) ([]*model.PortfolioTag, error)
+	Add(ctx context.Context, portfolioID, tagID string) error
+	Remove(ctx context.Context, portfolioID, tagID string) error
+	FindByPortfolioID(ctx context.Context, portfolioID string) ([]*model.PortfolioTag, error)
+	FindByTagID(ctx context.Context, tagID string) ([]*model.PortfolioTag, error)
 }
 
 // PortfolioTagRepository implements IPortfolioTagRepository.
@@ -26,17 +26,17 @@ func NewPortfolioTagRepository(db bun.IDB) *PortfolioTagRepository {
 }
 
 // Add creates a new association between a portfolio and a tag.
-func (r *PortfolioTagRepository) Add(ctx context.Context, portfolioID, tagID uint) error {
+func (r *PortfolioTagRepository) Add(ctx context.Context, portfolioID, tagID string) error {
 	portfolioTag := &model.PortfolioTag{
-		PortfolioID: int(portfolioID),
-		TagID:       int(tagID),
+		PortfolioID: portfolioID,
+		TagID:       tagID,
 	}
 	_, err := r.db.NewInsert().Model(portfolioTag).Exec(ctx)
 	return err
 }
 
 // Remove deletes an association between a portfolio and a tag.
-func (r *PortfolioTagRepository) Remove(ctx context.Context, portfolioID, tagID uint) error {
+func (r *PortfolioTagRepository) Remove(ctx context.Context, portfolioID, tagID string) error {
 	_, err := r.db.NewDelete().
 		Model((*model.PortfolioTag)(nil)).
 		Where("portfolio_id = ? AND tag_id = ?", portfolioID, tagID).
@@ -45,7 +45,7 @@ func (r *PortfolioTagRepository) Remove(ctx context.Context, portfolioID, tagID 
 }
 
 // FindByPortfolioID finds all tags associated with a given portfolio.
-func (r *PortfolioTagRepository) FindByPortfolioID(ctx context.Context, portfolioID uint) ([]*model.PortfolioTag, error) {
+func (r *PortfolioTagRepository) FindByPortfolioID(ctx context.Context, portfolioID string) ([]*model.PortfolioTag, error) {
 	var portfolioTags []*model.PortfolioTag
 	err := r.db.NewSelect().
 		Model(&portfolioTags).
@@ -55,7 +55,7 @@ func (r *PortfolioTagRepository) FindByPortfolioID(ctx context.Context, portfoli
 }
 
 // FindByTagID finds all portfolios associated with a given tag.
-func (r *PortfolioTagRepository) FindByTagID(ctx context.Context, tagID uint) ([]*model.PortfolioTag, error) {
+func (r *PortfolioTagRepository) FindByTagID(ctx context.Context, tagID string) ([]*model.PortfolioTag, error) {
 	var portfolioTags []*model.PortfolioTag
 	err := r.db.NewSelect().
 		Model(&portfolioTags).

@@ -7,17 +7,17 @@ import (
 	"sigma_finance/internal/repository"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 // AlertService provides business logic for alert management operations
 type AlertService struct {
-	alertRepo       repository.IAlertRepository
-	assetRepo       repository.IAssetRepository
-	portfolioRepo   repository.IPortfolioRepository
-	priceRepo       repository.IPriceRepository
-	performanceRepo repository.IPerformanceRepository
+	alertRepo           repository.IAlertRepository
+	assetRepo           repository.IAssetRepository
+	portfolioRepo       repository.IPortfolioRepository
+	priceRepo           repository.IPriceRepository
+	performanceRepo     repository.IPerformanceRepository
+	notificationService INotificationService
 }
 
 // NewAlertService creates a new AlertService instance
@@ -27,13 +27,15 @@ func NewAlertService(
 	portfolioRepo repository.IPortfolioRepository,
 	priceRepo repository.IPriceRepository,
 	performanceRepo repository.IPerformanceRepository,
+	notificationService INotificationService,
 ) *AlertService {
 	return &AlertService{
-		alertRepo:       alertRepo,
-		assetRepo:       assetRepo,
-		portfolioRepo:   portfolioRepo,
-		priceRepo:       priceRepo,
-		performanceRepo: performanceRepo,
+		alertRepo:           alertRepo,
+		assetRepo:           assetRepo,
+		portfolioRepo:       portfolioRepo,
+		priceRepo:           priceRepo,
+		performanceRepo:     performanceRepo,
+		notificationService: notificationService,
 	}
 }
 
@@ -41,20 +43,20 @@ func NewAlertService(
 type IAlertService interface {
 	// Alert CRUD operations
 	CreateAlert(ctx context.Context, req CreateAlertRequest) (*repository.UserAlert, error)
-	GetAlert(ctx context.Context, id uuid.UUID) (*repository.UserAlert, error)
-	UpdateAlert(ctx context.Context, id uuid.UUID, req UpdateAlertRequest) (*repository.UserAlert, error)
-	DeleteAlert(ctx context.Context, id uuid.UUID) error
+	GetAlert(ctx context.Context, id string) (*repository.UserAlert, error)
+	UpdateAlert(ctx context.Context, id string, req UpdateAlertRequest) (*repository.UserAlert, error)
+	DeleteAlert(ctx context.Context, id string) error
 
 	// Alert management
-	GetUserAlerts(ctx context.Context, userID uuid.UUID) ([]*repository.UserAlert, error)
-	GetActiveUserAlerts(ctx context.Context, userID uuid.UUID) ([]*repository.UserAlert, error)
-	ActivateAlert(ctx context.Context, alertID uuid.UUID) error
-	DeactivateAlert(ctx context.Context, alertID uuid.UUID) error
+	GetUserAlerts(ctx context.Context, userID string) ([]*repository.UserAlert, error)
+	GetActiveUserAlerts(ctx context.Context, userID string) ([]*repository.UserAlert, error)
+	ActivateAlert(ctx context.Context, alertID string) error
+	DeactivateAlert(ctx context.Context, alertID string) error
 
 	// Alert processing and evaluation
 	ProcessAlerts(ctx context.Context) error
-	EvaluateAssetAlerts(ctx context.Context, assetID uuid.UUID, currentPrice decimal.Decimal) ([]repository.AlertTriggerEvent, error)
-	EvaluatePortfolioAlerts(ctx context.Context, portfolioID uuid.UUID) ([]repository.AlertTriggerEvent, error)
+	EvaluateAssetAlerts(ctx context.Context, assetID string, currentPrice decimal.Decimal) ([]repository.AlertTriggerEvent, error)
+	EvaluatePortfolioAlerts(ctx context.Context, portfolioID string) ([]repository.AlertTriggerEvent, error)
 	TriggerAlert(ctx context.Context, event repository.AlertTriggerEvent) error
 
 	// Alert validation
@@ -62,21 +64,21 @@ type IAlertService interface {
 	ValidateAlertConfiguration(ctx context.Context, req CreateAlertRequest) error
 
 	// Alert history and acknowledgment
-	AcknowledgeAlert(ctx context.Context, alertID uuid.UUID, userID uuid.UUID) error
-	GetAlertHistory(ctx context.Context, userID uuid.UUID, filter AlertHistoryFilter) ([]*AlertHistoryEntry, error)
-	GetTriggeredAlerts(ctx context.Context, userID uuid.UUID, since time.Time) ([]*AlertHistoryEntry, error)
+	AcknowledgeAlert(ctx context.Context, alertID string, userID string) error
+	GetAlertHistory(ctx context.Context, userID string, filter AlertHistoryFilter) ([]*AlertHistoryEntry, error)
+	GetTriggeredAlerts(ctx context.Context, userID string, since time.Time) ([]*AlertHistoryEntry, error)
 
 	// Batch operations
 	CreateBatchAlerts(ctx context.Context, alerts []CreateAlertRequest) ([]*repository.UserAlert, error)
-	DeactivateBatchAlerts(ctx context.Context, alertIDs []uuid.UUID) error
+	DeactivateBatchAlerts(ctx context.Context, alertIDs []string) error
 }
 
 // Request/Response structures
 
 type CreateAlertRequest struct {
-	UserID              uuid.UUID                 `json:"user_id" validate:"required"`
-	AssetID             *uuid.UUID                `json:"asset_id,omitempty"`
-	PortfolioID         *uuid.UUID                `json:"portfolio_id,omitempty"`
+	UserID              string                    `json:"user_id" validate:"required"`
+	AssetID             *string                   `json:"asset_id,omitempty"`
+	PortfolioID         *string                   `json:"portfolio_id,omitempty"`
 	AlertType           repository.AlertType      `json:"alert_type" validate:"required"`
 	ConditionType       repository.ConditionType  `json:"condition_type" validate:"required"`
 	ThresholdValue      *decimal.Decimal          `json:"threshold_value,omitempty"`
@@ -95,8 +97,8 @@ type UpdateAlertRequest struct {
 
 type AlertHistoryFilter struct {
 	AlertType       *repository.AlertType `json:"alert_type,omitempty"`
-	AssetID         *uuid.UUID            `json:"asset_id,omitempty"`
-	PortfolioID     *uuid.UUID            `json:"portfolio_id,omitempty"`
+	AssetID         *string               `json:"asset_id,omitempty"`
+	PortfolioID     *string               `json:"portfolio_id,omitempty"`
 	TriggeredAfter  *time.Time            `json:"triggered_after,omitempty"`
 	TriggeredBefore *time.Time            `json:"triggered_before,omitempty"`
 	Acknowledged    *bool                 `json:"acknowledged,omitempty"`
@@ -105,10 +107,10 @@ type AlertHistoryFilter struct {
 }
 
 type AlertHistoryEntry struct {
-	AlertID          uuid.UUID                `json:"alert_id"`
-	UserID           uuid.UUID                `json:"user_id"`
-	AssetID          *uuid.UUID               `json:"asset_id,omitempty"`
-	PortfolioID      *uuid.UUID               `json:"portfolio_id,omitempty"`
+	AlertID          string                   `json:"alert_id"`
+	UserID           string                   `json:"user_id"`
+	AssetID          *string                  `json:"asset_id,omitempty"`
+	PortfolioID      *string                  `json:"portfolio_id,omitempty"`
 	AlertType        repository.AlertType     `json:"alert_type"`
 	ConditionType    repository.ConditionType `json:"condition_type"`
 	CurrentValue     decimal.Decimal          `json:"current_value"`
@@ -156,7 +158,6 @@ func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) 
 
 	// Create the alert
 	alert := repository.UserAlert{
-		ID:                  uuid.New(),
 		UserID:              req.UserID,
 		AssetID:             req.AssetID,
 		PortfolioID:         req.PortfolioID,
@@ -177,8 +178,8 @@ func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) 
 }
 
 // GetAlert retrieves an alert by ID
-func (s *AlertService) GetAlert(ctx context.Context, id uuid.UUID) (*repository.UserAlert, error) {
-	alert, err := s.alertRepo.GetByUUID(ctx, id)
+func (s *AlertService) GetAlert(ctx context.Context, id string) (*repository.UserAlert, error) {
+	alert, err := s.alertRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get alert: %w", err)
 	}
@@ -186,9 +187,9 @@ func (s *AlertService) GetAlert(ctx context.Context, id uuid.UUID) (*repository.
 }
 
 // UpdateAlert updates an existing alert
-func (s *AlertService) UpdateAlert(ctx context.Context, id uuid.UUID, req UpdateAlertRequest) (*repository.UserAlert, error) {
+func (s *AlertService) UpdateAlert(ctx context.Context, id string, req UpdateAlertRequest) (*repository.UserAlert, error) {
 	// Get existing alert
-	existingAlert, err := s.alertRepo.GetByUUID(ctx, id)
+	existingAlert, err := s.alertRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get existing alert: %w", err)
 	}
@@ -224,8 +225,8 @@ func (s *AlertService) UpdateAlert(ctx context.Context, id uuid.UUID, req Update
 }
 
 // DeleteAlert deletes an alert
-func (s *AlertService) DeleteAlert(ctx context.Context, id uuid.UUID) error {
-	err := s.alertRepo.DeleteByUUID(ctx, id)
+func (s *AlertService) DeleteAlert(ctx context.Context, id string) error {
+	err := s.alertRepo.Delete(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to delete alert: %w", err)
 	}
@@ -233,7 +234,7 @@ func (s *AlertService) DeleteAlert(ctx context.Context, id uuid.UUID) error {
 }
 
 // GetUserAlerts retrieves all alerts for a user
-func (s *AlertService) GetUserAlerts(ctx context.Context, userID uuid.UUID) ([]*repository.UserAlert, error) {
+func (s *AlertService) GetUserAlerts(ctx context.Context, userID string) ([]*repository.UserAlert, error) {
 	alerts, err := s.alertRepo.GetUserAlerts(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user alerts: %w", err)
@@ -249,7 +250,7 @@ func (s *AlertService) GetUserAlerts(ctx context.Context, userID uuid.UUID) ([]*
 }
 
 // GetActiveUserAlerts retrieves all active alerts for a user
-func (s *AlertService) GetActiveUserAlerts(ctx context.Context, userID uuid.UUID) ([]*repository.UserAlert, error) {
+func (s *AlertService) GetActiveUserAlerts(ctx context.Context, userID string) ([]*repository.UserAlert, error) {
 	alerts, err := s.alertRepo.GetActiveUserAlerts(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active user alerts: %w", err)
@@ -265,8 +266,8 @@ func (s *AlertService) GetActiveUserAlerts(ctx context.Context, userID uuid.UUID
 }
 
 // ActivateAlert activates an alert
-func (s *AlertService) ActivateAlert(ctx context.Context, alertID uuid.UUID) error {
-	alert, err := s.alertRepo.GetByUUID(ctx, alertID)
+func (s *AlertService) ActivateAlert(ctx context.Context, alertID string) error {
+	alert, err := s.alertRepo.GetByID(ctx, alertID)
 	if err != nil {
 		return fmt.Errorf("failed to get alert: %w", err)
 	}
@@ -281,7 +282,7 @@ func (s *AlertService) ActivateAlert(ctx context.Context, alertID uuid.UUID) err
 }
 
 // DeactivateAlert deactivates an alert
-func (s *AlertService) DeactivateAlert(ctx context.Context, alertID uuid.UUID) error {
+func (s *AlertService) DeactivateAlert(ctx context.Context, alertID string) error {
 	err := s.alertRepo.DeactivateAlert(ctx, alertID)
 	if err != nil {
 		return fmt.Errorf("failed to deactivate alert: %w", err)
@@ -292,13 +293,13 @@ func (s *AlertService) DeactivateAlert(ctx context.Context, alertID uuid.UUID) e
 // validateAlertConfiguration validates the alert configuration
 func (s *AlertService) validateAlertConfiguration(ctx context.Context, req CreateAlertRequest) error {
 	// Validate user exists (if needed)
-	if req.UserID == uuid.Nil {
+	if req.UserID == "" {
 		return errors.New("user ID is required")
 	}
 
 	// Validate asset exists if asset alert
-	if req.AssetID != nil && *req.AssetID != uuid.Nil {
-		_, err := s.assetRepo.GetByUUID(ctx, *req.AssetID)
+	if req.AssetID != nil && *req.AssetID != "" {
+		_, err := s.assetRepo.GetByID(ctx, *req.AssetID)
 		if err != nil {
 			return fmt.Errorf("asset not found: %w", err)
 		}
@@ -401,7 +402,7 @@ func (s *AlertService) validateAlertTypeConditionCombination(alertType repositor
 }
 
 // AcknowledgeAlert acknowledges an alert
-func (s *AlertService) AcknowledgeAlert(ctx context.Context, alertID uuid.UUID, userID uuid.UUID) error {
+func (s *AlertService) AcknowledgeAlert(ctx context.Context, alertID string, userID string) error {
 	// TODO: Implement proper acknowledgment logic
 	// For now, just mark as acknowledged in the alert history
 	err := s.alertRepo.DeactivateAlert(ctx, alertID)
@@ -412,14 +413,14 @@ func (s *AlertService) AcknowledgeAlert(ctx context.Context, alertID uuid.UUID, 
 }
 
 // GetAlertHistory retrieves alert history for a user
-func (s *AlertService) GetAlertHistory(ctx context.Context, userID uuid.UUID, filter AlertHistoryFilter) ([]*AlertHistoryEntry, error) {
+func (s *AlertService) GetAlertHistory(ctx context.Context, userID string, filter AlertHistoryFilter) ([]*AlertHistoryEntry, error) {
 	// TODO: Implement proper alert history retrieval
 	// For now, return empty slice
 	return []*AlertHistoryEntry{}, nil
 }
 
 // GetTriggeredAlerts retrieves triggered alerts for a user since a specific time
-func (s *AlertService) GetTriggeredAlerts(ctx context.Context, userID uuid.UUID, since time.Time) ([]*AlertHistoryEntry, error) {
+func (s *AlertService) GetTriggeredAlerts(ctx context.Context, userID string, since time.Time) ([]*AlertHistoryEntry, error) {
 	// TODO: Implement proper triggered alerts retrieval
 	// For now, return empty slice
 	return []*AlertHistoryEntry{}, nil
@@ -428,7 +429,7 @@ func (s *AlertService) GetTriggeredAlerts(ctx context.Context, userID uuid.UUID,
 // CreateBatchAlerts creates multiple alerts in a batch
 func (s *AlertService) CreateBatchAlerts(ctx context.Context, alerts []CreateAlertRequest) ([]*repository.UserAlert, error) {
 	result := make([]*repository.UserAlert, 0, len(alerts))
-	
+
 	for _, alertReq := range alerts {
 		alert, err := s.CreateAlert(ctx, alertReq)
 		if err != nil {
@@ -436,12 +437,12 @@ func (s *AlertService) CreateBatchAlerts(ctx context.Context, alerts []CreateAle
 		}
 		result = append(result, alert)
 	}
-	
+
 	return result, nil
 }
 
 // DeactivateBatchAlerts deactivates multiple alerts in a batch
-func (s *AlertService) DeactivateBatchAlerts(ctx context.Context, alertIDs []uuid.UUID) error {
+func (s *AlertService) DeactivateBatchAlerts(ctx context.Context, alertIDs []string) error {
 	for _, alertID := range alertIDs {
 		err := s.DeactivateAlert(ctx, alertID)
 		if err != nil {
@@ -453,26 +454,151 @@ func (s *AlertService) DeactivateBatchAlerts(ctx context.Context, alertIDs []uui
 
 // ProcessAlerts processes all active alerts
 func (s *AlertService) ProcessAlerts(ctx context.Context) error {
-	// TODO: Implement alert processing logic
+	// 1. Get all active alerts
+	alerts, err := s.alertRepo.GetAlertsToProcess(ctx, []repository.AlertType{
+		repository.AlertTypePrice,
+		repository.AlertTypePercentageChange,
+		repository.AlertTypePortfolioValue,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to get alerts to process: %w", err)
+	}
+
+	for _, alert := range alerts {
+		// Group by alert type to determine how to process
+		if alert.AssetID != nil && (alert.AlertType == repository.AlertTypePrice || alert.AlertType == repository.AlertTypePercentageChange) {
+			// Get current price of asset
+			priceInfo, err := s.priceRepo.GetLatestPrice(ctx, *alert.AssetID)
+			if err != nil {
+				// Log but continue to next alert
+				fmt.Printf("Warning: failed to get latest price for asset %s: %v\n", *alert.AssetID, err)
+				continue
+			}
+
+			var events []repository.AlertTriggerEvent
+			var evalErr error
+
+			if alert.AlertType == repository.AlertTypePrice {
+				events, evalErr = s.alertRepo.EvaluatePriceAlerts(ctx, *alert.AssetID, priceInfo.Price)
+			} else if alert.AlertType == repository.AlertTypePercentageChange {
+				// Assuming we have some daily change or similar calculation
+				// For now, this requires historical data comparison which might be handled differently,
+				// but we'll try to get it if the method exists. We pass a 0 percentage change for now to prevent panic
+				// until real percentage calculation logic is present.
+				events, evalErr = s.alertRepo.EvaluatePercentageChangeAlerts(ctx, *alert.AssetID, decimal.Zero)
+			}
+
+			if evalErr != nil {
+				fmt.Printf("Error evaluating alert %s: %v\n", alert.ID, evalErr)
+				continue
+			}
+
+			for _, event := range events {
+				// Only trigger if this specific alert matched
+				if event.AlertID == alert.ID {
+					_ = s.TriggerAlert(ctx, event)
+				}
+			}
+
+		} else if alert.PortfolioID != nil && alert.AlertType == repository.AlertTypePortfolioValue {
+			// Calculate current portfolio value using performance service methods or similar
+			// Here we assume there's a quick way to sum the portfolio value
+			// Using placeholder value zero for now until full portfolio calc is integrated
+			var events []repository.AlertTriggerEvent
+			var evalErr error
+
+			events, evalErr = s.alertRepo.EvaluatePortfolioValueAlerts(ctx, *alert.PortfolioID, decimal.Zero)
+			if evalErr != nil {
+				fmt.Printf("Error evaluating portfolio alert %s: %v\n", alert.ID, evalErr)
+				continue
+			}
+
+			for _, event := range events {
+				if event.AlertID == alert.ID {
+					_ = s.TriggerAlert(ctx, event)
+				}
+			}
+		}
+	}
+
 	return nil
 }
 
 // EvaluateAssetAlerts evaluates alerts for a specific asset
-func (s *AlertService) EvaluateAssetAlerts(ctx context.Context, assetID uuid.UUID, currentPrice decimal.Decimal) ([]repository.AlertTriggerEvent, error) {
-	// TODO: Implement asset alert evaluation
-	return []repository.AlertTriggerEvent{}, nil
+func (s *AlertService) EvaluateAssetAlerts(ctx context.Context, assetID string, currentPrice decimal.Decimal) ([]repository.AlertTriggerEvent, error) {
+	return s.alertRepo.EvaluatePriceAlerts(ctx, assetID, currentPrice)
 }
 
 // EvaluatePortfolioAlerts evaluates alerts for a specific portfolio
-func (s *AlertService) EvaluatePortfolioAlerts(ctx context.Context, portfolioID uuid.UUID) ([]repository.AlertTriggerEvent, error) {
-	// TODO: Implement portfolio alert evaluation
-	return []repository.AlertTriggerEvent{}, nil
+func (s *AlertService) EvaluatePortfolioAlerts(ctx context.Context, portfolioID string) ([]repository.AlertTriggerEvent, error) {
+	// TODO: Replace with real portfolio value calculation when accessible here
+	currentValue := decimal.Zero
+	return s.alertRepo.EvaluatePortfolioValueAlerts(ctx, portfolioID, currentValue)
 }
 
 // TriggerAlert triggers an alert event
 func (s *AlertService) TriggerAlert(ctx context.Context, event repository.AlertTriggerEvent) error {
-	// TODO: Implement alert triggering logic
+	// 1. Get user's notification preferences to determine delivery methods
+	prefs, err := s.notificationService.GetUserNotificationPreferences(ctx, event.UserID)
+	if err != nil {
+		prefs = nil // Use default methods if preferences unavailable
+	}
+
+	// 2. Determine which notification methods to use
+	methods := s.getNotificationMethodsForAlert(event.AlertType, prefs)
+
+	// 3. Send notifications through the notification service
+	if err := s.notificationService.SendAlertNotification(ctx, event, methods); err != nil {
+		fmt.Printf("Warning: failed to send notifications for alert %s: %v\n", event.AlertID, err)
+	}
+
+	// 4. Log alert history entry
+	historyEntry := AlertHistoryEntry{
+		AlertID:          event.AlertID,
+		UserID:           event.UserID,
+		AssetID:          event.AssetID,
+		PortfolioID:      event.PortfolioID,
+		AlertType:        event.AlertType,
+		ConditionType:    event.ConditionType,
+		CurrentValue:     event.CurrentValue,
+		ThresholdValue:   event.ThresholdValue,
+		Message:          event.Message,
+		TriggeredAt:      event.TriggeredAt,
+		NotificationSent: true,
+	}
+
+	// 5. Log it out (since History repo isn't fully implemented per CODEBASE_ISSUES.md)
+	fmt.Printf("ALERT TRIGGERED: [%s] %s\n", historyEntry.AlertType, historyEntry.Message)
+
+	// 6. Update the alert's last triggered timestamp
+	err = s.alertRepo.UpdateLastTriggered(ctx, event.AlertID, event.TriggeredAt)
+	if err != nil {
+		fmt.Printf("Warning: failed to update last triggered time for alert %s: %v\n", event.AlertID, err)
+	}
+
 	return nil
+}
+
+func (s *AlertService) getNotificationMethodsForAlert(alertType repository.AlertType, prefs *NotificationPreferences) []AlertNotificationMethod {
+	if prefs != nil && prefs.AlertTypePreferences != nil {
+		if methods, ok := prefs.AlertTypePreferences[alertType]; ok && len(methods) > 0 {
+			return methods
+		}
+	}
+
+	// Default methods by alert type
+	switch alertType {
+	case repository.AlertTypePrice:
+		return []AlertNotificationMethod{NotificationMethodEmail, NotificationMethodInApp}
+	case repository.AlertTypePercentageChange:
+		return []AlertNotificationMethod{NotificationMethodInApp, NotificationMethodPush}
+	case repository.AlertTypePortfolioValue:
+		return []AlertNotificationMethod{NotificationMethodEmail}
+	case repository.AlertTypeAllocation:
+		return []AlertNotificationMethod{NotificationMethodEmail}
+	default:
+		return []AlertNotificationMethod{NotificationMethodEmail, NotificationMethodInApp}
+	}
 }
 
 // ValidateAlertThreshold validates alert threshold values

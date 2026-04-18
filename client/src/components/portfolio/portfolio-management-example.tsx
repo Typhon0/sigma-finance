@@ -142,7 +142,7 @@ function PortfolioCreationForm() {
 			setName("");
 			setDescription("");
 			setShowForm(false);
-		} catch (error) {
+		} catch (_error) {
 			// Error is handled by the hook
 		}
 	};
@@ -264,7 +264,7 @@ function PortfolioCard({
 				description: editDescription.trim() || null,
 			});
 			setIsEditing(false);
-		} catch (error) {
+		} catch (_error) {
 			// Error is handled by the hook
 		}
 	};
@@ -277,7 +277,7 @@ function PortfolioCard({
 		) {
 			try {
 				await deletePortfolio();
-			} catch (error) {
+			} catch (_error) {
 				// Error is handled by the hook
 			}
 		}
@@ -291,7 +291,7 @@ function PortfolioCard({
 		if (newName) {
 			try {
 				await duplicatePortfolio(newName, { copyAssets: true });
-			} catch (error) {
+			} catch (_error) {
 				// Error is handled by the hook
 			}
 		}

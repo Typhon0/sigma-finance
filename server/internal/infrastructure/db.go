@@ -3,7 +3,6 @@ package infrastructure
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -11,14 +10,47 @@ import (
 	"github.com/uptrace/bun/dialect/pgdialect"
 )
 
+type DBConfig struct {
+	Host     string
+	Port     string
+	User     string
+	Password string
+	DBName   string
+	SSLMode  string
+}
+
 func NewDB() (*bun.DB, error) {
-	host := getEnv("DB_HOST", "localhost")
-	port := getEnv("DB_PORT", "5432")
-	user := getEnv("DB_USER", "postgres")
-	password := getEnv("DB_PASSWORD", "postgres")
-	dbname := getEnv("DB_NAME", "sigma_finance")
-	log.Println(host,port,user,password,dbname)
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", user, password, host, port, dbname)
+	return NewDBWithConfig(DBConfig{
+		Host:     getEnv("DB_HOST", "localhost"),
+		Port:     getEnv("DB_PORT", "5432"),
+		User:     getEnv("DB_USER", "postgres"),
+		Password: getEnv("DB_PASSWORD", "postgres"),
+		DBName:   getEnv("DB_NAME", "sigma_finance"),
+		SSLMode:  getEnv("DB_SSLMODE", "disable"),
+	})
+}
+
+func NewDBWithConfig(cfg DBConfig) (*bun.DB, error) {
+	if cfg.Host == "" {
+		cfg.Host = "localhost"
+	}
+	if cfg.Port == "" {
+		cfg.Port = "5432"
+	}
+	if cfg.User == "" {
+		cfg.User = "postgres"
+	}
+	if cfg.Password == "" {
+		cfg.Password = "postgres"
+	}
+	if cfg.DBName == "" {
+		cfg.DBName = "sigma_finance"
+	}
+	if cfg.SSLMode == "" {
+		cfg.SSLMode = "disable"
+	}
+
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", cfg.User, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode)
 
 	sqldb, err := sql.Open("postgres", dsn)
 	if err != nil {

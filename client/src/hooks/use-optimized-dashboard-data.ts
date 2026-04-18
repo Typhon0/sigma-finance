@@ -11,16 +11,9 @@ import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 
 // Hook for critical dashboard data (loads first)
 export const useCriticalDashboardData = (userID: string) => {
-	console.log(
-		"useCriticalDashboardData called with userID:",
-		userID,
-		"skip:",
-		!userID || userID.trim() === "",
-	);
-
 	return useQuery(GET_DASHBOARD_CRITICAL, {
 		variables: { userID },
-		fetchPolicy: "cache-and-network",
+		fetchPolicy: "cache-first",
 		errorPolicy: "all",
 		notifyOnNetworkStatusChange: true,
 		// Skip if no userID or userID is empty string

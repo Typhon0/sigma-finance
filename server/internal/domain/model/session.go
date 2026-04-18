@@ -23,6 +23,14 @@ type Session struct {
 	User *User `bun:"rel:belongs-to,join:user_id=id"`
 }
 
+// Implement Entity interface
+func (s Session) GetID() string             { return s.ID }
+func (s *Session) SetID(id string)          { s.ID = id }
+func (s Session) GetCreatedAt() time.Time   { return s.CreatedAt }
+func (s *Session) SetCreatedAt(t time.Time) { s.CreatedAt = t }
+func (s Session) GetUpdatedAt() time.Time   { return s.CreatedAt } // Sessions usually don't have separate UpdatedAt, using CreatedAt
+func (s *Session) SetUpdatedAt(t time.Time) {}
+
 // IsExpired checks if the session has expired
 func (s *Session) IsExpired() bool {
 	return time.Now().After(s.ExpiresAt)

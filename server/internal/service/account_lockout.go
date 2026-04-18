@@ -71,7 +71,7 @@ func NewAccountLockoutService(
 
 // CheckAccountLockout checks if an account is locked
 func (a *accountLockoutService) CheckAccountLockout(ctx context.Context, userID string) error {
-	user, err := a.userRepo.GetByStringID(ctx, userID)
+	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -103,12 +103,12 @@ func (a *accountLockoutService) HandleFailedLogin(ctx context.Context, userID, e
 	}
 
 	// Increment failed login count in database
-	if err := a.userRepo.IncrementFailedLoginCount(ctx, userID); err != nil {
+	if err := a.userRepo.IncrementFailedLoginCount(ctx, userID, a.config.MaxFailedAttempts); err != nil {
 		return fmt.Errorf("failed to increment failed login count: %w", err)
 	}
 
 	// Get updated user to check if account was locked
-	user, err := a.userRepo.GetByStringID(ctx, userID)
+	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get updated user: %w", err)
 	}
@@ -181,7 +181,7 @@ func (a *accountLockoutService) HandleSuccessfulLogin(ctx context.Context, userI
 // UnlockAccount manually unlocks an account
 func (a *accountLockoutService) UnlockAccount(ctx context.Context, userID, adminUserID string) error {
 	// Get user to check if it exists and is locked
-	user, err := a.userRepo.GetByStringID(ctx, userID)
+	user, err := a.userRepo.GetByID(ctx, userID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}

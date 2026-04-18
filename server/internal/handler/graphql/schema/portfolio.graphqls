@@ -16,10 +16,13 @@ type Portfolio {
 
 type PortfolioAsset {
     asset: Asset!
+    instrumentID: ID
     quantity: Float!
     averagePurchasePrice: Float
     currentValue: Float
     ownershipPct: Float
+    dayChange: Float
+    dayChangePercent: Float
 }
 
 type PortfolioAnalytics {

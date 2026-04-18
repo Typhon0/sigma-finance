@@ -33,22 +33,11 @@ func NewEmailVerificationTokenRepository(db bun.IDB) *EmailVerificationTokenRepo
 	}
 }
 
-// GetByStringID retrieves an email verification token by string ID
-func (r *EmailVerificationTokenRepository) GetByStringID(ctx context.Context, id string) (*model.EmailVerificationToken, error) {
-	token, err := r.FindOneBy(ctx, ByColumn("id", id))
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
-}
+
 
 // GetByToken retrieves an email verification token by its token value
 func (r *EmailVerificationTokenRepository) GetByToken(ctx context.Context, token string) (*model.EmailVerificationToken, error) {
-	verificationToken, err := r.FindOneBy(ctx, ByColumn("token", token))
-	if err != nil {
-		return nil, err
-	}
-	return &verificationToken, nil
+	return r.FindOneBy(ctx, ByColumn("token", token))
 }
 
 // GetByUserID retrieves all email verification tokens for a specific user
@@ -61,15 +50,11 @@ func (r *EmailVerificationTokenRepository) GetByUserID(ctx context.Context, user
 
 // GetValidTokenByUserID retrieves the most recent valid (unused and not expired) token for a user
 func (r *EmailVerificationTokenRepository) GetValidTokenByUserID(ctx context.Context, userID string) (*model.EmailVerificationToken, error) {
-	token, err := r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+	return r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("user_id = ? AND used = false AND expires_at > ?", userID, time.Now()).
 			Order("created_at DESC").
 			Limit(1)
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &token, nil
 }
 
 // MarkTokenAsUsed marks an email verification token as used
@@ -145,11 +130,7 @@ func (r *EmailVerificationTokenRepository) CreateToken(ctx context.Context, toke
 
 // GetValidToken retrieves a valid email verification token by its token value
 func (r *EmailVerificationTokenRepository) GetValidToken(ctx context.Context, token string) (*model.EmailVerificationToken, error) {
-	verificationToken, err := r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+	return r.FindOneBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("token = ? AND used = false AND expires_at > ?", token, time.Now())
 	})
-	if err != nil {
-		return nil, err
-	}
-	return &verificationToken, nil
 }

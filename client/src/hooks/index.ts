@@ -15,14 +15,13 @@ export {
 	usePortfolioSummary,
 	useRecentTransactions,
 } from "./use-dashboard-data";
-
+export * from "./use-error-handling";
 // Export retry and error handling hooks
 export * from "./use-retry-mechanism";
 export {
-	useRetryMechanism,
-	useApolloRetry,
-	usePortfolioRetry,
 	type RetryOptions,
 	type RetryState,
+	useApolloRetry,
+	usePortfolioRetry,
+	useRetryMechanism,
 } from "./use-retry-mechanism";
-export * from "./use-error-handling";

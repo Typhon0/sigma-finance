@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
@@ -31,10 +30,10 @@ const (
 
 // UserAlert represents a user-configured alert
 type UserAlert struct {
-	ID                  uuid.UUID        `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID              uuid.UUID        `bun:"user_id,notnull"`
-	AssetID             *uuid.UUID       `bun:"asset_id"`
-	PortfolioID         *uuid.UUID       `bun:"portfolio_id"`
+	ID                  string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID              string           `bun:"user_id,notnull"`
+	AssetID             *string          `bun:"asset_id"`
+	PortfolioID         *string          `bun:"portfolio_id"`
 	AlertType           AlertType        `bun:"alert_type,notnull"`
 	ConditionType       ConditionType    `bun:"condition_type,notnull"`
 	ThresholdValue      *decimal.Decimal `bun:"threshold_value,type:decimal(20,8)"`
@@ -46,9 +45,9 @@ type UserAlert struct {
 
 // AlertFilter defines filter criteria for alert queries
 type AlertFilter struct {
-	UserID       *uuid.UUID `json:"user_id,omitempty"`
-	AssetID      *uuid.UUID `json:"asset_id,omitempty"`
-	PortfolioID  *uuid.UUID `json:"portfolio_id,omitempty"`
+	UserID       *string    `json:"user_id,omitempty"`
+	AssetID      *string    `json:"asset_id,omitempty"`
+	PortfolioID  *string    `json:"portfolio_id,omitempty"`
 	AlertType    *AlertType `json:"alert_type,omitempty"`
 	IsActive     *bool      `json:"is_active,omitempty"`
 	CreatedAfter *time.Time `json:"created_after,omitempty"`
@@ -58,10 +57,10 @@ type AlertFilter struct {
 
 // AlertTriggerEvent represents an alert trigger event
 type AlertTriggerEvent struct {
-	AlertID        uuid.UUID       `json:"alert_id"`
-	UserID         uuid.UUID       `json:"user_id"`
-	AssetID        *uuid.UUID      `json:"asset_id,omitempty"`
-	PortfolioID    *uuid.UUID      `json:"portfolio_id,omitempty"`
+	AlertID        string          `json:"alert_id"`
+	UserID         string          `json:"user_id"`
+	AssetID        *string         `json:"asset_id,omitempty"`
+	PortfolioID    *string         `json:"portfolio_id,omitempty"`
 	AlertType      AlertType       `json:"alert_type"`
 	ConditionType  ConditionType   `json:"condition_type"`
 	CurrentValue   decimal.Decimal `json:"current_value"`
@@ -75,33 +74,29 @@ type IAlertRepository interface {
 	IRepository[UserAlert]
 
 	// Enhanced CRUD operations
-	GetByUUID(ctx context.Context, id uuid.UUID) (*UserAlert, error)
 	FindWithFilters(ctx context.Context, filter AlertFilter) ([]UserAlert, error)
 	CountWithFilters(ctx context.Context, filter AlertFilter) (int, error)
 
 	// User-specific queries
-	GetUserAlerts(ctx context.Context, userID uuid.UUID) ([]UserAlert, error)
-	GetActiveUserAlerts(ctx context.Context, userID uuid.UUID) ([]UserAlert, error)
-	GetAssetAlerts(ctx context.Context, assetID uuid.UUID) ([]UserAlert, error)
-	GetPortfolioAlerts(ctx context.Context, portfolioID uuid.UUID) ([]UserAlert, error)
+	GetUserAlerts(ctx context.Context, userID string) ([]UserAlert, error)
+	GetActiveUserAlerts(ctx context.Context, userID string) ([]UserAlert, error)
+	GetAssetAlerts(ctx context.Context, assetID string) ([]UserAlert, error)
+	GetPortfolioAlerts(ctx context.Context, portfolioID string) ([]UserAlert, error)
 
 	// Alert processing
 	GetAlertsToProcess(ctx context.Context, alertTypes []AlertType) ([]UserAlert, error)
-	UpdateLastTriggered(ctx context.Context, alertID uuid.UUID, triggeredAt time.Time) error
-	DeactivateAlert(ctx context.Context, alertID uuid.UUID) error
+	UpdateLastTriggered(ctx context.Context, alertID string, triggeredAt time.Time) error
+	DeactivateAlert(ctx context.Context, alertID string) error
 
 	// Alert evaluation
-	EvaluatePriceAlerts(ctx context.Context, assetID uuid.UUID, currentPrice decimal.Decimal) ([]AlertTriggerEvent, error)
-	EvaluatePercentageChangeAlerts(ctx context.Context, assetID uuid.UUID, changePercent decimal.Decimal) ([]AlertTriggerEvent, error)
-	EvaluatePortfolioValueAlerts(ctx context.Context, portfolioID uuid.UUID, currentValue decimal.Decimal) ([]AlertTriggerEvent, error)
+	EvaluatePriceAlerts(ctx context.Context, assetID string, currentPrice decimal.Decimal) ([]AlertTriggerEvent, error)
+	EvaluatePercentageChangeAlerts(ctx context.Context, assetID string, changePercent decimal.Decimal) ([]AlertTriggerEvent, error)
+	EvaluatePortfolioValueAlerts(ctx context.Context, portfolioID string, currentValue decimal.Decimal) ([]AlertTriggerEvent, error)
 
 	// Batch operations
 	CreateBatch(ctx context.Context, alerts []UserAlert) error
 	UpdateBatch(ctx context.Context, alerts []UserAlert) error
-	DeactivateBatch(ctx context.Context, alertIDs []uuid.UUID) error
-	
-	// UUID-based operations
-	DeleteByUUID(ctx context.Context, id uuid.UUID) error
+	DeactivateBatch(ctx context.Context, alertIDs []string) error
 }
 
 // AlertRepository is the concrete implementation of IAlertRepository
@@ -114,19 +109,6 @@ func NewAlertRepository(db bun.IDB) *AlertRepository {
 	return &AlertRepository{
 		Repository: NewRepository[UserAlert](db),
 	}
-}
-
-// GetByUUID retrieves an alert by its UUID
-func (r *AlertRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*UserAlert, error) {
-	var alert UserAlert
-	err := r.db.NewSelect().
-		Model(&alert).
-		Where("id = ?", id).
-		Scan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &alert, nil
 }
 
 // FindWithFilters retrieves alerts with multiple filter criteria
@@ -189,12 +171,12 @@ func (r *AlertRepository) applyAlertFilters(query *bun.SelectQuery, filter Alert
 }
 
 // GetUserAlerts retrieves all alerts for a user
-func (r *AlertRepository) GetUserAlerts(ctx context.Context, userID uuid.UUID) ([]UserAlert, error) {
+func (r *AlertRepository) GetUserAlerts(ctx context.Context, userID string) ([]UserAlert, error) {
 	return r.FindWithFilters(ctx, AlertFilter{UserID: &userID})
 }
 
 // GetActiveUserAlerts retrieves all active alerts for a user
-func (r *AlertRepository) GetActiveUserAlerts(ctx context.Context, userID uuid.UUID) ([]UserAlert, error) {
+func (r *AlertRepository) GetActiveUserAlerts(ctx context.Context, userID string) ([]UserAlert, error) {
 	isActive := true
 	return r.FindWithFilters(ctx, AlertFilter{
 		UserID:   &userID,
@@ -203,7 +185,7 @@ func (r *AlertRepository) GetActiveUserAlerts(ctx context.Context, userID uuid.U
 }
 
 // GetAssetAlerts retrieves all alerts for a specific asset
-func (r *AlertRepository) GetAssetAlerts(ctx context.Context, assetID uuid.UUID) ([]UserAlert, error) {
+func (r *AlertRepository) GetAssetAlerts(ctx context.Context, assetID string) ([]UserAlert, error) {
 	isActive := true
 	return r.FindWithFilters(ctx, AlertFilter{
 		AssetID:  &assetID,
@@ -212,7 +194,7 @@ func (r *AlertRepository) GetAssetAlerts(ctx context.Context, assetID uuid.UUID)
 }
 
 // GetPortfolioAlerts retrieves all alerts for a specific portfolio
-func (r *AlertRepository) GetPortfolioAlerts(ctx context.Context, portfolioID uuid.UUID) ([]UserAlert, error) {
+func (r *AlertRepository) GetPortfolioAlerts(ctx context.Context, portfolioID string) ([]UserAlert, error) {
 	isActive := true
 	return r.FindWithFilters(ctx, AlertFilter{
 		PortfolioID: &portfolioID,
@@ -238,7 +220,7 @@ func (r *AlertRepository) GetAlertsToProcess(ctx context.Context, alertTypes []A
 }
 
 // UpdateLastTriggered updates the last triggered timestamp for an alert
-func (r *AlertRepository) UpdateLastTriggered(ctx context.Context, alertID uuid.UUID, triggeredAt time.Time) error {
+func (r *AlertRepository) UpdateLastTriggered(ctx context.Context, alertID string, triggeredAt time.Time) error {
 	_, err := r.db.NewUpdate().
 		Model((*UserAlert)(nil)).
 		Set("last_triggered = ?", triggeredAt).
@@ -249,7 +231,7 @@ func (r *AlertRepository) UpdateLastTriggered(ctx context.Context, alertID uuid.
 }
 
 // DeactivateAlert deactivates an alert
-func (r *AlertRepository) DeactivateAlert(ctx context.Context, alertID uuid.UUID) error {
+func (r *AlertRepository) DeactivateAlert(ctx context.Context, alertID string) error {
 	_, err := r.db.NewUpdate().
 		Model((*UserAlert)(nil)).
 		Set("is_active = false").
@@ -260,7 +242,7 @@ func (r *AlertRepository) DeactivateAlert(ctx context.Context, alertID uuid.UUID
 }
 
 // EvaluatePriceAlerts evaluates price-based alerts for an asset
-func (r *AlertRepository) EvaluatePriceAlerts(ctx context.Context, assetID uuid.UUID, currentPrice decimal.Decimal) ([]AlertTriggerEvent, error) {
+func (r *AlertRepository) EvaluatePriceAlerts(ctx context.Context, assetID string, currentPrice decimal.Decimal) ([]AlertTriggerEvent, error) {
 	priceAlertType := AlertTypePrice
 	alerts, err := r.FindWithFilters(ctx, AlertFilter{
 		AssetID:   &assetID,
@@ -309,7 +291,7 @@ func (r *AlertRepository) EvaluatePriceAlerts(ctx context.Context, assetID uuid.
 }
 
 // EvaluatePercentageChangeAlerts evaluates percentage change alerts for an asset
-func (r *AlertRepository) EvaluatePercentageChangeAlerts(ctx context.Context, assetID uuid.UUID, changePercent decimal.Decimal) ([]AlertTriggerEvent, error) {
+func (r *AlertRepository) EvaluatePercentageChangeAlerts(ctx context.Context, assetID string, changePercent decimal.Decimal) ([]AlertTriggerEvent, error) {
 	percentageAlertType := AlertTypePercentageChange
 	alerts, err := r.FindWithFilters(ctx, AlertFilter{
 		AssetID:   &assetID,
@@ -358,7 +340,7 @@ func (r *AlertRepository) EvaluatePercentageChangeAlerts(ctx context.Context, as
 }
 
 // EvaluatePortfolioValueAlerts evaluates portfolio value alerts
-func (r *AlertRepository) EvaluatePortfolioValueAlerts(ctx context.Context, portfolioID uuid.UUID, currentValue decimal.Decimal) ([]AlertTriggerEvent, error) {
+func (r *AlertRepository) EvaluatePortfolioValueAlerts(ctx context.Context, portfolioID string, currentValue decimal.Decimal) ([]AlertTriggerEvent, error) {
 	portfolioAlertType := AlertTypePortfolioValue
 	alerts, err := r.FindWithFilters(ctx, AlertFilter{
 		PortfolioID: &portfolioID,
@@ -446,7 +428,7 @@ func (r *AlertRepository) UpdateBatch(ctx context.Context, alerts []UserAlert) e
 }
 
 // DeactivateBatch deactivates multiple alerts in a single transaction
-func (r *AlertRepository) DeactivateBatch(ctx context.Context, alertIDs []uuid.UUID) error {
+func (r *AlertRepository) DeactivateBatch(ctx context.Context, alertIDs []string) error {
 	if len(alertIDs) == 0 {
 		return nil
 	}
@@ -458,26 +440,4 @@ func (r *AlertRepository) DeactivateBatch(ctx context.Context, alertIDs []uuid.U
 		Exec(ctx)
 
 	return err
-}
-
-// DeleteByUUID deletes an alert by its UUID
-func (r *AlertRepository) DeleteByUUID(ctx context.Context, id uuid.UUID) error {
-	res, err := r.db.NewDelete().
-		Model((*UserAlert)(nil)).
-		Where("id = ?", id).
-		Exec(ctx)
-	if err != nil {
-		return err
-	}
-
-	rowsAffected, err := res.RowsAffected()
-	if err != nil {
-		return err
-	}
-
-	if rowsAffected == 0 {
-		return ErrNotFound
-	}
-
-	return nil
 }

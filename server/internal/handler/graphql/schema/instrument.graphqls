@@ -1,0 +1,203 @@
+enum InstrumentAssetType {
+  STOCK
+  ETF
+  FUND
+  INDEX
+  CURRENCY
+  CRYPTO
+  MONEY_MARKET
+}
+
+type InstrumentAlias {
+  id: ID!
+  instrumentID: ID!
+  aliasText: String!
+  normalizedAliasText: String!
+  aliasType: String!
+  createdAt: Time!
+}
+
+type InstrumentSyncState {
+  instrumentID: ID!
+  lastSyncAttempt: Time
+  lastSyncSuccess: Time
+  syncStatus: String!
+  lastSyncSource: String
+  syncErrorMessage: String
+  stale: Boolean!
+  verificationConfidence: Int!
+  createdAt: Time!
+  updatedAt: Time!
+}
+
+type Instrument {
+  id: ID!
+  symbol: String!
+  normalizedSymbol: String!
+  name: String!
+  normalizedName: String!
+  exchange: String!
+  exchangeCode: String
+  country: String
+  currency: String
+  summary: String
+  sector: String
+  industryGroup: String
+  industry: String
+  categoryGroup: String
+  category: String
+  family: String
+  website: String
+  marketCap: String
+  state: String
+  city: String
+  zipcode: String
+  baseCurrency: String
+  quoteCurrency: String
+  underlyingSymbol: String
+  assetType: InstrumentAssetType!
+  status: String!
+  providerSource: String!
+  providerExternalId: String
+  isin: String
+  figi: String
+  cusip: String
+  firstSeenAt: Time!
+  lastVerifiedAt: Time
+  lastUsedAt: Time
+  createdAt: Time!
+  updatedAt: Time!
+  aliases: [InstrumentAlias!]!
+  syncState: InstrumentSyncState
+}
+
+type InstrumentSearchResult {
+  instrument: Instrument!
+  score: Float!
+  matchedAlias: String
+}
+
+type InstrumentQueryMetadata {
+  query: String!
+  limit: Int!
+  offset: Int!
+  localCount: Int!
+  topScore: Float!
+  weakResults: Boolean!
+  searchOnlineHint: Boolean!
+}
+
+type InstrumentSearchPayload {
+  localResults: [InstrumentSearchResult!]!
+  canSearchOnline: Boolean!
+  queryMetadata: InstrumentQueryMetadata!
+  onlineResults: [OnlineInstrumentResult!]
+}
+
+type OnlineInstrumentSearchPayload {
+  onlineResults: [OnlineInstrumentResult!]!
+  queryMetadata: InstrumentQueryMetadata!
+  providerUsed: String!
+}
+
+type OnlineInstrumentResult {
+  symbol: String!
+  name: String!
+  exchange: String!
+  exchangeCode: String
+  country: String
+  currency: String
+  assetType: InstrumentAssetType!
+  providerSource: String!
+  providerExternalId: String
+  isin: String
+  figi: String
+  cusip: String
+}
+
+type ManualInstrumentPayload {
+  items: [Instrument!]!
+  hasMore: Boolean!
+  limit: Int!
+  offset: Int!
+}
+
+input InstrumentSearchInput {
+  query: String!
+  assetTypes: [InstrumentAssetType!]
+  exchange: String
+  limit: Int
+  offset: Int
+}
+
+input ManualInstrumentFilterInput {
+  query: String
+  assetTypes: [InstrumentAssetType!]
+  includeArchived: Boolean
+}
+
+input PersistDiscoveredInstrumentInput {
+  instrument: OnlineInstrumentInput!
+}
+
+input OnlineInstrumentInput {
+  symbol: String!
+  name: String!
+  exchange: String!
+  exchangeCode: String
+  country: String
+  currency: String
+  assetType: InstrumentAssetType!
+  providerSource: String!
+  providerExternalId: String
+  isin: String
+  figi: String
+  cusip: String
+}
+
+input AddInstrumentHoldingInput {
+  portfolioID: ID!
+  instrumentID: ID!
+  quantity: Float!
+  averagePurchasePrice: Float!
+}
+
+input UpdateManualInstrumentInput {
+  symbol: String!
+  name: String!
+  exchange: String!
+  exchangeCode: String
+  country: String
+  currency: String
+  baseCurrency: String
+  quoteCurrency: String
+  underlyingSymbol: String
+  assetType: InstrumentAssetType!
+  summary: String
+  sector: String
+  industryGroup: String
+  industry: String
+  categoryGroup: String
+  category: String
+  family: String
+  website: String
+  marketCap: String
+  state: String
+  city: String
+  zipcode: String
+}
+
+extend type Query {
+  instrument(id: ID!): Instrument @auth
+  searchInstruments(input: InstrumentSearchInput!): InstrumentSearchPayload! @auth
+  searchInstrumentsOnline(input: InstrumentSearchInput!): OnlineInstrumentSearchPayload! @auth
+  manualInstruments(filter: ManualInstrumentFilterInput, pagination: PaginationInput): ManualInstrumentPayload! @auth
+}
+
+extend type Mutation {
+  persistDiscoveredInstrument(input: PersistDiscoveredInstrumentInput!): Instrument! @auth
+  addInstrumentToPortfolio(input: AddInstrumentHoldingInput!): PortfolioAsset! @auth
+  updateManualInstrument(id: ID!, input: UpdateManualInstrumentInput!): Instrument! @auth
+  archiveManualInstrument(id: ID!): Instrument! @auth
+  restoreManualInstrument(id: ID!): Instrument! @auth
+}

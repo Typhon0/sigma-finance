@@ -1,11 +1,4 @@
-import {
-	AlertTriangle,
-	Clock,
-	Info,
-	Mail,
-	Shield,
-	XCircle,
-} from "lucide-react";
+import { AlertTriangle, Clock, Mail, Shield, XCircle } from "lucide-react";
 import type { AuthError } from "../../lib/types/auth.types";
 import { AUTH_ERROR_CODES } from "../../lib/types/auth.types";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";

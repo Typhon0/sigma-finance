@@ -205,12 +205,16 @@ func extractTokenFromContext(ctx context.Context) string {
 	// Let's try to access it through the standard GraphQL way
 
 	// Check if we can get the operation context from GraphQL
-	if opCtx := graphql.GetOperationContext(ctx); opCtx != nil {
-		// Try to get the Authorization header from the HTTP request
-		if req := opCtx.RawQuery; req != "" {
-			fmt.Printf("DEBUG: Found GraphQL operation context\n")
+	// graphql.GetOperationContext panics if not in a GraphQL context, so we recover
+	func() {
+		defer func() { recover() }()
+		if opCtx := graphql.GetOperationContext(ctx); opCtx != nil {
+			// Try to get the Authorization header from the HTTP request
+			if req := opCtx.RawQuery; req != "" {
+				fmt.Printf("DEBUG: Found GraphQL operation context\n")
+			}
 		}
-	}
+	}()
 
 	// Try to get from fasthttp context user values (set by Fiber handler)
 	// The GraphQL execution context might have the fasthttp request context

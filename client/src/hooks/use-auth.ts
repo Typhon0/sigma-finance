@@ -2,7 +2,7 @@ import { useQuery } from "@apollo/client";
 import { useCallback, useEffect } from "react";
 import { ME_QUERY } from "../graphql/queries/auth.queries";
 import { useAuth as useAuthContext } from "../lib/auth-context";
-import { AuthState, TokenManager } from "../lib/auth-utils";
+import { TokenManager } from "../lib/auth-utils";
 import type { AuthUser } from "../lib/types/auth.types";
 
 /**

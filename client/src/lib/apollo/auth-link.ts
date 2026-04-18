@@ -12,7 +12,7 @@ const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 const getStoredTokenExpiry = () => localStorage.getItem(TOKEN_EXPIRY_KEY);
 
-const isTokenExpired = (expiresAt: string): boolean => {
+const _isTokenExpired = (expiresAt: string): boolean => {
 	return new Date(expiresAt) <= new Date();
 };
 
@@ -21,6 +21,24 @@ const shouldRefreshToken = (expiresAt: string): boolean => {
 	const now = new Date();
 	const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
 	return expiry.getTime() - now.getTime() < fiveMinutes;
+};
+
+const AUTH_OPERATION_NAMES = new Set([
+	"Login",
+	"Register",
+	"RefreshToken",
+	"Logout",
+	"ResetPassword",
+	"ConfirmPasswordReset",
+	"VerifyEmail",
+	"ResendVerification",
+]);
+
+const shouldSkipRefreshForOperation = (operationName?: string | null): boolean => {
+	if (!operationName) {
+		return false;
+	}
+	return AUTH_OPERATION_NAMES.has(operationName);
 };
 
 // Flag to prevent multiple simultaneous refresh attempts
@@ -140,16 +158,15 @@ const refreshAuthToken = async (): Promise<string> => {
 export const authLink = setContext(async (_, { headers }) => {
 	let token = getStoredToken();
 	const expiry = getStoredTokenExpiry();
-
-	console.log("Auth Link Debug:", {
-		hasToken: !!token,
-		tokenLength: token?.length || 0,
-		expiry,
-		shouldRefresh: token && expiry ? shouldRefreshToken(expiry) : false,
-	});
+	const operationName = headers?.["x-operation-name"] as string | undefined;
 
 	// Check if token needs refresh
-	if (token && expiry && shouldRefreshToken(expiry)) {
+	if (
+		token &&
+		expiry &&
+		shouldRefreshToken(expiry) &&
+		!shouldSkipRefreshForOperation(operationName)
+	) {
 		try {
 			token = await refreshAuthToken();
 		} catch (error) {
@@ -164,8 +181,6 @@ export const authLink = setContext(async (_, { headers }) => {
 			authorization: token ? `Bearer ${token}` : "",
 		},
 	};
-
-	console.log("Auth headers being sent:", authHeaders);
 
 	return authHeaders;
 });
@@ -184,14 +199,14 @@ export const authErrorLink = onError(
 
 					if (token && refreshToken && !isRefreshing) {
 						// Try to refresh token and retry the operation
-						return fromPromise(
-							refreshAuthToken().catch(() => {
-								// If refresh fails, redirect to login
-								toast.error("Your session has expired. Please log in again.");
-								window.location.href = "/login";
-								return "";
-							}),
-						).flatMap((newToken) => {
+					return fromPromise(
+						refreshAuthToken().catch(() => {
+							// If refresh fails, redirect to login
+							toast.error("Your session has expired. Please log in again.");
+							window.location.href = "/auth/login";
+							return "";
+						}),
+					).flatMap((newToken) => {
 							if (newToken) {
 								// Retry the operation with new token
 								const oldHeaders = operation.getContext().headers;
@@ -208,7 +223,7 @@ export const authErrorLink = onError(
 					} else {
 						// No refresh token or already refreshing, redirect to login
 						toast.error("Please log in to continue.");
-						window.location.href = "/login";
+						window.location.href = "/auth/login";
 					}
 				}
 
@@ -225,7 +240,7 @@ export const authErrorLink = onError(
 			// Handle network errors
 			if ("statusCode" in networkError && networkError.statusCode === 401) {
 				toast.error("Your session has expired. Please log in again.");
-				window.location.href = "/login";
+				window.location.href = "/auth/login";
 			} else if (
 				"statusCode" in networkError &&
 				networkError.statusCode >= 500

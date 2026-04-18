@@ -216,7 +216,7 @@ export const useAuthGuard = () => {
 		canAccess: (requiresAuth: boolean, requiresVerification = false) => {
 			if (isLoading) return false;
 			if (requiresAuth && !isAuthenticated) return false;
-			if (requiresVerification && (!user || !user.emailVerified)) return false;
+			if (requiresVerification && !user?.emailVerified) return false;
 			return true;
 		},
 	};

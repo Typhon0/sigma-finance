@@ -1,8 +1,6 @@
 package graphql
 
 import (
-	"strconv"
-
 	"sigma_finance/internal/domain/model"
 	graphmodel "sigma_finance/internal/handler/graphql/model"
 )
@@ -19,7 +17,7 @@ func ToGraphQLUser(user *model.User) *graphmodel.User {
 
 func ToGraphQLTag(tag *model.Tag) *graphmodel.Tag {
 	return &graphmodel.Tag{
-		ID:   strconv.Itoa(tag.ID),
+		ID:   tag.ID,
 		Name: tag.Name,
 	}
 }
@@ -36,7 +34,7 @@ func ToGraphQLAsset(asset *model.Asset) graphmodel.Asset {
 	// A more advanced implementation would check asset.AssetTypeID and return
 	// either a *graphmodel.Stock or a *graphmodel.Crypto.
 	return &graphmodel.Stock{
-		ID:            strconv.Itoa(asset.ID),
+		ID:            asset.ID.String(),
 		Name:          asset.Name,
 		CurrentValue:  &asset.CurrentValue,
 		PurchaseDate:  &asset.PurchaseDate,
@@ -47,7 +45,7 @@ func ToGraphQLAsset(asset *model.Asset) graphmodel.Asset {
 
 func ToGraphQLTransaction(transaction *model.Transaction) *graphmodel.Transaction {
 	return &graphmodel.Transaction{
-		ID:              strconv.Itoa(transaction.ID),
+		ID:              transaction.ID.String(),
 		TransactionType: graphmodel.TransactionType(transaction.TransactionType),
 		Quantity:        transaction.Quantity,
 		PricePerUnit:    transaction.PricePerUnit,
@@ -59,7 +57,7 @@ func ToGraphQLTransaction(transaction *model.Transaction) *graphmodel.Transactio
 
 func ToGraphQLPortfolio(p *model.Portfolio) *graphmodel.Portfolio {
 	return &graphmodel.Portfolio{
-		ID:           strconv.Itoa(int(p.ID)),
+		ID:           p.ID,
 		Name:         p.Name,
 		Description:  &p.Description,
 		CreatedAt:    p.CreatedAt,
@@ -74,7 +72,7 @@ func ToGraphQLPortfolio(p *model.Portfolio) *graphmodel.Portfolio {
 
 func ToGraphQLWatchlist(w *model.Watchlist) *graphmodel.Watchlist {
 	return &graphmodel.Watchlist{
-		ID:        strconv.Itoa(w.ID),
+		ID:        w.ID,
 		Name:      w.Name,
 		CreatedAt: w.CreatedAt,
 		UpdatedAt: w.UpdatedAt,

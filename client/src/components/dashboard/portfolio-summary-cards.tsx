@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Eye, MoreHorizontal, Pencil, PlusCircle, Trash2 } from "lucide-react";
+import { useComponentErrorHandler } from "@/components/dashboard/error-handling";
 import {
 	Badge,
 	Button,
@@ -16,10 +17,6 @@ import {
 import type { Portfolio } from "@/gql/graphql";
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import type { PortfolioMetrics } from "@/lib/utils/portfolio-calculations";
-import { 
-	useComponentErrorHandler,
-	MetricCardsSkeleton,
-} from "@/components/dashboard/error-handling";
 
 interface PortfolioSummaryCardsProps {
 	portfolios: Portfolio[];
@@ -35,7 +32,10 @@ export function PortfolioSummaryCards({
 	onPortfolioDelete,
 }: PortfolioSummaryCardsProps) {
 	const navigate = useNavigate();
-	const { handleErrorWithRetry } = useComponentErrorHandler('PortfolioSummaryCards', 'component');
+	const { handleErrorWithRetry } = useComponentErrorHandler(
+		"PortfolioSummaryCards",
+		"component",
+	);
 
 	if (portfolios.length === 0) {
 		return (
@@ -70,7 +70,10 @@ export function PortfolioSummaryCards({
 				onPortfolioSelect(portfolio);
 			} else {
 				// Fallback to navigation for backward compatibility
-				navigate({ to: "/portfolios/$portfolioId", params: { portfolioId: portfolio.id } });
+				navigate({
+					to: "/portfolios/$portfolioId",
+					params: { portfolioId: portfolio.id },
+				});
 			}
 		});
 	};

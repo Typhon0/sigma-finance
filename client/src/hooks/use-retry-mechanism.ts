@@ -1,5 +1,5 @@
-import { useCallback, useState, useRef } from "react";
 import { ApolloError } from "@apollo/client";
+import { useCallback, useRef, useState } from "react";
 
 export interface RetryOptions {
 	maxRetries?: number;
@@ -39,7 +39,7 @@ export function useRetryMechanism(options: RetryOptions = {}) {
 	const calculateDelay = useCallback(
 		(attempt: number) => {
 			if (exponentialBackoff) {
-				return retryDelay * Math.pow(2, attempt - 1);
+				return retryDelay * 2 ** (attempt - 1);
 			}
 			return retryDelay;
 		},
@@ -47,9 +47,7 @@ export function useRetryMechanism(options: RetryOptions = {}) {
 	);
 
 	const executeWithRetry = useCallback(
-		async <T>(
-			operation: () => Promise<T>,
-		): Promise<T> => {
+		async <T>(operation: () => Promise<T>): Promise<T> => {
 			let lastError: Error | ApolloError;
 
 			for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
@@ -171,18 +169,14 @@ export function useApolloRetry(options: RetryOptions = {}) {
 		if (error instanceof ApolloError) {
 			// Don't retry on authentication errors
 			if (
-				error.graphQLErrors.some(
-					(e) => e.extensions?.code === "UNAUTHORIZED",
-				)
+				error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")
 			) {
 				return false;
 			}
 
 			// Don't retry on validation errors
 			if (
-				error.graphQLErrors.some(
-					(e) => e.extensions?.code === "BAD_USER_INPUT",
-				)
+				error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")
 			) {
 				return false;
 			}
@@ -225,26 +219,20 @@ export function usePortfolioRetry(options: RetryOptions = {}) {
 	const portfolioRetryCondition = (error: Error | ApolloError) => {
 		if (error instanceof ApolloError) {
 			// Don't retry on portfolio not found
-			if (
-				error.graphQLErrors.some((e) => e.extensions?.code === "NOT_FOUND")
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "NOT_FOUND")) {
 				return false;
 			}
 
 			// Don't retry on permission errors
 			if (
-				error.graphQLErrors.some(
-					(e) => e.extensions?.code === "UNAUTHORIZED",
-				)
+				error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")
 			) {
 				return false;
 			}
 
 			// Don't retry on validation errors (duplicate name, etc.)
 			if (
-				error.graphQLErrors.some(
-					(e) => e.extensions?.code === "BAD_USER_INPUT",
-				)
+				error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")
 			) {
 				return false;
 			}

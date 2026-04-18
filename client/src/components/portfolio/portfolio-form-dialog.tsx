@@ -127,11 +127,11 @@ export function PortfolioFormDialog({
 		}
 	};
 
-	const handleFormSuccess = (data: PortfolioFormData) => {
+	const handleFormSuccess = (_data: PortfolioFormData) => {
 		// Success is handled in handleSubmit
 	};
 
-	const handleFormError = (error: Error) => {
+	const handleFormError = (_error: Error) => {
 		// Error is handled in handleSubmit
 	};
 

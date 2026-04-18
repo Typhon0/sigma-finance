@@ -157,7 +157,7 @@ const GET_ASSET_TYPES = graphql(/* GraphQL */ `
 `);
 
 const ADD_ASSET_TO_PORTFOLIO = graphql(/* GraphQL */ `
-  mutation AddAssetToPortfolio($input: PortfolioAssetInput!) {
+  mutation AddAssetToPortfolioHook($input: PortfolioAssetInput!) {
     addAssetToPortfolio(input: $input) {
       asset {
         id

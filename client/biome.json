@@ -1,0 +1,49 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
+	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"recommended": true,
+			"suspicious": {
+				"noExplicitAny": "warn",
+				"noImplicitAnyLet": "warn",
+				"noTemplateCurlyInString": "warn",
+				"noAsyncPromiseExecutor": "warn",
+				"noDocumentCookie": "warn",
+				"noRedeclare": "warn"
+			},
+			"a11y": {
+				"useSemanticElements": "off",
+				"useFocusableInteractive": "off",
+				"useAriaPropsSupportedByRole": "off",
+				"useAriaPropsForRole": "off",
+				"noStaticElementInteractions": "warn",
+				"useKeyWithClickEvents": "warn",
+				"noLabelWithoutControl": "warn"
+			},
+			"complexity": {
+				"noStaticOnlyClass": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "warn"
+			}
+		}
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!**/src/gql/graphql.ts",
+			"!**/src/gql/fragment-masking.ts",
+			"!**/src/gql/gql.ts",
+			"!**/src/routeTree.gen.ts",
+			"!**/src/components/ui",
+			"!**/src/index.css"
+		]
+	},
+	"css": {
+		"linter": {
+			"enabled": false
+		}
+	}
+}

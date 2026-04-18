@@ -1,10 +1,10 @@
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import { ApolloError } from "@apollo/client";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import {
+	PortfolioDetailErrorBoundary,
 	PortfolioErrorBoundary,
 	PortfolioListErrorBoundary,
-	PortfolioDetailErrorBoundary,
 } from "../portfolio-error-boundary";
 
 // Test component that throws an error
@@ -53,10 +53,10 @@ describe("Portfolio Error Boundaries", () => {
 					<ThrowError shouldThrow={true} />
 				</PortfolioErrorBoundary>,
 			);
-			
+
 			const retryButton = screen.getByText("Try Again");
 			expect(retryButton).toBeInTheDocument();
-			
+
 			fireEvent.click(retryButton);
 			expect(mockRetry).toHaveBeenCalled();
 		});
@@ -68,10 +68,10 @@ describe("Portfolio Error Boundaries", () => {
 					<ThrowError shouldThrow={true} />
 				</PortfolioErrorBoundary>,
 			);
-			
+
 			const resetButton = screen.getByText("Reset");
 			expect(resetButton).toBeInTheDocument();
-			
+
 			fireEvent.click(resetButton);
 			expect(mockReset).toHaveBeenCalled();
 		});
@@ -95,7 +95,9 @@ describe("Portfolio Error Boundaries", () => {
 					<ThrowError shouldThrow={true} />
 				</PortfolioDetailErrorBoundary>,
 			);
-			expect(screen.getByText("Error Loading Portfolio Details")).toBeInTheDocument();
+			expect(
+				screen.getByText("Error Loading Portfolio Details"),
+			).toBeInTheDocument();
 		});
 	});
 
@@ -112,7 +114,7 @@ describe("Portfolio Error Boundaries", () => {
 					<NetworkErrorComponent />
 				</PortfolioErrorBoundary>,
 			);
-			
+
 			expect(screen.getByText("Connection Error")).toBeInTheDocument();
 		});
 
@@ -133,7 +135,7 @@ describe("Portfolio Error Boundaries", () => {
 					<GraphQLErrorComponent />
 				</PortfolioErrorBoundary>,
 			);
-			
+
 			expect(screen.getByText("Portfolio Not Found")).toBeInTheDocument();
 		});
 
@@ -154,7 +156,7 @@ describe("Portfolio Error Boundaries", () => {
 					<UnauthorizedErrorComponent />
 				</PortfolioErrorBoundary>,
 			);
-			
+
 			expect(screen.getByText("Access Denied")).toBeInTheDocument();
 		});
 	});

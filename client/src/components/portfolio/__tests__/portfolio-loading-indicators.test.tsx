@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
-	LoadingIndicator,
 	AsyncOperationIndicator,
-	PortfolioOperationStatus,
 	InlineLoading,
+	LoadingIndicator,
+	PortfolioOperationStatus,
 } from "../portfolio-loading-indicators";
 
 describe("Portfolio Loading Indicators", () => {

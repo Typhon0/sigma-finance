@@ -19,12 +19,12 @@ import {
 } from "@/components/portfolio/portfolio-breadcrumb";
 import { PortfolioDeleteDialog } from "@/components/portfolio/portfolio-delete-dialog";
 import { PortfolioDetailSkeleton } from "@/components/portfolio/portfolio-detail-skeleton";
-import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
 import { PortfolioDetailErrorBoundary } from "@/components/portfolio/portfolio-error-boundary";
-import { 
-	LoadingIndicator, 
+import { PortfolioErrorDisplay } from "@/components/portfolio/portfolio-error-display";
+import {
 	AsyncOperationIndicator,
-	InlineLoading 
+	InlineLoading,
+	LoadingIndicator,
 } from "@/components/portfolio/portfolio-loading-indicators";
 import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -67,11 +67,13 @@ export default function PortfolioDetailPage() {
 	});
 
 	return (
-		<PortfolioDetailErrorBoundary onRetry={async () => {
-			await portfolioRetry.executeWithRetry(async () => {
-				await retry();
-			});
-		}}>
+		<PortfolioDetailErrorBoundary
+			onRetry={async () => {
+				await portfolioRetry.executeWithRetry(async () => {
+					await retry();
+				});
+			}}
+		>
 			<SidebarProvider>
 				<AppSidebar />
 				<SidebarInset>
@@ -79,7 +81,10 @@ export default function PortfolioDetailPage() {
 						<div className="flex items-center gap-2 px-4">
 							<SidebarTrigger className="-ml-1" />
 							<Separator orientation="vertical" className="mr-2 h-4" />
-							<InlineLoading isLoading={loading && !portfolio} loadingText="Loading...">
+							<InlineLoading
+								isLoading={loading && !portfolio}
+								loadingText="Loading..."
+							>
 								<PortfolioBreadcrumb
 									items={portfolioBreadcrumbs.portfolioDetail(
 										portfolio?.name || "Portfolio Details",
@@ -97,7 +102,7 @@ export default function PortfolioDetailPage() {
 						<div className="space-y-4">
 							{portfolioRetry.isRetrying && (
 								<div className="p-4">
-									<LoadingIndicator 
+									<LoadingIndicator
 										message={`Retrying... (${portfolioRetry.retryCount}/${portfolioRetry.maxRetries})`}
 										variant="dots"
 									/>
@@ -148,7 +153,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 		isUnauthorized,
 		showDeleteDialog,
 		isDeleting,
-		navigateToEdit,
+		_navigateToEdit,
 		navigateToList,
 		handleDeleteClick,
 		handleDeleteCancel,

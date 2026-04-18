@@ -1,143 +1,282 @@
 package graphql
 
 import (
-	"time"
-	
+	"fmt"
+
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/repository"
+	"sigma_finance/internal/service"
 )
 
-// TODO: Implement proper performance mapping functions
-// These are placeholder implementations to get the build working
-
-func mapPerformanceMetricsToGQL(metrics interface{}) *gqlModel.PerformanceMetrics {
+func mapPerformanceMetricsToGQL(metrics *service.ServicePerformanceMetrics) *gqlModel.PerformanceMetrics {
 	if metrics == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	twReturn, _ := metrics.TimeWeightedReturn.Float64()
+	totalReturnPct, _ := metrics.TotalReturnPercentage.Float64()
+
+	benchmarks := make([]*gqlModel.BenchmarkResult, 0, len(metrics.Benchmarks))
+	for k, v := range metrics.Benchmarks {
+		val, _ := v.Float64()
+		benchmarks = append(benchmarks, &gqlModel.BenchmarkResult{
+			Name:  k,
+			Value: val,
+		})
+	}
+
 	return &gqlModel.PerformanceMetrics{
-		PortfolioID:           "placeholder",
-		TotalValue:            0.0,
-		TotalCostBasis:        0.0,
-		UnrealizedGainLoss:    0.0,
-		RealizedGainLoss:      0.0,
-		TotalReturnPercentage: 0.0,
-		TimeWeightedReturn:    0.0,
-		IsValid:               true,
-		ValidationErrors:      []string{},
-		DataQuality:           nil,
-		CalculationMethod:     nil,
-		Benchmarks:            []*gqlModel.BenchmarkResult{},
+		PortfolioID:           metrics.PortfolioID,
+		TotalValue:            metrics.TotalValue.ToFloat(),
+		TotalCostBasis:        metrics.TotalCostBasis.ToFloat(),
+		UnrealizedGainLoss:    metrics.UnrealizedGainLoss.ToFloat(),
+		RealizedGainLoss:      metrics.RealizedGainLoss.ToFloat(),
+		TotalReturnPercentage: totalReturnPct,
+		TimeWeightedReturn:    twReturn,
+		IsValid:               metrics.IsValid,
+		ValidationErrors:      metrics.ValidationErrors,
+		DataQuality:           mapDataQualityToGQL(metrics.DataQuality),
+		CalculationMethod:     mapCalculationMethodToGQL(metrics.CalculationMethod),
+		Benchmarks:            benchmarks,
 	}
 }
 
-func mapAllocationBreakdownToGQL(breakdown interface{}) *gqlModel.AllocationBreakdown {
+func mapAllocationBreakdownToGQL(breakdown *service.AllocationBreakdown) *gqlModel.AllocationBreakdown {
 	if breakdown == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	allocs := make([]*gqlModel.AssetAllocation, 0, len(breakdown.Allocations))
+	for _, a := range breakdown.Allocations {
+		pct, _ := a.Percentage.Float64()
+		q, _ := a.TotalQuantity.Float64()
+		allocs = append(allocs, &gqlModel.AssetAllocation{
+			AssetType:  string(a.AssetType),
+			Value:      q, // using quantity proxy if value not present
+			Percentage: pct,
+			Count:      int32(a.PositionCount),
+		})
+	}
+
+	recs := make([]*gqlModel.RebalanceRecommendation, 0, len(breakdown.RebalanceRecommendations))
+	for _, r := range breakdown.RebalanceRecommendations {
+		cw, _ := r.CurrentWeight.Float64()
+		tw, _ := r.TargetWeight.Float64()
+		recs = append(recs, &gqlModel.RebalanceRecommendation{
+			AssetType:         string(r.AssetType),
+			CurrentWeight:     cw,
+			TargetWeight:      tw,
+			RecommendedAction: r.RecommendedAction,
+			Amount:            r.Amount.ToFloat(),
+			Reason:            r.Reason,
+		})
+	}
+
+	var riskAnalysis *gqlModel.AllocationRiskAnalysis
+	cr, _ := breakdown.RiskAnalysis.ConcentrationRisk.Float64()
+	corr, _ := breakdown.RiskAnalysis.CorrelationRisk.Float64()
+	lr, _ := breakdown.RiskAnalysis.LiquidityRisk.Float64()
+
+	riskByAsset := make([]*gqlModel.AssetTypeRisk, 0, len(breakdown.RiskAnalysis.RiskByAssetType))
+	for t, r := range breakdown.RiskAnalysis.RiskByAssetType {
+		rl, _ := r.Float64()
+		riskByAsset = append(riskByAsset, &gqlModel.AssetTypeRisk{
+			AssetType: string(t),
+			RiskLevel: rl,
+		})
+	}
+
+	riskAnalysis = &gqlModel.AllocationRiskAnalysis{
+		ConcentrationRisk: cr,
+		CorrelationRisk:   corr,
+		LiquidityRisk:     lr,
+		RiskByAssetType:   riskByAsset,
+	}
+
+	divScore, _ := breakdown.DiversificationScore.Float64()
+
 	return &gqlModel.AllocationBreakdown{
-		PortfolioID:              "placeholder",
-		TotalValue:               0.0,
-		Allocations:              []*gqlModel.AssetAllocation{},
-		RebalanceRecommendations: []*gqlModel.RebalanceRecommendation{},
-		RiskAnalysis:             nil,
-		DiversificationScore:     0.0,
+		PortfolioID:              breakdown.PortfolioID,
+		TotalValue:               breakdown.TotalValue.ToFloat(),
+		Allocations:              allocs,
+		RebalanceRecommendations: recs,
+		RiskAnalysis:             riskAnalysis,
+		DiversificationScore:     divScore,
 	}
 }
 
-func mapRiskMetricsToGQL(risk interface{}) *gqlModel.RiskMetrics {
-	if risk == nil {
-		return nil
-	}
-	
-	// Placeholder implementation
-	return &gqlModel.RiskMetrics{
-		Volatility:      0.0,
-		SharpeRatio:     0.0,
-		MaxDrawdown:     0.0,
-		Diversification: 0.0,
-	}
-}
-
-func mapPerformanceSnapshotToGQL(snapshot interface{}) *gqlModel.PerformanceSnapshot {
+func mapPerformanceSnapshotToGQL(snapshot *service.PerformanceSnapshot) *gqlModel.PerformanceSnapshot {
 	if snapshot == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	ret, _ := snapshot.ReturnPercentage.Float64()
+
 	return &gqlModel.PerformanceSnapshot{
-		ID:                 "placeholder",
-		PortfolioID:        "placeholder",
-		TotalValue:         0.0,
-		TotalCostBasis:     0.0,
-		UnrealizedGainLoss: 0.0,
-		RealizedGainLoss:   0.0,
-		ReturnPercentage:   0.0,
-		SnapshotDate:       time.Now(),
-		CreatedAt:          time.Now(),
-		DataQuality:        nil,
+		ID:                 fmt.Sprintf("%d", snapshot.ID),
+		PortfolioID:        snapshot.PortfolioID,
+		TotalValue:         snapshot.TotalValue.ToFloat(),
+		TotalCostBasis:     snapshot.TotalCostBasis.ToFloat(),
+		UnrealizedGainLoss: snapshot.UnrealizedGainLoss.ToFloat(),
+		RealizedGainLoss:   snapshot.RealizedGainLoss.ToFloat(),
+		ReturnPercentage:   ret,
+		SnapshotDate:       snapshot.SnapshotDate,
+		CreatedAt:          snapshot.CreatedAt,
+		DataQuality:        mapDataQualityToGQL(snapshot.DataQuality),
 	}
 }
 
-func mapBenchmarkComparisonToGQL(comparison interface{}) *gqlModel.BenchmarkComparison {
+func mapBenchmarkComparisonToGQL(comparison *service.BenchmarkComparison) *gqlModel.BenchmarkComparison {
 	if comparison == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	pr, _ := comparison.PortfolioReturn.Float64()
+	br, _ := comparison.BenchmarkReturn.Float64()
+	alpha, _ := comparison.Alpha.Float64()
+	beta, _ := comparison.Beta.Float64()
+	corr, _ := comparison.CorrelationCoeff.Float64()
+	te, _ := comparison.TrackingError.Float64()
+	ir, _ := comparison.InformationRatio.Float64()
+	raa, _ := comparison.RiskAdjustedAlpha.Float64()
+
+	outperformance := make([]*gqlModel.TimeRange, 0, len(comparison.OutperformancePeriods))
+	for _, o := range comparison.OutperformancePeriods {
+		outperformance = append(outperformance, &gqlModel.TimeRange{
+			Start: o.Start,
+			End:   o.End,
+		})
+	}
+
 	return &gqlModel.BenchmarkComparison{
-		PortfolioID:           "placeholder",
-		BenchmarkAssetID:      "placeholder",
-		PortfolioReturn:       0.0,
-		BenchmarkReturn:       0.0,
-		Alpha:                 0.0,
-		Beta:                  0.0,
-		Correlation:           0.0,
-		TrackingError:         0.0,
-		InformationRatio:      0.0,
-		OutperformancePeriods: []*gqlModel.TimeRange{},
-		RiskAdjustedAlpha:     0.0,
+		PortfolioID:           comparison.PortfolioID,
+		BenchmarkAssetID:      comparison.BenchmarkAssetID,
+		PortfolioReturn:       pr,
+		BenchmarkReturn:       br,
+		Alpha:                 alpha,
+		Beta:                  beta,
+		Correlation:           corr,
+		TrackingError:         te,
+		InformationRatio:      ir,
+		OutperformancePeriods: outperformance,
+		RiskAdjustedAlpha:     raa,
 	}
 }
 
-func mapPositionToPositionPerformance(position interface{}) *gqlModel.PositionPerformance {
+// mapPositionToPositionPerformance maps a model.Position to gqlModel.PositionPerformance
+// Deprecated: Use mapPositionPerformanceResultToGQL instead for cost-basis return calculations
+func mapPositionToPositionPerformance(position *model.Position) *gqlModel.PositionPerformance {
 	if position == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	// This assumes the PerformanceRepository augmented the position model
+	// or that the caller will inject the missing return/gain metrics
 	return &gqlModel.PositionPerformance{
-		PositionID:       "placeholder",
-		AssetName:        "Placeholder Asset",
-		AssetSymbol:      nil,
-		ReturnPercentage: 0.0,
+		PositionID:       position.ID,
+		AssetName:        position.Asset.Name,
+		AssetSymbol:      position.Asset.Symbol,
+		ReturnPercentage: 0.0, // Should be calculated if not queried directly
 		GainLoss:         0.0,
 		Contribution:     0.0,
 	}
 }
 
-func mapPerformanceReportToGQL(report interface{}) *gqlModel.PerformanceReport {
+// mapPositionPerformanceResultToGQL maps a repository.PositionPerformanceResult to gqlModel.PositionPerformance
+// This function properly calculates ReturnPercentage, GainLoss, and Contribution from the cost-basis data
+func mapPositionPerformanceResultToGQL(result *repository.PositionPerformanceResult) *gqlModel.PositionPerformance {
+	if result == nil {
+		return nil
+	}
+
+	returnPercentage, _ := result.ReturnPercentage.Float64()
+	gainLossDollars := float64(result.GainLoss) / 100.0 // Convert cents to dollars
+	contribution, _ := result.Contribution.Float64()
+
+	return &gqlModel.PositionPerformance{
+		PositionID:       result.PositionID,
+		AssetName:        result.AssetName,
+		AssetSymbol:      result.AssetSymbol,
+		ReturnPercentage: returnPercentage,
+		GainLoss:         gainLossDollars,
+		Contribution:     contribution,
+	}
+}
+
+func mapPerformanceReportToGQL(report *service.PerformanceReport) *gqlModel.PerformanceReport {
 	if report == nil {
 		return nil
 	}
-	
-	// Placeholder implementation
+
+	tops := make([]*gqlModel.PositionPerformance, 0, len(report.TopPerformers))
+	for i := range report.TopPerformers {
+		tops = append(tops, mapPositionPerformanceResultToGQL(&report.TopPerformers[i]))
+	}
+
+	worst := make([]*gqlModel.PositionPerformance, 0, len(report.WorstPerformers))
+	for i := range report.WorstPerformers {
+		worst = append(worst, mapPositionPerformanceResultToGQL(&report.WorstPerformers[i]))
+	}
+
+	benchmarks := make([]*gqlModel.BenchmarkComparison, 0, len(report.Benchmarks))
+	for _, b := range report.Benchmarks {
+		benchmarks = append(benchmarks, mapBenchmarkComparisonToGQL(b))
+	}
+
 	return &gqlModel.PerformanceReport{
-		ID:              "placeholder",
-		PortfolioID:     "placeholder",
-		ReportType:      gqlModel.ReportTypeMonthly,
-		TimeRange:       nil,
-		GeneratedAt:     time.Now(),
-		Metrics:         nil,
-		Allocation:      nil,
-		RiskMetrics:     nil,
-		TopPerformers:   []*gqlModel.PositionPerformance{},
-		WorstPerformers: []*gqlModel.PositionPerformance{},
-		Benchmarks:      []*gqlModel.BenchmarkComparison{},
-		Recommendations: []string{},
-		DataQuality:     nil,
-		DownloadURL:     nil,
+		ID:              fmt.Sprintf("report-%s-%d", report.PortfolioID, report.GeneratedAt.Unix()),
+		PortfolioID:     report.PortfolioID,
+		ReportType:      gqlModel.ReportType(report.ReportType),
+		TimeRange:       &gqlModel.TimeRange{Start: report.TimeRange.Start, End: report.TimeRange.End},
+		GeneratedAt:     report.GeneratedAt,
+		Metrics:         mapPerformanceMetricsToGQL(report.Metrics),
+		Allocation:      mapAllocationBreakdownToGQL(report.Allocation),
+		RiskMetrics:     mapServiceRiskMetricsToGQL(report.RiskMetrics),
+		TopPerformers:   tops,
+		WorstPerformers: worst,
+		Benchmarks:      benchmarks,
+		Recommendations: report.Recommendations,
+		DataQuality:     mapDataQualityToGQL(report.DataQuality),
+	}
+}
+
+func mapDataQualityToGQL(dq service.DataQuality) *gqlModel.DataQuality {
+	score, _ := dq.Score.Float64()
+	return &gqlModel.DataQuality{
+		Score:               score,
+		MissingDataPoints:   int32(dq.MissingDataPoints),
+		StaleDataPoints:     int32(dq.StaleDataPoints),
+		EstimatedDataPoints: int32(dq.EstimatedDataPoints),
+		LastUpdated:         dq.LastUpdated,
+	}
+}
+
+func mapCalculationMethodToGQL(cm service.CalculationMethod) *gqlModel.CalculationMethod {
+	params := make([]*gqlModel.MethodParameter, 0, len(cm.Parameters))
+	for k, v := range cm.Parameters {
+		params = append(params, &gqlModel.MethodParameter{Key: k, Value: v})
+	}
+
+	return &gqlModel.CalculationMethod{
+		Method:      cm.Method,
+		Parameters:  params,
+		Assumptions: cm.Assumptions,
+	}
+}
+
+func mapServiceRiskMetricsToGQL(rm *service.ServiceRiskMetrics) *gqlModel.RiskMetrics {
+	if rm == nil {
+		return nil
+	}
+	vol, _ := rm.Volatility.Float64()
+	sharpe, _ := rm.SharpeRatio.Float64()
+	md, _ := rm.MaxDrawdown.Float64()
+
+	return &gqlModel.RiskMetrics{
+		Volatility:      vol,
+		SharpeRatio:     sharpe,
+		MaxDrawdown:     md,
+		Diversification: 0, // usually from portfolio analytics
 	}
 }

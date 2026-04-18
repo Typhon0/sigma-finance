@@ -1,7 +1,3 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 import (
@@ -49,7 +45,7 @@ func convertAuthErrorToGraphQL(err error) *gqlModel.AuthResponse {
 		Errors: []*gqlModel.AuthError{
 			{
 				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
+				Message: err.Error(),
 			},
 		},
 	}
@@ -76,7 +72,7 @@ func convertLogoutErrorToGraphQL(err error) *gqlModel.LogoutResponse {
 		Errors: []*gqlModel.AuthError{
 			{
 				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
+				Message: err.Error(),
 			},
 		},
 	}
@@ -103,7 +99,7 @@ func convertPasswordResetErrorToGraphQL(err error) *gqlModel.PasswordResetRespon
 		Errors: []*gqlModel.AuthError{
 			{
 				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
+				Message: err.Error(),
 			},
 		},
 	}
@@ -130,7 +126,7 @@ func convertEmailVerificationErrorToGraphQL(err error) *gqlModel.EmailVerificati
 		Errors: []*gqlModel.AuthError{
 			{
 				Code:    "INTERNAL_ERROR",
-				Message: "An unexpected error occurred",
+				Message: err.Error(),
 			},
 		},
 	}
@@ -140,25 +136,19 @@ func convertEmailVerificationErrorToGraphQL(err error) *gqlModel.EmailVerificati
 
 // extractIPFromContext extracts IP address from GraphQL context
 func extractIPFromContext(ctx context.Context) string {
-	// In a real implementation, this would extract from HTTP headers
-	// For testing, return a valid IP address
+	// In a real implementation, this would extract from context keys set by middleware
+	if ip, ok := ctx.Value("client_ip").(string); ok {
+		return ip
+	}
 	return "127.0.0.1"
 }
 
 // extractUserAgentFromContext extracts user agent from GraphQL context
 func extractUserAgentFromContext(ctx context.Context) string {
-	// In a real implementation, this would extract from HTTP headers
-	// For testing, return a test user agent
-	return "GraphQL-Test-Client/1.0"
-}
-
-// extractUserIDFromToken extracts user ID from JWT token using SecurityService
-func (r *mutationResolver) extractUserIDFromToken(token string) string {
-	claims, err := r.SecurityService.ValidateJWT(token)
-	if err != nil {
-		return ""
+	if ua, ok := ctx.Value("user_agent").(string); ok {
+		return ua
 	}
-	return claims.UserID
+	return "GraphQL-Client/1.0"
 }
 
 // stringPtrIfNotEmpty returns a pointer to the string if it's not empty, otherwise nil

@@ -1,20 +1,20 @@
-export { AlertManagement } from './alert-management';
-export { AlertConfigurationForm } from './alert-configuration-form';
-export { AlertList } from './alert-list';
-export { AlertNotifications } from './alert-notifications';
-export { AlertHistory } from './alert-history';
-export { AlertQuickSetup } from './alert-quick-setup';
-export { AlertTesting } from './alert-testing';
-export { AlertIntegrationExample } from './alert-integration-example';
+export { AlertConfigurationForm } from "./alert-configuration-form";
+export { AlertHistory } from "./alert-history";
+export { AlertIntegrationExample } from "./alert-integration-example";
+export { AlertList } from "./alert-list";
+export { AlertManagement } from "./alert-management";
+export { AlertNotifications } from "./alert-notifications";
+export { AlertQuickSetup } from "./alert-quick-setup";
+export { AlertTesting } from "./alert-testing";
 
 export type {
-  AlertFormData,
-  AlertFilterData,
-  AlertNotificationData,
-  AlertHistoryData,
-  AlertQuickSetupData,
-  AlertTestData,
-  Alert,
-  Portfolio,
-  Asset,
-} from './types';
+	Alert,
+	AlertFilterData,
+	AlertFormData,
+	AlertHistoryData,
+	AlertNotificationData,
+	AlertQuickSetupData,
+	AlertTestData,
+	Asset,
+	Portfolio,
+} from "./types";

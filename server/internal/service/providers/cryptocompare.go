@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // CryptoCompareProvider implements Provider for CryptoCompare API
@@ -266,4 +268,151 @@ func min(a, b int) int {
 		return a
 	}
 	return b
+}
+
+func (c *CryptoCompareProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	return nil, fmt.Errorf("technical indicators not supported by CryptoCompare provider")
+}
+
+func (c *CryptoCompareProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if req.APIKey == "" {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "MISSING_API_KEY",
+			Message:   "CryptoCompare requires an API key",
+			Retryable: false,
+			Fallback:  false,
+		}
+	}
+
+	base, quote, err := c.parseSymbolPair(req.Symbol)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/pricemultifull", c.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := httpReq.URL.Query()
+	q.Set("fsyms", base)
+	q.Set("tsyms", quote)
+	q.Set("api_key", req.APIKey)
+	httpReq.URL.RawQuery = q.Encode()
+
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "RATE_LIMITED",
+			Message:   "CryptoCompare rate limit exceeded",
+			HTTPCode:  http.StatusTooManyRequests,
+			Retryable: true,
+			Fallback:  true,
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "API_ERROR",
+			Message:   fmt.Sprintf("CryptoCompare API error: %d", resp.StatusCode),
+			HTTPCode:  resp.StatusCode,
+			Retryable: resp.StatusCode >= 500,
+			Fallback:  true,
+		}
+	}
+
+	var response struct {
+		RAW map[string]map[string]struct {
+			TYPE           string  `json:"TYPE"`
+			MARKET         string  `json:"MARKET"`
+			FROMSYMBOL     string  `json:"FROMSYMBOL"`
+			TOSYMBOL       string  `json:"TOSYMBOL"`
+			FLAGS          string  `json:"FLAGS"`
+			PRICE          float64 `json:"PRICE"`
+			LASTUPDATE     int64   `json:"LASTUPDATE"`
+			LASTVOLUME     float64 `json:"LASTVOLUME"`
+			LASTVOLUMETO   float64 `json:"LASTVOLUMETO"`
+			LASTTRADEID    string  `json:"LASTTRADEID"`
+			VOLUMEDAY      float64 `json:"VOLUMEDAY"`
+			VOLUMEDAYTO    float64 `json:"VOLUMEDAYTO"`
+			VOLUME24HOUR   float64 `json:"VOLUME24HOUR"`
+			VOLUME24HOURTO float64 `json:"VOLUME24HOURTO"`
+			OPENDAY        float64 `json:"OPENDAY"`
+			HIGHDAY        float64 `json:"HIGHDAY"`
+			LOWDAY         float64 `json:"LOWDAY"`
+			OPEN24HOUR     float64 `json:"OPEN24HOUR"`
+			HIGH24HOUR     float64 `json:"HIGH24HOUR"`
+			LOW24HOUR      float64 `json:"LOW24HOUR"`
+			BID            float64 `json:"BID"`
+			ASK            float64 `json:"ASK"`
+		}
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
+	}
+
+	baseData, ok := response.RAW[base]
+	if !ok {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("No data found for %s", base),
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	quoteData, ok := baseData[quote]
+	if !ok {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("No data found for %s/%s", base, quote),
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	if quoteData.PRICE == 0 {
+		return nil, &ProviderError{
+			Provider:  c.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("Symbol %s/%s not found", base, quote),
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	timestamp := time.Unix(quoteData.LASTUPDATE, 0)
+	lastPrice := decimal.NewFromFloat(quoteData.PRICE)
+	bidPrice := decimal.NewFromFloat(quoteData.BID)
+	askPrice := decimal.NewFromFloat(quoteData.ASK)
+
+	return &QuoteResponse{
+		Symbol:    req.Symbol,
+		Bid:       bidPrice,
+		Ask:       askPrice,
+		Last:      lastPrice,
+		Volume:    int64(quoteData.VOLUME24HOUR),
+		Timestamp: timestamp,
+		Source:    c.ID(),
+	}, nil
+}
+
+func (c *CryptoCompareProvider) parseSymbolPair(symbol string) (base, quote string, err error) {
+	parts := strings.Split(strings.ToUpper(symbol), "/")
+	if len(parts) != 2 {
+		return "", "", fmt.Errorf("invalid symbol format: %s (expected format: BASE/QUOTE)", symbol)
+	}
+	return strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]), nil
 }

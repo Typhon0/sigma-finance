@@ -1,12 +1,7 @@
 import { MockedProvider } from "@apollo/client/testing";
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { renderHook } from "@testing-library/react";
 import React from "react";
 import { vi } from "vitest";
-import {
-	CREATE_PORTFOLIO,
-	DELETE_PORTFOLIO,
-	UPDATE_PORTFOLIO,
-} from "@/graphql/mutations";
 import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
 import { useAuth } from "@/lib/auth-context";
 import {

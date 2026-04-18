@@ -26,6 +26,8 @@ type Resolver struct {
 	MarketDataService     service.MarketDataService
 	PerformanceService    service.IPerformanceService
 	AlertService          service.IAlertService
+	MonitoringService     *service.MonitoringService
+	InstrumentService     service.InstrumentService
 	UOW                   repository.IUnitOfWork
 
 	// Subscription broadcaster state

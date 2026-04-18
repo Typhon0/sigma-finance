@@ -435,7 +435,7 @@ func TestSessionRepository_RefreshSession(t *testing.T) {
 	require.NoError(t, err)
 
 	// Verify the session was updated
-	updatedSession, err := sessionRepo.GetByStringID(ctx, createdSession.ID)
+	updatedSession, err := sessionRepo.GetByID(ctx, createdSession.ID)
 	require.NoError(t, err)
 	assert.Equal(t, "new-token", updatedSession.Token)
 	assert.Equal(t, "new-refresh-token", updatedSession.RefreshToken)

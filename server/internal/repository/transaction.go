@@ -5,17 +5,16 @@ import (
 	"sigma_finance/internal/domain/model"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
 // TransactionFilter defines the filter criteria for transaction queries
 type TransactionFilter struct {
-	UserID          *uuid.UUID             `json:"user_id,omitempty"`
-	PositionID      *uuid.UUID             `json:"position_id,omitempty"`
-	PortfolioID     *uuid.UUID             `json:"portfolio_id,omitempty"`
-	AssetID         *uuid.UUID             `json:"asset_id,omitempty"`
+	UserID          *string                `json:"user_id,omitempty"`
+	PositionID      *string                `json:"position_id,omitempty"`
+	PortfolioID     *string                `json:"portfolio_id,omitempty"`
+	AssetID         *string                `json:"asset_id,omitempty"`
 	TransactionType *model.TransactionType `json:"transaction_type,omitempty"`
 	DateFrom        *time.Time             `json:"date_from,omitempty"`
 	DateTo          *time.Time             `json:"date_to,omitempty"`
@@ -27,7 +26,7 @@ type TransactionFilter struct {
 
 // CostBasisCalculation represents cost basis calculation results
 type CostBasisCalculation struct {
-	PositionID          uuid.UUID       `json:"position_id"`
+	PositionID          string          `json:"position_id"`
 	TotalQuantity       decimal.Decimal `json:"total_quantity"`
 	AverageCostBasis    decimal.Decimal `json:"average_cost_basis"`
 	TotalCostBasis      model.Money     `json:"total_cost_basis"`
@@ -39,8 +38,8 @@ type CostBasisCalculation struct {
 
 // TaxLotSummary represents tax lot information for capital gains calculations
 type TaxLotSummary struct {
-	PositionID      uuid.UUID             `json:"position_id"`
-	TransactionID   uuid.UUID             `json:"transaction_id"`
+	PositionID      string                `json:"position_id"`
+	TransactionID   string                `json:"transaction_id"`
 	TransactionDate time.Time             `json:"transaction_date"`
 	Quantity        decimal.Decimal       `json:"quantity"`
 	PricePerUnit    decimal.Decimal       `json:"price_per_unit"`
@@ -55,32 +54,31 @@ type ITransactionRepository interface {
 	IRepository[model.Transaction]
 
 	// Enhanced CRUD operations
-	GetByUUID(ctx context.Context, id uuid.UUID) (*model.Transaction, error)
 	FindWithFilters(ctx context.Context, filter TransactionFilter) ([]model.Transaction, error)
 	CountWithFilters(ctx context.Context, filter TransactionFilter) (int, error)
 
 	// Position-based queries
-	FindByPositionID(ctx context.Context, positionID uuid.UUID) ([]model.Transaction, error)
-	FindByUserID(ctx context.Context, userID uuid.UUID) ([]model.Transaction, error)
+	FindByPositionID(ctx context.Context, positionID string) ([]model.Transaction, error)
+	FindByUserID(ctx context.Context, userID string) ([]model.Transaction, error)
 
 	// Cost basis calculation queries
-	CalculateCostBasisForPosition(ctx context.Context, positionID uuid.UUID) (*CostBasisCalculation, error)
-	GetTaxLotsForPosition(ctx context.Context, positionID uuid.UUID) ([]TaxLotSummary, error)
-	CalculateRealizedGainsForUser(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) (*model.RealizedGains, error)
+	CalculateCostBasisForPosition(ctx context.Context, positionID string) (*CostBasisCalculation, error)
+	GetTaxLotsForPosition(ctx context.Context, positionID string) ([]TaxLotSummary, error)
+	CalculateRealizedGainsForUser(ctx context.Context, userID string, dateFrom, dateTo time.Time) (*model.RealizedGains, error)
 
 	// Performance and analytics queries
-	GetTransactionSummaryByType(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.TransactionSummary, error)
-	GetCashFlowTransactions(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.Transaction, error)
-	GetCapitalGainsTransactions(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.Transaction, error)
+	GetTransactionSummaryByType(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.TransactionSummary, error)
+	GetCashFlowTransactions(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.Transaction, error)
+	GetCapitalGainsTransactions(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.Transaction, error)
 
 	// Batch operations
 	CreateBatch(ctx context.Context, transactions []model.Transaction) error
 	UpdateBatch(ctx context.Context, transactions []model.Transaction) error
 
 	// Legacy methods for compatibility
-	FindByPortfolioID(ctx context.Context, portfolioID int) ([]model.Transaction, error)
-	FindByAssetID(ctx context.Context, assetID int) ([]model.Transaction, error)
-	FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID int) ([]model.Transaction, error)
+	FindByPortfolioID(ctx context.Context, portfolioID string) ([]model.Transaction, error)
+	FindByAssetID(ctx context.Context, assetID string) ([]model.Transaction, error)
+	FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) ([]model.Transaction, error)
 	FindByDateRange(ctx context.Context, from, to time.Time) ([]model.Transaction, error)
 	FindByTransactionType(ctx context.Context, transactionType string) ([]model.Transaction, error)
 }
@@ -97,18 +95,6 @@ func NewTransactionRepository(db bun.IDB) *TransactionRepository {
 	}
 }
 
-// GetByUUID retrieves a transaction by its UUID
-func (r *TransactionRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*model.Transaction, error) {
-	var transaction model.Transaction
-	err := r.db.NewSelect().
-		Model(&transaction).
-		Where("id = ?", id).
-		Scan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return &transaction, nil
-}
 
 // FindWithFilters retrieves transactions with multiple filter criteria
 func (r *TransactionRepository) FindWithFilters(ctx context.Context, filter TransactionFilter) ([]model.Transaction, error) {
@@ -118,7 +104,7 @@ func (r *TransactionRepository) FindWithFilters(ctx context.Context, filter Tran
 	query = r.applyTransactionFilters(query, filter)
 
 	// Apply ordering - by transaction date descending for most recent first
-	query = query.Order("transaction_date DESC, created_at DESC")
+	query = query.Order("transaction_date DESC").Order("created_at DESC")
 
 	// Apply pagination
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -151,12 +137,12 @@ func (r *TransactionRepository) applyTransactionFilters(query *bun.SelectQuery, 
 	}
 
 	if filter.PortfolioID != nil {
-		query = query.Join("JOIN sigma_finance.positions p ON p.id = transaction.position_id").
+		query = query.Join("JOIN sigma_finance.positions p ON p.id = transactions.position_id").
 			Where("p.portfolio_id = ?", *filter.PortfolioID)
 	}
 
 	if filter.AssetID != nil {
-		query = query.Join("JOIN sigma_finance.positions p ON p.id = transaction.position_id").
+		query = query.Join("JOIN sigma_finance.positions p ON p.id = transactions.position_id").
 			Where("p.asset_id = ?", *filter.AssetID)
 	}
 
@@ -184,17 +170,17 @@ func (r *TransactionRepository) applyTransactionFilters(query *bun.SelectQuery, 
 }
 
 // FindByPositionID retrieves all transactions for a specific position
-func (r *TransactionRepository) FindByPositionID(ctx context.Context, positionID uuid.UUID) ([]model.Transaction, error) {
+func (r *TransactionRepository) FindByPositionID(ctx context.Context, positionID string) ([]model.Transaction, error) {
 	return r.FindWithFilters(ctx, TransactionFilter{PositionID: &positionID})
 }
 
 // FindByUserID retrieves all transactions for a specific user
-func (r *TransactionRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]model.Transaction, error) {
+func (r *TransactionRepository) FindByUserID(ctx context.Context, userID string) ([]model.Transaction, error) {
 	return r.FindWithFilters(ctx, TransactionFilter{UserID: &userID})
 }
 
 // CalculateCostBasisForPosition calculates the cost basis for a specific position
-func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Context, positionID uuid.UUID) (*CostBasisCalculation, error) {
+func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Context, positionID string) (*CostBasisCalculation, error) {
 	var result struct {
 		TotalQuantity       decimal.Decimal `bun:"total_quantity"`
 		WeightedCostSum     decimal.Decimal `bun:"weighted_cost_sum"`
@@ -241,9 +227,9 @@ func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Contex
 }
 
 // GetTaxLotsForPosition retrieves tax lot information for capital gains calculations
-func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, positionID uuid.UUID) ([]TaxLotSummary, error) {
+func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, positionID string) ([]TaxLotSummary, error) {
 	var taxLots []struct {
-		TransactionID   uuid.UUID             `bun:"id"`
+		TransactionID   string                `bun:"id"`
 		TransactionDate time.Time             `bun:"transaction_date"`
 		Quantity        decimal.Decimal       `bun:"quantity"`
 		PricePerUnit    decimal.Decimal       `bun:"price_per_unit"`
@@ -285,7 +271,7 @@ func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, posit
 }
 
 // CalculateRealizedGainsForUser calculates realized gains for a user within a date range
-func (r *TransactionRepository) CalculateRealizedGainsForUser(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) (*model.RealizedGains, error) {
+func (r *TransactionRepository) CalculateRealizedGainsForUser(ctx context.Context, userID string, dateFrom, dateTo time.Time) (*model.RealizedGains, error) {
 	var result struct {
 		TotalRealized    int64 `bun:"total_realized"`
 		TransactionCount int   `bun:"transaction_count"`
@@ -317,7 +303,7 @@ func (r *TransactionRepository) CalculateRealizedGainsForUser(ctx context.Contex
 }
 
 // GetTransactionSummaryByType returns transaction summaries grouped by type
-func (r *TransactionRepository) GetTransactionSummaryByType(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.TransactionSummary, error) {
+func (r *TransactionRepository) GetTransactionSummaryByType(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.TransactionSummary, error) {
 	var summaries []struct {
 		TransactionType model.TransactionType `bun:"type"`
 		Count           int                   `bun:"count"`
@@ -358,7 +344,7 @@ func (r *TransactionRepository) GetTransactionSummaryByType(ctx context.Context,
 }
 
 // GetCashFlowTransactions retrieves transactions that affect cash flow
-func (r *TransactionRepository) GetCashFlowTransactions(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.Transaction, error) {
+func (r *TransactionRepository) GetCashFlowTransactions(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.Transaction, error) {
 	cashFlowTypes := []model.TransactionType{
 		model.TransactionTypeDeposit,
 		model.TransactionTypeWithdrawal,
@@ -382,7 +368,7 @@ func (r *TransactionRepository) GetCashFlowTransactions(ctx context.Context, use
 }
 
 // GetCapitalGainsTransactions retrieves transactions that generate capital gains
-func (r *TransactionRepository) GetCapitalGainsTransactions(ctx context.Context, userID uuid.UUID, dateFrom, dateTo time.Time) ([]model.Transaction, error) {
+func (r *TransactionRepository) GetCapitalGainsTransactions(ctx context.Context, userID string, dateFrom, dateTo time.Time) ([]model.Transaction, error) {
 	return r.FindWithFilters(ctx, TransactionFilter{
 		UserID:          &userID,
 		TransactionType: &[]model.TransactionType{model.TransactionTypeSell}[0],
@@ -435,24 +421,21 @@ func (r *TransactionRepository) UpdateBatch(ctx context.Context, transactions []
 // Legacy methods for compatibility
 
 // FindByPortfolioID retrieves all transactions for a specific portfolio (legacy)
-func (r *TransactionRepository) FindByPortfolioID(ctx context.Context, portfolioID int) ([]model.Transaction, error) {
-	// Convert int to UUID - this is a compatibility method
-	// In practice, you'd need proper UUID conversion logic
-	return []model.Transaction{}, nil
+func (r *TransactionRepository) FindByPortfolioID(ctx context.Context, portfolioID string) ([]model.Transaction, error) {
+	return r.FindWithFilters(ctx, TransactionFilter{PortfolioID: &portfolioID})
 }
 
 // FindByAssetID retrieves all transactions for a specific asset (legacy)
-func (r *TransactionRepository) FindByAssetID(ctx context.Context, assetID int) ([]model.Transaction, error) {
-	// Convert int to UUID - this is a compatibility method
-	// In practice, you'd need proper UUID conversion logic
-	return []model.Transaction{}, nil
+func (r *TransactionRepository) FindByAssetID(ctx context.Context, assetID string) ([]model.Transaction, error) {
+	return r.FindWithFilters(ctx, TransactionFilter{AssetID: &assetID})
 }
 
 // FindByPortfolioAndAsset retrieves transactions for a specific portfolio and asset combination (legacy)
-func (r *TransactionRepository) FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID int) ([]model.Transaction, error) {
-	// Convert int to UUID - this is a compatibility method
-	// In practice, you'd need proper UUID conversion logic
-	return []model.Transaction{}, nil
+func (r *TransactionRepository) FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) ([]model.Transaction, error) {
+	return r.FindWithFilters(ctx, TransactionFilter{
+		PortfolioID: &portfolioID,
+		AssetID:     &assetID,
+	})
 }
 
 // FindByDateRange retrieves transactions within a specific date range (legacy)

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
@@ -14,9 +13,9 @@ import (
 type Position struct {
 	bun.BaseModel `bun:"table:sigma_finance.positions"`
 
-	ID                  uuid.UUID        `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	PortfolioID         uuid.UUID        `bun:"portfolio_id,notnull"`
-	AssetID             uuid.UUID        `bun:"asset_id,notnull"`
+	ID                  string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	PortfolioID         string           `bun:"portfolio_id,notnull"`
+	AssetID             string           `bun:"asset_id,notnull"`
 	Quantity            decimal.Decimal  `bun:"quantity,type:decimal(20,8),notnull,default:0"`
 	OwnershipPercentage decimal.Decimal  `bun:"ownership_percentage,type:decimal(5,2),default:100.00"`
 	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:decimal(20,8)"` // Cost per unit
@@ -42,7 +41,7 @@ type PositionValue struct {
 
 // CostBasisInfo represents detailed cost basis information
 type CostBasisInfo struct {
-	PositionID          uuid.UUID       `json:"position_id"`
+	PositionID          string          `json:"position_id"`
 	TotalQuantity       decimal.Decimal `json:"total_quantity"`
 	AverageCostBasis    decimal.Decimal `json:"average_cost_basis"`
 	TotalCostBasis      Money           `json:"total_cost_basis"`
@@ -56,11 +55,11 @@ type CostBasisInfo struct {
 
 // Validate performs comprehensive validation of the position
 func (p *Position) Validate() error {
-	if p.PortfolioID == uuid.Nil {
+	if p.PortfolioID == "" {
 		return errors.New("portfolio ID is required")
 	}
 
-	if p.AssetID == uuid.Nil {
+	if p.AssetID == "" {
 		return errors.New("asset ID is required")
 	}
 
@@ -273,8 +272,8 @@ func (p *Position) IsEmpty() bool {
 }
 
 // Implement Entity interface
-func (p Position) GetID() int64              { return 0 } // UUID doesn't fit int64
-func (p *Position) SetID(id int64)           {}           // UUID doesn't fit int64
+func (p Position) GetID() string             { return p.ID }
+func (p *Position) SetID(id string)          { p.ID = id }
 func (p Position) GetCreatedAt() time.Time   { return p.CreatedAt }
 func (p *Position) SetCreatedAt(t time.Time) { p.CreatedAt = t }
 func (p Position) GetUpdatedAt() time.Time   { return p.UpdatedAt }

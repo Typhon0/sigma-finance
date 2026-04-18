@@ -15,13 +15,13 @@ export const apolloCacheConfig = new InMemoryCache({
 					keyArgs: ["filter", "sort"],
 					merge(existing = [], incoming, { args }) {
 						// Enhanced caching for portfolio operations
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
 						return [...existing, ...incoming];
 					},
-					read(existing, { args, canRead }) {
+					read(existing, { _args, canRead }) {
 						// Return cached data if available and fresh
 						if (existing && canRead) {
 							return existing;
@@ -31,7 +31,7 @@ export const apolloCacheConfig = new InMemoryCache({
 				},
 				portfolio: {
 					keyArgs: ["id"],
-					merge(existing, incoming) {
+					merge(_existing, incoming) {
 						// Always use the latest data for individual portfolio queries
 						return incoming;
 					},
@@ -57,7 +57,7 @@ export const apolloCacheConfig = new InMemoryCache({
 						if (!incoming) {
 							return existing;
 						}
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
@@ -71,7 +71,7 @@ export const apolloCacheConfig = new InMemoryCache({
 						if (!incoming) {
 							return existing;
 						}
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
@@ -85,7 +85,7 @@ export const apolloCacheConfig = new InMemoryCache({
 						if (!incoming) {
 							return existing;
 						}
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
@@ -99,7 +99,7 @@ export const apolloCacheConfig = new InMemoryCache({
 						if (!incoming) {
 							return existing;
 						}
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
@@ -113,7 +113,7 @@ export const apolloCacheConfig = new InMemoryCache({
 						if (!incoming) {
 							return existing;
 						}
-						if (!args || !args.pagination || args.pagination.page === 1) {
+						if (!args?.pagination || args.pagination.page === 1) {
 							return incoming;
 						}
 						// For pagination, append new items
@@ -136,25 +136,8 @@ export const apolloCacheConfig = new InMemoryCache({
 					},
 				},
 				analytics: {
-					merge(existing: any, incoming: any) {
-						// Cache analytics data with timestamp for freshness checking
-						return {
-							...existing,
-							...incoming,
-							_cachedAt: Date.now(),
-						};
-					},
-					read(existing) {
-						// Check if analytics data is fresh (5 minutes)
-						if (existing && existing._cachedAt) {
-							const age = Date.now() - existing._cachedAt;
-							const maxAge = 5 * 60 * 1000; // 5 minutes
-							if (age > maxAge) {
-								// Data is stale, return undefined to trigger refetch
-								return undefined;
-							}
-						}
-						return existing;
+					merge(_existing: unknown, incoming: unknown) {
+						return incoming;
 					},
 				},
 			},

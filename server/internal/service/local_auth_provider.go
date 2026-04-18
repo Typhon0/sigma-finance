@@ -73,11 +73,16 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 
 	err = p.securityService.VerifyPassword(emailPassCreds.Password, *user.PasswordHash)
 	if err != nil {
-		// Increment failed login count
+		// Increment failed login count (this may lock the account on the 5th attempt)
 		user.IncrementFailedLoginCount()
 		if updateErr := p.userRepo.Update(ctx, user); updateErr != nil {
 			// Log error but don't expose it to user
 			fmt.Printf("Failed to update user failed login count: %v\n", updateErr)
+		}
+
+		// Check if the account was just locked by this failed attempt
+		if user.IsAccountLocked() {
+			return nil, NewAuthError(ErrAccountLocked, "Account is temporarily locked due to too many failed login attempts", "")
 		}
 
 		return nil, NewAuthError(ErrInvalidCredentials, "Invalid email or password", "")

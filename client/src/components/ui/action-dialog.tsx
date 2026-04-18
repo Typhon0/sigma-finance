@@ -156,12 +156,12 @@ const ActionDialog: React.FC<ActionDialogProps> = ({
 ActionDialog.displayName = "ActionDialog";
 
 export {
-	Dialog,
-	DialogTrigger,
-	DialogContent,
-	DialogHeader,
-	DialogFooter,
-	DialogTitle,
-	DialogDescription,
 	ActionDialog,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
 };

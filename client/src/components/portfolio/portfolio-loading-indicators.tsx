@@ -1,4 +1,4 @@
-import { Loader2, RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, RefreshCw } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -201,7 +201,9 @@ export function ProgressiveLoading({
 				<div className="space-y-2">
 					<div className="flex justify-between text-sm">
 						<span>Loading Progress</span>
-						<span>{completedSteps}/{steps.length}</span>
+						<span>
+							{completedSteps}/{steps.length}
+						</span>
 					</div>
 					<Progress value={progress} className="h-2" />
 				</div>

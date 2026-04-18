@@ -1,58 +1,12 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 import (
+	"encoding/json"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
-	"strconv"
 )
 
-// mapPortfolioToGQL converts a domain Portfolio to a GraphQL Portfolio
-func mapPortfolioToGQL(domainPortfolio model.Portfolio) *gqlModel.Portfolio {
-	return &gqlModel.Portfolio{
-		ID:          strconv.Itoa(int(domainPortfolio.ID)),
-		Name:        domainPortfolio.Name,
-		Description: &domainPortfolio.Description,
-		SortOrder:   int32(domainPortfolio.SortOrder),
-		CreatedAt:   domainPortfolio.CreatedAt,
-		UpdatedAt:   domainPortfolio.UpdatedAt,
-		// User, Tags, Assets, and Transactions would be populated by separate resolvers
-		// or through eager loading if needed
-	}
-}
-
-// mapPortfolioToGQLWithRelations converts a domain Portfolio to a GraphQL Portfolio with related data
-func mapPortfolioToGQLWithRelations(domainPortfolio model.Portfolio, user *model.User, tags []model.Tag, assets []model.PortfolioAsset, transactions []model.Transaction) *gqlModel.Portfolio {
-	portfolio := mapPortfolioToGQL(domainPortfolio)
-
-	if user != nil {
-		portfolio.User = mapUserToGQL(*user)
-	}
-
-	if tags != nil {
-		portfolio.Tags = mapTagsToGQL(tags)
-	}
-
-	// Note: Assets and Transactions would need special handling since they require
-	// additional data loading for complete GraphQL representation
-
-	return portfolio
-}
-
-// mapPortfoliosToGQL converts a slice of domain Portfolios to GraphQL Portfolios
-func mapPortfoliosToGQL(domainPortfolios []model.Portfolio) []*gqlModel.Portfolio {
-	gqlPortfolios := make([]*gqlModel.Portfolio, len(domainPortfolios))
-	for i, portfolio := range domainPortfolios {
-		gqlPortfolios[i] = mapPortfolioToGQL(portfolio)
-	}
-	return gqlPortfolios
-}
-
-// mapUserToGQL converts a domain User to a GraphQL User
 func mapUserToGQL(domainUser model.User) *gqlModel.User {
 	return &gqlModel.User{
 		ID:        domainUser.ID,
@@ -60,51 +14,100 @@ func mapUserToGQL(domainUser model.User) *gqlModel.User {
 		Email:     domainUser.Email,
 		CreatedAt: domainUser.CreatedAt,
 		UpdatedAt: domainUser.UpdatedAt,
-		// Portfolios, Watchlists, Alerts, Reports, and Ownerships would be populated
-		// by separate resolvers or through eager loading if needed
 	}
 }
 
-// mapUsersToGQL converts a slice of domain Users to GraphQL Users
-func mapUsersToGQL(domainUsers []model.User) []*gqlModel.User {
-	gqlUsers := make([]*gqlModel.User, len(domainUsers))
-	for i, user := range domainUsers {
-		gqlUsers[i] = mapUserToGQL(user)
+func mapTagToGQL(tag model.Tag) *gqlModel.Tag {
+	return &gqlModel.Tag{
+		ID:   tag.ID,
+		Name: tag.Name,
 	}
-	return gqlUsers
 }
 
-// mapPortfolioAssetToGQL converts a domain PortfolioAsset to a GraphQL PortfolioAsset
-func mapPortfolioAssetToGQL(domainPortfolioAsset model.PortfolioAsset) *gqlModel.PortfolioAsset {
+func mapPortfolioToGQL(p model.Portfolio) *gqlModel.Portfolio {
+	return &gqlModel.Portfolio{
+		ID:           p.ID,
+		Name:         p.Name,
+		Description:  &p.Description,
+		CreatedAt:    p.CreatedAt,
+		UpdatedAt:    p.UpdatedAt,
+		SortOrder:    int32(p.SortOrder),
+		Assets:       []*gqlModel.PortfolioAsset{},
+		Tags:         []*gqlModel.Tag{},
+		Transactions: []*gqlModel.Transaction{},
+	}
+}
+
+func mapWatchlistToGQL(w model.Watchlist) *gqlModel.Watchlist {
+	return &gqlModel.Watchlist{
+		ID:        w.ID,
+		Name:      w.Name,
+		CreatedAt: w.CreatedAt,
+		UpdatedAt: w.UpdatedAt,
+		Assets:    []gqlModel.Asset{},
+	}
+}
+
+func mapPositionToGQL(p model.Position) *gqlModel.Position {
+	quantity, _ := p.Quantity.Float64()
+	var avgPrice *float64
+	if p.AverageCostBasis != nil {
+		f, _ := p.AverageCostBasis.Float64()
+		avgPrice = &f
+	}
+	ownership, _ := p.OwnershipPercentage.Float64()
+
+	return &gqlModel.Position{
+		ID:                   p.ID,
+		Quantity:             quantity,
+		AveragePurchasePrice: avgPrice,
+		OwnershipPct:         &ownership,
+	}
+}
+
+func mapPortfolioAssetToGQL(pa model.PortfolioAsset) *gqlModel.PortfolioAsset {
 	return &gqlModel.PortfolioAsset{
-		Quantity:             domainPortfolioAsset.Quantity,
-		AveragePurchasePrice: &domainPortfolioAsset.AveragePurchasePrice,
-		// Asset would be populated by a separate resolver or through eager loading
+		InstrumentID:         pa.InstrumentID,
+		Quantity:             pa.Quantity,
+		AveragePurchasePrice: &pa.AveragePurchasePrice,
+	}
+}
+
+func mapPortfolioAssetToGQLWithAsset(pa model.PortfolioAsset, asset gqlModel.Asset) *gqlModel.PortfolioAsset {
+	return &gqlModel.PortfolioAsset{
+		Asset:                asset,
+		InstrumentID:         pa.InstrumentID,
+		Quantity:             pa.Quantity,
+		AveragePurchasePrice: &pa.AveragePurchasePrice,
 	}
 }
 
 // mapAssetTypeToGQL converts a domain AssetType to a GraphQL AssetType
 func mapAssetTypeToGQL(domainAssetType model.AssetType) *gqlModel.AssetType {
+	displayName := string(domainAssetType)
+	switch domainAssetType {
+	case model.AssetTypeStock:
+		displayName = "Stock"
+	case model.AssetTypeFund:
+		displayName = "Fund"
+	case model.AssetTypeCrypto:
+		displayName = "Crypto"
+	case model.AssetTypeBankAccount:
+		displayName = "Bank Account"
+	case model.AssetTypeRealEstate:
+		displayName = "Real Estate"
+	case model.AssetTypeLifeInsurance:
+		displayName = "Life Insurance"
+	case model.AssetTypeWatch:
+		displayName = "Watch"
+	case model.AssetTypeLoan:
+		displayName = "Loan"
+	case model.AssetTypeOtherValuable:
+		displayName = "Other Valuable"
+	}
 	return &gqlModel.AssetType{
-		ID:   strconv.Itoa(domainAssetType.ID),
-		Name: domainAssetType.Name,
-	}
-}
-
-// mapAssetTypesToGQL converts a slice of domain AssetTypes to GraphQL AssetTypes
-func mapAssetTypesToGQL(domainAssetTypes []model.AssetType) []*gqlModel.AssetType {
-	gqlAssetTypes := make([]*gqlModel.AssetType, len(domainAssetTypes))
-	for i, assetType := range domainAssetTypes {
-		gqlAssetTypes[i] = mapAssetTypeToGQL(assetType)
-	}
-	return gqlAssetTypes
-}
-
-// mapTagToGQL converts a domain Tag to a GraphQL Tag
-func mapTagToGQL(domainTag model.Tag) *gqlModel.Tag {
-	return &gqlModel.Tag{
-		ID:   strconv.Itoa(domainTag.ID),
-		Name: domainTag.Name,
+		ID:   string(domainAssetType),
+		Name: displayName,
 	}
 }
 
@@ -112,120 +115,307 @@ func mapTagToGQL(domainTag model.Tag) *gqlModel.Tag {
 func mapTagsToGQL(domainTags []model.Tag) []*gqlModel.Tag {
 	gqlTags := make([]*gqlModel.Tag, len(domainTags))
 	for i, tag := range domainTags {
-		gqlTags[i] = mapTagToGQL(tag)
+		gqlTags[i] = &gqlModel.Tag{
+			ID:   tag.ID,
+			Name: tag.Name,
+		}
 	}
 	return gqlTags
 }
 
-// mapStockToGQL converts domain Asset and Stock to GraphQL Stock
-func mapStockToGQL(domainAsset model.Asset, domainStock model.Stock, assetType *model.AssetType, tags []model.Tag) *gqlModel.Stock {
+// mapStockToGQL converts domain Asset and its metadata to GraphQL Stock
+func mapStockToGQL(domainAsset model.Asset, stockDetails *model.Stock, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Stock {
+	var metadata model.StockMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
 	stock := &gqlModel.Stock{
-		ID:           strconv.Itoa(domainAsset.ID),
-		Name:         domainAsset.Name,
-		CurrentValue: &domainAsset.CurrentValue,
-		Ticker:       domainStock.Ticker,
-		Quantity:     domainStock.Quantity,
-		BuyingPrice:  &domainStock.BuyingPrice,
-		Tags:         mapTagsToGQL(tags),
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Ticker:           metadata.Exchange,
+		Tags:             mapTagsToGQL(tags),
+		Sector:           &metadata.Sector,
+		Exchange:         &metadata.Exchange,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
 	}
 
-	if !domainAsset.PurchaseDate.IsZero() {
-		stock.PurchaseDate = &domainAsset.PurchaseDate
+	if domainAsset.Symbol != nil {
+		stock.Ticker = *domainAsset.Symbol
 	}
-	if domainAsset.PurchasePrice != 0 {
-		stock.PurchasePrice = &domainAsset.PurchasePrice
+
+	if stockDetails != nil {
+		stock.Ticker = stockDetails.Ticker
+		stock.Quantity = stockDetails.Quantity
+		stock.BuyingPrice = &stockDetails.BuyingPrice
 	}
-	if assetType != nil {
-		stock.AssetType = mapAssetTypeToGQL(*assetType)
-	}
+
+	stock.AssetType = mapAssetTypeToGQL(domainAsset.Type)
 
 	return stock
 }
 
-// mapCryptoToGQL converts domain Asset and Crypto to GraphQL Crypto
-func mapCryptoToGQL(domainAsset model.Asset, domainCrypto model.Crypto, assetType *model.AssetType, tags []model.Tag) *gqlModel.Crypto {
-	crypto := &gqlModel.Crypto{
-		ID:       strconv.Itoa(domainAsset.ID),
-		Name:     domainAsset.Name,
-		Quantity: domainCrypto.Quantity,
-		Tags:     mapTagsToGQL(tags),
+// mapFundToGQL converts domain Asset and its metadata to GraphQL Fund
+func mapFundToGQL(domainAsset model.Asset, fundDetails *model.Fund, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Fund {
+	var metadata model.FundMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	fund := &gqlModel.Fund{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Ticker:           metadata.Exchange,
+		Tags:             mapTagsToGQL(tags),
+		Sector:           &metadata.Sector,
+		Exchange:         &metadata.Exchange,
+		FundType:         &metadata.FundType,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
 	}
 
-	if domainAsset.CurrentValue != 0 {
-		crypto.CurrentValue = &domainAsset.CurrentValue
+	if domainAsset.Symbol != nil {
+		fund.Ticker = *domainAsset.Symbol
 	}
-	if !domainAsset.PurchaseDate.IsZero() {
-		crypto.PurchaseDate = &domainAsset.PurchaseDate
+
+	if fundDetails != nil {
+		fund.Ticker = fundDetails.Ticker
+		fund.Quantity = fundDetails.Quantity
+		fund.BuyingPrice = &fundDetails.BuyingPrice
 	}
-	if domainAsset.PurchasePrice != 0 {
-		crypto.PurchasePrice = &domainAsset.PurchasePrice
+
+	fund.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return fund
+}
+
+// mapCryptoToGQL converts domain Asset and its metadata to GraphQL Crypto
+func mapCryptoToGQL(domainAsset model.Asset, cryptoDetails *model.Crypto, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Crypto {
+	var metadata model.CryptoMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	crypto := &gqlModel.Crypto{
+		ID:                domainAsset.ID,
+		Name:              domainAsset.Name,
+		Symbol:            domainAsset.Symbol,
+		WalletAddress:     &metadata.WalletAddress,
+		BlockchainNetwork: &metadata.Blockchain,
+		Tags:              mapTagsToGQL(tags),
+		DayChange:         dayChange,
+		DayChangePercent:  dayChangePercent,
+		CurrentValue:      currentValue,
 	}
-	if domainCrypto.WalletAddress != "" {
-		crypto.WalletAddress = &domainCrypto.WalletAddress
+
+	if cryptoDetails != nil {
+		crypto.Quantity = cryptoDetails.Quantity
+		if cryptoDetails.WalletAddress != "" {
+			crypto.WalletAddress = &cryptoDetails.WalletAddress
+		}
+		if cryptoDetails.BlockchainNetwork != "" {
+			crypto.BlockchainNetwork = &cryptoDetails.BlockchainNetwork
+		}
 	}
-	if domainCrypto.BlockchainNetwork != "" {
-		crypto.BlockchainNetwork = &domainCrypto.BlockchainNetwork
-	}
-	if assetType != nil {
-		crypto.AssetType = mapAssetTypeToGQL(*assetType)
-	}
+
+	crypto.AssetType = mapAssetTypeToGQL(domainAsset.Type)
 
 	return crypto
 }
 
-// mapTransactionToGQL converts a domain Transaction to a GraphQL Transaction
-func mapTransactionToGQL(domainTransaction model.Transaction) *gqlModel.Transaction {
-	var transactionType gqlModel.TransactionType
-	switch domainTransaction.TransactionType {
-	case "BUY":
-		transactionType = gqlModel.TransactionTypeBuy
-	case "SELL":
-		transactionType = gqlModel.TransactionTypeSell
-	default:
-		transactionType = gqlModel.TransactionTypeBuy // Default fallback
+// mapBankAccountToGQL converts domain Asset and its metadata to GraphQL BankAccount
+func mapBankAccountToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.BankAccount {
+	var metadata model.BankAccountMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	bankAccount := &gqlModel.BankAccount{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Tags:             mapTagsToGQL(tags),
+		AccountType:      metadata.AccountType,
+		Institution:      metadata.Institution,
+		AccountNumber:    metadata.AccountNumber,
+		Currency:         metadata.Currency,
+		InterestRate:     metadata.InterestRate,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
+		Balance:          currentValue, // Balance is the same as currentValue for bank accounts
 	}
 
-	return &gqlModel.Transaction{
-		ID:              strconv.Itoa(domainTransaction.ID),
-		TransactionType: transactionType,
-		Quantity:        domainTransaction.Quantity,
-		PricePerUnit:    domainTransaction.PricePerUnit,
-		TransactionDate: domainTransaction.TransactionDate,
-		// Portfolio and Asset would be populated by separate resolvers
-	}
+	bankAccount.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return bankAccount
 }
 
-// mapTransactionsToGQL converts a slice of domain Transactions to GraphQL Transactions
-func mapTransactionsToGQL(domainTransactions []model.Transaction) []*gqlModel.Transaction {
-	gqlTransactions := make([]*gqlModel.Transaction, len(domainTransactions))
-	for i, transaction := range domainTransactions {
-		gqlTransactions[i] = mapTransactionToGQL(transaction)
+// mapRealEstateToGQL converts domain Asset and its metadata to GraphQL RealEstate
+func mapRealEstateToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.RealEstate {
+	var metadata model.RealEstateMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	realEstate := &gqlModel.RealEstate{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Tags:             mapTagsToGQL(tags),
+		PropertyType:     metadata.PropertyType,
+		Address:          metadata.Address,
+		City:             metadata.City,
+		State:            &metadata.State,
+		Country:          metadata.Country,
+		ZipCode:          &metadata.ZipCode,
+		SquareFeet:       intToInt32(metadata.SquareFeet),
+		YearBuilt:        intToInt32(metadata.YearBuilt),
+		Bedrooms:         intToInt32(metadata.Bedrooms),
+		Bathrooms:        metadata.Bathrooms,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
 	}
-	return gqlTransactions
+
+	realEstate.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return realEstate
 }
 
-// mapWatchlistToGQL converts a domain Watchlist to a GraphQL Watchlist
-func mapWatchlistToGQL(domainWatchlist model.Watchlist) *gqlModel.Watchlist {
-	return &gqlModel.Watchlist{
-		ID:        strconv.Itoa(domainWatchlist.ID),
-		Name:      domainWatchlist.Name,
-		CreatedAt: domainWatchlist.CreatedAt,
-		UpdatedAt: domainWatchlist.UpdatedAt,
-		// User and Assets would be populated by separate resolvers
+// mapLifeInsuranceToGQL converts domain Asset and its metadata to GraphQL LifeInsurance
+func mapLifeInsuranceToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.LifeInsurance {
+	var metadata model.LifeInsuranceMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	// Convert cents back to dollars for display
+	coverageAmount := float64(metadata.CoverageAmount) / 100.0
+	premiumAmount := float64(metadata.PremiumAmount) / 100.0
+
+	lifeInsurance := &gqlModel.LifeInsurance{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Tags:             mapTagsToGQL(tags),
+		PolicyNumber:     metadata.PolicyNumber,
+		Insurer:          metadata.Insurer,
+		PolicyType:       metadata.PolicyType,
+		CoverageAmount:   coverageAmount,
+		PremiumAmount:    premiumAmount,
+		PremiumFrequency: metadata.PremiumFrequency,
+		Beneficiaries:    metadata.Beneficiaries,
+		MaturityDate:     metadata.MaturityDate,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
 	}
+
+	lifeInsurance.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return lifeInsurance
 }
 
-// mapWatchlistsToGQL converts a slice of domain Watchlists to GraphQL Watchlists
-func mapWatchlistsToGQL(domainWatchlists []model.Watchlist) []*gqlModel.Watchlist {
-	gqlWatchlists := make([]*gqlModel.Watchlist, len(domainWatchlists))
-	for i, watchlist := range domainWatchlists {
-		gqlWatchlists[i] = mapWatchlistToGQL(watchlist)
+// mapWatchToGQL converts domain Asset and its metadata to GraphQL Watch
+func mapWatchToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Watch {
+	var metadata model.WatchMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	watch := &gqlModel.Watch{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Tags:             mapTagsToGQL(tags),
+		Brand:            metadata.Brand,
+		Model:            metadata.Model,
+		SerialNumber:     metadata.SerialNumber,
+		ReferenceNumber:  metadata.ReferenceNumber,
+		Condition:        metadata.Condition,
+		YearMade:         intToInt32(metadata.YearMade),
+		Material:         metadata.Material,
+		Movement:         metadata.Movement,
+		CaseSize:         metadata.CaseSize,
+		WaterResistance:  intToInt32(metadata.WaterResistance),
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
 	}
-	return gqlWatchlists
+
+	watch.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return watch
+}
+
+// mapLoanToGQL converts domain Asset and its metadata to GraphQL Loan
+func mapLoanToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Loan {
+	var metadata model.LoanMetadata
+	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	// Convert cents back to dollars for display
+	loanAmount := float64(metadata.LoanAmount) / 100.0
+	remainingBalance := float64(metadata.RemainingBalance) / 100.0
+	monthlyPayment := float64(metadata.MonthlyPayment) / 100.0
+	downPayment := float64(metadata.DownPayment) / 100.0
+	applicationFee := float64(metadata.ApplicationFee) / 100.0
+	brokerFee := float64(metadata.BrokerFee) / 100.0
+	insuranceFee := float64(metadata.InsuranceFee) / 100.0
+	otherFees := float64(metadata.OtherFees) / 100.0
+
+	loan := &gqlModel.Loan{
+		ID:               domainAsset.ID,
+		Name:             domainAsset.Name,
+		Symbol:           domainAsset.Symbol,
+		Tags:             mapTagsToGQL(tags),
+		Description:      stringPtrIfNotEmpty(metadata.Description),
+		LoanType:         metadata.LoanType,
+		LoanAmount:       loanAmount,
+		RemainingBalance: remainingBalance,
+		InterestRate:     metadata.InterestRate,
+		DurationMonths:   int32(metadata.DurationMonths),
+		MonthlyPayment:   monthlyPayment,
+		StartDate:        metadata.StartDate,
+		Lender:           metadata.Lender,
+		Currency:         metadata.Currency,
+		Status:           metadata.Status,
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
+	}
+
+	if metadata.EndDate != "" {
+		loan.EndDate = &metadata.EndDate
+	}
+	if metadata.LoanNumber != "" {
+		loan.LoanNumber = &metadata.LoanNumber
+	}
+	if metadata.DownPayment != 0 {
+		loan.DownPayment = &downPayment
+	}
+	if metadata.OwnershipMode != "" {
+		loan.OwnershipMode = &metadata.OwnershipMode
+	}
+	if metadata.ApplicationFee != 0 {
+		loan.ApplicationFee = &applicationFee
+	}
+	if metadata.BrokerFee != 0 {
+		loan.BrokerFee = &brokerFee
+	}
+	if metadata.InsuranceFee != 0 {
+		loan.InsuranceFee = &insuranceFee
+	}
+	if metadata.OtherFees != 0 {
+		loan.OtherFees = &otherFees
+	}
+	if metadata.EarlyRepaymentFee != 0 {
+		loan.EarlyRepaymentFee = &metadata.EarlyRepaymentFee
+	}
+
+	loan.AssetType = mapAssetTypeToGQL(domainAsset.Type)
+
+	return loan
 }
 
 // mapPortfolioAnalyticsToGQL converts service PortfolioAnalytics to GraphQL PortfolioAnalytics
 func mapPortfolioAnalyticsToGQL(analytics service.PortfolioAnalytics) *gqlModel.PortfolioAnalytics {
+	history := make([]*gqlModel.PerformancePoint, len(analytics.PerformanceHistory))
+	for i, p := range analytics.PerformanceHistory {
+		history[i] = mapPerformancePointToGQL(p)
+	}
+
 	return &gqlModel.PortfolioAnalytics{
 		TotalValue:           analytics.TotalValue,
 		TotalCost:            analytics.TotalCost,
@@ -233,7 +423,86 @@ func mapPortfolioAnalyticsToGQL(analytics service.PortfolioAnalytics) *gqlModel.
 		TotalGainLossPercent: analytics.TotalGainLossPercent,
 		AssetAllocation:      mapAssetAllocationsToGQL(analytics.AssetAllocation),
 		RiskMetrics:          mapRiskMetricsToGQL(analytics.RiskMetrics),
-		PerformanceHistory:   mapPerformanceHistoryToGQL(analytics.PerformanceHistory),
+		PerformanceHistory:   history,
+	}
+}
+
+// mapAuthErrorToGQL converts service AuthError to GraphQL AuthError
+func mapAuthErrorToGQL(err *service.AuthError) *gqlModel.AuthError {
+	if err == nil {
+		return nil
+	}
+	var field *string
+	if err.Field != "" {
+		field = &err.Field
+	}
+	return &gqlModel.AuthError{
+		Code:    err.Code,
+		Message: err.Message,
+		Field:   field,
+	}
+}
+
+// mapRiskMetricsToGQL converts service RiskMetrics to GraphQL RiskMetrics
+func mapRiskMetricsToGQL(risk service.RiskMetrics) *gqlModel.RiskMetrics {
+	return &gqlModel.RiskMetrics{
+		Volatility:      risk.Volatility,
+		SharpeRatio:     risk.SharpeRatio,
+		MaxDrawdown:     risk.MaxDrawdown,
+		Diversification: risk.Diversification,
+	}
+}
+
+// mapPerformancePointToGQL converts service PerformancePoint to GraphQL PerformancePoint
+func mapPerformancePointToGQL(p service.PerformancePoint) *gqlModel.PerformancePoint {
+	return &gqlModel.PerformancePoint{
+		Date:  p.Date,
+		Value: p.Value,
+	}
+}
+
+// mapTransactionToGQL converts a domain Transaction to a GraphQL Transaction
+func mapTransactionToGQL(t model.Transaction) *gqlModel.Transaction {
+	quantity := 0.0
+	if t.Quantity != nil {
+		quantity, _ = t.Quantity.Float64()
+	}
+
+	pricePerUnit := 0.0
+	if t.PricePerUnit != nil {
+		pricePerUnit, _ = t.PricePerUnit.Float64()
+	}
+
+	return &gqlModel.Transaction{
+		ID:              t.ID,
+		TransactionType: gqlModel.TransactionType(t.Type),
+		Quantity:        quantity,
+		PricePerUnit:    pricePerUnit,
+		TransactionDate: t.TransactionDate,
+		Notes:           t.Notes,
+		// Portfolio and Asset are lazy loaded or set by the resolver
+	}
+}
+
+// mapAuthResponseToGQL converts service AuthResponse to GraphQL AuthResponse
+func mapAuthResponseToGQL(resp *service.AuthResponse) *gqlModel.AuthResponse {
+	if resp == nil {
+		return &gqlModel.AuthResponse{Success: false}
+	}
+
+	return &gqlModel.AuthResponse{
+		Success: true,
+		Data: &gqlModel.AuthData{
+			Token:        resp.Token,
+			RefreshToken: resp.RefreshToken,
+			ExpiresAt:    resp.ExpiresAt,
+			User: &gqlModel.AuthUser{
+				ID:            resp.User.ID,
+				Email:         resp.User.Email,
+				Name:          resp.User.Name,
+				EmailVerified: resp.User.EmailVerified,
+			},
+		},
 	}
 }
 
@@ -249,26 +518,4 @@ func mapAssetAllocationsToGQL(allocations []service.AssetAllocation) []*gqlModel
 		}
 	}
 	return gqlAllocations
-}
-
-// mapRiskMetricsToGQL converts service RiskMetrics to GraphQL RiskMetrics
-func mapRiskMetricsToGQL(metrics service.RiskMetrics) *gqlModel.RiskMetrics {
-	return &gqlModel.RiskMetrics{
-		Volatility:      metrics.Volatility,
-		SharpeRatio:     metrics.SharpeRatio,
-		MaxDrawdown:     metrics.MaxDrawdown,
-		Diversification: metrics.Diversification,
-	}
-}
-
-// mapPerformanceHistoryToGQL converts service PerformancePoint slice to GraphQL PerformancePoint slice
-func mapPerformanceHistoryToGQL(history []service.PerformancePoint) []*gqlModel.PerformancePoint {
-	gqlHistory := make([]*gqlModel.PerformancePoint, len(history))
-	for i, point := range history {
-		gqlHistory[i] = &gqlModel.PerformancePoint{
-			Date:  point.Date,
-			Value: point.Value,
-		}
-	}
-	return gqlHistory
 }

@@ -119,7 +119,7 @@ func TestUserRepository_UpdatePasswordHash(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the password hash was updated
-				updatedUser, err := userRepo.GetByStringID(ctx, tt.userID)
+				updatedUser, err := userRepo.GetByID(ctx, tt.userID)
 				require.NoError(t, err)
 				assert.NotNil(t, updatedUser.PasswordHash)
 				assert.Equal(t, tt.passwordHash, *updatedUser.PasswordHash)
@@ -183,7 +183,7 @@ func TestUserRepository_UpdateEmailVerified(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the email verification status was updated
-				updatedUser, err := userRepo.GetByStringID(ctx, tt.userID)
+				updatedUser, err := userRepo.GetByID(ctx, tt.userID)
 				require.NoError(t, err)
 				assert.Equal(t, tt.verified, updatedUser.EmailVerified)
 			}
@@ -254,7 +254,7 @@ func TestUserRepository_IncrementFailedLoginCount(t *testing.T) {
 				require.NoError(t, err)
 			}
 
-			err := userRepo.IncrementFailedLoginCount(ctx, tt.userID)
+			err := userRepo.IncrementFailedLoginCount(ctx, tt.userID, 5)
 
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -262,7 +262,7 @@ func TestUserRepository_IncrementFailedLoginCount(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the failed login count was incremented
-				updatedUser, err := userRepo.GetByStringID(ctx, tt.userID)
+				updatedUser, err := userRepo.GetByID(ctx, tt.userID)
 				require.NoError(t, err)
 				assert.Equal(t, tt.expectedCount, updatedUser.FailedLoginCount)
 
@@ -324,7 +324,7 @@ func TestUserRepository_ResetFailedLoginCount(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the failed login count was reset and account unlocked
-				updatedUser, err := userRepo.GetByStringID(ctx, tt.userID)
+				updatedUser, err := userRepo.GetByID(ctx, tt.userID)
 				require.NoError(t, err)
 				assert.Equal(t, 0, updatedUser.FailedLoginCount)
 				assert.Nil(t, updatedUser.LockedUntil)
@@ -384,7 +384,7 @@ func TestUserRepository_LockAccount(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the account was locked
-				updatedUser, err := userRepo.GetByStringID(ctx, tt.userID)
+				updatedUser, err := userRepo.GetByID(ctx, tt.userID)
 				require.NoError(t, err)
 				assert.NotNil(t, updatedUser.LockedUntil)
 				assert.True(t, updatedUser.LockedUntil.Equal(tt.lockUntil) || updatedUser.LockedUntil.After(tt.lockUntil.Add(-time.Second)))

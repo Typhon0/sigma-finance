@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 
 	"github.com/uptrace/bun"
 )
@@ -14,6 +15,17 @@ import (
 // ErrNotFound is a standard error returned when a requested record is not found.
 // Services should check for this specific error to handle "not found" cases gracefully.
 var ErrNotFound = errors.New("record not found")
+
+// isInvalidIDError returns true if the error is a Postgres invalid input syntax
+// error for UUID columns (SQLSTATE 22P02). We treat this as "not found" to
+// prevent leaking database implementation details.
+func isInvalidIDError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "22P02") || strings.Contains(errMsg, "invalid input syntax for type uuid")
+}
 
 // QueryOption defines a function signature for modifying a bun.SelectQuery.
 // This enables a flexible and composable way to build database queries.
@@ -30,9 +42,9 @@ type IRepository[T any] interface {
 	IDBProvider
 	Create(ctx context.Context, entity *T) (*T, error)
 	Update(ctx context.Context, entity *T) error
-	Delete(ctx context.Context, id uint) error
-	GetByID(ctx context.Context, id uint) (T, error)
-	FindOneBy(ctx context.Context, options ...QueryOption) (T, error)
+	Delete(ctx context.Context, id string) error
+	GetByID(ctx context.Context, id string) (*T, error)
+	FindOneBy(ctx context.Context, options ...QueryOption) (*T, error)
 	FindAllBy(ctx context.Context, options ...QueryOption) ([]T, error)
 	Count(ctx context.Context, options ...QueryOption) (int, error)
 }
@@ -58,7 +70,9 @@ func NewRepository[T any](db bun.IDB) *Repository[T] {
 // Create persists a new entity to the database.
 // It uses .Returning("*") to scan all database-generated values (like ID, timestamps) back into the entity.
 func (r *Repository[T]) Create(ctx context.Context, entity *T) (*T, error) {
-	_, err := r.db.NewInsert().Model(entity).Returning("*").Exec(ctx)
+	// Exclude ID column for auto-increment tables to let DB generate it
+	// Then use Returning to get the generated values back
+	err := r.db.NewInsert().Model(entity).ExcludeColumn("id").Returning("*").Scan(ctx, entity)
 	return entity, err
 }
 
@@ -78,9 +92,12 @@ func (r *Repository[T]) Update(ctx context.Context, entity *T) error {
 
 // Delete removes an entity by its primary key.
 // It returns ErrNotFound if no record with the given PK exists.
-func (r *Repository[T]) Delete(ctx context.Context, id uint) error {
+func (r *Repository[T]) Delete(ctx context.Context, id string) error {
 	res, err := r.db.NewDelete().Model((*T)(nil)).Where("id = ?", id).Exec(ctx)
 	if err != nil {
+		if isInvalidIDError(err) {
+			return ErrNotFound
+		}
 		return err
 	}
 	rowsAffected, _ := res.RowsAffected()
@@ -91,13 +108,13 @@ func (r *Repository[T]) Delete(ctx context.Context, id uint) error {
 }
 
 // GetByID is a convenience method that retrieves a single entity by its primary key.
-func (r *Repository[T]) GetByID(ctx context.Context, id uint) (T, error) {
+func (r *Repository[T]) GetByID(ctx context.Context, id string) (*T, error) {
 	return r.FindOneBy(ctx, ByID(id))
 }
 
 // FindOneBy finds the first record that matches the given query options.
 // It wraps the database driver's "no rows" error in the standard ErrNotFound.
-func (r *Repository[T]) FindOneBy(ctx context.Context, options ...QueryOption) (T, error) {
+func (r *Repository[T]) FindOneBy(ctx context.Context, options ...QueryOption) (*T, error) {
 	var entity T
 	query := r.db.NewSelect().Model(&entity)
 
@@ -107,12 +124,12 @@ func (r *Repository[T]) FindOneBy(ctx context.Context, options ...QueryOption) (
 
 	err := query.Scan(ctx)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return entity, ErrNotFound
+		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {
+			return nil, ErrNotFound
 		}
-		return entity, err
+		return nil, err
 	}
-	return entity, nil
+	return &entity, nil
 }
 
 // FindAllBy retrieves a slice of all entities that match the given query options.
@@ -162,6 +179,18 @@ func WithOrder(order string) QueryOption {
 	}
 }
 
+// WithOrderBy is an alias for WithOrder for better readability in some contexts.
+func WithOrderBy(order string) QueryOption {
+	return WithOrder(order)
+}
+
+// ByColumnLike creates a QueryOption to filter using LIKE.
+func ByColumnLike(column string, pattern string) QueryOption {
+	return func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("? LIKE ?", bun.Ident(column), pattern)
+	}
+}
+
 // WithLimit creates a QueryOption to limit the number of results.
 func WithLimit(limit int) QueryOption {
 	return func(q *bun.SelectQuery) *bun.SelectQuery {
@@ -193,7 +222,7 @@ func WithSoftDeleted() QueryOption {
 }
 
 // ByID creates a WHERE clause for the primary key.
-func ByID(id uint) QueryOption {
+func ByID(id string) QueryOption {
 	return func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("id = ?", id)
 	}

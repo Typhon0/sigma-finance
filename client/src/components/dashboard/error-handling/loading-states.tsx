@@ -4,12 +4,12 @@ import { cn } from "@/lib/utils";
 
 // Enhanced loading skeletons for inline charts and data-heavy components
 
-export function InlineChartSkeleton({ 
-	height = 300, 
+export function InlineChartSkeleton({
+	height = 300,
 	title,
-	className 
-}: { 
-	height?: number; 
+	className,
+}: {
+	height?: number;
 	title?: string;
 	className?: string;
 }) {
@@ -33,9 +33,9 @@ export function InlineChartSkeleton({
 							</div>
 							<div className="flex items-end justify-between h-32 gap-1">
 								{Array.from({ length: 8 }).map((_, i) => (
-									<Skeleton 
-										key={i} 
-										className="w-full" 
+									<Skeleton
+										key={i}
+										className="w-full"
 										style={{ height: `${Math.random() * 80 + 20}%` }}
 									/>
 								))}
@@ -88,7 +88,10 @@ export function InlinePortfolioDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-4">
 						{Array.from({ length: 5 }).map((_, i) => (
-							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+							<div
+								key={i}
+								className="flex items-center justify-between p-3 border rounded-lg"
+							>
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-10 w-10 rounded-full" />
 									<div className="space-y-1">
@@ -159,7 +162,10 @@ export function InlineAssetDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-3">
 						{Array.from({ length: 6 }).map((_, i) => (
-							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+							<div
+								key={i}
+								className="flex items-center justify-between p-3 border rounded-lg"
+							>
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-8 w-8 rounded-full" />
 									<div className="space-y-1">
@@ -180,13 +186,13 @@ export function InlineAssetDetailSkeleton() {
 	);
 }
 
-export function DataTableSkeleton({ 
-	rows = 5, 
+export function DataTableSkeleton({
+	rows = 5,
 	columns = 4,
 	showHeader = true,
-	className 
-}: { 
-	rows?: number; 
+	className,
+}: {
+	rows?: number;
 	columns?: number;
 	showHeader?: boolean;
 	className?: string;
@@ -204,15 +210,18 @@ export function DataTableSkeleton({
 					)}
 					<div className="space-y-0">
 						{Array.from({ length: rows }).map((_, rowIndex) => (
-							<div key={rowIndex} className="flex items-center gap-4 p-4 border-b last:border-b-0">
+							<div
+								key={rowIndex}
+								className="flex items-center gap-4 p-4 border-b last:border-b-0"
+							>
 								{Array.from({ length: columns }).map((_, colIndex) => (
-									<Skeleton 
-										key={colIndex} 
+									<Skeleton
+										key={colIndex}
 										className={cn(
 											"h-4 flex-1",
 											colIndex === 0 && "w-8 h-8 rounded-full flex-none", // First column as avatar
-											colIndex === columns - 1 && "w-20 flex-none" // Last column as action
-										)} 
+											colIndex === columns - 1 && "w-20 flex-none", // Last column as action
+										)}
 									/>
 								))}
 							</div>
@@ -224,10 +233,10 @@ export function DataTableSkeleton({
 	);
 }
 
-export function MetricCardsSkeleton({ 
+export function MetricCardsSkeleton({
 	count = 4,
-	className 
-}: { 
+	className,
+}: {
 	count?: number;
 	className?: string;
 }) {
@@ -249,11 +258,11 @@ export function MetricCardsSkeleton({
 	);
 }
 
-export function AssetListSkeleton({ 
+export function AssetListSkeleton({
 	count = 5,
 	showActions = true,
-	className 
-}: { 
+	className,
+}: {
 	count?: number;
 	showActions?: boolean;
 	className?: string;
@@ -261,7 +270,10 @@ export function AssetListSkeleton({
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
-				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+				<div
+					key={i}
+					className="flex items-center justify-between p-3 border rounded-lg"
+				>
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-10 w-10 rounded-full" />
 						<div className="space-y-1">
@@ -282,17 +294,20 @@ export function AssetListSkeleton({
 	);
 }
 
-export function TransactionListSkeleton({ 
+export function TransactionListSkeleton({
 	count = 6,
-	className 
-}: { 
+	className,
+}: {
 	count?: number;
 	className?: string;
 }) {
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
-				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
+				<div
+					key={i}
+					className="flex items-center justify-between p-3 border rounded-lg"
+				>
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-8 w-8 rounded-full" />
 						<div className="space-y-1">
@@ -311,21 +326,17 @@ export function TransactionListSkeleton({
 }
 
 // Shimmer effect for enhanced loading experience
-export function ShimmerWrapper({ 
-	children, 
+export function ShimmerWrapper({
+	children,
 	isLoading,
-	className 
-}: { 
+	className,
+}: {
 	children: React.ReactNode;
 	isLoading: boolean;
 	className?: string;
 }) {
 	return (
-		<div className={cn(
-			"relative",
-			isLoading && "overflow-hidden",
-			className
-		)}>
+		<div className={cn("relative", isLoading && "overflow-hidden", className)}>
 			{children}
 			{isLoading && (
 				<div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer" />

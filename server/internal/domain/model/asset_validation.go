@@ -36,6 +36,8 @@ func (avr *AssetValidationRules) ValidateAssetForType(asset *Asset) error {
 		return avr.validateLifeInsuranceAsset(asset)
 	case AssetTypeWatch:
 		return avr.validateWatchAsset(asset)
+	case AssetTypeLoan:
+		return avr.validateLoanAsset(asset)
 	case AssetTypeOtherValuable:
 		return avr.validateOtherValuableAsset(asset)
 	default:
@@ -123,6 +125,16 @@ func (avr *AssetValidationRules) validateWatchAsset(asset *Asset) error {
 	return nil
 }
 
+// validateLoanAsset validates loan-specific business rules
+func (avr *AssetValidationRules) validateLoanAsset(asset *Asset) error {
+	// Clear symbol and market data source, set not tradeable
+	asset.Symbol = nil
+	asset.MarketDataSource = nil
+	asset.IsTradeable = false
+
+	return nil
+}
+
 // validateOtherValuableAsset validates other valuable-specific business rules
 func (avr *AssetValidationRules) validateOtherValuableAsset(asset *Asset) error {
 	// Clear symbol and market data source, set not tradeable
@@ -150,7 +162,7 @@ func (pvr *PositionValidationRules) ValidateOwnershipPercentages(positions []*Po
 	// Group positions by asset
 	assetPositions := make(map[string][]*Position)
 	for _, pos := range positions {
-		assetID := pos.AssetID.String()
+		assetID := pos.AssetID
 		assetPositions[assetID] = append(assetPositions[assetID], pos)
 	}
 
@@ -187,7 +199,7 @@ func (pvr *PositionValidationRules) ValidatePositionQuantity(position *Position,
 		if !position.Quantity.IsZero() && !position.Quantity.Equal(decimal.NewFromInt(1)) {
 			return errors.New("bank account quantity should be 0 or 1")
 		}
-	case AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeOtherValuable:
+	case AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeLoan, AssetTypeOtherValuable:
 		// Non-tradeable assets typically have quantity of 1 or use ownership percentage
 		if position.Quantity.IsNegative() {
 			return errors.New("quantity cannot be negative")
@@ -217,7 +229,7 @@ func (tvr *TransactionValidationRules) ValidateTransactionForAssetType(transacti
 		return tvr.validateTradeableAssetTransaction(transaction, asset)
 	case AssetTypeBankAccount:
 		return tvr.validateBankAccountTransaction(transaction, asset)
-	case AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeOtherValuable:
+	case AssetTypeRealEstate, AssetTypeLifeInsurance, AssetTypeWatch, AssetTypeLoan, AssetTypeOtherValuable:
 		return tvr.validateNonTradeableAssetTransaction(transaction, asset)
 	default:
 		return fmt.Errorf("unsupported asset type for transaction: %s", asset.Type)

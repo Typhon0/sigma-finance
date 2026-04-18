@@ -3,6 +3,7 @@
 package gqlModel
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -20,6 +21,17 @@ type Asset interface {
 	GetPurchasePrice() *float64
 	GetTags() []*Tag
 	GetPositions() []*Position
+	GetSector() *string
+	GetExchange() *string
+	GetDayChange() *float64
+	GetDayChangePercent() *float64
+}
+
+type AddInstrumentHoldingInput struct {
+	PortfolioID          string  `json:"portfolioID"`
+	InstrumentID         string  `json:"instrumentID"`
+	Quantity             float64 `json:"quantity"`
+	AveragePurchasePrice float64 `json:"averagePurchasePrice"`
 }
 
 type Alert struct {
@@ -36,6 +48,18 @@ type Alert struct {
 	CreatedAt           time.Time                 `json:"createdAt"`
 	UpdatedAt           time.Time                 `json:"updatedAt"`
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
+}
+
+// Alert action configuration
+type AlertAction struct {
+	Type   AlertActionType `json:"type"`
+	Config map[string]any  `json:"config"`
+}
+
+// Input for alert actions
+type AlertActionInput struct {
+	Type   AlertActionType `json:"type"`
+	Config map[string]any  `json:"config"`
 }
 
 type AlertError struct {
@@ -56,6 +80,47 @@ type AlertHistoryFilter struct {
 	AssetID     *string                    `json:"assetId,omitempty"`
 	PortfolioID *string                    `json:"portfolioId,omitempty"`
 	TimeRange   *PerformanceTimeRangeInput `json:"timeRange,omitempty"`
+}
+
+// Alert notification
+type AlertNotification struct {
+	ID           string        `json:"id"`
+	AlertID      string        `json:"alertId"`
+	AlertName    string        `json:"alertName"`
+	MetricName   string        `json:"metricName"`
+	CurrentValue float64       `json:"currentValue"`
+	Threshold    float64       `json:"threshold"`
+	Severity     AlertSeverity `json:"severity"`
+	Timestamp    string        `json:"timestamp"`
+	Message      string        `json:"message"`
+}
+
+// Alert rule configuration
+type AlertRule struct {
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	MetricName string         `json:"metricName"`
+	Condition  AlertCondition `json:"condition"`
+	Threshold  float64        `json:"threshold"`
+	Duration   int32          `json:"duration"`
+	Labels     map[string]any `json:"labels"`
+	Actions    []*AlertAction `json:"actions"`
+	LastFired  *string        `json:"lastFired,omitempty"`
+	Enabled    bool           `json:"enabled"`
+	CreatedAt  string         `json:"createdAt"`
+	UpdatedAt  string         `json:"updatedAt"`
+}
+
+// Input for creating/updating alert rules
+type AlertRuleInput struct {
+	Name       string              `json:"name"`
+	MetricName string              `json:"metricName"`
+	Condition  AlertCondition      `json:"condition"`
+	Threshold  float64             `json:"threshold"`
+	Duration   int32               `json:"duration"`
+	Labels     map[string]any      `json:"labels,omitempty"`
+	Actions    []*AlertActionInput `json:"actions"`
+	Enabled    bool                `json:"enabled"`
 }
 
 type AlertTriggerEvent struct {
@@ -104,6 +169,35 @@ type AssetOrder struct {
 	Direction SortDirection   `json:"direction"`
 }
 
+type AssetPricePoint struct {
+	ID        string    `json:"id"`
+	AssetID   string    `json:"assetId"`
+	Price     float64   `json:"price"`
+	Volume    *float64  `json:"volume,omitempty"`
+	MarketCap *float64  `json:"marketCap,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+	Source    string    `json:"source"`
+}
+
+type AssetPriceStatistics struct {
+	AssetID       string    `json:"assetId"`
+	CurrentPrice  float64   `json:"currentPrice"`
+	PreviousPrice float64   `json:"previousPrice"`
+	Change        float64   `json:"change"`
+	ChangePercent float64   `json:"changePercent"`
+	DayHigh       float64   `json:"dayHigh"`
+	DayLow        float64   `json:"dayLow"`
+	WeekHigh      float64   `json:"weekHigh"`
+	WeekLow       float64   `json:"weekLow"`
+	MonthHigh     float64   `json:"monthHigh"`
+	MonthLow      float64   `json:"monthLow"`
+	YearHigh      float64   `json:"yearHigh"`
+	YearLow       float64   `json:"yearLow"`
+	AverageVolume *float64  `json:"averageVolume,omitempty"`
+	LastUpdated   time.Time `json:"lastUpdated"`
+	IsStale       bool      `json:"isStale"`
+}
+
 type AssetType struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -139,6 +233,61 @@ type AuthUser struct {
 	Name          string `json:"name"`
 	EmailVerified bool   `json:"emailVerified"`
 }
+
+type BankAccount struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	AccountType      string      `json:"accountType"`
+	Institution      string      `json:"institution"`
+	AccountNumber    string      `json:"accountNumber"`
+	Currency         string      `json:"currency"`
+	InterestRate     *float64    `json:"interestRate,omitempty"`
+	Balance          *float64    `json:"balance,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
+}
+
+func (BankAccount) IsAsset()                         {}
+func (this BankAccount) GetID() string               { return this.ID }
+func (this BankAccount) GetName() string             { return this.Name }
+func (this BankAccount) GetSymbol() *string          { return this.Symbol }
+func (this BankAccount) GetAssetType() *AssetType    { return this.AssetType }
+func (this BankAccount) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this BankAccount) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this BankAccount) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this BankAccount) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this BankAccount) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this BankAccount) GetSector() *string            { return this.Sector }
+func (this BankAccount) GetExchange() *string          { return this.Exchange }
+func (this BankAccount) GetDayChange() *float64        { return this.DayChange }
+func (this BankAccount) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
 type BatchAlertInput struct {
 	Alerts []*CreateAlertInput `json:"alerts"`
@@ -233,6 +382,19 @@ type CreateAlertInput struct {
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
 }
 
+type CreateBankAccountInput struct {
+	Name          string     `json:"name"`
+	AssetTypeID   string     `json:"assetTypeID"`
+	CurrentValue  *float64   `json:"currentValue,omitempty"`
+	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
+	AccountType   string     `json:"accountType"`
+	Institution   string     `json:"institution"`
+	AccountNumber string     `json:"accountNumber"`
+	Currency      string     `json:"currency"`
+	InterestRate  *float64   `json:"interestRate,omitempty"`
+}
+
 type CreateCryptoInput struct {
 	Name              string     `json:"name"`
 	AssetTypeID       string     `json:"assetTypeID"`
@@ -244,10 +406,82 @@ type CreateCryptoInput struct {
 	Quantity          float64    `json:"quantity"`
 }
 
+type CreateFundInput struct {
+	Name          string     `json:"name"`
+	AssetTypeID   string     `json:"assetTypeID"`
+	CurrentValue  *float64   `json:"currentValue,omitempty"`
+	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
+	Ticker        string     `json:"ticker"`
+	Quantity      float64    `json:"quantity"`
+}
+
+type CreateLifeInsuranceInput struct {
+	Name             string     `json:"name"`
+	AssetTypeID      string     `json:"assetTypeID"`
+	CurrentValue     *float64   `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64   `json:"purchasePrice,omitempty"`
+	PolicyNumber     string     `json:"policyNumber"`
+	Insurer          string     `json:"insurer"`
+	PolicyType       string     `json:"policyType"`
+	CoverageAmount   float64    `json:"coverageAmount"`
+	PremiumAmount    float64    `json:"premiumAmount"`
+	PremiumFrequency string     `json:"premiumFrequency"`
+	Beneficiaries    []string   `json:"beneficiaries"`
+	MaturityDate     *time.Time `json:"maturityDate,omitempty"`
+}
+
+type CreateLoanInput struct {
+	Name              string     `json:"name"`
+	AssetTypeID       string     `json:"assetTypeID"`
+	CurrentValue      *float64   `json:"currentValue,omitempty"`
+	PurchaseDate      *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice     *float64   `json:"purchasePrice,omitempty"`
+	Description       *string    `json:"description,omitempty"`
+	LoanType          string     `json:"loanType"`
+	LoanAmount        float64    `json:"loanAmount"`
+	RemainingBalance  float64    `json:"remainingBalance"`
+	InterestRate      float64    `json:"interestRate"`
+	DurationMonths    int32      `json:"durationMonths"`
+	MonthlyPayment    float64    `json:"monthlyPayment"`
+	StartDate         string     `json:"startDate"`
+	EndDate           *string    `json:"endDate,omitempty"`
+	Lender            string     `json:"lender"`
+	LoanNumber        *string    `json:"loanNumber,omitempty"`
+	Currency          string     `json:"currency"`
+	DownPayment       *float64   `json:"downPayment,omitempty"`
+	Status            string     `json:"status"`
+	OwnershipMode     *string    `json:"ownershipMode,omitempty"`
+	ApplicationFee    *float64   `json:"applicationFee,omitempty"`
+	BrokerFee         *float64   `json:"brokerFee,omitempty"`
+	InsuranceFee      *float64   `json:"insuranceFee,omitempty"`
+	OtherFees         *float64   `json:"otherFees,omitempty"`
+	EarlyRepaymentFee *float64   `json:"earlyRepaymentFee,omitempty"`
+}
+
 type CreatePortfolioInput struct {
 	UserID      string  `json:"userID"`
 	Name        string  `json:"name"`
 	Description *string `json:"description,omitempty"`
+}
+
+type CreateRealEstateInput struct {
+	Name          string     `json:"name"`
+	AssetTypeID   string     `json:"assetTypeID"`
+	CurrentValue  *float64   `json:"currentValue,omitempty"`
+	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
+	PropertyType  string     `json:"propertyType"`
+	Address       string     `json:"address"`
+	City          string     `json:"city"`
+	State         *string    `json:"state,omitempty"`
+	Country       string     `json:"country"`
+	ZipCode       *string    `json:"zipCode,omitempty"`
+	SquareFeet    *int32     `json:"squareFeet,omitempty"`
+	YearBuilt     *int32     `json:"yearBuilt,omitempty"`
+	Bedrooms      *int32     `json:"bedrooms,omitempty"`
+	Bathrooms     *float64   `json:"bathrooms,omitempty"`
 }
 
 type CreateStockInput struct {
@@ -264,6 +498,24 @@ type CreateUserInput struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type CreateWatchInput struct {
+	Name            string     `json:"name"`
+	AssetTypeID     string     `json:"assetTypeID"`
+	CurrentValue    *float64   `json:"currentValue,omitempty"`
+	PurchaseDate    *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice   *float64   `json:"purchasePrice,omitempty"`
+	Brand           string     `json:"brand"`
+	Model           string     `json:"model"`
+	SerialNumber    *string    `json:"serialNumber,omitempty"`
+	ReferenceNumber *string    `json:"referenceNumber,omitempty"`
+	Condition       string     `json:"condition"`
+	YearMade        *int32     `json:"yearMade,omitempty"`
+	Material        string     `json:"material"`
+	Movement        string     `json:"movement"`
+	CaseSize        *float64   `json:"caseSize,omitempty"`
+	WaterResistance *int32     `json:"waterResistance,omitempty"`
 }
 
 type CreateWatchlistInput struct {
@@ -283,6 +535,10 @@ type Crypto struct {
 	WalletAddress     *string     `json:"walletAddress,omitempty"`
 	BlockchainNetwork *string     `json:"blockchainNetwork,omitempty"`
 	Quantity          float64     `json:"quantity"`
+	Sector            *string     `json:"sector,omitempty"`
+	Exchange          *string     `json:"exchange,omitempty"`
+	DayChange         *float64    `json:"dayChange,omitempty"`
+	DayChangePercent  *float64    `json:"dayChangePercent,omitempty"`
 	Positions         []*Position `json:"positions"`
 }
 
@@ -313,6 +569,27 @@ func (this Crypto) GetPositions() []*Position {
 		interfaceSlice = append(interfaceSlice, concrete)
 	}
 	return interfaceSlice
+}
+func (this Crypto) GetSector() *string            { return this.Sector }
+func (this Crypto) GetExchange() *string          { return this.Exchange }
+func (this Crypto) GetDayChange() *float64        { return this.DayChange }
+func (this Crypto) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
+// Input for recording dashboard events
+type DashboardEventInput struct {
+	Type      string         `json:"type"`
+	UserID    *string        `json:"userId,omitempty"`
+	SessionID *string        `json:"sessionId,omitempty"`
+	Data      map[string]any `json:"data"`
+}
+
+// Dashboard performance metrics
+type DashboardPerformanceMetrics struct {
+	DashboardStateTransitions *MetricSummary `json:"dashboardStateTransitions,omitempty"`
+	DataLoadTimes             *MetricSummary `json:"dataLoadTimes,omitempty"`
+	UserInteractions          *MetricSummary `json:"userInteractions,omitempty"`
+	ErrorRates                *MetricSummary `json:"errorRates,omitempty"`
+	MarketDataUpdates         *MetricSummary `json:"marketDataUpdates,omitempty"`
 }
 
 type DataQuality struct {
@@ -375,6 +652,99 @@ type ExportResult struct {
 	Error       *string `json:"error,omitempty"`
 }
 
+// Feature usage statistics
+type FeatureUsage struct {
+	Feature     string  `json:"feature"`
+	UsageCount  int32   `json:"usageCount"`
+	UniqueUsers int32   `json:"uniqueUsers"`
+	AvgDuration float64 `json:"avgDuration"`
+}
+
+type FinanceDatabasePreviewItem struct {
+	Symbol   string  `json:"symbol"`
+	Name     string  `json:"name"`
+	Exchange string  `json:"exchange"`
+	Sector   *string `json:"sector,omitempty"`
+	Country  *string `json:"country,omitempty"`
+}
+
+type FinanceDatabaseSyncHistoryEntry struct {
+	ID           string        `json:"id"`
+	Timestamp    time.Time     `json:"timestamp"`
+	AssetType    AssetSyncType `json:"assetType"`
+	RecordCount  int32         `json:"recordCount"`
+	Status       SyncStatus    `json:"status"`
+	ErrorMessage *string       `json:"errorMessage,omitempty"`
+}
+
+type FinanceDatabaseSyncItem struct {
+	AssetType     AssetSyncType `json:"assetType"`
+	IsEnabled     bool          `json:"isEnabled"`
+	LastSynced    *time.Time    `json:"lastSynced,omitempty"`
+	RecordCount   int32         `json:"recordCount"`
+	SyncStatus    SyncStatus    `json:"syncStatus"`
+	Progress      *int32        `json:"progress,omitempty"`
+	CurrentRecord *string       `json:"currentRecord,omitempty"`
+	ErrorMessage  *string       `json:"errorMessage,omitempty"`
+}
+
+type FinanceDatabaseSyncStatusPayload struct {
+	AssetTypes []*FinanceDatabaseSyncItem `json:"assetTypes"`
+}
+
+type Fund struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	Ticker           string      `json:"ticker"`
+	Quantity         float64     `json:"quantity"`
+	BuyingPrice      *float64    `json:"buyingPrice,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	FundType         *string     `json:"fundType,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
+}
+
+func (Fund) IsAsset()                         {}
+func (this Fund) GetID() string               { return this.ID }
+func (this Fund) GetName() string             { return this.Name }
+func (this Fund) GetSymbol() *string          { return this.Symbol }
+func (this Fund) GetAssetType() *AssetType    { return this.AssetType }
+func (this Fund) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this Fund) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this Fund) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this Fund) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Fund) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Fund) GetSector() *string            { return this.Sector }
+func (this Fund) GetExchange() *string          { return this.Exchange }
+func (this Fund) GetDayChange() *float64        { return this.DayChange }
+func (this Fund) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
 type GenerateReportInput struct {
 	PortfolioID        string                     `json:"portfolioId"`
 	ReportType         ReportType                 `json:"reportType"`
@@ -383,10 +753,236 @@ type GenerateReportInput struct {
 	BenchmarkAssetIds  []string                   `json:"benchmarkAssetIds,omitempty"`
 }
 
+type ImportFinanceDatabaseAssetsPayload struct {
+	Success       bool     `json:"success"`
+	ImportedCount int32    `json:"importedCount"`
+	Errors        []string `json:"errors"`
+}
+
+type Instrument struct {
+	ID                 string               `json:"id"`
+	Symbol             string               `json:"symbol"`
+	NormalizedSymbol   string               `json:"normalizedSymbol"`
+	Name               string               `json:"name"`
+	NormalizedName     string               `json:"normalizedName"`
+	Exchange           string               `json:"exchange"`
+	ExchangeCode       *string              `json:"exchangeCode,omitempty"`
+	Country            *string              `json:"country,omitempty"`
+	Currency           *string              `json:"currency,omitempty"`
+	Summary            *string              `json:"summary,omitempty"`
+	Sector             *string              `json:"sector,omitempty"`
+	IndustryGroup      *string              `json:"industryGroup,omitempty"`
+	Industry           *string              `json:"industry,omitempty"`
+	CategoryGroup      *string              `json:"categoryGroup,omitempty"`
+	Category           *string              `json:"category,omitempty"`
+	Family             *string              `json:"family,omitempty"`
+	Website            *string              `json:"website,omitempty"`
+	MarketCap          *string              `json:"marketCap,omitempty"`
+	State              *string              `json:"state,omitempty"`
+	City               *string              `json:"city,omitempty"`
+	Zipcode            *string              `json:"zipcode,omitempty"`
+	BaseCurrency       *string              `json:"baseCurrency,omitempty"`
+	QuoteCurrency      *string              `json:"quoteCurrency,omitempty"`
+	UnderlyingSymbol   *string              `json:"underlyingSymbol,omitempty"`
+	AssetType          InstrumentAssetType  `json:"assetType"`
+	Status             string               `json:"status"`
+	ProviderSource     string               `json:"providerSource"`
+	ProviderExternalID *string              `json:"providerExternalId,omitempty"`
+	Isin               *string              `json:"isin,omitempty"`
+	Figi               *string              `json:"figi,omitempty"`
+	Cusip              *string              `json:"cusip,omitempty"`
+	FirstSeenAt        time.Time            `json:"firstSeenAt"`
+	LastVerifiedAt     *time.Time           `json:"lastVerifiedAt,omitempty"`
+	LastUsedAt         *time.Time           `json:"lastUsedAt,omitempty"`
+	CreatedAt          time.Time            `json:"createdAt"`
+	UpdatedAt          time.Time            `json:"updatedAt"`
+	Aliases            []*InstrumentAlias   `json:"aliases"`
+	SyncState          *InstrumentSyncState `json:"syncState,omitempty"`
+}
+
+type InstrumentAlias struct {
+	ID                  string    `json:"id"`
+	InstrumentID        string    `json:"instrumentID"`
+	AliasText           string    `json:"aliasText"`
+	NormalizedAliasText string    `json:"normalizedAliasText"`
+	AliasType           string    `json:"aliasType"`
+	CreatedAt           time.Time `json:"createdAt"`
+}
+
+type InstrumentQueryMetadata struct {
+	Query            string  `json:"query"`
+	Limit            int32   `json:"limit"`
+	Offset           int32   `json:"offset"`
+	LocalCount       int32   `json:"localCount"`
+	TopScore         float64 `json:"topScore"`
+	WeakResults      bool    `json:"weakResults"`
+	SearchOnlineHint bool    `json:"searchOnlineHint"`
+}
+
+type InstrumentSearchInput struct {
+	Query      string                `json:"query"`
+	AssetTypes []InstrumentAssetType `json:"assetTypes,omitempty"`
+	Exchange   *string               `json:"exchange,omitempty"`
+	Limit      *int32                `json:"limit,omitempty"`
+	Offset     *int32                `json:"offset,omitempty"`
+}
+
+type InstrumentSearchPayload struct {
+	LocalResults    []*InstrumentSearchResult `json:"localResults"`
+	CanSearchOnline bool                      `json:"canSearchOnline"`
+	QueryMetadata   *InstrumentQueryMetadata  `json:"queryMetadata"`
+	OnlineResults   []*OnlineInstrumentResult `json:"onlineResults,omitempty"`
+}
+
+type InstrumentSearchResult struct {
+	Instrument   *Instrument `json:"instrument"`
+	Score        float64     `json:"score"`
+	MatchedAlias *string     `json:"matchedAlias,omitempty"`
+}
+
+type InstrumentSyncState struct {
+	InstrumentID           string     `json:"instrumentID"`
+	LastSyncAttempt        *time.Time `json:"lastSyncAttempt,omitempty"`
+	LastSyncSuccess        *time.Time `json:"lastSyncSuccess,omitempty"`
+	SyncStatus             string     `json:"syncStatus"`
+	LastSyncSource         *string    `json:"lastSyncSource,omitempty"`
+	SyncErrorMessage       *string    `json:"syncErrorMessage,omitempty"`
+	Stale                  bool       `json:"stale"`
+	VerificationConfidence int32      `json:"verificationConfidence"`
+	CreatedAt              time.Time  `json:"createdAt"`
+	UpdatedAt              time.Time  `json:"updatedAt"`
+}
+
 type KeyValuePair struct {
 	Key   string `json:"key"`
 	Value string `json:"value"`
 }
+
+type LifeInsurance struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	PolicyNumber     string      `json:"policyNumber"`
+	Insurer          string      `json:"insurer"`
+	PolicyType       string      `json:"policyType"`
+	CoverageAmount   float64     `json:"coverageAmount"`
+	PremiumAmount    float64     `json:"premiumAmount"`
+	PremiumFrequency string      `json:"premiumFrequency"`
+	Beneficiaries    []string    `json:"beneficiaries"`
+	MaturityDate     *time.Time  `json:"maturityDate,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
+}
+
+func (LifeInsurance) IsAsset()                         {}
+func (this LifeInsurance) GetID() string               { return this.ID }
+func (this LifeInsurance) GetName() string             { return this.Name }
+func (this LifeInsurance) GetSymbol() *string          { return this.Symbol }
+func (this LifeInsurance) GetAssetType() *AssetType    { return this.AssetType }
+func (this LifeInsurance) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this LifeInsurance) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this LifeInsurance) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this LifeInsurance) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this LifeInsurance) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this LifeInsurance) GetSector() *string            { return this.Sector }
+func (this LifeInsurance) GetExchange() *string          { return this.Exchange }
+func (this LifeInsurance) GetDayChange() *float64        { return this.DayChange }
+func (this LifeInsurance) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
+type Loan struct {
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Symbol            *string     `json:"symbol,omitempty"`
+	AssetType         *AssetType  `json:"assetType"`
+	CurrentValue      *float64    `json:"currentValue,omitempty"`
+	PurchaseDate      *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice     *float64    `json:"purchasePrice,omitempty"`
+	Tags              []*Tag      `json:"tags"`
+	Description       *string     `json:"description,omitempty"`
+	LoanType          string      `json:"loanType"`
+	LoanAmount        float64     `json:"loanAmount"`
+	RemainingBalance  float64     `json:"remainingBalance"`
+	InterestRate      float64     `json:"interestRate"`
+	DurationMonths    int32       `json:"durationMonths"`
+	MonthlyPayment    float64     `json:"monthlyPayment"`
+	StartDate         string      `json:"startDate"`
+	EndDate           *string     `json:"endDate,omitempty"`
+	Lender            string      `json:"lender"`
+	LoanNumber        *string     `json:"loanNumber,omitempty"`
+	Currency          string      `json:"currency"`
+	DownPayment       *float64    `json:"downPayment,omitempty"`
+	Status            string      `json:"status"`
+	OwnershipMode     *string     `json:"ownershipMode,omitempty"`
+	ApplicationFee    *float64    `json:"applicationFee,omitempty"`
+	BrokerFee         *float64    `json:"brokerFee,omitempty"`
+	InsuranceFee      *float64    `json:"insuranceFee,omitempty"`
+	OtherFees         *float64    `json:"otherFees,omitempty"`
+	EarlyRepaymentFee *float64    `json:"earlyRepaymentFee,omitempty"`
+	Sector            *string     `json:"sector,omitempty"`
+	Exchange          *string     `json:"exchange,omitempty"`
+	DayChange         *float64    `json:"dayChange,omitempty"`
+	DayChangePercent  *float64    `json:"dayChangePercent,omitempty"`
+	Positions         []*Position `json:"positions"`
+}
+
+func (Loan) IsAsset()                         {}
+func (this Loan) GetID() string               { return this.ID }
+func (this Loan) GetName() string             { return this.Name }
+func (this Loan) GetSymbol() *string          { return this.Symbol }
+func (this Loan) GetAssetType() *AssetType    { return this.AssetType }
+func (this Loan) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this Loan) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this Loan) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this Loan) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Loan) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Loan) GetSector() *string            { return this.Sector }
+func (this Loan) GetExchange() *string          { return this.Exchange }
+func (this Loan) GetDayChange() *float64        { return this.DayChange }
+func (this Loan) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
 type LoginInput struct {
 	Email    string `json:"email"`
@@ -402,6 +998,19 @@ type LogoutResponse struct {
 	Errors  []*AuthError `json:"errors,omitempty"`
 }
 
+type ManualInstrumentFilterInput struct {
+	Query           *string               `json:"query,omitempty"`
+	AssetTypes      []InstrumentAssetType `json:"assetTypes,omitempty"`
+	IncludeArchived *bool                 `json:"includeArchived,omitempty"`
+}
+
+type ManualInstrumentPayload struct {
+	Items   []*Instrument `json:"items"`
+	HasMore bool          `json:"hasMore"`
+	Limit   int32         `json:"limit"`
+	Offset  int32         `json:"offset"`
+}
+
 type MarketDataCredential struct {
 	ID        string    `json:"id"`
 	Provider  string    `json:"provider"`
@@ -414,7 +1023,75 @@ type MethodParameter struct {
 	Value string `json:"value"`
 }
 
+// Individual metric data
+type Metric struct {
+	Name         string         `json:"name"`
+	Type         MetricType     `json:"type"`
+	Value        float64        `json:"value"`
+	Labels       map[string]any `json:"labels"`
+	Aggregations map[string]any `json:"aggregations"`
+	LastUpdated  string         `json:"lastUpdated"`
+}
+
+// Aggregated metric summary
+type MetricSummary struct {
+	Total     float64        `json:"total"`
+	Average   float64        `json:"average"`
+	Min       float64        `json:"min"`
+	Max       float64        `json:"max"`
+	P50       float64        `json:"p50"`
+	P95       float64        `json:"p95"`
+	P99       float64        `json:"p99"`
+	LastHour  float64        `json:"lastHour"`
+	LastDay   float64        `json:"lastDay"`
+	Breakdown map[string]any `json:"breakdown"`
+}
+
 type Mutation struct {
+}
+
+// User navigation pattern
+type NavigationPattern struct {
+	Pattern     string  `json:"pattern"`
+	Count       int32   `json:"count"`
+	AvgDuration float64 `json:"avgDuration"`
+	Conversion  float64 `json:"conversion"`
+}
+
+type OnlineInstrumentInput struct {
+	Symbol             string              `json:"symbol"`
+	Name               string              `json:"name"`
+	Exchange           string              `json:"exchange"`
+	ExchangeCode       *string             `json:"exchangeCode,omitempty"`
+	Country            *string             `json:"country,omitempty"`
+	Currency           *string             `json:"currency,omitempty"`
+	AssetType          InstrumentAssetType `json:"assetType"`
+	ProviderSource     string              `json:"providerSource"`
+	ProviderExternalID *string             `json:"providerExternalId,omitempty"`
+	Isin               *string             `json:"isin,omitempty"`
+	Figi               *string             `json:"figi,omitempty"`
+	Cusip              *string             `json:"cusip,omitempty"`
+}
+
+type OnlineInstrumentResult struct {
+	Symbol             string              `json:"symbol"`
+	Name               string              `json:"name"`
+	Exchange           string              `json:"exchange"`
+	ExchangeCode       *string             `json:"exchangeCode,omitempty"`
+	Country            *string             `json:"country,omitempty"`
+	Currency           *string             `json:"currency,omitempty"`
+	AssetType          InstrumentAssetType `json:"assetType"`
+	ProviderSource     string              `json:"providerSource"`
+	ProviderExternalID *string             `json:"providerExternalId,omitempty"`
+	Isin               *string             `json:"isin,omitempty"`
+	Figi               *string             `json:"figi,omitempty"`
+	Cusip              *string             `json:"cusip,omitempty"`
+}
+
+type OnlineInstrumentSearchPayload struct {
+	OnlineResults []*OnlineInstrumentResult `json:"onlineResults"`
+	QueryMetadata *InstrumentQueryMetadata  `json:"queryMetadata"`
+	ProviderUsed  string                    `json:"providerUsed"`
 }
 
 type Ownership struct {
@@ -497,6 +1174,10 @@ type PerformanceTimeRangeInput struct {
 	End   time.Time `json:"end"`
 }
 
+type PersistDiscoveredInstrumentInput struct {
+	Instrument *OnlineInstrumentInput `json:"instrument"`
+}
+
 type Portfolio struct {
 	ID           string              `json:"id"`
 	Name         string              `json:"name"`
@@ -523,10 +1204,13 @@ type PortfolioAnalytics struct {
 
 type PortfolioAsset struct {
 	Asset                Asset    `json:"asset"`
+	InstrumentID         *string  `json:"instrumentID,omitempty"`
 	Quantity             float64  `json:"quantity"`
 	AveragePurchasePrice *float64 `json:"averagePurchasePrice,omitempty"`
 	CurrentValue         *float64 `json:"currentValue,omitempty"`
 	OwnershipPct         *float64 `json:"ownershipPct,omitempty"`
+	DayChange            *float64 `json:"dayChange,omitempty"`
+	DayChangePercent     *float64 `json:"dayChangePercent,omitempty"`
 }
 
 type PortfolioAssetInput struct {
@@ -577,7 +1261,9 @@ type PositionPerformance struct {
 
 type ProviderHealth struct {
 	Provider    string    `json:"provider"`
+	AssetType   string    `json:"assetType"`
 	Healthy     bool      `json:"healthy"`
+	APIKeyValid *bool     `json:"apiKeyValid,omitempty"`
 	LastChecked time.Time `json:"lastChecked"`
 }
 
@@ -591,6 +1277,36 @@ type ProviderInfo struct {
 	SupportsRealtime bool       `json:"supportsRealtime"`
 }
 
+type ProviderPreference struct {
+	Provider string `json:"provider"`
+	Priority int32  `json:"priority"`
+	Enabled  bool   `json:"enabled"`
+}
+
+type ProviderPreferenceInput struct {
+	Provider string `json:"provider"`
+	Priority int32  `json:"priority"`
+	Enabled  bool   `json:"enabled"`
+}
+
+type ProviderRoutingPreferences struct {
+	ID                        string                `json:"id"`
+	UserID                    string                `json:"userId"`
+	PreferredProviders        []*ProviderPreference `json:"preferredProviders"`
+	UseIntelligentRouting     bool                  `json:"useIntelligentRouting"`
+	EnableFallback            bool                  `json:"enableFallback"`
+	StaleDataThresholdMinutes int32                 `json:"staleDataThresholdMinutes"`
+	CreatedAt                 time.Time             `json:"createdAt"`
+	UpdatedAt                 time.Time             `json:"updatedAt"`
+}
+
+type ProviderRoutingPreferencesInput struct {
+	PreferredProviders        []*ProviderPreferenceInput `json:"preferredProviders"`
+	UseIntelligentRouting     *bool                      `json:"useIntelligentRouting,omitempty"`
+	EnableFallback            *bool                      `json:"enableFallback,omitempty"`
+	StaleDataThresholdMinutes *int32                     `json:"staleDataThresholdMinutes,omitempty"`
+}
+
 type Query struct {
 }
 
@@ -600,6 +1316,65 @@ type RateLimit struct {
 	BurstLimit        int32 `json:"burstLimit"`
 }
 
+type RealEstate struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	PropertyType     string      `json:"propertyType"`
+	Address          string      `json:"address"`
+	City             string      `json:"city"`
+	State            *string     `json:"state,omitempty"`
+	Country          string      `json:"country"`
+	ZipCode          *string     `json:"zipCode,omitempty"`
+	SquareFeet       *int32      `json:"squareFeet,omitempty"`
+	YearBuilt        *int32      `json:"yearBuilt,omitempty"`
+	Bedrooms         *int32      `json:"bedrooms,omitempty"`
+	Bathrooms        *float64    `json:"bathrooms,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
+}
+
+func (RealEstate) IsAsset()                         {}
+func (this RealEstate) GetID() string               { return this.ID }
+func (this RealEstate) GetName() string             { return this.Name }
+func (this RealEstate) GetSymbol() *string          { return this.Symbol }
+func (this RealEstate) GetAssetType() *AssetType    { return this.AssetType }
+func (this RealEstate) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this RealEstate) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this RealEstate) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this RealEstate) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this RealEstate) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this RealEstate) GetSector() *string            { return this.Sector }
+func (this RealEstate) GetExchange() *string          { return this.Exchange }
+func (this RealEstate) GetDayChange() *float64        { return this.DayChange }
+func (this RealEstate) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
 type RebalanceRecommendation struct {
 	AssetType         string  `json:"assetType"`
 	CurrentWeight     float64 `json:"currentWeight"`
@@ -607,6 +1382,13 @@ type RebalanceRecommendation struct {
 	RecommendedAction string  `json:"recommendedAction"`
 	Amount            float64 `json:"amount"`
 	Reason            string  `json:"reason"`
+}
+
+type RefreshAssetPricesResult struct {
+	Success      bool     `json:"success"`
+	Message      *string  `json:"message,omitempty"`
+	UpdatedCount *int32   `json:"updatedCount,omitempty"`
+	Errors       []string `json:"errors,omitempty"`
 }
 
 type RefreshTokenInput struct {
@@ -636,18 +1418,22 @@ type RiskMetrics struct {
 }
 
 type Stock struct {
-	ID            string      `json:"id"`
-	Name          string      `json:"name"`
-	Symbol        *string     `json:"symbol,omitempty"`
-	AssetType     *AssetType  `json:"assetType"`
-	CurrentValue  *float64    `json:"currentValue,omitempty"`
-	PurchaseDate  *time.Time  `json:"purchaseDate,omitempty"`
-	PurchasePrice *float64    `json:"purchasePrice,omitempty"`
-	Tags          []*Tag      `json:"tags"`
-	Ticker        string      `json:"ticker"`
-	Quantity      float64     `json:"quantity"`
-	BuyingPrice   *float64    `json:"buyingPrice,omitempty"`
-	Positions     []*Position `json:"positions"`
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	Ticker           string      `json:"ticker"`
+	Quantity         float64     `json:"quantity"`
+	BuyingPrice      *float64    `json:"buyingPrice,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
 }
 
 func (Stock) IsAsset()                         {}
@@ -678,13 +1464,44 @@ func (this Stock) GetPositions() []*Position {
 	}
 	return interfaceSlice
 }
+func (this Stock) GetSector() *string            { return this.Sector }
+func (this Stock) GetExchange() *string          { return this.Exchange }
+func (this Stock) GetDayChange() *float64        { return this.DayChange }
+func (this Stock) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
 type Subscription struct {
+}
+
+// System health status
+type SystemHealth struct {
+	Status       string         `json:"status"`
+	Timestamp    string         `json:"timestamp"`
+	MetricsCount int32          `json:"metricsCount"`
+	AlertsCount  int32          `json:"alertsCount"`
+	RecentErrors float64        `json:"recentErrors"`
+	Details      map[string]any `json:"details,omitempty"`
 }
 
 type Tag struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
+}
+
+type TechnicalIndicatorPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Value     float64   `json:"value"`
+	Signal    *float64  `json:"signal,omitempty"`
+	Histogram *float64  `json:"histogram,omitempty"`
+	UpperBand *float64  `json:"upperBand,omitempty"`
+	LowerBand *float64  `json:"lowerBand,omitempty"`
+}
+
+type TechnicalIndicatorResponse struct {
+	Indicator string                     `json:"indicator"`
+	Symbol    string                     `json:"symbol"`
+	Data      []*TechnicalIndicatorPoint `json:"data"`
+	Source    string                     `json:"source"`
+	Timestamp time.Time                  `json:"timestamp"`
 }
 
 type TimeRange struct {
@@ -730,6 +1547,12 @@ type TransactionUpdatePayload struct {
 	Transaction *Transaction `json:"transaction"`
 }
 
+type TriggerFinanceDatabaseSyncPayload struct {
+	Success    bool                     `json:"success"`
+	Message    string                   `json:"message"`
+	SyncStatus *FinanceDatabaseSyncItem `json:"syncStatus"`
+}
+
 type UpdateAlertInput struct {
 	AlertType           *AlertType                `json:"alertType,omitempty"`
 	ConditionType       *ConditionType            `json:"conditionType,omitempty"`
@@ -737,6 +1560,31 @@ type UpdateAlertInput struct {
 	ThresholdPercentage *float64                  `json:"thresholdPercentage,omitempty"`
 	IsActive            *bool                     `json:"isActive,omitempty"`
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods,omitempty"`
+}
+
+type UpdateManualInstrumentInput struct {
+	Symbol           string              `json:"symbol"`
+	Name             string              `json:"name"`
+	Exchange         string              `json:"exchange"`
+	ExchangeCode     *string             `json:"exchangeCode,omitempty"`
+	Country          *string             `json:"country,omitempty"`
+	Currency         *string             `json:"currency,omitempty"`
+	BaseCurrency     *string             `json:"baseCurrency,omitempty"`
+	QuoteCurrency    *string             `json:"quoteCurrency,omitempty"`
+	UnderlyingSymbol *string             `json:"underlyingSymbol,omitempty"`
+	AssetType        InstrumentAssetType `json:"assetType"`
+	Summary          *string             `json:"summary,omitempty"`
+	Sector           *string             `json:"sector,omitempty"`
+	IndustryGroup    *string             `json:"industryGroup,omitempty"`
+	Industry         *string             `json:"industry,omitempty"`
+	CategoryGroup    *string             `json:"categoryGroup,omitempty"`
+	Category         *string             `json:"category,omitempty"`
+	Family           *string             `json:"family,omitempty"`
+	Website          *string             `json:"website,omitempty"`
+	MarketCap        *string             `json:"marketCap,omitempty"`
+	State            *string             `json:"state,omitempty"`
+	City             *string             `json:"city,omitempty"`
+	Zipcode          *string             `json:"zipcode,omitempty"`
 }
 
 type UpdatePortfolioInput struct {
@@ -761,6 +1609,17 @@ type User struct {
 	Watchlists []*Watchlist `json:"watchlists"`
 }
 
+// User engagement analytics
+type UserEngagementMetrics struct {
+	TotalUsers         int32                `json:"totalUsers"`
+	ActiveUsers        int32                `json:"activeUsers"`
+	AvgSessionDuration float64              `json:"avgSessionDuration"`
+	TopFeatures        []*FeatureUsage      `json:"topFeatures"`
+	NavigationPatterns []*NavigationPattern `json:"navigationPatterns"`
+	DeviceBreakdown    map[string]any       `json:"deviceBreakdown"`
+	ErrorsByComponent  map[string]any       `json:"errorsByComponent"`
+}
+
 type UserFilter struct {
 	ID               *string `json:"id,omitempty"`
 	UsernameContains *string `json:"usernameContains,omitempty"`
@@ -777,6 +1636,65 @@ type ValidationResult struct {
 	Message *string `json:"message,omitempty"`
 }
 
+type Watch struct {
+	ID               string      `json:"id"`
+	Name             string      `json:"name"`
+	Symbol           *string     `json:"symbol,omitempty"`
+	AssetType        *AssetType  `json:"assetType"`
+	CurrentValue     *float64    `json:"currentValue,omitempty"`
+	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
+	Tags             []*Tag      `json:"tags"`
+	Brand            string      `json:"brand"`
+	Model            string      `json:"model"`
+	SerialNumber     *string     `json:"serialNumber,omitempty"`
+	ReferenceNumber  *string     `json:"referenceNumber,omitempty"`
+	Condition        string      `json:"condition"`
+	YearMade         *int32      `json:"yearMade,omitempty"`
+	Material         string      `json:"material"`
+	Movement         string      `json:"movement"`
+	CaseSize         *float64    `json:"caseSize,omitempty"`
+	WaterResistance  *int32      `json:"waterResistance,omitempty"`
+	Sector           *string     `json:"sector,omitempty"`
+	Exchange         *string     `json:"exchange,omitempty"`
+	DayChange        *float64    `json:"dayChange,omitempty"`
+	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
+	Positions        []*Position `json:"positions"`
+}
+
+func (Watch) IsAsset()                         {}
+func (this Watch) GetID() string               { return this.ID }
+func (this Watch) GetName() string             { return this.Name }
+func (this Watch) GetSymbol() *string          { return this.Symbol }
+func (this Watch) GetAssetType() *AssetType    { return this.AssetType }
+func (this Watch) GetCurrentValue() *float64   { return this.CurrentValue }
+func (this Watch) GetPurchaseDate() *time.Time { return this.PurchaseDate }
+func (this Watch) GetPurchasePrice() *float64  { return this.PurchasePrice }
+func (this Watch) GetTags() []*Tag {
+	if this.Tags == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Tag, 0, len(this.Tags))
+	for _, concrete := range this.Tags {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Watch) GetPositions() []*Position {
+	if this.Positions == nil {
+		return nil
+	}
+	interfaceSlice := make([]*Position, 0, len(this.Positions))
+	for _, concrete := range this.Positions {
+		interfaceSlice = append(interfaceSlice, concrete)
+	}
+	return interfaceSlice
+}
+func (this Watch) GetSector() *string            { return this.Sector }
+func (this Watch) GetExchange() *string          { return this.Exchange }
+func (this Watch) GetDayChange() *float64        { return this.DayChange }
+func (this Watch) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
 type Watchlist struct {
 	ID        string    `json:"id"`
 	Name      string    `json:"name"`
@@ -788,6 +1706,132 @@ type Watchlist struct {
 
 type WatchlistFilter struct {
 	UserID string `json:"userID"`
+}
+
+// Alert action type enumeration
+type AlertActionType string
+
+const (
+	AlertActionTypeLog     AlertActionType = "LOG"
+	AlertActionTypeWebhook AlertActionType = "WEBHOOK"
+	AlertActionTypeEmail   AlertActionType = "EMAIL"
+	AlertActionTypeSLACk   AlertActionType = "SLACK"
+)
+
+var AllAlertActionType = []AlertActionType{
+	AlertActionTypeLog,
+	AlertActionTypeWebhook,
+	AlertActionTypeEmail,
+	AlertActionTypeSLACk,
+}
+
+func (e AlertActionType) IsValid() bool {
+	switch e {
+	case AlertActionTypeLog, AlertActionTypeWebhook, AlertActionTypeEmail, AlertActionTypeSLACk:
+		return true
+	}
+	return false
+}
+
+func (e AlertActionType) String() string {
+	return string(e)
+}
+
+func (e *AlertActionType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlertActionType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlertActionType", str)
+	}
+	return nil
+}
+
+func (e AlertActionType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlertActionType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlertActionType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Alert condition enumeration
+type AlertCondition string
+
+const (
+	AlertConditionGreaterThan    AlertCondition = "GREATER_THAN"
+	AlertConditionLessThan       AlertCondition = "LESS_THAN"
+	AlertConditionEqualTo        AlertCondition = "EQUAL_TO"
+	AlertConditionAvgGreaterThan AlertCondition = "AVG_GREATER_THAN"
+	AlertConditionAvgLessThan    AlertCondition = "AVG_LESS_THAN"
+	AlertConditionMaxGreaterThan AlertCondition = "MAX_GREATER_THAN"
+	AlertConditionMinLessThan    AlertCondition = "MIN_LESS_THAN"
+)
+
+var AllAlertCondition = []AlertCondition{
+	AlertConditionGreaterThan,
+	AlertConditionLessThan,
+	AlertConditionEqualTo,
+	AlertConditionAvgGreaterThan,
+	AlertConditionAvgLessThan,
+	AlertConditionMaxGreaterThan,
+	AlertConditionMinLessThan,
+}
+
+func (e AlertCondition) IsValid() bool {
+	switch e {
+	case AlertConditionGreaterThan, AlertConditionLessThan, AlertConditionEqualTo, AlertConditionAvgGreaterThan, AlertConditionAvgLessThan, AlertConditionMaxGreaterThan, AlertConditionMinLessThan:
+		return true
+	}
+	return false
+}
+
+func (e AlertCondition) String() string {
+	return string(e)
+}
+
+func (e *AlertCondition) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlertCondition(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlertCondition", str)
+	}
+	return nil
+}
+
+func (e AlertCondition) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlertCondition) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlertCondition) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type AlertNotificationMethod string
@@ -818,7 +1862,7 @@ func (e AlertNotificationMethod) String() string {
 	return string(e)
 }
 
-func (e *AlertNotificationMethod) UnmarshalGQL(v interface{}) error {
+func (e *AlertNotificationMethod) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -833,6 +1877,80 @@ func (e *AlertNotificationMethod) UnmarshalGQL(v interface{}) error {
 
 func (e AlertNotificationMethod) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlertNotificationMethod) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlertNotificationMethod) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Alert severity enumeration
+type AlertSeverity string
+
+const (
+	AlertSeverityLow      AlertSeverity = "LOW"
+	AlertSeverityMedium   AlertSeverity = "MEDIUM"
+	AlertSeverityHigh     AlertSeverity = "HIGH"
+	AlertSeverityCritical AlertSeverity = "CRITICAL"
+)
+
+var AllAlertSeverity = []AlertSeverity{
+	AlertSeverityLow,
+	AlertSeverityMedium,
+	AlertSeverityHigh,
+	AlertSeverityCritical,
+}
+
+func (e AlertSeverity) IsValid() bool {
+	switch e {
+	case AlertSeverityLow, AlertSeverityMedium, AlertSeverityHigh, AlertSeverityCritical:
+		return true
+	}
+	return false
+}
+
+func (e AlertSeverity) String() string {
+	return string(e)
+}
+
+func (e *AlertSeverity) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AlertSeverity(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AlertSeverity", str)
+	}
+	return nil
+}
+
+func (e AlertSeverity) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlertSeverity) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlertSeverity) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type AlertType string
@@ -865,7 +1983,7 @@ func (e AlertType) String() string {
 	return string(e)
 }
 
-func (e *AlertType) UnmarshalGQL(v interface{}) error {
+func (e *AlertType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -880,6 +1998,20 @@ func (e *AlertType) UnmarshalGQL(v interface{}) error {
 
 func (e AlertType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AlertType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AlertType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type AssetOrderField string
@@ -908,7 +2040,7 @@ func (e AssetOrderField) String() string {
 	return string(e)
 }
 
-func (e *AssetOrderField) UnmarshalGQL(v interface{}) error {
+func (e *AssetOrderField) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -923,6 +2055,85 @@ func (e *AssetOrderField) UnmarshalGQL(v interface{}) error {
 
 func (e AssetOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AssetOrderField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AssetOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type AssetSyncType string
+
+const (
+	AssetSyncTypeEquities         AssetSyncType = "EQUITIES"
+	AssetSyncTypeEtfs             AssetSyncType = "ETFS"
+	AssetSyncTypeFunds            AssetSyncType = "FUNDS"
+	AssetSyncTypeIndices          AssetSyncType = "INDICES"
+	AssetSyncTypeCryptocurrencies AssetSyncType = "CRYPTOCURRENCIES"
+	AssetSyncTypeCurrencies       AssetSyncType = "CURRENCIES"
+	AssetSyncTypeMoneyMarkets     AssetSyncType = "MONEY_MARKETS"
+)
+
+var AllAssetSyncType = []AssetSyncType{
+	AssetSyncTypeEquities,
+	AssetSyncTypeEtfs,
+	AssetSyncTypeFunds,
+	AssetSyncTypeIndices,
+	AssetSyncTypeCryptocurrencies,
+	AssetSyncTypeCurrencies,
+	AssetSyncTypeMoneyMarkets,
+}
+
+func (e AssetSyncType) IsValid() bool {
+	switch e {
+	case AssetSyncTypeEquities, AssetSyncTypeEtfs, AssetSyncTypeFunds, AssetSyncTypeIndices, AssetSyncTypeCryptocurrencies, AssetSyncTypeCurrencies, AssetSyncTypeMoneyMarkets:
+		return true
+	}
+	return false
+}
+
+func (e AssetSyncType) String() string {
+	return string(e)
+}
+
+func (e *AssetSyncType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AssetSyncType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AssetSyncType", str)
+	}
+	return nil
+}
+
+func (e AssetSyncType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AssetSyncType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AssetSyncType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ConditionType string
@@ -955,7 +2166,7 @@ func (e ConditionType) String() string {
 	return string(e)
 }
 
-func (e *ConditionType) UnmarshalGQL(v interface{}) error {
+func (e *ConditionType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -970,6 +2181,20 @@ func (e *ConditionType) UnmarshalGQL(v interface{}) error {
 
 func (e ConditionType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ConditionType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ConditionType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ExportFormat string
@@ -998,7 +2223,7 @@ func (e ExportFormat) String() string {
 	return string(e)
 }
 
-func (e *ExportFormat) UnmarshalGQL(v interface{}) error {
+func (e *ExportFormat) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1013,6 +2238,145 @@ func (e *ExportFormat) UnmarshalGQL(v interface{}) error {
 
 func (e ExportFormat) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ExportFormat) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ExportFormat) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type InstrumentAssetType string
+
+const (
+	InstrumentAssetTypeStock       InstrumentAssetType = "STOCK"
+	InstrumentAssetTypeEtf         InstrumentAssetType = "ETF"
+	InstrumentAssetTypeFund        InstrumentAssetType = "FUND"
+	InstrumentAssetTypeIndex       InstrumentAssetType = "INDEX"
+	InstrumentAssetTypeCurrency    InstrumentAssetType = "CURRENCY"
+	InstrumentAssetTypeCrypto      InstrumentAssetType = "CRYPTO"
+	InstrumentAssetTypeMoneyMarket InstrumentAssetType = "MONEY_MARKET"
+)
+
+var AllInstrumentAssetType = []InstrumentAssetType{
+	InstrumentAssetTypeStock,
+	InstrumentAssetTypeEtf,
+	InstrumentAssetTypeFund,
+	InstrumentAssetTypeIndex,
+	InstrumentAssetTypeCurrency,
+	InstrumentAssetTypeCrypto,
+	InstrumentAssetTypeMoneyMarket,
+}
+
+func (e InstrumentAssetType) IsValid() bool {
+	switch e {
+	case InstrumentAssetTypeStock, InstrumentAssetTypeEtf, InstrumentAssetTypeFund, InstrumentAssetTypeIndex, InstrumentAssetTypeCurrency, InstrumentAssetTypeCrypto, InstrumentAssetTypeMoneyMarket:
+		return true
+	}
+	return false
+}
+
+func (e InstrumentAssetType) String() string {
+	return string(e)
+}
+
+func (e *InstrumentAssetType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = InstrumentAssetType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid InstrumentAssetType", str)
+	}
+	return nil
+}
+
+func (e InstrumentAssetType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *InstrumentAssetType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e InstrumentAssetType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Metric type enumeration
+type MetricType string
+
+const (
+	MetricTypeCounter   MetricType = "COUNTER"
+	MetricTypeGauge     MetricType = "GAUGE"
+	MetricTypeHistogram MetricType = "HISTOGRAM"
+	MetricTypeTiming    MetricType = "TIMING"
+)
+
+var AllMetricType = []MetricType{
+	MetricTypeCounter,
+	MetricTypeGauge,
+	MetricTypeHistogram,
+	MetricTypeTiming,
+}
+
+func (e MetricType) IsValid() bool {
+	switch e {
+	case MetricTypeCounter, MetricTypeGauge, MetricTypeHistogram, MetricTypeTiming:
+		return true
+	}
+	return false
+}
+
+func (e MetricType) String() string {
+	return string(e)
+}
+
+func (e *MetricType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = MetricType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid MetricType", str)
+	}
+	return nil
+}
+
+func (e MetricType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *MetricType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e MetricType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type PortfolioOrderField string
@@ -1043,7 +2407,7 @@ func (e PortfolioOrderField) String() string {
 	return string(e)
 }
 
-func (e *PortfolioOrderField) UnmarshalGQL(v interface{}) error {
+func (e *PortfolioOrderField) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1058,6 +2422,20 @@ func (e *PortfolioOrderField) UnmarshalGQL(v interface{}) error {
 
 func (e PortfolioOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *PortfolioOrderField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e PortfolioOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type ReportType string
@@ -1092,7 +2470,7 @@ func (e ReportType) String() string {
 	return string(e)
 }
 
-func (e *ReportType) UnmarshalGQL(v interface{}) error {
+func (e *ReportType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1107,6 +2485,20 @@ func (e *ReportType) UnmarshalGQL(v interface{}) error {
 
 func (e ReportType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ReportType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ReportType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type SortDirection string
@@ -1133,7 +2525,7 @@ func (e SortDirection) String() string {
 	return string(e)
 }
 
-func (e *SortDirection) UnmarshalGQL(v interface{}) error {
+func (e *SortDirection) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1148,6 +2540,79 @@ func (e *SortDirection) UnmarshalGQL(v interface{}) error {
 
 func (e SortDirection) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SortDirection) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SortDirection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SyncStatus string
+
+const (
+	SyncStatusIdle     SyncStatus = "IDLE"
+	SyncStatusSyncing  SyncStatus = "SYNCING"
+	SyncStatusComplete SyncStatus = "COMPLETE"
+	SyncStatusError    SyncStatus = "ERROR"
+)
+
+var AllSyncStatus = []SyncStatus{
+	SyncStatusIdle,
+	SyncStatusSyncing,
+	SyncStatusComplete,
+	SyncStatusError,
+}
+
+func (e SyncStatus) IsValid() bool {
+	switch e {
+	case SyncStatusIdle, SyncStatusSyncing, SyncStatusComplete, SyncStatusError:
+		return true
+	}
+	return false
+}
+
+func (e SyncStatus) String() string {
+	return string(e)
+}
+
+func (e *SyncStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SyncStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SyncStatus", str)
+	}
+	return nil
+}
+
+func (e SyncStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SyncStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SyncStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TimeAggregation string
@@ -1184,7 +2649,7 @@ func (e TimeAggregation) String() string {
 	return string(e)
 }
 
-func (e *TimeAggregation) UnmarshalGQL(v interface{}) error {
+func (e *TimeAggregation) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1199,6 +2664,20 @@ func (e *TimeAggregation) UnmarshalGQL(v interface{}) error {
 
 func (e TimeAggregation) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TimeAggregation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TimeAggregation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TransactionOrderField string
@@ -1227,7 +2706,7 @@ func (e TransactionOrderField) String() string {
 	return string(e)
 }
 
-func (e *TransactionOrderField) UnmarshalGQL(v interface{}) error {
+func (e *TransactionOrderField) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1242,6 +2721,20 @@ func (e *TransactionOrderField) UnmarshalGQL(v interface{}) error {
 
 func (e TransactionOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TransactionOrderField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TransactionOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type TransactionType string
@@ -1268,7 +2761,7 @@ func (e TransactionType) String() string {
 	return string(e)
 }
 
-func (e *TransactionType) UnmarshalGQL(v interface{}) error {
+func (e *TransactionType) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1283,6 +2776,20 @@ func (e *TransactionType) UnmarshalGQL(v interface{}) error {
 
 func (e TransactionType) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TransactionType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TransactionType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 type UserOrderField string
@@ -1311,7 +2818,7 @@ func (e UserOrderField) String() string {
 	return string(e)
 }
 
-func (e *UserOrderField) UnmarshalGQL(v interface{}) error {
+func (e *UserOrderField) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -1326,4 +2833,18 @@ func (e *UserOrderField) UnmarshalGQL(v interface{}) error {
 
 func (e UserOrderField) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *UserOrderField) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e UserOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }

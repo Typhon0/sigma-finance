@@ -10,6 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
 )
 
@@ -20,12 +21,18 @@ type MockAssetRepository struct {
 
 func (m *MockAssetRepository) Create(ctx context.Context, entity *model.Asset) (*model.Asset, error) {
 	args := m.Called(ctx, entity)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
 	return args.Get(0).(*model.Asset), args.Error(1)
 }
 
-func (m *MockAssetRepository) GetByID(ctx context.Context, id uint) (model.Asset, error) {
+func (m *MockAssetRepository) GetByID(ctx context.Context, id string) (*model.Asset, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.Asset), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Asset), args.Error(1)
 }
 
 func (m *MockAssetRepository) Update(ctx context.Context, entity *model.Asset) error {
@@ -33,7 +40,7 @@ func (m *MockAssetRepository) Update(ctx context.Context, entity *model.Asset) e
 	return args.Error(0)
 }
 
-func (m *MockAssetRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockAssetRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
@@ -43,16 +50,34 @@ func (m *MockAssetRepository) FindAllBy(ctx context.Context, options ...reposito
 	return args.Get(0).([]model.Asset), args.Error(1)
 }
 
-func (m *MockAssetRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*model.Asset, error) {
-	args := m.Called(ctx, id)
+func (m *MockAssetRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Asset, error) {
+	args := m.Called(ctx, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.Asset), args.Error(1)
 }
 
+func (m *MockAssetRepository) GetDB() bun.IDB {
+	args := m.Called()
+	return args.Get(0).(bun.IDB)
+}
+
+func (m *MockAssetRepository) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Int(0), args.Error(1)
+}
+
 func (m *MockAssetRepository) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) {
 	args := m.Called(ctx, symbol)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Asset), args.Error(1)
+}
+
+func (m *MockAssetRepository) GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error) {
+	args := m.Called(ctx, instrumentID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
@@ -104,24 +129,9 @@ func (m *MockAssetRepository) GetAssetTypes(ctx context.Context) ([]model.AssetT
 	return args.Get(0).([]model.AssetType), args.Error(1)
 }
 
-func (m *MockAssetRepository) GetAssetsByTag(ctx context.Context, tagID int) ([]model.Asset, error) {
+func (m *MockAssetRepository) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) {
 	args := m.Called(ctx, tagID)
 	return args.Get(0).([]model.Asset), args.Error(1)
-}
-
-func (m *MockAssetRepository) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
-	args := m.Called(ctx, options)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockAssetRepository) GetDB() bun.IDB {
-	args := m.Called()
-	return args.Get(0).(bun.IDB)
-}
-
-func (m *MockAssetRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.Asset, error) {
-	args := m.Called(ctx, options)
-	return args.Get(0).(model.Asset), args.Error(1)
 }
 
 type MockPositionRepository struct {
@@ -133,9 +143,12 @@ func (m *MockPositionRepository) Create(ctx context.Context, entity *model.Posit
 	return args.Get(0).(*model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetByID(ctx context.Context, id uint) (model.Position, error) {
+func (m *MockPositionRepository) GetByID(ctx context.Context, id string) (*model.Position, error) {
 	args := m.Called(ctx, id)
-	return args.Get(0).(model.Position), args.Error(1)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Position), args.Error(1)
 }
 
 func (m *MockPositionRepository) Update(ctx context.Context, entity *model.Position) error {
@@ -143,7 +156,7 @@ func (m *MockPositionRepository) Update(ctx context.Context, entity *model.Posit
 	return args.Error(0)
 }
 
-func (m *MockPositionRepository) Delete(ctx context.Context, id uint) error {
+func (m *MockPositionRepository) Delete(ctx context.Context, id string) error {
 	args := m.Called(ctx, id)
 	return args.Error(0)
 }
@@ -153,15 +166,25 @@ func (m *MockPositionRepository) FindAllBy(ctx context.Context, options ...repos
 	return args.Get(0).([]model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetByUUID(ctx context.Context, id uuid.UUID) (*model.Position, error) {
-	args := m.Called(ctx, id)
+func (m *MockPositionRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Position, error) {
+	args := m.Called(ctx, options)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID uuid.UUID) (*model.Position, error) {
+func (m *MockPositionRepository) GetDB() bun.IDB {
+	args := m.Called()
+	return args.Get(0).(bun.IDB)
+}
+
+func (m *MockPositionRepository) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
+	args := m.Called(ctx, options)
+	return args.Int(0), args.Error(1)
+}
+
+func (m *MockPositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error) {
 	args := m.Called(ctx, portfolioID, assetID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -179,17 +202,17 @@ func (m *MockPositionRepository) CountWithFilters(ctx context.Context, filter re
 	return args.Int(0), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetPortfolioPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (m *MockPositionRepository) GetPortfolioPositions(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	args := m.Called(ctx, portfolioID)
 	return args.Get(0).([]model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (m *MockPositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	args := m.Called(ctx, portfolioID)
 	return args.Get(0).([]model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetPortfolioAggregation(ctx context.Context, portfolioID uuid.UUID) (*repository.PortfolioAggregation, error) {
+func (m *MockPositionRepository) GetPortfolioAggregation(ctx context.Context, portfolioID string) (*repository.PortfolioAggregation, error) {
 	args := m.Called(ctx, portfolioID)
 	if args.Get(0) == nil {
 		return nil, args.Error(1)
@@ -197,17 +220,17 @@ func (m *MockPositionRepository) GetPortfolioAggregation(ctx context.Context, po
 	return args.Get(0).(*repository.PortfolioAggregation), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetAssetAllocation(ctx context.Context, portfolioID uuid.UUID) ([]repository.AssetAllocation, error) {
+func (m *MockPositionRepository) GetAssetAllocation(ctx context.Context, portfolioID string) ([]repository.AssetAllocation, error) {
 	args := m.Called(ctx, portfolioID)
 	return args.Get(0).([]repository.AssetAllocation), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []uuid.UUID) ([]model.Position, error) {
+func (m *MockPositionRepository) GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []string) ([]model.Position, error) {
 	args := m.Called(ctx, assetIDs)
 	return args.Get(0).([]model.Position), args.Error(1)
 }
 
-func (m *MockPositionRepository) GetEmptyPositions(ctx context.Context, portfolioID uuid.UUID) ([]model.Position, error) {
+func (m *MockPositionRepository) GetEmptyPositions(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	args := m.Called(ctx, portfolioID)
 	return args.Get(0).([]model.Position), args.Error(1)
 }
@@ -222,24 +245,9 @@ func (m *MockPositionRepository) UpdateBatch(ctx context.Context, positions []mo
 	return args.Error(0)
 }
 
-func (m *MockPositionRepository) DeleteEmptyPositions(ctx context.Context, portfolioID uuid.UUID) error {
+func (m *MockPositionRepository) DeleteEmptyPositions(ctx context.Context, portfolioID string) error {
 	args := m.Called(ctx, portfolioID)
 	return args.Error(0)
-}
-
-func (m *MockPositionRepository) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
-	args := m.Called(ctx, options)
-	return args.Int(0), args.Error(1)
-}
-
-func (m *MockPositionRepository) GetDB() bun.IDB {
-	args := m.Called()
-	return args.Get(0).(bun.IDB)
-}
-
-func (m *MockPositionRepository) FindOneBy(ctx context.Context, options ...repository.QueryOption) (model.Position, error) {
-	args := m.Called(ctx, options)
-	return args.Get(0).(model.Position), args.Error(1)
 }
 
 // Test AssetService
@@ -261,7 +269,7 @@ func TestAssetService_CreateAsset(t *testing.T) {
 		}
 
 		expectedAsset := &model.Asset{
-			ID:          uuid.New(),
+			ID:          uuid.NewString(),
 			Type:        model.AssetTypeStock,
 			Symbol:      stringPtr("AAPL"),
 			Name:        "Apple Inc.",
@@ -269,13 +277,13 @@ func TestAssetService_CreateAsset(t *testing.T) {
 		}
 
 		// Mock symbol uniqueness check
-		mockRepo.On("GetBySymbol", ctx, "AAPL").Return(nil, repository.ErrNotFound)
-		mockRepo.On("Create", ctx, mock.AnythingOfType("*model.Asset")).Return(expectedAsset, nil)
+		mockRepo.On("GetBySymbol", mock.Anything, "AAPL").Return(nil, repository.ErrNotFound)
+		mockRepo.On("Create", mock.Anything, mock.AnythingOfType("*model.Asset")).Return(expectedAsset, nil)
 
 		result, err := service.CreateAsset(ctx, req)
 
-		assert.NoError(t, err)
-		assert.NotNil(t, result)
+		require.NoError(t, err)
+		require.NotNil(t, result)
 		assert.Equal(t, model.AssetTypeStock, result.Type)
 		assert.Equal(t, "Apple Inc.", result.Name)
 		assert.True(t, result.IsTradeable)
@@ -355,8 +363,8 @@ func TestPositionService_CreatePosition(t *testing.T) {
 	service := NewPositionService(mockPositionRepo, mockAssetRepo)
 	ctx := context.Background()
 
-	portfolioID := uuid.New()
-	assetID := uuid.New()
+	portfolioID := uuid.NewString()
+	assetID := uuid.NewString()
 
 	t.Run("successful position creation", func(t *testing.T) {
 		req := CreatePositionRequest{
@@ -372,14 +380,14 @@ func TestPositionService_CreatePosition(t *testing.T) {
 		}
 
 		expectedPosition := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			PortfolioID:         portfolioID,
 			AssetID:             assetID,
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
 		}
 
-		mockAssetRepo.On("GetByUUID", ctx, assetID).Return(asset, nil)
+		mockAssetRepo.On("GetByID", ctx, assetID).Return(asset, nil)
 		mockPositionRepo.On("GetByPortfolioAndAsset", ctx, portfolioID, assetID).Return(nil, repository.ErrNotFound)
 		mockPositionRepo.On("Create", ctx, mock.AnythingOfType("*model.Position")).Return(expectedPosition, nil)
 
@@ -395,6 +403,9 @@ func TestPositionService_CreatePosition(t *testing.T) {
 	})
 
 	t.Run("position already exists", func(t *testing.T) {
+		mockAssetRepo.ExpectedCalls = nil
+		mockPositionRepo.ExpectedCalls = nil
+
 		req := CreatePositionRequest{
 			PortfolioID: portfolioID,
 			AssetID:     assetID,
@@ -408,12 +419,12 @@ func TestPositionService_CreatePosition(t *testing.T) {
 		}
 
 		existingPosition := &model.Position{
-			ID:          uuid.New(),
+			ID:          uuid.NewString(),
 			PortfolioID: portfolioID,
 			AssetID:     assetID,
 		}
 
-		mockAssetRepo.On("GetByUUID", ctx, assetID).Return(asset, nil)
+		mockAssetRepo.On("GetByID", ctx, assetID).Return(asset, nil)
 		mockPositionRepo.On("GetByPortfolioAndAsset", ctx, portfolioID, assetID).Return(existingPosition, nil)
 
 		result, err := service.CreatePosition(ctx, req)
@@ -434,7 +445,7 @@ func TestPositionService_CalculatePositionValue(t *testing.T) {
 
 	t.Run("calculate value with current price", func(t *testing.T) {
 		position := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
 			TotalCostBasis:      moneyPtr(10000), // $100.00 in cents
@@ -454,9 +465,3 @@ func TestPositionService_CalculatePositionValue(t *testing.T) {
 }
 
 // Helper functions
-
-// Helper function for tests
-func moneyPtr(amount int64) *model.Money {
-	money := model.Money(amount)
-	return &money
-}

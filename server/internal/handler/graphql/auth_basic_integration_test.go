@@ -353,6 +353,7 @@ func setupBasicTestResolver(t *testing.T, testDB *testutil.TestDB) *Resolver {
 	securityConfig := service.SecurityConfig{
 		JWTPrivateKey: privateKeyPEM,
 		JWTPublicKey:  publicKeyPEM,
+		JWTAlgorithm:  "RS256",
 		BCryptCost:    4, // Lower cost for faster tests
 	}
 	securityService, err := service.NewSecurityService(securityConfig, rateLimiter)

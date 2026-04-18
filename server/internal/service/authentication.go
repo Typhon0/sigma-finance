@@ -77,6 +77,7 @@ type authenticationService struct {
 	auditService               AuditService
 	emailService               EmailService
 	authProviders              map[string]AuthProvider
+	maxFailedAttempts          int
 }
 
 // AuthenticationServiceConfig holds configuration for the authentication service
@@ -114,6 +115,8 @@ func NewAuthenticationService(
 		providerMap[provider.Name()] = provider
 	}
 
+	cfg := DefaultAuthenticationServiceConfig()
+
 	return &authenticationService{
 		userRepo:                   userRepo,
 		sessionService:             sessionService,
@@ -123,12 +126,13 @@ func NewAuthenticationService(
 		auditService:               auditService,
 		emailService:               emailService,
 		authProviders:              providerMap,
+		maxFailedAttempts:          cfg.MaxFailedAttempts,
 	}
 }
 
 // Register creates a new user account
 func (a *authenticationService) Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error) {
-	// Validate request
+	// Validate request first (before rate limiting) so invalid inputs don't consume quota
 	if err := req.Validate(); err != nil {
 		return nil, err
 	}
@@ -242,20 +246,23 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 		return nil, err
 	}
 
-	// Check rate limiting for login attempts
+	// Check rate limiting first — this short-circuits before the DB query for
+	// brute-force attacks on non-existent emails, preserving DB capacity.
 	rateLimitKey := LoginRateLimitKey(req.Email)
-	if err := a.securityService.CheckRateLimit(ctx, rateLimitKey, 5, 15*time.Minute); err != nil {
-		// Log security event
-		a.auditService.LogSecurityEvent(ctx, "login_rate_limit", req.IPAddress, req.UserAgent, map[string]interface{}{
-			"email": req.Email,
-		})
-		return nil, NewAuthError(ErrRateLimitExceeded, "Too many login attempts. Please try again later.", "")
-	}
+	rateLimitErr := a.securityService.CheckRateLimit(ctx, rateLimitKey, 5, 15*time.Minute)
 
-	// Get user by email
+	// Get user by email to check account lock status
 	user, err := a.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		// Log failed login attempt (don't reveal if email exists)
+		// User not found — if rate limit is also exceeded, report that;
+		// otherwise return generic invalid credentials (don't reveal if email exists).
+		if rateLimitErr != nil {
+			a.auditService.LogSecurityEvent(ctx, "login_rate_limit", req.IPAddress, req.UserAgent, map[string]interface{}{
+				"email": req.Email,
+			})
+			return nil, NewAuthError(ErrRateLimitExceeded, "Too many login attempts. Please try again later.", "")
+		}
+
 		event := CreateLoginEvent(nil, req.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
 			"reason": "invalid_credentials",
 		})
@@ -264,7 +271,12 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 		return nil, NewAuthError(ErrInvalidCredentials, "Invalid email or password", "")
 	}
 
-	// Check if account is locked
+	// Account lock takes priority over rate limit — a locked account should
+	// always report ACCOUNT_LOCKED, not RATE_LIMIT_EXCEEDED, so the user knows
+	// to wait for the lockout period. Note: locked accounts still consume
+	// rate-limit slots until the limit is reached; after that, CheckRateLimit
+	// returns an error without incrementing, and we return ACCOUNT_LOCKED
+	// regardless.
 	if user.IsAccountLocked() {
 		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
 			"reason": "account_locked",
@@ -272,6 +284,14 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 		a.auditService.LogAuthEvent(ctx, event)
 
 		return nil, NewAuthError(ErrAccountLocked, "Account is temporarily locked due to too many failed login attempts", "")
+	}
+
+	// If rate limit is exceeded (and account is not locked), block the request
+	if rateLimitErr != nil {
+		a.auditService.LogSecurityEvent(ctx, "login_rate_limit", req.IPAddress, req.UserAgent, map[string]interface{}{
+			"email": req.Email,
+		})
+		return nil, NewAuthError(ErrRateLimitExceeded, "Too many login attempts. Please try again later.", "")
 	}
 
 	// Verify password
@@ -285,13 +305,32 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 	}
 
 	if err := a.securityService.VerifyPassword(req.Password, *user.PasswordHash); err != nil {
-		// Increment failed login count
-		a.userRepo.IncrementFailedLoginCount(ctx, user.ID)
+		// Check if this attempt will lock the account
+		willLock := user.FailedLoginCount+1 >= a.maxFailedAttempts
 
-		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
+		// Increment failed login count (this may lock the account when the threshold is reached)
+		if incErr := a.userRepo.IncrementFailedLoginCount(ctx, user.ID, a.maxFailedAttempts); incErr != nil {
+			// Log but continue — the lockout decision is based on the in-memory count,
+			// so even if the DB increment fails we still return the correct error code.
+			a.auditService.LogSecurityEvent(ctx, "failed_login_count_increment_error", req.IPAddress, req.UserAgent, map[string]interface{}{
+				"user_id": user.ID,
+				"error":  incErr.Error(),
+			})
+		}
+
+		// Log single audit event with combined metadata
+		metadata := map[string]interface{}{
 			"reason": "invalid_password",
-		})
+		}
+		if willLock {
+			metadata["account_locked"] = true
+		}
+		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, metadata)
 		a.auditService.LogAuthEvent(ctx, event)
+
+		if willLock {
+			return nil, NewAuthError(ErrAccountLocked, "Account is temporarily locked due to too many failed login attempts", "")
+		}
 
 		return nil, NewAuthError(ErrInvalidCredentials, "Invalid email or password", "")
 	}
@@ -436,13 +475,18 @@ func (a *authenticationService) ConfirmPasswordReset(ctx context.Context, token,
 		return NewAuthError(ErrInvalidToken, "Invalid or expired reset token", "token")
 	}
 
-	// Check if token is valid
-	if !resetToken.IsValid() {
+	// Check if token has already been used
+	if resetToken.Used {
+		return NewAuthError(ErrInvalidToken, "Reset token has already been used", "token")
+	}
+
+	// Check if token has expired
+	if resetToken.IsExpired() {
 		return NewAuthError(ErrTokenExpired, "Reset token has expired", "token")
 	}
 
 	// Get user
-	user, err := a.userRepo.GetByStringID(ctx, resetToken.UserID)
+	user, err := a.userRepo.GetByID(ctx, resetToken.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -494,13 +538,18 @@ func (a *authenticationService) VerifyEmail(ctx context.Context, token string) e
 		return NewAuthError(ErrInvalidToken, "Invalid or expired verification token", "token")
 	}
 
-	// Check if token is valid
-	if !verificationToken.IsValid() {
+	// Check if token has already been used
+	if verificationToken.Used {
+		return NewAuthError(ErrInvalidToken, "Verification token has already been used", "token")
+	}
+
+	// Check if token has expired
+	if verificationToken.IsExpired() {
 		return NewAuthError(ErrTokenExpired, "Verification token has expired", "token")
 	}
 
 	// Get user
-	user, err := a.userRepo.GetByStringID(ctx, verificationToken.UserID)
+	user, err := a.userRepo.GetByID(ctx, verificationToken.UserID)
 	if err != nil {
 		return fmt.Errorf("failed to get user: %w", err)
 	}
@@ -593,7 +642,7 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 	}
 
 	// Get user for response
-	user, err := a.userRepo.GetByStringID(ctx, session.UserID)
+	user, err := a.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
@@ -626,7 +675,7 @@ func (a *authenticationService) ValidateSession(ctx context.Context, token strin
 	}
 
 	// Get user for additional info
-	user, err := a.userRepo.GetByStringID(ctx, session.UserID)
+	user, err := a.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}

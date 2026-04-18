@@ -8,6 +8,7 @@ import (
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -43,9 +44,14 @@ func TestAuthenticationService_Register(t *testing.T) {
 		securityService.On("GenerateSecureToken").Return("verification_token", nil).Once()
 		emailVerificationTokenRepo.On("Create", ctx, mock.AnythingOfType("*model.EmailVerificationToken")).Return(&model.EmailVerificationToken{}, nil)
 
-		securityService.On("GenerateJWT", createdUser.ID, mock.AnythingOfType("time.Time")).Return("jwt_token", nil)
-		securityService.On("GenerateSecureToken").Return("refresh_token", nil).Once()
-		sessionRepo.On("Create", ctx, mock.AnythingOfType("*model.Session")).Return(&model.Session{}, nil)
+		sessionRepo.On("CreateSession", ctx, createdUser.ID, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(&model.Session{Token: "jwt_token", RefreshToken: "refresh_token"}, nil)
+		securityService.On("ValidateJWT", "jwt_token").Return(&JWTClaims{
+			UserID: createdUser.ID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			},
+		}, nil)
+
 
 		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)
 
@@ -167,9 +173,14 @@ func TestAuthenticationService_Login(t *testing.T) {
 		userRepo.On("ResetFailedLoginCount", ctx, user.ID).Return(nil)
 		userRepo.On("UpdateLastLogin", ctx, user.ID, mock.AnythingOfType("time.Time"), req.IPAddress).Return(nil)
 
-		securityService.On("GenerateJWT", user.ID, mock.AnythingOfType("time.Time")).Return("jwt_token", nil)
-		securityService.On("GenerateSecureToken").Return("refresh_token", nil)
-		sessionRepo.On("Create", ctx, mock.AnythingOfType("*model.Session")).Return(&model.Session{}, nil)
+		sessionRepo.On("CreateSession", ctx, user.ID, req.IPAddress, req.UserAgent).Return(&model.Session{Token: "jwt_token", RefreshToken: "refresh_token"}, nil)
+		securityService.On("ValidateJWT", "jwt_token").Return(&JWTClaims{
+			UserID: user.ID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			},
+		}, nil)
+
 
 		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)
 
@@ -267,21 +278,13 @@ func TestAuthenticationService_Logout(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("successful logout", func(t *testing.T) {
-		authService, userRepo, sessionRepo, _, _, _, auditService, _ := createTestAuthService(t)
+		authService, _, sessionRepo, _, _, _, _, _ := createTestAuthService(t)
 
 		userID := "user-123"
 		token := "jwt_token"
 
-		user := &model.User{
-			ID:    userID,
-			Email: "test@example.com",
-			Name:  "Test User",
-		}
-
 		// Mock expectations
-		userRepo.On("GetByStringID", ctx, userID).Return(user, nil)
 		sessionRepo.On("RevokeSession", ctx, token).Return(nil)
-		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)
 
 		// Execute
 		err := authService.Logout(ctx, userID, token)
@@ -289,9 +292,7 @@ func TestAuthenticationService_Logout(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 
-		userRepo.AssertExpectations(t)
 		sessionRepo.AssertExpectations(t)
-		auditService.AssertExpectations(t)
 	})
 }
 
@@ -322,7 +323,7 @@ func TestAuthenticationService_VerifyEmail(t *testing.T) {
 
 		// Mock expectations
 		emailVerificationTokenRepo.On("GetByToken", ctx, token).Return(verificationToken, nil)
-		userRepo.On("GetByStringID", ctx, userID).Return(user, nil)
+		userRepo.On("GetByID", ctx, userID).Return(user, nil)
 		userRepo.On("UpdateEmailVerified", ctx, userID, true).Return(nil)
 		emailVerificationTokenRepo.On("Update", ctx, mock.AnythingOfType("*model.EmailVerificationToken")).Return(nil)
 		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)

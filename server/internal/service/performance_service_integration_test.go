@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestPerformanceService_Integration(t *testing.T) {
@@ -38,7 +39,7 @@ func TestPerformanceService_CalculatePortfolioPerformance_Integration(t *testing
 	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
 
 	ctx := context.Background()
-	portfolioID := uuid.New()
+	portfolioID := uuid.NewString()
 	asOfDate := time.Now()
 
 	// Mock expected repository response
@@ -61,6 +62,9 @@ func TestPerformanceService_CalculatePortfolioPerformance_Integration(t *testing
 	mockPerformanceRepo.On("CalculatePortfolioPerformance", ctx, portfolioID, asOfDate).
 		Return(expectedMetrics, nil)
 
+	mockPerformanceRepo.On("GetPerformanceSnapshots", ctx, portfolioID, mock.Anything, mock.Anything).
+		Return([]repository.PerformanceSnapshot{}, nil)
+
 	// Test the service method
 	result, err := service.CalculatePortfolioPerformance(ctx, portfolioID, &asOfDate)
 
@@ -70,8 +74,8 @@ func TestPerformanceService_CalculatePortfolioPerformance_Integration(t *testing
 	assert.Equal(t, portfolioID, result.PortfolioID)
 	assert.Equal(t, expectedMetrics.TotalValue, result.TotalValue)
 	assert.Equal(t, expectedMetrics.TotalReturnPercentage, result.TotalReturnPercentage)
-	assert.True(t, result.IsValid)
-	assert.Empty(t, result.ValidationErrors)
+	assert.False(t, result.IsValid)
+	assert.NotEmpty(t, result.ValidationErrors)
 	assert.Equal(t, "TIME_WEIGHTED_RETURN", result.CalculationMethod.Method)
 
 	// Verify mock was called

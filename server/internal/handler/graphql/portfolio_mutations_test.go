@@ -60,31 +60,31 @@ func TestParseIDForPortfolioOperations(t *testing.T) {
 	tests := []struct {
 		name    string
 		id      string
-		want    uint
+		want    string
 		wantErr bool
 	}{
 		{
 			name:    "valid ID",
 			id:      "123",
-			want:    123,
+			want:    "123",
 			wantErr: false,
 		},
 		{
 			name:    "zero ID",
 			id:      "0",
-			want:    0,
+			want:    "0",
 			wantErr: false,
 		},
 		{
-			name:    "invalid ID",
+			name:    "valid string ID",
 			id:      "abc",
-			want:    0,
-			wantErr: true,
+			want:    "abc",
+			wantErr: false,
 		},
 		{
 			name:    "empty ID",
 			id:      "",
-			want:    0,
+			want:    "",
 			wantErr: true,
 		},
 	}

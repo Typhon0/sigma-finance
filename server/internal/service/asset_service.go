@@ -8,8 +8,6 @@ import (
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"strings"
-
-	"github.com/google/uuid"
 )
 
 // AssetService provides business logic for asset management operations
@@ -28,9 +26,9 @@ func NewAssetService(assetRepo repository.IAssetRepository) *AssetService {
 type IAssetService interface {
 	// Core CRUD operations
 	CreateAsset(ctx context.Context, req CreateAssetRequest) (*model.Asset, error)
-	GetAsset(ctx context.Context, id uuid.UUID) (*model.Asset, error)
-	UpdateAsset(ctx context.Context, id uuid.UUID, req UpdateAssetRequest) (*model.Asset, error)
-	DeleteAsset(ctx context.Context, id uuid.UUID) error
+	GetAsset(ctx context.Context, id string) (*model.Asset, error)
+	UpdateAsset(ctx context.Context, id string, req UpdateAssetRequest) (*model.Asset, error)
+	DeleteAsset(ctx context.Context, id string) error
 
 	// Query operations
 	ListAssets(ctx context.Context, filter AssetFilter) ([]*model.Asset, error)
@@ -150,12 +148,12 @@ func (s *AssetService) CreateAsset(ctx context.Context, req CreateAssetRequest) 
 }
 
 // GetAsset retrieves an asset by ID
-func (s *AssetService) GetAsset(ctx context.Context, id uuid.UUID) (*model.Asset, error) {
-	if id == uuid.Nil {
+func (s *AssetService) GetAsset(ctx context.Context, id string) (*model.Asset, error) {
+	if id == "" {
 		return nil, errors.New("asset ID is required")
 	}
 
-	asset, err := s.assetRepo.GetByUUID(ctx, id)
+	asset, err := s.assetRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -164,13 +162,13 @@ func (s *AssetService) GetAsset(ctx context.Context, id uuid.UUID) (*model.Asset
 }
 
 // UpdateAsset updates an existing asset
-func (s *AssetService) UpdateAsset(ctx context.Context, id uuid.UUID, req UpdateAssetRequest) (*model.Asset, error) {
-	if id == uuid.Nil {
+func (s *AssetService) UpdateAsset(ctx context.Context, id string, req UpdateAssetRequest) (*model.Asset, error) {
+	if id == "" {
 		return nil, errors.New("asset ID is required")
 	}
 
 	// Get existing asset
-	asset, err := s.assetRepo.GetByUUID(ctx, id)
+	asset, err := s.assetRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -249,13 +247,13 @@ func (s *AssetService) UpdateAsset(ctx context.Context, id uuid.UUID, req Update
 }
 
 // DeleteAsset removes an asset
-func (s *AssetService) DeleteAsset(ctx context.Context, id uuid.UUID) error {
-	if id == uuid.Nil {
+func (s *AssetService) DeleteAsset(ctx context.Context, id string) error {
+	if id == "" {
 		return errors.New("asset ID is required")
 	}
 
 	// Check if asset exists
-	_, err := s.assetRepo.GetByUUID(ctx, id)
+	_, err := s.assetRepo.GetByID(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -378,6 +376,12 @@ func (s *AssetService) ValidateAssetData(ctx context.Context, assetType model.As
 		Type:     assetType,
 		Name:     "temp", // Temporary name for validation
 		Metadata: metadataJSON,
+	}
+
+	// For tradeable assets, set a dummy symbol so Validate() doesn't fail on the symbol check
+	if assetType.IsTradeable() {
+		dummy := "TEMP"
+		tempAsset.Symbol = &dummy
 	}
 
 	// Use the asset's built-in validation

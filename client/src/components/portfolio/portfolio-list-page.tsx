@@ -1,19 +1,13 @@
-import {
-	AlertTriangle,
-	Grid,
-	List,
-	PlusCircle,
-	RefreshCw,
-} from "lucide-react";
-import { useState, useMemo } from "react";
+import { AlertTriangle, Grid, List, PlusCircle, RefreshCw } from "lucide-react";
+import { useMemo, useState } from "react";
 import { CreatePortfolioDialog } from "@/components/portfolio/create-portfolio-dialog";
 import { PortfolioCard } from "@/components/portfolio/portfolio-card";
 import { PortfolioListErrorBoundary } from "@/components/portfolio/portfolio-error-boundary";
 import { PortfolioListLoadingSkeleton } from "@/components/portfolio/portfolio-list-skeleton";
-import { 
-	LoadingIndicator, 
-	AsyncOperationIndicator, 
-	PortfolioOperationStatus 
+import {
+	AsyncOperationIndicator,
+	LoadingIndicator,
+	PortfolioOperationStatus,
 } from "@/components/portfolio/portfolio-loading-indicators";
 import { PortfolioSearch } from "@/components/portfolio/portfolio-search";
 import { Button } from "@/components/ui/button";
@@ -24,10 +18,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { useAdvancedSearch } from "@/hooks/use-debounced-search";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
-import { useAdvancedSearch } from "@/hooks/use-debounced-search";
-import type { Portfolio } from "@/gql/graphql";
 
 interface PortfolioListPageProps {
 	className?: string;
@@ -54,7 +47,7 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 	// Enhanced search and filtering
 	const searchablePortfolios = useMemo(() => {
 		if (!portfolios) return [];
-		
+
 		// Add computed fields for filtering
 		return portfolios.map((portfolio) => ({
 			...portfolio,
@@ -68,11 +61,11 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 		setSearchTerm,
 		filters,
 		updateFilter,
-		removeFilter,
+		_removeFilter,
 		clearAllFilters,
 		sortConfig,
 		setSortConfig,
-		toggleSort,
+		_toggleSort,
 		filteredItems: filteredPortfolios,
 		resultCount,
 		hasResults,
@@ -103,11 +96,13 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 	// Show error state if there's an error and no cached data
 	if (hasError && !portfolios) {
 		return (
-			<PortfolioListErrorBoundary onRetry={async () => {
-				await portfolioRetry.executeWithRetry(async () => {
-					await refetch();
-				});
-			}}>
+			<PortfolioListErrorBoundary
+				onRetry={async () => {
+					await portfolioRetry.executeWithRetry(async () => {
+						await refetch();
+					});
+				}}
+			>
 				<div className={`container mx-auto p-4 md:p-6 ${className || ""}`}>
 					<div className="flex items-center justify-between mb-6">
 						<h1 className="text-2xl md:text-3xl font-bold">Your Portfolios</h1>
@@ -133,11 +128,13 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 	const hasPortfolios = portfolios && portfolios.length > 0;
 
 	return (
-		<PortfolioListErrorBoundary onRetry={async () => {
-			await portfolioRetry.executeWithRetry(async () => {
-				await refetch();
-			});
-		}}>
+		<PortfolioListErrorBoundary
+			onRetry={async () => {
+				await portfolioRetry.executeWithRetry(async () => {
+					await refetch();
+				});
+			}}
+		>
 			<div className={`container mx-auto p-3 sm:p-4 lg:p-6 ${className || ""}`}>
 				{/* Header */}
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
@@ -229,7 +226,7 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 				{/* Retry status indicator */}
 				{portfolioRetry.isRetrying && (
 					<div className="mb-4">
-						<LoadingIndicator 
+						<LoadingIndicator
 							message={`Retrying... (${portfolioRetry.retryCount}/${portfolioRetry.maxRetries})`}
 							variant="dots"
 						/>
@@ -268,7 +265,11 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="px-4 sm:px-6">
-							<Button variant="outline" onClick={clearAllFilters} className="touch-manipulation">
+							<Button
+								variant="outline"
+								onClick={clearAllFilters}
+								className="touch-manipulation"
+							>
 								Clear all filters
 							</Button>
 						</CardContent>
@@ -340,7 +341,7 @@ function ErrorState({
 						Retry attempt: {retryCount}/3
 					</div>
 				)}
-				
+
 				{isRetrying && (
 					<div className="flex justify-center">
 						<LoadingIndicator message="Retrying..." size="sm" />
@@ -381,5 +382,3 @@ function ErrorState({
 		</Card>
 	);
 }
-
-

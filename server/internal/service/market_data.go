@@ -3,25 +3,47 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
+	"regexp"
+	"sigma_finance/internal/config"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service/cache"
 	"sigma_finance/internal/service/providers"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/uptrace/bun"
 )
+
+func isLikelyPlaintextAPIKey(key string) bool {
+	if key == "" {
+		return false
+	}
+	if len(key) < 10 {
+		return false
+	}
+	if strings.Contains(key, "+") || strings.Contains(key, "/") || strings.Contains(key, "=") {
+		if len(key) > 40 {
+			return false
+		}
+	}
+	keyRegex := regexp.MustCompile(`^[A-Za-z0-9]+$`)
+	return keyRegex.MatchString(key)
+}
 
 // MarketDataService orchestrates provider selection, credential lookup and caching persistence.
 type MarketDataService interface {
 	// Existing candle-based methods
-	GetCandles(ctx context.Context, userID int, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error)
-	GetRealTimePrice(ctx context.Context, userID int, symbol, assetType string) (*model.Candle, error)
-	ValidateProviderCredentials(ctx context.Context, userID int, providerID, apiKey string) error
+	GetCandles(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error)
+	GetRealTimePrice(ctx context.Context, userID string, symbol, assetType string) (*model.Candle, error)
+	ValidateProviderCredentials(ctx context.Context, userID string, providerID, apiKey string) error
 	GetSupportedProviders(assetType string) []ProviderInfo
-	GetProviderHealth(ctx context.Context) map[string]bool
+	GetProviderHealth(ctx context.Context) []providers.ProviderHealthEntry
+	GetTechnicalIndicator(ctx context.Context, userID string, symbol, assetType, indicator string, interval model.CandleInterval, timePeriod int, seriesType string, from, to time.Time) (*providers.TechnicalIndicatorResponse, error)
 
 	// New asset price methods for task requirements
 	GetCurrentAssetPrice(ctx context.Context, assetID uuid.UUID) (*AssetPriceData, error)
@@ -102,6 +124,7 @@ type marketDataService struct {
 	assetRepo       repository.IAssetRepository
 	assetPriceCache *AssetPriceCache
 	updateMutex     sync.RWMutex
+	db              *bun.DB
 }
 
 // Price update scheduler
@@ -117,12 +140,14 @@ var assetPriceScheduler = &priceUpdateScheduler{}
 // NewMarketDataService creates a new enhanced market data service
 func NewMarketDataService(
 	uow repository.IUnitOfWork,
+	db *bun.DB,
 	candleRepo repository.ICandleRepository,
 	credRepo repository.IMarketDataCredentialRepository,
 	priceRepo repository.IPriceRepository,
 	assetRepo repository.IAssetRepository,
 	security SecurityService,
 	rateLimiter RateLimiter,
+	cfg *config.Config,
 ) MarketDataService {
 	// Create provider manager and register providers
 	providerManager := providers.NewProviderManager()
@@ -130,16 +155,33 @@ func NewMarketDataService(
 	// Register crypto providers
 	providerManager.RegisterProvider(providers.NewBinanceProvider())
 	providerManager.RegisterProvider(providers.NewCryptoCompareProvider())
+	providerManager.RegisterProvider(providers.NewAlphaVantageProvider())
 
 	// Register stock providers
 	providerManager.RegisterProvider(providers.NewFinnhubProvider())
 	providerManager.RegisterProvider(providers.NewTwelveDataProvider())
+	providerManager.RegisterProvider(providers.NewTiingoProvider())
+
+	// Register YFinance as tier 3 fallback provider (if socket path configured)
+	if cfg != nil && cfg.MarketData.YFinance.Host != "" {
+		yfinanceProvider, err := providers.NewYFinanceProvider(providers.YFinanceConfig{
+			Host: cfg.MarketData.YFinance.Host,
+			Port: cfg.MarketData.YFinance.Port,
+		})
+		if err != nil {
+			log.Printf("[NewMarketDataService] WARNING: Failed to create YFinance provider: %v", err)
+		} else {
+			providerManager.RegisterProvider(yfinanceProvider)
+			log.Printf("[NewMarketDataService] YFinance provider registered (tier 3 fallback)")
+		}
+	}
 
 	// Create cache with 1000 entries and 5-minute staleness threshold
 	candleCache := cache.NewCandleCache(candleRepo, 1000, 5*time.Minute)
 
 	return &marketDataService{
 		uow:             uow,
+		db:              db,
 		credRepo:        credRepo,
 		providerManager: providerManager,
 		cache:           candleCache,
@@ -151,10 +193,10 @@ func NewMarketDataService(
 	}
 }
 
-func (s *marketDataService) GetCandles(ctx context.Context, userID int, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
+func (s *marketDataService) GetCandles(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
 	// Check rate limiting
-	if userID > 0 && s.rateLimiter != nil {
-		if err := s.rateLimiter.CheckRateLimit(ctx, fmt.Sprintf("candles:user:%d", userID), 60, time.Minute); err != nil {
+	if userID != "" && s.rateLimiter != nil {
+		if err := s.rateLimiter.CheckRateLimit(ctx, fmt.Sprintf("candles:user:%s", userID), 60, time.Minute); err != nil {
 			return nil, fmt.Errorf("rate limit exceeded: %w", err)
 		}
 	}
@@ -201,7 +243,7 @@ func (s *marketDataService) GetCandles(ctx context.Context, userID int, symbol, 
 	return allCandles, nil
 }
 
-func (s *marketDataService) GetRealTimePrice(ctx context.Context, userID int, symbol, assetType string) (*model.Candle, error) {
+func (s *marketDataService) GetRealTimePrice(ctx context.Context, userID string, symbol, assetType string) (*model.Candle, error) {
 	// Get the most recent 1-minute candle
 	to := time.Now()
 	from := to.Add(-5 * time.Minute) // Last 5 minutes
@@ -218,7 +260,7 @@ func (s *marketDataService) GetRealTimePrice(ctx context.Context, userID int, sy
 	return &candles[len(candles)-1], nil
 }
 
-func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, userID int, providerID, apiKey string) error {
+func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, userID string, providerID, apiKey string) error {
 	provider, exists := s.providerManager.GetProvider(providerID)
 	if !exists {
 		return fmt.Errorf("unknown provider: %s", providerID)
@@ -228,7 +270,12 @@ func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, use
 }
 
 func (s *marketDataService) GetSupportedProviders(assetType string) []ProviderInfo {
-	providers := s.providerManager.GetProvidersForAssetType(assetType)
+	var providers []providers.Provider
+	if assetType == "" {
+		providers = s.providerManager.GetAllProviders()
+	} else {
+		providers = s.providerManager.GetProvidersForAssetType(assetType)
+	}
 
 	info := make([]ProviderInfo, 0, len(providers))
 	for _, provider := range providers {
@@ -253,22 +300,140 @@ func (s *marketDataService) GetSupportedProviders(assetType string) []ProviderIn
 	return info
 }
 
-func (s *marketDataService) GetProviderHealth(ctx context.Context) map[string]bool {
-	health := make(map[string]bool)
-
-	// Check crypto providers
-	cryptoProviders := s.providerManager.GetProvidersForAssetType("CRYPTO")
-	for _, provider := range cryptoProviders {
-		health[provider.ID()] = provider.IsHealthy(ctx)
+func (s *marketDataService) GetProviderHealth(ctx context.Context) []providers.ProviderHealthEntry {
+	// Collect all unique providers and their supported asset types.
+	// We derive asset types from each provider's Capabilities() rather than
+	// hardcoding, so new types (e.g. FOREX) are automatically included.
+	// Providers implementing AssetTypeHealthChecker (like YFinance) test
+	// with type-appropriate symbols (e.g. BTC-USD for CRYPTO, AAPL for STOCK).
+	type checkSpec struct {
+		provider  providers.Provider
+		assetType string
 	}
 
-	// Check stock providers
-	stockProviders := s.providerManager.GetProvidersForAssetType("STOCK")
-	for _, provider := range stockProviders {
-		health[provider.ID()] = provider.IsHealthy(ctx)
+	seen := make(map[string]map[string]bool) // providerID -> {assetType: true}
+	var checks []checkSpec
+
+	for _, p := range s.providerManager.GetAllProviders() {
+		caps := p.Capabilities()
+		if seen[p.ID()] == nil {
+			seen[p.ID()] = make(map[string]bool)
+		}
+		for _, at := range caps.AssetTypes {
+			if !seen[p.ID()][at] {
+				seen[p.ID()][at] = true
+				checks = append(checks, checkSpec{provider: p, assetType: at})
+			}
+		}
 	}
 
-	return health
+	// Run all health checks concurrently so one slow provider
+	// (e.g. YFinance sidecar down) doesn't block the rest.
+	type healthResult struct {
+		providerID string
+		assetType  string
+		healthy    bool
+	}
+	ch := make(chan healthResult, len(checks))
+
+	for _, spec := range checks {
+		spec := spec // capture
+		go func() {
+			// Each health check gets its own 3-second timeout
+			// so a single unresponsive provider can't stall the batch.
+			hcCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+			defer cancel()
+
+			var healthy bool
+			if hc, ok := spec.provider.(providers.AssetTypeHealthChecker); ok {
+				healthy = hc.IsHealthyForAssetType(hcCtx, spec.assetType)
+			} else {
+				healthy = spec.provider.IsHealthy(hcCtx)
+			}
+
+			ch <- healthResult{
+				providerID: spec.provider.ID(),
+				assetType:  spec.assetType,
+				healthy:    healthy,
+			}
+		}()
+	}
+
+	results := make([]providers.ProviderHealthEntry, 0, len(checks))
+	for i := 0; i < len(checks); i++ {
+		r := <-ch
+		results = append(results, providers.ProviderHealthEntry{
+			Provider:  r.providerID,
+			AssetType: r.assetType,
+			Healthy:   r.healthy,
+		})
+	}
+
+	return results
+}
+
+// GetTechnicalIndicator retrieves technical indicator data from providers
+func (s *marketDataService) GetTechnicalIndicator(ctx context.Context, userID string, symbol, assetType, indicator string, interval model.CandleInterval, timePeriod int, seriesType string, from, to time.Time) (*providers.TechnicalIndicatorResponse, error) {
+	// Get user's API keys
+	userCreds, _ := s.credRepo.ListByUser(ctx, userID)
+	credMap := make(map[string]string)
+	for _, cred := range userCreds {
+		apiKey := cred.APIKey
+		if s.security != nil && apiKey != "" {
+			if decrypted, err := s.security.DecryptString(apiKey); err == nil {
+				apiKey = decrypted
+			}
+		}
+		credMap[cred.Provider] = apiKey
+	}
+
+	// Try providers in order of preference
+	providerList := s.providerManager.GetProvidersForAssetType(assetType)
+
+	for _, provider := range providerList {
+		caps := provider.Capabilities()
+
+		// Get API key if required
+		apiKey := ""
+		if caps.RequiresAPIKey {
+			var exists bool
+			apiKey, exists = credMap[provider.ID()]
+			if !exists || apiKey == "" {
+				continue
+			}
+		}
+
+		// Check rate limiting
+		if s.rateLimiter != nil {
+			rateLimitKey := fmt.Sprintf("provider:%s:indicator:user:%s", provider.ID(), userID)
+			if err := s.rateLimiter.CheckRateLimit(ctx, rateLimitKey, caps.RateLimit.RequestsPerMinute, time.Minute); err != nil {
+				continue
+			}
+		}
+
+		req := providers.TechnicalIndicatorRequest{
+			Symbol:     symbol,
+			AssetType:  assetType,
+			Indicator:  indicator,
+			TimePeriod: timePeriod,
+			SeriesType: seriesType,
+			Interval:   interval,
+			From:       from,
+			To:         to,
+			APIKey:     apiKey,
+		}
+
+		response, err := provider.GetTechnicalIndicator(ctx, req)
+		if err != nil {
+			continue
+		}
+
+		if len(response.Data) > 0 {
+			return response, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no providers returned technical indicator data for %s %s", assetType, symbol)
 }
 
 // New asset price methods implementation
@@ -285,7 +450,8 @@ func (s *marketDataService) GetCurrentAssetPrice(ctx context.Context, assetID uu
 	}
 
 	// Get asset information
-	asset, err := s.assetRepo.GetByUUID(ctx, assetID)
+	assetIDStr := assetID.String()
+	asset, err := s.assetRepo.GetByID(ctx, assetIDStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -295,7 +461,7 @@ func (s *marketDataService) GetCurrentAssetPrice(ctx context.Context, assetID uu
 	}
 
 	// Get latest price from database
-	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetID)
+	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetIDStr)
 	if err != nil {
 		// If no price in database, try to fetch from external source
 		return s.fetchAndStoreAssetPriceFromProvider(ctx, asset)
@@ -350,14 +516,25 @@ func (s *marketDataService) GetCurrentAssetPrices(ctx context.Context, assetIDs 
 
 	// Fetch uncached prices from database
 	if len(uncachedIDs) > 0 {
-		latestPrices, err := s.priceRepo.GetLatestPrices(ctx, uncachedIDs)
+		// Convert UUIDs to strings for repository call
+		uncachedIDStrs := make([]string, len(uncachedIDs))
+		for i, id := range uncachedIDs {
+			uncachedIDStrs[i] = id.String()
+		}
+
+		latestPrices, err := s.priceRepo.GetLatestPrices(ctx, uncachedIDStrs)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get latest prices: %w", err)
 		}
 
 		// Convert to AssetPriceData and check staleness
 		for _, price := range latestPrices {
-			asset, err := s.assetRepo.GetByUUID(ctx, price.AssetID)
+			assetID, err := uuid.Parse(price.AssetID)
+			if err != nil {
+				continue // Skip assets with invalid UUIDs
+			}
+
+			asset, err := s.assetRepo.GetByID(ctx, price.AssetID)
 			if err != nil {
 				continue // Skip assets we can't retrieve
 			}
@@ -366,7 +543,7 @@ func (s *marketDataService) GetCurrentAssetPrices(ctx context.Context, assetIDs 
 			isStale := time.Since(price.Timestamp) > maxAge
 
 			priceData := &AssetPriceData{
-				AssetID:   price.AssetID,
+				AssetID:   assetID,
 				Price:     price.Price,
 				Volume:    price.Volume,
 				MarketCap: price.MarketCap,
@@ -375,8 +552,8 @@ func (s *marketDataService) GetCurrentAssetPrices(ctx context.Context, assetIDs 
 				IsStale:   isStale,
 			}
 
-			result[price.AssetID] = priceData
-			s.assetPriceCache.Set(price.AssetID, priceData, 5*time.Minute)
+			result[assetID] = priceData
+			s.assetPriceCache.Set(assetID, priceData, 5*time.Minute)
 		}
 	}
 
@@ -388,15 +565,24 @@ func (s *marketDataService) UpdateAssetPrices(ctx context.Context) error {
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 
+	// Ensure partitions exist before trying to insert
+	if err := s.ensurePricePartitions(ctx); err != nil {
+		log.Printf("[UpdateAssetPrices] WARNING: could not ensure partitions: %v", err)
+	}
+
 	// Get all tradeable assets
 	tradeableAssets, err := s.assetRepo.GetTradeableAssets(ctx)
 	if err != nil {
+		log.Printf("[UpdateAssetPrices] ERROR: failed to get tradeable assets: %v", err)
 		return fmt.Errorf("failed to get tradeable assets: %w", err)
 	}
 
 	if len(tradeableAssets) == 0 {
+		log.Printf("[UpdateAssetPrices] WARNING: No tradeable assets found in database. Assets need is_tradeable=true to have prices fetched.")
 		return nil // No tradeable assets to update
 	}
+
+	log.Printf("[UpdateAssetPrices] Found %d tradeable assets to update", len(tradeableAssets))
 
 	// Group assets by market data source
 	sourceGroups := make(map[string][]model.Asset)
@@ -430,7 +616,8 @@ func (s *marketDataService) UpdateAssetPrice(ctx context.Context, assetID uuid.U
 		return nil, fmt.Errorf("asset ID is required")
 	}
 
-	asset, err := s.assetRepo.GetByUUID(ctx, assetID)
+	assetIDStr := assetID.String()
+	asset, err := s.assetRepo.GetByID(ctx, assetIDStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
@@ -494,7 +681,7 @@ func (s *marketDataService) ValidateAssetPriceData(ctx context.Context, price *m
 		return fmt.Errorf("price data is required")
 	}
 
-	if price.AssetID == uuid.Nil {
+	if price.AssetID == "" {
 		return fmt.Errorf("asset ID is required")
 	}
 
@@ -527,12 +714,28 @@ func (s *marketDataService) ValidateAssetPriceData(ctx context.Context, price *m
 
 // GetStaleAssetPrices retrieves assets with stale price data
 func (s *marketDataService) GetStaleAssetPrices(ctx context.Context, maxAge time.Duration) ([]uuid.UUID, error) {
-	return s.priceRepo.GetStaleAssets(ctx, maxAge)
+	staleAssetIDStrs, err := s.priceRepo.GetStaleAssets(ctx, maxAge)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert string IDs to UUIDs
+	staleAssetIDs := make([]uuid.UUID, 0, len(staleAssetIDStrs))
+	for _, idStr := range staleAssetIDStrs {
+		id, err := uuid.Parse(idStr)
+		if err != nil {
+			continue // Skip invalid UUIDs
+		}
+		staleAssetIDs = append(staleAssetIDs, id)
+	}
+
+	return staleAssetIDs, nil
 }
 
 // IsAssetPriceStale checks if an asset's price is stale
 func (s *marketDataService) IsAssetPriceStale(ctx context.Context, assetID uuid.UUID, maxAge time.Duration) (bool, error) {
-	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetID)
+	assetIDStr := assetID.String()
+	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetIDStr)
 	if err != nil {
 		return true, err // No price data means stale
 	}
@@ -552,7 +755,8 @@ func (s *marketDataService) GetAssetPriceCacheStats() AssetPriceCacheStats {
 
 // Private methods
 
-func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userID int, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
+func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
+	log.Printf("[fetchCandlesFromProviders] symbol=%s assetType=%s interval=%s", symbol, assetType, interval)
 	// Get user's API keys
 	userCreds, err := s.credRepo.ListByUser(ctx, userID)
 	if err != nil {
@@ -566,15 +770,19 @@ func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userI
 		if s.security != nil && apiKey != "" {
 			if decrypted, err := s.security.DecryptString(apiKey); err == nil {
 				apiKey = decrypted
+			} else {
+				log.Printf("[fetchCandlesFromProviders] decrypt failed %s: %v", cred.Provider, err)
 			}
 		}
 		credMap[cred.Provider] = apiKey
 	}
+	log.Printf("[fetchCandlesFromProviders] creds: %v", credMap)
 
 	// Try providers in order of preference
 	providerList := s.providerManager.GetProvidersForAssetType(assetType)
 
 	for _, provider := range providerList {
+		log.Printf("[fetchCandlesFromProviders] trying: %s", provider.ID())
 		// Check if provider supports the interval
 		caps := provider.Capabilities()
 		supportsInterval := false
@@ -600,7 +808,7 @@ func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userI
 
 		// Check rate limiting for this provider
 		if s.rateLimiter != nil {
-			rateLimitKey := fmt.Sprintf("provider:%s:user:%d", provider.ID(), userID)
+			rateLimitKey := fmt.Sprintf("provider:%s:user:%s", provider.ID(), userID)
 			if err := s.rateLimiter.CheckRateLimit(ctx, rateLimitKey, caps.RateLimit.RequestsPerMinute, time.Minute); err != nil {
 				continue // Skip if rate limited
 			}
@@ -668,39 +876,191 @@ func (s *marketDataService) sortAndDeduplicateCandles(candles []model.Candle) []
 // fetchAndStoreAssetPriceFromProvider fetches price from external source and stores it
 func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Context, asset *model.Asset) (*AssetPriceData, error) {
 	if asset.Symbol == nil {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: Asset '%s' (ID: %s) has no symbol - cannot fetch price", asset.Name, asset.ID)
 		return nil, fmt.Errorf("asset symbol is required for price fetching")
 	}
 
-	// Convert asset price to candle request to reuse existing provider infrastructure
-	now := time.Now()
-	req := providers.CandleRequest{
-		Symbol:    *asset.Symbol,
-		AssetType: string(asset.Type),
-		Interval:  model.Interval1m, // Use 1-minute interval for current price
-		From:      now.Add(-5 * time.Minute),
-		To:        now,
-		Limit:     1,
+	log.Printf("[fetchAndStoreAssetPriceFromProvider] Fetching price for asset '%s' (Symbol: %s, Type: %s)", asset.Name, *asset.Symbol, asset.Type)
+
+	// Try to get system-wide credentials first (admin-set for all users)
+	credMap := make(map[string]string)
+
+	systemCreds, err := s.credRepo.ListSystemWide(ctx)
+	if err != nil {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] WARNING: Failed to get system-wide credentials: %v", err)
 	}
 
-	// Try to get user credentials (use system user ID 0 for asset price updates)
-	userCreds, _ := s.credRepo.ListByUser(ctx, 0)
-	credMap := make(map[string]string)
-	for _, cred := range userCreds {
-		apiKey := cred.APIKey
-		if s.security != nil && apiKey != "" {
-			if decrypted, err := s.security.DecryptString(apiKey); err == nil {
-				apiKey = decrypted
+	// If no system-wide credentials, get ALL credentials from DB
+	if len(systemCreds) == 0 {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] No system-wide API keys. Getting all credentials...")
+
+		allCreds, err := s.credRepo.ListAll(ctx)
+		if err == nil && len(allCreds) > 0 {
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d credentials in database", len(allCreds))
+			for _, cred := range allCreds {
+				log.Printf("[fetchAndStoreAssetPriceFromProvider] Found credential: provider=%s, is_system=%v, user_id=%s",
+					cred.Provider, cred.IsSystem, cred.UserID)
+			}
+			systemCreds = allCreds
+		}
+	}
+
+	if len(systemCreds) == 0 {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: No API keys configured at all. Please configure API keys via UI or insert system-wide credentials directly.")
+	} else {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d credentials to try", len(systemCreds))
+	}
+
+	for i := range systemCreds {
+		cred := &systemCreds[i]
+		apiKey := ""
+		decryptionSuccess := false
+		originalKey := cred.APIKey
+
+		decryptedKey := originalKey
+
+		// Try SecurityService.DecryptString first
+		if s.security != nil && originalKey != "" {
+			if decrypted, err := s.security.DecryptString(originalKey); err == nil {
+				decryptedKey = decrypted
 			}
 		}
+
+		// Check if SecurityService result is plaintext
+		if isLikelyPlaintextAPIKey(decryptedKey) {
+			apiKey = decryptedKey
+			decryptionSuccess = true
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via SecurityService", cred.Provider)
+		} else if originalKey != "" {
+			// Try model.Decrypt() as fallback - use pointer to actually modify
+			if decryptErr := cred.Decrypt(); decryptErr == nil {
+				if isLikelyPlaintextAPIKey(cred.APIKey) {
+					apiKey = cred.APIKey
+					decryptionSuccess = true
+					log.Printf("[fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via model.Decrypt", cred.Provider)
+				}
+			}
+		}
+
+		// Last resort: if still looks encrypted, DON'T use it
+		if !decryptionSuccess {
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] CRITICAL: Could not decrypt API key for %s (tried both methods). Key stored with different ENCRYPTION_KEY. Skipping provider.", cred.Provider)
+			continue
+		}
+
 		credMap[cred.Provider] = apiKey
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] Using API key for provider: %s", cred.Provider)
 	}
 
 	// Get providers for this asset type
 	providerList := s.providerManager.GetProvidersForAssetType(string(asset.Type))
+	log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d providers for asset type %s", len(providerList), asset.Type)
 
+	var lastError error
 	for _, provider := range providerList {
-		// Check if provider supports 1-minute interval
 		caps := provider.Capabilities()
+
+		// Get API key if required
+		apiKey := ""
+		if caps.RequiresAPIKey {
+			apiKey, _ = credMap[provider.ID()]
+			if apiKey == "" {
+				log.Printf("[fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s requires API key but none configured", provider.ID())
+				lastError = fmt.Errorf("no API key for provider %s", provider.ID())
+				continue
+			}
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Using API key for provider %s", provider.ID())
+		}
+
+		quoteReq := providers.QuoteRequest{
+			Symbol:    *asset.Symbol,
+			AssetType: string(asset.Type),
+			APIKey:    apiKey,
+		}
+
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] Calling provider %s with API key: %q", provider.ID(), apiKey)
+
+		quoteResp, err := provider.GetQuote(ctx, quoteReq)
+		if err != nil {
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Provider %s GetQuote error: %v", provider.ID(), err)
+			lastError = err
+		} else if quoteResp != nil {
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Provider %s returned price: %s", provider.ID(), quoteResp.Last.String())
+		}
+		if err == nil && quoteResp != nil && !quoteResp.Last.IsZero() {
+			log.Printf("[fetchAndStoreAssetPriceFromProvider] Price timestamp from Tiingo: %s", quoteResp.Timestamp.String())
+			assetPrice := &model.AssetPrice{
+				AssetID:   asset.ID,
+				Price:     quoteResp.Last,
+				Timestamp: quoteResp.Timestamp,
+				Source:    quoteResp.Source,
+			}
+
+			if quoteResp.Volume > 0 {
+				volume := quoteResp.Volume
+				assetPrice.Volume = &volume
+			}
+
+			// Validate price data
+			if err := s.ValidateAssetPriceData(ctx, assetPrice); err != nil {
+				log.Printf("[fetchAndStoreAssetPriceFromProvider] Validation failed for %s: %v - trying other providers", *asset.Symbol, err)
+			} else {
+				// Store in database
+				if _, err := s.priceRepo.Create(ctx, assetPrice); err != nil {
+					// Try direct insert into partition table
+					partitionErr := s.tryDirectPartitionInsert(ctx, assetPrice)
+					if partitionErr != nil {
+						log.Printf("[fetchAndStoreAssetPriceFromProvider] DB store failed for %s: %v, partition insert also failed: %v", *asset.Symbol, err, partitionErr)
+					} else {
+						// SUCCESS via partition insert
+						assetUUID, _ := uuid.Parse(asset.ID)
+						priceData := &AssetPriceData{
+							AssetID:   assetUUID,
+							Price:     quoteResp.Last,
+							Volume:    assetPrice.Volume,
+							Timestamp: quoteResp.Timestamp,
+							Source:    quoteResp.Source,
+							IsStale:   false,
+						}
+						log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s via partition", quoteResp.Last.String(), *asset.Symbol)
+						s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
+						return priceData, nil
+					}
+				} else {
+					// SUCCESS - return immediately!
+					assetUUID, err := uuid.Parse(asset.ID)
+					if err != nil {
+						return nil, fmt.Errorf("invalid asset ID format: %w", err)
+					}
+
+					priceData := &AssetPriceData{
+						AssetID:   assetUUID,
+						Price:     quoteResp.Last,
+						Volume:    assetPrice.Volume,
+						Timestamp: quoteResp.Timestamp,
+						Source:    quoteResp.Source,
+						IsStale:   false,
+					}
+
+					log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s", quoteResp.Last.String(), *asset.Symbol)
+					s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
+					return priceData, nil
+				}
+			}
+		}
+
+		now := time.Now()
+		req := providers.CandleRequest{
+			Symbol:    *asset.Symbol,
+			AssetType: string(asset.Type),
+			Interval:  model.Interval1m,
+			From:      now.Add(-5 * time.Minute),
+			To:        now,
+			Limit:     1,
+			APIKey:    apiKey,
+		}
+
+		// Check if provider supports 1-minute interval
 		supportsInterval := false
 		for _, supportedInterval := range caps.Intervals {
 			if supportedInterval == model.Interval1m {
@@ -712,25 +1072,12 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 			continue
 		}
 
-		// Get API key if required
-		if caps.RequiresAPIKey {
-			apiKey, exists := credMap[provider.ID()]
-			if !exists || apiKey == "" {
-				continue
-			}
-			req.APIKey = apiKey
-		}
-
-		// Fetch candle data
 		response, err := provider.GetCandles(ctx, req)
 		if err != nil || len(response.Candles) == 0 {
 			continue
 		}
 
-		// Convert candle to asset price
-		candle := response.Candles[len(response.Candles)-1] // Get most recent candle
-
-		// Convert Money to decimal.Decimal
+		candle := response.Candles[len(response.Candles)-1]
 		price := decimal.NewFromInt(int64(candle.Close)).Div(decimal.NewFromInt(100))
 
 		assetPrice := &model.AssetPrice{
@@ -740,39 +1087,41 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 			Source:    candle.Source,
 		}
 
-		// Convert volume if available
 		if candle.Volume > 0 {
 			volume := int64(candle.Volume)
 			assetPrice.Volume = &volume
 		}
 
-		// Validate price data
 		if err := s.ValidateAssetPriceData(ctx, assetPrice); err != nil {
 			continue
 		}
 
-		// Store in database
 		if _, err := s.priceRepo.Create(ctx, assetPrice); err != nil {
 			continue
 		}
 
-		// Create result
+		assetUUID, err := uuid.Parse(asset.ID)
+		if err != nil {
+			return nil, fmt.Errorf("invalid asset ID format: %w", err)
+		}
+
 		priceData := &AssetPriceData{
-			AssetID:   asset.ID,
+			AssetID:   assetUUID,
 			Price:     price,
 			Volume:    assetPrice.Volume,
-			MarketCap: assetPrice.MarketCap,
 			Timestamp: assetPrice.Timestamp,
 			Source:    assetPrice.Source,
 			IsStale:   false,
 		}
 
-		// Cache the result
-		s.assetPriceCache.Set(asset.ID, priceData, 5*time.Minute)
-
+		s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
 		return priceData, nil
 	}
 
+	if lastError != nil {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: All providers failed for %s %s. Last error: %v", asset.Type, *asset.Symbol, lastError)
+		return nil, fmt.Errorf("no providers returned data for %s %s: %w", asset.Type, *asset.Symbol, lastError)
+	}
 	return nil, fmt.Errorf("no providers returned data for %s %s", asset.Type, *asset.Symbol)
 }
 
@@ -780,15 +1129,21 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 func (s *marketDataService) updateAssetsFromProvider(ctx context.Context, assets []model.Asset, sourceName string) error {
 	// For now, update assets individually since we're reusing the candle infrastructure
 	// This could be optimized later with batch requests
+	successCount := 0
 	for _, asset := range assets {
 		if asset.Symbol != nil {
 			_, err := s.fetchAndStoreAssetPriceFromProvider(ctx, &asset)
 			if err != nil {
 				// Log error but continue with other assets
+				log.Printf("[updateAssetsFromProvider] Failed to update price for asset %s: %v", asset.Name, err)
 				continue
 			}
+			successCount++
+		} else {
+			log.Printf("[updateAssetsFromProvider] SKIP: Asset '%s' has no symbol", asset.Name)
 		}
 	}
+	log.Printf("[updateAssetsFromProvider] Updated prices for %d/%d assets from source %s", successCount, len(assets), sourceName)
 	return nil
 }
 
@@ -802,6 +1157,58 @@ func (s *marketDataService) getMaxAgeForAssetType(assetType model.AssetType) tim
 	default:
 		return 1 * time.Hour // Default for other asset types
 	}
+}
+
+// ensurePricePartitions creates partitions for the current and next month if they don't exist
+func (s *marketDataService) ensurePricePartitions(ctx context.Context) error {
+	now := time.Now()
+	year := now.Year()
+
+	// Create current and next month partitions
+	for offset := 0; offset <= 1; offset++ {
+		month := int(now.Month()) + offset
+		yr := year
+		if month > 12 {
+			month -= 12
+			yr++
+		}
+
+		partName := fmt.Sprintf("asset_prices_%d_%02d", yr, month)
+		nextMonth := month + 1
+		nextYear := yr
+		if nextMonth > 12 {
+			nextMonth = 1
+			nextYear++
+		}
+		query := fmt.Sprintf(`
+			CREATE TABLE IF NOT EXISTS sigma_finance.%s PARTITION OF sigma_finance.asset_prices
+			FOR VALUES FROM ('%d-%02d-01') TO ('%d-%02d-01')
+		`, partName, yr, month, nextYear, nextMonth)
+
+		result, err := s.db.ExecContext(ctx, query)
+		if err != nil {
+			log.Printf("[ensurePricePartitions] ERROR creating partition %s: %v (result: %v)", partName, err, result)
+		} else {
+			log.Printf("[ensurePricePartitions] Created/verified partition: %s", partName)
+		}
+	}
+	return nil
+}
+
+// tryDirectPartitionInsert attempts to insert directly into the specific partition table
+func (s *marketDataService) tryDirectPartitionInsert(ctx context.Context, assetPrice *model.AssetPrice) error {
+	ts := assetPrice.Timestamp
+	year := ts.Year()
+	month := ts.Month()
+	partName := fmt.Sprintf("asset_prices_%d_%02d", year, month)
+
+	query := fmt.Sprintf(`
+		INSERT INTO sigma_finance.%s (asset_id, price, timestamp, source, volume, market_cap)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`, partName)
+
+	_, err := s.db.ExecContext(ctx, query, assetPrice.AssetID, assetPrice.Price, assetPrice.Timestamp, assetPrice.Source, assetPrice.Volume, assetPrice.MarketCap)
+	return err
 }
 
 // AssetPriceCache implementation methods

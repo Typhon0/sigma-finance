@@ -8,17 +8,27 @@ import (
 	"sigma_finance/internal/infrastructure"
 	"strings"
 
+	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/migrate"
 
+	"github.com/joho/godotenv"
 	"github.com/urfave/cli/v2"
 )
 
 func main() {
+	loadDotEnv()
 
-	db, err := infrastructure.NewDB()
+	appDB, err := infrastructure.NewDB()
 	if err != nil {
 		log.Fatalf("failed to initialize database: %v", err)
 	}
+	defer appDB.Close()
+
+	migrationDB, err := newMigrationDB()
+	if err != nil {
+		log.Fatalf("failed to initialize migration database: %v", err)
+	}
+	defer migrationDB.Close()
 
 	templateData := map[string]string{
 		"Prefix": "example_",
@@ -27,7 +37,7 @@ func main() {
 		Name: "bun",
 
 		Commands: []*cli.Command{
-			newDBCommand(migrate.NewMigrator(db, migrations.Migrations, migrate.WithTemplateData(templateData))),
+			newDBCommand(migrate.NewMigrator(migrationDB, migrations.Migrations, migrate.WithTemplateData(templateData)), newSeedCommand(appDB)),
 		},
 	}
 	if err := app.Run(os.Args); err != nil {
@@ -35,7 +45,41 @@ func main() {
 	}
 }
 
-func newDBCommand(migrator *migrate.Migrator) *cli.Command {
+func newMigrationDB() (*bun.DB, error) {
+	cfg := infrastructure.DBConfig{
+		Host:     firstNonEmptyEnv("DB_ADMIN_HOST", "TEST_DB_ADMIN_HOST", "DB_HOST", "localhost"),
+		Port:     firstNonEmptyEnv("DB_ADMIN_PORT", "TEST_DB_ADMIN_PORT", "DB_PORT", "5432"),
+		User:     firstNonEmptyEnv("DB_ADMIN_USER", "TEST_DB_ADMIN_USER", "DB_USER", "postgres"),
+		Password: firstNonEmptyEnv("DB_ADMIN_PASSWORD", "TEST_DB_ADMIN_PASSWORD", "DB_PASSWORD", "postgres"),
+		DBName:   firstNonEmptyEnv("DB_ADMIN_NAME", "TEST_DB_ADMIN_NAME", "DB_NAME", "sigma_finance"),
+		SSLMode:  firstNonEmptyEnv("DB_ADMIN_SSLMODE", "TEST_DB_ADMIN_SSLMODE", "DB_SSLMODE", "disable"),
+	}
+	return infrastructure.NewDBWithConfig(cfg)
+}
+
+func firstNonEmptyEnv(keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func loadDotEnv() {
+	candidates := []string{".env", "../.env", "../../.env"}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			if err := godotenv.Load(candidate); err != nil {
+				log.Printf("failed to load %s: %v", candidate, err)
+			}
+			return
+		}
+	}
+	log.Println("No .env file found, using environment variables")
+}
+
+func newDBCommand(migrator *migrate.Migrator, seedCommand *cli.Command) *cli.Command {
 	return &cli.Command{
 		Name:  "db",
 		Usage: "database migrations",
@@ -180,6 +224,7 @@ func newDBCommand(migrator *migrate.Migrator) *cli.Command {
 					return nil
 				},
 			},
+			seedCommand,
 		},
 	}
 }

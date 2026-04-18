@@ -9,13 +9,13 @@ import (
 type Tag struct {
 	bun.BaseModel `bun:"table:sigma_finance.tag"`
 
-	ID   int    `bun:"id,pk,autoincrement"`
+	ID   string `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	Name string `bun:"name,unique,notnull"`
 }
 
 // Implement Entity interface
-func (t Tag) GetID() int64              { return int64(t.ID) }
-func (t Tag) SetID(id int64)            { t.ID = int(id) }
+func (t Tag) GetID() string              { return t.ID }
+func (t Tag) SetID(id string)            { t.ID = id }
 func (t Tag) GetCreatedAt() time.Time   { return time.Time{} }
 func (t Tag) SetCreatedAt(tm time.Time) {}
 func (t Tag) GetUpdatedAt() time.Time   { return time.Time{} }

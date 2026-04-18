@@ -1,3 +1,4 @@
+import { useNavigate } from "@tanstack/react-router";
 import {
 	BarChart3,
 	FileText,
@@ -30,6 +31,8 @@ export function QuickActions({
 	onManagePortfolios,
 	isLoading = false,
 }: QuickActionsProps) {
+	const navigate = useNavigate();
+
 	const handleAddTransaction = useCallback(() => {
 		if (onAddTransaction) {
 			onAddTransaction();
@@ -52,33 +55,33 @@ export function QuickActions({
 		if (onCreatePortfolio) {
 			onCreatePortfolio();
 		} else {
-			window.location.href = "/portfolios/create";
+			navigate({ to: "/portfolios/create" });
 		}
-	}, [onCreatePortfolio]);
+	}, [onCreatePortfolio, navigate]);
 
 	const handleViewPortfolios = useCallback(() => {
 		if (onViewPortfolios) {
 			onViewPortfolios();
 		} else {
-			window.location.href = "/portfolios";
+			navigate({ to: "/portfolios" });
 		}
-	}, [onViewPortfolios]);
+	}, [onViewPortfolios, navigate]);
 
 	const handleViewAnalytics = useCallback(() => {
 		if (onViewAnalytics) {
 			onViewAnalytics();
 		} else {
-			window.location.href = "/portfolios/analytics";
+			navigate({ to: "/dashboard", search: { view: "analytics" } });
 		}
-	}, [onViewAnalytics]);
+	}, [onViewAnalytics, navigate]);
 
 	const handleManagePortfolios = useCallback(() => {
 		if (onManagePortfolios) {
 			onManagePortfolios();
 		} else {
-			window.location.href = "/portfolios";
+			navigate({ to: "/portfolios" });
 		}
-	}, [onManagePortfolios]);
+	}, [onManagePortfolios, navigate]);
 
 	return (
 		<Card>

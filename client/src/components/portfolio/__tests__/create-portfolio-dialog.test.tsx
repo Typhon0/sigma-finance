@@ -1,5 +1,11 @@
 import { MockedProvider } from "@apollo/client/testing";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { useAuth } from "@/lib/auth-context";
@@ -71,24 +77,24 @@ describe("CreatePortfolioDialog", () => {
 		render(
 			<MockedProvider>
 				<CreatePortfolioDialog>
-					<button>Create Portfolio</button>
+					<button type="button">Create Portfolio</button>
 				</CreatePortfolioDialog>
 			</MockedProvider>,
 		);
 
-		expect(screen.getByText("Create Portfolio")).toBeInTheDocument();
+		expect(screen.getAllByText("Create Portfolio")[0]).toBeInTheDocument();
 	});
 
 	it("opens dialog when trigger is clicked", async () => {
 		render(
 			<MockedProvider>
 				<CreatePortfolioDialog>
-					<button>Create Portfolio</button>
+					<button type="button">Create Portfolio</button>
 				</CreatePortfolioDialog>
 			</MockedProvider>,
 		);
 
-		fireEvent.click(screen.getByText("Create Portfolio"));
+		fireEvent.click(screen.getAllByText("Create Portfolio")[0]);
 
 		await waitFor(() => {
 			expect(
@@ -109,29 +115,32 @@ describe("CreatePortfolioDialog", () => {
 		render(
 			<MockedProvider>
 				<CreatePortfolioDialog>
-					<button>Create Portfolio</button>
+					<button type="button">Create Portfolio</button>
 				</CreatePortfolioDialog>
 			</MockedProvider>,
 		);
 
-		// Open dialog
-		fireEvent.click(screen.getByText("Create Portfolio"));
+		// Open dialog - use [0] for trigger button
+		fireEvent.click(screen.getAllByText("Create Portfolio")[0]);
 
 		await waitFor(() => {
-			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
+			expect(screen.getByRole("dialog")).toBeInTheDocument();
 		});
 
-		// Fill form
-		fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
-			target: { value: "New Portfolio" },
+		// Fill form and submit - wrap in act to flush state updates
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
+				target: { value: "New Portfolio" },
+			});
+			fireEvent.change(screen.getByLabelText(/Description/), {
+				target: { value: "Test description" },
+			});
 		});
 
-		fireEvent.change(screen.getByLabelText(/Description/), {
-			target: { value: "Test description" },
+		// Submit form - use [2] for submit button (index 1 is dialog title)
+		await act(async () => {
+			fireEvent.click(screen.getAllByText("Create Portfolio")[2]);
 		});
-
-		// Submit form
-		fireEvent.click(screen.getByText("Create Portfolio"));
 
 		await waitFor(() => {
 			expect(mockCreatePortfolio).toHaveBeenCalledWith({
@@ -149,24 +158,29 @@ describe("CreatePortfolioDialog", () => {
 		render(
 			<MockedProvider>
 				<CreatePortfolioDialog showErrorToast={false}>
-					<button>Create Portfolio</button>
+					<button type="button">Create Portfolio</button>
 				</CreatePortfolioDialog>
 			</MockedProvider>,
 		);
 
 		// Open dialog
-		fireEvent.click(screen.getByText("Create Portfolio"));
+		fireEvent.click(screen.getAllByText("Create Portfolio")[0]);
 
 		await waitFor(() => {
-			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();
+			expect(screen.getByRole("dialog")).toBeInTheDocument();
 		});
 
-		// Fill and submit form
-		fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
-			target: { value: "New Portfolio" },
+		// Fill form
+		await act(async () => {
+			fireEvent.change(screen.getByLabelText(/Portfolio Name/), {
+				target: { value: "New Portfolio" },
+			});
 		});
 
-		fireEvent.click(screen.getByText("Create Portfolio"));
+		// Submit form - use [2] for submit button (index 1 is dialog title)
+		await act(async () => {
+			fireEvent.click(screen.getAllByText("Create Portfolio")[2]);
+		});
 
 		await waitFor(() => {
 			expect(screen.getByText(errorMessage)).toBeInTheDocument();
@@ -177,13 +191,13 @@ describe("CreatePortfolioDialog", () => {
 		render(
 			<MockedProvider>
 				<CreatePortfolioDialog>
-					<button>Create Portfolio</button>
+					<button type="button">Create Portfolio</button>
 				</CreatePortfolioDialog>
 			</MockedProvider>,
 		);
 
 		// Open dialog
-		fireEvent.click(screen.getByText("Create Portfolio"));
+		fireEvent.click(screen.getAllByText("Create Portfolio")[0]);
 
 		await waitFor(() => {
 			expect(screen.getByLabelText(/Portfolio Name/)).toBeInTheDocument();

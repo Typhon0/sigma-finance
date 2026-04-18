@@ -221,7 +221,7 @@ func TestGraphQLIntegration_SimpleAssetTypeOperations(t *testing.T) {
 
 	// Setup services
 	uow := repository.NewUnitOfWork(testDB.DB)
-	assetService := service.NewAssetService(uow)
+	assetService := service.NewAssetService(uow.Asset())
 	resolver := &Resolver{
 		AssetService: assetService,
 		UOW:          uow,
@@ -237,7 +237,7 @@ func TestGraphQLIntegration_SimpleAssetTypeOperations(t *testing.T) {
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(assetTypes), 2)
 
-		// Verify we have stock and crypto types
+		// Verify we have stock and crypto types (using display names)
 		typeNames := make(map[string]bool)
 		for _, assetType := range assetTypes {
 			typeNames[assetType.Name] = true
@@ -257,8 +257,8 @@ func TestGraphQLIntegration_SimpleAssetTypeOperations(t *testing.T) {
 	t.Run("AssetTypeData", func(t *testing.T) {
 		// Verify test data was seeded correctly
 		assert.GreaterOrEqual(t, len(testData.AssetTypes), 2)
-		assert.Equal(t, "Stock", testData.AssetTypes[0].Name)
-		assert.Equal(t, "Crypto", testData.AssetTypes[1].Name)
+		assert.Equal(t, "STOCK", string(*testData.AssetTypes[0]))
+		assert.Equal(t, "CRYPTO", string(*testData.AssetTypes[1]))
 	})
 }
 
@@ -361,14 +361,14 @@ func TestGraphQLIntegration_SimpleErrorHandling(t *testing.T) {
 	mutationResolver := &mutationResolver{resolver}
 
 	t.Run("InvalidIDHandling", func(t *testing.T) {
-		// Test invalid ID formats
-		_, err := queryResolver.User(ctx, "invalid")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid")
+		// Test invalid ID formats — resolvers return nil for not-found
+		user, err := queryResolver.User(ctx, "invalid")
+		require.NoError(t, err)
+		assert.Nil(t, user)
 
-		_, err = queryResolver.Portfolio(ctx, "not-a-number")
-		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "invalid")
+		portfolio, err := queryResolver.Portfolio(ctx, "not-a-number")
+		require.NoError(t, err)
+		assert.Nil(t, portfolio)
 	})
 
 	t.Run("NotFoundScenarios", func(t *testing.T) {

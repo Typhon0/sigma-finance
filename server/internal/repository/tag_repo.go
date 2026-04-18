@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"sigma_finance/internal/domain/model"
 
 	"github.com/uptrace/bun"
@@ -10,7 +12,7 @@ import (
 // ITagRepository defines the interface for tag repository operations.
 type ITagRepository interface {
 	IRepository[model.Tag]
-	GetTaggedAssets(ctx context.Context, tagID int) ([]model.Asset, error)
+	GetTaggedAssets(ctx context.Context, tagID string) ([]model.Asset, error)
 }
 
 // TagRepository is the concrete implementation of ITagRepository.
@@ -26,14 +28,17 @@ func NewTagRepository(db bun.IDB) *TagRepository {
 }
 
 // GetTaggedAssets retrieves all assets associated with a specific tag.
-func (r *TagRepository) GetTaggedAssets(ctx context.Context, tagID int) ([]model.Asset, error) {
+func (r *TagRepository) GetTaggedAssets(ctx context.Context, tagID string) ([]model.Asset, error) {
 	var assets []model.Asset
 	err := r.db.NewSelect().
 		Model(&assets).
-		Join("JOIN asset_tags ON asset_tags.asset_id = asset.id").
-		Where("asset_tags.tag_id = ?", tagID).
+		Join("JOIN sigma_finance.asset_tag ON asset_tag.asset_id = assets.id").
+		Where("asset_tag.tag_id = ?", tagID).
 		Scan(ctx)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return []model.Asset{}, nil // Return empty slice if no assets found for tag
+		}
 		return nil, err
 	}
 	return assets, nil

@@ -19,11 +19,11 @@ interface SortablePortfolioItemProps {
 
 export function SortablePortfolioItem({
 	portfolio,
-	viewMode,
+	_viewMode,
 	onDelete,
 	onDuplicate,
-	isDeleting,
-	isDuplicating,
+	_isDeleting,
+	_isDuplicating,
 }: SortablePortfolioItemProps) {
 	const { attributes, listeners, setNodeRef, transform, transition } =
 		useSortable({ id: portfolio.id });

@@ -11,12 +11,12 @@ import (
 
 // Config holds application configuration
 type Config struct {
-	Database DatabaseConfig
-	Email    EmailConfig
-	JWT      JWTConfig
-	Security SecurityConfig
-	Auth     AuthConfig
-	MarketData MarketDataConfig
+	Database    DatabaseConfig
+	Email       EmailConfig
+	JWT         JWTConfig
+	Security    SecurityConfig
+	Auth        AuthConfig
+	MarketData  MarketDataConfig
 	Performance PerformanceConfig
 }
 
@@ -39,6 +39,9 @@ type EmailConfig struct {
 	FromEmail    string
 	FromName     string
 	BaseURL      string // Base URL for email links
+	// VAPID keys for web push notifications
+	VAPIDPublicKey  string
+	VAPIDPrivateKey string
 }
 
 // JWTConfig holds JWT configuration
@@ -75,6 +78,19 @@ type MarketDataConfig struct {
 	EncryptionKey string
 	// Per-user candle request limit per minute (across providers)
 	CandleRequestsPerMinute int
+	// Default API keys (optional, for system-wide defaults)
+	TiingoAPIKey        string
+	AlphaVantageAPIKey  string
+	CoinGeckoDemoAPIKey string
+	CoinGeckoAPIBaseURL string
+	// YFinance provider configuration (tier 3 fallback)
+	YFinance YFinanceConfig
+}
+
+// YFinanceConfig holds configuration for the YFinance provider
+type YFinanceConfig struct {
+	Host string // Hostname or IP of the yfinance sidecar (e.g. "yfinance-service" or "localhost")
+	Port string // Port of the yfinance sidecar (e.g. "50051")
 }
 
 // LoadConfig loads configuration from environment variables
@@ -89,13 +105,15 @@ func LoadConfig() *Config {
 			SSLMode:  getEnvOrDefault("DB_SSLMODE", "disable"),
 		},
 		Email: EmailConfig{
-			SMTPHost:     getEnvOrDefault("SMTP_HOST", "localhost"),
-			SMTPPort:     getEnvIntOrDefault("SMTP_PORT", 587),
-			SMTPUsername: getEnvOrDefault("SMTP_USERNAME", ""),
-			SMTPPassword: getEnvOrDefault("SMTP_PASSWORD", ""),
-			FromEmail:    getEnvOrDefault("FROM_EMAIL", "noreply@sigmafinance.com"),
-			FromName:     getEnvOrDefault("FROM_NAME", "Sigma Finance"),
-			BaseURL:      getEnvOrDefault("BASE_URL", "http://localhost:3000"),
+			SMTPHost:        getEnvOrDefault("SMTP_HOST", "localhost"),
+			SMTPPort:        getEnvIntOrDefault("SMTP_PORT", 587),
+			SMTPUsername:    getEnvOrDefault("SMTP_USERNAME", ""),
+			SMTPPassword:    getEnvOrDefault("SMTP_PASSWORD", ""),
+			FromEmail:       getEnvOrDefault("FROM_EMAIL", "noreply@sigmafinance.com"),
+			FromName:        getEnvOrDefault("FROM_NAME", "Sigma Finance"),
+			BaseURL:         getEnvOrDefault("BASE_URL", "http://localhost:3000"),
+			VAPIDPublicKey:  getEnvOrDefault("VAPID_PUBLIC_KEY", ""),
+			VAPIDPrivateKey: getEnvOrDefault("VAPID_PRIVATE_KEY", ""),
 		},
 		JWT: JWTConfig{
 			SecretKey:              getEnvOrDefault("JWT_SECRET", generateSecureSecret()),
@@ -120,8 +138,16 @@ func LoadConfig() *Config {
 			AllowRegistration:        getEnvBoolOrDefault("ALLOW_REGISTRATION", true),
 		},
 		MarketData: MarketDataConfig{
-			EncryptionKey:            getEnvOrDefault("MARKET_DATA_ENCRYPTION_KEY", ""),
-			CandleRequestsPerMinute:  getEnvIntOrDefault("CANDLE_REQUESTS_PER_MINUTE", 60),
+			EncryptionKey:           getEnvOrDefault("ENCRYPTION_KEY", ""),
+			CandleRequestsPerMinute: getEnvIntOrDefault("CANDLE_REQUESTS_PER_MINUTE", 60),
+			TiingoAPIKey:            getEnvOrDefault("TIINGO_API_KEY", ""),
+			AlphaVantageAPIKey:      getEnvOrDefault("ALPHA_VANTAGE_API_KEY", ""),
+			CoinGeckoDemoAPIKey:     getEnvOrDefault("COINGECKO_DEMO_API_KEY", ""),
+			CoinGeckoAPIBaseURL:     getEnvOrDefault("COINGECKO_API_BASE_URL", "https://api.coingecko.com/api/v3"),
+			YFinance: YFinanceConfig{
+				Host: getEnvOrDefault("YFINANCE_HOST", "localhost"),
+				Port: getEnvOrDefault("YFINANCE_PORT", "50051"),
+			},
 		},
 		Performance: *LoadPerformanceConfig(),
 	}
@@ -203,7 +229,9 @@ func (c *Config) Validate() error {
 	}
 
 	// Validate MarketData config
-	if c.MarketData.CandleRequestsPerMinute <= 0 { return fmt.Errorf("CANDLE_REQUESTS_PER_MINUTE must be positive") }
+	if c.MarketData.CandleRequestsPerMinute <= 0 {
+		return fmt.Errorf("CANDLE_REQUESTS_PER_MINUTE must be positive")
+	}
 	if c.MarketData.EncryptionKey == "" {
 		// Generate ephemeral dev key (not persisted) – warn via stdout
 		gen := generateSecureSecret()

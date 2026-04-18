@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"sigma_finance/internal/domain/model"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // BinanceProvider implements Provider for Binance Spot API
@@ -97,19 +100,27 @@ func (b *BinanceProvider) NormalizeSymbol(providerSymbol, assetType string) (str
 }
 
 func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
+	log.Printf("[Binance.GetCandles] symbol=%s assetType=%s interval=%s from=%v to=%v limit=%d",
+		req.Symbol, req.AssetType, req.Interval, req.From, req.To, req.Limit)
+
 	symbol, err := b.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
+		log.Printf("[Binance.GetCandles] MapSymbol error: %v", err)
 		return nil, err
 	}
+	log.Printf("[Binance.GetCandles] mapped symbol=%s", symbol)
 
 	interval := b.mapInterval(req.Interval)
 	if interval == "" {
+		log.Printf("[Binance.GetCandles] unsupported interval: %s", req.Interval)
 		return nil, fmt.Errorf("unsupported interval: %s", req.Interval)
 	}
+	log.Printf("[Binance.GetCandles] mapped interval=%s", interval)
 
 	url := fmt.Sprintf("%s/api/v3/klines", b.baseURL)
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
+		log.Printf("[Binance.GetCandles] NewRequest error: %v", err)
 		return nil, err
 	}
 
@@ -126,21 +137,29 @@ func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 	}
 
 	httpReq.URL.RawQuery = q.Encode()
+	log.Printf("[Binance.GetCandles] URL=%s", httpReq.URL.String())
 
 	resp, err := b.client.Do(httpReq)
 	if err != nil {
+		log.Printf("[Binance.GetCandles] HTTP error: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
+	log.Printf("[Binance.GetCandles] response status=%d", resp.StatusCode)
+
 	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Binance.GetCandles] binance API error: %d", resp.StatusCode)
 		return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
 	}
 
 	var rawKlines [][]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&rawKlines); err != nil {
+		log.Printf("[Binance.GetCandles] decode error: %v", err)
 		return nil, err
 	}
+
+	log.Printf("[Binance.GetCandles] received %d klines from Binance", len(rawKlines))
 
 	candles := make([]model.Candle, 0, len(rawKlines))
 
@@ -247,4 +266,105 @@ func (b *BinanceProvider) parseFloat(v interface{}) float64 {
 	default:
 		return 0
 	}
+}
+
+func (b *BinanceProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	return nil, fmt.Errorf("technical indicators not supported by Binance provider")
+}
+
+type binance24hrTicker struct {
+	Symbol             string `json:"symbol"`
+	PriceChange        string `json:"priceChange"`
+	PriceChangePercent string `json:"priceChangePercent"`
+	WeightedAvgPrice   string `json:"weightedAvgPrice"`
+	PrevClosePrice     string `json:"prevClosePrice"`
+	LastPrice          string `json:"lastPrice"`
+	LastQty            string `json:"lastQty"`
+	BidPrice           string `json:"bidPrice"`
+	AskPrice           string `json:"askPrice"`
+	OpenPrice          string `json:"openPrice"`
+	HighPrice          string `json:"highPrice"`
+	LowPrice           string `json:"lowPrice"`
+	Volume             string `json:"volume"`
+	QuoteVolume        string `json:"quoteVolume"`
+	OpenTime           int64  `json:"openTime"`
+	CloseTime          int64  `json:"closeTime"`
+	FirstId            int64  `json:"firstId"`
+	LastId             int64  `json:"lastId"`
+	Count              int64  `json:"count"`
+}
+
+func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	log.Printf("[Binance.GetQuote] symbol=%s assetType=%s", req.Symbol, req.AssetType)
+
+	symbol, err := b.MapSymbol(req.Symbol, req.AssetType)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] MapSymbol error: %v", err)
+		return nil, err
+	}
+	log.Printf("[Binance.GetQuote] mapped symbol=%s", symbol)
+
+	url := fmt.Sprintf("%s/api/v3/ticker/24hr?symbol=%s", b.baseURL, symbol)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] NewRequest error: %v", err)
+		return nil, err
+	}
+
+	resp, err := b.client.Do(httpReq)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] HTTP error: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	log.Printf("[Binance.GetQuote] response status=%d", resp.StatusCode)
+
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("[Binance.GetQuote] Binance API error: %d", resp.StatusCode)
+		return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
+	}
+
+	var ticker binance24hrTicker
+	if err := json.NewDecoder(resp.Body).Decode(&ticker); err != nil {
+		log.Printf("[Binance.GetQuote] decode error: %v", err)
+		return nil, err
+	}
+
+	lastPrice, err := decimal.NewFromString(ticker.LastPrice)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] parse lastPrice error: %v", err)
+		lastPrice = decimal.Zero
+	}
+
+	bidPrice, err := decimal.NewFromString(ticker.BidPrice)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] parse bidPrice error: %v", err)
+		bidPrice = decimal.Zero
+	}
+
+	askPrice, err := decimal.NewFromString(ticker.AskPrice)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] parse askPrice error: %v", err)
+		askPrice = decimal.Zero
+	}
+
+	volume, err := strconv.ParseInt(ticker.Volume, 10, 64)
+	if err != nil {
+		log.Printf("[Binance.GetQuote] parse volume error: %v", err)
+		volume = 0
+	}
+
+	log.Printf("[Binance.GetQuote] quote: last=%s bid=%s ask=%s volume=%d",
+		ticker.LastPrice, ticker.BidPrice, ticker.AskPrice, volume)
+
+	return &QuoteResponse{
+		Symbol:    req.Symbol,
+		Bid:       bidPrice,
+		Ask:       askPrice,
+		Last:      lastPrice,
+		Volume:    volume,
+		Timestamp: time.Now(),
+		Source:    b.ID(),
+	}, nil
 }

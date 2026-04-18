@@ -7,19 +7,17 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import {
+	AssetListSkeleton,
+	useComponentErrorHandler,
+} from "@/components/dashboard/error-handling";
+import {
 	Card,
 	CardContent,
 	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
-import { 
-	AssetListSkeleton,
-	useComponentErrorHandler,
-	OfflineDataWrapper,
-} from "@/components/dashboard/error-handling";
 
 const getPerformanceColorClass = (change: number) => {
 	if (change > 0) return "text-green-500";
@@ -51,7 +49,10 @@ export function AssetPerformance({
 	isLoading,
 	onAssetClick,
 }: AssetPerformanceProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler('AssetPerformance', 'component');
+	const { handleErrorWithRetry } = useComponentErrorHandler(
+		"AssetPerformance",
+		"component",
+	);
 	const sortedAssets = useMemo(() => {
 		if (!assets) return [];
 		return [...assets].sort((a, b) => {

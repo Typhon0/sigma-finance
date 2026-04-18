@@ -1,24 +1,27 @@
 "use client";
 
 import {
-	AudioWaveform,
-	Bell,
-	ChartColumn,
-	Command,
-	FileText,
-	Frame,
-	GalleryVerticalEnd,
+	Activity,
+	ArrowUpDown,
+	BarChart3,
+	Bitcoin,
+	Calendar,
+	CreditCard,
+	Eye,
+	Gem,
+	Globe,
+	Home,
+	Layers,
 	LayoutDashboard,
-	Map as MapIcon,
-	PieChart,
-	Settings2,
-	TrendingUp,
+	LineChart,
+	PiggyBank,
+	Settings,
+	Shield,
 	Wallet,
 } from "lucide-react";
 import type * as React from "react";
 
 import { NavMain } from "@/components/nav-main";
-import { NavProjects } from "@/components/nav-secondary";
 import { NavUser } from "@/components/nav-user";
 import {
 	Sidebar,
@@ -27,183 +30,151 @@ import {
 	SidebarHeader,
 	SidebarRail,
 } from "@/components/ui/sidebar";
+import { Logo } from "./Logo";
 
-// This is sample data.
 const data = {
-	user: {
-		name: "shadcn",
-		email: "m@example.com",
-		avatar: "/avatars/shadcn.jpg",
-	},
-	teams: [
-		{
-			name: "Acme Inc",
-			logo: GalleryVerticalEnd,
-			plan: "Enterprise",
-		},
-		{
-			name: "Acme Corp.",
-			logo: AudioWaveform,
-			plan: "Startup",
-		},
-		{
-			name: "Evil Corp.",
-			logo: Command,
-			plan: "Free",
-		},
-	],
 	navMain: [
 		{
-			title: "Dashboard",
+			title: "Overview",
 			url: "/dashboard",
 			icon: LayoutDashboard,
 			isActive: true,
-		},
-		{
-			title: "Portfolios",
-			url: "/dashboard",
-			icon: Wallet,
 			items: [
 				{
-					title: "Dashboard",
-					url: "/dashboard",
+					title: "Command Center",
+					url: "/dashboard?view=overview",
+					icon: LayoutDashboard,
 				},
 				{
-					title: "Create Portfolio",
-					url: "/portfolios/create",
+					title: "Analytics & Reports",
+					url: "/dashboard?view=analytics",
+					icon: BarChart3,
 				},
 				{
-					title: "Portfolio Analytics",
-					url: "/portfolios/analytics",
+					title: "Ledger",
+					url: "/dashboard?view=transactions",
+					icon: ArrowUpDown,
+				},
+			],
+		},
+		{
+			title: "Markets",
+			url: "/dashboard?view=stock-market-overview",
+			icon: Globe,
+			items: [
+				{
+					title: "Stock Market",
+					url: "/dashboard?view=stock-market-overview",
+					icon: Globe,
+				},
+				{
+					title: "Crypto Market",
+					url: "/dashboard?view=crypto-market-overview",
+					icon: Activity,
+				},
+				{
+					title: "Heatmaps",
+					url: "/dashboard?view=market-heatmaps",
+					icon: Layers,
+				},
+				{
+					title: "Calendar",
+					url: "/dashboard?view=market-calendar",
+					icon: Calendar,
 				},
 			],
 		},
 		{
 			title: "Assets",
-			url: "#",
-			icon: ChartColumn,
+			url: "/dashboard?view=legacy-overview",
+			icon: Layers,
 			items: [
 				{
-					title: "Stocks",
-					url: "#",
+					title: "All Assets",
+					url: "/dashboard?view=legacy-overview",
+					icon: Layers,
+				},
+				{
+					title: "Stocks & Funds",
+					url: "/assets/stocks",
+					icon: LineChart,
 				},
 				{
 					title: "Crypto",
-					url: "#",
+					url: "/assets/crypto",
+					icon: Bitcoin,
 				},
 				{
 					title: "Real Estate",
-					url: "#",
+					url: "/assets/real-estate",
+					icon: Home,
 				},
 				{
-					title: "Other Assets",
-					url: "#",
+					title: "Accounts",
+					url: "/assets/accounts",
+					icon: Wallet,
+				},
+				{
+					title: "Savings",
+					url: "/assets/savings",
+					icon: PiggyBank,
+				},
+				{
+					title: "Loans",
+					url: "/assets/loans",
+					icon: CreditCard,
+				},
+				{
+					title: "Insurance",
+					url: "/assets/insurance",
+					icon: Shield,
+				},
+				{
+					title: "Collectibles",
+					url: "/assets/collectibles",
+					icon: Gem,
 				},
 			],
 		},
 		{
-			title: "Transactions",
-			url: "#",
-			icon: TrendingUp,
+			title: "Tools",
+			url: "/dashboard?view=watchlist",
+			icon: Settings,
 			items: [
 				{
-					title: "All Transactions",
-					url: "#",
+					title: "Watchlist",
+					url: "/dashboard?view=watchlist",
+					icon: Eye,
 				},
 				{
-					title: "Add Transaction",
-					url: "#",
+					title: "Market Data Settings",
+					url: "/settings/market-data",
+					icon: Settings,
 				},
 			],
-		},
-		{
-			title: "Alerts",
-			url: "#",
-			icon: Bell,
-			items: [
-				{
-					title: "Active Alerts",
-					url: "#",
-				},
-				{
-					title: "Create Alert",
-					url: "#",
-				},
-			],
-		},
-		{
-			title: "Reports",
-			url: "#",
-			icon: FileText,
-			items: [
-				{
-					title: "Performance",
-					url: "#",
-				},
-				{
-					title: "Tax Reports",
-					url: "#",
-				},
-			],
-		},
-		{
-			title: "Settings",
-			url: "#",
-			icon: Settings2,
-			items: [
-				{
-					title: "Profile",
-					url: "#",
-				},
-				{
-					title: "Preferences",
-					url: "#",
-				},
-				{
-					title: "Security",
-					url: "#",
-				},
-			],
-		},
-	],
-	projects: [
-		{
-			name: "Design Engineering",
-			url: "#",
-			icon: Frame,
-		},
-		{
-			name: "Sales & Marketing",
-			url: "#",
-			icon: PieChart,
-		},
-		{
-			name: "Travel",
-			url: "#",
-			icon: MapIcon,
 		},
 	],
 };
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	return (
-		<Sidebar 
-			collapsible="icon" 
+		<Sidebar
+			collapsible="icon"
 			{...props}
-			className="touch-manipulation"
+			className="border-r bg-card/50 backdrop-blur-xl transition-all duration-300 ease-in-out z-40"
 		>
-			<SidebarHeader className="touch-manipulation">
-				<h1 className="scroll-m-20 text-2xl font-extrabold tracking-tight lg:text-5xl select-none">
-					ΣFinance
-				</h1>
-				<h1 className="group-data-[state=open]/collapsible:hidden select-none">ΣF</h1>
-				{/* <TeamSwitcher teams={data.teams} /> */}
+			<SidebarHeader className="flex h-14 items-center group-data-[collapsible=icon]:justify-center justify-between border-b px-4">
+				<div className="flex items-center gap-2 overflow-hidden group-data-[collapsible=icon]:hidden">
+					<Logo size="sm" showText={true} />
+				</div>
+				<div className="hidden group-data-[collapsible=icon]:flex items-center justify-center font-bold text-xl tracking-tighter">
+					SF
+				</div>
 			</SidebarHeader>
-			<SidebarContent className="touch-manipulation">
+			<SidebarContent className="scrollbar-hide py-4">
 				<NavMain items={data.navMain} />
-				<NavProjects projects={data.projects} />
 			</SidebarContent>
-			<SidebarFooter className="touch-manipulation">
+			<SidebarFooter className="border-t">
 				<NavUser />
 			</SidebarFooter>
 			<SidebarRail />

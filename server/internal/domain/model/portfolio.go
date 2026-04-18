@@ -16,7 +16,7 @@ type PortfolioWithAssets struct {
 
 // PerformanceMetrics represents portfolio performance data
 type PerformanceMetrics struct {
-	PortfolioID int     `bun:"portfolio_id"`
+	PortfolioID string  `bun:"portfolio_id"`
 	Period      string  `bun:"period"`
 	Return      float64 `bun:"return"`
 	Volatility  float64 `bun:"volatility"`
@@ -25,7 +25,7 @@ type PerformanceMetrics struct {
 type Portfolio struct {
 	bun.BaseModel `bun:"table:sigma_finance.portfolio"`
 
-	ID          uint      `bun:"id,pk,autoincrement"`
+	ID          string    `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	UserID      string    `bun:"user_id,notnull,type:uuid"`
 	Name        string    `bun:"name,notnull"`
 	Description string    `bun:"description"`
@@ -35,8 +35,8 @@ type Portfolio struct {
 }
 
 // Implement Entity interface
-func (p Portfolio) GetID() int64             { return int64(p.ID) }
-func (p Portfolio) SetID(id int64)           { p.ID = uint(id) }
+func (p Portfolio) GetID() string            { return p.ID }
+func (p Portfolio) SetID(id string)          { p.ID = id }
 func (p Portfolio) GetCreatedAt() time.Time  { return p.CreatedAt }
 func (p Portfolio) SetCreatedAt(t time.Time) { p.CreatedAt = t }
 func (p Portfolio) GetUpdatedAt() time.Time  { return p.UpdatedAt }

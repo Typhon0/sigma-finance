@@ -10,19 +10,19 @@ import (
 
 // IWatchlistService defines the interface for watchlist management operations
 type IWatchlistService interface {
-	GetByID(ctx context.Context, id uint) (model.Watchlist, error)
+	GetByID(ctx context.Context, id string) (*model.Watchlist, error)
 	FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.Watchlist, error)
 	FindByUserID(ctx context.Context, userID string) ([]model.Watchlist, error)
 	FindByUserIDWithAssets(ctx context.Context, userID string) ([]model.Watchlist, error)
-	FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error)
-	CreateWatchlist(ctx context.Context, input CreateWatchlistInput) (model.Watchlist, error)
-	UpdateWatchlist(ctx context.Context, id uint, input UpdateWatchlistInput) (model.Watchlist, error)
-	DeleteWatchlist(ctx context.Context, id uint) error
-	AddAssetToWatchlist(ctx context.Context, watchlistID, assetID int) error
-	RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID int) error
-	GetWatchlistAssets(ctx context.Context, watchlistID int) ([]model.Asset, error)
-	IsAssetInWatchlist(ctx context.Context, watchlistID, assetID int) (bool, error)
-	ValidateUserOwnership(ctx context.Context, userID string, watchlistID int) error
+	FindWithAssets(ctx context.Context, watchlistID string) (*model.Watchlist, error)
+	CreateWatchlist(ctx context.Context, input CreateWatchlistInput) (*model.Watchlist, error)
+	UpdateWatchlist(ctx context.Context, id string, input UpdateWatchlistInput) (*model.Watchlist, error)
+	DeleteWatchlist(ctx context.Context, id string) error
+	AddAssetToWatchlist(ctx context.Context, watchlistID, assetID string) error
+	RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID string) error
+	GetWatchlistAssets(ctx context.Context, watchlistID string) ([]model.Asset, error)
+	IsAssetInWatchlist(ctx context.Context, watchlistID, assetID string) (bool, error)
+	ValidateUserOwnership(ctx context.Context, userID string, watchlistID string) error
 	GetByUserID(ctx context.Context, userID string) ([]model.Watchlist, error)
 }
 
@@ -47,7 +47,7 @@ type UpdateWatchlistInput struct {
 }
 
 // GetByID retrieves a single watchlist by its ID
-func (s *WatchlistService) GetByID(ctx context.Context, id uint) (model.Watchlist, error) {
+func (s *WatchlistService) GetByID(ctx context.Context, id string) (*model.Watchlist, error) {
 	return s.uow.Watchlist().GetByID(ctx, id)
 }
 
@@ -67,35 +67,35 @@ func (s *WatchlistService) FindByUserIDWithAssets(ctx context.Context, userID st
 }
 
 // FindWithAssets retrieves a watchlist with its associated assets
-func (s *WatchlistService) FindWithAssets(ctx context.Context, watchlistID int) (model.Watchlist, error) {
+func (s *WatchlistService) FindWithAssets(ctx context.Context, watchlistID string) (*model.Watchlist, error) {
 	return s.uow.Watchlist().FindWithAssets(ctx, watchlistID)
 }
 
 // CreateWatchlist creates a new watchlist with validation
-func (s *WatchlistService) CreateWatchlist(ctx context.Context, input CreateWatchlistInput) (model.Watchlist, error) {
+func (s *WatchlistService) CreateWatchlist(ctx context.Context, input CreateWatchlistInput) (*model.Watchlist, error) {
 	// Validate input
 	if err := s.validateCreateWatchlistInput(input); err != nil {
-		return model.Watchlist{}, err
+		return nil, err
 	}
 
 	// Verify user exists - skip for now as we need to implement GetByID with string
 	// TODO: Implement user verification with string ID
 	// if _, err := s.uow.User().GetByID(ctx, input.UserID); err != nil {
 	// 	if errors.Is(err, repository.ErrNotFound) {
-	// 		return model.Watchlist{}, fmt.Errorf("user with ID %s not found", input.UserID)
+	// 		return nil, fmt.Errorf("user with ID %s not found", input.UserID)
 	// 	}
-	// 	return model.Watchlist{}, fmt.Errorf("failed to verify user: %w", err)
+	// 	return nil, fmt.Errorf("failed to verify user: %w", err)
 	// }
 
 	// Check for duplicate watchlist name for the user
 	existingWatchlists, err := s.uow.Watchlist().FindByUserID(ctx, input.UserID)
 	if err != nil {
-		return model.Watchlist{}, fmt.Errorf("failed to check existing watchlists: %w", err)
+		return nil, fmt.Errorf("failed to check existing watchlists: %w", err)
 	}
 
 	for _, watchlist := range existingWatchlists {
 		if watchlist.Name == input.Name {
-			return model.Watchlist{}, fmt.Errorf("watchlist with name '%s' already exists for this user", input.Name)
+			return nil, fmt.Errorf("watchlist with name '%s' already exists for this user", input.Name)
 		}
 	}
 
@@ -107,34 +107,34 @@ func (s *WatchlistService) CreateWatchlist(ctx context.Context, input CreateWatc
 
 	createdWatchlist, err := s.uow.Watchlist().Create(ctx, &newWatchlist)
 	if err != nil {
-		return model.Watchlist{}, fmt.Errorf("failed to create watchlist: %w", err)
+		return nil, fmt.Errorf("failed to create watchlist: %w", err)
 	}
 
-	return *createdWatchlist, nil
+	return createdWatchlist, nil
 }
 
 // UpdateWatchlist updates an existing watchlist
-func (s *WatchlistService) UpdateWatchlist(ctx context.Context, id uint, input UpdateWatchlistInput) (model.Watchlist, error) {
+func (s *WatchlistService) UpdateWatchlist(ctx context.Context, id string, input UpdateWatchlistInput) (*model.Watchlist, error) {
 	// Validate input
 	if err := s.validateUpdateWatchlistInput(input); err != nil {
-		return model.Watchlist{}, err
+		return nil, err
 	}
 
 	// Get existing watchlist
 	watchlistToUpdate, err := s.uow.Watchlist().GetByID(ctx, id)
 	if err != nil {
-		return model.Watchlist{}, err
+		return nil, err
 	}
 
 	// Check for duplicate name for the same user (excluding current watchlist)
 	existingWatchlists, err := s.uow.Watchlist().FindByUserID(ctx, watchlistToUpdate.UserID)
 	if err != nil {
-		return model.Watchlist{}, fmt.Errorf("failed to check existing watchlists: %w", err)
+		return nil, fmt.Errorf("failed to check existing watchlists: %w", err)
 	}
 
 	for _, watchlist := range existingWatchlists {
 		if watchlist.Name == input.Name && watchlist.ID != watchlistToUpdate.ID {
-			return model.Watchlist{}, fmt.Errorf("watchlist with name '%s' already exists for this user", input.Name)
+			return nil, fmt.Errorf("watchlist with name '%s' already exists for this user", input.Name)
 		}
 	}
 
@@ -142,16 +142,16 @@ func (s *WatchlistService) UpdateWatchlist(ctx context.Context, id uint, input U
 	watchlistToUpdate.Name = input.Name
 
 	// Save changes
-	err = s.uow.Watchlist().Update(ctx, &watchlistToUpdate)
+	err = s.uow.Watchlist().Update(ctx, watchlistToUpdate)
 	if err != nil {
-		return model.Watchlist{}, fmt.Errorf("failed to update watchlist: %w", err)
+		return nil, fmt.Errorf("failed to update watchlist: %w", err)
 	}
 
 	return watchlistToUpdate, nil
 }
 
 // DeleteWatchlist removes a watchlist and all its asset associations
-func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id uint) error {
+func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id string) error {
 	// Use Unit of Work to ensure atomicity
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
@@ -168,9 +168,9 @@ func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id uint) error {
 
 		// Remove all asset associations
 		for _, wa := range watchlistAssets {
-			err = uow.Watchlist().RemoveAssetFromWatchlist(ctx, int(watchlist.ID), int(wa.AssetID))
+			err = uow.Watchlist().RemoveAssetFromWatchlist(ctx, watchlist.ID, wa.AssetID)
 			if err != nil {
-				return fmt.Errorf("failed to remove asset %d from watchlist: %w", wa.AssetID, err)
+				return fmt.Errorf("failed to remove asset %s from watchlist: %w", wa.AssetID, err)
 			}
 		}
 
@@ -180,29 +180,29 @@ func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id uint) error {
 }
 
 // AddAssetToWatchlist adds an asset to a watchlist with validation
-func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID, assetID int) error {
+func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID, assetID string) error {
 	// Validate inputs
-	if watchlistID <= 0 {
-		return errors.New("watchlist ID must be positive")
+	if watchlistID == "" {
+		return errors.New("watchlist ID must not be empty")
 	}
-	if assetID <= 0 {
-		return errors.New("asset ID must be positive")
+	if assetID == "" {
+		return errors.New("asset ID must not be empty")
 	}
 
 	// Use Unit of Work to ensure atomicity
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
-		if _, err := uow.Watchlist().GetByID(ctx, uint(watchlistID)); err != nil {
+		if _, err := uow.Watchlist().GetByID(ctx, watchlistID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("watchlist with ID %d not found", watchlistID)
+				return fmt.Errorf("watchlist with ID %s not found", watchlistID)
 			}
 			return fmt.Errorf("failed to verify watchlist: %w", err)
 		}
 
 		// Verify asset exists
-		if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("asset with ID %d not found", assetID)
+				return fmt.Errorf("asset with ID %s not found", assetID)
 			}
 			return fmt.Errorf("failed to verify asset: %w", err)
 		}
@@ -213,29 +213,29 @@ func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID,
 }
 
 // RemoveAssetFromWatchlist removes an asset from a watchlist with validation
-func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID int) error {
+func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID string) error {
 	// Validate inputs
-	if watchlistID <= 0 {
-		return errors.New("watchlist ID must be positive")
+	if watchlistID == "" {
+		return errors.New("watchlist ID must not be empty")
 	}
-	if assetID <= 0 {
-		return errors.New("asset ID must be positive")
+	if assetID == "" {
+		return errors.New("asset ID must not be empty")
 	}
 
 	// Use Unit of Work to ensure atomicity
 	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
-		if _, err := uow.Watchlist().GetByID(ctx, uint(watchlistID)); err != nil {
+		if _, err := uow.Watchlist().GetByID(ctx, watchlistID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("watchlist with ID %d not found", watchlistID)
+				return fmt.Errorf("watchlist with ID %s not found", watchlistID)
 			}
 			return fmt.Errorf("failed to verify watchlist: %w", err)
 		}
 
 		// Verify asset exists
-		if _, err := uow.Asset().GetByID(ctx, uint(assetID)); err != nil {
+		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				return fmt.Errorf("asset with ID %d not found", assetID)
+				return fmt.Errorf("asset with ID %s not found", assetID)
 			}
 			return fmt.Errorf("failed to verify asset: %w", err)
 		}
@@ -246,7 +246,7 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 			return fmt.Errorf("failed to check if asset is in watchlist: %w", err)
 		}
 		if !isInWatchlist {
-			return fmt.Errorf("asset %d is not in watchlist %d", assetID, watchlistID)
+			return fmt.Errorf("asset %s is not in watchlist %s", assetID, watchlistID)
 		}
 
 		// Remove asset from watchlist
@@ -255,16 +255,16 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 }
 
 // GetWatchlistAssets retrieves all assets in a watchlist
-func (s *WatchlistService) GetWatchlistAssets(ctx context.Context, watchlistID int) ([]model.Asset, error) {
+func (s *WatchlistService) GetWatchlistAssets(ctx context.Context, watchlistID string) ([]model.Asset, error) {
 	// Validate input
-	if watchlistID <= 0 {
-		return nil, errors.New("watchlist ID must be positive")
+	if watchlistID == "" {
+		return nil, errors.New("watchlist ID must not be empty")
 	}
 
 	// Verify watchlist exists
-	if _, err := s.uow.Watchlist().GetByID(ctx, uint(watchlistID)); err != nil {
+	if _, err := s.uow.Watchlist().GetByID(ctx, watchlistID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return nil, fmt.Errorf("watchlist with ID %d not found", watchlistID)
+			return nil, fmt.Errorf("watchlist with ID %s not found", watchlistID)
 		}
 		return nil, fmt.Errorf("failed to verify watchlist: %w", err)
 	}
@@ -273,40 +273,40 @@ func (s *WatchlistService) GetWatchlistAssets(ctx context.Context, watchlistID i
 }
 
 // IsAssetInWatchlist checks if an asset is in a watchlist
-func (s *WatchlistService) IsAssetInWatchlist(ctx context.Context, watchlistID, assetID int) (bool, error) {
+func (s *WatchlistService) IsAssetInWatchlist(ctx context.Context, watchlistID, assetID string) (bool, error) {
 	// Validate inputs
-	if watchlistID <= 0 {
-		return false, errors.New("watchlist ID must be positive")
+	if watchlistID == "" {
+		return false, errors.New("watchlist ID must not be empty")
 	}
-	if assetID <= 0 {
-		return false, errors.New("asset ID must be positive")
+	if assetID == "" {
+		return false, errors.New("asset ID must not be empty")
 	}
 
 	return s.uow.Watchlist().IsAssetInWatchlist(ctx, watchlistID, assetID)
 }
 
 // ValidateUserOwnership validates that a user owns a specific watchlist
-func (s *WatchlistService) ValidateUserOwnership(ctx context.Context, userID string, watchlistID int) error {
+func (s *WatchlistService) ValidateUserOwnership(ctx context.Context, userID string, watchlistID string) error {
 	// Validate inputs
 	if userID == "" {
 		return errors.New("user ID cannot be empty")
 	}
-	if watchlistID <= 0 {
-		return errors.New("watchlist ID must be positive")
+	if watchlistID == "" {
+		return errors.New("watchlist ID must not be empty")
 	}
 
 	// Get watchlist
-	watchlist, err := s.uow.Watchlist().GetByID(ctx, uint(watchlistID))
+	watchlist, err := s.uow.Watchlist().GetByID(ctx, watchlistID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return fmt.Errorf("watchlist with ID %d not found", watchlistID)
+			return fmt.Errorf("watchlist with ID %s not found", watchlistID)
 		}
 		return fmt.Errorf("failed to get watchlist: %w", err)
 	}
 
 	// Check ownership
 	if watchlist.UserID != userID {
-		return fmt.Errorf("user %s does not own watchlist %d", userID, watchlistID)
+		return fmt.Errorf("user %s does not own watchlist %s", userID, watchlistID)
 	}
 
 	return nil

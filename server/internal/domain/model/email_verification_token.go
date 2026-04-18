@@ -21,6 +21,14 @@ type EmailVerificationToken struct {
 	User *User `bun:"rel:belongs-to,join:user_id=id"`
 }
 
+// Implement Entity interface
+func (evt EmailVerificationToken) GetID() string             { return evt.ID }
+func (evt *EmailVerificationToken) SetID(id string)          { evt.ID = id }
+func (evt EmailVerificationToken) GetCreatedAt() time.Time   { return evt.CreatedAt }
+func (evt *EmailVerificationToken) SetCreatedAt(t time.Time) { evt.CreatedAt = t }
+func (evt EmailVerificationToken) GetUpdatedAt() time.Time   { return evt.CreatedAt } // EmailVerificationTokens usually aren't updated
+func (evt *EmailVerificationToken) SetUpdatedAt(t time.Time) {}
+
 // IsExpired checks if the token has expired
 func (evt *EmailVerificationToken) IsExpired() bool {
 	return time.Now().After(evt.ExpiresAt)

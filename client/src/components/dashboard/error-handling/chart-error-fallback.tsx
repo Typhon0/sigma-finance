@@ -1,4 +1,10 @@
-import { AlertTriangle, RefreshCw, TrendingUp, BarChart3, PieChart } from "lucide-react";
+import {
+	AlertTriangle,
+	BarChart3,
+	PieChart,
+	RefreshCw,
+	TrendingUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -7,7 +13,7 @@ import { cn } from "@/lib/utils";
 interface ChartErrorFallbackProps {
 	error: Error;
 	onRetry?: () => void;
-	chartType?: 'line' | 'pie' | 'bar' | 'candlestick' | 'area' | 'generic';
+	chartType?: "line" | "pie" | "bar" | "candlestick" | "area" | "generic";
 	title?: string;
 	height?: number;
 	showFallbackData?: boolean;
@@ -17,7 +23,7 @@ interface ChartErrorFallbackProps {
 export function ChartErrorFallback({
 	error,
 	onRetry,
-	chartType = 'generic',
+	chartType = "generic",
 	title,
 	height = 300,
 	showFallbackData = false,
@@ -25,13 +31,13 @@ export function ChartErrorFallback({
 }: ChartErrorFallbackProps) {
 	const getChartIcon = () => {
 		switch (chartType) {
-			case 'line':
-			case 'area':
+			case "line":
+			case "area":
 				return <TrendingUp className="h-8 w-8 text-muted-foreground" />;
-			case 'pie':
+			case "pie":
 				return <PieChart className="h-8 w-8 text-muted-foreground" />;
-			case 'bar':
-			case 'candlestick':
+			case "bar":
+			case "candlestick":
 				return <BarChart3 className="h-8 w-8 text-muted-foreground" />;
 			default:
 				return <BarChart3 className="h-8 w-8 text-muted-foreground" />;
@@ -39,25 +45,25 @@ export function ChartErrorFallback({
 	};
 
 	const getErrorMessage = () => {
-		if (error.message.toLowerCase().includes('network')) {
-			return 'Unable to load chart data due to network issues.';
+		if (error.message.toLowerCase().includes("network")) {
+			return "Unable to load chart data due to network issues.";
 		}
-		if (error.message.toLowerCase().includes('data')) {
-			return 'Chart data is temporarily unavailable.';
+		if (error.message.toLowerCase().includes("data")) {
+			return "Chart data is temporarily unavailable.";
 		}
-		return 'Chart could not be rendered.';
+		return "Chart could not be rendered.";
 	};
 
 	const getFallbackContent = () => {
 		if (!showFallbackData) return null;
 
 		switch (chartType) {
-			case 'line':
-			case 'area':
+			case "line":
+			case "area":
 				return <LineChartFallback height={height - 100} />;
-			case 'pie':
+			case "pie":
 				return <PieChartFallback />;
-			case 'bar':
+			case "bar":
 				return <BarChartFallback height={height - 100} />;
 			default:
 				return <GenericChartFallback height={height - 100} />;
@@ -74,7 +80,7 @@ export function ChartErrorFallback({
 					</CardTitle>
 				</CardHeader>
 			)}
-			<CardContent 
+			<CardContent
 				className="flex flex-col items-center justify-center text-center"
 				style={{ minHeight: height }}
 			>
@@ -126,9 +132,21 @@ function LineChartFallback({ height }: { height: number }) {
 	return (
 		<div className="w-full" style={{ height }}>
 			<svg width="100%" height="100%" className="text-muted-foreground">
+				<title>Chart</title>
 				<defs>
-					<pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-						<path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.5" opacity="0.3"/>
+					<pattern
+						id="grid"
+						width="20"
+						height="20"
+						patternUnits="userSpaceOnUse"
+					>
+						<path
+							d="M 20 0 L 0 0 0 20"
+							fill="none"
+							stroke="currentColor"
+							strokeWidth="0.5"
+							opacity="0.3"
+						/>
 					</pattern>
 				</defs>
 				<rect width="100%" height="100%" fill="url(#grid)" />
@@ -152,6 +170,7 @@ function PieChartFallback() {
 	return (
 		<div className="flex items-center justify-center w-full h-48">
 			<svg width="160" height="160" className="text-muted-foreground">
+				<title>Chart</title>
 				<circle
 					cx="80"
 					cy="80"
@@ -184,13 +203,16 @@ function PieChartFallback() {
 
 function BarChartFallback({ height }: { height: number }) {
 	return (
-		<div className="w-full flex items-end justify-center gap-2 px-4" style={{ height }}>
+		<div
+			className="w-full flex items-end justify-center gap-2 px-4"
+			style={{ height }}
+		>
 			{[60, 80, 45, 90, 70, 55, 85].map((barHeight, index) => (
 				<div
 					key={index}
 					className="bg-muted-foreground opacity-40 rounded-t"
 					style={{
-						width: '12%',
+						width: "12%",
 						height: `${(barHeight / 100) * height}px`,
 					}}
 				/>

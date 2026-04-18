@@ -16,7 +16,7 @@ RUN go mod download
 COPY . .
 
 # Construire l'application Go
-RUN go build -o main .
+RUN go build -o main ./cmd
 
 # Exposer le port sur lequel l'application Go sera accessible
 EXPOSE 8080

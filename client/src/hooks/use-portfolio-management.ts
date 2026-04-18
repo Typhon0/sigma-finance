@@ -20,7 +20,7 @@ import { getErrorMessage, useErrorHandling } from "./use-error-handling";
 import { usePerformanceMonitoring } from "./use-performance-monitoring";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
-const optimisticResponseGenerators = {
+const _optimisticResponseGenerators = {
 	createPortfolio: (input: CreatePortfolioInput) => ({
 		createPortfolio: {
 			__typename: "Portfolio" as const,
@@ -100,7 +100,7 @@ const cacheUpdateUtils = {
 		const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
 			query: GET_PORTFOLIOS_WITH_ANALYTICS,
 		});
-		if (data && data.portfolios) {
+		if (data?.portfolios) {
 			cache.writeQuery({
 				query: GET_PORTFOLIOS_WITH_ANALYTICS,
 				data: {
@@ -135,7 +135,7 @@ const cacheUpdateUtils = {
 		const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
 			query: GET_PORTFOLIOS_WITH_ANALYTICS,
 		});
-		if (data && data.portfolios) {
+		if (data?.portfolios) {
 			cache.writeQuery({
 				query: GET_PORTFOLIOS_WITH_ANALYTICS,
 				data: {
@@ -152,19 +152,9 @@ const cacheInvalidationHelpers = {
 	invalidateDashboardData: (
 		cache: import("@apollo/client").ApolloCache<unknown>,
 	) => {
-		// This is a placeholder. In a real app, you would invalidate specific queries
-		// related to the dashboard. For now, we can refetch active queries.
-		// A more robust implementation would use cache.evict() and cache.gc()
-		// on specific dashboard-related query root fields.
-		const query = GET_PORTFOLIOS_WITH_ANALYTICS;
-		if (query) {
-			const data = cache.readQuery<GetPortfoliosWithAnalyticsQuery>({
-				query,
-			});
-			if (data) {
-				cache.writeQuery({ query, data: null });
-			}
-		}
+		cache.evict({ id: "ROOT_QUERY", field: "portfolios" });
+		cache.evict({ id: "ROOT_QUERY", field: "watchlists" });
+		cache.gc();
 	},
 	invalidatePortfolio: (
 		cache: import("@apollo/client").ApolloCache<unknown>,
@@ -181,7 +171,13 @@ export function usePortfolioManagement() {
 	const effectiveUserID = user?.id;
 
 	// Performance monitoring
-	const { startQuery, endQuery, startMutation, endMutation, getQueryStats } = usePerformanceMonitoring();
+	const {
+		_startQuery,
+		_endQuery,
+		_startMutation,
+		_endMutation,
+		_getQueryStats,
+	} = usePerformanceMonitoring();
 
 	// Loading states for individual operations
 	const [operationLoading, setOperationLoading] = useState({
@@ -202,20 +198,10 @@ export function usePortfolioManagement() {
 			client: apolloClient,
 			variables: { userID: effectiveUserID },
 			errorPolicy: "all",
-			fetchPolicy: "cache-and-network",
-			nextFetchPolicy: "cache-first",
-			notifyOnNetworkStatusChange: true,
+			fetchPolicy: "cache-first",
+			notifyOnNetworkStatusChange: false,
 			skip: !effectiveUserID,
-			// Performance optimizations
-			pollInterval: 0, // Disable polling, use subscriptions instead
-			returnPartialData: true, // Return partial data while loading
-			onCompleted: (data) => {
-				endQuery("GetPortfoliosWithAnalytics", false);
-			},
-			onError: (error) => {
-				endQuery("GetPortfoliosWithAnalytics", false);
-				errorHandling.handleError(error);
-			},
+			pollInterval: 0,
 		});
 
 	// Create portfolio mutation with enhanced optimistic updates

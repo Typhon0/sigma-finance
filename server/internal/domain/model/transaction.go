@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
@@ -63,11 +62,11 @@ func (tt TransactionType) IsPositiveAmount() bool {
 
 // Transaction represents a financial transaction
 type Transaction struct {
-	bun.BaseModel `bun:"table:sigma_finance.transactions"`
+	bun.BaseModel `bun:"table:sigma_finance.transactions,alias:transactions"`
 
-	ID              uuid.UUID        `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID          uuid.UUID        `bun:"user_id,notnull"`
-	PositionID      *uuid.UUID       `bun:"position_id"` // Optional for some transaction types
+	ID              string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID          string           `bun:"user_id,notnull"`
+	PositionID      *string          `bun:"position_id"` // Optional for some transaction types
 	Type            TransactionType  `bun:"type,notnull"`
 	Amount          Money            `bun:"amount,notnull"`                    // Amount in cents
 	Quantity        *decimal.Decimal `bun:"quantity,type:decimal(20,8)"`       // For quantity-based transactions
@@ -84,7 +83,7 @@ type Transaction struct {
 
 // RealizedGains represents realized gains/losses from transactions
 type RealizedGains struct {
-	UserID           uuid.UUID `json:"user_id"`
+	UserID           string    `json:"user_id"`
 	TotalRealized    Money     `json:"total_realized"`
 	ShortTermGains   Money     `json:"short_term_gains"`
 	LongTermGains    Money     `json:"long_term_gains"`
@@ -106,7 +105,7 @@ type TransactionSummary struct {
 
 // Validate performs comprehensive validation of the transaction
 func (t *Transaction) Validate() error {
-	if t.UserID == uuid.Nil {
+	if t.UserID == "" {
 		return errors.New("user ID is required")
 	}
 
@@ -306,7 +305,7 @@ func (t *Transaction) GetTaxLotInfo() *TaxLotInfo {
 
 // TaxLotInfo represents information for tax lot tracking
 type TaxLotInfo struct {
-	TransactionID   uuid.UUID       `json:"transaction_id"`
+	TransactionID   string          `json:"transaction_id"`
 	TransactionDate time.Time       `json:"transaction_date"`
 	Quantity        decimal.Decimal `json:"quantity"`
 	PricePerUnit    decimal.Decimal `json:"price_per_unit"`
@@ -314,8 +313,8 @@ type TaxLotInfo struct {
 }
 
 // Implement Entity interface
-func (t Transaction) GetID() int64            { return 0 } // UUID doesn't fit int64
-func (t *Transaction) SetID(id int64)         {}           // UUID doesn't fit int64
+func (t Transaction) GetID() string           { return t.ID }
+func (t *Transaction) SetID(id string)        { t.ID = id }
 func (t Transaction) GetCreatedAt() time.Time { return t.CreatedAt }
 func (t *Transaction) SetCreatedAt(time.Time) {} // No UpdatedAt field
 func (t Transaction) GetUpdatedAt() time.Time { return time.Time{} }

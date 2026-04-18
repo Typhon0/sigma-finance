@@ -9,6 +9,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // TwelveDataProvider implements Provider for Twelve Data API
@@ -309,4 +311,88 @@ func (t *TwelveDataProvider) parseDateTime(datetime string, interval model.Candl
 		// Intraday format: "2023-12-01 15:30:00"
 		return time.Parse("2006-01-02 15:04:05", datetime)
 	}
+}
+
+func (t *TwelveDataProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	return nil, fmt.Errorf("technical indicators not supported by Twelve Data provider")
+}
+
+func (t *TwelveDataProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if req.APIKey == "" {
+		return nil, fmt.Errorf("twelve data requires API key")
+	}
+
+	symbol, err := t.MapSymbol(req.Symbol, req.AssetType)
+	if err != nil {
+		return nil, err
+	}
+
+	url := fmt.Sprintf("%s/quote", t.baseURL)
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := httpReq.URL.Query()
+	q.Set("symbol", symbol)
+	q.Set("apikey", req.APIKey)
+	httpReq.URL.RawQuery = q.Encode()
+
+	resp, err := t.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("twelve data API error: %d", resp.StatusCode)
+	}
+
+	var response struct {
+		Symbol    string `json:"symbol"`
+		Close     string `json:"close"`
+		High      string `json:"high"`
+		Low       string `json:"low"`
+		Open      string `json:"open"`
+		Volume    string `json:"volume"`
+		Timestamp int64  `json:"timestamp"`
+		Status    string `json:"status"`
+		Message   string `json:"message"`
+		Code      int    `json:"code"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, err
+	}
+
+	if response.Status == "error" {
+		return nil, fmt.Errorf("twelve data API error: %s (code: %d)", response.Message, response.Code)
+	}
+
+	closePrice, err := decimal.NewFromString(response.Close)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse close price: %w", err)
+	}
+
+	var volume int64
+	if response.Volume != "" {
+		volume, _ = strconv.ParseInt(response.Volume, 10, 64)
+	}
+
+	var timestamp time.Time
+	if response.Timestamp > 0 {
+		timestamp = time.Unix(response.Timestamp, 0)
+	} else {
+		timestamp = time.Now()
+	}
+
+	return &QuoteResponse{
+		Symbol:    req.Symbol,
+		Bid:       closePrice,
+		Ask:       closePrice,
+		Last:      closePrice,
+		Volume:    volume,
+		Timestamp: timestamp,
+		Source:    t.ID(),
+	}, nil
 }

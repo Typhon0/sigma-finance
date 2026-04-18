@@ -44,7 +44,7 @@ func TestServiceValidation(t *testing.T) {
 		// Create a test position
 		totalCost := model.Money(10000) // $100 in cents
 		position := &model.Position{
-			ID:                  uuid.New(),
+			ID:                  uuid.NewString(),
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
 			TotalCostBasis:      &totalCost,
@@ -62,26 +62,26 @@ func TestServiceValidation(t *testing.T) {
 	t.Run("TransactionService request validation", func(t *testing.T) {
 		// Test that transaction request structures are valid
 		buyReq := BuyTransactionRequest{
-			UserID:       uuid.New(),
-			PortfolioID:  uuid.New(),
-			AssetID:      uuid.New(),
+			UserID:       uuid.NewString(),
+			PortfolioID:  uuid.NewString(),
+			AssetID:      uuid.NewString(),
 			Quantity:     decimal.NewFromFloat(100),
 			PricePerUnit: decimal.NewFromFloat(50),
 		}
 
 		// Basic validation
-		assert.NotEqual(t, uuid.Nil, buyReq.UserID)
+		assert.NotEqual(t, "", buyReq.UserID)
 		assert.True(t, buyReq.Quantity.IsPositive())
 		assert.True(t, buyReq.PricePerUnit.IsPositive())
 
 		sellReq := SellTransactionRequest{
-			UserID:       uuid.New(),
-			PositionID:   uuid.New(),
+			UserID:       uuid.NewString(),
+			PositionID:   uuid.NewString(),
 			Quantity:     decimal.NewFromFloat(50),
 			PricePerUnit: decimal.NewFromFloat(75),
 		}
 
-		assert.NotEqual(t, uuid.Nil, sellReq.UserID)
+		assert.NotEqual(t, "", sellReq.UserID)
 		assert.True(t, sellReq.Quantity.IsPositive())
 		assert.True(t, sellReq.PricePerUnit.IsPositive())
 	})

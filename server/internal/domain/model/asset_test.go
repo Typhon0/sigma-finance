@@ -66,7 +66,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "valid stock asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeStock,
 				Symbol:      stringPtr("AAPL"),
 				Name:        "Apple Inc.",
@@ -79,7 +79,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "valid crypto asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeCrypto,
 				Symbol:      stringPtr("BTC"),
 				Name:        "Bitcoin",
@@ -92,7 +92,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "valid bank account asset",
 			asset: &Asset{
-				ID:          uuid.New(),
+				ID:          uuid.New().String(),
 				Type:        AssetTypeBankAccount,
 				Name:        "Chase Checking",
 				IsTradeable: false,
@@ -104,7 +104,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "invalid asset - empty name",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetTypeStock,
 				Symbol:    stringPtr("AAPL"),
 				Name:      "",
@@ -117,7 +117,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "invalid asset - invalid type",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetType("INVALID"),
 				Name:      "Test Asset",
 				CreatedAt: time.Now(),
@@ -129,7 +129,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "invalid stock - missing symbol",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetTypeStock,
 				Name:      "Apple Inc.",
 				CreatedAt: time.Now(),
@@ -141,7 +141,7 @@ func TestAsset_Validate(t *testing.T) {
 		{
 			name: "invalid stock - invalid symbol format",
 			asset: &Asset{
-				ID:        uuid.New(),
+				ID:        uuid.New().String(),
 				Type:      AssetTypeStock,
 				Symbol:    stringPtr("TOOLONG"),
 				Name:      "Test Stock",
@@ -315,7 +315,7 @@ func TestAsset_MetadataValidation(t *testing.T) {
 	}
 
 	asset := &Asset{
-		ID:        uuid.New(),
+		ID:        uuid.New().String(),
 		Type:      AssetTypeStock,
 		Symbol:    stringPtr("AAPL"),
 		Name:      "Apple Inc.",

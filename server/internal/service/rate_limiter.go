@@ -35,11 +35,14 @@ func NewInMemoryRateLimiter() RateLimiter {
 	limiter := &InMemoryRateLimiter{
 		buckets: make(map[string]*rateBucket),
 	}
-
-	// Start cleanup goroutine to remove expired buckets
-	go limiter.cleanup()
-
 	return limiter
+}
+
+// ResetAll clears all rate limit buckets - useful for testing
+func (r *InMemoryRateLimiter) ResetAll() {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.buckets = make(map[string]*rateBucket)
 }
 
 // CheckRateLimit checks if a rate limit has been exceeded

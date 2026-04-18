@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { WifiOff, Wifi, AlertCircle, RefreshCw, Download } from "lucide-react";
+import { AlertCircle, Download, RefreshCw, Wifi, WifiOff } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { cn } from "@/lib/utils";
 
 export interface OfflineState {
@@ -26,7 +26,7 @@ export function useOfflineHandler() {
 	});
 
 	const handleOnline = useCallback(() => {
-		setOfflineState(prev => ({
+		setOfflineState((prev) => ({
 			...prev,
 			isOnline: true,
 			wasOffline: prev.offlineSince !== null,
@@ -36,7 +36,7 @@ export function useOfflineHandler() {
 	}, []);
 
 	const handleOffline = useCallback(() => {
-		setOfflineState(prev => ({
+		setOfflineState((prev) => ({
 			...prev,
 			isOnline: false,
 			offlineSince: new Date(),
@@ -44,33 +44,33 @@ export function useOfflineHandler() {
 	}, []);
 
 	const addPendingAction = useCallback(() => {
-		setOfflineState(prev => ({
+		setOfflineState((prev) => ({
 			...prev,
 			pendingActions: prev.pendingActions + 1,
 		}));
 	}, []);
 
 	const clearPendingActions = useCallback(() => {
-		setOfflineState(prev => ({
+		setOfflineState((prev) => ({
 			...prev,
 			pendingActions: 0,
 		}));
 	}, []);
 
 	const setHasOfflineData = useCallback((hasData: boolean) => {
-		setOfflineState(prev => ({
+		setOfflineState((prev) => ({
 			...prev,
 			hasOfflineData: hasData,
 		}));
 	}, []);
 
 	useEffect(() => {
-		window.addEventListener('online', handleOnline);
-		window.addEventListener('offline', handleOffline);
+		window.addEventListener("online", handleOnline);
+		window.addEventListener("offline", handleOffline);
 
 		return () => {
-			window.removeEventListener('online', handleOnline);
-			window.removeEventListener('offline', handleOffline);
+			window.removeEventListener("online", handleOnline);
+			window.removeEventListener("offline", handleOffline);
 		};
 	}, [handleOnline, handleOffline]);
 
@@ -84,50 +84,54 @@ export function useOfflineHandler() {
 
 interface OfflineIndicatorProps {
 	offlineState: OfflineState;
-	variant?: 'minimal' | 'badge' | 'full';
+	variant?: "minimal" | "badge" | "full";
 	className?: string;
 }
 
-export function OfflineIndicator({ 
-	offlineState, 
-	variant = 'badge',
-	className 
+export function OfflineIndicator({
+	offlineState,
+	variant = "badge",
+	className,
 }: OfflineIndicatorProps) {
-	const { isOnline, offlineSince, pendingActions, hasOfflineData } = offlineState;
+	const { isOnline, offlineSince, pendingActions, hasOfflineData } =
+		offlineState;
 
 	const getOfflineDuration = () => {
-		if (!offlineSince) return '';
-		
+		if (!offlineSince) return "";
+
 		const now = new Date();
 		const diff = now.getTime() - offlineSince.getTime();
 		const minutes = Math.floor(diff / 60000);
 		const hours = Math.floor(minutes / 60);
-		
+
 		if (hours > 0) {
 			return `${hours}h ${minutes % 60}m`;
 		}
 		return `${minutes}m`;
 	};
 
-	if (variant === 'minimal') {
+	if (variant === "minimal") {
 		return (
 			<div className={cn("flex items-center gap-1", className)}>
-				<div className={cn(
-					"w-2 h-2 rounded-full",
-					isOnline ? "bg-green-500" : "bg-red-500"
-				)} />
-				{!isOnline && (
-					<span className="text-xs text-red-600">Offline</span>
-				)}
+				<div
+					className={cn(
+						"w-2 h-2 rounded-full",
+						isOnline ? "bg-green-500" : "bg-red-500",
+					)}
+				/>
+				{!isOnline && <span className="text-xs text-red-600">Offline</span>}
 			</div>
 		);
 	}
 
-	if (variant === 'badge') {
+	if (variant === "badge") {
 		if (isOnline) return null;
-		
+
 		return (
-			<Badge variant="destructive" className={cn("flex items-center gap-1", className)}>
+			<Badge
+				variant="destructive"
+				className={cn("flex items-center gap-1", className)}
+			>
 				<WifiOff className="h-3 w-3" />
 				Offline {getOfflineDuration()}
 			</Badge>
@@ -143,21 +147,22 @@ export function OfflineIndicator({
 					) : (
 						<WifiOff className="h-5 w-5 text-red-500" />
 					)}
-					{isOnline ? 'Back Online' : 'Offline Mode'}
+					{isOnline ? "Back Online" : "Offline Mode"}
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-3">
 				{!isOnline && (
 					<div className="space-y-2">
 						<p className="text-sm text-muted-foreground">
-							You've been offline for {getOfflineDuration()}. 
+							You've been offline for {getOfflineDuration()}.
 							{hasOfflineData && " Showing cached data."}
 						</p>
-						
+
 						{pendingActions > 0 && (
 							<div className="flex items-center gap-2 text-sm text-orange-600">
 								<AlertCircle className="h-4 w-4" />
-								{pendingActions} action{pendingActions > 1 ? 's' : ''} pending sync
+								{pendingActions} action{pendingActions > 1 ? "s" : ""} pending
+								sync
 							</div>
 						)}
 					</div>
@@ -191,20 +196,20 @@ export function OfflineDataWrapper({
 	className,
 }: OfflineDataWrapperProps) {
 	const getLastSyncText = () => {
-		if (!lastSyncTime) return 'Never synced';
-		
+		if (!lastSyncTime) return "Never synced";
+
 		const now = new Date();
 		const diff = now.getTime() - lastSyncTime.getTime();
 		const minutes = Math.floor(diff / 60000);
 		const hours = Math.floor(minutes / 60);
-		
+
 		if (hours > 0) {
 			return `Last synced ${hours}h ago`;
 		}
 		if (minutes > 0) {
 			return `Last synced ${minutes}m ago`;
 		}
-		return 'Just synced';
+		return "Just synced";
 	};
 
 	return (
@@ -213,9 +218,7 @@ export function OfflineDataWrapper({
 				<Alert className="mb-4 border-orange-200 bg-orange-50">
 					<Download className="h-4 w-4" />
 					<AlertDescription className="flex items-center justify-between">
-						<span>
-							Showing cached data. {getLastSyncText()}.
-						</span>
+						<span>Showing cached data. {getLastSyncText()}.</span>
 						{onRefresh && (
 							<Button
 								variant="outline"
@@ -231,14 +234,16 @@ export function OfflineDataWrapper({
 					</AlertDescription>
 				</Alert>
 			)}
-			
-			<div className={cn(
-				"transition-opacity duration-200",
-				!isOnline && "opacity-75"
-			)}>
+
+			<div
+				className={cn(
+					"transition-opacity duration-200",
+					!isOnline && "opacity-75",
+				)}
+			>
 				{children}
 			</div>
-			
+
 			{!isOnline && (
 				<div className="absolute inset-0 pointer-events-none">
 					<div className="absolute top-2 right-2">
@@ -340,18 +345,24 @@ export function useOfflineCache<T>(key: string) {
 	const [cachedData, setCachedData] = useState<T | null>(null);
 	const [lastCacheTime, setLastCacheTime] = useState<Date | null>(null);
 
-	const cacheData = useCallback((data: T) => {
-		try {
-			localStorage.setItem(`offline_cache_${key}`, JSON.stringify({
-				data,
-				timestamp: new Date().toISOString(),
-			}));
-			setCachedData(data);
-			setLastCacheTime(new Date());
-		} catch (error) {
-			console.warn('Failed to cache data:', error);
-		}
-	}, [key]);
+	const cacheData = useCallback(
+		(data: T) => {
+			try {
+				localStorage.setItem(
+					`offline_cache_${key}`,
+					JSON.stringify({
+						data,
+						timestamp: new Date().toISOString(),
+					}),
+				);
+				setCachedData(data);
+				setLastCacheTime(new Date());
+			} catch (error) {
+				console.warn("Failed to cache data:", error);
+			}
+		},
+		[key],
+	);
 
 	const loadCachedData = useCallback(() => {
 		try {
@@ -363,7 +374,7 @@ export function useOfflineCache<T>(key: string) {
 				return data;
 			}
 		} catch (error) {
-			console.warn('Failed to load cached data:', error);
+			console.warn("Failed to load cached data:", error);
 		}
 		return null;
 	}, [key]);
@@ -374,7 +385,7 @@ export function useOfflineCache<T>(key: string) {
 			setCachedData(null);
 			setLastCacheTime(null);
 		} catch (error) {
-			console.warn('Failed to clear cache:', error);
+			console.warn("Failed to clear cache:", error);
 		}
 	}, [key]);
 

@@ -9,7 +9,6 @@ export default defineConfig({
 	plugins: [
 		tanstackRouter({
 			target: "react",
-			autoCodeSplitting: true,
 		}),
 		react(),
 		tailwindcss(),
@@ -25,12 +24,12 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			'/graphql': {
-				target: 'http://localhost:8080',
+			"/graphql": {
+				target: "http://localhost:8080",
 				changeOrigin: true,
 			},
-			'/playground': {
-				target: 'http://localhost:8080',
+			"/playground": {
+				target: "http://localhost:8080",
 				changeOrigin: true,
 			},
 		},

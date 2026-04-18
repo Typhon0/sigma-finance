@@ -7,9 +7,13 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"log"
 	"sigma_finance/internal/config"
 	"sigma_finance/internal/domain/model"
+	coingeckoclient "sigma_finance/internal/infrastructure/coingecko"
+	grpcclient "sigma_finance/internal/infrastructure/grpc"
 	"sigma_finance/internal/repository"
+	"time"
 )
 
 // ServiceContainer holds all service instances
@@ -25,6 +29,11 @@ type ServiceContainer struct {
 	Email          EmailService
 	Security       SecurityService
 	MarketData     MarketDataService
+	Performance    IPerformanceService
+	Notification   *NotificationService
+	Alert          *AlertService
+	Monitoring     *MonitoringService
+	Instrument     InstrumentService
 }
 
 // NewServiceContainer creates a new service container with all services initialized
@@ -40,6 +49,20 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 
 	// Initialize rate limiter
 	rateLimiter := NewInMemoryRateLimiter()
+
+	var discoveryClient InstrumentDiscoveryClient
+	var cryptoDiscoveryClient InstrumentDiscoveryClient
+	if cfg != nil && cfg.MarketData.YFinance.Host != "" {
+		client, err := grpcclient.NewMarketDataClient(cfg.MarketData.YFinance.Host, cfg.MarketData.YFinance.Port)
+		if err != nil {
+			log.Printf("[ServiceContainer] WARNING: Failed to create instrument discovery client: %v", err)
+		} else {
+			discoveryClient = client
+		}
+	}
+	if cfg != nil {
+		cryptoDiscoveryClient = coingeckoclient.NewClient(cfg.MarketData.CoinGeckoAPIBaseURL, cfg.MarketData.CoinGeckoDemoAPIKey)
+	}
 
 	// Initialize security service with configuration
 	securityConfig := SecurityConfig{
@@ -94,11 +117,11 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		authProviders,
 	)
 
-	return &ServiceContainer{
+	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
 		Asset:          NewAssetService(uow.Asset()),
-		Transaction:    NewTransactionService(uow.Transaction(), nil, uow.Asset()), // Use nil for missing position repo for now
+		Transaction:    NewTransactionService(uow),
 		Watchlist:      NewWatchlistService(uow),
 		Tag:            NewTagService(uow),
 		Authentication: authService,
@@ -107,14 +130,51 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		Security:       securityService,
 		MarketData: NewMarketDataService(
 			uow,
+			uow.(*repository.UnitOfWork).GetDB(),
 			repository.NewCandleRepository(uow.(*repository.UnitOfWork).GetDB()),
 			uow.MarketDataCredential(),
-			nil, // Use nil for missing price repo for now
+			uow.AssetPrice(),
 			uow.Asset(),
 			securityService,
 			rateLimiter,
+			cfg,
 		),
+		Performance: NewPerformanceService(
+			uow.Performance(),
+			uow.AssetPrice(),
+			uow.Position(),
+		),
+		Notification: NewNotificationService(uow, emailService, cfg),
+		Alert: NewAlertService(
+			uow.Alert(),
+			uow.Asset(),
+			uow.Portfolio(),
+			uow.AssetPrice(),
+			uow.Performance(),
+			NewNotificationService(uow, emailService, cfg),
+		),
+		Monitoring: NewMonitoringService(),
+		Instrument: NewInstrumentService(uow, discoveryClient, cryptoDiscoveryClient),
 	}
+
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+
+		log.Printf("[ServiceContainer] Starting initial price fetch...")
+		if err := container.MarketData.UpdateAssetPrices(ctx); err != nil {
+			log.Printf("[ServiceContainer] Initial price fetch failed: %v", err)
+		} else {
+			log.Printf("[ServiceContainer] Initial price fetch completed")
+		}
+
+		log.Printf("[ServiceContainer] Starting periodic price update scheduler (every 5 minutes)...")
+		if err := container.MarketData.SchedulePriceUpdates(ctx, 5*time.Minute); err != nil {
+			log.Printf("[ServiceContainer] Failed to start price scheduler: %v", err)
+		}
+	}()
+
+	return container
 }
 
 // generateRSAKeyPair generates a new RSA key pair for JWT signing

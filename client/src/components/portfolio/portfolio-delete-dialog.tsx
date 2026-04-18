@@ -1,4 +1,4 @@
-import { AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { AlertTriangle } from "lucide-react";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -9,8 +9,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import type { Portfolio } from "@/gql/graphql";
 
 interface PortfolioDeleteDialogProps {

@@ -208,11 +208,11 @@ export function CreatePortfolioDialog({
 		[setOpen],
 	);
 
-	const handleFormSuccess = useCallback((data: PortfolioFormData) => {
+	const handleFormSuccess = useCallback((_data: PortfolioFormData) => {
 		// Success is handled in handleSubmit
 	}, []);
 
-	const handleFormError = useCallback((error: Error) => {
+	const handleFormError = useCallback((_error: Error) => {
 		// Error is handled in handleSubmit
 	}, []);
 

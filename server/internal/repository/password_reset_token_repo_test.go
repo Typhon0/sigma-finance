@@ -197,7 +197,7 @@ func TestPasswordResetTokenRepository_MarkTokenAsUsed(t *testing.T) {
 				assert.NoError(t, err)
 
 				// Verify the token is marked as used
-				updatedToken, err := tokenRepo.GetByStringID(ctx, tt.tokenID)
+				updatedToken, err := tokenRepo.GetByID(ctx, tt.tokenID)
 				require.NoError(t, err)
 				assert.True(t, updatedToken.Used)
 			}

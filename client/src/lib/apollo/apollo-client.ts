@@ -1,11 +1,7 @@
-import {
-	ApolloClient,
-	createHttpLink,
-	from,
-	InMemoryCache,
-} from "@apollo/client";
+import { ApolloClient, from } from "@apollo/client";
 import { loadDevMessages, loadErrorMessages } from "@apollo/client/dev";
 import { onError } from "@apollo/client/link/error";
+import { createHttpLink } from "@apollo/client/link/http";
 import { RetryLink } from "@apollo/client/link/retry";
 import { GET_DASHBOARD_CRITICAL } from "@/graphql/queries";
 import { apolloCacheConfig } from "./apollo-cache-config";
@@ -58,9 +54,8 @@ export const apolloClient = new ApolloClient({
 	cache: apolloCacheConfig,
 	defaultOptions: {
 		watchQuery: {
-			fetchPolicy: "cache-and-network",
-			nextFetchPolicy: "cache-first",
-			notifyOnNetworkStatusChange: true,
+			fetchPolicy: "cache-first",
+			errorPolicy: "all",
 		},
 		query: {
 			fetchPolicy: "cache-first",

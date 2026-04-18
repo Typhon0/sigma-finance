@@ -138,6 +138,9 @@ func TestConfigValidation(t *testing.T) {
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
 				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
+				},
 			},
 			expectError: false,
 		},
@@ -161,6 +164,9 @@ func TestConfigValidation(t *testing.T) {
 				Auth: AuthConfig{
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
+				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
 				},
 			},
 			expectError: true,
@@ -187,6 +193,9 @@ func TestConfigValidation(t *testing.T) {
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
 				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
+				},
 			},
 			expectError: true,
 			errorMsg:    "bcrypt cost must be between 10 and 15, got 20",
@@ -211,6 +220,9 @@ func TestConfigValidation(t *testing.T) {
 				Auth: AuthConfig{
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
+				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
 				},
 			},
 			expectError: true,
@@ -237,6 +249,9 @@ func TestConfigValidation(t *testing.T) {
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
 				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
+				},
 			},
 			expectError: true,
 			errorMsg:    "invalid JWT algorithm: INVALID",
@@ -261,6 +276,9 @@ func TestConfigValidation(t *testing.T) {
 				Auth: AuthConfig{
 					EmailVerificationExpiry: 24 * time.Hour,
 					PasswordResetExpiry:     1 * time.Hour,
+				},
+				MarketData: MarketDataConfig{
+					CandleRequestsPerMinute: 60,
 				},
 			},
 			expectError: true,

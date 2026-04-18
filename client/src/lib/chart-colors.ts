@@ -23,7 +23,7 @@ const CHART_COLOR_FALLBACKS: Record<string, string> = {
  * Uses fallback mapping for now - in production you'd want a proper converter
  */
 export function oklchToRgb(oklch: string): string {
-	if (!oklch || !oklch.includes("oklch")) {
+	if (!oklch?.includes("oklch")) {
 		return oklch;
 	}
 
