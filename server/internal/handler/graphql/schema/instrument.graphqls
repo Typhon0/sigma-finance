@@ -160,6 +160,7 @@ input AddInstrumentHoldingInput {
   instrumentID: ID!
   quantity: Float!
   averagePurchasePrice: Float!
+  unitPriceCurrency: String
 }
 
 input UpdateManualInstrumentInput {

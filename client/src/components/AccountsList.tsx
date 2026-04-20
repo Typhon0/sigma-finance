@@ -20,6 +20,7 @@ import {
 	type PortfolioAssetItem,
 	usePortfolio,
 } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
@@ -187,14 +188,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 		});
 	}, [assets]);
 
-	const formatCurrency = (amount: number) => {
-		return amount.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency, currencySymbol } = useCurrency();
 
 	// Calculate metrics
 	const totalValue = accounts.reduce((sum, acc) => sum + acc.totalValue, 0);

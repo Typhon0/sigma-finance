@@ -161,12 +161,11 @@ export function AssetSearch({
 							placeholder={placeholder}
 							value={searchTerm}
 							onChange={(e) => setSearchTerm(e.target.value)}
-							onFocus={() => setIsOpen(true)}
 							className="pl-9"
 						/>
 					</div>
 				</PopoverTrigger>
-				<PopoverContent className="w-full p-0" align="start">
+				<PopoverContent className="w-full max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0" align="start">
 					<Command>
 						<CommandInput
 							placeholder="Search assets..."

@@ -40,6 +40,31 @@ export const GET_PORTFOLIOS_WITH_ANALYTICS = gql(`
           sharpeRatio
           maxDrawdown
         }
+        # Multi-currency fields
+        totalNativeValue
+        totalDisplayValue
+        fxAsOf
+        fxSource
+        fxGranularity
+        isStale
+        fxState
+        excludedPositionCount
+        coveredValueRatio
+        displayCurrency
+        quoteCurrency
+        positionValuations {
+          positionId
+          assetId
+          nativeValue
+          displayValue
+          fxRate
+          fxAsOf
+          fxSource
+          fxGranularity
+          isStale
+          quoteCurrency
+          displayCurrency
+        }
       }
     }
   }
@@ -89,6 +114,31 @@ export const GET_PORTFOLIO = gql(`
           volatility
           sharpeRatio
           maxDrawdown
+        }
+        # Multi-currency fields
+        totalNativeValue
+        totalDisplayValue
+        fxAsOf
+        fxSource
+        fxGranularity
+        isStale
+        fxState
+        excludedPositionCount
+        coveredValueRatio
+        displayCurrency
+        quoteCurrency
+        positionValuations {
+          positionId
+          assetId
+          nativeValue
+          displayValue
+          fxRate
+          fxAsOf
+          fxSource
+          fxGranularity
+          isStale
+          quoteCurrency
+          displayCurrency
         }
       }
       tags {

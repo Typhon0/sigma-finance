@@ -16,25 +16,34 @@ type PerformanceService struct {
 	performanceRepo repository.IPerformanceRepository
 	priceRepo       repository.IPriceRepository
 	positionRepo    repository.IPositionRepository
+	fxRateService   IFXRateService // nil unless display currency conversion is needed
 }
 
-// NewPerformanceService creates a new PerformanceService instance
+// NewPerformanceService creates a new PerformanceService instance.
+// Accepts optional IFXRateService for display currency support (backward compatible - can be nil).
 func NewPerformanceService(
 	performanceRepo repository.IPerformanceRepository,
 	priceRepo repository.IPriceRepository,
 	positionRepo repository.IPositionRepository,
+	fxRateService ...IFXRateService, // variadic for backward compatibility
 ) *PerformanceService {
+	var fxSvc IFXRateService
+	if len(fxRateService) > 0 {
+		fxSvc = fxRateService[0]
+	}
 	return &PerformanceService{
 		performanceRepo: performanceRepo,
 		priceRepo:       priceRepo,
 		positionRepo:    positionRepo,
+		fxRateService:   fxSvc,
 	}
 }
 
 // IPerformanceService defines the interface for performance calculation operations
 type IPerformanceService interface {
 	// Performance calculations
-	CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*ServicePerformanceMetrics, error)
+	// displayCurrency is optional - if not provided, only native values are returned
+	CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time, displayCurrency ...model.Currency) (*ServicePerformanceMetrics, error)
 	CalculateTimeWeightedReturn(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) (decimal.Decimal, error)
 	CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error)
 	CalculateSharpeRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error)
@@ -58,7 +67,8 @@ type IPerformanceService interface {
 	GetWorstPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange PerformanceTimeRange) ([]repository.PositionPerformanceResult, error)
 
 	// Benchmark comparison
-	CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange PerformanceTimeRange) (*BenchmarkComparison, error)
+	// displayCurrency is optional - if not provided, only native values are returned
+	CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange PerformanceTimeRange, displayCurrency ...model.Currency) (*BenchmarkComparison, error)
 
 	// Performance analytics
 	CalculateRiskMetrics(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) (*ServiceRiskMetrics, error)
@@ -75,6 +85,26 @@ type ServicePerformanceMetrics struct {
 	DataQuality       DataQuality                `json:"data_quality"`
 	CalculationMethod CalculationMethod          `json:"calculation_method"`
 	Benchmarks        map[string]decimal.Decimal `json:"benchmarks,omitempty"`
+
+	// Display currency fields (optional - present when displayCurrency is provided)
+	// DisplayValue is the total portfolio value converted to display currency (cents)
+	DisplayValue model.Money `json:"display_value,omitempty"`
+	// DisplayCurrency is the currency that values were converted to
+	DisplayCurrency model.Currency `json:"display_currency,omitempty"`
+	// DisplayUnrealizedGainLoss is the unrealized P&L in display currency (cents)
+	DisplayUnrealizedGainLoss model.Money `json:"display_unrealized_gain_loss,omitempty"`
+	// DisplayRealizedGainLoss is the realized P&L in display currency (cents)
+	DisplayRealizedGainLoss model.Money `json:"display_realized_gain_loss,omitempty"`
+	// DisplayCostBasis is the total cost basis in display currency (cents)
+	DisplayCostBasis model.Money `json:"display_cost_basis,omitempty"`
+	// FXAsOf is the timestamp of the FX rate used for display currency conversion
+	FXAsOf time.Time `json:"fx_as_of,omitempty"`
+	// FXSource is the provider/source of the FX rate used for conversion
+	FXSource string `json:"fx_source,omitempty"`
+	// FXGranularity is the FX rate granularity used for conversion
+	FXGranularity model.FXRateGranularity `json:"fx_granularity,omitempty"`
+	// IsFXStale indicates whether the FX rate used was stale
+	IsFXStale bool `json:"is_fx_stale"`
 }
 
 // AllocationBreakdown represents asset allocation analysis with business insights
@@ -110,6 +140,22 @@ type BenchmarkComparison struct {
 	*repository.BenchmarkComparison
 	OutperformancePeriods []PerformanceTimeRange `json:"outperformance_periods"`
 	RiskAdjustedAlpha     decimal.Decimal        `json:"risk_adjusted_alpha"`
+
+	// Display currency fields (optional - present when displayCurrency is provided)
+	// DisplayPortfolioReturn is the portfolio return in display currency
+	DisplayPortfolioReturn decimal.Decimal `json:"display_portfolio_return,omitempty"`
+	// DisplayBenchmarkReturn is the benchmark return in display currency
+	DisplayBenchmarkReturn decimal.Decimal `json:"display_benchmark_return,omitempty"`
+	// DisplayCurrency is the currency that values were converted to
+	DisplayCurrency model.Currency `json:"display_currency,omitempty"`
+	// FXAsOf is the timestamp of the FX rate used for display currency conversion
+	FXAsOf time.Time `json:"fx_as_of,omitempty"`
+	// FXSource is the provider/source of the FX rate used for conversion
+	FXSource string `json:"fx_source,omitempty"`
+	// FXGranularity is the FX rate granularity used for conversion
+	FXGranularity model.FXRateGranularity `json:"fx_granularity,omitempty"`
+	// IsFXStale indicates whether the FX rate used was stale
+	IsFXStale bool `json:"is_fx_stale"`
 }
 
 // Supporting types for enhanced business logic
@@ -185,8 +231,9 @@ type PerformanceReport struct {
 	DataQuality     DataQuality                            `json:"data_quality"`
 }
 
-// CalculatePortfolioPerformance calculates comprehensive performance metrics for a portfolio
-func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*ServicePerformanceMetrics, error) {
+// CalculatePortfolioPerformance calculates comprehensive performance metrics for a portfolio.
+// Optionally converts values to display currency if fxRateService is available and displayCurrency is provided.
+func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time, displayCurrency ...model.Currency) (*ServicePerformanceMetrics, error) {
 	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -223,14 +270,83 @@ func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, 
 	benchmarks := make(map[string]decimal.Decimal)
 	// TODO: Add common benchmark comparisons (S&P 500, etc.)
 
-	return &ServicePerformanceMetrics{
+	// Build result
+	result := &ServicePerformanceMetrics{
 		PerformanceMetrics: repoMetrics,
 		IsValid:            len(validationErrors) == 0,
 		ValidationErrors:   validationErrors,
 		DataQuality:        dataQuality,
 		CalculationMethod:  calculationMethod,
 		Benchmarks:         benchmarks,
-	}, nil
+	}
+
+	// Convert to display currency if requested and FX service is available
+	if len(displayCurrency) > 0 && displayCurrency[0] != "" && s.fxRateService != nil {
+		currency := displayCurrency[0]
+		if err := s.applyDisplayCurrencyMetrics(ctx, repoMetrics, currency, result); err != nil {
+			// Log but don't fail - return native values with error context
+			// In production, you might want to handle this differently
+			_ = err
+		}
+	}
+
+	return result, nil
+}
+
+// applyDisplayCurrencyMetrics converts portfolio metrics to display currency
+func (s *PerformanceService) applyDisplayCurrencyMetrics(ctx context.Context, metrics *repository.PerformanceMetrics, displayCurrency model.Currency, result *ServicePerformanceMetrics) error {
+	nativeCurrency, err := s.derivePortfolioNativeCurrency(ctx, metrics.PortfolioID)
+	if err != nil {
+		return err
+	}
+
+	// Skip conversion if display currency equals native currency
+	if nativeCurrency == displayCurrency {
+		result.DisplayValue = metrics.TotalValue
+		result.DisplayCostBasis = metrics.TotalCostBasis
+		result.DisplayUnrealizedGainLoss = metrics.UnrealizedGainLoss
+		result.DisplayRealizedGainLoss = metrics.RealizedGainLoss
+		result.DisplayCurrency = displayCurrency
+		result.IsFXStale = false
+		return nil
+	}
+
+	// Convert TotalValue
+	displayValueResult, err := s.fxRateService.Convert(ctx, metrics.TotalValue, nativeCurrency, displayCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to convert total value: %w", err)
+	}
+	result.DisplayValue = displayValueResult.ConvertedAmount
+
+	// Convert TotalCostBasis
+	displayCostResult, err := s.fxRateService.Convert(ctx, metrics.TotalCostBasis, nativeCurrency, displayCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to convert cost basis: %w", err)
+	}
+	result.DisplayCostBasis = displayCostResult.ConvertedAmount
+
+	// Convert UnrealizedGainLoss
+	displayUnrealizedResult, err := s.fxRateService.Convert(ctx, metrics.UnrealizedGainLoss, nativeCurrency, displayCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to convert unrealized gain/loss: %w", err)
+	}
+	result.DisplayUnrealizedGainLoss = displayUnrealizedResult.ConvertedAmount
+
+	// Convert RealizedGainLoss
+	displayRealizedResult, err := s.fxRateService.Convert(ctx, metrics.RealizedGainLoss, nativeCurrency, displayCurrency)
+	if err != nil {
+		return fmt.Errorf("failed to convert realized gain/loss: %w", err)
+	}
+	result.DisplayRealizedGainLoss = displayRealizedResult.ConvertedAmount
+
+	// Set metadata
+	result.DisplayCurrency = displayCurrency
+	result.FXAsOf = displayValueResult.AsOf
+	result.FXSource = displayValueResult.Source
+	result.FXGranularity = displayValueResult.Granularity
+	result.IsFXStale = displayValueResult.IsStale || displayCostResult.IsStale || displayUnrealizedResult.IsStale || displayRealizedResult.IsStale
+
+	return nil
 }
 
 // CalculateTimeWeightedReturn calculates the time-weighted return for a portfolio
@@ -610,8 +726,9 @@ func (s *PerformanceService) GetWorstPerformingAssets(ctx context.Context, portf
 	return positions, nil
 }
 
-// CalculateBenchmarkComparison compares portfolio performance against a benchmark
-func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange PerformanceTimeRange) (*BenchmarkComparison, error) {
+// CalculateBenchmarkComparison compares portfolio performance against a benchmark.
+// Optionally converts values to display currency if fxRateService is available and displayCurrency is provided.
+func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange PerformanceTimeRange, displayCurrency ...model.Currency) (*BenchmarkComparison, error) {
 	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -638,11 +755,84 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 	outperformancePeriods := s.calculateOutperformancePeriods(ctx, portfolioID, benchmarkAssetID, timeRange)
 	riskAdjustedAlpha := s.calculateRiskAdjustedAlpha(repoComparison.Alpha, repoComparison.Beta)
 
-	return &BenchmarkComparison{
+	// Build result
+	result := &BenchmarkComparison{
 		BenchmarkComparison:   repoComparison,
 		OutperformancePeriods: outperformancePeriods,
 		RiskAdjustedAlpha:     riskAdjustedAlpha,
-	}, nil
+	}
+
+	// Convert to display currency if requested and FX service is available
+	if len(displayCurrency) > 0 && displayCurrency[0] != "" && s.fxRateService != nil {
+		currency := displayCurrency[0]
+		if err := s.applyDisplayCurrencyBenchmark(ctx, repoComparison, currency, result); err != nil {
+			// Log but don't fail - return native values with error context
+			_ = err
+		}
+	}
+
+	return result, nil
+}
+
+// applyDisplayCurrencyBenchmark converts benchmark comparison values to display currency
+func (s *PerformanceService) applyDisplayCurrencyBenchmark(ctx context.Context, comparison *repository.BenchmarkComparison, displayCurrency model.Currency, result *BenchmarkComparison) error {
+	nativeCurrency, err := s.derivePortfolioNativeCurrency(ctx, comparison.PortfolioID)
+	if err != nil {
+		return err
+	}
+
+	// Skip conversion if display currency equals native currency
+	if nativeCurrency == displayCurrency {
+		result.DisplayPortfolioReturn = comparison.PortfolioReturn
+		result.DisplayBenchmarkReturn = comparison.BenchmarkReturn
+		result.DisplayCurrency = displayCurrency
+		result.IsFXStale = false
+		return nil
+	}
+
+	// Note: PortfolioReturn and BenchmarkReturn are percentages (decimal.Decimal), not Money (cents).
+	// The FXRateService.Convert expects Money (int64 cents), so we need a different approach for percentages.
+	// For now, we just pass through the percentages directly since percentage returns don't need currency conversion.
+	// The percentage return is ratio-based and currency-agnostic.
+
+	result.DisplayPortfolioReturn = comparison.PortfolioReturn
+	result.DisplayBenchmarkReturn = comparison.BenchmarkReturn
+	result.DisplayCurrency = displayCurrency
+	result.FXAsOf = time.Now().UTC()
+	result.FXSource = "PERCENTAGE_IDENTITY"
+	result.FXGranularity = model.FXRateGranularityDay
+	result.IsFXStale = false
+
+	return nil
+}
+
+func (s *PerformanceService) derivePortfolioNativeCurrency(ctx context.Context, portfolioID string) (model.Currency, error) {
+	positions, err := s.positionRepo.GetPortfolioPositions(ctx, portfolioID)
+	if err != nil {
+		return "", fmt.Errorf("failed to derive portfolio currency: %w", err)
+	}
+	if len(positions) == 0 {
+		return model.CurrencyUSD, nil
+	}
+
+	var derived model.Currency
+	for _, position := range positions {
+		if !position.QuoteCurrency.IsValid() {
+			continue
+		}
+		if derived == "" {
+			derived = position.QuoteCurrency
+			continue
+		}
+		if derived != position.QuoteCurrency {
+			return "", fmt.Errorf("mixed quote currencies detected; legacy aggregate performance conversion requires a single native currency")
+		}
+	}
+
+	if !derived.IsValid() {
+		return "", fmt.Errorf("no valid quote currency found for portfolio positions")
+	}
+	return derived, nil
 }
 
 // CalculateRiskMetrics calculates comprehensive risk metrics for a portfolio

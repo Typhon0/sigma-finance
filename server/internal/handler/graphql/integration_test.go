@@ -311,6 +311,7 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "AAPL",
 			Quantity:      10.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, input)
@@ -337,6 +338,7 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 			WalletAddress:     &walletAddress,
 			BlockchainNetwork: &blockchainNetwork,
 			Quantity:          0.5,
+			QuoteCurrency:     "USD",
 		}
 
 		crypto, err := mutationResolver.CreateCryptoAsset(ctx, input)
@@ -361,6 +363,7 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "MSFT",
 			Quantity:      5.0,
+			QuoteCurrency: "USD",
 		}
 		createdAsset, err := mutationResolver.CreateStockAsset(ctx, input)
 		require.NoError(t, err)
@@ -391,6 +394,7 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "GOOGL",
 			Quantity:      2.0,
+			QuoteCurrency: "USD",
 		}
 		_, err := mutationResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
@@ -409,6 +413,7 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 			WalletAddress:     &walletAddress2,
 			BlockchainNetwork: &blockchainNetwork2,
 			Quantity:          1.0,
+			QuoteCurrency:     "USD",
 		}
 		_, err = mutationResolver.CreateCryptoAsset(ctx, cryptoInput)
 		require.NoError(t, err)
@@ -478,10 +483,10 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	t.Run("GetTransaction", func(t *testing.T) {
 		// Create a transaction directly in the database for testing
 		transaction := &model.Transaction{
-			UserID:          testUser.ID,
-			Type:            model.TransactionTypeBuy,
-			Amount:          model.Money(150000), // 1500.00
-			TransactionDate: time.Now(),
+			UserID:     testUser.ID,
+			Type:       model.TransactionTypeBuy,
+			Amount:     model.Money(150000), // 1500.00
+			ExecutedAt: time.Now(),
 		}
 		err := testDB.DB.NewInsert().Model(transaction).Returning("*").Scan(ctx, transaction)
 		require.NoError(t, err)
@@ -498,16 +503,16 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 		// Create multiple transactions directly in the database
 		transactions := []*model.Transaction{
 			{
-				UserID:          testUser.ID,
-				Type:            model.TransactionTypeBuy,
-				Amount:          model.Money(50000),
-				TransactionDate: time.Now().AddDate(0, 0, -1),
+				UserID:     testUser.ID,
+				Type:       model.TransactionTypeBuy,
+				Amount:     model.Money(50000),
+				ExecutedAt: time.Now().AddDate(0, 0, -1),
 			},
 			{
-				UserID:          testUser.ID,
-				Type:            model.TransactionTypeSell,
-				Amount:          model.Money(40000),
-				TransactionDate: time.Now(),
+				UserID:     testUser.ID,
+				Type:       model.TransactionTypeSell,
+				Amount:     model.Money(40000),
+				ExecutedAt: time.Now(),
 			},
 		}
 
@@ -758,6 +763,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "TSLA",
 			Quantity:      5.0,
+			QuoteCurrency: "USD",
 		}
 		stock, err := mutationResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
@@ -799,6 +805,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "AMZN",
 			Quantity:      1.0,
+			QuoteCurrency: "USD",
 		}
 		stock, err := mutationResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
@@ -874,6 +881,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 			WalletAddress:     &walletAddress3,
 			BlockchainNetwork: &blockchainNetwork3,
 			Quantity:          100.0,
+			QuoteCurrency:     "USD",
 		}
 		crypto, err := mutationResolver.CreateCryptoAsset(ctx, cryptoInput)
 		require.NoError(t, err)

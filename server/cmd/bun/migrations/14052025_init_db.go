@@ -65,8 +65,8 @@ CREATE TABLE IF NOT EXISTS sigma_finance.transaction (
     asset_id INT REFERENCES sigma_finance.asset(id),
     transaction_type VARCHAR(10) NOT NULL,
     quantity DECIMAL(18, 8),
-    price_per_unit DECIMAL(18, 2),
-    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    unit_price_amount DECIMAL(18, 2),
+    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     notes TEXT
 );
 CREATE TABLE IF NOT EXISTS sigma_finance.watchlist (

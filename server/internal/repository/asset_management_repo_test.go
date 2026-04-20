@@ -273,8 +273,8 @@ func TestDomainModelValidation(t *testing.T) {
 			Type:            model.TransactionTypeBuy,
 			Amount:          model.Money(10000), // $100.00
 			Quantity:        &[]decimal.Decimal{decimal.NewFromInt(10)}[0],
-			PricePerUnit:    &[]decimal.Decimal{decimal.NewFromInt(10)}[0],
-			TransactionDate: time.Now(),
+			UnitPriceAmount: &[]decimal.Decimal{decimal.NewFromInt(10)}[0],
+			ExecutedAt:      time.Now(),
 			CreatedAt:       time.Now(),
 		}
 

@@ -2,18 +2,13 @@ import { format } from "date-fns";
 import {
 	ArrowRight,
 	BarChart3,
-	Building2,
 	Calendar as CalendarIcon,
-	DollarSign,
-	Hash,
-	Info,
 	RefreshCw,
 	Search,
 	TrendingUp,
-	Wallet,
 	X,
 } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { InstrumentAssetType } from "@/gql/graphql";
 import {
@@ -41,7 +36,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./ui/select";
-import { Textarea } from "./ui/textarea";
 
 interface AddStockFormProps {
 	open: boolean;
@@ -61,6 +55,8 @@ interface AddStockFormSubmitData {
 	purchasePrice: number;
 	currentPrice: number;
 	purchaseDate?: string;
+	quoteCurrency: string;
+	unitPriceCurrency: string;
 }
 
 interface FormData {
@@ -71,6 +67,8 @@ interface FormData {
 	averageBuyPrice: string;
 	currentPrice: string;
 	purchaseDate: Date | undefined;
+	quoteCurrency: string;
+	unitPriceCurrency: string;
 }
 
 interface StockItem {
@@ -79,33 +77,29 @@ interface StockItem {
 	name: string;
 	type: "stock" | "fund" | "etf";
 	exchange?: string;
-	source?: "local" | "online";
+	currency?: string | null;
+	source?: "local" | "online" | "manual";
 	sector: string;
 	price: number;
 	matchedAlias?: string | null;
 	score?: number;
 }
 
-const sectors = [
-	"Technology",
-	"Healthcare",
-	"Financial Services",
-	"Consumer Cyclical",
-	"Consumer Defensive",
-	"Energy",
-	"Industrials",
-	"Basic Materials",
-	"Real Estate",
-	"Utilities",
-	"Communication Services",
-	"Index Fund",
-	"Other",
+const CURRENCIES = [
+	{ value: "USD", label: "US Dollar (USD)", symbol: "$" },
+	{ value: "EUR", label: "Euro (EUR)", symbol: "€" },
+	{ value: "GBP", label: "British Pound (GBP)", symbol: "£" },
 ];
 
+const SUPPORTED_CURRENCY_CODES = new Set(CURRENCIES.map((currency) => currency.value));
+
 export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
-	const { assets } = usePortfolio();
+	const { user } = usePortfolio();
 	const [addType, setAddType] = useState<AddType>(null);
 	const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
+
+	// Get user's display currency or default to USD
+	const userDisplayCurrency = user?.displayCurrency || "USD";
 
 	const [formData, setFormData] = useState<FormData>({
 		symbol: "",
@@ -115,6 +109,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		averageBuyPrice: "",
 		currentPrice: "",
 		purchaseDate: undefined,
+		quoteCurrency: userDisplayCurrency,
+		unitPriceCurrency: userDisplayCurrency,
 	});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const instrumentSearchTypes: InstrumentAssetType[] = [
@@ -122,31 +118,6 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		InstrumentAssetType.Etf,
 		InstrumentAssetType.Fund,
 	];
-
-	// Get available accounts from portfolio
-	const availableAccounts = useMemo(() => {
-		const accs = assets.filter((a) =>
-			["bank", "savings", "securities"].includes(a.type),
-		);
-		// Also include manually added account names if unique
-		const manualNames = [
-			"Interactive Brokers",
-			"Degiro",
-			"Robinhood",
-			"Revolut",
-			"Charles Schwab",
-			"Fidelity",
-			"Vanguard",
-		];
-		const existingNames = new Set(accs.map((a) => a.name || a.accountName));
-
-		return [
-			...accs.map((a) => ({ id: a.id, name: a.name || a.accountName })),
-			...manualNames
-				.filter((n) => !existingNames.has(n))
-				.map((n) => ({ id: n, name: n })),
-		];
-	}, [assets]);
 
 	const handleInputChange = <K extends keyof FormData>(
 		field: K,
@@ -174,7 +145,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		name: selection.name,
 		type: mapInstrumentAssetTypeToStockType(selection.assetType),
 		exchange: selection.exchange,
-		source: selection.source,
+		currency: selection.currency ?? null,
+		source: selection.source as "local" | "online" | "manual" | undefined,
 		sector: "Other",
 		price: 0,
 	});
@@ -188,11 +160,17 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 				name: "",
 				type: "stock",
 				currentPrice: "",
+				quoteCurrency: userDisplayCurrency,
+				unitPriceCurrency: userDisplayCurrency,
 			}));
 			return;
 		}
 
 		const stock = mapSelectionToStockItem(selection);
+		const instrumentCurrency = (stock.currency ?? "").toUpperCase();
+		const resolvedCurrency = SUPPORTED_CURRENCY_CODES.has(instrumentCurrency)
+			? instrumentCurrency
+			: "";
 		setSelectedStock(stock);
 		setFormData((prev) => ({
 			...prev,
@@ -200,6 +178,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 			name: stock.name,
 			type: stock.type,
 			currentPrice: prev.currentPrice || prev.averageBuyPrice || "",
+			quoteCurrency: resolvedCurrency || prev.quoteCurrency,
+			unitPriceCurrency: resolvedCurrency || prev.unitPriceCurrency,
 		}));
 	};
 
@@ -223,6 +203,11 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		return { amount: diff, percent };
 	};
 
+	const getCurrencySymbol = (currencyCode: string): string => {
+		const currency = CURRENCIES.find(c => c.value === currencyCode);
+		return currency?.symbol || "$";
+	};
+
 	const handleSubmit = async () => {
 		setIsSubmitting(true);
 		try {
@@ -241,6 +226,14 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 				toast.error("Please enter a valid purchase price");
 				return;
 			}
+			if (!SUPPORTED_CURRENCY_CODES.has(formData.quoteCurrency)) {
+				toast.error("Please select a valid quote currency");
+				return;
+			}
+			if (!SUPPORTED_CURRENCY_CODES.has(formData.unitPriceCurrency)) {
+				toast.error("Please select a valid average buy price currency");
+				return;
+			}
 
 			await onSubmit({
 				instrumentID: selectedStock?.instrumentID,
@@ -254,6 +247,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					parseFloat(formData.currentPrice) ||
 					parseFloat(formData.averageBuyPrice),
 				purchaseDate: formData.purchaseDate?.toISOString(),
+				quoteCurrency: formData.quoteCurrency,
+				unitPriceCurrency: formData.unitPriceCurrency,
 			});
 			handleClose(); // Only close on success
 		} finally {
@@ -271,6 +266,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 			averageBuyPrice: "",
 			currentPrice: "",
 			purchaseDate: undefined,
+			quoteCurrency: userDisplayCurrency,
+			unitPriceCurrency: userDisplayCurrency,
 		});
 		setSelectedStock(null);
 		onClose();
@@ -279,19 +276,21 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 	if (!open) return null;
 
 	const profitLoss = calculateProfitLoss();
+	const currencySymbol = getCurrencySymbol(formData.unitPriceCurrency);
+	const selectedInstrumentCurrency = (selectedStock?.currency ?? "").toUpperCase();
 
 	// Step 1: Choose add type
 	const renderAddTypeSelection = () => (
 		<>
 			<div className="p-6 pb-4 border-b">
 				<div className="flex items-center justify-between mb-4">
-					<Logo compact />
+					<Logo />
 					<Button variant="ghost" size="icon" onClick={handleClose}>
 						<X className="h-5 w-5" />
 					</Button>
 				</div>
 
-				<div disabled={isSubmitting}>
+				<div>
 					<h2 className="text-2xl">Add Position</h2>
 					<p className="text-sm text-muted-foreground mt-1">
 						Add a stock, ETF, or fund to your portfolio
@@ -304,7 +303,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					{/* Broker Sync */}
 					<button
 						onClick={() => setAddType("sync")}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50"
+						disabled={isSubmitting}
+						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -338,7 +338,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					{/* Manual Entry */}
 					<button
 						onClick={() => setAddType("manual")}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50"
+						disabled={isSubmitting}
+						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -386,7 +387,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					<>
 						<div className="p-6 pb-4 border-b flex-shrink-0">
 							<div className="flex items-center justify-between mb-4">
-								<Logo compact />
+								<Logo />
 								<Button variant="ghost" size="icon" onClick={handleClose}>
 									<X className="h-5 w-5" />
 								</Button>
@@ -397,6 +398,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 									variant="ghost"
 									size="sm"
 									onClick={() => setAddType(null)}
+									disabled={isSubmitting}
 									className="gap-1 h-8 pl-1"
 								>
 									<ArrowRight className="h-4 w-4 rotate-180" />
@@ -449,12 +451,31 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 													<p className="text-xs text-muted-foreground">
 														{selectedStock.name}
 													</p>
+													<div className="mt-1 flex items-center gap-2">
+														{selectedStock.exchange ? (
+															<Badge
+																variant="outline"
+																className="text-[10px] h-5 font-normal"
+															>
+																{selectedStock.exchange}
+															</Badge>
+														) : null}
+														{SUPPORTED_CURRENCY_CODES.has(selectedInstrumentCurrency) ? (
+															<Badge
+																variant="secondary"
+																className="text-[10px] h-5 font-normal"
+															>
+																Quote: {selectedInstrumentCurrency}
+															</Badge>
+														) : null}
+													</div>
 												</div>
 											</div>
 											<Button
 												variant="ghost"
 												size="sm"
 												onClick={() => handleInstrumentChange(null)}
+												disabled={isSubmitting}
 											>
 												Change
 											</Button>
@@ -478,13 +499,14 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 													}
 													className="font-mono"
 													placeholder="0"
+													disabled={isSubmitting}
 												/>
 											</div>
 											<div className="space-y-2">
 												<Label htmlFor="price">Avg Price *</Label>
 												<div className="relative">
 													<span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
-														$
+														{currencySymbol}
 													</span>
 													<Input
 														id="price"
@@ -499,9 +521,64 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 														}
 														className="font-mono pl-6"
 														placeholder="0.00"
+														disabled={isSubmitting}
 													/>
 												</div>
 											</div>
+										</div>
+
+										{/* Holding Quote Currency (locked by instrument) */}
+										<div className="space-y-2">
+											<Label htmlFor="quoteCurrency">Quote Currency (Live Market)</Label>
+											<Select
+												value={formData.quoteCurrency}
+												onValueChange={(value) => handleInputChange("quoteCurrency", value)}
+												disabled={true}
+											>
+												<SelectTrigger id="quoteCurrency" className="w-full">
+													<SelectValue placeholder="Select currency" />
+												</SelectTrigger>
+												<SelectContent>
+													{CURRENCIES.map((currency) => (
+														<SelectItem
+															key={currency.value}
+															value={currency.value}
+														>
+															{currency.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<p className="text-xs text-muted-foreground">
+												Quote currency is derived from the selected instrument and is used for live valuation.
+											</p>
+										</div>
+
+										{/* Transaction currency for cost basis */}
+										<div className="space-y-2">
+											<Label htmlFor="unitPriceCurrency">Average Buy Price Currency</Label>
+											<Select
+												value={formData.unitPriceCurrency}
+												onValueChange={(value) => handleInputChange("unitPriceCurrency", value)}
+												disabled={isSubmitting}
+											>
+												<SelectTrigger id="unitPriceCurrency" className="w-full">
+													<SelectValue placeholder="Select currency" />
+												</SelectTrigger>
+												<SelectContent>
+													{CURRENCIES.map((currency) => (
+														<SelectItem
+															key={currency.value}
+															value={currency.value}
+														>
+															{currency.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<p className="text-xs text-muted-foreground">
+												Use the broker execution currency (for example EUR on Trade Republic).
+											</p>
 										</div>
 
 										<div className="grid grid-cols-2 gap-4">
@@ -520,6 +597,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 													<Button
 														variant="outline"
 														className="w-full justify-start text-left font-normal"
+														disabled={isSubmitting}
 													>
 														<CalendarIcon className="mr-2 h-4 w-4" />
 														{formData.purchaseDate
@@ -552,7 +630,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 															Total Cost
 														</span>
 														<span className="font-mono font-medium">
-															$
+															{currencySymbol}
 															{calculateTotalCost().toLocaleString(undefined, {
 																minimumFractionDigits: 2,
 															})}
@@ -563,7 +641,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 															Current Value
 														</span>
 														<span className="font-mono font-medium">
-															$
+															{currencySymbol}
 															{calculateTotalValue().toLocaleString(undefined, {
 																minimumFractionDigits: 2,
 															})}
@@ -592,18 +670,19 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 						</div>
 
 						<div className="p-4 border-t bg-muted/20 flex justify-end gap-3 flex-shrink-0">
-							<Button variant="ghost" onClick={handleClose}>
+							<Button variant="ghost" onClick={handleClose} disabled={isSubmitting}>
 								Cancel
 							</Button>
 							<Button
 								onClick={handleSubmit}
 								disabled={
+									isSubmitting ||
 									!selectedStock ||
 									!formData.quantity ||
 									!formData.averageBuyPrice
 								}
 							>
-								Add Position
+								{isSubmitting ? "Adding..." : "Add Position"}
 							</Button>
 						</div>
 					</>
@@ -613,7 +692,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					<div className="flex flex-col h-full">
 						<div className="p-6 pb-4 border-b">
 							<div className="flex items-center justify-between mb-4">
-								<Logo compact />
+								<Logo />
 								<Button variant="ghost" size="icon" onClick={handleClose}>
 									<X className="h-5 w-5" />
 								</Button>
@@ -623,6 +702,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 									variant="ghost"
 									size="sm"
 									onClick={() => setAddType(null)}
+									disabled={isSubmitting}
 									className="gap-1 pl-1"
 								>
 									<ArrowRight className="h-4 w-4 rotate-180" /> Back
@@ -640,7 +720,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 								Direct broker integration is coming in the next update. Please
 								use Manual Entry for now.
 							</p>
-							<Button onClick={() => setAddType("manual")}>
+							<Button onClick={() => setAddType("manual")} disabled={isSubmitting}>
 								Switch to Manual Entry
 							</Button>
 						</div>

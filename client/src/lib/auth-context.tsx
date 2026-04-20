@@ -114,7 +114,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setUser(null);
 			}
 
-			throw new Error(errors[0].message);
+			const authError = new Error(errors[0].message) as Error & {
+				authErrors?: AuthError[];
+			};
+			authError.authErrors = errors;
+			throw authError;
 		}
 	};
 
@@ -208,15 +212,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				}
 			} catch (error: unknown) {
 				console.error("Login error:", error);
-				const errorMessage =
-					error instanceof Error
+				const authErrors =
+					error && typeof error === "object" && "authErrors" in error
+						? (error as { authErrors?: AuthError[] }).authErrors
+						: undefined;
+
+				if (!authErrors) {
+					const errorMessage =
+						error instanceof Error
 						? error.message
 						: "Login failed. Please try again.";
-				toast.error(
-					errorMessage.includes("timed out")
+					toast.error(
+						errorMessage.includes("timed out")
 						? "Login request timed out. Please check your connection."
-						: "Login failed. Please try again.",
-				);
+						: errorMessage,
+					);
+				}
 				throw error;
 			} finally {
 				setIsLoading(false);
@@ -434,6 +445,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		refreshTokenActionRef.current = refreshToken;
 	}, [refreshToken]);
 
+	const updateUser = useCallback((updates: Partial<AuthUser>) => {
+		setUser((prev) => {
+			if (!prev) return prev;
+			const updated = { ...prev, ...updates };
+			localStorage.setItem(USER_KEY, JSON.stringify(updated));
+			return updated;
+		});
+	}, []);
+
 	const value: AuthContextType = {
 		user,
 		isLoading,
@@ -446,6 +466,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		verifyEmail,
 		resendVerification,
 		refreshToken,
+		updateUser,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

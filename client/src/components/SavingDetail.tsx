@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { CURRENCY_SYMBOLS } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -253,15 +254,18 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 		);
 	}
 
+	// Use the asset's native currency for formatting (e.g. a EUR account shows EUR)
+	const nativeCurrency = saving.currency || "USD";
+	const nativeCurrencySymbol = CURRENCY_SYMBOLS[nativeCurrency] ?? "$";
 	const formatCurrency = (amount: number) => {
 		const validAmount =
 			typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
-		return validAmount.toLocaleString("fr-FR", {
+		return new Intl.NumberFormat("en-US", {
 			style: "currency",
-			currency: saving.currency,
+			currency: nativeCurrency,
 			minimumFractionDigits: 0,
 			maximumFractionDigits: 0,
-		});
+		}).format(validAmount);
 	};
 
 	const formatDate = (date: Date | string) => {
@@ -340,7 +344,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 			type: "value",
 			axisLabel: {
 				formatter: (value: number) =>
-					`${saving.currency}${(value / 1000).toFixed(0)}K`,
+					`${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		toolbox: {
@@ -395,7 +399,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 			type: "value",
 			axisLabel: {
 				formatter: (value: number) =>
-					`${saving.currency}${(value / 1000).toFixed(0)}K`,
+					`${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		series: [
@@ -446,7 +450,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `${saving.currency}${value}`,
+				formatter: (value: number) => `${nativeCurrencySymbol}${value}`,
 			},
 		},
 		series: [

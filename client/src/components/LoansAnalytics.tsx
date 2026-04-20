@@ -9,6 +9,7 @@ import {
 	Target,
 	TrendingUp,
 } from "lucide-react";
+import { useCurrency } from "@/hooks/use-currency";
 import {
 	Card,
 	CardContent,
@@ -36,16 +37,7 @@ interface LoansAnalyticsProps {
 }
 
 export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
-	const formatCurrency = (amount: number) => {
-		const validAmount =
-			typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
-		return validAmount.toLocaleString("fr-FR", {
-			style: "currency",
-			currency: "EUR",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	// Calculate metrics
 	const totalDebt = loans.reduce((sum, loan) => sum + loan.remainingBalance, 0);

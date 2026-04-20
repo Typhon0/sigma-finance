@@ -5,13 +5,23 @@ export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));
 }
 
-export function formatCurrency(amount: number | null | undefined): string {
+export const CURRENCY_SYMBOLS: Record<string, string> = {
+	USD: "$",
+	EUR: "€",
+	GBP: "£",
+};
+
+export function formatCurrency(
+	amount: number | null | undefined,
+	currency: string = "USD",
+): string {
 	if (amount === null || amount === undefined) {
-		return "$0.00";
+		const symbol = CURRENCY_SYMBOLS[currency] ?? "$";
+		return `${symbol}0.00`;
 	}
 	return new Intl.NumberFormat("en-US", {
 		style: "currency",
-		currency: "USD",
+		currency,
 		minimumFractionDigits: 2,
 		maximumFractionDigits: 2,
 	}).format(amount);

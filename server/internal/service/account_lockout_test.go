@@ -139,6 +139,11 @@ func (m *MockLockoutUserRepo) GetUsersWithFailedLogins(ctx context.Context, thre
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
+func (m *MockLockoutUserRepo) UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error {
+	args := m.Called(ctx, userID, currency)
+	return args.Error(0)
+}
+
 // MockLockoutAuditService is a mock implementation of AuditService for lockout testing
 type MockLockoutAuditService struct {
 	mock.Mock

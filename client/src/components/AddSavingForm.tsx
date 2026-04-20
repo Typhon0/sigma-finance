@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/use-currency";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
 import {
@@ -48,6 +49,7 @@ export interface SavingsFormData {
 }
 
 export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
+	const { currency: displayCurrency, currencySymbol } = useCurrency();
 	const [formData, setFormData] = useState<SavingsFormData>({
 		bankName: "",
 		accountName: "",
@@ -55,7 +57,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 		interestRate: "",
 		accountType: "savings",
 		accountNumber: "",
-		currency: "USD",
+		currency: displayCurrency,
 		ownership: "personal",
 		jointOwnerName: "",
 		companyName: "",
@@ -116,7 +118,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 			interestRate: "",
 			accountType: "savings",
 			accountNumber: "",
-			currency: "USD",
+			currency: displayCurrency,
 			ownership: "personal",
 			jointOwnerName: "",
 			companyName: "",
@@ -552,9 +554,9 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									<div className="flex justify-between">
 										<span className="text-muted-foreground">Balance:</span>
 										<span className="font-mono font-medium text-green-600">
-											€
+											{currencySymbol}
 											{parseFloat(formData.balance || "0").toLocaleString(
-												"fr-FR",
+												"en-US",
 												{ minimumFractionDigits: 2 },
 											)}
 										</span>

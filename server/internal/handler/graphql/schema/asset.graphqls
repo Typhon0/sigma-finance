@@ -235,6 +235,7 @@ input CreateStockInput {
     purchasePrice: Float
     ticker: String!
     quantity: Float!
+    quoteCurrency: String!
 }
 
 # Input for creating a new Crypto asset
@@ -247,6 +248,7 @@ input CreateCryptoInput {
     walletAddress: String
     blockchainNetwork: String
     quantity: Float!
+    quoteCurrency: String!
 }
 
 # Input for creating a new Fund asset

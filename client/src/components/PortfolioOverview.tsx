@@ -2,6 +2,7 @@ import ReactECharts from "echarts-for-react";
 import { BarChart3, PieChart } from "lucide-react";
 import { useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { PieChartWithCenter } from "./PieChartWithCenter";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
@@ -63,14 +64,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 		return labels[type] || type;
 	};
 
-	const formatCurrency = (amount) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		}).format(amount);
-	};
+	const { formatCurrencyCompact: formatCurrency, currencySymbol } = useCurrency();
 
 	const _getFilterLabel = () => {
 		const labels = {
@@ -228,9 +222,9 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 			type: "value",
 			axisLabel: {
 				formatter: (value) => {
-					if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
-					if (value >= 1000) return `$${(value / 1000).toFixed(0)}k`;
-					return `$${value}`;
+					if (value >= 1000000) return `${currencySymbol}${(value / 1000000).toFixed(1)}M`;
+					if (value >= 1000) return `${currencySymbol}${(value / 1000).toFixed(0)}k`;
+					return `${currencySymbol}${value}`;
 				},
 			},
 			axisLine: {

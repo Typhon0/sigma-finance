@@ -18,6 +18,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -150,16 +151,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 		);
 	}
 
-	const formatCurrency = (amount: number) => {
-		const validAmount =
-			typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
-		return validAmount.toLocaleString("fr-FR", {
-			style: "currency",
-			currency: loan.currency,
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const formatDate = (date: Date) => {
 		const dateObj = date instanceof Date ? date : new Date(date);

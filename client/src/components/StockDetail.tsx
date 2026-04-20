@@ -10,6 +10,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
@@ -255,19 +256,14 @@ export function StockDetail({
 		],
 	};
 
-	const formatCurrency = (value: number) =>
-		value.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-		});
+	const { formatCurrency, currencySymbol } = useCurrency();
 	const formatLargeNumber = (num: number) =>
 		num >= 1e12
-			? `$${(num / 1e12).toFixed(2)}T`
+			? `${currencySymbol}${(num / 1e12).toFixed(2)}T`
 			: num >= 1e9
-				? `$${(num / 1e9).toFixed(2)}B`
+				? `${currencySymbol}${(num / 1e9).toFixed(2)}B`
 				: num >= 1e6
-					? `$${(num / 1e6).toFixed(2)}M`
+					? `${currencySymbol}${(num / 1e6).toFixed(2)}M`
 					: formatCurrency(num);
 
 	return (

@@ -13,6 +13,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -333,13 +334,7 @@ export function StockMarketOverview({
 		},
 	];
 
-	const formatCurrency = (value: number) => {
-		return value.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-		});
-	};
+	const { formatCurrency } = useCurrency();
 
 	// Sector Performance Chart
 	const sectorChartOption = {

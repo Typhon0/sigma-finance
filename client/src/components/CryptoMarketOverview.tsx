@@ -17,6 +17,7 @@ import {
 	Zap,
 } from "lucide-react";
 import React, { useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import {
@@ -42,6 +43,9 @@ export function CryptoMarketOverview({
 	onSelectCrypto,
 }: CryptoMarketOverviewProps) {
 	const [activeTab, setActiveTab] = useState("gainers");
+
+	// Currency hook — must be called before any chart options that use currencySymbol
+	const { formatCurrency, currencySymbol } = useCurrency();
 
 	// Detect dark mode for gauge colors
 	const isDarkMode = document.documentElement.classList.contains("dark");
@@ -586,7 +590,8 @@ export function CryptoMarketOverview({
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `$${(value / 1e9).toFixed(0)}B`,
+				formatter: (value: number) =>
+					`${currencySymbol}${(value / 1e9).toFixed(0)}B`,
 			},
 		},
 		series: [
@@ -605,18 +610,10 @@ export function CryptoMarketOverview({
 		],
 	};
 
-	const formatCurrency = (value: number) => {
-		return value.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-		});
-	};
-
 	const formatLargeNumber = (num: number) => {
-		if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-		if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-		if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+		if (num >= 1e12) return `${currencySymbol}${(num / 1e12).toFixed(2)}T`;
+		if (num >= 1e9) return `${currencySymbol}${(num / 1e9).toFixed(2)}B`;
+		if (num >= 1e6) return `${currencySymbol}${(num / 1e6).toFixed(2)}M`;
 		return formatCurrency(num);
 	};
 

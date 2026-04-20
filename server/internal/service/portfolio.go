@@ -5,13 +5,19 @@ package service
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 // Portfolio-specific error types for better error handling and user experience
@@ -56,7 +62,7 @@ type IPortfolioService interface {
 	DuplicatePortfolio(ctx context.Context, input DuplicatePortfolioInput) (*model.Portfolio, error)
 	ReorderPortfolios(ctx context.Context, userID string, orders []PortfolioOrderInput) ([]model.Portfolio, error)
 	GetPortfoliosByUser(ctx context.Context, userID string, orderBy string) ([]model.Portfolio, error)
-	GetPortfolioAnalytics(ctx context.Context, portfolioID string) (PortfolioAnalytics, error)
+	GetPortfolioAnalytics(ctx context.Context, portfolioID string, displayCurrency model.Currency) (*PortfolioValuation, error)
 	GetPortfolioHistory(ctx context.Context, portfolioID string, period string) (PortfolioHistory, error)
 	GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
 	GetPerformanceVsBenchmark(ctx context.Context, portfolioID string, benchmarkSymbol string) (PerformanceBenchmark, error)
@@ -64,15 +70,57 @@ type IPortfolioService interface {
 
 // PortfolioService is the concrete implementation of IPortfolioService.
 type PortfolioService struct {
-	uow repository.IUnitOfWork
+	uow              repository.IUnitOfWork
+	valuationService IPortfolioValuationService
+	marketData       MarketDataService
 }
 
 // NewPortfolioService is the constructor for PortfolioService.
-// It takes the Unit of Work as its dependency, from which it can access all repositories.
-func NewPortfolioService(uow repository.IUnitOfWork) *PortfolioService {
-	return &PortfolioService{
-		uow: uow,
+// It takes the Unit of Work as its dependency, and optionally a PortfolioValuationService.
+// If no valuationService is provided, a default one is created using FXRateService.
+func NewPortfolioService(uow repository.IUnitOfWork, valuationService ...IPortfolioValuationService) *PortfolioService {
+	var vs IPortfolioValuationService
+	if len(valuationService) > 0 && valuationService[0] != nil {
+		vs = valuationService[0]
+	} else {
+		// Create default valuation service with default FX rate service
+		fxRateService := NewFXRateService(uow, 60) // 60 second cache TTL
+		vs = NewPortfolioValuationService(uow, fxRateService)
 	}
+	return &PortfolioService{
+		uow:              uow,
+		valuationService: vs,
+	}
+}
+
+func (s *PortfolioService) SetMarketDataService(marketData MarketDataService) {
+	s.marketData = marketData
+}
+
+func (s *PortfolioService) triggerAssetPriceRefresh(asset *model.Asset) {
+	if s.marketData == nil || asset == nil || !asset.IsTradeable {
+		return
+	}
+
+	assetID, err := uuid.Parse(asset.ID)
+	if err != nil {
+		log.Printf("[PortfolioService] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
+		return
+	}
+
+	assetSymbol := ""
+	if asset.Symbol != nil {
+		assetSymbol = *asset.Symbol
+	}
+
+	go func(assetID uuid.UUID, assetSymbol, assetName string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		if _, refreshErr := s.marketData.UpdateAssetPrice(ctx, assetID); refreshErr != nil {
+			log.Printf("[PortfolioService] async price refresh failed for asset %s (%s): %v", assetName, assetSymbol, refreshErr)
+		}
+	}(assetID, assetSymbol, asset.Name)
 }
 
 // --- Input Validation Functions ---
@@ -468,37 +516,81 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 		return nil, errors.New("quantity must be positive")
 	}
 
-	// 2. --- Check Existence of Portfolio and Asset ---
-	if _, err := s.uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
-		return nil, fmt.Errorf("portfolio with ID %s not found", portfolioID)
-	}
-	asset, err := s.uow.Asset().GetByID(ctx, assetID)
+	var createdPortfolioAsset *model.PortfolioAsset
+	var assetForRefresh *model.Asset
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// 2. --- Check Existence of Portfolio and Asset ---
+		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
+			return fmt.Errorf("portfolio with ID %s not found", portfolioID)
+		}
+		asset, err := uow.Asset().GetByID(ctx, assetID)
+		if err != nil {
+			return fmt.Errorf("asset with ID %s not found", assetID)
+		}
+		if asset.IsTradeable {
+			assetForRefresh = asset
+		}
+
+		quoteCurrency, resolveErr := s.resolveAssetQuoteCurrency(ctx, uow, asset)
+		if resolveErr != nil {
+			return resolveErr
+		}
+
+		// 3. --- Check if asset already exists in portfolio ---
+		_, err = uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, portfolioID, assetID)
+		if err == nil {
+			return errors.New("asset already exists in portfolio")
+		}
+		if !errors.Is(err, repository.ErrNotFound) {
+			return fmt.Errorf("failed to check existing portfolio asset: %w", err)
+		}
+
+		// 4. --- Create and Persist Join Table Record ---
+		portfolioAsset := model.PortfolioAsset{
+			PortfolioID:          portfolioID,
+			AssetID:              assetID,
+			InstrumentID:         asset.InstrumentID,
+			Quantity:             quantity,
+			AveragePurchasePrice: price,
+			QuoteCurrency:        quoteCurrency,
+		}
+
+		createdPortfolioAsset, err = uow.PortfolioAsset().Create(ctx, &portfolioAsset)
+		if err != nil {
+			return fmt.Errorf("failed to add asset to portfolio: %w", err)
+		}
+
+		// Canonical quote currency lives on positions; keep it in sync at creation time.
+		if _, err = uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); err != nil {
+			if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("failed to check existing position: %w", err)
+			}
+
+			position := &model.Position{
+				PortfolioID:         portfolioID,
+				AssetID:             assetID,
+				Quantity:            decimal.NewFromFloat(quantity),
+				OwnershipPercentage: decimal.NewFromInt(100),
+				QuoteCurrency:       quoteCurrency,
+			}
+			if price > 0 {
+				avgCost := decimal.NewFromFloat(price)
+				position.AverageCostBasis = &avgCost
+				totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+				position.TotalCostBasis = &totalCost
+			}
+			if _, createErr := uow.Position().Create(ctx, position); createErr != nil {
+				return fmt.Errorf("failed to create position snapshot: %w", createErr)
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
-		return nil, fmt.Errorf("asset with ID %s not found", assetID)
+		return nil, err
 	}
 
-	// 3. --- Check if asset already exists in portfolio ---
-	_, err = s.uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, portfolioID, assetID)
-	if err == nil {
-		return nil, errors.New("asset already exists in portfolio")
-	}
-	if !errors.Is(err, repository.ErrNotFound) {
-		return nil, fmt.Errorf("failed to check existing portfolio asset: %w", err)
-	}
-
-	// 4. --- Create and Persist Join Table Record ---
-	portfolioAsset := model.PortfolioAsset{
-		PortfolioID:          portfolioID,
-		AssetID:              assetID,
-		InstrumentID:         asset.InstrumentID,
-		Quantity:             quantity,
-		AveragePurchasePrice: price,
-	}
-
-	createdPortfolioAsset, err := s.uow.PortfolioAsset().Create(ctx, &portfolioAsset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to add asset to portfolio: %w", err)
-	}
+	s.triggerAssetPriceRefresh(assetForRefresh)
 
 	return createdPortfolioAsset, nil
 }
@@ -511,13 +603,18 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 	}
 
 	var updatedPortfolioAsset *model.PortfolioAsset
+	var assetForRefresh *model.Asset
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// 2. --- Check Existence of Portfolio and Asset ---
 		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
 			return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 		}
-		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
+		asset, err := uow.Asset().GetByID(ctx, assetID)
+		if err != nil {
 			return fmt.Errorf("asset with ID %s not found", assetID)
+		}
+		if asset.IsTradeable {
+			assetForRefresh = asset
 		}
 
 		// 3. --- Find Existing Portfolio Asset ---
@@ -545,6 +642,8 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 	if err != nil {
 		return nil, err
 	}
+
+	s.triggerAssetPriceRefresh(assetForRefresh)
 
 	return updatedPortfolioAsset, nil
 }
@@ -822,106 +921,55 @@ func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID strin
 	return portfolios, nil
 }
 
-// GetPortfolioAnalytics calculates comprehensive analytics for a portfolio
-func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID string) (PortfolioAnalytics, error) {
+// GetPortfolioAnalytics calculates comprehensive analytics for a portfolio using display currency.
+// It uses PortfolioValuationService to calculate native and display values with proper FX conversion.
+func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID string, displayCurrency model.Currency) (*PortfolioValuation, error) {
 	// Input validation
 	if err := validatePortfolioID(portfolioID); err != nil {
-		return PortfolioAnalytics{}, err
+		return nil, err
 	}
 
 	// 1. --- Verify Portfolio Exists ---
-	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	_, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
-			return PortfolioAnalytics{}, ErrPortfolioNotFound
+			return nil, ErrPortfolioNotFound
 		}
-		return PortfolioAnalytics{}, fmt.Errorf("failed to retrieve portfolio: %w", err)
+		return nil, fmt.Errorf("failed to retrieve portfolio: %w", err)
 	}
 
-	// 2. --- Get Portfolio Assets ---
-	portfolioAssets, err := s.uow.PortfolioAsset().FindByPortfolioID(ctx, portfolioID)
+	// 2. --- Get Portfolio Positions ---
+	positions, err := s.uow.Position().GetPortfolioPositions(ctx, portfolioID)
 	if err != nil {
-		return PortfolioAnalytics{}, fmt.Errorf("failed to retrieve portfolio assets: %w", err)
+		return nil, fmt.Errorf("failed to retrieve portfolio positions: %w", err)
 	}
 
-	// 3. --- Calculate Basic Metrics ---
-	analytics := PortfolioAnalytics{
-		PortfolioID: portfolio.ID,
+	if len(positions) == 0 {
+		// Empty portfolio - return empty valuation
+		return &PortfolioValuation{
+			TotalDisplayValue:  0,
+			TotalNativeValue:   0,
+			IsStale:            false,
+			FXState:            "EMPTY",
+			CoveredValueRatio:  decimal.Zero,
+			PositionValuations: []PositionValuation{},
+			DisplayCurrency:    displayCurrency,
+		}, nil
 	}
 
-	if len(portfolioAssets) == 0 {
-		// Empty portfolio
-		return analytics, nil
+	// 3. --- Calculate portfolio valuation using PortfolioValuationService ---
+	valuation, err := s.valuationService.CalculatePortfolioValue(ctx, positions, displayCurrency)
+	if err != nil {
+		return nil, fmt.Errorf("failed to calculate portfolio valuation: %w", err)
 	}
 
-	// 4. --- Calculate Total Values ---
-	var totalValue, totalCost float64
-	assetTypeMap := make(map[string]*AssetAllocation)
-
-	for _, portfolioAsset := range portfolioAssets {
-		// Fetch current market price
-		var price float64
-		latestPrice, err := s.uow.AssetPrice().GetLatestPrice(ctx, portfolioAsset.AssetID)
-		if err == nil && latestPrice != nil {
-			price = latestPrice.Price.InexactFloat64()
-		} else if portfolioAsset.AveragePurchasePrice > 0 {
-			price = portfolioAsset.AveragePurchasePrice
-		}
-
-		currentValue := portfolioAsset.Quantity * price
-		cost := portfolioAsset.Quantity * portfolioAsset.AveragePurchasePrice
-
-		totalValue += currentValue
-		totalCost += cost
-
-		// Get asset details for type classification
-		assetType := "UNKNOWN"
-		asset, err := s.uow.Asset().GetByID(ctx, portfolioAsset.AssetID)
-		if err == nil && asset != nil {
-			assetType = string(asset.Type)
-		}
-
-		if allocation, exists := assetTypeMap[assetType]; exists {
-			allocation.Value += currentValue
-			allocation.Count++
-		} else {
-			assetTypeMap[assetType] = &AssetAllocation{
-				AssetType: assetType,
-				Value:     currentValue,
-				Count:     1,
-			}
-		}
-	}
-
-	// 5. --- Calculate Gain/Loss ---
-	analytics.TotalValue = totalValue
-	analytics.TotalCost = totalCost
-	analytics.TotalGainLoss = totalValue - totalCost
-	if totalCost > 0 {
-		analytics.TotalGainLossPercent = (analytics.TotalGainLoss / totalCost) * 100
-	}
-
-	// 6. --- Calculate Asset Allocation Percentages ---
-	for _, allocation := range assetTypeMap {
-		if totalValue > 0 {
-			allocation.Percentage = (allocation.Value / totalValue) * 100
-		}
-		analytics.AssetAllocation = append(analytics.AssetAllocation, *allocation)
-	}
-
-	// 7. --- Calculate Risk Metrics ---
-	analytics.RiskMetrics = s.calculateRiskMetrics(ctx, portfolio.ID, portfolioAssets, totalValue)
-
-	// 8. --- Generate Performance History ---
-	analytics.PerformanceHistory = s.generatePerformanceHistory(ctx, portfolio.ID, totalValue)
-
-	return analytics, nil
+	return valuation, nil
 }
 
-// calculateRiskMetrics calculates risk-related metrics for the portfolio
-func (s *PortfolioService) calculateRiskMetrics(ctx context.Context, portfolioID string, portfolioAssets []model.PortfolioAsset, totalValue float64) RiskMetrics {
+// calculateRiskMetrics calculates risk-related metrics for the portfolio using position data.
+func (s *PortfolioService) calculateRiskMetrics(ctx context.Context, portfolioID string, positions []model.Position, totalValue model.Money) RiskMetrics {
 	// Calculate diversification score based on number of assets and allocation spread
-	diversification := s.calculateDiversificationScore(portfolioAssets, totalValue)
+	diversification := s.calculateDiversificationScoreFromPositions(ctx, positions, totalValue)
 
 	// Get actual risk metrics from repository if possible
 	volatility := 0.0
@@ -938,9 +986,6 @@ func (s *PortfolioService) calculateRiskMetrics(ctx context.Context, portfolioID
 	if m, err := s.uow.Performance().CalculateMaxDrawdown(ctx, portfolioID, startDate, endDate); err == nil {
 		maxDrawdown, _ = m.Float64()
 	}
-	// Approximate Sharpe Ratio. Requires performance service ideally, or we do a simple fallback.
-	// For simplicity, we fallback to 0.0 if not computed elsewhere, or rely on the PerformanceService.
-	// Since PortfolioService focuses on standard analytics, we retrieve via PerformanceRepo if available.
 
 	return RiskMetrics{
 		Volatility:      volatility,
@@ -950,17 +995,29 @@ func (s *PortfolioService) calculateRiskMetrics(ctx context.Context, portfolioID
 	}
 }
 
-// calculateDiversificationScore calculates a diversification score (0-100)
-func (s *PortfolioService) calculateDiversificationScore(portfolioAssets []model.PortfolioAsset, totalValue float64) float64 {
-	if len(portfolioAssets) == 0 || totalValue == 0 {
+// calculateDiversificationScoreFromPositions calculates a diversification score (0-100) using positions.
+func (s *PortfolioService) calculateDiversificationScoreFromPositions(ctx context.Context, positions []model.Position, totalValue model.Money) float64 {
+	if len(positions) == 0 || totalValue == 0 {
 		return 0
 	}
 
 	// Calculate Herfindahl-Hirschman Index (HHI) for concentration
+	// using each position's display value
 	var hhi float64
-	for _, asset := range portfolioAssets {
-		assetValue := asset.Quantity * asset.AveragePurchasePrice
-		marketShare := assetValue / totalValue
+	totalValueFloat := float64(totalValue) / 100.0 // Convert from cents to dollars
+
+	for _, pos := range positions {
+		// Get current price for this position's asset
+		latestPrice, err := s.uow.AssetPrice().GetLatestPrice(ctx, pos.AssetID)
+		if err != nil {
+			continue
+		}
+
+		// Calculate position value: quantity * price (in native currency)
+		positionValueDecimal := pos.Quantity.Mul(latestPrice.Price)
+		positionValue := float64(positionValueDecimal.IntPart()) / 100.0 // Convert to dollars
+
+		marketShare := positionValue / totalValueFloat
 		hhi += marketShare * marketShare
 	}
 
@@ -968,7 +1025,7 @@ func (s *PortfolioService) calculateDiversificationScore(portfolioAssets []model
 	// HHI ranges from 1/n to 1, where n is number of assets
 	// We convert this to a 0-100 scale where 100 is perfectly diversified
 	maxHHI := 1.0
-	minHHI := 1.0 / float64(len(portfolioAssets))
+	minHHI := 1.0 / float64(len(positions))
 
 	if maxHHI == minHHI {
 		return 100 // Single asset case
@@ -1037,16 +1094,77 @@ func (s *PortfolioService) GetPerformanceVsBenchmark(ctx context.Context, portfo
 	}, nil
 }
 
-// GetAssetAllocation calculates the asset allocation via PortfolioAnalytics
+// GetAssetAllocation calculates asset allocation for a portfolio.
+// It fetches positions directly and calculates allocation based on display values.
 func (s *PortfolioService) GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error) {
-	analytics, err := s.GetPortfolioAnalytics(ctx, portfolioID)
+	// Get portfolio positions
+	positions, err := s.uow.Position().GetPortfolioPositions(ctx, portfolioID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get portfolio positions: %w", err)
 	}
+
+	if len(positions) == 0 {
+		return []AssetAllocation{}, nil
+	}
+
+	// Calculate total portfolio value to determine allocation percentages
+	var totalValue model.Money
+	positionValues := make(map[string]model.Money)
+
+	for _, pos := range positions {
+		latestPrice, err := s.uow.AssetPrice().GetLatestPrice(ctx, pos.AssetID)
+		if err != nil {
+			continue
+		}
+
+		// Calculate position value: quantity * price
+		positionValueDecimal := pos.Quantity.Mul(latestPrice.Price)
+		positionValue := model.Money(positionValueDecimal.IntPart())
+		positionValues[pos.AssetID] = positionValue
+		totalValue += positionValue
+	}
+
+	// Group by asset type and calculate allocation
+	typeMap := make(map[string]*AssetAllocation)
+
+	for _, pos := range positions {
+		positionValue, ok := positionValues[pos.AssetID]
+		if !ok {
+			continue
+		}
+
+		// Get asset type
+		asset, err := s.uow.Asset().GetByID(ctx, pos.AssetID)
+		if err != nil {
+			continue
+		}
+
+		assetType := string(asset.Type)
+		valueFloat := float64(positionValue) / 100.0
+
+		if alloc, exists := typeMap[assetType]; exists {
+			alloc.Value += valueFloat
+			alloc.Count++
+		} else {
+			typeMap[assetType] = &AssetAllocation{
+				AssetType: assetType,
+				Value:     valueFloat,
+				Count:     1,
+			}
+		}
+	}
+
+	// Calculate percentages
 	var allocations []AssetAllocation
-	for _, alloc := range analytics.AssetAllocation {
-		allocations = append(allocations, alloc)
+	totalValueFloat := float64(totalValue) / 100.0
+
+	for _, alloc := range typeMap {
+		if totalValueFloat > 0 {
+			alloc.Percentage = (alloc.Value / totalValueFloat) * 100
+		}
+		allocations = append(allocations, *alloc)
 	}
+
 	return allocations, nil
 }
 
@@ -1088,4 +1206,42 @@ func (s *PortfolioService) GetPortfolioHistory(ctx context.Context, portfolioID 
 		Period:      period,
 		DataPoints:  points,
 	}, nil
+}
+
+func (s *PortfolioService) resolveAssetQuoteCurrency(ctx context.Context, uow repository.IUnitOfWork, asset *model.Asset) (model.Currency, error) {
+	if asset == nil {
+		return "", errors.New("asset is required")
+	}
+
+	if asset.InstrumentID != nil {
+		instrument, err := uow.Instrument().GetByID(ctx, *asset.InstrumentID)
+		if err == nil && instrument != nil {
+			if instrument.QuoteCurrency != nil {
+				currency := model.Currency(strings.ToUpper(strings.TrimSpace(*instrument.QuoteCurrency)))
+				if currency.IsValid() {
+					return currency, nil
+				}
+			}
+			if instrument.Currency != nil {
+				currency := model.Currency(strings.ToUpper(strings.TrimSpace(*instrument.Currency)))
+				if currency.IsValid() {
+					return currency, nil
+				}
+			}
+		}
+	}
+
+	if len(asset.Metadata) > 0 {
+		var metadata map[string]interface{}
+		if err := json.Unmarshal(asset.Metadata, &metadata); err == nil {
+			if value, ok := metadata["currency"].(string); ok {
+				currency := model.Currency(strings.ToUpper(strings.TrimSpace(value)))
+				if currency.IsValid() {
+					return currency, nil
+				}
+			}
+		}
+	}
+
+	return "", fmt.Errorf("unable to resolve quote currency for asset %s", asset.ID)
 }

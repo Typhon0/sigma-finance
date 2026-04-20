@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import type { GetPortfoliosWithAnalyticsQuery } from "@/gql/graphql";
+import { useCurrency } from "@/hooks/use-currency";
 import { usePortfolioOperations } from "@/hooks/use-portfolio-management";
 import { EditPortfolioDialog } from "./edit-portfolio-dialog";
 
@@ -117,15 +118,7 @@ export function PortfolioCard({
 	const totalGainLossPercent = portfolio.analytics?.totalGainLossPercent || 0;
 	const assetCount = portfolio.assets?.length || 0;
 
-	// Format currency values
-	const formatCurrency = (value: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(value);
-	};
+	const { formatCurrency } = useCurrency();
 
 	// Format percentage
 	const formatPercentage = (value: number) => {

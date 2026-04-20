@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import type {
 	EChartsMouseEventParam,
 	EChartsTooltipParam,
@@ -120,14 +121,7 @@ export function AccountDetail({
 	const totalProfitLossPercent =
 		totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 
-	const formatCurrency = (amount: number) => {
-		return amount.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const formatNumber = (num: number, decimals: number = 2) => {
 		return num.toLocaleString("en-US", {

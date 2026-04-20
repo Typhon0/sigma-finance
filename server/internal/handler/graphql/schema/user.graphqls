@@ -8,6 +8,7 @@ type User {
     updatedAt: Time!
     portfolios: [Portfolio!]!
     watchlists: [Watchlist!]!
+    displayCurrency: String!
 }
 
 # --- Inputs & Enums for User ---
@@ -22,6 +23,10 @@ input UpdateUserInput {
     username: String
     email: String
     password: String
+}
+
+input UpdateUserDisplayCurrencyInput {
+    displayCurrency: String!
 }
 
 input UserFilter {

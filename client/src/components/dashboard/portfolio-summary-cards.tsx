@@ -15,7 +15,8 @@ import {
 	Skeleton,
 } from "@/components/ui";
 import type { Portfolio } from "@/gql/graphql";
-import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
+import { useCurrency } from "@/hooks/use-currency";
+import { cn, formatPercentage } from "@/lib/utils";
 import type { PortfolioMetrics } from "@/lib/utils/portfolio-calculations";
 
 interface PortfolioSummaryCardsProps {
@@ -32,6 +33,7 @@ export function PortfolioSummaryCards({
 	onPortfolioDelete,
 }: PortfolioSummaryCardsProps) {
 	const navigate = useNavigate();
+	const { formatCurrency } = useCurrency();
 	const { handleErrorWithRetry } = useComponentErrorHandler(
 		"PortfolioSummaryCards",
 		"component",

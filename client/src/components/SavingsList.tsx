@@ -19,6 +19,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
 import { Badge } from "./ui/badge";
@@ -96,14 +97,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			}));
 	}, [assets]);
 
-	const formatCurrency = (amount: number) => {
-		return amount.toLocaleString("fr-FR", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency, currencySymbol } = useCurrency();
 
 	// Calculate metrics
 	const totalBalance = savings.reduce((sum, s) => sum + s.balance, 0);
@@ -251,7 +245,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			textStyle: { color: "#fff" },
 			formatter: (params: any) => {
 				const data = params[0];
-				return `${data.name}<br/>Value: €${data.value.toLocaleString("fr-FR")}`;
+				return `${data.name}<br/>Value: ${currencySymbol}${data.value.toLocaleString("en-US")}`;
 			},
 		},
 		grid: { left: 60, right: 20, top: 60, bottom: 40 },
@@ -263,7 +257,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `€${(value / 1000).toFixed(0)}K`,
+				formatter: (value: number) => `${currencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		toolbox: {
@@ -316,7 +310,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
 			formatter: (params: any) => {
-				return `${params.name}<br/>€${params.value.toLocaleString("fr-FR")}<br/>${params.percent}%`;
+				return `${params.name}<br/>${currencySymbol}${params.value.toLocaleString("en-US")}<br/>${params.percent}%`;
 			},
 		},
 		legend: {
@@ -364,7 +358,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			textStyle: { color: "#fff" },
 			formatter: (params: any) => {
 				const percent = ((params.value / totalBalance) * 100).toFixed(2);
-				return `${params.name}<br/>€${params.value.toLocaleString("fr-FR")}<br/>${percent}%`;
+				return `${params.name}<br/>${currencySymbol}${params.value.toLocaleString("en-US")}<br/>${percent}%`;
 			},
 		},
 		series: [
@@ -384,7 +378,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 					show: true,
 					formatter: (params: any) => {
 						const percent = ((params.value / totalBalance) * 100).toFixed(1);
-						return `{name|${params.name}}\n{value|€${(params.value / 1000).toFixed(1)}K}\n{percent|${percent}%}`;
+						return `{name|${params.name}}\n{value|${currencySymbol}${(params.value / 1000).toFixed(1)}K}\n{percent|${percent}%}`;
 					},
 					rich: {
 						name: {
@@ -425,7 +419,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			axisPointer: { type: "shadow" },
 			formatter: (params: any) => {
 				const data = params[0];
-				return `${data.name}<br/>€${data.value.toLocaleString("fr-FR")}`;
+				return `${data.name}<br/>${currencySymbol}${data.value.toLocaleString("en-US")}`;
 			},
 		},
 		grid: { left: 60, right: 20, top: 20, bottom: 60 },
@@ -437,7 +431,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `€${(value / 1000).toFixed(0)}K`,
+				formatter: (value: number) => `${currencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		series: [
@@ -493,7 +487,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			textStyle: { color: "#fff" },
 			formatter: (params: any) => {
 				const data = params[0];
-				return `${data.name}<br/>Balance: €${Math.round(data.value).toLocaleString("fr-FR")}`;
+				return `${data.name}<br/>Balance: ${currencySymbol}${Math.round(data.value).toLocaleString("en-US")}`;
 			},
 		},
 		grid: { left: 60, right: 20, top: 20, bottom: 40 },
@@ -505,7 +499,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `€${(value / 1000).toFixed(0)}K`,
+				formatter: (value: number) => `${currencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		series: [

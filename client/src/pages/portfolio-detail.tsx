@@ -50,6 +50,7 @@ import {
 	SidebarTrigger,
 } from "@/components/ui/sidebar";
 import type { PortfolioAsset } from "@/gql/graphql";
+import { useCurrency } from "@/hooks/use-currency";
 import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
 
@@ -184,6 +185,8 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 		refetch();
 	};
 
+	const { formatCurrency } = useCurrency();
+
 	// Early returns are handled in the parent component
 	if (loading || error || isUnauthorized || !portfolio) {
 		return null;
@@ -196,13 +199,6 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 		totalGainLoss: 12500,
 		totalGainLossPercent: 11.11,
 		assetCount: portfolio.assets?.length || 0,
-	};
-
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount);
 	};
 
 	const formatPercentage = (percent: number) => {

@@ -40,9 +40,9 @@ type CostBasisCalculation struct {
 type TaxLotSummary struct {
 	PositionID      string                `json:"position_id"`
 	TransactionID   string                `json:"transaction_id"`
-	TransactionDate time.Time             `json:"transaction_date"`
+	ExecutedAt      time.Time             `json:"executed_at"`
 	Quantity        decimal.Decimal       `json:"quantity"`
-	PricePerUnit    decimal.Decimal       `json:"price_per_unit"`
+	UnitPriceAmount decimal.Decimal       `json:"unit_price_amount"`
 	TransactionType model.TransactionType `json:"transaction_type"`
 	IsShortTerm     bool                  `json:"is_short_term"`
 	DaysHeld        int                   `json:"days_held"`
@@ -95,7 +95,6 @@ func NewTransactionRepository(db bun.IDB) *TransactionRepository {
 	}
 }
 
-
 // FindWithFilters retrieves transactions with multiple filter criteria
 func (r *TransactionRepository) FindWithFilters(ctx context.Context, filter TransactionFilter) ([]model.Transaction, error) {
 	query := r.db.NewSelect().Model((*model.Transaction)(nil))
@@ -104,7 +103,7 @@ func (r *TransactionRepository) FindWithFilters(ctx context.Context, filter Tran
 	query = r.applyTransactionFilters(query, filter)
 
 	// Apply ordering - by transaction date descending for most recent first
-	query = query.Order("transaction_date DESC").Order("created_at DESC")
+	query = query.Order("executed_at DESC").Order("created_at DESC")
 
 	// Apply pagination
 	if filter.Limit != nil && *filter.Limit > 0 {
@@ -151,11 +150,11 @@ func (r *TransactionRepository) applyTransactionFilters(query *bun.SelectQuery, 
 	}
 
 	if filter.DateFrom != nil {
-		query = query.Where("transaction_date >= ?", *filter.DateFrom)
+		query = query.Where("executed_at >= ?", *filter.DateFrom)
 	}
 
 	if filter.DateTo != nil {
-		query = query.Where("transaction_date <= ?", *filter.DateTo)
+		query = query.Where("executed_at <= ?", *filter.DateTo)
 	}
 
 	if filter.MinAmount != nil {
@@ -193,12 +192,12 @@ func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Contex
 
 	err := r.db.NewSelect().
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN quantity WHEN type IN ('SELL', 'TRANSFER_OUT') THEN -quantity ELSE 0 END), 0) as total_quantity").
-		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') AND quantity IS NOT NULL AND price_per_unit IS NOT NULL THEN quantity * price_per_unit ELSE 0 END), 0) as weighted_cost_sum").
+		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') AND quantity IS NOT NULL AND unit_price_amount IS NOT NULL THEN quantity * unit_price_amount ELSE 0 END), 0) as weighted_cost_sum").
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN ABS(amount) ELSE 0 END), 0) as total_cost_basis").
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('SELL', 'TRANSFER_OUT') THEN amount ELSE 0 END), 0) as realized_gain_loss").
 		ColumnExpr("COUNT(*) as transaction_count").
-		ColumnExpr("MIN(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN transaction_date END) as first_purchase_date").
-		ColumnExpr("MAX(transaction_date) as last_transaction_date").
+		ColumnExpr("MIN(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN executed_at END) as first_purchase_date").
+		ColumnExpr("MAX(executed_at) as last_transaction_date").
 		Model((*model.Transaction)(nil)).
 		Where("position_id = ?", positionID).
 		Scan(ctx, &result)
@@ -230,9 +229,9 @@ func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Contex
 func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, positionID string) ([]TaxLotSummary, error) {
 	var taxLots []struct {
 		TransactionID   string                `bun:"id"`
-		TransactionDate time.Time             `bun:"transaction_date"`
+		ExecutedAt      time.Time             `bun:"executed_at"`
 		Quantity        decimal.Decimal       `bun:"quantity"`
-		PricePerUnit    decimal.Decimal       `bun:"price_per_unit"`
+		UnitPriceAmount decimal.Decimal       `bun:"unit_price_amount"`
 		TransactionType model.TransactionType `bun:"type"`
 	}
 
@@ -240,8 +239,8 @@ func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, posit
 		Model(&taxLots).
 		Where("position_id = ?", positionID).
 		Where("type IN ('BUY', 'SELL', 'TRANSFER_IN', 'TRANSFER_OUT')").
-		Where("quantity IS NOT NULL AND price_per_unit IS NOT NULL").
-		Order("transaction_date ASC").
+		Where("quantity IS NOT NULL AND unit_price_amount IS NOT NULL").
+		Order("executed_at ASC").
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -252,15 +251,15 @@ func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, posit
 	now := time.Now()
 
 	for i, lot := range taxLots {
-		daysHeld := int(now.Sub(lot.TransactionDate).Hours() / 24)
+		daysHeld := int(now.Sub(lot.ExecutedAt).Hours() / 24)
 		isShortTerm := daysHeld <= 365 // Short-term if held for 1 year or less
 
 		result[i] = TaxLotSummary{
 			PositionID:      positionID,
 			TransactionID:   lot.TransactionID,
-			TransactionDate: lot.TransactionDate,
+			ExecutedAt:      lot.ExecutedAt,
 			Quantity:        lot.Quantity,
-			PricePerUnit:    lot.PricePerUnit,
+			UnitPriceAmount: lot.UnitPriceAmount,
 			TransactionType: lot.TransactionType,
 			IsShortTerm:     isShortTerm,
 			DaysHeld:        daysHeld,
@@ -283,7 +282,7 @@ func (r *TransactionRepository) CalculateRealizedGainsForUser(ctx context.Contex
 		Model((*model.Transaction)(nil)).
 		Where("user_id = ?", userID).
 		Where("type = 'SELL'").
-		Where("transaction_date >= ? AND transaction_date <= ?", dateFrom, dateTo).
+		Where("executed_at >= ? AND executed_at <= ?", dateFrom, dateTo).
 		Scan(ctx, &result)
 	if err != nil {
 		return nil, err
@@ -317,10 +316,10 @@ func (r *TransactionRepository) GetTransactionSummaryByType(ctx context.Context,
 		ColumnExpr("COUNT(*) as count").
 		ColumnExpr("SUM(ABS(amount)) as total_amount").
 		ColumnExpr("COALESCE(SUM(quantity), 0) as total_quantity").
-		ColumnExpr("COALESCE(AVG(price_per_unit), 0) as average_price").
+		ColumnExpr("COALESCE(AVG(unit_price_amount), 0) as average_price").
 		Model((*model.Transaction)(nil)).
 		Where("user_id = ?", userID).
-		Where("transaction_date >= ? AND transaction_date <= ?", dateFrom, dateTo).
+		Where("executed_at >= ? AND executed_at <= ?", dateFrom, dateTo).
 		Group("type").
 		Order("type").
 		Scan(ctx, &summaries)
@@ -360,8 +359,8 @@ func (r *TransactionRepository) GetCashFlowTransactions(ctx context.Context, use
 		Model(&transactions).
 		Where("user_id = ?", userID).
 		Where("type IN (?)", bun.In(cashFlowTypes)).
-		Where("transaction_date >= ? AND transaction_date <= ?", dateFrom, dateTo).
-		Order("transaction_date DESC").
+		Where("executed_at >= ? AND executed_at <= ?", dateFrom, dateTo).
+		Order("executed_at DESC").
 		Scan(ctx)
 
 	return transactions, err
@@ -409,10 +408,12 @@ func (r *TransactionRepository) UpdateBatch(ctx context.Context, transactions []
 		Set("type = EXCLUDED.type").
 		Set("amount = EXCLUDED.amount").
 		Set("quantity = EXCLUDED.quantity").
-		Set("price_per_unit = EXCLUDED.price_per_unit").
-		Set("fee = EXCLUDED.fee").
+		Set("unit_price_amount = EXCLUDED.unit_price_amount").
+		Set("unit_price_currency = EXCLUDED.unit_price_currency").
+		Set("fees_amount = EXCLUDED.fees_amount").
+		Set("fees_currency = EXCLUDED.fees_currency").
 		Set("notes = EXCLUDED.notes").
-		Set("transaction_date = EXCLUDED.transaction_date").
+		Set("executed_at = EXCLUDED.executed_at").
 		Exec(ctx)
 
 	return err

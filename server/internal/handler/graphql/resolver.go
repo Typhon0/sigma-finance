@@ -5,7 +5,10 @@
 package graphql
 
 import (
+	"context"
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"sync"
@@ -34,4 +37,18 @@ type Resolver struct {
 	PortfolioSubscribers   map[string][]chan *gqlModel.PortfolioUpdatePayload
 	TransactionSubscribers map[string][]chan *gqlModel.TransactionUpdatePayload
 	BroadcasterMu          *sync.Mutex
+}
+
+func (r *Resolver) getDisplayCurrencyFromContext(ctx context.Context) (model.Currency, error) {
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return model.CurrencyUSD, err
+	}
+
+	// Fetch full user from db to get display currency
+	fullUser, err := r.UserService.GetByID(ctx, user.ID)
+	if err != nil {
+		return model.CurrencyUSD, err
+	}
+	return fullUser.DisplayCurrency, nil
 }

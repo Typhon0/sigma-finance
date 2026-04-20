@@ -122,10 +122,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					currentPrice: a.asset?.currentValue ?? 0,
 					purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
 					quantity: a.quantity ?? 1,
-					currentValue:
-						a.currentValue ??
-						(a.quantity ?? 1) *
-							(a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0),
+					currentValue: a.currentValue ?? 0,
 					sector: a.asset?.sector ?? null,
 					exchange: a.asset?.exchange ?? null,
 					dayChange: a.dayChange ?? null,
@@ -153,10 +150,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				currentPrice: a.asset?.currentValue ?? 0,
 				purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
 				quantity: a.quantity ?? 1,
-				currentValue:
-					a.currentValue ??
-					(a.quantity ?? 1) *
-						(a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0),
+				currentValue: a.currentValue ?? 0,
 				sector: a.asset?.sector ?? null,
 				exchange: a.asset?.exchange ?? null,
 				dayChange: a.dayChange ?? null,
@@ -174,10 +168,10 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			id: t.id,
 			assetId: t.asset?.id ?? "",
 			type: t.transactionType?.toLowerCase() ?? "buy",
-			date: t.transactionDate,
-			total: (t.quantity ?? 0) * (t.pricePerUnit ?? 0),
+			date: t.executedAt,
+			total: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0),
 			quantity: t.quantity ?? 0,
-			pricePerUnit: t.pricePerUnit ?? 0,
+			pricePerUnit: t.unitPriceAmount ?? 0,
 			notes: t.notes,
 			portfolioId: t.portfolio?.id ?? currentPortfolio,
 		}));

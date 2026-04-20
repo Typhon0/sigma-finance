@@ -17,6 +17,7 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { AddWatchForm } from "./AddWatchForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
@@ -126,14 +127,7 @@ export function CollectiblesList({
 	const gainPercent =
 		totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
 
-	const formatCurrency = (value: number) => {
-		return new Intl.NumberFormat("fr-FR", {
-			style: "currency",
-			currency: "EUR",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		}).format(value);
-	};
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const getTypeIcon = (type: string) => {
 		const icons: Record<string, React.ComponentType<{ className?: string }>> = {

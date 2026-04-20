@@ -62,28 +62,28 @@ func TestServiceValidation(t *testing.T) {
 	t.Run("TransactionService request validation", func(t *testing.T) {
 		// Test that transaction request structures are valid
 		buyReq := BuyTransactionRequest{
-			UserID:       uuid.NewString(),
-			PortfolioID:  uuid.NewString(),
-			AssetID:      uuid.NewString(),
-			Quantity:     decimal.NewFromFloat(100),
-			PricePerUnit: decimal.NewFromFloat(50),
+			UserID:          uuid.NewString(),
+			PortfolioID:     uuid.NewString(),
+			AssetID:         uuid.NewString(),
+			Quantity:        decimal.NewFromFloat(100),
+			UnitPriceAmount: decimal.NewFromFloat(50),
 		}
 
 		// Basic validation
 		assert.NotEqual(t, "", buyReq.UserID)
 		assert.True(t, buyReq.Quantity.IsPositive())
-		assert.True(t, buyReq.PricePerUnit.IsPositive())
+		assert.True(t, buyReq.UnitPriceAmount.IsPositive())
 
 		sellReq := SellTransactionRequest{
-			UserID:       uuid.NewString(),
-			PositionID:   uuid.NewString(),
-			Quantity:     decimal.NewFromFloat(50),
-			PricePerUnit: decimal.NewFromFloat(75),
+			UserID:          uuid.NewString(),
+			PositionID:      uuid.NewString(),
+			Quantity:        decimal.NewFromFloat(50),
+			UnitPriceAmount: decimal.NewFromFloat(75),
 		}
 
 		assert.NotEqual(t, "", sellReq.UserID)
 		assert.True(t, sellReq.Quantity.IsPositive())
-		assert.True(t, sellReq.PricePerUnit.IsPositive())
+		assert.True(t, sellReq.UnitPriceAmount.IsPositive())
 	})
 
 	t.Run("Service interfaces are properly defined", func(t *testing.T) {

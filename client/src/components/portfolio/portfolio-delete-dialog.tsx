@@ -10,6 +10,7 @@ import {
 	AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Portfolio } from "@/gql/graphql";
+import { useCurrency } from "@/hooks/use-currency";
 
 interface PortfolioDeleteDialogProps {
 	open: boolean;
@@ -35,12 +36,7 @@ export function PortfolioDeleteDialog({
 
 	// Calculate total value for display
 	const totalValue = portfolio.analytics?.totalValue || 0;
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount);
-	};
+	const { formatCurrency } = useCurrency();
 
 	return (
 		<AlertDialog open={open} onOpenChange={onOpenChange}>

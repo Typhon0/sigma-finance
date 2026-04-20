@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +14,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
@@ -30,7 +33,7 @@ type InstrumentDiscoveryService interface {
 
 type InstrumentCatalogService interface {
 	GetInstrumentDetails(ctx context.Context, instrumentID string) (*InstrumentDetails, error)
-	AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, userID *string) (*model.PortfolioAsset, error)
+	AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, userID *string) (*model.PortfolioAsset, error)
 	ListManualInstruments(ctx context.Context, filter ManualInstrumentFilter, userID *string) (*ManualInstrumentPage, error)
 	UpdateManualInstrument(ctx context.Context, instrumentID string, input UpdateManualInstrumentInput, userID *string) (*InstrumentDetails, error)
 	ArchiveManualInstrument(ctx context.Context, instrumentID string, userID *string) (*InstrumentDetails, error)
@@ -194,6 +197,7 @@ type instrumentService struct {
 	financeDatabaseSyncHistoryRepo repository.IFinanceDatabaseSyncHistoryRepository
 	equityDiscoveryClient          InstrumentDiscoveryClient
 	cryptoDiscoveryClient          InstrumentDiscoveryClient
+	marketData                     MarketDataService
 	financeDatabaseSyncMu          sync.Mutex
 	financeDatabaseSyncRunning     bool
 }
@@ -202,7 +206,13 @@ func NewInstrumentService(
 	uow repository.IUnitOfWork,
 	equityDiscoveryClient InstrumentDiscoveryClient,
 	cryptoDiscoveryClient InstrumentDiscoveryClient,
+	marketData ...MarketDataService,
 ) *instrumentService {
+	var md MarketDataService
+	if len(marketData) > 0 {
+		md = marketData[0]
+	}
+
 	return &instrumentService{
 		uow:                            uow,
 		instrumentRepo:                 uow.Instrument(),
@@ -213,6 +223,7 @@ func NewInstrumentService(
 		financeDatabaseSyncHistoryRepo: uow.FinanceDatabaseSyncHistory(),
 		equityDiscoveryClient:          equityDiscoveryClient,
 		cryptoDiscoveryClient:          cryptoDiscoveryClient,
+		marketData:                     md,
 	}
 }
 
@@ -350,7 +361,7 @@ func (s *instrumentService) PersistDiscoveredInstrument(ctx context.Context, inp
 	return s.persistInstrument(ctx, source, userID)
 }
 
-func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, userID *string) (*model.PortfolioAsset, error) {
+func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, userID *string) (*model.PortfolioAsset, error) {
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
 	}
@@ -365,10 +376,22 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 	if err := s.ensureManualInstrumentOwnership(ctx, instrument, userID, false); err != nil {
 		return nil, err
 	}
+	quoteCurrency, err := resolveInstrumentQuoteCurrency(instrument)
+	if err != nil {
+		return nil, err
+	}
+	resolvedUnitPriceCurrency := model.Currency(strings.ToUpper(strings.TrimSpace(unitPriceCurrency)))
+	if resolvedUnitPriceCurrency == "" {
+		resolvedUnitPriceCurrency = quoteCurrency
+	}
+	if !resolvedUnitPriceCurrency.IsValid() {
+		return nil, fmt.Errorf("invalid unit price currency: %s", unitPriceCurrency)
+	}
 
 	var created *model.PortfolioAsset
 	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
+		portfolio, err := uow.Portfolio().GetByID(ctx, portfolioID)
+		if err != nil {
 			return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 		}
 
@@ -390,12 +413,67 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 			InstrumentID:         &instrumentIDCopy,
 			Quantity:             quantity,
 			AveragePurchasePrice: averagePurchasePrice,
+			QuoteCurrency:        quoteCurrency,
 		}
 		createdHolding, err := uow.PortfolioAsset().Create(ctx, &portfolioAsset)
 		if err != nil {
 			return fmt.Errorf("failed to add instrument to portfolio: %w", err)
 		}
 		created = createdHolding
+
+		var positionID string
+		if existingPosition, err := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, asset.ID); err == nil {
+			positionID = existingPosition.ID
+		} else if err != nil {
+			if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
+				return fmt.Errorf("failed to check existing position: %w", err)
+			}
+
+			position := &model.Position{
+				PortfolioID:         portfolioID,
+				AssetID:             asset.ID,
+				Quantity:            decimal.NewFromFloat(quantity),
+				OwnershipPercentage: decimal.NewFromInt(100),
+				QuoteCurrency:       quoteCurrency,
+			}
+			if averagePurchasePrice > 0 {
+				avgCost := decimal.NewFromFloat(averagePurchasePrice)
+				position.AverageCostBasis = &avgCost
+				totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+				position.TotalCostBasis = &totalCost
+			}
+			createdPosition, createErr := uow.Position().Create(ctx, position)
+			if createErr != nil {
+				return fmt.Errorf("failed to create position snapshot: %w", createErr)
+			}
+			positionID = createdPosition.ID
+		}
+
+		if positionID != "" {
+			transactionAmount := model.Money(decimal.NewFromFloat(quantity).Mul(decimal.NewFromFloat(averagePurchasePrice)).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+			unitPriceAmount := decimal.NewFromFloat(averagePurchasePrice)
+			transactionQuantity := decimal.NewFromFloat(quantity)
+			positionIDCopy := positionID
+			transactionUserID := portfolio.UserID
+			if userID != nil && strings.TrimSpace(*userID) != "" {
+				transactionUserID = strings.TrimSpace(*userID)
+			}
+			transaction := &model.Transaction{
+				UserID:            transactionUserID,
+				PositionID:        &positionIDCopy,
+				Type:              model.TransactionTypeBuy,
+				Amount:            transactionAmount,
+				Quantity:          &transactionQuantity,
+				UnitPriceAmount:   &unitPriceAmount,
+				UnitPriceCurrency: resolvedUnitPriceCurrency,
+				FeesAmount:        0,
+				FeesCurrency:      resolvedUnitPriceCurrency,
+				ExecutedAt:        time.Now(),
+			}
+			if _, txErr := uow.Transaction().Create(ctx, transaction); txErr != nil {
+				return fmt.Errorf("failed to create initial transaction: %w", txErr)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -405,6 +483,24 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 	now := time.Now()
 	instrument.LastUsedAt = &now
 	_ = s.instrumentRepo.Update(ctx, instrument)
+
+	if s.marketData != nil && created != nil {
+		assetID := created.AssetID
+		go func() {
+			updateCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+
+			parsedAssetID, parseErr := uuid.Parse(assetID)
+			if parseErr != nil {
+				fmt.Printf("[AddInstrumentToPortfolio] async price refresh skipped for asset %s: invalid uuid: %v\n", assetID, parseErr)
+				return
+			}
+
+			if _, refreshErr := s.marketData.UpdateAssetPrice(updateCtx, parsedAssetID); refreshErr != nil {
+				fmt.Printf("[AddInstrumentToPortfolio] async price refresh failed for asset %s: %v\n", assetID, refreshErr)
+			}
+		}()
+	}
 
 	return created, nil
 }
@@ -1210,6 +1306,7 @@ func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repos
 		return nil, fmt.Errorf("instrument type %s is not tradeable", instrument.AssetType)
 	}
 
+	// 1. Check by instrument_id first (exact link)
 	if asset, err := uow.Asset().GetByInstrumentID(ctx, instrument.ID); err == nil {
 		return asset, nil
 	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
@@ -1218,6 +1315,11 @@ func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repos
 
 	symbol := instrument.Symbol
 	assetType := mapInstrumentTypeToAssetType(instrument.AssetType)
+
+	// 2. Upsert tradeable asset — uses ON CONFLICT (symbol) WHERE is_tradeable
+	//    to avoid PostgreSQL transaction poisoning from failed INSERTs.
+	//    A failed INSERT inside a PostgreSQL transaction aborts the entire
+	//    transaction, making all subsequent queries fail.
 	asset := &model.Asset{
 		InstrumentID: &instrument.ID,
 		Type:         assetType,
@@ -1226,19 +1328,11 @@ func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repos
 		IsTradeable:  true,
 	}
 
-	created, err := uow.Asset().Create(ctx, asset)
-	if err == nil {
-		return created, nil
+	upserted, err := uow.Asset().UpsertTradeable(ctx, asset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upsert tradeable asset for instrument %s: %w", instrument.ID, err)
 	}
-	if !errors.Is(err, repository.ErrNotFound) {
-		if existing, lookupErr := uow.Asset().GetBySymbol(ctx, symbol); lookupErr == nil && existing != nil {
-			existing.InstrumentID = &instrument.ID
-			if updateErr := uow.Asset().Update(ctx, existing); updateErr == nil {
-				return existing, nil
-			}
-		}
-	}
-	return nil, err
+	return upserted, nil
 }
 
 func (s *instrumentService) buildAliases(instrument model.Instrument) []model.InstrumentAlias {
@@ -1461,4 +1555,26 @@ func stringSliceContains(values []string, target string) bool {
 		}
 	}
 	return false
+}
+
+func resolveInstrumentQuoteCurrency(instrument *model.Instrument) (model.Currency, error) {
+	if instrument == nil {
+		return "", errors.New("instrument is required")
+	}
+
+	if instrument.QuoteCurrency != nil {
+		candidate := model.Currency(strings.ToUpper(strings.TrimSpace(*instrument.QuoteCurrency)))
+		if candidate.IsValid() {
+			return candidate, nil
+		}
+	}
+
+	if instrument.Currency != nil {
+		candidate := model.Currency(strings.ToUpper(strings.TrimSpace(*instrument.Currency)))
+		if candidate.IsValid() {
+			return candidate, nil
+		}
+	}
+
+	return "", fmt.Errorf("instrument %s has no supported quote currency", instrument.ID)
 }

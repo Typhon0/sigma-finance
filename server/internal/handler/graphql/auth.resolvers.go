@@ -118,9 +118,10 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlModel.AuthUser, error) {
 	}
 
 	return &gqlModel.AuthUser{
-		ID:            user.ID,
-		Email:         user.Email,
-		Name:          user.Name,
-		EmailVerified: user.EmailVerified,
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		EmailVerified:   user.EmailVerified,
+		DisplayCurrency: string(user.DisplayCurrency),
 	}, nil
 }

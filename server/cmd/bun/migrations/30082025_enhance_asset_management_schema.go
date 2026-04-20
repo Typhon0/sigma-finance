@@ -128,10 +128,10 @@ func init() {
 					type transaction_type NOT NULL,
 					amount BIGINT NOT NULL, -- Amount in cents
 					quantity DECIMAL(20,8), -- For quantity-based transactions
-					price_per_unit DECIMAL(20,8), -- Price at transaction time
+					unit_price_amount DECIMAL(20,8), -- Price at transaction time
 					fee BIGINT DEFAULT 0, -- Transaction fee in cents
 					notes TEXT,
-					transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
+					executed_at TIMESTAMP WITH TIME ZONE NOT NULL,
 					created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 					
 					-- Constraints
@@ -238,7 +238,7 @@ func init() {
 				-- Performance indexes for transaction queries
 				CREATE INDEX IF NOT EXISTS idx_transactions_user ON sigma_finance.transactions(user_id);
 				CREATE INDEX IF NOT EXISTS idx_transactions_position ON sigma_finance.transactions(position_id);
-				CREATE INDEX IF NOT EXISTS idx_transactions_date ON sigma_finance.transactions(transaction_date);
+				CREATE INDEX IF NOT EXISTS idx_transactions_date ON sigma_finance.transactions(executed_at);
 				CREATE INDEX IF NOT EXISTS idx_transactions_type ON sigma_finance.transactions(type);
 
 				-- Performance indexes for price history (time-series optimized)

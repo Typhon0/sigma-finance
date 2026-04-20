@@ -23,6 +23,7 @@ type User struct {
 	LastLoginAt      *time.Time   `bun:"last_login_at"`
 	FailedLoginCount int          `bun:"failed_login_count,default:0"`
 	LockedUntil      *time.Time   `bun:"locked_until"`
+	DisplayCurrency  Currency     `bun:"display_currency,type:varchar(3),default:USD"`
 }
 
 // ValidateEmail validates the email format

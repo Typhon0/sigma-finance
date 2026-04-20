@@ -47,7 +47,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import {
 	type ArchiveManualInstrumentMutation,
 	type ArchiveManualInstrumentMutationVariables,
-	type InstrumentAssetType,
+	InstrumentAssetType,
 	type ManualInstrumentsQuery,
 	type ManualInstrumentsQueryVariables,
 	type RestoreManualInstrumentMutation,

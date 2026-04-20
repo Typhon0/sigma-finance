@@ -5,6 +5,7 @@ export interface AuthUser {
 	email: string;
 	name: string;
 	emailVerified: boolean;
+	displayCurrency?: string;
 }
 
 export interface AuthData {
@@ -91,6 +92,7 @@ export interface AuthContextType {
 	verifyEmail: (token: string) => Promise<void>;
 	resendVerification: (email: string) => Promise<void>;
 	refreshToken: () => Promise<void>;
+	updateUser: (updates: Partial<AuthUser>) => void;
 }
 
 // Error codes from backend

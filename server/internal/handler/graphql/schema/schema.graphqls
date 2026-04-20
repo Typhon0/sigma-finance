@@ -47,6 +47,7 @@ type Mutation {
     # User Mutations
     createUser(input: CreateUserInput!): User! @auth
     updateUser(id: ID!, input: UpdateUserInput!): User! @auth
+    updateUserDisplayCurrency(input: UpdateUserDisplayCurrencyInput!): User! @auth
     deleteUser(id: ID!): ID! @auth
 
     # Portfolio Mutations

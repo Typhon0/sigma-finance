@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 // Types
 import type { Portfolio } from "@/gql/graphql";
+import { useCurrency } from "@/hooks/use-currency";
 // Optimized hooks and utilities
 import { useOptimizedDashboardState } from "@/hooks/use-optimized-dashboard-state";
 import { DataSampler } from "@/lib/chart-optimization/data-sampling";
@@ -119,12 +120,8 @@ const PortfolioMetrics = memo(
 		changePercent: number;
 		assetCount: number;
 	}) => {
-		const formatCurrency = useCallback((value: number) => {
-			return new Intl.NumberFormat("en-US", {
-				style: "currency",
-				currency: "USD",
-			}).format(value / 100);
-		}, []);
+		const { formatCurrency: fmtCurrency } = useCurrency();
+		const formatCurrency = useCallback((value: number) => fmtCurrency(value / 100), [fmtCurrency]);
 
 		const formatPercent = useCallback((value: number) => {
 			return new Intl.NumberFormat("en-US", {

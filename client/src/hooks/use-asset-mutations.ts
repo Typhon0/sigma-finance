@@ -30,6 +30,8 @@ export interface AddAssetInput {
 	purchaseDate?: string;
 	sector?: string;
 	currency?: string;
+	quoteCurrency?: string;
+	unitPriceCurrency?: string;
 	account?: string;
 }
 
@@ -142,6 +144,7 @@ export interface AddCryptoInput {
 	purchaseDate?: string;
 	walletAddress?: string;
 	blockchainNetwork?: string;
+	quoteCurrency?: string;
 }
 
 export const useAssetMutations = () => {
@@ -179,6 +182,7 @@ export const useAssetMutations = () => {
 							instrumentID: input.instrumentID,
 							quantity: input.quantity,
 							averagePurchasePrice: input.purchasePrice,
+							unitPriceCurrency: input.unitPriceCurrency,
 						},
 					},
 				});
@@ -191,6 +195,10 @@ export const useAssetMutations = () => {
 
 			const assetTypeID =
 				input.type === "stock" ? "1" : input.type === "fund" ? "7" : "1";
+			const quoteCurrency = (input.quoteCurrency || input.currency || "").toUpperCase();
+			if (!quoteCurrency) {
+				throw new Error("quoteCurrency is required for manual stock/fund positions");
+			}
 
 			const stockInput = {
 				name: input.name,
@@ -200,6 +208,7 @@ export const useAssetMutations = () => {
 				purchasePrice: input.purchasePrice,
 				purchaseDate: input.purchaseDate || new Date().toISOString(),
 				currentValue: input.currentPrice ?? input.purchasePrice,
+				quoteCurrency,
 			};
 
 			const stockResult = await createStockAsset({
@@ -307,7 +316,11 @@ export const useAssetMutations = () => {
 				purchaseDate: input.purchaseDate || new Date().toISOString(),
 				walletAddress: input.walletAddress,
 				blockchainNetwork: input.blockchainNetwork,
+				quoteCurrency: (input.quoteCurrency || "").toUpperCase(),
 			};
+			if (!cryptoInput.quoteCurrency) {
+				throw new Error("quoteCurrency is required for manual crypto positions");
+			}
 
 			const cryptoResult = await createCryptoAsset({
 				variables: { input: cryptoInput },

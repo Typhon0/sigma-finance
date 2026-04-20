@@ -21,10 +21,10 @@ func init() {
 					type VARCHAR(20) NOT NULL,
 					amount BIGINT NOT NULL,
 					quantity DECIMAL(20,8),
-					price_per_unit DECIMAL(20,8),
+					unit_price_amount DECIMAL(20,8),
 					fee BIGINT DEFAULT 0,
 					notes TEXT,
-					transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
+					executed_at TIMESTAMP WITH TIME ZONE NOT NULL,
 					created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 				);
 				
@@ -36,10 +36,10 @@ func init() {
 					type VARCHAR(20) NOT NULL,
 					amount BIGINT NOT NULL,
 					quantity DECIMAL(20,8),
-					price_per_unit DECIMAL(20,8),
+					unit_price_amount DECIMAL(20,8),
 					fee BIGINT DEFAULT 0,
 					notes TEXT,
-					transaction_date TIMESTAMP WITH TIME ZONE NOT NULL,
+					executed_at TIMESTAMP WITH TIME ZONE NOT NULL,
 					created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 				);
 			`)

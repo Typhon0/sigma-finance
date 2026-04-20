@@ -244,7 +244,7 @@ func (tvr *TransactionValidationRules) validateTradeableAssetTransaction(transac
 		if transaction.Quantity == nil || transaction.Quantity.IsZero() {
 			return fmt.Errorf("quantity is required for %s transactions", transaction.Type)
 		}
-		if transaction.PricePerUnit == nil || transaction.PricePerUnit.IsZero() {
+		if transaction.UnitPriceAmount == nil || transaction.UnitPriceAmount.IsZero() {
 			return fmt.Errorf("price per unit is required for %s transactions", transaction.Type)
 		}
 	case TransactionTypeDividend, TransactionTypeInterest:
@@ -252,11 +252,11 @@ func (tvr *TransactionValidationRules) validateTradeableAssetTransaction(transac
 		if transaction.Quantity != nil && !transaction.Quantity.IsZero() {
 			return fmt.Errorf("quantity should not be specified for %s transactions", transaction.Type)
 		}
-		if transaction.PricePerUnit != nil && !transaction.PricePerUnit.IsZero() {
+		if transaction.UnitPriceAmount != nil && !transaction.UnitPriceAmount.IsZero() {
 			return fmt.Errorf("price per unit should not be specified for %s transactions", transaction.Type)
 		}
 	case TransactionTypeFee:
-		// Fee transactions are allowed for tradeable assets
+		// FeesAmount transactions are allowed for tradeable assets
 	default:
 		return fmt.Errorf("transaction type %s is not valid for tradeable assets", transaction.Type)
 	}
@@ -273,7 +273,7 @@ func (tvr *TransactionValidationRules) validateBankAccountTransaction(transactio
 		if transaction.Quantity != nil && !transaction.Quantity.IsZero() {
 			return fmt.Errorf("quantity should not be specified for bank account %s transactions", transaction.Type)
 		}
-		if transaction.PricePerUnit != nil && !transaction.PricePerUnit.IsZero() {
+		if transaction.UnitPriceAmount != nil && !transaction.UnitPriceAmount.IsZero() {
 			return fmt.Errorf("price per unit should not be specified for bank account %s transactions", transaction.Type)
 		}
 	case TransactionTypeTransferIn, TransactionTypeTransferOut:
@@ -293,9 +293,9 @@ func (tvr *TransactionValidationRules) validateNonTradeableAssetTransaction(tran
 	case TransactionTypeBuy, TransactionTypeSell:
 		// Buy/sell for non-tradeable assets (like real estate purchases)
 		// May or may not have quantity, but should have amount
-		if transaction.PricePerUnit != nil && transaction.Quantity != nil {
+		if transaction.UnitPriceAmount != nil && transaction.Quantity != nil {
 			// If both are specified, validate consistency
-			expectedAmount := transaction.Quantity.Mul(*transaction.PricePerUnit).Mul(decimal.NewFromInt(100))
+			expectedAmount := transaction.Quantity.Mul(*transaction.UnitPriceAmount).Mul(decimal.NewFromInt(100))
 			actualAmount := decimal.NewFromInt(int64(transaction.Amount.Abs()))
 			tolerance := decimal.NewFromInt(100) // 1 dollar tolerance
 			if expectedAmount.Sub(actualAmount).Abs().GreaterThan(tolerance) {

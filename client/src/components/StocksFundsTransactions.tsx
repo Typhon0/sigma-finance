@@ -9,6 +9,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -46,14 +47,7 @@ export function StocksFundsTransactions({
 	]);
 	const [searchQuery, setSearchQuery] = useState("");
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(amount);
-	};
+	const { formatCurrency } = useCurrency();
 
 	// Mock recent transactions
 	const recentTransactions = [

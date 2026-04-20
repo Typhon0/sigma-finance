@@ -6,12 +6,18 @@ import (
 )
 
 func ToGraphQLUser(user *model.User) *graphmodel.User {
+	displayCurrency := string(user.DisplayCurrency)
+	if displayCurrency == "" {
+		displayCurrency = string(model.CurrencyUSD)
+	}
+
 	return &graphmodel.User{
-		ID:        user.ID,
-		Username:  user.Name,
-		Email:     user.Email,
-		CreatedAt: user.CreatedAt,
-		UpdatedAt: user.UpdatedAt,
+		ID:              user.ID,
+		Username:        user.Name,
+		Email:           user.Email,
+		CreatedAt:       user.CreatedAt,
+		UpdatedAt:       user.UpdatedAt,
+		DisplayCurrency: displayCurrency,
 	}
 }
 
@@ -48,8 +54,8 @@ func ToGraphQLTransaction(transaction *model.Transaction) *graphmodel.Transactio
 		ID:              transaction.ID.String(),
 		TransactionType: graphmodel.TransactionType(transaction.TransactionType),
 		Quantity:        transaction.Quantity,
-		PricePerUnit:    transaction.PricePerUnit,
-		TransactionDate: transaction.TransactionDate,
+		UnitPriceAmount:    transaction.UnitPriceAmount,
+		ExecutedAt: transaction.ExecutedAt,
 		Notes:           &transaction.Notes,
 	}
 }

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -476,18 +477,12 @@ export function StockScreener({
 		});
 	}, [searchQuery, activeFilters]);
 
-	const formatCurrency = (value: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-		}).format(value);
-	};
+	const { formatCurrency, currencySymbol } = useCurrency();
 
 	const formatLargeNumber = (num: number) => {
-		if (num >= 1e12) return `$${(num / 1e12).toFixed(2)}T`;
-		if (num >= 1e9) return `$${(num / 1e9).toFixed(2)}B`;
-		if (num >= 1e6) return `$${(num / 1e6).toFixed(2)}M`;
+		if (num >= 1e12) return `${currencySymbol}${(num / 1e12).toFixed(2)}T`;
+		if (num >= 1e9) return `${currencySymbol}${(num / 1e9).toFixed(2)}B`;
+		if (num >= 1e6) return `${currencySymbol}${(num / 1e6).toFixed(2)}M`;
 		return formatCurrency(num);
 	};
 

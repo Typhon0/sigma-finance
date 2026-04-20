@@ -13,6 +13,7 @@ export const REGISTER_MUTATION = gql`
           email
           name
           emailVerified
+          displayCurrency
         }
       }
       errors {
@@ -37,6 +38,7 @@ export const LOGIN_MUTATION = gql`
           email
           name
           emailVerified
+          displayCurrency
         }
       }
       errors {
@@ -126,6 +128,7 @@ export const REFRESH_TOKEN_MUTATION = gql`
           email
           name
           emailVerified
+          displayCurrency
         }
       }
       errors {

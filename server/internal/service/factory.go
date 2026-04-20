@@ -117,6 +117,19 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		authProviders,
 	)
 
+	marketDataService := NewMarketDataService(
+		uow,
+		uow.(*repository.UnitOfWork).GetDB(),
+		repository.NewCandleRepository(uow.(*repository.UnitOfWork).GetDB()),
+		uow.MarketDataCredential(),
+		uow.AssetPrice(),
+		uow.Asset(),
+		securityService,
+		rateLimiter,
+		cfg,
+	)
+	fxRateService := NewFXRateService(uow, 60)
+
 	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
@@ -128,21 +141,12 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		Session:        sessionService,
 		Email:          emailService,
 		Security:       securityService,
-		MarketData: NewMarketDataService(
-			uow,
-			uow.(*repository.UnitOfWork).GetDB(),
-			repository.NewCandleRepository(uow.(*repository.UnitOfWork).GetDB()),
-			uow.MarketDataCredential(),
-			uow.AssetPrice(),
-			uow.Asset(),
-			securityService,
-			rateLimiter,
-			cfg,
-		),
+		MarketData:     marketDataService,
 		Performance: NewPerformanceService(
 			uow.Performance(),
 			uow.AssetPrice(),
 			uow.Position(),
+			fxRateService,
 		),
 		Notification: NewNotificationService(uow, emailService, cfg),
 		Alert: NewAlertService(
@@ -154,12 +158,31 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 			NewNotificationService(uow, emailService, cfg),
 		),
 		Monitoring: NewMonitoringService(),
-		Instrument: NewInstrumentService(uow, discoveryClient, cryptoDiscoveryClient),
+		Instrument: NewInstrumentService(uow, discoveryClient, cryptoDiscoveryClient, marketDataService),
+	}
+
+	if portfolioService, ok := container.Portfolio.(*PortfolioService); ok {
+		portfolioService.SetMarketDataService(marketDataService)
 	}
 
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 		defer cancel()
+
+		if err := ensureFXRatesTable(ctx, uow.(*repository.UnitOfWork).GetDB()); err != nil {
+			log.Printf("[ServiceContainer] Failed to ensure FX table: %v", err)
+		}
+
+		fxScheduler := NewFXScheduler(uow, fxRateService, "")
+		if err := fxScheduler.Start(FXSchedulerModeStandard); err != nil {
+			log.Printf("[ServiceContainer] Failed to start FX scheduler: %v", err)
+		} else {
+			if err := fxScheduler.RefreshNow(ctx); err != nil {
+				log.Printf("[ServiceContainer] Initial FX refresh failed: %v", err)
+			} else {
+				log.Printf("[ServiceContainer] Initial FX refresh completed")
+			}
+		}
 
 		log.Printf("[ServiceContainer] Starting initial price fetch...")
 		if err := container.MarketData.UpdateAssetPrices(ctx); err != nil {

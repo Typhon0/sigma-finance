@@ -8,15 +8,15 @@ import (
 
 func TestBuildTransactionOrderString(t *testing.T) {
 	// Test TRANSACTION_DATE ASC
-	result := buildTransactionOrderString(gqlModel.TransactionOrderFieldTransactionDate, gqlModel.SortDirectionAsc)
-	expected := "transaction_date ASC"
+	result := buildTransactionOrderString(gqlModel.TransactionOrderFieldExecutedAt, gqlModel.SortDirectionAsc)
+	expected := "executed_at ASC"
 	if result != expected {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
 
 	// Test PRICE_PER_UNIT DESC
-	result = buildTransactionOrderString(gqlModel.TransactionOrderFieldPricePerUnit, gqlModel.SortDirectionDesc)
-	expected = "price_per_unit DESC"
+	result = buildTransactionOrderString(gqlModel.TransactionOrderFieldUnitPriceAmount, gqlModel.SortDirectionDesc)
+	expected = "unit_price_amount DESC"
 	if result != expected {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
@@ -28,9 +28,9 @@ func TestBuildTransactionOrderString(t *testing.T) {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}
 
-	// Test default case (should default to transaction_date)
+	// Test default case (should default to executed_at)
 	result = buildTransactionOrderString("INVALID_FIELD", gqlModel.SortDirectionAsc)
-	expected = "transaction_date ASC"
+	expected = "executed_at ASC"
 	if result != expected {
 		t.Errorf("Expected %s, got %s", expected, result)
 	}

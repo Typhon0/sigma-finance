@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 
 interface AccessibilityAnnouncerProps {
 	message: string;
@@ -95,18 +96,13 @@ export function PerformanceUpdateAnnouncer({
 }) {
 	const [announcement, setAnnouncement] = useState("");
 
+	const { formatCurrency } = useCurrency();
+
 	useEffect(() => {
 		if (previousValue && previousValue !== totalValue) {
 			const direction = changeAmount >= 0 ? "increased" : "decreased";
-			const formattedValue = new Intl.NumberFormat("en-US", {
-				style: "currency",
-				currency: "USD",
-			}).format(totalValue);
-
-			const formattedChange = new Intl.NumberFormat("en-US", {
-				style: "currency",
-				currency: "USD",
-			}).format(Math.abs(changeAmount));
+			const formattedValue = formatCurrency(totalValue);
+			const formattedChange = formatCurrency(Math.abs(changeAmount));
 
 			const formattedPercent = Math.abs(changePercent).toFixed(2);
 

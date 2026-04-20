@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { TransactionsList } from "./TransactionsList";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -86,6 +87,8 @@ export function TransactionManagement() {
 		reference: "",
 		tags: [] as string[],
 	});
+
+	const { currencySymbol } = useCurrency();
 
 	// Use only real transactions from context
 	const allTransactions = transactions.map((t) => ({
@@ -358,7 +361,7 @@ export function TransactionManagement() {
 			yAxis: {
 				type: "value",
 				axisLabel: {
-					formatter: "${value}",
+					formatter: `${currencySymbol}{value}`,
 				},
 			},
 			series: [
@@ -760,7 +763,8 @@ export function TransactionManagement() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-mono text-green-600">
-							${analytics.inflow.toLocaleString()}
+							{currencySymbol}
+							{analytics.inflow.toLocaleString()}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Deposits, purchases, dividends
@@ -774,7 +778,8 @@ export function TransactionManagement() {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-mono text-red-600">
-							${analytics.outflow.toLocaleString()}
+							{currencySymbol}
+							{analytics.outflow.toLocaleString()}
 						</div>
 						<p className="text-xs text-muted-foreground">
 							Withdrawals, sales, fees
@@ -790,11 +795,13 @@ export function TransactionManagement() {
 						<div
 							className={`text-2xl font-mono ${analytics.netFlow >= 0 ? "text-green-600" : "text-red-600"}`}
 						>
-							{analytics.netFlow >= 0 ? "+" : ""}$
+							{analytics.netFlow >= 0 ? "+" : ""}
+							{currencySymbol}
 							{analytics.netFlow.toLocaleString()}
 						</div>
 						<p className="text-xs text-muted-foreground">
-							Fees: ${analytics.totalFees.toLocaleString()}
+							Fees: {currencySymbol}
+							{analytics.totalFees.toLocaleString()}
 						</p>
 					</CardContent>
 				</Card>

@@ -23,6 +23,7 @@ type IUserRepository interface {
 	UnlockAccount(ctx context.Context, userID string) error
 	GetLockedUsers(ctx context.Context) ([]model.User, error)
 	GetUsersWithFailedLogins(ctx context.Context, threshold int) ([]model.User, error)
+	UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error
 }
 
 // UserRepository wraps the generic repository with user-specific functionality
@@ -230,4 +231,25 @@ func (r *UserRepository) GetUsersWithFailedLogins(ctx context.Context, threshold
 	return r.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 		return q.Where("failed_login_count >= ?", threshold)
 	})
+}
+
+// UpdateDisplayCurrency updates a user's display currency preference
+func (r *UserRepository) UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error {
+	res, err := r.db.NewUpdate().
+		Model((*model.User)(nil)).
+		Set("display_currency = ?", currency).
+		Set("updated_at = ?", time.Now()).
+		Where("id = ?", userID).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
 }

@@ -5,15 +5,22 @@ import (
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
+	"time"
 )
 
 func mapUserToGQL(domainUser model.User) *gqlModel.User {
+	displayCurrency := string(domainUser.DisplayCurrency)
+	if displayCurrency == "" {
+		displayCurrency = string(model.CurrencyUSD)
+	}
+
 	return &gqlModel.User{
-		ID:        domainUser.ID,
-		Username:  domainUser.Name,
-		Email:     domainUser.Email,
-		CreatedAt: domainUser.CreatedAt,
-		UpdatedAt: domainUser.UpdatedAt,
+		ID:              domainUser.ID,
+		Username:        domainUser.Name,
+		Email:           domainUser.Email,
+		CreatedAt:       domainUser.CreatedAt,
+		UpdatedAt:       domainUser.UpdatedAt,
+		DisplayCurrency: displayCurrency,
 	}
 }
 
@@ -66,19 +73,23 @@ func mapPositionToGQL(p model.Position) *gqlModel.Position {
 }
 
 func mapPortfolioAssetToGQL(pa model.PortfolioAsset) *gqlModel.PortfolioAsset {
+	quoteCurrency := pa.QuoteCurrency.String()
 	return &gqlModel.PortfolioAsset{
 		InstrumentID:         pa.InstrumentID,
 		Quantity:             pa.Quantity,
 		AveragePurchasePrice: &pa.AveragePurchasePrice,
+		QuoteCurrency:        stringPtr(quoteCurrency),
 	}
 }
 
 func mapPortfolioAssetToGQLWithAsset(pa model.PortfolioAsset, asset gqlModel.Asset) *gqlModel.PortfolioAsset {
+	quoteCurrency := pa.QuoteCurrency.String()
 	return &gqlModel.PortfolioAsset{
 		Asset:                asset,
 		InstrumentID:         pa.InstrumentID,
 		Quantity:             pa.Quantity,
 		AveragePurchasePrice: &pa.AveragePurchasePrice,
+		QuoteCurrency:        stringPtr(quoteCurrency),
 	}
 }
 
@@ -427,7 +438,115 @@ func mapPortfolioAnalyticsToGQL(analytics service.PortfolioAnalytics) *gqlModel.
 	}
 }
 
-// mapAuthErrorToGQL converts service AuthError to GraphQL AuthError
+// mapPortfolioValuationToGQL converts service PortfolioValuation to GraphQL PortfolioAnalytics
+// PortfolioValuation contains native and display currency values, but lacks cost basis,
+// gain/loss, and performance history. This function provides reasonable defaults.
+// mapPortfolioValuationToGQL converts service PortfolioValuation to GraphQL PortfolioAnalytics
+// PortfolioValuation contains native and display currency values, but lacks cost basis,
+// gain/loss, and performance history. This function provides reasonable defaults.
+func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel.PortfolioAnalytics {
+	if valuation == nil {
+		return nil
+	}
+	var portfolioFXAsOf *time.Time
+	if !valuation.FXAsOf.IsZero() {
+		portfolioFXAsOf = &valuation.FXAsOf
+	}
+	var portfolioFXSource *string
+	if valuation.FXSource != "" {
+		portfolioFXSource = stringPtr(valuation.FXSource)
+	}
+	var portfolioFXGranularity *string
+	if valuation.FXGranularity != "" {
+		portfolioFXGranularity = stringPtr(string(valuation.FXGranularity))
+	}
+	var portfolioFXState *string
+	if valuation.FXState != "" {
+		portfolioFXState = stringPtr(valuation.FXState)
+	}
+
+	// Map position valuations
+	positionValuations := make([]*gqlModel.PositionValuation, len(valuation.PositionValuations))
+	for i, pv := range valuation.PositionValuations {
+		var fxAsOf *time.Time
+		if pv.FXAsOf != nil {
+			fxAsOf = pv.FXAsOf
+		}
+		positionValuations[i] = &gqlModel.PositionValuation{
+			PositionID:      pv.PositionID,
+			AssetID:         pv.AssetID,
+			NativeValue:     float64(pv.NativeValue) / 100.0,
+			DisplayValue:    float64(pv.DisplayValue) / 100.0,
+			FxRate:          pv.FXRate.InexactFloat64(),
+			FxAsOf:          fxAsOf,
+			FxSource:        stringPtrIfNonEmpty(pv.FXSource),
+			FxGranularity:   stringPtrIfNonEmpty(string(pv.FXGranularity)),
+			IsStale:         pv.IsStale,
+			QuoteCurrency:   string(pv.QuoteCurrency),
+			DisplayCurrency: string(pv.DisplayCurrency),
+		}
+	}
+
+	return &gqlModel.PortfolioAnalytics{
+		TotalValue:           float64(valuation.TotalDisplayValue) / 100.0, // Convert cents to dollars
+		TotalCost:            float64(valuation.TotalDisplayCostBasis) / 100.0,
+		TotalGainLoss:        float64(valuation.TotalDisplayGainLoss) / 100.0,
+		TotalGainLossPercent: valuation.TotalDisplayGainLossPct.InexactFloat64(),
+		AssetAllocation:      []*gqlModel.AssetAllocation{},  // Not computed in valuation
+		RiskMetrics:          nil,                            // Not available in PortfolioValuation
+		PerformanceHistory:   []*gqlModel.PerformancePoint{}, // Not available in valuation
+		// Multi-currency fields
+		TotalNativeValue:      float64Ptr(float64(valuation.TotalNativeValue) / 100.0),
+		TotalDisplayValue:     float64Ptr(float64(valuation.TotalDisplayValue) / 100.0),
+		FxAsOf:                portfolioFXAsOf,
+		FxSource:              portfolioFXSource,
+		FxGranularity:         portfolioFXGranularity,
+		IsStale:               &valuation.IsStale,
+		FxState:               portfolioFXState,
+		ExcludedPositionCount: int32Ptr(int32(valuation.ExcludedPositionCount)),
+		CoveredValueRatio:     float64Ptr(valuation.CoveredValueRatio.InexactFloat64()),
+		DisplayCurrency:       stringPtr(string(valuation.DisplayCurrency)),
+		QuoteCurrency:         stringPtr(string(valuation.QuoteCurrency)),
+		PositionValuations:    positionValuations,
+	}
+}
+
+// mapPositionValuationToGQL converts service PositionValuation to GraphQL PositionValuation
+func mapPositionValuationToGQL(pv *service.PositionValuation) *gqlModel.PositionValuation {
+	if pv == nil {
+		return nil
+	}
+	var fxAsOf *time.Time
+	if pv.FXAsOf != nil {
+		fxAsOf = pv.FXAsOf
+	}
+	return &gqlModel.PositionValuation{
+		PositionID:      pv.PositionID,
+		AssetID:         pv.AssetID,
+		NativeValue:     float64(pv.NativeValue) / 100.0,
+		DisplayValue:    float64(pv.DisplayValue) / 100.0,
+		FxRate:          pv.FXRate.InexactFloat64(),
+		FxAsOf:          fxAsOf,
+		FxSource:        stringPtrIfNonEmpty(pv.FXSource),
+		FxGranularity:   stringPtrIfNonEmpty(string(pv.FXGranularity)),
+		IsStale:         pv.IsStale,
+		QuoteCurrency:   string(pv.QuoteCurrency),
+		DisplayCurrency: string(pv.DisplayCurrency),
+	}
+}
+
+// float64Ptr returns a pointer to the given float64
+func float64Ptr(f float64) *float64 {
+	return &f
+}
+
+func stringPtrIfNonEmpty(value string) *string {
+	if value == "" {
+		return nil
+	}
+	return stringPtr(value)
+}
+
 func mapAuthErrorToGQL(err *service.AuthError) *gqlModel.AuthError {
 	if err == nil {
 		return nil
@@ -468,18 +587,22 @@ func mapTransactionToGQL(t model.Transaction) *gqlModel.Transaction {
 		quantity, _ = t.Quantity.Float64()
 	}
 
-	pricePerUnit := 0.0
-	if t.PricePerUnit != nil {
-		pricePerUnit, _ = t.PricePerUnit.Float64()
+	var unitPriceAmount *float64
+	if t.UnitPriceAmount != nil {
+		value, _ := t.UnitPriceAmount.Float64()
+		unitPriceAmount = &value
 	}
 
 	return &gqlModel.Transaction{
-		ID:              t.ID,
-		TransactionType: gqlModel.TransactionType(t.Type),
-		Quantity:        quantity,
-		PricePerUnit:    pricePerUnit,
-		TransactionDate: t.TransactionDate,
-		Notes:           t.Notes,
+		ID:                t.ID,
+		TransactionType:   gqlModel.TransactionType(t.Type),
+		Quantity:          quantity,
+		UnitPriceAmount:   unitPriceAmount,
+		UnitPriceCurrency: string(t.UnitPriceCurrency),
+		FeesAmount:        float64(t.FeesAmount) / 100.0,
+		FeesCurrency:      string(t.FeesCurrency),
+		ExecutedAt:        t.ExecutedAt,
+		Notes:             t.Notes,
 		// Portfolio and Asset are lazy loaded or set by the resolver
 	}
 }
@@ -497,10 +620,11 @@ func mapAuthResponseToGQL(resp *service.AuthResponse) *gqlModel.AuthResponse {
 			RefreshToken: resp.RefreshToken,
 			ExpiresAt:    resp.ExpiresAt,
 			User: &gqlModel.AuthUser{
-				ID:            resp.User.ID,
-				Email:         resp.User.Email,
-				Name:          resp.User.Name,
-				EmailVerified: resp.User.EmailVerified,
+				ID:              resp.User.ID,
+				Email:           resp.User.Email,
+				Name:            resp.User.Name,
+				EmailVerified:   resp.User.EmailVerified,
+				DisplayCurrency: resp.User.DisplayCurrency,
 			},
 		},
 	}

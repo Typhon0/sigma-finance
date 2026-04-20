@@ -5,9 +5,11 @@ import {
 	Calendar as CalendarIcon,
 	Coins,
 	DollarSign,
+	Euro,
 	Hash,
 	Info,
 	Link2,
+	PoundSterling,
 	RefreshCw,
 	TrendingUp,
 	Wallet,
@@ -33,12 +35,20 @@ import {
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "./ui/select";
 import { Textarea } from "./ui/textarea";
+import { usePortfolio } from "./PortfolioProvider";
 
 interface AddCryptoFormProps {
 	open: boolean;
 	onClose: () => void;
-	onSubmit: (data: AddCryptoFormSubmitData) => void;
+	onSubmit: (data: AddCryptoFormSubmitData) => Promise<void> | void;
 }
 
 type AddType = "exchange" | "wallet" | "manual" | null;
@@ -54,6 +64,7 @@ interface AddCryptoFormSubmitData {
 	purchaseDate?: string;
 	walletAddress: string;
 	notes: string;
+	quoteCurrency: string;
 }
 
 interface FormData {
@@ -67,12 +78,23 @@ interface FormData {
 	purchaseDate: Date | undefined;
 	walletAddress: string;
 	notes: string;
+	quoteCurrency: string;
 }
 
+const CURRENCIES = [
+	{ value: "USD", label: "US Dollar (USD)", symbol: "$", icon: DollarSign },
+	{ value: "EUR", label: "Euro (EUR)", symbol: "€", icon: Euro },
+	{ value: "GBP", label: "British Pound (GBP)", symbol: "£", icon: PoundSterling },
+] as const;
+
+const SUPPORTED_CURRENCIES = new Set(CURRENCIES.map((currency) => currency.value));
+
 export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
+	const { user } = usePortfolio();
 	const [addType, setAddType] = useState<AddType>(null);
 	const [selectedCrypto, setSelectedCrypto] =
 		useState<TradeableInstrumentSelection | null>(null);
+	const userDisplayCurrency = (user?.displayCurrency ?? "USD").toUpperCase();
 	const [formData, setFormData] = useState<FormData>({
 		instrumentID: "",
 		cryptoId: "",
@@ -84,6 +106,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 		purchaseDate: undefined,
 		walletAddress: "",
 		notes: "",
+		quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+			? userDisplayCurrency
+			: "USD",
 	});
 
 	const handleInputChange = <K extends keyof FormData>(
@@ -94,6 +119,10 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 	};
 
 	const handleSelectCrypto = (crypto: TradeableInstrumentSelection) => {
+		const instrumentCurrency = (crypto.currency ?? "").toUpperCase();
+		const resolvedCurrency = SUPPORTED_CURRENCIES.has(instrumentCurrency)
+			? instrumentCurrency
+			: "";
 		setSelectedCrypto(crypto);
 		setFormData((prev) => ({
 			...prev,
@@ -102,6 +131,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			cryptoName: crypto.name,
 			symbol: crypto.symbol,
 			currentPrice: prev.currentPrice || "",
+			quoteCurrency: resolvedCurrency || prev.quoteCurrency,
 		}));
 	};
 
@@ -111,6 +141,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 				name: selectedCrypto.name,
 				exchange: selectedCrypto.exchange,
 				providerSource: selectedCrypto.providerSource,
+				currency: selectedCrypto.currency,
 			}
 		: null;
 
@@ -134,7 +165,12 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 		return { amount: diff, percent };
 	};
 
-	const handleSubmit = () => {
+	const getCurrencySymbol = (currencyCode: string): string => {
+		const currency = CURRENCIES.find((item) => item.value === currencyCode);
+		return currency?.symbol ?? "$";
+	};
+
+	const handleSubmit = async () => {
 		// Validation
 		if (!formData.cryptoId) {
 			toast.error("Please select a cryptocurrency");
@@ -151,8 +187,24 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			toast.error("Please enter a valid purchase price");
 			return;
 		}
+		if (!SUPPORTED_CURRENCIES.has(formData.quoteCurrency)) {
+			toast.error("Please select a valid quote currency");
+			return;
+		}
 
-		onSubmit(formData);
+		await onSubmit({
+			instrumentID: formData.instrumentID || undefined,
+			cryptoId: formData.cryptoId,
+			cryptoName: formData.cryptoName,
+			symbol: formData.symbol,
+			quantity: parseFloat(formData.quantity),
+			averageBuyPrice: parseFloat(formData.averageBuyPrice),
+			currentPrice: parseFloat(formData.currentPrice) || parseFloat(formData.averageBuyPrice),
+			purchaseDate: formData.purchaseDate?.toISOString(),
+			walletAddress: formData.walletAddress,
+			notes: formData.notes,
+			quoteCurrency: formData.quoteCurrency,
+		});
 		handleClose();
 	};
 
@@ -169,6 +221,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			purchaseDate: undefined,
 			walletAddress: "",
 			notes: "",
+			quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+				? userDisplayCurrency
+				: "USD",
 		});
 		setSelectedCrypto(null);
 		onClose();
@@ -177,6 +232,12 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 	if (!open) return null;
 
 	const profitLoss = calculateProfitLoss();
+	const selectedInstrumentCurrency = (selectedCrypto?.currency ?? "").toUpperCase();
+	const isQuoteCurrencyLocked =
+		!!selectedCrypto &&
+		selectedCrypto.source !== "manual" &&
+		SUPPORTED_CURRENCIES.has(selectedInstrumentCurrency);
+	const currencySymbol = getCurrencySymbol(formData.quoteCurrency);
 
 	// Step 1: Choose add type
 	const renderAddTypeSelection = () => (
@@ -385,6 +446,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														cryptoName: "",
 														symbol: "",
 														currentPrice: "",
+														quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+															? userDisplayCurrency
+															: prev.quoteCurrency,
 													}));
 													return;
 												}
@@ -409,15 +473,20 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														</div>
 													</div>
 												</div>
-												<div className="text-right">
-													<div className="text-sm text-muted-foreground">
-														{selectedCryptoDisplay?.exchange}
-													</div>
-													<div className="text-xs text-muted-foreground">
-														{selectedCryptoDisplay?.providerSource}
+													<div className="text-right">
+														<div className="text-sm text-muted-foreground">
+															{selectedCryptoDisplay?.exchange}
+														</div>
+														<div className="text-xs text-muted-foreground">
+															{selectedCryptoDisplay?.providerSource}
+														</div>
+														{SUPPORTED_CURRENCIES.has(selectedInstrumentCurrency) ? (
+															<div className="text-xs text-muted-foreground">
+																Quote: {selectedInstrumentCurrency}
+															</div>
+														) : null}
 													</div>
 												</div>
-											</div>
 											<Button
 												type="button"
 												variant="ghost"
@@ -431,6 +500,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														cryptoName: "",
 														symbol: "",
 														currentPrice: "",
+														quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+															? userDisplayCurrency
+															: prev.quoteCurrency,
 													}));
 												}}
 												className="w-full mt-3"
@@ -481,7 +553,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 												className="flex items-center gap-2"
 											>
 												<DollarSign className="h-4 w-4 text-primary" />
-												Average Buy Price{" "}
+												Average Buy Price ({formData.quoteCurrency}){" "}
 												<span className="text-destructive">*</span>
 											</Label>
 											<Input
@@ -497,6 +569,33 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 											/>
 											<p className="text-xs text-muted-foreground">
 												Average price you paid per {selectedCrypto.symbol}
+											</p>
+										</div>
+
+										<div className="space-y-2">
+											<Label htmlFor="quoteCurrency">Quote Currency</Label>
+											<Select
+												value={formData.quoteCurrency}
+												onValueChange={(value) =>
+													handleInputChange("quoteCurrency", value)
+												}
+												disabled={isQuoteCurrencyLocked}
+											>
+												<SelectTrigger id="quoteCurrency">
+													<SelectValue placeholder="Select quote currency" />
+												</SelectTrigger>
+												<SelectContent>
+													{CURRENCIES.map((currency) => (
+														<SelectItem key={currency.value} value={currency.value}>
+															{currency.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+											<p className="text-xs text-muted-foreground">
+												{isQuoteCurrencyLocked
+													? "Quote currency is derived from the selected instrument."
+													: "Required for manual valuation and FX conversion."}
 											</p>
 										</div>
 
@@ -604,7 +703,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														Total Cost:
 													</span>
 													<span className="font-mono">
-														$
+														{currencySymbol}
 														{calculateTotalCost().toLocaleString("en-US", {
 															minimumFractionDigits: 2,
 															maximumFractionDigits: 2,
@@ -616,7 +715,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														Current Value:
 													</span>
 													<span className="font-mono">
-														$
+														{currencySymbol}
 														{calculateTotalValue().toLocaleString("en-US", {
 															minimumFractionDigits: 2,
 															maximumFractionDigits: 2,
@@ -631,7 +730,8 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														<div
 															className={`font-mono ${profitLoss.amount >= 0 ? "text-green-600" : "text-red-600"}`}
 														>
-															{profitLoss.amount >= 0 ? "+" : ""}$
+															{profitLoss.amount >= 0 ? "+" : ""}
+															{currencySymbol}
 															{Math.abs(profitLoss.amount).toLocaleString(
 																"en-US",
 																{
@@ -680,7 +780,8 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 									disabled={
 										!selectedCrypto ||
 										!formData.quantity ||
-										!formData.averageBuyPrice
+										!formData.averageBuyPrice ||
+										!SUPPORTED_CURRENCIES.has(formData.quoteCurrency)
 									}
 								>
 									Add to Portfolio

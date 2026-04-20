@@ -10,6 +10,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { AddStockForm } from "./AddStockForm";
 import { PieChartWithCenter } from "./PieChartWithCenter";
 import { StocksFundsPositions } from "./StocksFundsPositions";
@@ -63,14 +64,7 @@ export function StocksFundsModule({
 	const dailyChangePercent =
 		previousValue > 0 ? (dailyChange / previousValue) * 100 : 0;
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		}).format(amount);
-	};
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const handleAddPosition = async (formData: {
 		instrumentID?: string;
@@ -83,7 +77,8 @@ export function StocksFundsModule({
 		purchaseDate?: string;
 		account?: string;
 		sector?: string;
-		currency?: string;
+		quoteCurrency?: string;
+		unitPriceCurrency?: string;
 	}) => {
 		try {
 			await addAsset({
@@ -95,7 +90,8 @@ export function StocksFundsModule({
 				purchasePrice: formData.purchasePrice,
 				purchaseDate: formData.purchaseDate,
 				sector: formData.sector,
-				currency: formData.currency,
+				quoteCurrency: formData.quoteCurrency,
+				unitPriceCurrency: formData.unitPriceCurrency,
 				currentPrice: formData.currentPrice,
 			});
 			setIsAddOpen(false);

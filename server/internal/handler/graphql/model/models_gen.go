@@ -32,6 +32,7 @@ type AddInstrumentHoldingInput struct {
 	InstrumentID         string  `json:"instrumentID"`
 	Quantity             float64 `json:"quantity"`
 	AveragePurchasePrice float64 `json:"averagePurchasePrice"`
+	UnitPriceCurrency    *string `json:"unitPriceCurrency,omitempty"`
 }
 
 type Alert struct {
@@ -228,10 +229,11 @@ type AuthResponse struct {
 }
 
 type AuthUser struct {
-	ID            string `json:"id"`
-	Email         string `json:"email"`
-	Name          string `json:"name"`
-	EmailVerified bool   `json:"emailVerified"`
+	ID              string `json:"id"`
+	Email           string `json:"email"`
+	Name            string `json:"name"`
+	EmailVerified   bool   `json:"emailVerified"`
+	DisplayCurrency string `json:"displayCurrency"`
 }
 
 type BankAccount struct {
@@ -404,6 +406,7 @@ type CreateCryptoInput struct {
 	WalletAddress     *string    `json:"walletAddress,omitempty"`
 	BlockchainNetwork *string    `json:"blockchainNetwork,omitempty"`
 	Quantity          float64    `json:"quantity"`
+	QuoteCurrency     string     `json:"quoteCurrency"`
 }
 
 type CreateFundInput struct {
@@ -492,6 +495,7 @@ type CreateStockInput struct {
 	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
 	Ticker        string     `json:"ticker"`
 	Quantity      float64    `json:"quantity"`
+	QuoteCurrency string     `json:"quoteCurrency"`
 }
 
 type CreateUserInput struct {
@@ -1193,13 +1197,25 @@ type Portfolio struct {
 }
 
 type PortfolioAnalytics struct {
-	TotalValue           float64             `json:"totalValue"`
-	TotalCost            float64             `json:"totalCost"`
-	TotalGainLoss        float64             `json:"totalGainLoss"`
-	TotalGainLossPercent float64             `json:"totalGainLossPercent"`
-	AssetAllocation      []*AssetAllocation  `json:"assetAllocation"`
-	RiskMetrics          *RiskMetrics        `json:"riskMetrics"`
-	PerformanceHistory   []*PerformancePoint `json:"performanceHistory"`
+	TotalValue            float64              `json:"totalValue"`
+	TotalCost             float64              `json:"totalCost"`
+	TotalGainLoss         float64              `json:"totalGainLoss"`
+	TotalGainLossPercent  float64              `json:"totalGainLossPercent"`
+	AssetAllocation       []*AssetAllocation   `json:"assetAllocation"`
+	RiskMetrics           *RiskMetrics         `json:"riskMetrics"`
+	PerformanceHistory    []*PerformancePoint  `json:"performanceHistory"`
+	TotalNativeValue      *float64             `json:"totalNativeValue,omitempty"`
+	TotalDisplayValue     *float64             `json:"totalDisplayValue,omitempty"`
+	FxAsOf                *time.Time           `json:"fxAsOf,omitempty"`
+	FxSource              *string              `json:"fxSource,omitempty"`
+	FxGranularity         *string              `json:"fxGranularity,omitempty"`
+	IsStale               *bool                `json:"isStale,omitempty"`
+	FxState               *string              `json:"fxState,omitempty"`
+	ExcludedPositionCount *int32               `json:"excludedPositionCount,omitempty"`
+	CoveredValueRatio     *float64             `json:"coveredValueRatio,omitempty"`
+	DisplayCurrency       *string              `json:"displayCurrency,omitempty"`
+	QuoteCurrency         *string              `json:"quoteCurrency,omitempty"`
+	PositionValuations    []*PositionValuation `json:"positionValuations,omitempty"`
 }
 
 type PortfolioAsset struct {
@@ -1211,6 +1227,7 @@ type PortfolioAsset struct {
 	OwnershipPct         *float64 `json:"ownershipPct,omitempty"`
 	DayChange            *float64 `json:"dayChange,omitempty"`
 	DayChangePercent     *float64 `json:"dayChangePercent,omitempty"`
+	QuoteCurrency        *string  `json:"quoteCurrency,omitempty"`
 }
 
 type PortfolioAssetInput struct {
@@ -1257,6 +1274,20 @@ type PositionPerformance struct {
 	ReturnPercentage float64 `json:"returnPercentage"`
 	GainLoss         float64 `json:"gainLoss"`
 	Contribution     float64 `json:"contribution"`
+}
+
+type PositionValuation struct {
+	PositionID      string     `json:"positionId"`
+	AssetID         string     `json:"assetId"`
+	NativeValue     float64    `json:"nativeValue"`
+	DisplayValue    float64    `json:"displayValue"`
+	FxRate          float64    `json:"fxRate"`
+	FxAsOf          *time.Time `json:"fxAsOf,omitempty"`
+	FxSource        *string    `json:"fxSource,omitempty"`
+	FxGranularity   *string    `json:"fxGranularity,omitempty"`
+	IsStale         bool       `json:"isStale"`
+	QuoteCurrency   string     `json:"quoteCurrency"`
+	DisplayCurrency string     `json:"displayCurrency"`
 }
 
 type ProviderHealth struct {
@@ -1518,14 +1549,17 @@ type TimeSeriesData struct {
 }
 
 type Transaction struct {
-	ID              string          `json:"id"`
-	Portfolio       *Portfolio      `json:"portfolio"`
-	Asset           Asset           `json:"asset"`
-	TransactionType TransactionType `json:"transactionType"`
-	Quantity        float64         `json:"quantity"`
-	PricePerUnit    float64         `json:"pricePerUnit"`
-	TransactionDate time.Time       `json:"transactionDate"`
-	Notes           *string         `json:"notes,omitempty"`
+	ID                string          `json:"id"`
+	Portfolio         *Portfolio      `json:"portfolio"`
+	Asset             Asset           `json:"asset"`
+	TransactionType   TransactionType `json:"transactionType"`
+	Quantity          float64         `json:"quantity"`
+	UnitPriceAmount   *float64        `json:"unitPriceAmount,omitempty"`
+	UnitPriceCurrency string          `json:"unitPriceCurrency"`
+	FeesAmount        float64         `json:"feesAmount"`
+	FeesCurrency      string          `json:"feesCurrency"`
+	ExecutedAt        time.Time       `json:"executedAt"`
+	Notes             *string         `json:"notes,omitempty"`
 }
 
 type TransactionFilter struct {
@@ -1593,6 +1627,10 @@ type UpdatePortfolioInput struct {
 	SortOrder   *int32  `json:"sortOrder,omitempty"`
 }
 
+type UpdateUserDisplayCurrencyInput struct {
+	DisplayCurrency string `json:"displayCurrency"`
+}
+
 type UpdateUserInput struct {
 	Username *string `json:"username,omitempty"`
 	Email    *string `json:"email,omitempty"`
@@ -1600,13 +1638,14 @@ type UpdateUserInput struct {
 }
 
 type User struct {
-	ID         string       `json:"id"`
-	Username   string       `json:"username"`
-	Email      string       `json:"email"`
-	CreatedAt  time.Time    `json:"createdAt"`
-	UpdatedAt  time.Time    `json:"updatedAt"`
-	Portfolios []*Portfolio `json:"portfolios"`
-	Watchlists []*Watchlist `json:"watchlists"`
+	ID              string       `json:"id"`
+	Username        string       `json:"username"`
+	Email           string       `json:"email"`
+	CreatedAt       time.Time    `json:"createdAt"`
+	UpdatedAt       time.Time    `json:"updatedAt"`
+	Portfolios      []*Portfolio `json:"portfolios"`
+	Watchlists      []*Watchlist `json:"watchlists"`
+	DisplayCurrency string       `json:"displayCurrency"`
 }
 
 // User engagement analytics
@@ -2683,20 +2722,20 @@ func (e TimeAggregation) MarshalJSON() ([]byte, error) {
 type TransactionOrderField string
 
 const (
-	TransactionOrderFieldTransactionDate TransactionOrderField = "TRANSACTION_DATE"
-	TransactionOrderFieldPricePerUnit    TransactionOrderField = "PRICE_PER_UNIT"
+	TransactionOrderFieldExecutedAt      TransactionOrderField = "EXECUTED_AT"
+	TransactionOrderFieldUnitPriceAmount TransactionOrderField = "UNIT_PRICE_AMOUNT"
 	TransactionOrderFieldQuantity        TransactionOrderField = "QUANTITY"
 )
 
 var AllTransactionOrderField = []TransactionOrderField{
-	TransactionOrderFieldTransactionDate,
-	TransactionOrderFieldPricePerUnit,
+	TransactionOrderFieldExecutedAt,
+	TransactionOrderFieldUnitPriceAmount,
 	TransactionOrderFieldQuantity,
 }
 
 func (e TransactionOrderField) IsValid() bool {
 	switch e {
-	case TransactionOrderFieldTransactionDate, TransactionOrderFieldPricePerUnit, TransactionOrderFieldQuantity:
+	case TransactionOrderFieldExecutedAt, TransactionOrderFieldUnitPriceAmount, TransactionOrderFieldQuantity:
 		return true
 	}
 	return false

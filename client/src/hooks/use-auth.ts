@@ -2,7 +2,6 @@ import { useQuery } from "@apollo/client";
 import { useCallback, useEffect } from "react";
 import { ME_QUERY } from "../graphql/queries/auth.queries";
 import { useAuth as useAuthContext } from "../lib/auth-context";
-import { TokenManager } from "../lib/auth-utils";
 import type { AuthUser } from "../lib/types/auth.types";
 
 /**
@@ -31,23 +30,18 @@ export const useAuth = () => {
 		},
 	);
 
-	// Sync server user data with local context
+	// Sync server user data with local context (state + localStorage).
+	// Always sync when ME_QUERY returns data so that fields like
+	// displayCurrency are persisted across sessions even when the
+	// user ID hasn't changed.
 	useEffect(() => {
-		if (data?.me && authContext.user?.id !== data.me.id) {
-			// Update local user data if server data is different
-			const storedUser = TokenManager.getUser();
-			if (storedUser) {
-				const updatedUser = { ...storedUser, ...data.me };
-				const token = TokenManager.getToken();
-				const refreshToken = TokenManager.getRefreshToken();
-				const expiry = TokenManager.getTokenExpiry();
-
-				if (token && refreshToken && expiry) {
-					TokenManager.setAuth(token, refreshToken, updatedUser, expiry);
-				}
-			}
+		if (data?.me) {
+			// Strip __typename from Apollo cache object before persisting
+			const { __typename, ...userFields } = data.me as AuthUser &
+				{ __typename?: string };
+			authContext.updateUser(userFields);
 		}
-	}, [data?.me, authContext.user]);
+	}, [data?.me]);
 
 	const refreshUserData = useCallback(async () => {
 		try {

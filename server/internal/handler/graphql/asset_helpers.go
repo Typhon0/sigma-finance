@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"log"
 
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/repository"
+	"sigma_finance/internal/service"
 )
 
 // getAssetWithDetails is a helper method to get asset with type-specific details
@@ -89,6 +91,26 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		return nil
 	}
 
+	displayCurrency, displayCurrencyErr := r.getDisplayCurrencyFromContext(ctx)
+	if displayCurrencyErr != nil || !displayCurrency.IsValid() {
+		displayCurrency = model.CurrencyUSD
+	}
+
+	displayValueByAssetID := make(map[string]float64)
+	quoteCurrencyByAssetID := make(map[string]model.Currency)
+	analytics, analyticsErr := r.safeGetPortfolioAnalytics(ctx, portfolioID, displayCurrency)
+	if analyticsErr == nil && analytics != nil {
+		for _, pv := range analytics.PositionValuations {
+			if pv.QuoteCurrency.IsValid() {
+				quoteCurrencyByAssetID[pv.AssetID] = pv.QuoteCurrency
+			}
+			if !pv.HasDisplayValue {
+				continue
+			}
+			displayValueByAssetID[pv.AssetID] += float64(pv.DisplayValue) / 100.0
+		}
+	}
+
 	var assets []*gqlModel.PortfolioAsset
 	for _, domPa := range pa {
 		gqlAsset, gqlErr := r.getAssetWithDetails(ctx, domPa.AssetID)
@@ -98,9 +120,22 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		}
 		avgPP := domPa.AveragePurchasePrice
 		var currentVal *float64
-		if cv := gqlAsset.GetCurrentValue(); cv != nil {
-			v := domPa.Quantity * (*cv)
+		if convertedDisplayValue, ok := displayValueByAssetID[domPa.AssetID]; ok {
+			v := convertedDisplayValue
 			currentVal = &v
+		} else if cv := gqlAsset.GetCurrentValue(); cv != nil {
+			quoteCurrency := domPa.QuoteCurrency
+			if !quoteCurrency.IsValid() {
+				if inferred, ok := quoteCurrencyByAssetID[domPa.AssetID]; ok && inferred.IsValid() {
+					quoteCurrency = inferred
+				}
+			}
+			// Only fall back to raw quote value if it is already in display currency.
+			// This avoids showing USD values with a EUR symbol when FX conversion is unavailable.
+			if !quoteCurrency.IsValid() || quoteCurrency == displayCurrency {
+				v := domPa.Quantity * (*cv)
+				currentVal = &v
+			}
 		}
 		assets = append(assets, &gqlModel.PortfolioAsset{
 			Asset:                gqlAsset,
@@ -110,4 +145,15 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		})
 	}
 	return assets
+}
+
+func (r *Resolver) safeGetPortfolioAnalytics(ctx context.Context, portfolioID string, displayCurrency model.Currency) (analytics *service.PortfolioValuation, err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			analytics = nil
+			err = fmt.Errorf("portfolio analytics unavailable: %v", recovered)
+		}
+	}()
+
+	return r.PortfolioService.GetPortfolioAnalytics(ctx, portfolioID, displayCurrency)
 }

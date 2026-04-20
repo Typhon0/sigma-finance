@@ -277,9 +277,9 @@ func TestTransactionValidationRules_ValidateTransactionForAssetType(t *testing.T
 		{
 			name: "valid stock buy transaction",
 			transaction: &Transaction{
-				Type:         TransactionTypeBuy,
-				Quantity:     decimalPtr(decimal.NewFromFloat(100.0)),
-				PricePerUnit: decimalPtr(decimal.NewFromFloat(0.50)),
+				Type:            TransactionTypeBuy,
+				Quantity:        decimalPtr(decimal.NewFromFloat(100.0)),
+				UnitPriceAmount: decimalPtr(decimal.NewFromFloat(0.50)),
 			},
 			asset: &Asset{
 				Type: AssetTypeStock,
@@ -299,8 +299,8 @@ func TestTransactionValidationRules_ValidateTransactionForAssetType(t *testing.T
 		{
 			name: "invalid - stock buy without quantity",
 			transaction: &Transaction{
-				Type:         TransactionTypeBuy,
-				PricePerUnit: decimalPtr(decimal.NewFromFloat(0.50)),
+				Type:            TransactionTypeBuy,
+				UnitPriceAmount: decimalPtr(decimal.NewFromFloat(0.50)),
 			},
 			asset: &Asset{
 				Type: AssetTypeStock,
@@ -311,9 +311,9 @@ func TestTransactionValidationRules_ValidateTransactionForAssetType(t *testing.T
 		{
 			name: "invalid - bank account buy transaction",
 			transaction: &Transaction{
-				Type:         TransactionTypeBuy,
-				Quantity:     decimalPtr(decimal.NewFromFloat(100.0)),
-				PricePerUnit: decimalPtr(decimal.NewFromFloat(0.50)),
+				Type:            TransactionTypeBuy,
+				Quantity:        decimalPtr(decimal.NewFromFloat(100.0)),
+				UnitPriceAmount: decimalPtr(decimal.NewFromFloat(0.50)),
 			},
 			asset: &Asset{
 				Type: AssetTypeBankAccount,

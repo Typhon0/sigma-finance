@@ -42,11 +42,11 @@ func init() {
 				CREATE INDEX IF NOT EXISTS idx_transaction_asset_id 
 				ON sigma_finance.transaction(asset_id);
 				
-				CREATE INDEX IF NOT EXISTS idx_transaction_date 
-				ON sigma_finance.transaction(transaction_date DESC);
+				CREATE INDEX IF NOT EXISTS idx_executed_at 
+				ON sigma_finance.transaction(executed_at DESC);
 				
 				CREATE INDEX IF NOT EXISTS idx_transaction_portfolio_date 
-				ON sigma_finance.transaction(portfolio_id, transaction_date DESC);
+				ON sigma_finance.transaction(portfolio_id, executed_at DESC);
 
 				-- Asset performance indexes
 				CREATE INDEX IF NOT EXISTS idx_asset_type_id 
@@ -105,7 +105,7 @@ func init() {
 				DROP INDEX IF EXISTS sigma_finance.idx_portfolio_asset_asset_id;
 				DROP INDEX IF EXISTS sigma_finance.idx_transaction_portfolio_id;
 				DROP INDEX IF EXISTS sigma_finance.idx_transaction_asset_id;
-				DROP INDEX IF EXISTS sigma_finance.idx_transaction_date;
+				DROP INDEX IF EXISTS sigma_finance.idx_executed_at;
 				DROP INDEX IF EXISTS sigma_finance.idx_transaction_portfolio_date;
 				DROP INDEX IF EXISTS sigma_finance.idx_asset_type_id;
 				DROP INDEX IF EXISTS sigma_finance.idx_asset_name;

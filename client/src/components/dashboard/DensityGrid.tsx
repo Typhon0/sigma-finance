@@ -21,6 +21,7 @@ import {
 	YAxis,
 } from "recharts";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import {
 	Card,
 	CardContent,
@@ -29,14 +30,6 @@ import {
 	CardTitle,
 } from "../ui/card";
 import { cn } from "../ui/utils";
-
-// --- UTILS ---
-const formatCurrency = (val: number) =>
-	new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency: "USD",
-		maximumFractionDigits: 0,
-	}).format(val);
 
 // --- SUBCOMPONENTS ---
 
@@ -86,7 +79,7 @@ const KpiCard = ({
 	</Card>
 );
 
-const AssetAllocationChart = ({ assets }: { assets: any[] }) => {
+const AssetAllocationChart = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: (val: number) => string }) => {
 	// Aggregate data
 	const data = React.useMemo(() => {
 		const groups: Record<string, number> = {};
@@ -156,7 +149,7 @@ const AssetAllocationChart = ({ assets }: { assets: any[] }) => {
 	);
 };
 
-const TopMovers = ({ assets }: { assets: any[] }) => {
+const TopMovers = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: (val: number) => string }) => {
 	const movers = React.useMemo(() => {
 		return assets
 			.filter((a) => ["stock", "crypto"].includes(a.type))
@@ -258,6 +251,8 @@ export function DensityDashboard() {
 
 	const totalAssets = assets.reduce((sum, a) => sum + (a.currentValue || 0), 0);
 
+	const { formatCurrencyCompact: formatCurrency } = useCurrency();
+
 	return (
 		<div className="grid gap-6 animate-in fade-in duration-500">
 			{/* 1. KPI ROW */}
@@ -348,9 +343,9 @@ export function DensityDashboard() {
 									Allocation
 								</CardTitle>
 							</CardHeader>
-							<CardContent>
-								<AssetAllocationChart assets={assets} />
-							</CardContent>
+						<CardContent>
+							<AssetAllocationChart assets={assets} formatCurrency={formatCurrency} />
+						</CardContent>
 						</Card>
 
 						<Card className="border-border/60">
@@ -417,9 +412,9 @@ export function DensityDashboard() {
 							<CardTitle>Top Movers</CardTitle>
 							<CardDescription>Intraday performance</CardDescription>
 						</CardHeader>
-						<CardContent className="pt-6">
-							<TopMovers assets={assets} />
-						</CardContent>
+					<CardContent className="pt-6">
+						<TopMovers assets={assets} formatCurrency={formatCurrency} />
+					</CardContent>
 					</Card>
 
 					<Card className="border-border/60">

@@ -149,7 +149,7 @@ func (r *PerformanceRepository) CalculatePortfolioPerformance(ctx context.Contex
 		Join("JOIN sigma_finance.positions p ON p.id = t.position_id").
 		Where("p.portfolio_id = ?", portfolioID).
 		Where("t.type = 'SELL'").
-		Where("t.transaction_date <= ?", asOfDate).
+		Where("t.executed_at <= ?", asOfDate).
 		Scan(ctx, &realizedGains)
 	if err != nil {
 		return nil, err

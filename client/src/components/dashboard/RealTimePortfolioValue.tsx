@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealTimeDashboard } from "@/contexts/RealTimeDashboardContext";
+import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
 
 interface RealTimePortfolioValueProps {
@@ -69,14 +70,7 @@ export function RealTimePortfolioValue({
 		}
 	}, [currentData, lastUpdate, previousValue]);
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(amount);
-	};
+	const { formatCurrency } = useCurrency();
 
 	const formatPercentage = (percent: number) => {
 		const sign = percent >= 0 ? "+" : "";

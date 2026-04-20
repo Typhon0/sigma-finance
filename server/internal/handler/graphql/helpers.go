@@ -83,14 +83,14 @@ func buildAssetOrderString(field gqlModel.AssetOrderField, direction gqlModel.So
 func buildTransactionOrderString(field gqlModel.TransactionOrderField, direction gqlModel.SortDirection) string {
 	var column string
 	switch field {
-	case gqlModel.TransactionOrderFieldTransactionDate:
-		column = "transaction_date"
-	case gqlModel.TransactionOrderFieldPricePerUnit:
-		column = "price_per_unit"
+	case gqlModel.TransactionOrderFieldExecutedAt:
+		column = "executed_at"
+	case gqlModel.TransactionOrderFieldUnitPriceAmount:
+		column = "unit_price_amount"
 	case gqlModel.TransactionOrderFieldQuantity:
 		column = "quantity"
 	default:
-		column = "transaction_date"
+		column = "executed_at"
 	}
 
 	dir := "ASC"

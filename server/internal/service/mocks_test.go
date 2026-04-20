@@ -159,6 +159,11 @@ func (m *MockUserRepository) GetUsersWithFailedLogins(ctx context.Context, thres
 	return args.Get(0).([]model.User), args.Error(1)
 }
 
+func (m *MockUserRepository) UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error {
+	args := m.Called(ctx, userID, currency)
+	return args.Error(0)
+}
+
 // IRepository interface methods
 func (m *MockUserRepository) GetDB() bun.IDB {
 	args := m.Called()

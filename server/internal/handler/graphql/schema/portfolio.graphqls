@@ -23,6 +23,7 @@ type PortfolioAsset {
     ownershipPct: Float
     dayChange: Float
     dayChangePercent: Float
+    quoteCurrency: String
 }
 
 type PortfolioAnalytics {
@@ -33,6 +34,33 @@ type PortfolioAnalytics {
     assetAllocation: [AssetAllocation!]!
     riskMetrics: RiskMetrics!
     performanceHistory: [PerformancePoint!]!
+    # Multi-currency fields
+    totalNativeValue: Float
+    totalDisplayValue: Float
+    fxAsOf: Time
+    fxSource: String
+    fxGranularity: String
+    isStale: Boolean
+    fxState: String
+    excludedPositionCount: Int
+    coveredValueRatio: Float
+    displayCurrency: String
+    quoteCurrency: String
+    positionValuations: [PositionValuation!]
+}
+
+type PositionValuation {
+    positionId: ID!
+    assetId: ID!
+    nativeValue: Float!
+    displayValue: Float!
+    fxRate: Float!
+    fxAsOf: Time
+    fxSource: String
+    fxGranularity: String
+    isStale: Boolean!
+    quoteCurrency: String!
+    displayCurrency: String!
 }
 
 type AssetAllocation {

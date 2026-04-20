@@ -50,55 +50,65 @@ type ITransactionService interface {
 // Request/Response structures
 
 type TransactionRequest struct {
-	UserID          string                `json:"user_id" validate:"required"`
-	PositionID      *string               `json:"position_id,omitempty"`
-	Type            model.TransactionType `json:"type" validate:"required"`
-	Amount          model.Money           `json:"amount" validate:"required"`
-	Quantity        *decimal.Decimal      `json:"quantity,omitempty"`
-	PricePerUnit    *decimal.Decimal      `json:"price_per_unit,omitempty"`
-	Fee             model.Money           `json:"fee"`
-	Notes           *string               `json:"notes,omitempty"`
-	TransactionDate time.Time             `json:"transaction_date" validate:"required"`
+	UserID            string                `json:"user_id" validate:"required"`
+	PositionID        *string               `json:"position_id,omitempty"`
+	Type              model.TransactionType `json:"type" validate:"required"`
+	Amount            model.Money           `json:"amount" validate:"required"`
+	Quantity          *decimal.Decimal      `json:"quantity,omitempty"`
+	UnitPriceAmount   *decimal.Decimal      `json:"unit_price_amount,omitempty"`
+	UnitPriceCurrency model.Currency        `json:"unit_price_currency"`
+	FeesAmount        model.Money           `json:"fees_amount"`
+	FeesCurrency      model.Currency        `json:"fees_currency"`
+	Notes             *string               `json:"notes,omitempty"`
+	ExecutedAt        time.Time             `json:"executed_at" validate:"required"`
 }
 
 type UpdateTransactionRequest struct {
-	Type            *model.TransactionType `json:"type,omitempty"`
-	Amount          *model.Money           `json:"amount,omitempty"`
-	Quantity        *decimal.Decimal       `json:"quantity,omitempty"`
-	PricePerUnit    *decimal.Decimal       `json:"price_per_unit,omitempty"`
-	Fee             *model.Money           `json:"fee,omitempty"`
-	Notes           *string                `json:"notes,omitempty"`
-	TransactionDate *time.Time             `json:"transaction_date,omitempty"`
+	Type              *model.TransactionType `json:"type,omitempty"`
+	Amount            *model.Money           `json:"amount,omitempty"`
+	Quantity          *decimal.Decimal       `json:"quantity,omitempty"`
+	UnitPriceAmount   *decimal.Decimal       `json:"unit_price_amount,omitempty"`
+	UnitPriceCurrency *model.Currency        `json:"unit_price_currency,omitempty"`
+	FeesAmount        *model.Money           `json:"fees_amount,omitempty"`
+	FeesCurrency      *model.Currency        `json:"fees_currency,omitempty"`
+	Notes             *string                `json:"notes,omitempty"`
+	ExecutedAt        *time.Time             `json:"executed_at,omitempty"`
 }
 
 type BuyTransactionRequest struct {
-	UserID          string          `json:"user_id" validate:"required"`
-	PortfolioID     string          `json:"portfolio_id" validate:"required"`
-	AssetID         string          `json:"asset_id" validate:"required"`
-	Quantity        decimal.Decimal `json:"quantity" validate:"required"`
-	PricePerUnit    decimal.Decimal `json:"price_per_unit" validate:"required"`
-	Fee             model.Money     `json:"fee"`
-	Notes           *string         `json:"notes,omitempty"`
-	TransactionDate time.Time       `json:"transaction_date" validate:"required"`
+	UserID            string          `json:"user_id" validate:"required"`
+	PortfolioID       string          `json:"portfolio_id" validate:"required"`
+	AssetID           string          `json:"asset_id" validate:"required"`
+	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
+	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
+	UnitPriceCurrency model.Currency  `json:"unit_price_currency" validate:"required"`
+	FeesAmount        model.Money     `json:"fees_amount"`
+	FeesCurrency      model.Currency  `json:"fees_currency"`
+	Notes             *string         `json:"notes,omitempty"`
+	ExecutedAt        time.Time       `json:"executed_at" validate:"required"`
 }
 
 type SellTransactionRequest struct {
-	UserID          string          `json:"user_id" validate:"required"`
-	PositionID      string          `json:"position_id" validate:"required"`
-	Quantity        decimal.Decimal `json:"quantity" validate:"required"`
-	PricePerUnit    decimal.Decimal `json:"price_per_unit" validate:"required"`
-	Fee             model.Money     `json:"fee"`
-	Notes           *string         `json:"notes,omitempty"`
-	TransactionDate time.Time       `json:"transaction_date" validate:"required"`
+	UserID            string          `json:"user_id" validate:"required"`
+	PositionID        string          `json:"position_id" validate:"required"`
+	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
+	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
+	UnitPriceCurrency model.Currency  `json:"unit_price_currency" validate:"required"`
+	FeesAmount        model.Money     `json:"fees_amount"`
+	FeesCurrency      model.Currency  `json:"fees_currency"`
+	Notes             *string         `json:"notes,omitempty"`
+	ExecutedAt        time.Time       `json:"executed_at" validate:"required"`
 }
 
 type CashTransactionRequest struct {
-	UserID          string                `json:"user_id" validate:"required"`
-	Type            model.TransactionType `json:"type" validate:"required"` // DEPOSIT, WITHDRAWAL, etc.
-	Amount          model.Money           `json:"amount" validate:"required"`
-	Fee             model.Money           `json:"fee"`
-	Notes           *string               `json:"notes,omitempty"`
-	TransactionDate time.Time             `json:"transaction_date" validate:"required"`
+	UserID       string                `json:"user_id" validate:"required"`
+	Type         model.TransactionType `json:"type" validate:"required"` // DEPOSIT, WITHDRAWAL, etc.
+	Amount       model.Money           `json:"amount" validate:"required"`
+	Currency     model.Currency        `json:"currency" validate:"required"`
+	FeesAmount   model.Money           `json:"fees_amount"`
+	FeesCurrency model.Currency        `json:"fees_currency"`
+	Notes        *string               `json:"notes,omitempty"`
+	ExecutedAt   time.Time             `json:"executed_at" validate:"required"`
 }
 
 type TransactionFilter struct {
@@ -133,22 +143,33 @@ func (s *TransactionService) RecordTransaction(ctx context.Context, req Transact
 		return nil, errors.New("user ID is required")
 	}
 
+	unitPriceCurrency := req.UnitPriceCurrency
+	if !unitPriceCurrency.IsValid() {
+		unitPriceCurrency = model.CurrencyUSD
+	}
+	feesCurrency := req.FeesCurrency
+	if !feesCurrency.IsValid() {
+		feesCurrency = unitPriceCurrency
+	}
+
 	// Create transaction model
 	transaction := &model.Transaction{
-		UserID:          req.UserID,
-		PositionID:      req.PositionID,
-		Type:            req.Type,
-		Amount:          req.Amount,
-		Fee:             req.Fee,
-		TransactionDate: req.TransactionDate,
+		UserID:            req.UserID,
+		PositionID:        req.PositionID,
+		Type:              req.Type,
+		Amount:            req.Amount,
+		UnitPriceCurrency: unitPriceCurrency,
+		FeesAmount:        req.FeesAmount,
+		FeesCurrency:      feesCurrency,
+		ExecutedAt:        req.ExecutedAt,
 	}
 
 	// Set optional fields
 	if req.Quantity != nil {
 		transaction.Quantity = req.Quantity
 	}
-	if req.PricePerUnit != nil {
-		transaction.PricePerUnit = req.PricePerUnit
+	if req.UnitPriceAmount != nil {
+		transaction.UnitPriceAmount = req.UnitPriceAmount
 	}
 	if req.Notes != nil && *req.Notes != "" {
 		notes := *req.Notes
@@ -205,11 +226,17 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 	if req.Quantity != nil {
 		transaction.Quantity = req.Quantity
 	}
-	if req.PricePerUnit != nil {
-		transaction.PricePerUnit = req.PricePerUnit
+	if req.UnitPriceAmount != nil {
+		transaction.UnitPriceAmount = req.UnitPriceAmount
 	}
-	if req.Fee != nil {
-		transaction.Fee = *req.Fee
+	if req.UnitPriceCurrency != nil {
+		transaction.UnitPriceCurrency = *req.UnitPriceCurrency
+	}
+	if req.FeesAmount != nil {
+		transaction.FeesAmount = *req.FeesAmount
+	}
+	if req.FeesCurrency != nil {
+		transaction.FeesCurrency = *req.FeesCurrency
 	}
 	if req.Notes != nil {
 		if *req.Notes == "" {
@@ -219,8 +246,8 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 			transaction.Notes = &notes
 		}
 	}
-	if req.TransactionDate != nil {
-		transaction.TransactionDate = *req.TransactionDate
+	if req.ExecutedAt != nil {
+		transaction.ExecutedAt = *req.ExecutedAt
 	}
 
 	// Validate the updated transaction
@@ -268,12 +295,12 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 					continue
 				}
 
-				if t.Quantity == nil || t.PricePerUnit == nil {
+				if t.Quantity == nil || t.UnitPriceAmount == nil {
 					continue
 				}
 
 				signedQty, signedAmt := getSignedTransactionValues(&t)
-				if err := pos.UpdateCostBasis(signedQty, *t.PricePerUnit, signedAmt); err != nil {
+				if err := pos.UpdateCostBasis(signedQty, *t.UnitPriceAmount, signedAmt); err != nil {
 					return fmt.Errorf("failed to replay transaction %s: %w", t.ID, err)
 				}
 			}
@@ -428,11 +455,17 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 	if req.Quantity.IsNegative() || req.Quantity.IsZero() {
 		return nil, errors.New("quantity must be positive")
 	}
-	if req.PricePerUnit.IsNegative() || req.PricePerUnit.IsZero() {
+	if req.UnitPriceAmount.IsNegative() || req.UnitPriceAmount.IsZero() {
 		return nil, errors.New("price per unit must be positive")
 	}
+	if !req.UnitPriceCurrency.IsValid() {
+		return nil, errors.New("unit price currency is required")
+	}
+	if !req.FeesCurrency.IsValid() {
+		req.FeesCurrency = req.UnitPriceCurrency
+	}
 
-	totalAmount := req.Quantity.Mul(req.PricePerUnit).Mul(decimal.NewFromInt(100))
+	totalAmount := req.Quantity.Mul(req.UnitPriceAmount).Mul(decimal.NewFromInt(100))
 	amount := model.Money(totalAmount.IntPart())
 
 	var result *TransactionResult
@@ -449,6 +482,7 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 				AssetID:             req.AssetID,
 				Quantity:            decimal.Zero,
 				OwnershipPercentage: decimal.NewFromInt(100),
+				QuoteCurrency:       req.UnitPriceCurrency,
 			}
 
 			createdPosition, err := uow.Position().Create(ctx, newPosition)
@@ -459,17 +493,22 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 			positionID = createdPosition.ID
 		} else {
 			positionID = position.ID
+			if !position.QuoteCurrency.IsValid() {
+				position.QuoteCurrency = req.UnitPriceCurrency
+			}
 		}
 
 		transaction := &model.Transaction{
-			UserID:          req.UserID,
-			PositionID:      &positionID,
-			Type:            model.TransactionTypeBuy,
-			Amount:          amount,
-			Quantity:        &req.Quantity,
-			PricePerUnit:    &req.PricePerUnit,
-			Fee:             req.Fee,
-			TransactionDate: req.TransactionDate,
+			UserID:            req.UserID,
+			PositionID:        &positionID,
+			Type:              model.TransactionTypeBuy,
+			Amount:            amount,
+			Quantity:          &req.Quantity,
+			UnitPriceAmount:   &req.UnitPriceAmount,
+			UnitPriceCurrency: req.UnitPriceCurrency,
+			FeesAmount:        req.FeesAmount,
+			FeesCurrency:      req.FeesCurrency,
+			ExecutedAt:        req.ExecutedAt,
 		}
 
 		if req.Notes != nil && *req.Notes != "" {
@@ -486,7 +525,7 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 			return fmt.Errorf("failed to create transaction: %w", err)
 		}
 
-		if err := position.UpdateCostBasis(req.Quantity, req.PricePerUnit, amount); err != nil {
+		if err := position.UpdateCostBasis(req.Quantity, req.UnitPriceAmount, amount); err != nil {
 			return fmt.Errorf("failed to update cost basis: %w", err)
 		}
 
@@ -517,11 +556,17 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 	if req.Quantity.IsNegative() || req.Quantity.IsZero() {
 		return nil, errors.New("quantity must be positive")
 	}
-	if req.PricePerUnit.IsNegative() || req.PricePerUnit.IsZero() {
+	if req.UnitPriceAmount.IsNegative() || req.UnitPriceAmount.IsZero() {
 		return nil, errors.New("price per unit must be positive")
 	}
+	if !req.UnitPriceCurrency.IsValid() {
+		return nil, errors.New("unit price currency is required")
+	}
+	if !req.FeesCurrency.IsValid() {
+		req.FeesCurrency = req.UnitPriceCurrency
+	}
 
-	totalAmount := req.Quantity.Mul(req.PricePerUnit).Mul(decimal.NewFromInt(100))
+	totalAmount := req.Quantity.Mul(req.UnitPriceAmount).Mul(decimal.NewFromInt(100))
 	amount := -model.Money(totalAmount.IntPart())
 
 	var result *TransactionResult
@@ -536,20 +581,22 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 				position.Quantity.String(), req.Quantity.String())
 		}
 
-		realizedGains, err := position.CalculateRealizedGains(req.Quantity, req.PricePerUnit)
+		realizedGains, err := position.CalculateRealizedGains(req.Quantity, req.UnitPriceAmount)
 		if err != nil {
 			return fmt.Errorf("failed to calculate realized gains: %w", err)
 		}
 
 		transaction := &model.Transaction{
-			UserID:          req.UserID,
-			PositionID:      &req.PositionID,
-			Type:            model.TransactionTypeSell,
-			Amount:          amount,
-			Quantity:        &req.Quantity,
-			PricePerUnit:    &req.PricePerUnit,
-			Fee:             req.Fee,
-			TransactionDate: req.TransactionDate,
+			UserID:            req.UserID,
+			PositionID:        &req.PositionID,
+			Type:              model.TransactionTypeSell,
+			Amount:            amount,
+			Quantity:          &req.Quantity,
+			UnitPriceAmount:   &req.UnitPriceAmount,
+			UnitPriceCurrency: req.UnitPriceCurrency,
+			FeesAmount:        req.FeesAmount,
+			FeesCurrency:      req.FeesCurrency,
+			ExecutedAt:        req.ExecutedAt,
 		}
 
 		if req.Notes != nil && *req.Notes != "" {
@@ -566,7 +613,7 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 			return fmt.Errorf("failed to create transaction: %w", err)
 		}
 
-		if err := position.UpdateCostBasis(req.Quantity.Neg(), req.PricePerUnit, amount); err != nil {
+		if err := position.UpdateCostBasis(req.Quantity.Neg(), req.UnitPriceAmount, amount); err != nil {
 			return fmt.Errorf("failed to update cost basis: %w", err)
 		}
 
@@ -593,6 +640,12 @@ func (s *TransactionService) ProcessCashTransaction(ctx context.Context, req Cas
 	if req.UserID == "" {
 		return nil, errors.New("user ID is required")
 	}
+	if !req.Currency.IsValid() {
+		return nil, errors.New("currency is required")
+	}
+	if !req.FeesCurrency.IsValid() {
+		req.FeesCurrency = req.Currency
+	}
 
 	// Create a temporary transaction to use the IsCashFlowTransaction method
 	tempTransaction := &model.Transaction{Type: req.Type}
@@ -602,11 +655,13 @@ func (s *TransactionService) ProcessCashTransaction(ctx context.Context, req Cas
 
 	// Create transaction
 	transaction := &model.Transaction{
-		UserID:          req.UserID,
-		Type:            req.Type,
-		Amount:          req.Amount,
-		Fee:             req.Fee,
-		TransactionDate: req.TransactionDate,
+		UserID:            req.UserID,
+		Type:              req.Type,
+		Amount:            req.Amount,
+		UnitPriceCurrency: req.Currency,
+		FeesAmount:        req.FeesAmount,
+		FeesCurrency:      req.FeesCurrency,
+		ExecutedAt:        req.ExecutedAt,
 	}
 
 	if req.Notes != nil && *req.Notes != "" {

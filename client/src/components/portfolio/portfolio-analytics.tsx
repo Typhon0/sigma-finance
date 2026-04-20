@@ -1,6 +1,7 @@
 import type * as echarts from "echarts";
 import {
 	Activity,
+	AlertTriangle,
 	BarChart3,
 	LineChart,
 	PieChart,
@@ -21,9 +22,10 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAssetTypeColor, getChartColors } from "@/lib/chart-colors";
 import {
-	formatCurrency,
+	formatCurrency as formatCurrencyUtil,
 	formatPercentage,
 } from "@/lib/utils/portfolio-calculations";
 
@@ -37,6 +39,33 @@ export interface PortfolioAnalytics {
 	assetAllocation: AssetAllocation[];
 	riskMetrics: RiskMetrics;
 	performanceHistory: PerformancePoint[];
+	// Multi-currency fields
+	totalNativeValue?: number | null;
+	totalDisplayValue?: number | null;
+	fxAsOf?: string | null;
+	fxSource?: string | null;
+	fxGranularity?: string | null;
+	isStale?: boolean | null;
+	fxState?: string | null;
+	excludedPositionCount?: number | null;
+	coveredValueRatio?: number | null;
+	displayCurrency?: string | null;
+	quoteCurrency?: string | null;
+	positionValuations?: PositionValuation[] | null;
+}
+
+export interface PositionValuation {
+	positionId: string;
+	assetId: string;
+	nativeValue: number;
+	displayValue: number;
+	fxRate: number;
+	fxAsOf: string;
+	fxSource?: string | null;
+	fxGranularity?: string | null;
+	isStale: boolean;
+	quoteCurrency: string;
+	displayCurrency: string;
 }
 
 export interface AssetAllocation {
@@ -66,6 +95,34 @@ interface PortfolioAnalyticsProps {
 }
 
 type TimePeriod = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
+
+// Helper function to format relative time
+function formatRelativeTime(dateString: string | null | undefined): string {
+	if (!dateString) return "Unknown";
+	
+	const date = new Date(dateString);
+	const now = new Date();
+	const diffMs = now.getTime() - date.getTime();
+	const diffMins = Math.floor(diffMs / 60000);
+	const diffHours = Math.floor(diffMins / 60);
+	const diffDays = Math.floor(diffHours / 24);
+	
+	if (diffMins < 1) return "Just now";
+	if (diffMins < 60) return `${diffMins} min ago`;
+	if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+	if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+	return date.toLocaleDateString();
+}
+
+// Helper function to get currency symbol
+function getCurrencySymbol(currency: string | null | undefined): string {
+	switch (currency?.toUpperCase()) {
+		case "USD": return "$";
+		case "EUR": return "€";
+		case "GBP": return "£";
+		default: return "$";
+	}
+}
 
 export function PortfolioAnalytics({
 	analytics,
@@ -399,6 +456,23 @@ export function PortfolioAnalytics({
 		);
 	}
 
+	// Check if we have multi-currency data
+	const hasMultiCurrency = analytics.totalNativeValue != null && analytics.totalDisplayValue != null;
+	const displayCurrency = analytics.displayCurrency || "USD";
+	const quoteCurrency = analytics.quoteCurrency || "USD";
+	const displaySymbol = getCurrencySymbol(displayCurrency);
+	const nativeSymbol = getCurrencySymbol(quoteCurrency);
+
+	// Bind formatCurrency to the display currency
+	const formatCurrency = (value: number) => formatCurrencyUtil(value, displayCurrency);
+	const isStale = analytics.isStale || false;
+	const fxAsOf = analytics.fxAsOf;
+	const fxSource = analytics.fxSource || "UNKNOWN";
+	const fxGranularity = analytics.fxGranularity || "UNKNOWN";
+	const fxState = analytics.fxState || "UNAVAILABLE";
+	const excludedPositionCount = analytics.excludedPositionCount || 0;
+	const coveredValueRatio = analytics.coveredValueRatio ?? 0;
+
 	return (
 		<div className={className}>
 			<Card>
@@ -436,12 +510,55 @@ export function PortfolioAnalytics({
 								<div className="flex items-center justify-between">
 									<div>
 										<p className="text-sm text-muted-foreground">Total Value</p>
-										<p className="text-2xl font-bold">
-											{formatCurrency(analytics.totalValue)}
-										</p>
+										{hasMultiCurrency ? (
+											<div className="space-y-1">
+												<p className="text-2xl font-bold">
+													{displaySymbol}{analytics.totalDisplayValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+												</p>
+												{displayCurrency !== quoteCurrency && (
+													<p className="text-sm text-muted-foreground">
+														({nativeSymbol}{analytics.totalNativeValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {quoteCurrency})
+													</p>
+												)}
+											</div>
+										) : (
+											<p className="text-2xl font-bold">
+												{formatCurrency(analytics.totalValue)}
+											</p>
+										)}
 									</div>
 									<TrendingUp className="h-8 w-8 text-muted-foreground" />
 								</div>
+								{/* FX Timestamp and Stale Warning */}
+								{hasMultiCurrency ? (
+									<div className="mt-2 space-y-1 text-xs text-muted-foreground">
+										<div className="flex items-center gap-1">
+											{isStale ? (
+												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger>
+															<AlertTriangle className="h-3 w-3 text-amber-500" />
+														</TooltipTrigger>
+														<TooltipContent>
+															<p>FX rate may be stale</p>
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
+											) : null}
+											<span>FX: {fxAsOf ? formatRelativeTime(fxAsOf) : "Unknown"}</span>
+										</div>
+										<div>
+											Source: {fxSource} • Granularity: {fxGranularity}
+										</div>
+										<div>
+											State: {fxState}
+											{excludedPositionCount > 0
+												? ` • Excluded: ${excludedPositionCount}`
+												: ""}
+											{` • Coverage: ${(coveredValueRatio * 100).toFixed(1)}%`}
+										</div>
+									</div>
+								) : null}
 							</CardContent>
 						</Card>
 

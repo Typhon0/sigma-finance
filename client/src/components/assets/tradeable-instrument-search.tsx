@@ -39,6 +39,17 @@ import type {
 } from "@/gql/graphql";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
 
+const CURRENCY_CONFIG: Record<string, { symbol: string }> = {
+	USD: { symbol: "$" },
+	EUR: { symbol: "€" },
+	GBP: { symbol: "£" },
+};
+
+function getCurrencySymbol(currency: string | null | undefined): string {
+	if (!currency) return "";
+	return CURRENCY_CONFIG[currency]?.symbol ?? currency;
+}
+
 export interface TradeableInstrumentSelection {
 	id: string;
 	symbol: string;
@@ -181,7 +192,7 @@ export function TradeableInstrumentSearch({
 		skip: searchVariables === undefined,
 		fetchPolicy: "cache-and-network",
 	});
-	const [fetchOnline, { data: onlineData, called: onlineWasRequested }] =
+	const [fetchOnline, { data: onlineData }] =
 		useLazyQuery<SearchInstrumentsOnlineQuery, SearchInstrumentsOnlineQueryVariables>(
 			SEARCH_INSTRUMENTS_ONLINE,
 			{
@@ -290,13 +301,15 @@ export function TradeableInstrumentSearch({
 						<Input
 							value={searchTerm}
 							onChange={(event) => setSearchTerm(event.target.value)}
-							onFocus={() => setIsOpen(true)}
 							placeholder={placeholder}
 							className="pl-9"
 						/>
 					</div>
 				</PopoverTrigger>
-				<PopoverContent className="w-[min(100vw-2rem,36rem)] p-0" align="start">
+				<PopoverContent
+					className="w-[min(100vw-2rem,36rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0"
+					align="start"
+				>
 					<Command shouldFilter={false}>
 						<CommandInput
 							placeholder={placeholder}
@@ -329,6 +342,12 @@ export function TradeableInstrumentSearch({
 													<Badge variant="outline" className="text-[10px]">
 														{result.instrument.assetType}
 													</Badge>
+													{result.instrument.currency && (
+														<Badge variant="secondary" className="text-[10px] gap-1">
+															{getCurrencySymbol(result.instrument.currency)}
+															{result.instrument.currency}
+														</Badge>
+													)}
 												</div>
 												<div className="truncate text-xs text-muted-foreground">
 													{result.instrument.name}
@@ -380,7 +399,7 @@ export function TradeableInstrumentSearch({
 								<CommandGroup heading="Online Results">
 									{onlineResults.map((result) => (
 										<CommandItem
-											key={`${result.providerSource}:${result.providerExternalID ?? result.symbol}`}
+											key={`${result.providerSource}:${result.providerExternalId ?? result.symbol}`}
 											onSelect={() => {
 												void handleSelectOnline(result);
 											}}
@@ -392,6 +411,12 @@ export function TradeableInstrumentSearch({
 													<Badge variant="outline" className="text-[10px]">
 														{result.assetType}
 													</Badge>
+													{result.currency && (
+														<Badge variant="secondary" className="text-[10px] gap-1">
+															{getCurrencySymbol(result.currency)}
+															{result.currency}
+														</Badge>
+													)}
 													<Badge variant="secondary" className="text-[10px]">
 														{result.providerSource}
 													</Badge>

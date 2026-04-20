@@ -14,6 +14,7 @@ import {
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import {
 	Accordion,
 	AccordionContent,
@@ -75,14 +76,7 @@ export function StocksFundsPositions({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sortBy, setSortBy] = useState("value-desc");
 
-	const formatCurrency = (amount: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(amount);
-	};
+	const { formatCurrency } = useCurrency();
 
 	const formatNumber = (num: number, decimals = 2) => {
 		return num.toLocaleString("en-US", {

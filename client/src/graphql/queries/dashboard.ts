@@ -63,8 +63,12 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
       id
       notes
       quantity
-      pricePerUnit
-      transactionDate
+      unitPriceAmount
+      unitPriceCurrency
+      executedAt
+      feesAmount
+      feesCurrency
+      transactionType
     }
   }
 `);
@@ -90,7 +94,10 @@ export const GET_RECENT_TRANSACTIONS_MINIMAL = graphql(/* GraphQL */ `
       id
       notes
       quantity
-      pricePerUnit
+      unitPriceAmount
+      unitPriceCurrency
+      executedAt
+      transactionType
     }
   }
 `);

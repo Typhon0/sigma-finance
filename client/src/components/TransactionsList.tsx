@@ -10,6 +10,7 @@ import {
 	RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrency } from "@/hooks/use-currency";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -177,10 +178,12 @@ export function TransactionsList({
 		}
 	};
 
-	const formatCurrency = (amount: number, currency: string = "USD") => {
+	const { currency: displayCurrency } = useCurrency();
+
+	const formatCurrency = (amount: number, currency?: string) => {
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
-			currency,
+			currency: currency || displayCurrency,
 			minimumFractionDigits: 2,
 			maximumFractionDigits: 2,
 		}).format(amount);

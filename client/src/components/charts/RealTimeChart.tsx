@@ -10,6 +10,7 @@ import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useRealTimeDashboard } from "@/contexts/RealTimeDashboardContext";
+import { useCurrency } from "@/hooks/use-currency";
 import { useResponsiveDashboard } from "@/hooks/use-responsive-dashboard";
 import { cn } from "@/lib/utils";
 
@@ -199,14 +200,7 @@ export function RealTimeChart({
 	const currentPrice = actions.getAssetPrice(assetId);
 	const isConnected = state.isConnected;
 
-	const formatPrice = (price: number) => {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(price);
-	};
+	const { formatCurrency: formatPrice } = useCurrency();
 
 	const formatChange = (change: number, changePercent: number) => {
 		const changeStr = change >= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);

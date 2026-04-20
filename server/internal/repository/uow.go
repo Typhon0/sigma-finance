@@ -56,6 +56,9 @@ type IUnitOfWork interface {
 
 	// Provider routing config repository
 	ProviderRoutingConfig() IProviderRoutingConfigRepository
+
+	// FX rate repository
+	FXRate() IFXRateRepository
 }
 
 // UnitOfWork is the concrete implementation of IUnitOfWork
@@ -103,6 +106,9 @@ type UnitOfWork struct {
 
 	// Provider routing config repository
 	providerRoutingConfig IProviderRoutingConfigRepository
+
+	// FX rate repository
+	fxRateRepo *FXRateRepository
 }
 
 // Expose DB for internal wiring (not part of interface to preserve abstraction)
@@ -145,6 +151,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		notificationLog:            NewNotificationLogRepository(db),
 		pushSubscription:           NewPushSubscriptionRepository(db),
 		providerRoutingConfig:      NewProviderRoutingConfigRepository(db),
+		fxRateRepo:                 NewFXRateRepository(db),
 	}
 }
 
@@ -192,6 +199,7 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		notificationLog:        NewNotificationLogRepository(&tx),
 		pushSubscription:       NewPushSubscriptionRepository(&tx),
 		providerRoutingConfig:  NewProviderRoutingConfigRepository(&tx),
+		fxRateRepo:             NewFXRateRepository(&tx),
 	}
 
 	if err := fn(txUow); err != nil {
@@ -330,6 +338,9 @@ func (uow *UnitOfWork) EmailVerificationToken() IEmailVerificationTokenRepositor
 }
 
 // MarketDataCredential returns the market data credential repository
+func (uow *UnitOfWork) MarketDataCredential() IMarketDataCredentialRepository {
+	return uow.mdCred
+}
 
 // txUnitOfWork is the implementation of IUnitOfWork for transactions
 type txUnitOfWork struct {
@@ -367,6 +378,7 @@ type txUnitOfWork struct {
 	notificationLog            INotificationLogRepository
 	pushSubscription           IPushSubscriptionRepository
 	providerRoutingConfig      IProviderRoutingConfigRepository
+	fxRateRepo                 *FXRateRepository
 }
 
 func (uow *txUnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) error {
@@ -458,8 +470,9 @@ func (uow *txUnitOfWork) AssetTag() IAssetTagRepository {
 	return uow.assetTag
 }
 
-func (uow *UnitOfWork) MarketDataCredential() IMarketDataCredentialRepository   { return uow.mdCred }
-func (uow *txUnitOfWork) MarketDataCredential() IMarketDataCredentialRepository { return uow.mdCred }
+func (uow *txUnitOfWork) MarketDataCredential() IMarketDataCredentialRepository {
+	return uow.mdCred
+}
 
 func (uow *txUnitOfWork) Session() ISessionRepository {
 	return uow.session
@@ -531,4 +544,12 @@ func (uow *UnitOfWork) ProviderRoutingConfig() IProviderRoutingConfigRepository 
 }
 func (uow *txUnitOfWork) ProviderRoutingConfig() IProviderRoutingConfigRepository {
 	return uow.providerRoutingConfig
+}
+
+// FXRate returns the FX rate repository
+func (uow *UnitOfWork) FXRate() IFXRateRepository {
+	return uow.fxRateRepo
+}
+func (uow *txUnitOfWork) FXRate() IFXRateRepository {
+	return uow.fxRateRepo
 }

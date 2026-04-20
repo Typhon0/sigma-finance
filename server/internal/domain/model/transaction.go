@@ -64,17 +64,19 @@ func (tt TransactionType) IsPositiveAmount() bool {
 type Transaction struct {
 	bun.BaseModel `bun:"table:sigma_finance.transactions,alias:transactions"`
 
-	ID              string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID          string           `bun:"user_id,notnull"`
-	PositionID      *string          `bun:"position_id"` // Optional for some transaction types
-	Type            TransactionType  `bun:"type,notnull"`
-	Amount          Money            `bun:"amount,notnull"`                    // Amount in cents
-	Quantity        *decimal.Decimal `bun:"quantity,type:decimal(20,8)"`       // For quantity-based transactions
-	PricePerUnit    *decimal.Decimal `bun:"price_per_unit,type:decimal(20,8)"` // Price at transaction time
-	Fee             Money            `bun:"fee,default:0"`                     // Transaction fee in cents
-	Notes           *string          `bun:"notes"`
-	TransactionDate time.Time        `bun:"transaction_date,notnull"`
-	CreatedAt       time.Time        `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	ID                string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID            string           `bun:"user_id,notnull"`
+	PositionID        *string          `bun:"position_id"` // Optional for some transaction types
+	Type              TransactionType  `bun:"type,notnull"`
+	Amount            Money            `bun:"amount,notnull"`                       // Amount in cents
+	Quantity          *decimal.Decimal `bun:"quantity,type:decimal(20,8)"`          // For quantity-based transactions
+	UnitPriceAmount   *decimal.Decimal `bun:"unit_price_amount,type:decimal(20,8)"` // Price per unit at execution time
+	UnitPriceCurrency Currency         `bun:"unit_price_currency,type:varchar(3),default:USD"`
+	FeesAmount        Money            `bun:"fees_amount,default:0"` // Transaction fees in cents
+	FeesCurrency      Currency         `bun:"fees_currency,type:varchar(3),default:USD"`
+	Notes             *string          `bun:"notes"`
+	ExecutedAt        time.Time        `bun:"executed_at,notnull"`
+	CreatedAt         time.Time        `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	User     *User     `bun:"rel:belongs-to,join:user_id=id"`
@@ -137,19 +139,19 @@ func (t *Transaction) Validate() error {
 		return err
 	}
 
-	// Validate fee
-	if t.Fee < 0 {
+	// Validate fees
+	if t.FeesAmount < 0 {
 		return errors.New("transaction fee cannot be negative")
 	}
 
-	// Validate transaction date
-	if t.TransactionDate.IsZero() {
-		return errors.New("transaction date is required")
+	// Validate execution time
+	if t.ExecutedAt.IsZero() {
+		return errors.New("executed_at is required")
 	}
 
 	// Don't allow future dates beyond tomorrow (to account for timezone differences)
 	tomorrow := time.Now().AddDate(0, 0, 1)
-	if t.TransactionDate.After(tomorrow) {
+	if t.ExecutedAt.After(tomorrow) {
 		return errors.New("transaction date cannot be in the future")
 	}
 
@@ -195,28 +197,28 @@ func (t *Transaction) validateQuantity() error {
 // validatePrice validates price requirements
 func (t *Transaction) validatePrice() error {
 	if t.Type.RequiresPrice() {
-		if t.PricePerUnit == nil {
+		if t.UnitPriceAmount == nil {
 			return fmt.Errorf("price per unit is required for transaction type %s", t.Type)
 		}
-		if t.PricePerUnit.IsNegative() || t.PricePerUnit.IsZero() {
+		if t.UnitPriceAmount.IsNegative() || t.UnitPriceAmount.IsZero() {
 			return errors.New("price per unit must be positive")
 		}
 
 		// Validate that amount matches quantity * price (within reasonable tolerance for rounding)
 		if t.Quantity != nil {
-			expectedAmount := t.Quantity.Mul(*t.PricePerUnit).Mul(decimal.NewFromInt(100)) // Convert to cents
+			expectedAmount := t.Quantity.Mul(*t.UnitPriceAmount).Mul(decimal.NewFromInt(100)) // Convert to cents
 			actualAmount := decimal.NewFromInt(int64(t.Amount.Abs()))
 
 			// Allow for small rounding differences (within 1 cent per unit)
 			tolerance := t.Quantity.Mul(decimal.NewFromInt(1))
 			if expectedAmount.Sub(actualAmount).Abs().GreaterThan(tolerance) {
 				return fmt.Errorf("amount (%d cents) does not match quantity (%s) * price (%s)",
-					t.Amount, t.Quantity.String(), t.PricePerUnit.String())
+					t.Amount, t.Quantity.String(), t.UnitPriceAmount.String())
 			}
 		}
 	} else {
 		// For non-price transactions, price should be nil
-		if t.PricePerUnit != nil && !t.PricePerUnit.IsZero() {
+		if t.UnitPriceAmount != nil && !t.UnitPriceAmount.IsZero() {
 			return fmt.Errorf("price per unit should not be specified for transaction type %s", t.Type)
 		}
 	}
@@ -280,9 +282,9 @@ func (t *Transaction) IsCashFlowTransaction() bool {
 func (t *Transaction) CalculateNetAmount() Money {
 	switch t.Type {
 	case TransactionTypeBuy, TransactionTypeDeposit, TransactionTypeTransferIn:
-		return t.Amount - t.Fee // Reduce positive amounts by fees
+		return t.Amount - t.FeesAmount // Reduce positive amounts by fees
 	case TransactionTypeSell, TransactionTypeWithdrawal, TransactionTypeTransferOut:
-		return t.Amount - t.Fee // Fees reduce the net proceeds
+		return t.Amount - t.FeesAmount // Fees reduce the net proceeds
 	default:
 		return t.Amount
 	}
@@ -290,15 +292,15 @@ func (t *Transaction) CalculateNetAmount() Money {
 
 // GetTaxLotInfo returns information for tax lot tracking
 func (t *Transaction) GetTaxLotInfo() *TaxLotInfo {
-	if !t.Type.RequiresQuantity() || t.Quantity == nil || t.PricePerUnit == nil {
+	if !t.Type.RequiresQuantity() || t.Quantity == nil || t.UnitPriceAmount == nil {
 		return nil
 	}
 
 	return &TaxLotInfo{
 		TransactionID:   t.ID,
-		TransactionDate: t.TransactionDate,
+		ExecutedAt:      t.ExecutedAt,
 		Quantity:        *t.Quantity,
-		PricePerUnit:    *t.PricePerUnit,
+		UnitPriceAmount: *t.UnitPriceAmount,
 		TransactionType: t.Type,
 	}
 }
@@ -306,9 +308,9 @@ func (t *Transaction) GetTaxLotInfo() *TaxLotInfo {
 // TaxLotInfo represents information for tax lot tracking
 type TaxLotInfo struct {
 	TransactionID   string          `json:"transaction_id"`
-	TransactionDate time.Time       `json:"transaction_date"`
+	ExecutedAt      time.Time       `json:"executed_at"`
 	Quantity        decimal.Decimal `json:"quantity"`
-	PricePerUnit    decimal.Decimal `json:"price_per_unit"`
+	UnitPriceAmount decimal.Decimal `json:"unit_price_amount"`
 	TransactionType TransactionType `json:"transaction_type"`
 }
 

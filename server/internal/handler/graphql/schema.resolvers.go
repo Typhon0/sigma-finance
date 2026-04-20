@@ -14,6 +14,7 @@ import (
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
+	"strings"
 )
 
 // CreateUser is the resolver for the createUser field.
@@ -38,6 +39,31 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlM
 		Password: input.Password,
 	}
 	user, err := r.UserService.UpdateUser(ctx, id, userInput)
+	if err != nil {
+		return nil, err
+	}
+	return mapUserToGQL(*user), nil
+}
+
+// UpdateUserDisplayCurrency is the resolver for the updateUserDisplayCurrency field.
+func (r *mutationResolver) UpdateUserDisplayCurrency(ctx context.Context, input gqlModel.UpdateUserDisplayCurrencyInput) (*gqlModel.User, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	displayCurrency := model.Currency(input.DisplayCurrency)
+	if !displayCurrency.IsValid() {
+		return nil, fmt.Errorf("invalid display currency: %s", input.DisplayCurrency)
+	}
+
+	// Update user's display currency via repository
+	err = r.UOW.User().UpdateDisplayCurrency(ctx, userID, displayCurrency)
+	if err != nil {
+		return nil, err
+	}
+
+	// Return updated user
+	user, err := r.UserService.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -206,12 +232,25 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 	var asset *model.Asset
 	var err error
 
+	quoteCurrency := model.Currency(strings.ToUpper(strings.TrimSpace(input.QuoteCurrency)))
+	if !quoteCurrency.IsValid() {
+		return nil, fmt.Errorf("invalid quote currency: %s", input.QuoteCurrency)
+	}
+
+	metadata, marshalErr := json.Marshal(map[string]string{
+		"currency": quoteCurrency.String(),
+	})
+	if marshalErr != nil {
+		return nil, fmt.Errorf("failed to marshal stock metadata: %w", marshalErr)
+	}
+
 	err = r.UOW.Do(ctx, func(uow repository.IUnitOfWork) error {
 		asset, err = uow.Asset().Create(ctx, &model.Asset{
 			Name:        input.Name,
 			Symbol:      &input.Ticker,
 			Type:        model.AssetTypeStock,
 			IsTradeable: true,
+			Metadata:    metadata,
 		})
 		if err != nil {
 			return err
@@ -240,6 +279,8 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 	result.PurchaseDate = input.PurchaseDate
 	result.PurchasePrice = input.PurchasePrice
 
+	r.triggerAssetPriceRefresh(asset)
+
 	return result, nil
 }
 
@@ -248,12 +289,32 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 	var asset *model.Asset
 	var err error
 
+	quoteCurrency := model.Currency(strings.ToUpper(strings.TrimSpace(input.QuoteCurrency)))
+	if !quoteCurrency.IsValid() {
+		return nil, fmt.Errorf("invalid quote currency: %s", input.QuoteCurrency)
+	}
+
+	metadataPayload := map[string]interface{}{
+		"currency": quoteCurrency.String(),
+	}
+	if input.BlockchainNetwork != nil {
+		metadataPayload["blockchain"] = *input.BlockchainNetwork
+	}
+	if input.WalletAddress != nil {
+		metadataPayload["wallet_address"] = *input.WalletAddress
+	}
+	metadata, marshalErr := json.Marshal(metadataPayload)
+	if marshalErr != nil {
+		return nil, fmt.Errorf("failed to marshal crypto metadata: %w", marshalErr)
+	}
+
 	err = r.UOW.Do(ctx, func(uow repository.IUnitOfWork) error {
 		asset, err = uow.Asset().Create(ctx, &model.Asset{
 			Name:        input.Name,
 			Symbol:      &input.Name, // Use name as symbol if ticker not provided
 			Type:        model.AssetTypeCrypto,
 			IsTradeable: true,
+			Metadata:    metadata,
 		})
 		if err != nil {
 			return err
@@ -280,6 +341,8 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 	result.CurrentValue = input.CurrentValue
 	result.PurchaseDate = input.PurchaseDate
 	result.PurchasePrice = input.PurchasePrice
+
+	r.triggerAssetPriceRefresh(asset)
 
 	return result, nil
 }
@@ -674,9 +737,15 @@ func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Por
 	}
 	gqlP := mapPortfolioToGQL(*p)
 
-	analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID)
+	// Get user's display currency for analytics
+	displayCurrency, err := r.Resolver.getDisplayCurrencyFromContext(ctx)
+	if err != nil {
+		displayCurrency = model.CurrencyUSD // Default to USD
+	}
+
+	analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID, displayCurrency)
 	if err == nil {
-		gqlP.Analytics = mapPortfolioAnalyticsToGQL(analytics)
+		gqlP.Analytics = mapPortfolioValuationToGQL(analytics)
 	}
 
 	gqlP.Assets = r.buildPortfolioAssets(ctx, p.ID)
@@ -691,13 +760,19 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 		return nil, err
 	}
 
+	// Get user's display currency for analytics
+	displayCurrency, err := r.Resolver.getDisplayCurrencyFromContext(ctx)
+	if err != nil {
+		displayCurrency = model.CurrencyUSD // Default to USD
+	}
+
 	res := make([]*gqlModel.Portfolio, len(portfolios))
 	for i, p := range portfolios {
 		gqlP := mapPortfolioToGQL(p)
 
-		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID)
+		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID, displayCurrency)
 		if err == nil {
-			gqlP.Analytics = mapPortfolioAnalyticsToGQL(analytics)
+			gqlP.Analytics = mapPortfolioValuationToGQL(analytics)
 		}
 
 		gqlP.Assets = r.buildPortfolioAssets(ctx, p.ID)
@@ -735,14 +810,20 @@ func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.Portfol
 		return nil, err
 	}
 
+	// Get user's display currency for analytics
+	displayCurrency, err := r.Resolver.getDisplayCurrencyFromContext(ctx)
+	if err != nil {
+		displayCurrency = model.CurrencyUSD // Default to USD
+	}
+
 	res := make([]*gqlModel.Portfolio, len(portfolios))
 	for i, p := range portfolios {
 		gqlP := mapPortfolioToGQL(p)
 
 		// Fetch analytics for each portfolio
-		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID)
+		analytics, err := r.PortfolioService.GetPortfolioAnalytics(ctx, p.ID, displayCurrency)
 		if err == nil {
-			gqlP.Analytics = mapPortfolioAnalyticsToGQL(analytics)
+			gqlP.Analytics = mapPortfolioValuationToGQL(analytics)
 		}
 
 		gqlP.Assets = r.buildPortfolioAssets(ctx, p.ID)
@@ -936,3 +1017,32 @@ func (r *Resolver) Query() QueryResolver { return &queryResolver{r} }
 
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
+
+// !!! WARNING !!!
+// The code below was going to be deleted when updating resolvers. It has been copied here so you have
+// one last chance to move it out of harms way if you want. There are two reasons this happens:
+//  - When renaming or deleting a resolver the old code will be put in here. You can safely delete
+//    it when you're done.
+//  - You have helper methods in this file. Move them out to keep these resolver files clean.
+/*
+	func (r *mutationResolver) triggerAssetPriceRefresh(asset *model.Asset) {
+	if r == nil || r.MarketDataService == nil || asset == nil || !asset.IsTradeable {
+		return
+	}
+
+	assetID, err := uuid.Parse(asset.ID)
+	if err != nil {
+		log.Printf("[graphql] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
+		return
+	}
+
+	go func(assetID uuid.UUID, assetName string) {
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+
+		if _, refreshErr := r.MarketDataService.UpdateAssetPrice(ctx, assetID); refreshErr != nil {
+			log.Printf("[graphql] async price refresh failed for asset %s: %v", assetName, refreshErr)
+		}
+	}(assetID, asset.Name)
+}
+*/

@@ -21,6 +21,7 @@ type Position struct {
 	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:decimal(20,8)"` // Cost per unit
 	TotalCostBasis      *Money           `bun:"total_cost_basis"`                      // Total cost in cents
 	Notes               *string          `bun:"notes"`
+	QuoteCurrency       Currency         `bun:"quote_currency,type:varchar(3)"`
 	CreatedAt           time.Time        `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 	UpdatedAt           time.Time        `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 

@@ -72,7 +72,7 @@ func (s *stubPortfolioService) ReorderPortfolios(_ context.Context, _ string, _ 
 func (s *stubPortfolioService) GetPortfoliosByUser(_ context.Context, _ string, _ string) ([]model.Portfolio, error) {
 	panic("not implemented")
 }
-func (s *stubPortfolioService) GetPortfolioAnalytics(_ context.Context, _ string) (service.PortfolioAnalytics, error) {
+func (s *stubPortfolioService) GetPortfolioAnalytics(_ context.Context, _ string, _ model.Currency) (*service.PortfolioValuation, error) {
 	panic("not implemented")
 }
 func (s *stubPortfolioService) GetPortfolioHistory(_ context.Context, _ string, _ string) (service.PortfolioHistory, error) {
@@ -431,6 +431,7 @@ func (u *stubUOW) PushSubscription() repository.IPushSubscriptionRepository { pa
 func (u *stubUOW) ProviderRoutingConfig() repository.IProviderRoutingConfigRepository {
 	panic("not implemented")
 }
+func (u *stubUOW) FXRate() repository.IFXRateRepository { panic("not implemented") }
 
 // ---------------------------------------------------------------------------
 // Helper: build a Resolver wired to the given stubs

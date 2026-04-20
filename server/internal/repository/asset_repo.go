@@ -29,6 +29,7 @@ type IAssetRepository interface {
 	// Enhanced CRUD operations
 	GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error)
 	GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error)
+	UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error)
 	FindWithFilters(ctx context.Context, filter AssetFilter) ([]model.Asset, error)
 	CountWithFilters(ctx context.Context, filter AssetFilter) (int, error)
 
@@ -89,6 +90,33 @@ func (r *AssetRepository) GetByInstrumentID(ctx context.Context, instrumentID st
 		return nil, err
 	}
 	return &asset, nil
+}
+
+// UpsertTradeable inserts a tradeable asset or updates the existing one on
+// unique_tradeable_symbol conflict (symbol WHERE is_tradeable = true).
+// This avoids PostgreSQL transaction poisoning from failed INSERTs.
+func (r *AssetRepository) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) {
+	now := time.Now()
+	if asset.CreatedAt.IsZero() {
+		asset.CreatedAt = now
+	}
+	asset.UpdatedAt = now
+
+	err := r.db.NewInsert().
+		Model(asset).
+		ModelTableExpr("sigma_finance.assets AS assets").
+		On("CONFLICT (symbol) WHERE is_tradeable = true DO UPDATE").
+		Set("instrument_id = COALESCE(EXCLUDED.instrument_id, assets.instrument_id)").
+		Set("name = EXCLUDED.name").
+		Set("type = EXCLUDED.type").
+		Set("is_tradeable = EXCLUDED.is_tradeable").
+		Set("updated_at = EXCLUDED.updated_at").
+		Returning("*").
+		Scan(ctx, asset)
+	if err != nil {
+		return nil, err
+	}
+	return asset, nil
 }
 
 // FindWithFilters retrieves assets with multiple filter criteria

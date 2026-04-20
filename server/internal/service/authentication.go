@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"sigma_finance/internal/domain/model"
@@ -48,6 +49,8 @@ type LoginRequest struct {
 
 // Validate performs validation of the login request
 func (r *LoginRequest) Validate() error {
+	r.Email = strings.TrimSpace(strings.ToLower(r.Email))
+
 	if r.Email == "" {
 		return NewAuthError(ErrInvalidInput, "Email is required", "email")
 	}
@@ -314,7 +317,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 			// so even if the DB increment fails we still return the correct error code.
 			a.auditService.LogSecurityEvent(ctx, "failed_login_count_increment_error", req.IPAddress, req.UserAgent, map[string]interface{}{
 				"user_id": user.ID,
-				"error":  incErr.Error(),
+				"error":   incErr.Error(),
 			})
 		}
 
@@ -386,10 +389,11 @@ func (a *authenticationService) createUserSession(ctx context.Context, user *mod
 		RefreshToken: session.RefreshToken,
 		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
-			ID:            user.ID,
-			Email:         user.Email,
-			Name:          user.Name,
-			EmailVerified: user.EmailVerified,
+			ID:              user.ID,
+			Email:           user.Email,
+			Name:            user.Name,
+			EmailVerified:   user.EmailVerified,
+			DisplayCurrency: string(user.DisplayCurrency),
 		},
 	}, nil
 }
@@ -658,10 +662,11 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 		RefreshToken: session.RefreshToken,
 		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
-			ID:            user.ID,
-			Email:         user.Email,
-			Name:          user.Name,
-			EmailVerified: user.EmailVerified,
+			ID:              user.ID,
+			Email:           user.Email,
+			Name:            user.Name,
+			EmailVerified:   user.EmailVerified,
+			DisplayCurrency: string(user.DisplayCurrency),
 		},
 	}, nil
 }

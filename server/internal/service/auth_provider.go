@@ -2,10 +2,9 @@ package service
 
 import (
 	"context"
+	"strings"
 )
 
-// AuthProvider defines the interface for authentication providers
-// This allows for extensible authentication with different providers (local, external, etc.)
 type AuthProvider interface {
 	// Name returns the name of the authentication provider
 	Name() string
@@ -31,12 +30,13 @@ type Credentials interface {
 
 // UserInfo represents user information returned by authentication providers
 type UserInfo struct {
-	ID            string                 `json:"id"`
-	Email         string                 `json:"email"`
-	Name          string                 `json:"name"`
-	EmailVerified bool                   `json:"emailVerified"`
-	ExternalID    *string                `json:"externalId,omitempty"`
-	Metadata      map[string]interface{} `json:"metadata,omitempty"`
+	ID              string                 `json:"id"`
+	Email           string                 `json:"email"`
+	Name            string                 `json:"name"`
+	EmailVerified   bool                   `json:"emailVerified"`
+	DisplayCurrency string                 `json:"displayCurrency"`
+	ExternalID      *string                `json:"externalId,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // RegisterRequest represents a user registration request
@@ -48,6 +48,8 @@ type RegisterRequest struct {
 
 // Validate performs validation of the registration request
 func (r *RegisterRequest) Validate() error {
+	r.Email = strings.TrimSpace(strings.ToLower(r.Email))
+
 	if r.Email == "" {
 		return NewAuthError(ErrInvalidInput, "Email is required", "email")
 	}
@@ -72,6 +74,8 @@ func (c *EmailPasswordCredentials) Type() string {
 
 // Validate performs validation of email/password credentials
 func (c *EmailPasswordCredentials) Validate() error {
+	c.Email = strings.TrimSpace(strings.ToLower(c.Email))
+
 	if c.Email == "" {
 		return NewAuthError(ErrInvalidInput, "Email is required", "email")
 	}

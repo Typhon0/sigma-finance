@@ -103,6 +103,7 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 			email_verified BOOLEAN DEFAULT FALSE,
 			name VARCHAR(255),
 			password_hash VARCHAR(255),
+			display_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			last_login_at TIMESTAMP,
@@ -191,18 +192,68 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 			type VARCHAR(20) NOT NULL,
 			amount BIGINT NOT NULL,
 			quantity DECIMAL(20,8),
-			price_per_unit DECIMAL(20,8),
-			fee BIGINT DEFAULT 0,
+			unit_price_amount DECIMAL(20,8),
+			unit_price_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+			fees_amount BIGINT NOT NULL DEFAULT 0,
+			fees_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
 			notes TEXT,
-			transaction_date TIMESTAMPTZ NOT NULL,
+			executed_at TIMESTAMPTZ NOT NULL,
 			created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 		);
+
+		-- Align legacy transaction columns for tests that reuse an existing schema.
+		DO $$
+		BEGIN
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'price_per_unit'
+			) AND NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'unit_price_amount'
+			) THEN
+				ALTER TABLE sigma_finance.transactions RENAME COLUMN price_per_unit TO unit_price_amount;
+			END IF;
+
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'fee'
+			) AND NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'fees_amount'
+			) THEN
+				ALTER TABLE sigma_finance.transactions RENAME COLUMN fee TO fees_amount;
+			END IF;
+
+			IF EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'transaction_date'
+			) AND NOT EXISTS (
+				SELECT 1 FROM information_schema.columns
+				WHERE table_schema = 'sigma_finance' AND table_name = 'transactions' AND column_name = 'executed_at'
+			) THEN
+				ALTER TABLE sigma_finance.transactions RENAME COLUMN transaction_date TO executed_at;
+			END IF;
+		END $$;
+
+		ALTER TABLE IF EXISTS sigma_finance.transactions
+			ADD COLUMN IF NOT EXISTS unit_price_amount DECIMAL(20,8),
+			ADD COLUMN IF NOT EXISTS unit_price_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+			ADD COLUMN IF NOT EXISTS fees_amount BIGINT NOT NULL DEFAULT 0,
+			ADD COLUMN IF NOT EXISTS fees_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+			ADD COLUMN IF NOT EXISTS executed_at TIMESTAMPTZ;
+
+		UPDATE sigma_finance.transactions
+		SET executed_at = COALESCE(executed_at, created_at, NOW())
+		WHERE executed_at IS NULL;
 
 		-- Instrument catalog columns needed by the updated asset/portfolio model
 		ALTER TABLE IF EXISTS sigma_finance.assets
 			ADD COLUMN IF NOT EXISTS instrument_id UUID;
 		ALTER TABLE IF EXISTS sigma_finance.portfolio_asset
-			ADD COLUMN IF NOT EXISTS instrument_id UUID;
+			ADD COLUMN IF NOT EXISTS instrument_id UUID,
+			ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
+		ALTER TABLE IF EXISTS sigma_finance.positions
+			ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
 	`)
 
 	return err

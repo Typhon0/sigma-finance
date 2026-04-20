@@ -98,12 +98,13 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 
 	// Return user info
 	return &UserInfo{
-		ID:            user.ID,
-		Email:         user.Email,
-		Name:          user.Name,
-		EmailVerified: user.EmailVerified,
-		ExternalID:    nil, // Local provider doesn't have external ID
-		Metadata:      nil,
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		EmailVerified:   user.EmailVerified,
+		DisplayCurrency: string(user.DisplayCurrency),
+		ExternalID:      nil, // Local provider doesn't have external ID
+		Metadata:        nil,
 	}, nil
 }
 
@@ -147,6 +148,7 @@ func (p *LocalAuthProvider) Register(ctx context.Context, req RegisterRequest) (
 		PasswordHash:     &passwordHash,
 		EmailVerified:    false, // Email verification required
 		FailedLoginCount: 0,
+		DisplayCurrency:  model.CurrencyUSD,
 	}
 
 	// Validate user model
@@ -164,11 +166,12 @@ func (p *LocalAuthProvider) Register(ctx context.Context, req RegisterRequest) (
 
 	// Return user info
 	return &UserInfo{
-		ID:            user.ID,
-		Email:         user.Email,
-		Name:          user.Name,
-		EmailVerified: user.EmailVerified,
-		ExternalID:    nil,
-		Metadata:      nil,
+		ID:              user.ID,
+		Email:           user.Email,
+		Name:            user.Name,
+		EmailVerified:   user.EmailVerified,
+		DisplayCurrency: string(model.CurrencyUSD),
+		ExternalID:      nil,
+		Metadata:        nil,
 	}, nil
 }

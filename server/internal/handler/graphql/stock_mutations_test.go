@@ -56,6 +56,7 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "AAPL",
 			Quantity:      quantity,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, input)
@@ -76,10 +77,11 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 	t.Run("CreateStockAsset with only required fields", func(t *testing.T) {
 		// Create stock with minimal fields (currentValue and purchasePrice optional per schema)
 		input := gqlModel.CreateStockInput{
-			Name:        "Minimal Stock",
-			AssetTypeID: string(*stockAssetType),
-			Ticker:      "MIN",
-			Quantity:    5.0,
+			Name:          "Minimal Stock",
+			AssetTypeID:   string(*stockAssetType),
+			Ticker:        "MIN",
+			Quantity:      5.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, input)
@@ -106,6 +108,7 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "MSFT",
 			Quantity:      10.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, createInput)
@@ -154,6 +157,7 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "DUP",
 			Quantity:      5.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, createInput)
@@ -202,6 +206,7 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "INT",
 			Quantity:      quantity,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, createInput)
@@ -263,10 +268,11 @@ func TestStockAssetInputValidation(t *testing.T) {
 
 	t.Run("accepts zero for optional CurrentValue", func(t *testing.T) {
 		input := gqlModel.CreateStockInput{
-			Name:        "Zero Value Stock",
-			AssetTypeID: string(*stockAssetType),
-			Ticker:      "ZERO",
-			Quantity:    1.0,
+			Name:          "Zero Value Stock",
+			AssetTypeID:   string(*stockAssetType),
+			Ticker:        "ZERO",
+			Quantity:      1.0,
+			QuoteCurrency: "USD",
 			// CurrentValue not set (nil)
 		}
 
@@ -279,11 +285,12 @@ func TestStockAssetInputValidation(t *testing.T) {
 	t.Run("accepts zero for optional PurchasePrice", func(t *testing.T) {
 		currentValue := 100.0
 		input := gqlModel.CreateStockInput{
-			Name:         "Zero Purchase Stock",
-			AssetTypeID:  string(*stockAssetType),
-			CurrentValue: &currentValue,
-			Ticker:       "ZP",
-			Quantity:     1.0,
+			Name:          "Zero Purchase Stock",
+			AssetTypeID:   string(*stockAssetType),
+			CurrentValue:  &currentValue,
+			Ticker:        "ZP",
+			Quantity:      1.0,
+			QuoteCurrency: "USD",
 			// PurchasePrice not set (nil)
 		}
 
@@ -295,10 +302,11 @@ func TestStockAssetInputValidation(t *testing.T) {
 
 	t.Run("requires non-empty ticker", func(t *testing.T) {
 		input := gqlModel.CreateStockInput{
-			Name:        "Empty Ticker Stock",
-			AssetTypeID: string(*stockAssetType),
-			Ticker:      "", // Empty ticker
-			Quantity:    1.0,
+			Name:          "Empty Ticker Stock",
+			AssetTypeID:   string(*stockAssetType),
+			Ticker:        "", // Empty ticker
+			Quantity:      1.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, input)
@@ -311,10 +319,11 @@ func TestStockAssetInputValidation(t *testing.T) {
 
 	t.Run("requires positive quantity", func(t *testing.T) {
 		input := gqlModel.CreateStockInput{
-			Name:        "Negative Quantity Stock",
-			AssetTypeID: string(*stockAssetType),
-			Ticker:      "NEGQ",
-			Quantity:    -5.0, // Negative quantity
+			Name:          "Negative Quantity Stock",
+			AssetTypeID:   string(*stockAssetType),
+			Ticker:        "NEGQ",
+			Quantity:      -5.0, // Negative quantity
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutationResolver.CreateStockAsset(ctx, input)

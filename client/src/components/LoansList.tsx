@@ -24,6 +24,8 @@ import {
 	type AddLoanInput,
 	useAssetMutations,
 } from "@/hooks/use-asset-mutations";
+import { useCurrency } from "@/hooks/use-currency";
+import { formatCurrency as formatCurrencyForCurrency } from "@/lib/utils";
 import { AddLoanForm } from "./AddLoanForm";
 import { LoansAnalytics } from "./LoansAnalytics";
 import { Badge } from "./ui/badge";
@@ -104,6 +106,10 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 	const itemsPerPage = viewMode === "grid" ? 9 : 15;
 
+	// Currency hook — must be called before useMemo that uses displayCurrency
+	const { formatCurrencyCompact: formatCurrency, currency: displayCurrency } =
+		useCurrency();
+
 	// Derive loans from assets with type 'loan'
 	const loans = useMemo(() => {
 		return assets
@@ -119,11 +125,11 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 				monthlyPayment: 0,
 				startDate: new Date(),
 				bank: a.symbol || undefined,
-				currency: "USD",
+				currency: a.currency || displayCurrency,
 				ownershipMode: "personal" as const,
 				status: "active" as const,
 			}));
-	}, [assets]);
+	}, [assets, displayCurrency]);
 
 	const filteredLoans = loans
 		.filter((loan) => {
@@ -342,16 +348,9 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 		}
 	};
 
-	const formatCurrency = (amount: number, currency: string = "EUR") => {
-		const validAmount =
-			typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
-		return validAmount.toLocaleString("fr-FR", {
-			style: "currency",
-			currency: currency,
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	// Format a loan amount in the loan's native currency (not the display currency)
+	const formatLoanCurrency = (amount: number, loanCurrency: string) =>
+		formatCurrencyForCurrency(amount, loanCurrency);
 
 	const formatDate = (date: Date) => {
 		const dateObj = date instanceof Date ? date : new Date(date);
@@ -628,12 +627,15 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="text-sm text-muted-foreground">
-															{formatCurrency(loan.loanAmount, loan.currency)}
+															{formatLoanCurrency(
+																loan.loanAmount,
+																loan.currency,
+															)}
 														</span>
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="font-medium">
-															{formatCurrency(
+															{formatLoanCurrency(
 																loan.remainingBalance,
 																loan.currency,
 															)}
@@ -641,7 +643,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="font-medium">
-															{formatCurrency(
+															{formatLoanCurrency(
 																loan.monthlyPayment,
 																loan.currency,
 															)}
@@ -771,7 +773,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 														Remaining Balance
 													</span>
 													<span className="font-bold">
-														{formatCurrency(
+														{formatLoanCurrency(
 															loan.remainingBalance,
 															loan.currency,
 														)}
@@ -782,7 +784,10 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 														Monthly Payment
 													</span>
 													<span className="font-medium">
-														{formatCurrency(loan.monthlyPayment, loan.currency)}
+														{formatLoanCurrency(
+															loan.monthlyPayment,
+															loan.currency,
+														)}
 													</span>
 												</div>
 												<div className="flex justify-between text-sm">

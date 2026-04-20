@@ -40,18 +40,24 @@ export function LoginForm({
 
 	const onSubmit = async (data: LoginFormData) => {
 		setAuthErrors([]);
+		const normalizedEmail = data.email.trim().toLowerCase();
 		try {
-			await login(data.email, data.password);
+			await login(normalizedEmail, data.password);
 			reset(); // Clear form on successful login
 		} catch (error: any) {
-			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const authErrors = error?.authErrors ??
+				(error?.graphQLErrors?.[0]?.extensions?.errors as AuthError[] | undefined);
+
+			if (Array.isArray(authErrors) && authErrors.length > 0) {
+				setAuthErrors(authErrors);
 			} else {
 				setAuthErrors([
 					{
 						code: "INTERNAL_ERROR",
-						message: "Login failed. Please try again.",
+						message:
+							error instanceof Error
+								? error.message
+								: "Login failed. Please try again.",
 					},
 				]);
 			}

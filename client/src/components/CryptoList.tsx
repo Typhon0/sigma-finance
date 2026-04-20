@@ -22,6 +22,7 @@ import {
 	type PortfolioAssetItem,
 	usePortfolio,
 } from "@/components/PortfolioProvider";
+import { useCurrency } from "@/hooks/use-currency";
 import { AddCryptoForm } from "./AddCryptoForm";
 import {
 	Accordion,
@@ -173,14 +174,7 @@ export function CryptoList({
 			});
 	}, [assets]);
 
-	const formatCurrency = (amount: number) => {
-		return amount.toLocaleString("en-US", {
-			style: "currency",
-			currency: "USD",
-			minimumFractionDigits: 0,
-			maximumFractionDigits: 0,
-		});
-	};
+	const { formatCurrencyCompact: formatCurrency, currencySymbol } = useCurrency();
 
 	const formatNumber = (num: number, decimals: number = 2) => {
 		return num.toLocaleString("en-US", {
@@ -365,7 +359,7 @@ export function CryptoList({
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) => `$${(value / 1000).toFixed(0)}k`,
+				formatter: (value: number) => `${currencySymbol}${(value / 1000).toFixed(0)}k`,
 			},
 		},
 		series: [
@@ -605,14 +599,14 @@ export function CryptoList({
 								name: data.cryptoName || data.symbol,
 								instrumentID: data.instrumentID || data.cryptoId || undefined,
 								assetTypeID: "2",
-								quantity: parseFloat(data.quantity) || 0,
-								purchasePrice: parseFloat(data.averageBuyPrice) || 0,
+								quantity: data.quantity || 0,
+								purchasePrice: data.averageBuyPrice || 0,
 								currentValue:
-									parseFloat(data.currentPrice) * parseFloat(data.quantity) ||
-									undefined,
-								purchaseDate: data.purchaseDate?.toISOString(),
+									data.currentPrice * data.quantity || undefined,
+								purchaseDate: data.purchaseDate,
 								walletAddress: data.walletAddress || undefined,
 								blockchainNetwork: undefined,
+								quoteCurrency: data.quoteCurrency,
 							});
 
 							if (result.asset || result.portfolioAsset) {
@@ -1225,14 +1219,14 @@ export function CryptoList({
 							name: data.cryptoName || data.symbol,
 							instrumentID: data.instrumentID || data.cryptoId || undefined,
 							assetTypeID: "2", // Crypto asset type ID from server
-							quantity: parseFloat(data.quantity) || 0,
-							purchasePrice: parseFloat(data.averageBuyPrice) || 0,
+							quantity: data.quantity || 0,
+							purchasePrice: data.averageBuyPrice || 0,
 							currentValue:
-								parseFloat(data.currentPrice) * parseFloat(data.quantity) ||
-								undefined,
-							purchaseDate: data.purchaseDate?.toISOString(),
+								data.currentPrice * data.quantity || undefined,
+							purchaseDate: data.purchaseDate,
 							walletAddress: data.walletAddress || undefined,
 							blockchainNetwork: undefined,
+							quoteCurrency: data.quoteCurrency,
 						});
 
 						if (result.asset || result.portfolioAsset) {

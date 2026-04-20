@@ -84,6 +84,14 @@ func (m *MockAssetRepository) GetByInstrumentID(ctx context.Context, instrumentI
 	return args.Get(0).(*model.Asset), args.Error(1)
 }
 
+func (m *MockAssetRepository) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) {
+	args := m.Called(ctx, asset)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Asset), args.Error(1)
+}
+
 func (m *MockAssetRepository) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) {
 	args := m.Called(ctx, filter)
 	return args.Get(0).([]model.Asset), args.Error(1)

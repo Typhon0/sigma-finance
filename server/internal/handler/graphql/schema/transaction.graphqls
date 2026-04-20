@@ -6,8 +6,11 @@ type Transaction {
     asset: Asset!
     transactionType: TransactionType!
     quantity: Float!
-    pricePerUnit: Float!
-    transactionDate: Time!
+    unitPriceAmount: Float
+    unitPriceCurrency: String!
+    feesAmount: Float!
+    feesCurrency: String!
+    executedAt: Time!
     notes: String
 }
 
@@ -27,12 +30,12 @@ input TransactionFilter {
 }
 
 input TransactionOrder {
-    field: TransactionOrderField! = TRANSACTION_DATE
+    field: TransactionOrderField! = EXECUTED_AT
     direction: SortDirection! = DESC
 }
 
 enum TransactionOrderField {
-    TRANSACTION_DATE
-    PRICE_PER_UNIT
+    EXECUTED_AT
+    UNIT_PRICE_AMOUNT
     QUANTITY
 }

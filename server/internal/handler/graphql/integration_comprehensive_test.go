@@ -360,6 +360,7 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "AAPL",
 			Quantity:      10.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutResolver.CreateStockAsset(ctx, input)
@@ -378,11 +379,12 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 		// This test documents current behavior - invalid ID is accepted
 		currentValue := 150.0
 		input := gqlModel.CreateStockInput{
-			Name:         "Invalid Stock",
-			AssetTypeID:  "99999",
-			CurrentValue: &currentValue,
-			Ticker:       "INVALID",
-			Quantity:     10.0,
+			Name:          "Invalid Stock",
+			AssetTypeID:   "99999",
+			CurrentValue:  &currentValue,
+			Ticker:        "INVALID",
+			Quantity:      10.0,
+			QuoteCurrency: "USD",
 		}
 
 		stock, err := mutResolver.CreateStockAsset(ctx, input)
@@ -405,6 +407,7 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 			WalletAddress:     &walletAddress,
 			BlockchainNetwork: &blockchainNetwork,
 			Quantity:          0.5,
+			QuoteCurrency:     "USD",
 		}
 
 		crypto, err := mutResolver.CreateCryptoAsset(ctx, input)
@@ -430,6 +433,7 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "MSFT",
 			Quantity:      5.0,
+			QuoteCurrency: "USD",
 		}
 		createdAsset, err := mutResolver.CreateStockAsset(ctx, input)
 		require.NoError(t, err)
@@ -460,6 +464,7 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 			PurchasePrice: &purchasePrice,
 			Ticker:        "GOOGL",
 			Quantity:      2.0,
+			QuoteCurrency: "USD",
 		}
 		_, err := mutResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
@@ -478,6 +483,7 @@ func TestGraphQLIntegration_ComprehensiveAssetOperations(t *testing.T) {
 			WalletAddress:     &walletAddress2,
 			BlockchainNetwork: &blockchainNetwork2,
 			Quantity:          1.0,
+			QuoteCurrency:     "USD",
 		}
 		_, err = mutResolver.CreateCryptoAsset(ctx, cryptoInput)
 		require.NoError(t, err)
@@ -811,18 +817,20 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 	t.Run("AssetTypeFiltering", func(t *testing.T) {
 		// Create assets of different types
 		stockInput := gqlModel.CreateStockInput{
-			Name:        "Test Stock",
-			AssetTypeID: string(*testData.AssetTypes[0]),
-			Ticker:      "TEST",
-			Quantity:    10.0,
+			Name:          "Test Stock",
+			AssetTypeID:   string(*testData.AssetTypes[0]),
+			Ticker:        "TEST",
+			Quantity:      10.0,
+			QuoteCurrency: "USD",
 		}
 		stock, err := mutResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
 
 		cryptoInput := gqlModel.CreateCryptoInput{
-			Name:        "Test Crypto",
-			AssetTypeID: string(*testData.AssetTypes[1]),
-			Quantity:    1.0,
+			Name:          "Test Crypto",
+			AssetTypeID:   string(*testData.AssetTypes[1]),
+			Quantity:      1.0,
+			QuoteCurrency: "USD",
 		}
 		crypto, err := mutResolver.CreateCryptoAsset(ctx, cryptoInput)
 		require.NoError(t, err)
