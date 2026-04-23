@@ -29,12 +29,7 @@ export interface BinanceDepth {
 	asks: [string, string][];
 }
 
-export type BinanceEventType =
-	| "kline"
-	| "ticker"
-	| "depth"
-	| "trade"
-	| "aggTrade";
+export type BinanceEventType = "kline" | "ticker" | "depth" | "trade" | "aggTrade";
 
 export interface BinanceWebSocketMessage {
 	e: BinanceEventType;
@@ -72,7 +67,6 @@ export class BinanceWebSocketManager {
 			this.ws = new WebSocket(`${this.streamUrl}/${streams.join("/")}`);
 
 			this.ws.onopen = () => {
-				console.log("Binance WebSocket connected");
 				this.reconnectAttempts = 0;
 				for (const s of streams) {
 					this.subscribedStreams.add(s);
@@ -85,29 +79,18 @@ export class BinanceWebSocketManager {
 				try {
 					const data = JSON.parse(event.data);
 					this.handleMessage(data);
-				} catch (error) {
-					console.error("Failed to parse Binance message:", error);
-				}
+				} catch (_error) {}
 			};
 
-			this.ws.onclose = (event) => {
-				console.log(
-					"Binance WebSocket disconnected:",
-					event.code,
-					event.reason,
-				);
+			this.ws.onclose = (_event) => {
 				this.stopPing();
 
-				if (
-					this.shouldReconnect &&
-					this.reconnectAttempts < this.maxReconnectAttempts
-				) {
+				if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
 					this.scheduleReconnect(streams);
 				}
 			};
 
 			this.ws.onerror = (error) => {
-				console.error("Binance WebSocket error:", error);
 				reject(error);
 			};
 		});
@@ -125,10 +108,7 @@ export class BinanceWebSocketManager {
 		this.subscribedStreams.clear();
 	}
 
-	subscribe(
-		eventType: BinanceEventType,
-		handler: BinanceMessageHandler,
-	): () => void {
+	subscribe(eventType: BinanceEventType, handler: BinanceMessageHandler): () => void {
 		if (!this.handlers.has(eventType)) {
 			this.handlers.set(eventType, []);
 		}
@@ -155,9 +135,7 @@ export class BinanceWebSocketManager {
 			handlers.forEach((handler) => {
 				try {
 					handler(data);
-				} catch (error) {
-					console.error("Error in Binance message handler:", error);
-				}
+				} catch (_error) {}
 			});
 		}
 	}
@@ -179,20 +157,12 @@ export class BinanceWebSocketManager {
 	}
 
 	private scheduleReconnect(streams: string[]): void {
-		const delay = Math.min(
-			this.reconnectDelay * 2 ** this.reconnectAttempts,
-			30000,
-		);
+		const delay = Math.min(this.reconnectDelay * 2 ** this.reconnectAttempts, 30000);
 
 		setTimeout(() => {
 			if (this.shouldReconnect) {
 				this.reconnectAttempts++;
-				console.log(
-					`Binance reconnecting (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
-				);
-				this.connect(streams).catch((error) => {
-					console.error("Binance reconnection failed:", error);
-				});
+				this.connect(streams).catch((_error) => {});
 			}
 		}, delay);
 	}

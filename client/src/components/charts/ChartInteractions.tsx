@@ -10,7 +10,7 @@ export interface ChartTooltipConfig {
 	showCrosshair?: boolean;
 	showDataZoom?: boolean;
 	showBrush?: boolean;
-	customFormatter?: (params: any) => string;
+	customFormatter?: (params: unknown) => string;
 }
 
 export interface ChartInteractionConfig {
@@ -25,15 +25,8 @@ export interface ChartInteractionConfig {
 /**
  * Create enhanced tooltip configuration
  */
-export function createTooltipConfig(
-	config: ChartTooltipConfig = {},
-): Partial<EChartsOption> {
-	const {
-		showCrosshair = true,
-		showDataZoom = false,
-		showBrush = false,
-		customFormatter,
-	} = config;
+export function createTooltipConfig(config: ChartTooltipConfig = {}): Partial<EChartsOption> {
+	const { showCrosshair = true, showDataZoom = false, showBrush = false, customFormatter } = config;
 
 	return {
 		tooltip: {
@@ -56,26 +49,29 @@ export function createTooltipConfig(
 			},
 			formatter:
 				customFormatter ||
-				((params: any) => {
+				((params: unknown) => {
 					if (Array.isArray(params)) {
-						let result = `<div style="font-weight: 600; margin-bottom: 4px;">${params[0]?.axisValue || ""}</div>`;
-						params.forEach((param: any) => {
-							const color = param.color || "#000";
+						const items = params as Array<Record<string, unknown>>;
+						let result = `<div style="font-weight: 600; margin-bottom: 4px;">${(items[0]?.axisValue as string) || ""}</div>`;
+						items.forEach((param) => {
+							const color = (param.color as string) || "#000";
+							const rawValue = param.value;
 							const value =
-								typeof param.value === "number"
-									? EChartsDataFormatter.formatCurrency(param.value)
-									: param.value;
+								typeof rawValue === "number"
+									? EChartsDataFormatter.formatCurrency(rawValue)
+									: String(rawValue);
 							result += `
               <div style="display: flex; align-items: center; margin: 2px 0;">
                 <span style="display: inline-block; width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></span>
-                <span style="margin-right: 8px;">${param.seriesName}:</span>
+                <span style="margin-right: 8px;">${param.seriesName as string}:</span>
                 <span style="font-weight: 600;">${value}</span>
               </div>
             `;
 						});
 						return result;
 					}
-					return `${params.seriesName}: ${EChartsDataFormatter.formatCurrency(params.value)}`;
+					const p = params as Record<string, unknown>;
+					return `${p.seriesName as string}: ${EChartsDataFormatter.formatCurrency(p.value as number)}`;
 				}),
 		},
 		...(showDataZoom && {
@@ -154,20 +150,23 @@ export function createInteractionConfig(
 /**
  * Performance chart tooltip formatter
  */
-export function performanceTooltipFormatter(params: any): string {
+export function performanceTooltipFormatter(params: unknown): string {
 	if (Array.isArray(params)) {
-		const date = params[0]?.axisValue || "";
+		const items = params as Array<Record<string, unknown>>;
+		const date = (items[0]?.axisValue as string) || "";
 		let result = `<div style="font-weight: 600; margin-bottom: 8px; color: hsl(var(--foreground));">${date}</div>`;
 
-		params.forEach((param: any) => {
-			const color = param.color || "#000";
+		items.forEach((param) => {
+			const color = (param.color as string) || "#000";
+			const rawValue = param.value;
 			const value =
-				typeof param.value === "number"
-					? EChartsDataFormatter.formatCurrency(param.value)
-					: param.value;
+				typeof rawValue === "number"
+					? EChartsDataFormatter.formatCurrency(rawValue)
+					: String(rawValue);
 
 			// Calculate change if previous value is available
-			const change = param.data?.change;
+			const data = param.data as Record<string, unknown> | undefined;
+			const change = data?.change as number | undefined;
 			const changeText =
 				change !== undefined
 					? `<span style="color: ${change >= 0 ? "#22c55e" : "#ef4444"}; font-size: 11px;">
@@ -179,7 +178,7 @@ export function performanceTooltipFormatter(params: any): string {
         <div style="display: flex; align-items: center; justify-content: space-between; margin: 4px 0; padding: 2px 0;">
           <div style="display: flex; align-items: center;">
             <span style="display: inline-block; width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></span>
-            <span style="color: hsl(var(--muted-foreground)); font-size: 12px;">${param.seriesName}</span>
+            <span style="color: hsl(var(--muted-foreground)); font-size: 12px;">${param.seriesName as string}</span>
           </div>
           <div style="text-align: right;">
             <span style="font-weight: 600; color: hsl(var(--foreground));">${value}</span>
@@ -191,20 +190,20 @@ export function performanceTooltipFormatter(params: any): string {
 		return result;
 	}
 
+	const p = params as Record<string, unknown>;
+	const rawValue = p.value;
 	const value =
-		typeof params.value === "number"
-			? EChartsDataFormatter.formatCurrency(params.value)
-			: params.value;
-	return `${params.seriesName}: ${value}`;
+		typeof rawValue === "number" ? EChartsDataFormatter.formatCurrency(rawValue) : String(rawValue);
+	return `${p.seriesName as string}: ${value}`;
 }
 
 /**
  * Allocation chart tooltip formatter
  */
-export function allocationTooltipFormatter(params: any): string {
-	const { name, value, percent, color } = params;
-	const formattedValue = EChartsDataFormatter.formatCurrency(value);
-	const formattedPercent = EChartsDataFormatter.formatPercentage(percent, 1);
+export function allocationTooltipFormatter(params: unknown): string {
+	const { name, value, percent, color } = params as Record<string, unknown>;
+	const formattedValue = EChartsDataFormatter.formatCurrency(value as number);
+	const formattedPercent = EChartsDataFormatter.formatPercentage(percent as number, 1);
 
 	return `
     <div style="padding: 8px;">
@@ -223,22 +222,24 @@ export function allocationTooltipFormatter(params: any): string {
 /**
  * Comparison chart tooltip formatter
  */
-export function comparisonTooltipFormatter(params: any): string {
+export function comparisonTooltipFormatter(params: unknown): string {
 	if (Array.isArray(params)) {
-		const date = params[0]?.axisValue || "";
+		const items = params as Array<Record<string, unknown>>;
+		const date = (items[0]?.axisValue as string) || "";
 		let result = `<div style="font-weight: 600; margin-bottom: 8px; color: hsl(var(--foreground)); border-bottom: 1px solid hsl(var(--border)); padding-bottom: 4px;">${date}</div>`;
 
 		// Sort by value for better readability
-		const sortedParams = [...params].sort(
-			(a, b) => (b.value || 0) - (a.value || 0),
+		const sortedParams = [...items].sort(
+			(a, b) => ((b.value as number) || 0) - ((a.value as number) || 0),
 		);
 
-		sortedParams.forEach((param: any, index: number) => {
-			const color = param.color || "#000";
+		sortedParams.forEach((param, index) => {
+			const color = (param.color as string) || "#000";
+			const rawValue = param.value;
 			const value =
-				typeof param.value === "number"
-					? EChartsDataFormatter.formatCurrency(param.value)
-					: param.value;
+				typeof rawValue === "number"
+					? EChartsDataFormatter.formatCurrency(rawValue)
+					: String(rawValue);
 
 			const isTop = index === 0;
 			const rankIcon = isTop ? "👑" : `#${index + 1}`;
@@ -248,7 +249,7 @@ export function comparisonTooltipFormatter(params: any): string {
           <div style="display: flex; align-items: center;">
             <span style="font-size: 10px; margin-right: 4px;">${rankIcon}</span>
             <span style="display: inline-block; width: 10px; height: 10px; background-color: ${color}; border-radius: 50%; margin-right: 8px;"></span>
-            <span style="color: hsl(var(--muted-foreground)); font-size: 12px; ${isTop ? "font-weight: 600;" : ""}">${param.seriesName}</span>
+            <span style="color: hsl(var(--muted-foreground)); font-size: 12px; ${isTop ? "font-weight: 600;" : ""}">${param.seriesName as string}</span>
           </div>
           <span style="font-weight: 600; color: hsl(var(--foreground)); ${isTop ? "font-size: 13px;" : ""}">${value}</span>
         </div>
@@ -257,11 +258,11 @@ export function comparisonTooltipFormatter(params: any): string {
 		return result;
 	}
 
+	const p = params as Record<string, unknown>;
+	const rawValue = p.value;
 	const value =
-		typeof params.value === "number"
-			? EChartsDataFormatter.formatCurrency(params.value)
-			: params.value;
-	return `${params.seriesName}: ${value}`;
+		typeof rawValue === "number" ? EChartsDataFormatter.formatCurrency(rawValue) : String(rawValue);
+	return `${p.seriesName as string}: ${value}`;
 }
 
 /**
@@ -426,7 +427,7 @@ export function createAnimationConfig(
 /**
  * Chart loading configuration
  */
-export function createLoadingConfig(): any {
+export function createLoadingConfig(): Record<string, unknown> {
 	return {
 		text: "Loading...",
 		color: "hsl(var(--primary))",
@@ -444,9 +445,7 @@ export function createLoadingConfig(): any {
  * Hook for responsive chart configuration
  */
 export function useResponsiveChart() {
-	const [breakpoint, setBreakpoint] = React.useState<
-		"mobile" | "tablet" | "desktop"
-	>("desktop");
+	const [breakpoint, setBreakpoint] = React.useState<"mobile" | "tablet" | "desktop">("desktop");
 
 	React.useEffect(() => {
 		const updateBreakpoint = () => {

@@ -3,13 +3,7 @@ import { cn } from "../../lib/utils";
 import { Alert, AlertDescription } from "../ui/alert";
 
 interface AuthLoadingDisplayProps {
-	type:
-		| "login"
-		| "register"
-		| "logout"
-		| "password-reset"
-		| "email-verification"
-		| "token-refresh";
+	type: "login" | "register" | "logout" | "password-reset" | "email-verification" | "token-refresh";
 	message?: string;
 	className?: string;
 	size?: "sm" | "md" | "lg";
@@ -81,9 +75,7 @@ export function AuthLoadingDisplay({
 			<div className="flex items-center space-x-2">
 				<Loader2 className={cn(iconSizeClasses[size], "animate-spin")} />
 				{getLoadingIcon()}
-				<AlertDescription className="mb-0">
-					{message || getDefaultMessage()}
-				</AlertDescription>
+				<AlertDescription className="mb-0">{message || getDefaultMessage()}</AlertDescription>
 			</div>
 		</Alert>
 	);
@@ -91,21 +83,12 @@ export function AuthLoadingDisplay({
 
 // Inline loading component for buttons and smaller spaces
 interface InlineAuthLoadingProps {
-	type:
-		| "login"
-		| "register"
-		| "logout"
-		| "password-reset"
-		| "email-verification";
+	type: "login" | "register" | "logout" | "password-reset" | "email-verification";
 	message?: string;
 	className?: string;
 }
 
-export function InlineAuthLoading({
-	type,
-	message,
-	className,
-}: InlineAuthLoadingProps) {
+export function InlineAuthLoading({ type, message, className }: InlineAuthLoadingProps) {
 	const getDefaultMessage = () => {
 		switch (type) {
 			case "register":

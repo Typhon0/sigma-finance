@@ -6,6 +6,16 @@ export interface AuthUser {
 	name: string;
 	emailVerified: boolean;
 	displayCurrency?: string;
+	themePreference?: string;
+	themeBaseColor?: string;
+	themeAccentColor?: string;
+	themeFontPreference?: string;
+	themeHeadingFont?: string;
+	themeMenuAccent?: string;
+	themeMenuColor?: string;
+	themeStyle?: string;
+	themeRadius?: number;
+	themeRTL?: boolean;
 }
 
 export interface AuthData {
@@ -110,5 +120,4 @@ export const AUTH_ERROR_CODES = {
 	INVALID_INPUT: "INVALID_INPUT",
 } as const;
 
-export type AuthErrorCode =
-	(typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];
+export type AuthErrorCode = (typeof AUTH_ERROR_CODES)[keyof typeof AUTH_ERROR_CODES];

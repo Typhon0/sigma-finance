@@ -88,10 +88,7 @@ export function InlinePortfolioDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-4">
 						{Array.from({ length: 5 }).map((_, i) => (
-							<div
-								key={i}
-								className="flex items-center justify-between p-3 border rounded-lg"
-							>
+							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-10 w-10 rounded-full" />
 									<div className="space-y-1">
@@ -162,10 +159,7 @@ export function InlineAssetDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-3">
 						{Array.from({ length: 6 }).map((_, i) => (
-							<div
-								key={i}
-								className="flex items-center justify-between p-3 border rounded-lg"
-							>
+							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-8 w-8 rounded-full" />
 									<div className="space-y-1">
@@ -210,10 +204,7 @@ export function DataTableSkeleton({
 					)}
 					<div className="space-y-0">
 						{Array.from({ length: rows }).map((_, rowIndex) => (
-							<div
-								key={rowIndex}
-								className="flex items-center gap-4 p-4 border-b last:border-b-0"
-							>
+							<div key={rowIndex} className="flex items-center gap-4 p-4 border-b last:border-b-0">
 								{Array.from({ length: columns }).map((_, colIndex) => (
 									<Skeleton
 										key={colIndex}
@@ -270,10 +261,7 @@ export function AssetListSkeleton({
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
-				<div
-					key={i}
-					className="flex items-center justify-between p-3 border rounded-lg"
-				>
+				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-10 w-10 rounded-full" />
 						<div className="space-y-1">
@@ -304,10 +292,7 @@ export function TransactionListSkeleton({
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
-				<div
-					key={i}
-					className="flex items-center justify-between p-3 border rounded-lg"
-				>
+				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-8 w-8 rounded-full" />
 						<div className="space-y-1">

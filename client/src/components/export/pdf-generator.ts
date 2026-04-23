@@ -18,9 +18,7 @@ export class PDFGenerator {
 		return new Date(dateString).toLocaleDateString("en-US");
 	}
 
-	static async generatePortfolioReport(
-		data: PortfolioExportData,
-	): Promise<Blob> {
+	static async generatePortfolioReport(data: PortfolioExportData): Promise<Blob> {
 		// This would use a proper PDF library in production
 		const htmlContent = PDFGenerator.generatePortfolioHTML(data);
 		return PDFGenerator.htmlToPDF(htmlContent);
@@ -30,10 +28,7 @@ export class PDFGenerator {
 		portfolioData: PortfolioExportData,
 		performanceMetrics: any,
 	): Promise<Blob> {
-		const htmlContent = PDFGenerator.generatePerformanceHTML(
-			portfolioData,
-			performanceMetrics,
-		);
+		const htmlContent = PDFGenerator.generatePerformanceHTML(portfolioData, performanceMetrics);
 		return PDFGenerator.htmlToPDF(htmlContent);
 	}
 

@@ -7,19 +7,24 @@ import {
 } from "@/components/portfolio/portfolio-breadcrumb";
 
 function PortfolioEditPage() {
-	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId/edit" });
+	const { portfolioId } = useParams({
+		from: "/_app/portfolios/$portfolioId/edit",
+	});
 
 	return (
 		<div className="flex flex-col h-full">
 			<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
 				<div className="flex items-center gap-2 px-4">
-					<PortfolioBreadcrumb
-						items={portfolioBreadcrumbs.portfolioEdit(undefined, portfolioId)}
-					/>
+					<PortfolioBreadcrumb items={portfolioBreadcrumbs.portfolioEdit(undefined, portfolioId)} />
 				</div>
 			</header>
 			<main className="flex-1 p-6">
-				<EnhancedPortfolioForm portfolioId={portfolioId} />
+				<EnhancedPortfolioForm
+					portfolio={{ id: portfolioId, name: "" }}
+					mode="edit"
+					onSubmit={async () => {}}
+					onCancel={() => {}}
+				/>
 			</main>
 		</div>
 	);

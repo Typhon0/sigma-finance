@@ -55,9 +55,7 @@ export function AlertManagement({
 
 	const activeAlerts = alerts.filter((alert) => alert.isActive);
 	const inactiveAlerts = alerts.filter((alert) => !alert.isActive);
-	const unacknowledgedNotifications = notifications.filter(
-		(n) => !n.acknowledged,
-	);
+	const unacknowledgedNotifications = notifications.filter((n) => !n.acknowledged);
 
 	const handleCreateAlert = async (data: AlertFormData) => {
 		if (onCreateAlert) {
@@ -90,9 +88,7 @@ export function AlertManagement({
 					<div className="flex items-center gap-3">
 						<Bell className="h-6 w-6" />
 						<div>
-							<h2 className="text-2xl font-bold tracking-tight">
-								Alert Management
-							</h2>
+							<h2 className="text-2xl font-bold tracking-tight">Alert Management</h2>
 							<p className="text-muted-foreground">
 								Configure and manage alerts for your portfolio and assets
 							</p>
@@ -118,12 +114,8 @@ export function AlertManagement({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Active Alerts
-									</p>
-									<div className="text-2xl font-bold">
-										{activeAlerts.length}
-									</div>
+									<p className="text-sm font-medium text-muted-foreground">Active Alerts</p>
+									<div className="text-2xl font-bold">{activeAlerts.length}</div>
 								</div>
 								<Settings className="h-4 w-4 text-muted-foreground" />
 							</div>
@@ -134,12 +126,8 @@ export function AlertManagement({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Notifications
-									</p>
-									<div className="text-2xl font-bold">
-										{unacknowledgedNotifications.length}
-									</div>
+									<p className="text-sm font-medium text-muted-foreground">Notifications</p>
+									<div className="text-2xl font-bold">{unacknowledgedNotifications.length}</div>
 								</div>
 								<Bell className="h-4 w-4 text-muted-foreground" />
 							</div>
@@ -150,17 +138,13 @@ export function AlertManagement({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Triggered Today
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">Triggered Today</p>
 									<div className="text-2xl font-bold">
 										{
 											alertHistory.filter((h) => {
 												const today = new Date();
 												const triggerDate = new Date(h.triggeredAt);
-												return (
-													triggerDate.toDateString() === today.toDateString()
-												);
+												return triggerDate.toDateString() === today.toDateString();
 											}).length
 										}
 									</div>
@@ -174,9 +158,7 @@ export function AlertManagement({
 						<CardContent className="p-6">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Total Triggers
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">Total Triggers</p>
 									<div className="text-2xl font-bold">
 										{alerts.reduce((sum, alert) => sum + alert.triggerCount, 0)}
 									</div>
@@ -192,16 +174,12 @@ export function AlertManagement({
 					<TabsList className="grid w-full grid-cols-4">
 						<TabsTrigger value="active" className="gap-2">
 							Active Alerts
-							{activeAlerts.length > 0 && (
-								<Badge variant="secondary">{activeAlerts.length}</Badge>
-							)}
+							{activeAlerts.length > 0 && <Badge variant="secondary">{activeAlerts.length}</Badge>}
 						</TabsTrigger>
 						<TabsTrigger value="notifications" className="gap-2">
 							Notifications
 							{unacknowledgedNotifications.length > 0 && (
-								<Badge variant="destructive">
-									{unacknowledgedNotifications.length}
-								</Badge>
+								<Badge variant="destructive">{unacknowledgedNotifications.length}</Badge>
 							)}
 						</TabsTrigger>
 						<TabsTrigger value="history">History</TabsTrigger>
@@ -213,9 +191,7 @@ export function AlertManagement({
 						{(showCreateForm || editingAlert) && (
 							<Card>
 								<CardHeader>
-									<CardTitle>
-										{editingAlert ? "Edit Alert" : "Create New Alert"}
-									</CardTitle>
+									<CardTitle>{editingAlert ? "Edit Alert" : "Create New Alert"}</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<AlertConfigurationForm
@@ -230,19 +206,15 @@ export function AlertManagement({
 														assetId: editingAlert.assetId,
 														portfolioId: editingAlert.portfolioId,
 														thresholdValue: editingAlert.thresholdValue,
-														thresholdPercentage:
-															editingAlert.thresholdPercentage,
-														notificationMethods:
-															editingAlert.notificationMethods,
+														thresholdPercentage: editingAlert.thresholdPercentage,
+														notificationMethods: editingAlert.notificationMethods,
 														isActive: editingAlert.isActive,
 														name: editingAlert.name,
 														description: editingAlert.description,
 													}
 												: undefined
 										}
-										onSubmit={
-											editingAlert ? handleUpdateAlert : handleCreateAlert
-										}
+										onSubmit={editingAlert ? handleUpdateAlert : handleCreateAlert}
 										onCancel={handleCancelEdit}
 									/>
 								</CardContent>
@@ -305,10 +277,7 @@ export function AlertManagement({
 								<CardTitle>Alert History</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<AlertHistory
-									history={alertHistory}
-									onFilter={onFilterAlerts}
-								/>
+								<AlertHistory history={alertHistory} onFilter={onFilterAlerts} />
 							</CardContent>
 						</Card>
 					</TabsContent>

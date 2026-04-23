@@ -131,11 +131,7 @@ describe("Inline Dashboard Charts", () => {
 	describe("CompactPerformanceChart", () => {
 		it("should render with performance data", () => {
 			render(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					height={200}
-					showControls={false}
-				/>,
+				<CompactPerformanceChart data={mockPerformanceData} height={200} showControls={false} />,
 			);
 
 			const chart = screen.getByTestId("mock-chart");
@@ -144,12 +140,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should display current value and change", () => {
-			render(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					showMetrics={true}
-				/>,
-			);
+			render(<CompactPerformanceChart data={mockPerformanceData} showMetrics={true} />);
 
 			expect(screen.getByText("$10,800.00")).toBeInTheDocument(); // Current value
 			expect(screen.getByText("+$800.00")).toBeInTheDocument(); // Change from first to last
@@ -171,12 +162,7 @@ describe("Inline Dashboard Charts", () => {
 		it("should handle click events", async () => {
 			const mockOnClick = vi.fn();
 
-			render(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					onClick={mockOnClick}
-				/>,
-			);
+			render(<CompactPerformanceChart data={mockPerformanceData} onClick={mockOnClick} />);
 
 			const chart = screen.getByTestId("mock-chart");
 			fireEvent.click(chart);
@@ -210,9 +196,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should display allocation percentages", () => {
-			render(
-				<CompactAllocationChart data={mockAllocationData} showLegend={true} />,
-			);
+			render(<CompactAllocationChart data={mockAllocationData} showLegend={true} />);
 
 			expect(screen.getByText("Stocks")).toBeInTheDocument();
 			expect(screen.getByText("45%")).toBeInTheDocument();
@@ -225,9 +209,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should handle asset type colors correctly", () => {
-			render(
-				<CompactAllocationChart data={mockAllocationData} showLegend={true} />,
-			);
+			render(<CompactAllocationChart data={mockAllocationData} showLegend={true} />);
 
 			const chartData = screen.getByTestId("mock-chart");
 			const chartOption = JSON.parse(chartData.textContent || "{}");
@@ -262,11 +244,7 @@ describe("Inline Dashboard Charts", () => {
 
 		it("should show total value when provided", () => {
 			render(
-				<CompactAllocationChart
-					data={mockAllocationData}
-					totalValue={100000}
-					showTotal={true}
-				/>,
+				<CompactAllocationChart data={mockAllocationData} totalValue={100000} showTotal={true} />,
 			);
 
 			expect(screen.getByText("Total: $100,000.00")).toBeInTheDocument();
@@ -275,13 +253,7 @@ describe("Inline Dashboard Charts", () => {
 
 	describe("MiniPerformanceSparkline", () => {
 		it("should render minimal sparkline chart", () => {
-			render(
-				<MiniPerformanceSparkline
-					data={mockPerformanceData}
-					width={120}
-					height={40}
-				/>,
-			);
+			render(<MiniPerformanceSparkline data={mockPerformanceData} width={120} height={40} />);
 
 			const chart = screen.getByTestId("mock-chart");
 			expect(chart).toBeInTheDocument();
@@ -289,12 +261,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should show change indicator when enabled", () => {
-			render(
-				<MiniPerformanceSparkline
-					data={mockPerformanceData}
-					showChange={true}
-				/>,
-			);
+			render(<MiniPerformanceSparkline data={mockPerformanceData} showChange={true} />);
 
 			expect(screen.getByText("+8.00%")).toBeInTheDocument();
 		});
@@ -305,9 +272,7 @@ describe("Inline Dashboard Charts", () => {
 				{ date: "2024-01-02", value: 9500 },
 			];
 
-			render(
-				<MiniPerformanceSparkline data={negativeData} showChange={true} />,
-			);
+			render(<MiniPerformanceSparkline data={negativeData} showChange={true} />);
 
 			const changeIndicator = screen.getByText("-5.00%");
 			expect(changeIndicator).toHaveClass("text-red-600");
@@ -332,24 +297,13 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should show center value when provided", () => {
-			render(
-				<MiniAllocationDonut
-					data={mockAllocationData}
-					size={80}
-					centerValue="$100K"
-				/>,
-			);
+			render(<MiniAllocationDonut data={mockAllocationData} size={80} centerValue="$100K" />);
 
 			expect(screen.getByText("$100K")).toBeInTheDocument();
 		});
 
 		it("should display top allocation when showTopAllocation is true", () => {
-			render(
-				<MiniAllocationDonut
-					data={mockAllocationData}
-					showTopAllocation={true}
-				/>,
-			);
+			render(<MiniAllocationDonut data={mockAllocationData} showTopAllocation={true} />);
 
 			expect(screen.getByText("Stocks 45%")).toBeInTheDocument();
 		});
@@ -358,10 +312,7 @@ describe("Inline Dashboard Charts", () => {
 	describe("AssetAllocationChart (Dashboard Integration)", () => {
 		it("should render full allocation chart for dashboard", () => {
 			render(
-				<AssetAllocationChart
-					allocationData={mockAllocationData}
-					title="Portfolio Allocation"
-				/>,
+				<AssetAllocationChart allocationData={mockAllocationData} title="Portfolio Allocation" />,
 			);
 
 			expect(screen.getByText("Portfolio Allocation")).toBeInTheDocument();
@@ -370,12 +321,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should show allocation breakdown table", () => {
-			render(
-				<AssetAllocationChart
-					allocationData={mockAllocationData}
-					showBreakdown={true}
-				/>,
-			);
+			render(<AssetAllocationChart allocationData={mockAllocationData} showBreakdown={true} />);
 
 			expect(screen.getByText("Asset Type")).toBeInTheDocument();
 			expect(screen.getByText("Value")).toBeInTheDocument();
@@ -436,17 +382,10 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should handle connection status", () => {
-			render(
-				<RealTimeChart
-					data={mockRealTimeData}
-					connectionStatus="disconnected"
-				/>,
-			);
+			render(<RealTimeChart data={mockRealTimeData} connectionStatus="disconnected" />);
 
 			expect(screen.getByText("Disconnected")).toBeInTheDocument();
-			expect(screen.getByTestId("connection-status")).toHaveClass(
-				"text-red-600",
-			);
+			expect(screen.getByTestId("connection-status")).toHaveClass("text-red-600");
 		});
 
 		it("should show last update timestamp", () => {
@@ -476,9 +415,7 @@ describe("Inline Dashboard Charts", () => {
 		});
 
 		it("should implement lazy loading for chart components", async () => {
-			const LazyChart = vi.fn(() => (
-				<div data-testid="lazy-chart">Lazy Chart</div>
-			));
+			const LazyChart = vi.fn(() => <div data-testid="lazy-chart">Lazy Chart</div>);
 
 			render(
 				<div>
@@ -497,23 +434,13 @@ describe("Inline Dashboard Charts", () => {
 
 		it("should handle chart resize events", () => {
 			const { rerender } = render(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					width={400}
-					height={200}
-				/>,
+				<CompactPerformanceChart data={mockPerformanceData} width={400} height={200} />,
 			);
 
 			let chart = screen.getByTestId("mock-chart");
 			expect(chart).toHaveStyle({ width: "400px", height: "200px" });
 
-			rerender(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					width={600}
-					height={300}
-				/>,
-			);
+			rerender(<CompactPerformanceChart data={mockPerformanceData} width={600} height={300} />);
 
 			chart = screen.getByTestId("mock-chart");
 			expect(chart).toHaveStyle({ width: "600px", height: "300px" });
@@ -522,16 +449,12 @@ describe("Inline Dashboard Charts", () => {
 
 	describe("Chart Error Handling", () => {
 		it("should handle chart rendering errors gracefully", () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 			// Mock ECharts to throw an error
-			vi.mocked(require("echarts-for-react").default).mockImplementationOnce(
-				() => {
-					throw new Error("Chart rendering failed");
-				},
-			);
+			vi.mocked(require("echarts-for-react").default).mockImplementationOnce(() => {
+				throw new Error("Chart rendering failed");
+			});
 
 			render(
 				<CompactPerformanceChart
@@ -571,18 +494,12 @@ describe("Inline Dashboard Charts", () => {
 			);
 
 			const chart = screen.getByTestId("mock-chart");
-			expect(chart).toHaveAttribute(
-				"aria-label",
-				"Portfolio performance chart showing 8% growth",
-			);
+			expect(chart).toHaveAttribute("aria-label", "Portfolio performance chart showing 8% growth");
 		});
 
 		it("should support keyboard navigation", () => {
 			render(
-				<CompactPerformanceChart
-					data={mockPerformanceData}
-					enableKeyboardNavigation={true}
-				/>,
+				<CompactPerformanceChart data={mockPerformanceData} enableKeyboardNavigation={true} />,
 			);
 
 			const chart = screen.getByTestId("mock-chart");
@@ -598,18 +515,14 @@ describe("Inline Dashboard Charts", () => {
 			);
 
 			expect(
-				screen.getByText(
-					"Asset allocation: 45% Stocks, 25% Crypto, 20% Bonds, 10% Cash",
-				),
+				screen.getByText("Asset allocation: 45% Stocks, 25% Crypto, 20% Bonds, 10% Cash"),
 			).toBeInTheDocument();
 		});
 	});
 
 	describe("Chart Theming and Customization", () => {
 		it("should apply dark theme correctly", () => {
-			render(
-				<CompactPerformanceChart data={mockPerformanceData} theme="dark" />,
-			);
+			render(<CompactPerformanceChart data={mockPerformanceData} theme="dark" />);
 
 			const chartData = screen.getByTestId("mock-chart");
 			const chartOption = JSON.parse(chartData.textContent || "{}");
@@ -621,12 +534,7 @@ describe("Inline Dashboard Charts", () => {
 		it("should support custom color schemes", () => {
 			const customColors = ["#ff6b6b", "#4ecdc4", "#45b7d1", "#96ceb4"];
 
-			render(
-				<CompactAllocationChart
-					data={mockAllocationData}
-					colorScheme={customColors}
-				/>,
-			);
+			render(<CompactAllocationChart data={mockAllocationData} colorScheme={customColors} />);
 
 			const chartData = screen.getByTestId("mock-chart");
 			const chartOption = JSON.parse(chartData.textContent || "{}");

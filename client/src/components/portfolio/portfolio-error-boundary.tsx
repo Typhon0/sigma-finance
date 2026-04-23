@@ -5,11 +5,7 @@ import { Component, type ReactNode } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	getErrorMessage,
-	isGraphQLError,
-	isNetworkError,
-} from "@/hooks/use-error-handling";
+import { getErrorMessage, isGraphQLError, isNetworkError } from "@/hooks/use-error-handling";
 
 interface PortfolioErrorBoundaryProps {
 	children: ReactNode;
@@ -55,20 +51,18 @@ export class PortfolioErrorBoundary extends Component<
 	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
 		this.setState({ errorInfo });
 
-		// Log error to monitoring service
-		console.error(
-			"Portfolio Error Boundary caught an error:",
-			error,
-			errorInfo,
-		);
-
 		// Report to external monitoring if available
-		if (typeof window !== "undefined" && (window as any).reportError) {
-			(window as any).reportError(error, {
-				context: this.props.context || "portfolio",
-				componentStack: errorInfo.componentStack,
-				retryCount: this.state.retryCount,
-			});
+		if (typeof window !== "undefined") {
+			const reportErrorFn = (
+				window as unknown as { reportError?: (error: unknown, data: unknown) => void }
+			).reportError;
+			if (typeof reportErrorFn === "function") {
+				reportErrorFn(error, {
+					context: this.props.context || "portfolio",
+					componentStack: errorInfo.componentStack,
+					retryCount: this.state.retryCount,
+				});
+			}
 		}
 	}
 
@@ -95,8 +89,7 @@ export class PortfolioErrorBoundary extends Component<
 				await this.props.onRetry();
 			}
 			this.reset();
-		} catch (error) {
-			console.error("Retry failed:", error);
+		} catch (_error) {
 			// Error will be caught by componentDidCatch if it's a render error
 		}
 	};
@@ -136,7 +129,7 @@ export const PortfolioErrorFallback = ({
 }: PortfolioErrorFallbackProps) => {
 	const isApolloError = error instanceof ApolloError;
 	const isNetwork = isApolloError && isNetworkError(error as ApolloError);
-	const isGraphQL = isApolloError && isGraphQLError(error as ApolloError);
+	const isGraphQl = isApolloError && isGraphQLError(error as ApolloError);
 	const message = getErrorMessage(error);
 	const canRetry = retryCount < 3;
 
@@ -146,15 +139,14 @@ export const PortfolioErrorFallback = ({
 			return {
 				icon: WifiOff,
 				title: "Connection Error",
-				description:
-					"Unable to connect to the server. Please check your internet connection.",
+				description: "Unable to connect to the server. Please check your internet connection.",
 				variant: "network" as const,
 			};
 		}
 
-		if (isGraphQL && error instanceof ApolloError) {
-			const graphQLError = error.graphQLErrors[0];
-			if (graphQLError?.extensions?.code === "UNAUTHORIZED") {
+		if (isGraphQl && error instanceof ApolloError) {
+			const graphQlError = error.graphQLErrors[0];
+			if (graphQlError?.extensions?.code === "UNAUTHORIZED") {
 				return {
 					icon: Shield,
 					title: "Access Denied",
@@ -162,7 +154,7 @@ export const PortfolioErrorFallback = ({
 					variant: "unauthorized" as const,
 				};
 			}
-			if (graphQLError?.extensions?.code === "NOT_FOUND") {
+			if (graphQlError?.extensions?.code === "NOT_FOUND") {
 				return {
 					icon: FileX,
 					title: "Portfolio Not Found",
@@ -172,10 +164,7 @@ export const PortfolioErrorFallback = ({
 			}
 		}
 
-		if (
-			error.message?.includes("Failed to fetch") ||
-			error.message?.includes("NetworkError")
-		) {
+		if (error.message?.includes("Failed to fetch") || error.message?.includes("NetworkError")) {
 			return {
 				icon: WifiOff,
 				title: "Network Error",
@@ -217,18 +206,12 @@ export const PortfolioErrorFallback = ({
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-4">
-				<Alert
-					variant={
-						errorDetails.variant === "network" ? "destructive" : "default"
-					}
-				>
+				<Alert variant={errorDetails.variant === "network" ? "destructive" : "default"}>
 					<AlertDescription>{errorDetails.description}</AlertDescription>
 				</Alert>
 
 				{retryCount > 0 && (
-					<div className="text-sm text-muted-foreground">
-						Retry attempt: {retryCount}/3
-					</div>
+					<div className="text-sm text-muted-foreground">Retry attempt: {retryCount}/3</div>
 				)}
 
 				<div className="flex flex-col sm:flex-row gap-2">
@@ -238,11 +221,7 @@ export const PortfolioErrorFallback = ({
 							Try Again
 						</Button>
 					)}
-					<Button
-						onClick={resetErrorBoundary}
-						variant="outline"
-						className="gap-2"
-					>
+					<Button onClick={resetErrorBoundary} variant="outline" className="gap-2">
 						<RefreshCw className="h-4 w-4" />
 						Reset
 					</Button>

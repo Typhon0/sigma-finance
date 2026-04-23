@@ -379,8 +379,7 @@ export function useResponsiveChartTheme(
 	const { theme, systemTheme } = useTheme();
 
 	const extendedTheme = useMemo(() => {
-		const isDark =
-			theme === "dark" || (theme === "system" && systemTheme === "dark");
+		const isDark = theme === "dark" || (theme === "system" && systemTheme === "dark");
 		const device = deviceOverride || detectDeviceContext();
 
 		return createExtendedTheme(isDark, device, context, variant);
@@ -392,9 +391,7 @@ export function useResponsiveChartTheme(
 /**
  * CSS custom properties generator
  */
-export function generateChartCSSProperties(
-	theme: ExtendedChartTheme,
-): Record<string, string> {
+export function generateChartCSSProperties(theme: ExtendedChartTheme): Record<string, string> {
 	return {
 		"--chart-bg": theme.background,
 		"--chart-text": theme.textColor,
@@ -438,8 +435,7 @@ export const MOBILE_THEME_PRESETS = {
 	dashboardMobile: (isDark: boolean) =>
 		createExtendedTheme(isDark, "mobile", "dashboard", "compact"),
 
-	inlineMobile: (isDark: boolean) =>
-		createExtendedTheme(isDark, "mobile", "inline", "minimal"),
+	inlineMobile: (isDark: boolean) => createExtendedTheme(isDark, "mobile", "inline", "minimal"),
 
 	fullscreenMobile: (isDark: boolean) =>
 		createExtendedTheme(isDark, "mobile", "fullscreen", "default"),
@@ -486,4 +482,3 @@ export function ChartThemeProvider({
 /**
  * Export theme types for external use
  */
-export type { ChartContext, DeviceContext, ExtendedChartTheme, ThemeVariant };

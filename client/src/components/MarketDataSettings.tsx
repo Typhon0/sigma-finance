@@ -1,23 +1,9 @@
-import {
-	Activity,
-	CheckCircle,
-	Globe,
-	Key,
-	Plug,
-	XCircle,
-	Zap,
-} from "lucide-react";
-import { useState } from "react";
+import { Activity, CheckCircle, Globe, Key, Plug, XCircle, Zap } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -38,6 +24,8 @@ interface ProviderConfig {
 interface CredentialStatus {
 	provider: string;
 	configured: boolean;
+	isEnabled: boolean;
+	priority: number;
 	lastValidated?: Date;
 }
 
@@ -45,7 +33,11 @@ interface MarketDataSettingsProps {
 	credentials: CredentialStatus[];
 	supportedProviders: ProviderConfig[];
 	providerHealth?: ProviderHealthStatus[];
-	onSaveCredential: (provider: string, apiKey: string) => Promise<void>;
+	onSaveCredential: (
+		provider: string,
+		apiKey: string,
+		options?: { isEnabled: boolean; priority: number },
+	) => Promise<void>;
 	onDeleteCredential: (provider: string) => Promise<void>;
 	onValidateCredential: (provider: string, apiKey: string) => Promise<boolean>;
 	onUpdatePreferences: (preferences: RoutingPreferences) => Promise<void>;
@@ -88,14 +80,10 @@ export function MarketDataSettings({
 }: MarketDataSettingsProps) {
 	const [activeTab, setActiveTab] = useState("credentials");
 	const [savingProvider, setSavingProvider] = useState<string | null>(null);
-	const [validatingProvider, setValidatingProvider] = useState<string | null>(
-		null,
-	);
+	const [validatingProvider, setValidatingProvider] = useState<string | null>(null);
 	const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 	const [apiKeys, setApiKeys] = useState<Record<string, string>>({});
-	const [validationResults, setValidationResults] = useState<
-		Record<string, boolean | null>
-	>({});
+	const [validationResults, setValidationResults] = useState<Record<string, boolean | null>>({});
 	const [preferences, setPreferences] = useState<RoutingPreferences>({
 		useIntelligentRouting: true,
 		enableFallback: true,
@@ -105,14 +93,36 @@ export function MarketDataSettings({
 			enabled: true,
 		})),
 	});
+	const [credentialOptions, setCredentialOptions] = useState<
+		Record<string, { isEnabled: boolean; priority: number }>
+	>({});
+
+	useEffect(() => {
+		setCredentialOptions((prev) => {
+			const next = { ...prev };
+			for (const credential of credentials) {
+				next[credential.provider] = {
+					isEnabled: credential.isEnabled,
+					priority: credential.priority,
+				};
+			}
+			return next;
+		});
+	}, [credentials]);
 
 	const handleSave = async (provider: string) => {
 		const apiKey = apiKeys[provider];
-		if (!apiKey) return;
+		const status = getCredentialStatus(provider);
+		if (!apiKey && !status?.configured) return;
 
 		setSavingProvider(provider);
 		try {
-			await onSaveCredential(provider, apiKey);
+			const currentOptions =
+				credentialOptions[provider] ?? ({ isEnabled: true, priority: 100 } as const);
+			await onSaveCredential(provider, apiKey ?? "", {
+				isEnabled: currentOptions.isEnabled,
+				priority: currentOptions.priority,
+			});
 			setValidationResults((prev) => ({ ...prev, [provider]: null }));
 			// Clear the input after successful save
 			setApiKeys((prev) => {
@@ -159,12 +169,9 @@ export function MarketDataSettings({
 			{showHeader && (
 				<div className="flex items-center justify-between">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">
-							Market Data Settings
-						</h1>
+						<h1 className="text-3xl font-bold tracking-tight">Market Data Settings</h1>
 						<p className="text-muted-foreground">
-							Configure API keys and routing preferences for market data
-							providers
+							Configure API keys and routing preferences for market data providers
 						</p>
 					</div>
 				</div>
@@ -192,9 +199,7 @@ export function MarketDataSettings({
 						<Alert className="border-green-500 bg-green-50">
 							<CheckCircle className="h-4 w-4 text-green-600" />
 							<AlertTitle className="text-green-800">Success</AlertTitle>
-							<AlertDescription className="text-green-700">
-								{saveMessage}
-							</AlertDescription>
+							<AlertDescription className="text-green-700">{saveMessage}</AlertDescription>
 						</Alert>
 					)}
 					{errorMessage && (
@@ -206,10 +211,13 @@ export function MarketDataSettings({
 
 					{supportedProviders
 						.filter((p) => p.requiresKey)
-						.map((provider) => {
+						.map((provider, index) => {
 							const status = getCredentialStatus(provider.id);
 							const isConfigured = status?.configured;
 							const result = validationResults[provider.id];
+							const currentOptions =
+								credentialOptions[provider.id] ??
+								({ isEnabled: true, priority: index + 1 } as const);
 
 							return (
 								<Card key={provider.id}>
@@ -239,9 +247,7 @@ export function MarketDataSettings({
 									<CardContent className="space-y-4">
 										<div className="flex gap-2">
 											<div className="flex-1">
-												<Label htmlFor={`api-key-${provider.id}`}>
-													API Key
-												</Label>
+												<Label htmlFor={`api-key-${provider.id}`}>API Key</Label>
 												<Input
 													id={`api-key-${provider.id}`}
 													type="password"
@@ -259,21 +265,50 @@ export function MarketDataSettings({
 													}
 												/>
 											</div>
+											<div className="w-28">
+												<Label htmlFor={`priority-${provider.id}`}>Priority</Label>
+												<Input
+													id={`priority-${provider.id}`}
+													type="number"
+													min={1}
+													value={currentOptions.priority}
+													onChange={(e) => {
+														const nextPriority = Number.parseInt(e.target.value, 10);
+														setCredentialOptions((prev) => ({
+															...prev,
+															[provider.id]: {
+																isEnabled: currentOptions.isEnabled,
+																priority: Number.isNaN(nextPriority)
+																	? 1
+																	: Math.max(1, nextPriority),
+															},
+														}));
+													}}
+												/>
+											</div>
+											<div className="flex items-end pb-2">
+												<Switch
+													checked={currentOptions.isEnabled}
+													onCheckedChange={(checked) =>
+														setCredentialOptions((prev) => ({
+															...prev,
+															[provider.id]: {
+																isEnabled: checked,
+																priority: currentOptions.priority,
+															},
+														}))
+													}
+												/>
+											</div>
 										</div>
 
 										{result !== undefined && (
 											<Alert
 												variant={result ? "default" : "destructive"}
-												className={
-													result
-														? "border-green-500 bg-green-50"
-														: "border-red-50"
-												}
+												className={result ? "border-green-500 bg-green-50" : "border-red-50"}
 											>
 												<AlertDescription>
-													{result
-														? "API key is valid"
-														: "API key validation failed"}
+													{result ? "API key is valid" : "API key validation failed"}
 												</AlertDescription>
 											</Alert>
 										)}
@@ -282,7 +317,7 @@ export function MarketDataSettings({
 											<Button
 												onClick={() => handleSave(provider.id)}
 												disabled={
-													!apiKeys[provider.id] ||
+													(!isConfigured && !apiKeys[provider.id]) ||
 													savingProvider === provider.id ||
 													savingProviderGlobal
 												}
@@ -294,14 +329,9 @@ export function MarketDataSettings({
 											<Button
 												variant="outline"
 												onClick={() => handleValidate(provider.id)}
-												disabled={
-													!apiKeys[provider.id] ||
-													validatingProvider === provider.id
-												}
+												disabled={!apiKeys[provider.id] || validatingProvider === provider.id}
 											>
-												{validatingProvider === provider.id
-													? "Validating..."
-													: "Validate"}
+												{validatingProvider === provider.id ? "Validating..." : "Validate"}
 											</Button>
 											{isConfigured && (
 												<Button
@@ -312,9 +342,7 @@ export function MarketDataSettings({
 															: setDeleteConfirm(provider.id)
 													}
 												>
-													{deleteConfirm === provider.id
-														? "Confirm Delete"
-														: "Delete"}
+													{deleteConfirm === provider.id ? "Confirm Delete" : "Delete"}
 												</Button>
 											)}
 										</div>
@@ -374,24 +402,18 @@ export function MarketDataSettings({
 								<div className="space-y-2">
 									{supportedProviders.map((provider, index) => (
 										<div key={provider.id} className="flex items-center gap-4">
-											<span className="w-8 text-muted-foreground">
-												{index + 1}.
-											</span>
+											<span className="w-8 text-muted-foreground">{index + 1}.</span>
 											<span className="flex-1">{provider.name}</span>
 											<Switch
 												checked={
-													preferences.preferredProviders.find(
-														(p) => p.provider === provider.id,
-													)?.enabled ?? false
+													preferences.preferredProviders.find((p) => p.provider === provider.id)
+														?.enabled ?? false
 												}
 												onCheckedChange={(checked) =>
 													setPreferences((prev) => ({
 														...prev,
-														preferredProviders: prev.preferredProviders.map(
-															(p) =>
-																p.provider === provider.id
-																	? { ...p, enabled: checked }
-																	: p,
+														preferredProviders: prev.preferredProviders.map((p) =>
+															p.provider === provider.id ? { ...p, enabled: checked } : p,
 														),
 													}))
 												}
@@ -401,9 +423,7 @@ export function MarketDataSettings({
 								</div>
 							</div>
 
-							<Button onClick={() => onUpdatePreferences(preferences)}>
-								Save Preferences
-							</Button>
+							<Button onClick={() => onUpdatePreferences(preferences)}>Save Preferences</Button>
 						</CardContent>
 					</Card>
 				</TabsContent>
@@ -412,9 +432,7 @@ export function MarketDataSettings({
 					<Card>
 						<CardHeader>
 							<CardTitle>Provider Status</CardTitle>
-							<CardDescription>
-								Health and API key validation status per asset type
-							</CardDescription>
+							<CardDescription>Health and API key validation status per asset type</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-4">
@@ -422,14 +440,10 @@ export function MarketDataSettings({
 									const status = getCredentialStatus(provider.id);
 									// Collect all health entries for this provider (one per asset type)
 									const healthEntries =
-										providerHealth?.filter((h) => h.provider === provider.id) ??
-										[];
+										providerHealth?.filter((h) => h.provider === provider.id) ?? [];
 
 									return (
-										<div
-											key={provider.id}
-											className="border-b pb-4 last:border-0"
-										>
+										<div key={provider.id} className="border-b pb-4 last:border-0">
 											<div className="flex items-center justify-between">
 												<div className="flex items-center gap-2">
 													<p className="font-medium">{provider.name}</p>
@@ -458,9 +472,7 @@ export function MarketDataSettings({
 														</Badge>
 													)}
 												</div>
-												<p className="text-sm text-muted-foreground">
-													{provider.id}
-												</p>
+												<p className="text-sm text-muted-foreground">{provider.id}</p>
 											</div>
 											{/* Per-asset-type health rows */}
 											{healthEntries.length > 0 ? (
@@ -477,32 +489,19 @@ export function MarketDataSettings({
 																</span>
 																<div className="flex items-center gap-1.5">
 																	<Badge
-																		variant={
-																			entry.healthy ? "default" : "secondary"
-																		}
-																		className={
-																			entry.healthy
-																				? "bg-green-500"
-																				: "bg-gray-400"
-																		}
+																		variant={entry.healthy ? "default" : "secondary"}
+																		className={entry.healthy ? "bg-green-500" : "bg-gray-400"}
 																	>
 																		{entry.healthy ? "Healthy" : "Unhealthy"}
 																	</Badge>
-																	{provider.requiresKey &&
-																		apiKeyValid === true && (
-																			<Badge className="bg-green-500 text-xs">
-																				Key Valid
-																			</Badge>
-																		)}
-																	{provider.requiresKey &&
-																		apiKeyValid === false && (
-																			<Badge
-																				variant="destructive"
-																				className="text-xs"
-																			>
-																				Key Invalid
-																			</Badge>
-																		)}
+																	{provider.requiresKey && apiKeyValid === true && (
+																		<Badge className="bg-green-500 text-xs">Key Valid</Badge>
+																	)}
+																	{provider.requiresKey && apiKeyValid === false && (
+																		<Badge variant="destructive" className="text-xs">
+																			Key Invalid
+																		</Badge>
+																	)}
 																</div>
 															</div>
 														);

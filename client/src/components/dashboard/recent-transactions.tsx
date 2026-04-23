@@ -34,10 +34,7 @@ export function RecentTransactions({
 	onTransactionClick,
 	onViewAllTransactions,
 }: RecentTransactionsProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler(
-		"RecentTransactions",
-		"component",
-	);
+	const { handleErrorWithRetry } = useComponentErrorHandler("RecentTransactions", "component");
 	/**
 	 * Format relative timestamp
 	 * Requirements: 4.2 - Show timestamp
@@ -56,9 +53,7 @@ export function RecentTransactions({
 		return (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-					<CardTitle className="text-lg font-semibold">
-						Recent Transactions
-					</CardTitle>
+					<CardTitle className="text-lg font-semibold">Recent Transactions</CardTitle>
 					<Skeleton className="h-9 w-32" />
 				</CardHeader>
 				<CardContent>
@@ -73,15 +68,8 @@ export function RecentTransactions({
 		return (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-					<CardTitle className="text-lg font-semibold">
-						Recent Transactions
-					</CardTitle>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={onViewAllTransactions}
-						className="gap-2"
-					>
+					<CardTitle className="text-lg font-semibold">Recent Transactions</CardTitle>
+					<Button variant="outline" size="sm" onClick={onViewAllTransactions} className="gap-2">
 						View All
 						<ExternalLink className="h-4 w-4" />
 					</Button>
@@ -104,16 +92,9 @@ export function RecentTransactions({
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-				<CardTitle className="text-lg font-semibold">
-					Recent Transactions
-				</CardTitle>
+				<CardTitle className="text-lg font-semibold">Recent Transactions</CardTitle>
 				{/* Requirements: 4.6 - "View All Transactions" navigation link */}
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={onViewAllTransactions}
-					className="gap-2"
-				>
+				<Button variant="outline" size="sm" onClick={onViewAllTransactions} className="gap-2">
 					View All
 					<ExternalLink className="h-4 w-4" />
 				</Button>
@@ -126,10 +107,10 @@ export function RecentTransactions({
 					const TypeIcon = typeInfo.icon;
 
 					return (
-						<button
-							type="button"
+						<Button
+							variant="ghost"
 							key={transaction.id}
-							className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer text-left"
+							className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 text-left h-auto"
 							onClick={async () => {
 								if (onTransactionClick) {
 									await handleErrorWithRetry(async () => {
@@ -150,9 +131,7 @@ export function RecentTransactions({
 										<Badge variant="secondary" className="text-xs">
 											{typeInfo.label}
 										</Badge>
-										<span className="font-medium text-sm">
-											{transaction.asset.name}
-										</span>
+										<span className="font-medium text-sm">{transaction.asset.name}</span>
 										{transaction.asset.symbol && (
 											<span className="text-xs text-muted-foreground">
 												({transaction.asset.symbol})
@@ -162,8 +141,8 @@ export function RecentTransactions({
 
 									{/* Portfolio and quantity information */}
 									<div className="text-xs text-muted-foreground">
-										{transaction.portfolio.name} • {transaction.quantity} units
-										@ {formatCurrency(transaction.pricePerUnit)}
+										{transaction.portfolio.name} • {transaction.quantity ?? 0} units @{" "}
+										{formatCurrency(transaction.unitPriceAmount ?? 0)}
 									</div>
 								</div>
 							</div>
@@ -177,10 +156,10 @@ export function RecentTransactions({
 
 								{/* Requirements: 4.2 - Show timestamp */}
 								<div className="text-xs text-muted-foreground">
-									{formatRelativeTime(transaction.transactionDate)}
+									{formatRelativeTime(transaction.executedAt)}
 								</div>
 							</div>
-						</button>
+						</Button>
 					);
 				})}
 			</CardContent>
@@ -245,7 +224,7 @@ const getTransactionTypeInfo = (transactionType: string) => {
  * Shared utility function for both components
  */
 const calculateTransactionAmount = (transaction: Transaction) => {
-	const amount = transaction.quantity * transaction.pricePerUnit;
+	const amount = (transaction.quantity ?? 0) * (transaction.unitPriceAmount ?? 0);
 	const typeInfo = getTransactionTypeInfo(transaction.transactionType);
 
 	return {
@@ -269,9 +248,7 @@ export function CompactRecentTransactions({
 		return (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">
-						Recent Transactions
-					</CardTitle>
+					<CardTitle className="text-sm font-medium">Recent Transactions</CardTitle>
 					<Skeleton className="h-4 w-4" />
 				</CardHeader>
 				<CardContent>
@@ -295,14 +272,10 @@ export function CompactRecentTransactions({
 		return (
 			<Card>
 				<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle className="text-sm font-medium">
-						Recent Transactions
-					</CardTitle>
+					<CardTitle className="text-sm font-medium">Recent Transactions</CardTitle>
 				</CardHeader>
 				<CardContent>
-					<p className="text-sm text-muted-foreground">
-						No recent transactions
-					</p>
+					<p className="text-sm text-muted-foreground">No recent transactions</p>
 				</CardContent>
 			</Card>
 		);
@@ -311,9 +284,7 @@ export function CompactRecentTransactions({
 	return (
 		<Card>
 			<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-				<CardTitle className="text-sm font-medium">
-					Recent Transactions
-				</CardTitle>
+				<CardTitle className="text-sm font-medium">Recent Transactions</CardTitle>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -326,23 +297,16 @@ export function CompactRecentTransactions({
 			<CardContent>
 				<div className="space-y-2">
 					{transactions.slice(0, 3).map((transaction) => {
-						const typeInfo = getTransactionTypeInfo(
-							transaction.transactionType,
-						);
+						const typeInfo = getTransactionTypeInfo(transaction.transactionType);
 						const amountInfo = calculateTransactionAmount(transaction);
 
 						return (
-							<div
-								key={transaction.id}
-								className="flex items-center justify-between text-sm"
-							>
+							<div key={transaction.id} className="flex items-center justify-between text-sm">
 								<div className="flex items-center gap-2">
 									<Badge variant="outline" className="text-xs px-1 py-0">
 										{typeInfo.label}
 									</Badge>
-									<span className="truncate max-w-24">
-										{transaction.asset.name}
-									</span>
+									<span className="truncate max-w-24">{transaction.asset.name}</span>
 								</div>
 								<span className={`font-medium ${amountInfo.colorClass}`}>
 									{amountInfo.displayAmount >= 0 ? "+" : ""}
@@ -377,10 +341,7 @@ export function RecentTransactionsSkeleton() {
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{skeletonItems.map((item) => (
-					<div
-						key={item.id}
-						className="flex items-center justify-between p-3 rounded-lg border"
-					>
+					<div key={item.id} className="flex items-center justify-between p-3 rounded-lg border">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-8 w-8 rounded-full" />
 							<div className="space-y-1">
@@ -446,10 +407,7 @@ export function FullViewSkeleton() {
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{skeletonItems.map((item) => (
-					<div
-						key={item.id}
-						className="flex items-center justify-between p-3 rounded-lg border"
-					>
+					<div key={item.id} className="flex items-center justify-between p-3 rounded-lg border">
 						<div className="flex items-center gap-3">
 							<Skeleton className="h-8 w-8 rounded-full" />
 							<div className="space-y-1">

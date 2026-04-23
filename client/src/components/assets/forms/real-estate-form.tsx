@@ -1,16 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Home, MapPin } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, Home, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -20,6 +16,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -28,6 +25,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const realEstateSchema = z.object({
 	name: z.string().min(1, "Property name is required"),
@@ -42,7 +40,7 @@ const realEstateSchema = z.object({
 		.number()
 		.min(0.01, "Ownership must be at least 0.01%")
 		.max(100, "Ownership cannot exceed 100%"),
-	purchaseDate: z.string().optional(),
+	purchaseDate: z.date().optional(),
 	notes: z.string().optional(),
 });
 
@@ -86,7 +84,7 @@ export function RealEstateForm({
 			purchasePrice: initialData?.purchasePrice || 0,
 			currentValue: initialData?.currentValue || 0,
 			ownershipPercentage: initialData?.ownershipPercentage || 100,
-			purchaseDate: initialData?.purchaseDate || "",
+			purchaseDate: initialData?.purchaseDate ? new Date(initialData.purchaseDate) : undefined,
 			notes: initialData?.notes || "",
 		},
 	});
@@ -95,8 +93,7 @@ export function RealEstateForm({
 		setIsSubmitting(true);
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Error submitting real estate:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -109,18 +106,13 @@ export function RealEstateForm({
 					<Home className="h-5 w-5 text-purple-600" />
 					<div>
 						<CardTitle className="text-lg">Real Estate Property</CardTitle>
-						<CardDescription>
-							Add properties, land, and real estate investments
-						</CardDescription>
+						<CardDescription>Add properties, land, and real estate investments</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 						<div className="grid gap-4 grid-cols-1 md:grid-cols-2">
 							<FormField
 								control={form.control}
@@ -142,10 +134,7 @@ export function RealEstateForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Property Type</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select property type" />
@@ -236,9 +225,7 @@ export function RealEstateForm({
 												step="0.01"
 												placeholder="500000.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -258,9 +245,7 @@ export function RealEstateForm({
 												step="0.01"
 												placeholder="550000.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -282,9 +267,7 @@ export function RealEstateForm({
 												max="100"
 												placeholder="100"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 100)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 100)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -297,11 +280,33 @@ export function RealEstateForm({
 							control={form.control}
 							name="purchaseDate"
 							render={({ field }) => (
-								<FormItem>
+								<FormItem className="flex flex-col">
 									<FormLabel>Purchase Date (Optional)</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
+									<Popover>
+										<PopoverTrigger asChild>
+											<FormControl>
+												<Button
+													variant="outline"
+													className={cn(
+														"w-full pl-3 text-left font-normal",
+														!field.value && "text-muted-foreground",
+													)}
+												>
+													<CalendarIcon className="mr-2 h-4 w-4" />
+													{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+												</Button>
+											</FormControl>
+										</PopoverTrigger>
+										<PopoverContent className="w-auto p-0" align="start">
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+												autoFocus
+											/>
+										</PopoverContent>
+									</Popover>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -334,11 +339,7 @@ export function RealEstateForm({
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isLoading}
-								className="gap-2"
-							>
+							<Button type="submit" disabled={isSubmitting || isLoading} className="gap-2">
 								<MapPin className="h-4 w-4" />
 								{isSubmitting ? "Adding..." : "Add Property"}
 							</Button>

@@ -9,12 +9,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
 
@@ -46,13 +41,9 @@ export function PortfolioOverview({
 			<CardHeader>
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
 					<div className="flex-1">
-						<h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-							{title}
-						</h1>
+						<h1 className="text-2xl sm:text-3xl font-bold tracking-tight">{title}</h1>
 						{subtitle && (
-							<p className="text-sm sm:text-base text-muted-foreground mt-1">
-								{subtitle}
-							</p>
+							<p className="text-sm sm:text-base text-muted-foreground mt-1">{subtitle}</p>
 						)}
 					</div>
 					<div className="flex items-center gap-2">
@@ -107,13 +98,10 @@ export function PortfolioOverview({
 								<TrendingDown className="h-5 w-5 sm:h-6 sm:w-6" />
 							)}
 							<span>
-								{formatCurrency(Math.abs(change))} (
-								{formatPercentage(Math.abs(changePercentage))})
+								{formatCurrency(Math.abs(change))} ({formatPercentage(Math.abs(changePercentage))})
 							</span>
 						</div>
-						<div className="text-xs sm:text-sm text-muted-foreground">
-							{timeframe}
-						</div>
+						<div className="text-xs sm:text-sm text-muted-foreground">{timeframe}</div>
 					</output>
 				)}
 			</CardContent>
@@ -148,15 +136,10 @@ export function PortfolioMetricCard({
 			</CardHeader>
 			<CardContent>
 				<output className="text-2xl font-bold" aria-live="polite">
-					<span className="sr-only">
-						Total portfolio value: {formatCurrency(value)}
-					</span>
+					<span className="sr-only">Total portfolio value: {formatCurrency(value)}</span>
 					{formatCurrency(value)}
 				</output>
-				<output
-					className="flex items-center gap-2 text-xs mt-1"
-					aria-live="polite"
-				>
+				<output className="flex items-center gap-2 text-xs mt-1" aria-live="polite">
 					<div
 						className={cn(
 							"flex items-center gap-1 text-xs",

@@ -110,7 +110,7 @@ export function PerformanceUpdateAnnouncer({
 				`Portfolio value updated. Total value is now ${formattedValue}, ${direction} by ${formattedChange} or ${formattedPercent} percent.`,
 			);
 		}
-	}, [totalValue, changePercent, changeAmount, previousValue]);
+	}, [totalValue, changePercent, changeAmount, previousValue, formatCurrency]);
 
 	return <AccessibilityAnnouncer message={announcement} clearAfter={4000} />;
 }
@@ -131,9 +131,7 @@ export function NavigationAnnouncer({
 
 	useEffect(() => {
 		if (currentSection) {
-			const sectionInfo = totalSections
-				? ` (section ${totalSections} of ${totalSections})`
-				: "";
+			const sectionInfo = totalSections ? ` (section ${totalSections} of ${totalSections})` : "";
 
 			setAnnouncement(`Navigated to ${currentSection}${sectionInfo}`);
 		}
@@ -147,13 +145,7 @@ export function NavigationAnnouncer({
  *
  * Announces errors with appropriate urgency
  */
-export function ErrorAnnouncer({
-	error,
-	section,
-}: {
-	error?: string | null;
-	section?: string;
-}) {
+export function ErrorAnnouncer({ error, section }: { error?: string | null; section?: string }) {
 	const [announcement, setAnnouncement] = useState("");
 
 	useEffect(() => {

@@ -1,18 +1,13 @@
-import { Check, MapPin, Search, Shield, User, X } from "lucide-react";
+import { Check, MapPin, Shield, User, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SearchInput } from "@/components/ui/search-input";
 import { Separator } from "@/components/ui/separator";
 
 interface Country {
@@ -80,13 +75,7 @@ const countries: Country[] = [
 	},
 ];
 
-const regions = [
-	"All",
-	"Europe",
-	"Americas",
-	"Asia-Pacific",
-	"Middle East & Africa",
-];
+const regions = ["All", "Europe", "Americas", "Asia-Pacific", "Middle East & Africa"];
 
 export function AccountSettings() {
 	const [name, setName] = useState("");
@@ -102,8 +91,7 @@ export function AccountSettings() {
 		const matchesSearch =
 			country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			country.code.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesRegion =
-			selectedRegion === "All" || country.region === selectedRegion;
+		const matchesRegion = selectedRegion === "All" || country.region === selectedRegion;
 		return matchesSearch && matchesRegion;
 	});
 
@@ -128,9 +116,7 @@ export function AccountSettings() {
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-2xl font-semibold">Account & Profile</h1>
-				<p className="text-muted-foreground">
-					Manage your personal information and preferences
-				</p>
+				<p className="text-muted-foreground">Manage your personal information and preferences</p>
 			</div>
 
 			{/* Sub-navigation */}
@@ -202,17 +188,14 @@ export function AccountSettings() {
 					<CardHeader>
 						<CardTitle>Tax Jurisdictions</CardTitle>
 						<CardDescription>
-							Select the countries where you have tax residency or investment
-							interests.
+							Select the countries where you have tax residency or investment interests.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div className="p-4 rounded-lg bg-muted">
 							<div className="flex items-center gap-2 mb-2">
 								<MapPin className="h-4 w-4 text-muted-foreground" />
-								<span className="text-sm font-medium">
-									Selected ({selectedCountries.length})
-								</span>
+								<span className="text-sm font-medium">Selected ({selectedCountries.length})</span>
 							</div>
 							<div className="flex flex-wrap gap-2">
 								{selectedCountries.map((code) => {
@@ -233,15 +216,13 @@ export function AccountSettings() {
 
 						<Separator />
 
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search countries..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-9"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search accounts..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							onClear={() => setSearchQuery("")}
+							containerClassName="flex-1"
+						/>
 
 						<div className="flex gap-2 flex-wrap">
 							{regions.map((region) => (
@@ -280,9 +261,7 @@ export function AccountSettings() {
 						<CardDescription>Manage your account security</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground">
-							Security settings coming soon...
-						</p>
+						<p className="text-sm text-muted-foreground">Security settings coming soon...</p>
 					</CardContent>
 				</Card>
 			)}

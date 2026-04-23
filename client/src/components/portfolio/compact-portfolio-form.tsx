@@ -68,7 +68,7 @@ export function CompactPortfolioForm({
 	const finalSubmitText = submitButtonText || defaultSubmitText;
 
 	const form = useForm<PortfolioFormData>({
-		resolver: zodResolver(portfolioFormSchema),
+		resolver: zodResolver(portfolioFormSchema) as any,
 		defaultValues: {
 			name: portfolio?.name || "",
 			description: portfolio?.description || "",
@@ -108,11 +108,8 @@ export function CompactPortfolioForm({
 				form.reset();
 			}
 		} catch (error) {
-			console.error("Form submission error:", error);
-
 			// Call error callback
-			const formError =
-				error instanceof Error ? error : new Error("An error occurred");
+			const formError = error instanceof Error ? error : new Error("An error occurred");
 			onError?.(formError);
 		} finally {
 			setIsSubmitting(false);
@@ -124,11 +121,7 @@ export function CompactPortfolioForm({
 
 	return (
 		<Form {...form}>
-			<form
-				onSubmit={form.handleSubmit(handleFormSubmit)}
-				className="space-y-4"
-				noValidate
-			>
+			<form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4" noValidate>
 				<PortfolioFormFields
 					existingPortfolioNames={existingPortfolioNames}
 					currentPortfolioName={portfolio?.name}
@@ -156,9 +149,7 @@ export function CompactPortfolioForm({
 						disabled={!canSubmit}
 						className="touch-manipulation order-1 sm:order-2"
 					>
-						{isFormDisabled && (
-							<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-						)}
+						{isFormDisabled && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 						{!isFormDisabled && <Save className="mr-2 h-4 w-4" />}
 						{finalSubmitText}
 					</Button>

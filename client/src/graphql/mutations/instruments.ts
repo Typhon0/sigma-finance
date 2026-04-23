@@ -25,6 +25,64 @@ export const PERSIST_DISCOVERED_INSTRUMENT = graphql(/* GraphQL */ `
 	}
 `);
 
+export const IMPORT_INSTRUMENT_FROM_SOURCE = graphql(/* GraphQL */ `
+	mutation ImportInstrumentFromSource($input: ImportInstrumentFromSourceInput!) {
+		importInstrumentFromSource(input: $input) {
+			success
+			message
+			instrument {
+				id
+				symbol
+				name
+				exchange
+				exchangeCode
+				country
+				currency
+				assetType
+				providerSource
+				providerExternalId
+				isin
+				figi
+				cusip
+				firstSeenAt
+				lastVerifiedAt
+				lastUsedAt
+				createdAt
+				updatedAt
+			}
+		}
+	}
+`);
+
+export const IMPORT_INSTRUMENT_FROM_CATALOG = graphql(/* GraphQL */ `
+	mutation ImportInstrumentFromCatalog($source: CatalogSource!, $externalId: String!, $forceEnrich: Boolean) {
+		importInstrumentFromCatalog(source: $source, externalId: $externalId, forceEnrich: $forceEnrich) {
+			success
+			message
+			instrument {
+				id
+				symbol
+				name
+				exchange
+				exchangeCode
+				country
+				currency
+				assetType
+				providerSource
+				providerExternalId
+				isin
+				figi
+				cusip
+				firstSeenAt
+				lastVerifiedAt
+				lastUsedAt
+				createdAt
+				updatedAt
+			}
+		}
+	}
+`);
+
 export const ADD_INSTRUMENT_TO_PORTFOLIO = graphql(/* GraphQL */ `
 	mutation AddInstrumentToPortfolio($input: AddInstrumentHoldingInput!) {
 		addInstrumentToPortfolio(input: $input) {

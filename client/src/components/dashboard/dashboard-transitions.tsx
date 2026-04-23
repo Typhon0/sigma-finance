@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, type Transition } from "framer-motion";
 import type { ReactNode } from "react";
 
 interface DashboardTransitionProps {
@@ -26,7 +26,7 @@ const pageVariants = {
 	},
 };
 
-const pageTransition = {
+const pageTransition: Transition = {
 	type: "tween",
 	ease: "anticipate",
 	duration: 0.3,

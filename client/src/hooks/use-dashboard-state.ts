@@ -6,6 +6,15 @@ export interface Asset {
 	name: string;
 	symbol?: string;
 	type: string;
+	portfolioWeight: number;
+	dividendYield?: number;
+	peRatio?: number;
+	sparklineData: number[];
+}
+
+export interface TargetAllocation {
+	sector: string;
+	targetPercentage: number;
 }
 
 export interface BreadcrumbItem {

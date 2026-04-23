@@ -10,17 +10,11 @@ import {
 	BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Separator } from "@/components/ui/separator";
-import {
-	SidebarInset,
-	SidebarProvider,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { useComponentMonitoring } from "@/hooks/use-dashboard-monitoring";
 
 export function MonitoringDashboardPage() {
-	const { trackComponentError } = useComponentMonitoring(
-		"monitoring-dashboard",
-	);
+	const { trackComponentError } = useComponentMonitoring("monitoring-dashboard");
 
 	// Error boundary for the monitoring dashboard
 	React.useEffect(() => {

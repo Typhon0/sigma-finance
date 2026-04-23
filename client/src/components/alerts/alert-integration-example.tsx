@@ -83,16 +83,13 @@ export function AlertIntegrationExample() {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			triggerCount: 0,
-			asset: data.assetId
-				? exampleAssets.find((a) => a.id === data.assetId)
-				: undefined,
+			asset: data.assetId ? exampleAssets.find((a) => a.id === data.assetId) : undefined,
 			portfolio: data.portfolioId
 				? examplePortfolios.find((p) => p.id === data.portfolioId)
 				: undefined,
 		};
 
 		setAlerts((prev) => [...prev, newAlert]);
-		console.log("Created alert:", newAlert);
 	};
 
 	// Simulate alert updates
@@ -104,9 +101,7 @@ export function AlertIntegrationExample() {
 							...alert,
 							...data,
 							updatedAt: new Date(),
-							asset: data.assetId
-								? exampleAssets.find((a) => a.id === data.assetId)
-								: undefined,
+							asset: data.assetId ? exampleAssets.find((a) => a.id === data.assetId) : undefined,
 							portfolio: data.portfolioId
 								? examplePortfolios.find((p) => p.id === data.portfolioId)
 								: undefined,
@@ -114,13 +109,11 @@ export function AlertIntegrationExample() {
 					: alert,
 			),
 		);
-		console.log("Updated alert:", id, data);
 	};
 
 	// Simulate alert deletion
 	const handleDeleteAlert = async (id: string) => {
 		setAlerts((prev) => prev.filter((alert) => alert.id !== id));
-		console.log("Deleted alert:", id);
 	};
 
 	// Handle quick setup
@@ -148,10 +141,7 @@ export function AlertIntegrationExample() {
 			<div className="space-y-6">
 				<div className="flex items-center justify-between">
 					<h2 className="text-2xl font-bold">Alert Management Example</h2>
-					<Button
-						variant="outline"
-						onClick={() => setShowFullManagement(false)}
-					>
+					<Button variant="outline" onClick={() => setShowFullManagement(false)}>
 						Back to Summary
 					</Button>
 				</div>
@@ -196,9 +186,7 @@ export function AlertIntegrationExample() {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Total Alerts
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Total Alerts</p>
 								<div className="text-2xl font-bold">{alerts.length}</div>
 							</div>
 							<Bell className="h-4 w-4 text-muted-foreground" />
@@ -210,12 +198,8 @@ export function AlertIntegrationExample() {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Active Alerts
-								</p>
-								<div className="text-2xl font-bold">
-									{alerts.filter((a) => a.isActive).length}
-								</div>
+								<p className="text-sm font-medium text-muted-foreground">Active Alerts</p>
+								<div className="text-2xl font-bold">{alerts.filter((a) => a.isActive).length}</div>
 							</div>
 							<Settings className="h-4 w-4 text-muted-foreground" />
 						</div>
@@ -226,9 +210,7 @@ export function AlertIntegrationExample() {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Price Alerts
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Price Alerts</p>
 								<div className="text-2xl font-bold">
 									{alerts.filter((a) => a.alertType === "PRICE").length}
 								</div>
@@ -242,14 +224,9 @@ export function AlertIntegrationExample() {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Portfolio Alerts
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Portfolio Alerts</p>
 								<div className="text-2xl font-bold">
-									{
-										alerts.filter((a) => a.alertType === "PORTFOLIO_VALUE")
-											.length
-									}
+									{alerts.filter((a) => a.alertType === "PORTFOLIO_VALUE").length}
 								</div>
 							</div>
 							<Bell className="h-4 w-4 text-muted-foreground" />
@@ -285,12 +262,8 @@ export function AlertIntegrationExample() {
 											<p className="font-medium">{alert.name}</p>
 											<p className="text-sm text-muted-foreground">
 												{alert.asset?.name || alert.portfolio?.name} |
-												{alert.thresholdValue
-													? ` $${alert.thresholdValue}`
-													: ""}
-												{alert.thresholdPercentage
-													? ` ${alert.thresholdPercentage}%`
-													: ""}
+												{alert.thresholdValue ? ` $${alert.thresholdValue}` : ""}
+												{alert.thresholdPercentage ? ` ${alert.thresholdPercentage}%` : ""}
 											</p>
 										</div>
 									</div>
@@ -315,31 +288,27 @@ export function AlertIntegrationExample() {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-						<h4 className="font-medium text-blue-900 mb-2">
-							Dashboard Integration
-						</h4>
+						<h4 className="font-medium text-blue-900 mb-2">Dashboard Integration</h4>
 						<p className="text-sm text-blue-800">
-							This example shows how to integrate the alert system into your
-							dashboard components. The alert management system is designed to
-							work seamlessly with the dashboard-centric architecture.
+							This example shows how to integrate the alert system into your dashboard components.
+							The alert management system is designed to work seamlessly with the dashboard-centric
+							architecture.
 						</p>
 					</div>
 
 					<div className="p-4 bg-green-50 border border-green-200 rounded-lg">
 						<h4 className="font-medium text-green-900 mb-2">Quick Setup</h4>
 						<p className="text-sm text-green-800">
-							Use the AlertQuickSetup component for context-aware alert creation
-							from portfolio and asset views.
+							Use the AlertQuickSetup component for context-aware alert creation from portfolio and
+							asset views.
 						</p>
 					</div>
 
 					<div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-						<h4 className="font-medium text-purple-900 mb-2">
-							Full Management
-						</h4>
+						<h4 className="font-medium text-purple-900 mb-2">Full Management</h4>
 						<p className="text-sm text-purple-800">
-							The AlertManagement component provides comprehensive alert
-							configuration, monitoring, and testing capabilities.
+							The AlertManagement component provides comprehensive alert configuration, monitoring,
+							and testing capabilities.
 						</p>
 					</div>
 				</CardContent>

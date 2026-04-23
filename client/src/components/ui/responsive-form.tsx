@@ -2,12 +2,7 @@ import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectTrigger,
-	SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useResponsiveDashboard } from "@/hooks/use-responsive-dashboard";
 import { cn } from "@/lib/utils";
@@ -18,11 +13,7 @@ interface ResponsiveFormProps {
 	onSubmit?: (e: React.FormEvent) => void;
 }
 
-export function ResponsiveForm({
-	children,
-	className,
-	onSubmit,
-}: ResponsiveFormProps) {
+export function ResponsiveForm({ children, className, onSubmit }: ResponsiveFormProps) {
 	const [responsiveState] = useResponsiveDashboard();
 
 	return (
@@ -75,8 +66,7 @@ export function ResponsiveFormField({
 			<div
 				className={cn(
 					// Ensure proper touch targets on mobile
-					responsiveState.isMobile &&
-						"[&>*]:min-h-[44px] [&>*]:touch-manipulation",
+					responsiveState.isMobile && "[&>*]:min-h-[44px] [&>*]:touch-manipulation",
 				)}
 			>
 				{children}
@@ -84,22 +74,14 @@ export function ResponsiveFormField({
 
 			{description && (
 				<p
-					className={cn(
-						"text-muted-foreground",
-						responsiveState.isMobile ? "text-sm" : "text-xs",
-					)}
+					className={cn("text-muted-foreground", responsiveState.isMobile ? "text-sm" : "text-xs")}
 				>
 					{description}
 				</p>
 			)}
 
 			{error && (
-				<p
-					className={cn(
-						"text-destructive",
-						responsiveState.isMobile ? "text-sm" : "text-xs",
-					)}
-				>
+				<p className={cn("text-destructive", responsiveState.isMobile ? "text-sm" : "text-xs")}>
 					{error}
 				</p>
 			)}
@@ -107,8 +89,7 @@ export function ResponsiveFormField({
 	);
 }
 
-interface ResponsiveInputProps
-	extends React.InputHTMLAttributes<HTMLInputElement> {
+interface ResponsiveInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 	label?: string;
 	error?: string;
 	description?: string;
@@ -151,8 +132,7 @@ export function ResponsiveInput({
 	return input;
 }
 
-interface ResponsiveTextareaProps
-	extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+interface ResponsiveTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
 	label?: string;
 	error?: string;
 	description?: string;
@@ -257,10 +237,7 @@ interface ResponsiveFormActionsProps {
 	className?: string;
 }
 
-export function ResponsiveFormActions({
-	children,
-	className,
-}: ResponsiveFormActionsProps) {
+export function ResponsiveFormActions({ children, className }: ResponsiveFormActionsProps) {
 	const [responsiveState] = useResponsiveDashboard();
 
 	return (
@@ -276,9 +253,9 @@ export function ResponsiveFormActions({
 		>
 			{React.Children.map(children, (child) => {
 				if (React.isValidElement(child) && child.type === Button) {
-					return React.cloneElement(child, {
+					return React.cloneElement(child as React.ReactElement<Record<string, unknown>>, {
 						className: cn(
-							child.props.className,
+							(child.props as any).className,
 							// Larger buttons on mobile
 							responsiveState.isMobile && "h-11 text-base touch-manipulation",
 						),
@@ -319,17 +296,15 @@ export function ResponsiveButtonGroup({
 				"flex gap-2",
 				actualOrientation === "vertical" ? "flex-col" : "flex-row",
 				// Center buttons on mobile
-				responsiveState.isMobile &&
-					actualOrientation === "horizontal" &&
-					"justify-center",
+				responsiveState.isMobile && actualOrientation === "horizontal" && "justify-center",
 				className,
 			)}
 		>
 			{React.Children.map(children, (child) => {
 				if (React.isValidElement(child) && child.type === Button) {
-					return React.cloneElement(child, {
+					return React.cloneElement(child as React.ReactElement<Record<string, unknown>>, {
 						className: cn(
-							child.props.className,
+							(child.props as any).className,
 							// Larger buttons on mobile
 							responsiveState.isMobile && "h-11 text-base touch-manipulation",
 							// Full width buttons in vertical orientation

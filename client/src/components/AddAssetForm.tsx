@@ -1,6 +1,8 @@
+import { format } from "date-fns";
 import {
 	Bitcoin,
 	Building,
+	CalendarIcon,
 	Landmark,
 	Package,
 	Shield,
@@ -9,17 +11,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { Calendar } from "./ui/calendar";
 import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
 const assetTypes = [
@@ -67,10 +66,10 @@ const assetTypes = [
 	},
 ];
 
-export function AddAssetForm({ onClose }) {
+export function AddAssetForm({ onClose }: { onClose: () => void }) {
 	const { addAsset } = usePortfolio();
 	const [selectedType, setSelectedType] = useState("");
-	const [formData, setFormData] = useState({});
+	const [formData, setFormData] = useState<Record<string, string | number | undefined>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSubmit = async (e) => {
@@ -82,26 +81,18 @@ export function AddAssetForm({ onClose }) {
 				type: selectedType,
 				...formData,
 				currentPrice: parseFloat(
-					formData.currentPrice ||
-						formData.balance ||
-						formData.currentValue ||
-						0,
+					String(formData.currentPrice || formData.balance || formData.currentValue || 0),
 				),
 				purchasePrice: parseFloat(
-					formData.purchasePrice ||
-						formData.balance ||
-						formData.purchasePrice ||
-						0,
+					String(formData.purchasePrice || formData.balance || formData.purchasePrice || 0),
 				),
-				quantity: parseFloat(formData.quantity || 1),
+				quantity: parseFloat(String(formData.quantity || 1)),
 				createdAt: new Date().toISOString(),
 			};
 
 			addAsset(assetData);
 			onClose();
-		} catch (error) {
-			console.error("Error adding asset:", error);
-		}
+		} catch (_error) {}
 
 		setIsSubmitting(false);
 	};
@@ -118,9 +109,7 @@ export function AddAssetForm({ onClose }) {
 					<Input
 						id="symbol"
 						value={formData.symbol || ""}
-						onChange={(e) =>
-							updateFormData("symbol", e.target.value.toUpperCase())
-						}
+						onChange={(e) => updateFormData("symbol", e.target.value.toUpperCase())}
 						placeholder="AAPL"
 						required
 					/>
@@ -179,12 +168,33 @@ export function AddAssetForm({ onClose }) {
 				</div>
 				<div className="space-y-2">
 					<Label htmlFor="purchaseDate">Purchase Date</Label>
-					<Input
-						id="purchaseDate"
-						type="date"
-						value={formData.purchaseDate || ""}
-						onChange={(e) => updateFormData("purchaseDate", e.target.value)}
-					/>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								variant="outline"
+								className={cn(
+									"w-full pl-3 text-left font-normal",
+									!formData.purchaseDate && "text-muted-foreground",
+								)}
+							>
+								<CalendarIcon className="mr-2 h-4 w-4" />
+								{formData.purchaseDate ? (
+									format(new Date(formData.purchaseDate), "PPP")
+								) : (
+									<span>Pick a date</span>
+								)}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-0" align="start">
+							<Calendar
+								mode="single"
+								selected={formData.purchaseDate ? new Date(formData.purchaseDate) : undefined}
+								onSelect={(date) => updateFormData("purchaseDate", date ? date.toISOString() : "")}
+								disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+								autoFocus
+							/>
+						</PopoverContent>
+					</Popover>
 				</div>
 			</div>
 		</div>
@@ -198,9 +208,7 @@ export function AddAssetForm({ onClose }) {
 					<Input
 						id="symbol"
 						value={formData.symbol || ""}
-						onChange={(e) =>
-							updateFormData("symbol", e.target.value.toUpperCase())
-						}
+						onChange={(e) => updateFormData("symbol", e.target.value.toUpperCase())}
 						placeholder="BTC"
 						required
 					/>
@@ -273,7 +281,7 @@ export function AddAssetForm({ onClose }) {
 				<div className="space-y-2">
 					<Label htmlFor="accountType">Account Type *</Label>
 					<Select
-						value={formData.accountType || ""}
+						value={(formData.accountType as string) || ""}
 						onValueChange={(value) => updateFormData("accountType", value)}
 					>
 						<SelectTrigger>
@@ -309,7 +317,7 @@ export function AddAssetForm({ onClose }) {
 					value={formData.accountNumber || ""}
 					onChange={(e) => updateFormData("accountNumber", e.target.value)}
 					placeholder="1234"
-					maxLength="4"
+					maxLength={4}
 				/>
 			</div>
 		</div>
@@ -372,9 +380,7 @@ export function AddAssetForm({ onClose }) {
 					min="0"
 					max="100"
 					value={formData.ownershipPercentage || "100"}
-					onChange={(e) =>
-						updateFormData("ownershipPercentage", e.target.value)
-					}
+					onChange={(e) => updateFormData("ownershipPercentage", e.target.value)}
 					placeholder="100"
 				/>
 			</div>
@@ -435,9 +441,7 @@ export function AddAssetForm({ onClose }) {
 			<div className="space-y-6">
 				<div className="text-center">
 					<h3 className="text-lg font-medium">Choose Asset Type</h3>
-					<p className="text-muted-foreground">
-						Select the type of asset you want to add
-					</p>
+					<p className="text-muted-foreground">Select the type of asset you want to add</p>
 				</div>
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -456,9 +460,7 @@ export function AddAssetForm({ onClose }) {
 										</div>
 										<div>
 											<CardTitle className="text-base">{type.label}</CardTitle>
-											<CardDescription className="text-sm">
-												{type.description}
-											</CardDescription>
+											<CardDescription className="text-sm">{type.description}</CardDescription>
 										</div>
 									</div>
 								</CardHeader>
@@ -472,15 +474,12 @@ export function AddAssetForm({ onClose }) {
 
 	const selectedAssetType = assetTypes.find((type) => type.id === selectedType);
 
+	if (!selectedAssetType) return null;
+
 	return (
 		<form onSubmit={handleSubmit} className="space-y-6">
 			<div className="flex items-center space-x-3">
-				<Button
-					type="button"
-					variant="outline"
-					size="sm"
-					onClick={() => setSelectedType("")}
-				>
+				<Button type="button" variant="outline" size="sm" onClick={() => setSelectedType("")}>
 					← Back
 				</Button>
 				<div className="flex items-center space-x-2">

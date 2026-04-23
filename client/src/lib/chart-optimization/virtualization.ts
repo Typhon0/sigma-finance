@@ -34,10 +34,7 @@ export interface ViewportInfo {
  */
 export class ChartVirtualizer {
 	private state: VirtualizationState;
-	private dataLoader: (
-		startIndex: number,
-		endIndex: number,
-	) => Promise<DataPoint[]>;
+	private dataLoader: (startIndex: number, endIndex: number) => Promise<DataPoint[]>;
 	private loadingPromises = new Map<string, Promise<DataPoint[]>>();
 	private observers: Set<(state: VirtualizationState) => void> = new Set();
 
@@ -102,14 +99,10 @@ export class ChartVirtualizer {
 		}
 
 		// Calculate approximate indices based on time range
-		const timePerDataPoint =
-			totalTimeRange / Math.max(1, this.state.totalDataPoints);
+		const timePerDataPoint = totalTimeRange / Math.max(1, this.state.totalDataPoints);
 		const viewportDataPoints = Math.ceil(totalTimeRange / timePerDataPoint);
 
-		const startIndex = Math.max(
-			0,
-			Math.floor(this.state.totalDataPoints * 0.1),
-		); // Start at 10% of data
+		const startIndex = Math.max(0, Math.floor(this.state.totalDataPoints * 0.1)); // Start at 10% of data
 		const endIndex = Math.min(
 			this.state.totalDataPoints - 1,
 			startIndex + Math.max(100, viewportDataPoints),
@@ -121,10 +114,7 @@ export class ChartVirtualizer {
 	/**
 	 * Calculate which chunks need to be loaded
 	 */
-	private calculateNeededChunks(
-		startIndex: number,
-		endIndex: number,
-	): string[] {
+	private calculateNeededChunks(startIndex: number, endIndex: number): string[] {
 		const chunks: string[] = [];
 
 		// Calculate visible chunks
@@ -172,10 +162,7 @@ export class ChartVirtualizer {
 
 		const chunkIndex = this.getChunkIndex(chunkId);
 		const startIndex = chunkIndex * this.state.chunkSize;
-		const endIndex = Math.min(
-			startIndex + this.state.chunkSize,
-			this.state.totalDataPoints,
-		);
+		const endIndex = Math.min(startIndex + this.state.chunkSize, this.state.totalDataPoints);
 
 		// Create chunk placeholder
 		const chunk: VirtualChunk = {
@@ -197,12 +184,13 @@ export class ChartVirtualizer {
 				chunk.isLoaded = true;
 				chunk.isLoading = false;
 				chunk.timestamp = Date.now();
+				return data;
 			})
-			.catch((error) => {
-				console.error(`Failed to load chunk ${chunkId}:`, error);
+			.catch((_error) => {
 				chunk.isLoading = false;
 				// Keep chunk in map but mark as failed
-			});
+				return [] as DataPoint[];
+			}) as Promise<DataPoint[]>;
 
 		this.loadingPromises.set(chunkId, loadPromise);
 
@@ -262,10 +250,7 @@ export class ChartVirtualizer {
 				([, a], [, b]) => a.timestamp - b.timestamp,
 			);
 
-			const toRemove = sortedChunks.slice(
-				0,
-				this.state.chunks.size - maxChunks,
-			);
+			const toRemove = sortedChunks.slice(0, this.state.chunks.size - maxChunks);
 			for (const [chunkId] of toRemove) {
 				this.state.chunks.delete(chunkId);
 			}
@@ -405,14 +390,11 @@ export function useChartVirtualization(
 		}
 	}, []);
 
-	const preloadRange = React.useCallback(
-		async (startTime: number, endTime: number) => {
-			if (!virtualizerRef.current) return;
+	const preloadRange = React.useCallback(async (startTime: number, endTime: number) => {
+		if (!virtualizerRef.current) return;
 
-			await virtualizerRef.current.preloadAroundRange(startTime, endTime);
-		},
-		[],
-	);
+		await virtualizerRef.current.preloadAroundRange(startTime, endTime);
+	}, []);
 
 	const clearCache = React.useCallback(() => {
 		if (!virtualizerRef.current) return;

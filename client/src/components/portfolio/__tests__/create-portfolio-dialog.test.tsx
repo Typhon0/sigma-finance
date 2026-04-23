@@ -1,11 +1,5 @@
 import { MockedProvider } from "@apollo/client/testing";
-import {
-	act,
-	fireEvent,
-	render,
-	screen,
-	waitFor,
-} from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { useAuth } from "@/lib/auth-context";
@@ -23,9 +17,7 @@ const mockUser = {
 };
 
 const mockCreatePortfolio = vi.fn();
-const mockPortfolios = [
-	{ id: "1", name: "Existing Portfolio", description: "Test portfolio" },
-];
+const mockPortfolios = [{ id: "1", name: "Existing Portfolio", description: "Test portfolio" }];
 
 describe("CreatePortfolioDialog", () => {
 	beforeEach(() => {
@@ -97,9 +89,7 @@ describe("CreatePortfolioDialog", () => {
 		fireEvent.click(screen.getAllByText("Create Portfolio")[0]);
 
 		await waitFor(() => {
-			expect(
-				screen.getByText("Enter the details for your new portfolio."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Enter the details for your new portfolio.")).toBeInTheDocument();
 		});
 	});
 

@@ -1,6 +1,13 @@
 import { CSVExporter } from "./csv-exporter";
 import { PDFGenerator } from "./pdf-generator";
-import type { ExportFormat, ExportResult, ExportType } from "./types";
+import type {
+	AuditTrailData,
+	ExportFormat,
+	ExportResult,
+	ExportType,
+	PortfolioExportData,
+	TaxReportData,
+} from "./types";
 
 export class ExportService {
 	private static downloadFile(blob: Blob, filename: string): void {
@@ -20,9 +27,7 @@ export class ExportService {
 		portfolioName?: string,
 	): string {
 		const timestamp = new Date().toISOString().split("T")[0];
-		const prefix = portfolioName
-			? `${portfolioName.replace(/[^a-zA-Z0-9]/g, "_")}_`
-			: "";
+		const prefix = portfolioName ? `${portfolioName.replace(/[^a-zA-Z0-9]/g, "_")}_` : "";
 		return `${prefix}${type.replace(/-/g, "_")}_${timestamp}.${format}`;
 	}
 
@@ -94,10 +99,7 @@ export class ExportService {
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
 		try {
-			const mockData = await ExportService.fetchTransactionHistory(
-				portfolioId,
-				dateRange,
-			);
+			const mockData = await ExportService.fetchTransactionHistory(portfolioId, dateRange);
 
 			let blob: Blob;
 			let filename: string;
@@ -106,20 +108,14 @@ export class ExportService {
 				case "csv": {
 					const csvContent = CSVExporter.exportTransactionHistory(mockData);
 					blob = new Blob([csvContent], { type: "text/csv" });
-					filename = ExportService.generateFilename(
-						"transaction-history",
-						"csv",
-					);
+					filename = ExportService.generateFilename("transaction-history", "csv");
 					break;
 				}
 
 				case "json": {
 					const jsonContent = JSON.stringify(mockData, null, 2);
 					blob = new Blob([jsonContent], { type: "application/json" });
-					filename = ExportService.generateFilename(
-						"transaction-history",
-						"json",
-					);
+					filename = ExportService.generateFilename("transaction-history", "json");
 					break;
 				}
 
@@ -198,10 +194,7 @@ export class ExportService {
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
 		try {
-			const mockData = await ExportService.fetchAuditTrailData(
-				userId,
-				dateRange,
-			);
+			const mockData = await ExportService.fetchAuditTrailData(userId, dateRange);
 
 			let blob: Blob;
 			let filename: string;
@@ -264,7 +257,7 @@ export class ExportService {
 	}
 
 	// Mock data fetching methods - replace with actual GraphQL queries
-	private static async fetchPortfolioData(portfolioId: string): Promise<any> {
+	private static async fetchPortfolioData(portfolioId: string): Promise<PortfolioExportData> {
 		// Mock implementation - replace with actual GraphQL query
 		return {
 			portfolio: {
@@ -310,7 +303,7 @@ export class ExportService {
 	private static async fetchTransactionHistory(
 		_portfolioId: string,
 		_dateRange?: { start: Date; end: Date },
-	): Promise<any[]> {
+	): Promise<PortfolioExportData["transactions"]> {
 		// Mock implementation
 		return [
 			{
@@ -327,10 +320,7 @@ export class ExportService {
 		];
 	}
 
-	private static async fetchTaxReportData(
-		userId: string,
-		taxYear: number,
-	): Promise<any> {
+	private static async fetchTaxReportData(userId: string, taxYear: number): Promise<TaxReportData> {
 		// Mock implementation
 		return {
 			taxYear,
@@ -349,7 +339,7 @@ export class ExportService {
 	private static async fetchAuditTrailData(
 		userId: string,
 		dateRange: { start: Date; end: Date },
-	): Promise<any> {
+	): Promise<AuditTrailData> {
 		// Mock implementation
 		return {
 			userId,
@@ -361,7 +351,7 @@ export class ExportService {
 		};
 	}
 
-	private static async fetchCompleteUserData(userId: string): Promise<any> {
+	private static async fetchCompleteUserData(userId: string): Promise<Record<string, unknown>> {
 		// Mock implementation
 		return {
 			userId,

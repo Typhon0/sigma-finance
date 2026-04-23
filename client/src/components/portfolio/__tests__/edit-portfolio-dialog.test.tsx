@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-	EditPortfolioButton,
-	EditPortfolioDialog,
-} from "../edit-portfolio-dialog";
+import { EditPortfolioButton, EditPortfolioDialog } from "../edit-portfolio-dialog";
 
 describe("EditPortfolioDialog", () => {
 	it("exports the EditPortfolioDialog component", () => {

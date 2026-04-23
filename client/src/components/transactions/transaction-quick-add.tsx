@@ -12,12 +12,35 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import type { Asset, Portfolio, TransactionType } from "@/gql/graphql";
+import type { Asset, TransactionType as GqlTransactionType, Portfolio } from "@/gql/graphql";
+
+type ExtendedTransactionType =
+	| "BUY"
+	| "SELL"
+	| "DEPOSIT"
+	| "WITHDRAWAL"
+	| "DIVIDEND"
+	| "TRANSFER"
+	| "FEE"
+	| "REFUND"
+	| "buy"
+	| "sell"
+	| "deposit"
+	| "withdrawal"
+	| "dividend"
+	| "transfer"
+	| "fee"
+	| "refund"
+	| "";
+
+// Legacy alias for backward compatibility
+type _ExtendedTransactionTypeLegacy = GqlTransactionType | "DEPOSIT" | "WITHDRAWAL";
+
 import { formatCurrency } from "@/lib/utils/formatters";
 
 interface QuickAddTransaction {
 	assetId: string;
-	transactionType: TransactionType;
+	transactionType: ExtendedTransactionType;
 	quantity: number;
 	pricePerUnit: number;
 	amount: number;
@@ -32,7 +55,7 @@ interface TransactionQuickAddProps {
 }
 
 const quickTransactionTypes: {
-	value: TransactionType;
+	value: ExtendedTransactionType;
 	label: string;
 	color: string;
 }[] = [
@@ -54,18 +77,14 @@ export function TransactionQuickAdd({
 	compact = false,
 }: TransactionQuickAddProps) {
 	const [selectedAsset, setSelectedAsset] = useState<string>("");
-	const [transactionType, setTransactionType] =
-		useState<TransactionType>("BUY");
+	const [transactionType, setTransactionType] = useState<ExtendedTransactionType>("BUY");
 	const [quantity, setQuantity] = useState<number>(0);
 	const [pricePerUnit, setPricePerUnit] = useState<number>(0);
 	const [amount, setAmount] = useState<number>(0);
 	const [isExpanded, setIsExpanded] = useState(false);
 
 	// Auto-calculate amount when quantity or price changes
-	const handleQuantityOrPriceChange = (
-		newQuantity?: number,
-		newPrice?: number,
-	) => {
+	const handleQuantityOrPriceChange = (newQuantity?: number, newPrice?: number) => {
 		const qty = newQuantity ?? quantity;
 		const price = newPrice ?? pricePerUnit;
 		const calculatedAmount = qty * price;
@@ -92,9 +111,7 @@ export function TransactionQuickAdd({
 			setPricePerUnit(0);
 			setAmount(0);
 			setIsExpanded(false);
-		} catch (error) {
-			console.error("Quick add transaction failed:", error);
-		}
+		} catch (_error) {}
 	};
 
 	const requiresQuantity = ["BUY", "SELL"].includes(transactionType);
@@ -112,9 +129,7 @@ export function TransactionQuickAdd({
 						<Plus className="h-6 w-6 text-muted-foreground" />
 						<div className="flex flex-col">
 							<span className="font-medium">Quick Add Transaction</span>
-							<span className="text-xs text-muted-foreground">
-								Fast entry for {portfolio.name}
-							</span>
+							<span className="text-xs text-muted-foreground">Fast entry for {portfolio.name}</span>
 						</div>
 					</Button>
 				</CardContent>
@@ -163,9 +178,7 @@ export function TransactionQuickAdd({
 										<div className="flex items-center gap-2">
 											<span>{asset.name}</span>
 											{asset.symbol && (
-												<span className="text-xs text-muted-foreground">
-													({asset.symbol})
-												</span>
+												<span className="text-xs text-muted-foreground">({asset.symbol})</span>
 											)}
 											{asset.currentValue && (
 												<span className="text-xs text-muted-foreground ml-auto">
@@ -185,18 +198,14 @@ export function TransactionQuickAdd({
 					<Alert>
 						<DollarSign className="h-4 w-4" />
 						<AlertDescription>
-							Current market price:{" "}
-							{formatCurrency(selectedAssetData.currentValue)}
+							Current market price: {formatCurrency(selectedAssetData.currentValue)}
 							<Button
 								variant="link"
 								size="sm"
 								className="ml-2 h-auto p-0"
 								onClick={() => {
 									setPricePerUnit(selectedAssetData.currentValue || 0);
-									handleQuantityOrPriceChange(
-										quantity,
-										selectedAssetData.currentValue || 0,
-									);
+									handleQuantityOrPriceChange(quantity, selectedAssetData.currentValue || 0);
 								}}
 							>
 								Use current price
@@ -223,7 +232,7 @@ export function TransactionQuickAdd({
 										setQuantity(newQuantity);
 										handleQuantityOrPriceChange(newQuantity, pricePerUnit);
 									}}
-									className="pl-10"
+									style={{ paddingLeft: "2.5rem" }}
 								/>
 							</div>
 						</div>
@@ -231,7 +240,7 @@ export function TransactionQuickAdd({
 						<div className="space-y-2">
 							<label className="text-sm font-medium">Price per Unit</label>
 							<div className="relative">
-								<DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+								<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 								<Input
 									type="number"
 									step="0.01"
@@ -243,7 +252,7 @@ export function TransactionQuickAdd({
 										setPricePerUnit(newPrice);
 										handleQuantityOrPriceChange(quantity, newPrice);
 									}}
-									className="pl-10"
+									style={{ paddingLeft: "2.5rem" }}
 								/>
 							</div>
 						</div>
@@ -252,11 +261,9 @@ export function TransactionQuickAdd({
 
 				{/* Amount */}
 				<div className="space-y-2">
-					<label className="text-sm font-medium">
-						Amount {requiresQuantity && "(calculated)"}
-					</label>
+					<label className="text-sm font-medium">Amount {requiresQuantity && "(calculated)"}</label>
 					<div className="relative">
-						<DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+						<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 						<Input
 							type="number"
 							step="0.01"
@@ -264,14 +271,13 @@ export function TransactionQuickAdd({
 							placeholder="0.00"
 							value={amount || ""}
 							onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-							className="pl-10"
+							style={{ paddingLeft: "2.5rem" }}
 							readOnly={requiresQuantity}
 						/>
 					</div>
 					{requiresQuantity && (
 						<p className="text-xs text-muted-foreground">
-							{quantity} × {formatCurrency(pricePerUnit)} ={" "}
-							{formatCurrency(amount)}
+							{quantity} × {formatCurrency(pricePerUnit)} = {formatCurrency(amount)}
 						</p>
 					)}
 				</div>
@@ -287,11 +293,7 @@ export function TransactionQuickAdd({
 						{isLoading ? "Adding..." : `Add ${transactionType.toLowerCase()}`}
 					</Button>
 					{compact && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => setIsExpanded(false)}
-						>
+						<Button variant="outline" size="sm" onClick={() => setIsExpanded(false)}>
 							Cancel
 						</Button>
 					)}
@@ -301,9 +303,7 @@ export function TransactionQuickAdd({
 				{amount > 0 && selectedAsset && (
 					<div className="p-3 bg-muted/30 rounded-lg">
 						<div className="flex items-center justify-between text-sm">
-							<span className="text-muted-foreground">
-								Transaction Summary:
-							</span>
+							<span className="text-muted-foreground">Transaction Summary:</span>
 							<Badge
 								variant="outline"
 								className={
@@ -322,16 +322,13 @@ export function TransactionQuickAdd({
 								<span>Asset:</span>
 								<span className="font-medium">
 									{selectedAssetData?.name}
-									{selectedAssetData?.symbol &&
-										` (${selectedAssetData.symbol})`}
+									{selectedAssetData?.symbol && ` (${selectedAssetData.symbol})`}
 								</span>
 							</div>
 							{requiresQuantity && (
 								<div className="flex justify-between">
 									<span>Quantity:</span>
-									<span className="font-medium">
-										{quantity.toLocaleString()}
-									</span>
+									<span className="font-medium">{quantity.toLocaleString()}</span>
 								</div>
 							)}
 							<div className="flex justify-between">

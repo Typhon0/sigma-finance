@@ -1,12 +1,6 @@
+import type { ECElementEvent, EChartsCoreOption } from "echarts";
+import ReactECharts from "echarts-for-react";
 import { useMemo } from "react";
-import {
-	Cell,
-	Legend,
-	Pie,
-	PieChart,
-	ResponsiveContainer,
-	Tooltip,
-} from "recharts";
 import {
 	InlineChartSkeleton,
 	useComponentErrorHandler,
@@ -14,17 +8,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withErrorBoundary } from "@/components/ui/error-boundary";
 import { getAssetTypeColor } from "@/lib/chart-colors";
-import {
-	type AssetAllocationData,
-	formatCurrency,
-} from "@/lib/utils/portfolio-calculations";
+import { type AssetAllocationData, formatCurrency } from "@/lib/utils/portfolio-calculations";
 
-// Helper function to format asset type names for display
 function formatAssetTypeName(assetType: string): string {
 	return assetType
 		.replace(/_/g, " ")
 		.toLowerCase()
-		.replace(/\b\w/g, (l) => l.toUpperCase());
+		.replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 interface AssetAllocationChartProps {
@@ -34,26 +24,32 @@ interface AssetAllocationChartProps {
 	className?: string;
 }
 
+interface AllocationChartRow {
+	name: string;
+	value: number;
+	percentage: number;
+	color: string;
+	assetType: string;
+}
+
 function AssetAllocationChartComponent({
 	allocationData,
 	isLoading = false,
 	onAssetTypeClick,
 	className,
 }: AssetAllocationChartProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler(
-		"AssetAllocationChart",
-		"chart",
-	);
-	const chartData = useMemo(() => {
+	const { handleErrorWithRetry } = useComponentErrorHandler("AssetAllocationChart", "chart");
+
+	const chartData = useMemo<AllocationChartRow[]>(() => {
 		if (!allocationData || allocationData.length === 0) {
 			return [];
 		}
 
 		return allocationData
-			.filter((item) => item.value > 0) // Only show asset types with value
-			.sort((a, b) => b.value - a.value) // Sort by value descending
+			.filter((item) => item.value > 0)
+			.sort((a, b) => b.value - a.value)
 			.map((item) => ({
-				name: formatAssetTypeName(item.assetType), // Format asset type name
+				name: formatAssetTypeName(item.assetType),
 				value: item.value,
 				percentage: item.percentage,
 				color: getAssetTypeColor(item.assetType),
@@ -61,32 +57,120 @@ function AssetAllocationChartComponent({
 			}));
 	}, [allocationData]);
 
-	// Calculate total value for display
-	const totalValue = useMemo(() => {
-		return allocationData.reduce((sum, item) => sum + item.value, 0);
-	}, [allocationData]);
+	const totalValue = useMemo(
+		() => allocationData.reduce((sum, item) => sum + item.value, 0),
+		[allocationData],
+	);
 
-	// Handle pie chart click events
-	const handlePieClick = async (data: any) => {
-		if (onAssetTypeClick && data?.assetType) {
-			await handleErrorWithRetry(async () => {
-				onAssetTypeClick(data.assetType);
-			});
-		}
-	};
+	const chartOption = useMemo<EChartsCoreOption>(() => {
+		return {
+			tooltip: {
+				trigger: "item",
+				formatter: (params) => {
+					if (typeof params !== "object" || params === null || !("data" in params)) {
+						return "";
+					}
 
-	// Loading state
+					const row = params.data as AllocationChartRow;
+					return `${row.name}<br/>Value: ${formatCurrency(row.value)}<br/>Percentage: ${row.percentage.toFixed(1)}%`;
+				},
+			},
+			legend: {
+				bottom: 0,
+				left: "center",
+				type: "scroll",
+				formatter: (name: string) => {
+					const row = chartData.find((item) => item.name === name);
+					return row ? `${name} (${row.percentage.toFixed(1)}%)` : name;
+				},
+			},
+			series: [
+				{
+					name: "Asset Allocation",
+					type: "pie",
+					radius: ["45%", "75%"],
+					center: ["50%", "43%"],
+					avoidLabelOverlap: true,
+					label: { show: false },
+					emphasis: {
+						label: {
+							show: true,
+							fontWeight: "bold",
+							formatter: "{b}\n{d}%",
+						},
+					},
+					data: chartData.map((item) => ({
+						name: item.name,
+						value: item.value,
+						assetType: item.assetType,
+						percentage: item.percentage,
+						itemStyle: { color: item.color },
+					})),
+				},
+			],
+			graphic: {
+				type: "group",
+				left: "center",
+				top: "38%",
+				children: [
+					{
+						type: "text",
+						style: {
+							text: "Total Value",
+							fill: "#6b7280",
+							fontSize: 12,
+							textAlign: "center",
+						},
+						x: -30,
+						y: -8,
+					},
+					{
+						type: "text",
+						style: {
+							text: formatCurrency(totalValue),
+							fill: "#111827",
+							fontWeight: "bold",
+							fontSize: 16,
+							textAlign: "center",
+						},
+						x: -50,
+						y: 12,
+					},
+				],
+			},
+		};
+	}, [chartData, totalValue]);
+
+	const chartEvents = useMemo(
+		() => ({
+			click: async (params: ECElementEvent) => {
+				if (!onAssetTypeClick) {
+					return;
+				}
+				const rawData = params.data;
+				if (typeof rawData !== "object" || rawData === null) {
+					return;
+				}
+				if (!("assetType" in rawData)) {
+					return;
+				}
+				const assetType = rawData.assetType;
+				if (typeof assetType !== "string" || assetType.length === 0) {
+					return;
+				}
+
+				await handleErrorWithRetry(async () => {
+					onAssetTypeClick(assetType);
+				});
+			},
+		}),
+		[handleErrorWithRetry, onAssetTypeClick],
+	);
+
 	if (isLoading) {
-		return (
-			<InlineChartSkeleton
-				height={320}
-				title="Asset Allocation"
-				className={className}
-			/>
-		);
+		return <InlineChartSkeleton height={320} title="Asset Allocation" className={className} />;
 	}
 
-	// Empty state
 	if (chartData.length === 0) {
 		return (
 			<Card className={className}>
@@ -96,9 +180,7 @@ function AssetAllocationChartComponent({
 				<CardContent className="flex flex-col items-center justify-center h-80">
 					<div className="text-center text-muted-foreground">
 						<p className="text-lg font-medium">No data available</p>
-						<p className="text-sm">
-							Add assets to your portfolio to see the allocation chart.
-						</p>
+						<p className="text-sm">Add assets to your portfolio to see the allocation chart.</p>
 					</div>
 				</CardContent>
 			</Card>
@@ -112,71 +194,13 @@ function AssetAllocationChartComponent({
 			</CardHeader>
 			<CardContent>
 				<div className="h-80 w-full">
-					<ResponsiveContainer width="100%" height="100%">
-						<PieChart>
-							<Tooltip
-								content={({ active, payload }) => {
-									if (active && payload?.length) {
-										const data = payload[0].payload;
-										return (
-											<div className="rounded-lg border bg-background p-2.5 text-sm shadow-lg">
-												<div className="font-medium">{data.name}</div>
-												<div className="text-muted-foreground">
-													<div>Value: {formatCurrency(data.value)}</div>
-													<div>Percentage: {data.percentage.toFixed(1)}%</div>
-												</div>
-											</div>
-										);
-									}
-									return null;
-								}}
-							/>
-							<Legend
-								verticalAlign="bottom"
-								height={36}
-								formatter={(value, entry) => {
-									const { color, payload } = entry;
-									const percentage = (payload as any)?.percentage;
-									return (
-										<span style={{ color }}>
-											{value} ({percentage?.toFixed(1)}%)
-										</span>
-									);
-								}}
-							/>
-							<Pie
-								data={chartData}
-								cx="50%"
-								cy="50%"
-								labelLine={false}
-								outerRadius={80}
-								fill="#8884d8"
-								dataKey="value"
-								nameKey="name"
-								onClick={handlePieClick}
-							>
-								{chartData.map((entry, index) => (
-									<Cell key={`cell-${index}`} fill={entry.color} />
-								))}
-							</Pie>
-							<foreignObject
-								x="50%"
-								y="50%"
-								width="100"
-								height="100"
-								style={{ transform: "translate(-50px, -50px)" }}
-							>
-								<div className="flex flex-col items-center justify-center h-full w-full pointer-events-none">
-									<span className="text-xs text-muted-foreground">
-										Total Value
-									</span>
-									<span className="text-2xl font-bold">
-										{formatCurrency(totalValue)}
-									</span>
-								</div>
-							</foreignObject>
-						</PieChart>
-					</ResponsiveContainer>
+					<ReactECharts
+						option={chartOption}
+						onEvents={chartEvents}
+						notMerge={true}
+						lazyUpdate={true}
+						style={{ height: "100%", width: "100%" }}
+					/>
 				</div>
 			</CardContent>
 		</Card>

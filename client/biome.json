@@ -1,49 +1,90 @@
 {
-	"$schema": "https://biomejs.dev/schemas/2.4.10/schema.json",
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true
+	},
+	"files": {
+		"includes": [
+			"**",
+			"!!**/dist",
+			"!!**/coverage",
+			"!**/src/gql/graphql.ts",
+			"!**/src/gql/fragment-masking.ts",
+			"!**/src/gql/gql.ts",
+			"!**/src/routeTree.gen.ts"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineWidth": 100,
+		"lineEnding": "lf"
+	},
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
+		"domains": {
+			"react": "recommended",
+			"test": "recommended",
+			"project": "recommended"
+		},
 		"rules": {
 			"recommended": true,
 			"suspicious": {
 				"noExplicitAny": "warn",
-				"noImplicitAnyLet": "warn",
-				"noTemplateCurlyInString": "warn",
-				"noAsyncPromiseExecutor": "warn",
+				"noImplicitAnyLet": "error",
+				"noTemplateCurlyInString": "error",
+				"noAsyncPromiseExecutor": "error",
 				"noDocumentCookie": "warn",
-				"noRedeclare": "warn"
+				"noRedeclare": "error",
+				"noDebugger": "error",
+				"noConsole": "warn",
+				"noImportCycles": "warn",
+				"noArrayIndexKey": "warn"
 			},
 			"a11y": {
-				"useSemanticElements": "off",
-				"useFocusableInteractive": "off",
-				"useAriaPropsSupportedByRole": "off",
-				"useAriaPropsForRole": "off",
+				"useSemanticElements": "warn",
+				"useFocusableInteractive": "warn",
+				"useAriaPropsSupportedByRole": "warn",
+				"useAriaPropsForRole": "warn",
 				"noStaticElementInteractions": "warn",
 				"useKeyWithClickEvents": "warn",
 				"noLabelWithoutControl": "warn"
+			},
+			"correctness": {
+				"noUnresolvedImports": "off",
+				"noUnusedVariables": {
+					"level": "error",
+					"fix": "none"
+				},
+				"noUndeclaredDependencies": "off",
+				"useExhaustiveDependencies": "warn",
+				"useHookAtTopLevel": "warn"
 			},
 			"complexity": {
 				"noStaticOnlyClass": "off"
 			},
 			"style": {
-				"noNonNullAssertion": "warn"
+				"noNonNullAssertion": "warn",
+				"useNamingConvention": "off",
+				"useFilenamingConvention": "warn"
 			}
 		}
-	},
-	"files": {
-		"includes": [
-			"**",
-			"!**/src/gql/graphql.ts",
-			"!**/src/gql/fragment-masking.ts",
-			"!**/src/gql/gql.ts",
-			"!**/src/routeTree.gen.ts",
-			"!**/src/components/ui",
-			"!**/src/index.css"
-		]
 	},
 	"css": {
 		"linter": {
 			"enabled": false
+		},
+		"parser": {
+			"tailwindDirectives": true
 		}
 	}
 }

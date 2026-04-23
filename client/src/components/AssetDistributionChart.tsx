@@ -1,5 +1,6 @@
 import ReactECharts from "echarts-for-react";
 import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export interface AssetDistributionData {
 	name: string;
@@ -67,10 +68,7 @@ export function AssetDistributionChart({
 	// Empty state
 	if (!data || data.length === 0 || totalValue === 0) {
 		return (
-			<div
-				className="flex items-center justify-center text-muted-foreground"
-				style={{ height }}
-			>
+			<div className="flex items-center justify-center text-muted-foreground" style={{ height }}>
 				<p>{emptyMessage}</p>
 			</div>
 		);
@@ -94,13 +92,9 @@ export function AssetDistributionChart({
 					left: "center",
 					top: "middle",
 					style: {
-						text: hoveredData
-							? hoveredData.name
-							: formatDisplayValue(totalValue),
+						text: hoveredData ? hoveredData.name : formatDisplayValue(totalValue),
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#fafafa"
-							: "#0a0a0a",
+						fill: document.documentElement.classList.contains("dark") ? "#fafafa" : "#0a0a0a",
 						fontSize: hoveredData ? 16 : 24,
 						fontWeight: "600",
 						lineHeight: 1.2,
@@ -115,9 +109,7 @@ export function AssetDistributionChart({
 					style: {
 						text: hoveredData ? formatDisplayValue(hoveredData.value) : "",
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#a3a3a3"
-							: "#737373",
+						fill: document.documentElement.classList.contains("dark") ? "#a3a3a3" : "#737373",
 						fontSize: 14,
 						fontWeight: "500",
 						y: 8,
@@ -129,14 +121,9 @@ export function AssetDistributionChart({
 					left: "center",
 					top: "middle",
 					style: {
-						text:
-							hoveredData && showPercentage
-								? `${hoveredData.percent.toFixed(1)}%`
-								: "",
+						text: hoveredData && showPercentage ? `${hoveredData.percent.toFixed(1)}%` : "",
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#737373"
-							: "#a3a3a3",
+						fill: document.documentElement.classList.contains("dark") ? "#737373" : "#a3a3a3",
 						fontSize: 12,
 						fontWeight: "400",
 						y: 28,
@@ -151,9 +138,7 @@ export function AssetDistributionChart({
 				avoidLabelOverlap: false,
 				itemStyle: {
 					borderRadius: 4,
-					borderColor: document.documentElement.classList.contains("dark")
-						? "#0a0a0a"
-						: "#fafafa",
+					borderColor: document.documentElement.classList.contains("dark") ? "#0a0a0a" : "#fafafa",
 					borderWidth: 3,
 				},
 				label: {
@@ -177,10 +162,7 @@ export function AssetDistributionChart({
 			opts={{ renderer: "svg" }}
 			onEvents={{
 				mouseover: (params: EChartsMouseEventParam) => {
-					if (
-						params.componentType === "series" &&
-						params.seriesType === "pie"
-					) {
+					if (params.componentType === "series" && params.seriesType === "pie") {
 						setHoveredData({
 							name: params.name,
 							value: params.value,
@@ -197,8 +179,7 @@ export function AssetDistributionChart({
 }
 
 // Variant with legend below for more detailed distribution view
-export interface AssetDistributionWithLegendProps
-	extends AssetDistributionChartProps {
+export interface AssetDistributionWithLegendProps extends AssetDistributionChartProps {
 	showLegend?: boolean;
 	onItemClick?: (item: AssetDistributionData) => void;
 }
@@ -250,37 +231,28 @@ export function AssetDistributionWithLegend({
 			{showLegend && data && data.length > 0 && (
 				<div className="space-y-2">
 					{chartData.map((item, index) => {
-						const color =
-							item.itemStyle?.color ||
-							defaultColors[index % defaultColors.length];
+						const color = item.itemStyle?.color || defaultColors[index % defaultColors.length];
 						const percentage = getPercentage(item.value);
 
 						return (
-							<button
-								type="button"
+							<Button
 								key={index}
+								variant="ghost"
 								onClick={() => onItemClick?.(item)}
-								className="w-full flex items-center justify-between p-2 rounded-lg hover:bg-accent transition-colors text-left"
 								disabled={!onItemClick}
+								className="w-full flex items-center justify-between p-2 rounded-lg text-left h-auto"
 							>
 								<div className="flex items-center gap-2 flex-1 min-w-0">
-									<div
-										className="h-3 w-3 rounded-sm shrink-0"
-										style={{ backgroundColor: color }}
-									/>
+									<div className="h-3 w-3 rounded-sm shrink-0" style={{ backgroundColor: color }} />
 									<span className="truncate text-sm">{item.name}</span>
 								</div>
 								<div className="flex items-center gap-3 shrink-0">
 									{showPercentage && (
-										<span className="text-xs text-muted-foreground">
-											{percentage}%
-										</span>
+										<span className="text-xs text-muted-foreground">{percentage}%</span>
 									)}
-									<span className="text-sm font-medium">
-										{formatDisplayValue(item.value)}
-									</span>
+									<span className="text-sm font-medium">{formatDisplayValue(item.value)}</span>
 								</div>
-							</button>
+							</Button>
 						);
 					})}
 				</div>

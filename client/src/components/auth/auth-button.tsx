@@ -1,25 +1,11 @@
-import {
-	ArrowLeft,
-	Key,
-	Loader2,
-	LogIn,
-	Mail,
-	Shield,
-	UserPlus,
-} from "lucide-react";
+import { ArrowLeft, Key, Loader2, LogIn, Mail, Shield, UserPlus } from "lucide-react";
 import { forwardRef } from "react";
 import { cn } from "../../lib/utils";
 import { Button, type ButtonProps } from "../ui/button";
 
 interface AuthButtonProps extends Omit<ButtonProps, "children"> {
 	type?: "submit" | "button";
-	variant?:
-		| "default"
-		| "destructive"
-		| "outline"
-		| "secondary"
-		| "ghost"
-		| "link";
+	variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
 	size?: "default" | "sm" | "lg" | "icon";
 	isLoading?: boolean;
 	loadingText?: string;

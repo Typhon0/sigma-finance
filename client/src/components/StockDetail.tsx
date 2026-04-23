@@ -11,20 +11,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useCurrency } from "@/hooks/use-currency";
+import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import { cn } from "./ui/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface StockDetailProps {
 	symbol: string;
@@ -39,7 +33,7 @@ type Indicator = "ma" | "rsi" | "macd" | "bollinger";
 export function StockDetail({
 	symbol,
 	onBack,
-	_onNavigateToScreener,
+	onNavigateToScreener: _onNavigateToScreener,
 }: StockDetailProps) {
 	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
 	const [chartType, setChartType] = useState<ChartType>("candlestick");
@@ -77,7 +71,11 @@ export function StockDetail({
 	};
 
 	// Generate candlestick data
-	const generateCandlestickData = () => {
+	const generateCandlestickData = (): {
+		date: string;
+		values: number[];
+		volume: number;
+	}[] => {
 		const days =
 			timeRange === "1D"
 				? 1
@@ -92,7 +90,7 @@ export function StockDetail({
 								: timeRange === "1Y"
 									? 365
 									: 730;
-		const data = [];
+		const data: { date: string; values: number[]; volume: number }[] = [];
 		let currentPrice = stockData.price - Math.random() * 20;
 
 		for (let i = days; i >= 0; i--) {
@@ -102,9 +100,7 @@ export function StockDetail({
 			const close = currentPrice + (Math.random() - 0.5) * 5;
 			const high = Math.max(open, close) + Math.random() * 2;
 			const low = Math.min(open, close) - Math.random() * 2;
-			const volume = Math.floor(
-				(Math.random() * 0.5 + 0.75) * stockData.avgVolume,
-			);
+			const volume = Math.floor((Math.random() * 0.5 + 0.75) * stockData.avgVolume);
 
 			data.push({
 				date: date.toISOString().split("T")[0],
@@ -116,16 +112,15 @@ export function StockDetail({
 		return data;
 	};
 
-	const candlestickData = useMemo(() => generateCandlestickData(), [timeRange]);
+	const candlestickData = useMemo(() => generateCandlestickData(), [generateCandlestickData]);
 
-	const calculateMA = (period: number) => {
-		const ma = [];
+	const calculateMa = (period: number) => {
+		const ma: (number | null)[] = [];
 		for (let i = 0; i < candlestickData.length; i++) {
 			if (i < period - 1) ma.push(null);
 			else {
 				let sum = 0;
-				for (let j = 0; j < period; j++)
-					sum += candlestickData[i - j].values[1];
+				for (let j = 0; j < period; j++) sum += candlestickData[i - j].values[1];
 				ma.push(sum / period);
 			}
 		}
@@ -223,7 +218,7 @@ export function StockDetail({
 						{
 							name: "MA20",
 							type: "line",
-							data: calculateMA(20),
+							data: calculateMa(20),
 							smooth: true,
 							lineStyle: { width: 1, color: "#3b82f6" },
 							showSymbol: false,
@@ -231,7 +226,7 @@ export function StockDetail({
 						{
 							name: "MA50",
 							type: "line",
-							data: calculateMA(50),
+							data: calculateMa(50),
 							smooth: true,
 							lineStyle: { width: 1, color: "#f59e0b" },
 							showSymbol: false,
@@ -246,10 +241,7 @@ export function StockDetail({
 				data: candlestickData.map((d, i) => ({
 					value: d.volume,
 					itemStyle: {
-						color:
-							i > 0 && d.values[1] > candlestickData[i - 1].values[1]
-								? "#10b981"
-								: "#ef4444",
+						color: i > 0 && d.values[1] > candlestickData[i - 1].values[1] ? "#10b981" : "#ef4444",
 					},
 				})),
 			},
@@ -283,16 +275,9 @@ export function StockDetail({
 							</Button>
 						)}
 						<div className="flex items-baseline gap-3">
-							<h1 className="text-2xl font-bold tracking-tight">
-								{stockData.symbol}
-							</h1>
-							<span className="text-sm text-muted-foreground">
-								{stockData.name}
-							</span>
-							<Badge
-								variant="outline"
-								className="text-[10px] h-5 border-border/50 font-normal"
-							>
+							<h1 className="text-2xl font-bold tracking-tight">{stockData.symbol}</h1>
+							<span className="text-sm text-muted-foreground">{stockData.name}</span>
+							<Badge variant="outline" className="text-[10px] h-5 border-border/50 font-normal">
 								{stockData.exchange}
 							</Badge>
 						</div>
@@ -306,10 +291,7 @@ export function StockDetail({
 							<Bell className="h-3.5 w-3.5 mr-2" /> Alert
 						</Button>
 						<div className="h-4 w-px bg-border/50 mx-1" />
-						<Button
-							size="sm"
-							className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0"
-						>
+						<Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0">
 							<Zap className="h-3.5 w-3.5 mr-2" /> Trade
 						</Button>
 					</div>
@@ -333,8 +315,7 @@ export function StockDetail({
 								<TrendingDown className="h-5 w-5" />
 							)}
 							{stockData.change >= 0 ? "+" : ""}
-							{stockData.change.toFixed(2)} (
-							{stockData.changePercent.toFixed(2)}%)
+							{stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
 						</span>
 					</div>
 					<div className="flex gap-6 text-xs text-muted-foreground pb-1.5 font-mono">
@@ -364,26 +345,19 @@ export function StockDetail({
 					<div className="flex items-center justify-between p-2 border-b border-border/40 bg-muted/5">
 						<div className="flex items-center gap-1">
 							{(["1D", "1M", "3M", "YTD", "1Y", "MAX"] as const).map((r) => (
-								<button
-									type="button"
+								<Button
 									key={r}
+									variant={timeRange === r ? "secondary" : "ghost"}
+									size="sm"
 									onClick={() => setTimeRange(r as any)}
-									className={cn(
-										"px-2.5 py-1 text-[10px] font-medium rounded hover:bg-muted transition-colors",
-										timeRange === r
-											? "bg-background shadow-sm text-foreground"
-											: "text-muted-foreground",
-									)}
+									className="h-6 px-2.5 text-[10px] font-medium"
 								>
 									{r}
-								</button>
+								</Button>
 							))}
 						</div>
 						<div className="flex items-center gap-2">
-							<Select
-								value={chartType}
-								onValueChange={(v: any) => setChartType(v)}
-							>
+							<Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
 								<SelectTrigger className="h-6 w-[100px] text-[10px] border-border/40 bg-transparent">
 									<SelectValue />
 								</SelectTrigger>
@@ -407,9 +381,7 @@ export function StockDetail({
 												checked={activeIndicators.includes("ma")}
 												onCheckedChange={() =>
 													setActiveIndicators((prev) =>
-														prev.includes("ma")
-															? prev.filter((i) => i !== "ma")
-															: [...prev, "ma"],
+														prev.includes("ma") ? prev.filter((i) => i !== "ma") : [...prev, "ma"],
 													)
 												}
 											/>
@@ -467,10 +439,7 @@ export function StockDetail({
 										v: formatCurrency(stockData.week52Range.low),
 									},
 								].map((item, i) => (
-									<div
-										key={i}
-										className="flex items-center justify-between p-3 text-xs"
-									>
+									<div key={i} className="flex items-center justify-between p-3 text-xs">
 										<span className="text-muted-foreground">{item.l}</span>
 										<span className="font-mono font-medium">{item.v}</span>
 									</div>
@@ -490,9 +459,8 @@ export function StockDetail({
 						<CardContent className="p-3 text-xs text-muted-foreground leading-relaxed">
 							<p>{stockData.industry}</p>
 							<p className="mt-1">
-								Apple Inc. designs, manufactures, and markets smartphones,
-								personal computers, tablets, wearables, and accessories
-								worldwide.
+								Apple Inc. designs, manufactures, and markets smartphones, personal computers,
+								tablets, wearables, and accessories worldwide.
 							</p>
 						</CardContent>
 					</Card>

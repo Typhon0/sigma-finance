@@ -9,7 +9,7 @@ export const Route = createFileRoute("/")({
 			// Redirect authenticated users to dashboard
 			throw redirect({
 				to: "/dashboard",
-				search: { portfolioId: undefined },
+				search: { portfolioId: undefined, view: undefined },
 			});
 		} else {
 			// Redirect unauthenticated users to login

@@ -53,11 +53,8 @@ export function TransactionManagement({
 	const [activeTab, setActiveTab] = useState("quick-add");
 	const [showTransactionForm, setShowTransactionForm] = useState(false);
 	const [showBulkImport, setShowBulkImport] = useState(false);
-	const [editingTransaction, setEditingTransaction] =
-		useState<Transaction | null>(null);
-	const [selectedPosition, setSelectedPosition] = useState<Position | null>(
-		null,
-	);
+	const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+	const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
 
 	const handleQuickAdd = async (transaction: any) => {
 		const formData: TransactionFormData = {
@@ -65,10 +62,10 @@ export function TransactionManagement({
 			assetId: transaction.assetId,
 			transactionType: transaction.transactionType,
 			quantity: transaction.quantity,
-			pricePerUnit: transaction.pricePerUnit,
+			pricePerUnit: transaction.unitPriceAmount ?? 0,
 			amount: transaction.amount,
 			fee: 0,
-			transactionDate: new Date(),
+			transactionDate: new Date(transaction.executedAt),
 			notes: "",
 		};
 
@@ -103,18 +100,16 @@ export function TransactionManagement({
 
 	const getCostBasisData = (position: Position) => {
 		const positionTransactions = transactions.filter(
-			(t) =>
-				t.asset.id === position.asset.id && t.portfolio.id === portfolio.id,
+			(t) => t.asset.id === position.asset.id && t.portfolio.id === portfolio.id,
 		);
 
 		// Calculate cost basis (simplified - in real app this would be more complex)
 		const totalCostBasis = positionTransactions
 			.filter((t) => t.transactionType === "BUY")
-			.reduce((sum, t) => sum + t.quantity * t.pricePerUnit, 0);
+			.reduce((sum, t) => sum + t.quantity * (t.unitPriceAmount ?? 0), 0);
 
 		const totalQuantity = position.quantity || 0;
-		const averageCostBasis =
-			totalQuantity > 0 ? totalCostBasis / totalQuantity : 0;
+		const averageCostBasis = totalQuantity > 0 ? totalCostBasis / totalQuantity : 0;
 		const currentValue = totalQuantity * (position.asset.currentValue || 0);
 		const unrealizedGainLoss = currentValue - totalCostBasis;
 		const unrealizedGainLossPercent =
@@ -124,7 +119,7 @@ export function TransactionManagement({
 			.filter((t) => t.transactionType === "SELL")
 			.reduce((sum, t) => {
 				// Simplified realized gains calculation
-				const sellValue = t.quantity * t.pricePerUnit;
+				const sellValue = t.quantity * (t.unitPriceAmount ?? 0);
 				const costBasis = t.quantity * averageCostBasis;
 				return sum + (sellValue - costBasis);
 			}, 0);
@@ -158,11 +153,7 @@ export function TransactionManagement({
 					<CardHeader className="pb-3">
 						<div className="flex items-center justify-between">
 							<CardTitle className="text-lg">Recent Transactions</CardTitle>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => setActiveTab("history")}
-							>
+							<Button variant="outline" size="sm" onClick={() => setActiveTab("history")}>
 								<History className="h-4 w-4 mr-2" />
 								View All
 							</Button>
@@ -225,10 +216,7 @@ export function TransactionManagement({
 							</DialogContent>
 						</Dialog>
 
-						<Dialog
-							open={showTransactionForm}
-							onOpenChange={setShowTransactionForm}
-						>
+						<Dialog open={showTransactionForm} onOpenChange={setShowTransactionForm}>
 							<DialogTrigger asChild>
 								<Button size="sm">
 									<Plus className="h-4 w-4 mr-2" />
@@ -238,9 +226,7 @@ export function TransactionManagement({
 							<DialogContent className="max-w-2xl">
 								<DialogHeader>
 									<DialogTitle>
-										{editingTransaction
-											? "Edit Transaction"
-											: "Add Transaction"}
+										{editingTransaction ? "Edit Transaction" : "Add Transaction"}
 									</DialogTitle>
 								</DialogHeader>
 								<TransactionForm
@@ -258,14 +244,11 @@ export function TransactionManagement({
 													assetId: editingTransaction.asset.id,
 													transactionType: editingTransaction.transactionType,
 													quantity: editingTransaction.quantity,
-													pricePerUnit: editingTransaction.pricePerUnit,
+													pricePerUnit: editingTransaction.unitPriceAmount ?? 0,
 													amount:
-														editingTransaction.quantity *
-														editingTransaction.pricePerUnit,
+														editingTransaction.quantity * (editingTransaction.unitPriceAmount ?? 0),
 													fee: 0, // Would need to be added to GraphQL schema
-													transactionDate: new Date(
-														editingTransaction.transactionDate,
-													),
+													transactionDate: new Date(editingTransaction.executedAt),
 													notes: editingTransaction.notes || "",
 												}
 											: undefined
@@ -315,11 +298,7 @@ export function TransactionManagement({
 										{positions.map((position) => (
 											<Button
 												key={position.id}
-												variant={
-													selectedPosition?.id === position.id
-														? "default"
-														: "outline"
-												}
+												variant={selectedPosition?.id === position.id ? "default" : "outline"}
 												size="sm"
 												onClick={() => setSelectedPosition(position)}
 											>
@@ -345,8 +324,7 @@ export function TransactionManagement({
 												Select a Position
 											</h3>
 											<p className="text-sm text-muted-foreground">
-												Choose a position above to view cost basis and
-												performance details.
+												Choose a position above to view cost basis and performance details.
 											</p>
 										</CardContent>
 									</Card>
@@ -360,8 +338,7 @@ export function TransactionManagement({
 										No Positions Found
 									</h3>
 									<p className="text-sm text-muted-foreground">
-										Add some assets to this portfolio to see cost basis
-										information.
+										Add some assets to this portfolio to see cost basis information.
 									</p>
 								</CardContent>
 							</Card>
@@ -376,8 +353,7 @@ export function TransactionManagement({
 							<CardContent>
 								<div className="text-center py-8">
 									<p className="text-muted-foreground">
-										Validation tools will be shown here when adding or editing
-										transactions.
+										Validation tools will be shown here when adding or editing transactions.
 									</p>
 								</div>
 							</CardContent>

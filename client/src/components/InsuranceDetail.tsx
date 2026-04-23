@@ -1,14 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	Calendar,
-	Clock,
-	Edit,
-	Percent,
-	Shield,
-	Trash2,
-	User,
-} from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Edit, Percent, Shield, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -26,13 +17,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface InsuranceDetailProps {
@@ -77,8 +62,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 	};
 
 	const gain = (insurance.currentValue || 0) - (insurance.purchasePrice || 0);
-	const gainPercent =
-		insurance.purchasePrice > 0 ? (gain / insurance.purchasePrice) * 100 : 0;
+	const gainPercent = insurance.purchasePrice > 0 ? (gain / insurance.purchasePrice) * 100 : 0;
 
 	const getCategoryBadge = (category: string) => {
 		const badges: Record<
@@ -197,10 +181,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 						<Edit className="h-4 w-4 mr-2" />
 						Edit
 					</Button>
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -218,9 +199,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 							<div>
 								<div className="flex items-center gap-2 mb-2">
 									<CardTitle>{insurance.name}</CardTitle>
-									<Badge variant={categoryBadge.variant}>
-										{categoryBadge.label}
-									</Badge>
+									<Badge variant={categoryBadge.variant}>{categoryBadge.label}</Badge>
 								</div>
 								<CardDescription>
 									{insurance.policyNumber && `Policy ${insurance.policyNumber}`}
@@ -233,17 +212,13 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
 							<p className="text-2xl font-mono font-semibold">
 								{formatCurrency(insurance.currentValue || 0)}
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Total Contributions
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Total Contributions</p>
 							<p className="text-2xl font-mono font-semibold">
 								{formatCurrency(insurance.purchasePrice || 0)}
 							</p>
@@ -275,10 +250,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 						<CardDescription>Historical value over time</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
-							option={valueChartOption}
-							style={{ height: "250px" }}
-						/>
+						<ReactECharts option={valueChartOption} style={{ height: "250px" }} />
 					</CardContent>
 				</Card>
 
@@ -360,24 +332,19 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 						<CardTitle>Notes</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground whitespace-pre-wrap">
-							{insurance.notes}
-						</p>
+						<p className="text-sm text-muted-foreground whitespace-pre-wrap">{insurance.notes}</p>
 					</CardContent>
 				</Card>
 			)}
 
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete the insurance policy "
-							{insurance.name}". This action cannot be undone.
+							This will permanently delete the insurance policy "{insurance.name}". This action
+							cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

@@ -15,39 +15,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "./ui/dialog";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "./ui/tooltip";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
 
 interface Transaction {
 	id: string;
-	type:
-		| "buy"
-		| "sell"
-		| "transfer"
-		| "deposit"
-		| "withdrawal"
-		| "dividend"
-		| "fee"
-		| "refund";
+	type: "buy" | "sell" | "transfer" | "deposit" | "withdrawal" | "dividend" | "fee" | "refund";
 	assetId?: string;
 	assetName?: string;
 	assetSymbol?: string;
@@ -91,14 +65,13 @@ export function TransactionsList({
 	accountId,
 	showAccountColumn = true,
 	enableSelection = false,
-	_onSelectTransaction,
+	onSelectTransaction: _onSelectTransaction,
 	onEditTransaction,
 	emptyMessage = "No transactions found",
 	variant = "table", // Default to compact table view
 }: TransactionsListProps) {
 	const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-	const [detailsTransaction, setDetailsTransaction] =
-		useState<Transaction | null>(null);
+	const [detailsTransaction, setDetailsTransaction] = useState<Transaction | null>(null);
 
 	const toggleSelection = (id: string) => {
 		const newSelected = new Set(selectedIds);
@@ -234,9 +207,7 @@ export function TransactionsList({
 											checked={selectedIds.size === transactions.length}
 											onChange={(e) => {
 												if (e.target.checked) {
-													setSelectedIds(
-														new Set(transactions.map((t) => t.id)),
-													);
+													setSelectedIds(new Set(transactions.map((t) => t.id)));
 												} else {
 													setSelectedIds(new Set());
 												}
@@ -248,9 +219,7 @@ export function TransactionsList({
 								<TableHead className="w-24">Date</TableHead>
 								<TableHead className="w-32">Type</TableHead>
 								<TableHead>Description</TableHead>
-								{showAccountColumn && !accountId && (
-									<TableHead className="w-44">Account</TableHead>
-								)}
+								{showAccountColumn && !accountId && <TableHead className="w-44">Account</TableHead>}
 								<TableHead className="w-32">Category</TableHead>
 								<TableHead className="w-32 text-right">Amount</TableHead>
 								<TableHead className="w-24 text-center">Status</TableHead>
@@ -272,9 +241,7 @@ export function TransactionsList({
 									<TableRow
 										key={transaction.id}
 										className={`${isSelected ? "bg-primary/5" : ""} hover:bg-muted/50 cursor-pointer`}
-										onClick={() =>
-											hasDetails && setDetailsTransaction(transaction)
-										}
+										onClick={() => hasDetails && setDetailsTransaction(transaction)}
 									>
 										{/* Selection Checkbox */}
 										{enableSelection && (
@@ -304,24 +271,16 @@ export function TransactionsList({
 										<TableCell>
 											<div className="flex items-center gap-2">
 												{getTypeIcon(transaction.type, true)}
-												<span className="text-sm capitalize">
-													{transaction.type}
-												</span>
+												<span className="text-sm capitalize">{transaction.type}</span>
 											</div>
 										</TableCell>
 
 										{/* Description */}
 										<TableCell>
 											<div className="flex items-center gap-2 min-w-0">
-												{(transaction.merchantLogo ||
-													transaction.assetLogo) && (
+												{(transaction.merchantLogo || transaction.assetLogo) && (
 													<Avatar className="h-6 w-6 flex-shrink-0">
-														<AvatarImage
-															src={
-																transaction.merchantLogo ||
-																transaction.assetLogo
-															}
-														/>
+														<AvatarImage src={transaction.merchantLogo || transaction.assetLogo} />
 														<AvatarFallback className="text-xs">
 															{(
 																transaction.merchantName?.[0] ||
@@ -335,13 +294,11 @@ export function TransactionsList({
 													<span className="font-medium text-sm truncate">
 														{transaction.merchantName ||
 															transaction.assetName ||
-															transaction.type.charAt(0).toUpperCase() +
-																transaction.type.slice(1)}
+															transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
 													</span>
 													{transaction.assetSymbol && transaction.quantity && (
 														<span className="text-xs text-muted-foreground truncate">
-															{transaction.quantity.toLocaleString()}{" "}
-															{transaction.assetSymbol} @{" "}
+															{transaction.quantity.toLocaleString()} {transaction.assetSymbol} @{" "}
 															{formatCurrency(transaction.price || 0)}
 														</span>
 													)}
@@ -360,9 +317,7 @@ export function TransactionsList({
 											<TableCell>
 												<div className="flex items-center gap-1 text-sm">
 													<Building2 className="h-3 w-3 text-muted-foreground" />
-													<span className="truncate">
-														{transaction.accountName || "—"}
-													</span>
+													<span className="truncate">{transaction.accountName || "—"}</span>
 												</div>
 											</TableCell>
 										)}
@@ -381,18 +336,9 @@ export function TransactionsList({
 										{/* Amount */}
 										<TableCell className="text-right">
 											<div className="flex flex-col items-end">
-												<span
-													className={`font-mono text-sm ${getTypeColor(transaction.type)}`}
-												>
-													{["sell", "withdrawal", "fee"].includes(
-														transaction.type,
-													)
-														? "-"
-														: "+"}
-													{formatCurrency(
-														transaction.amount,
-														transaction.currency,
-													)}
+												<span className={`font-mono text-sm ${getTypeColor(transaction.type)}`}>
+													{["sell", "withdrawal", "fee"].includes(transaction.type) ? "-" : "+"}
+													{formatCurrency(transaction.amount, transaction.currency)}
 												</span>
 												{transaction.baseCurrency &&
 													transaction.baseCurrency !== transaction.currency &&
@@ -407,11 +353,7 @@ export function TransactionsList({
 													)}
 												{transaction.fees && transaction.fees > 0 && (
 													<span className="text-xs text-orange-600">
-														Fee:{" "}
-														{formatCurrency(
-															transaction.fees,
-															transaction.currency,
-														)}
+														Fee: {formatCurrency(transaction.fees, transaction.currency)}
 													</span>
 												)}
 											</div>
@@ -449,10 +391,7 @@ export function TransactionsList({
 
 				{/* Details Dialog */}
 				{detailsTransaction && (
-					<Dialog
-						open={!!detailsTransaction}
-						onOpenChange={() => setDetailsTransaction(null)}
-					>
+					<Dialog open={!!detailsTransaction} onOpenChange={() => setDetailsTransaction(null)}>
 						<DialogContent className="max-w-2xl">
 							<DialogHeader>
 								<DialogTitle className="flex items-center gap-2">
@@ -464,53 +403,31 @@ export function TransactionsList({
 												detailsTransaction.type.slice(1)}
 									</span>
 								</DialogTitle>
-								<DialogDescription>
-									Transaction details and metadata
-								</DialogDescription>
+								<DialogDescription>Transaction details and metadata</DialogDescription>
 							</DialogHeader>
 
 							<div className="space-y-4">
 								{/* Main Info */}
 								<div className="grid grid-cols-2 gap-4">
 									<div>
-										<label className="text-xs text-muted-foreground">
-											Date & Time
-										</label>
+										<label className="text-xs text-muted-foreground">Date & Time</label>
 										<p className="text-sm font-medium">
-											{formatDate(detailsTransaction.date)} at{" "}
-											{formatTime(detailsTransaction.date)}
+											{formatDate(detailsTransaction.date)} at {formatTime(detailsTransaction.date)}
 										</p>
 									</div>
 									<div>
-										<label className="text-xs text-muted-foreground">
-											Amount
-										</label>
-										<p
-											className={`text-sm font-mono ${getTypeColor(detailsTransaction.type)}`}
-										>
-											{["sell", "withdrawal", "fee"].includes(
-												detailsTransaction.type,
-											)
-												? "-"
-												: "+"}
-											{formatCurrency(
-												detailsTransaction.amount,
-												detailsTransaction.currency,
-											)}
+										<label className="text-xs text-muted-foreground">Amount</label>
+										<p className={`text-sm font-mono ${getTypeColor(detailsTransaction.type)}`}>
+											{["sell", "withdrawal", "fee"].includes(detailsTransaction.type) ? "-" : "+"}
+											{formatCurrency(detailsTransaction.amount, detailsTransaction.currency)}
 										</p>
 									</div>
 									<div>
-										<label className="text-xs text-muted-foreground">
-											Type
-										</label>
-										<p className="text-sm font-medium capitalize">
-											{detailsTransaction.type}
-										</p>
+										<label className="text-xs text-muted-foreground">Type</label>
+										<p className="text-sm font-medium capitalize">{detailsTransaction.type}</p>
 									</div>
 									<div>
-										<label className="text-xs text-muted-foreground">
-											Status
-										</label>
+										<label className="text-xs text-muted-foreground">Status</label>
 										<div className="mt-1">
 											{getStatusBadge(detailsTransaction.status) || (
 												<Badge variant="default" className="text-xs">
@@ -524,21 +441,15 @@ export function TransactionsList({
 								{/* Asset Details */}
 								{detailsTransaction.assetSymbol && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Asset Details
-										</label>
+										<label className="text-xs text-muted-foreground">Asset Details</label>
 										<div className="grid grid-cols-3 gap-4 mt-2">
 											<div>
 												<p className="text-xs text-muted-foreground">Symbol</p>
-												<p className="text-sm font-medium">
-													{detailsTransaction.assetSymbol}
-												</p>
+												<p className="text-sm font-medium">{detailsTransaction.assetSymbol}</p>
 											</div>
 											{detailsTransaction.quantity && (
 												<div>
-													<p className="text-xs text-muted-foreground">
-														Quantity
-													</p>
+													<p className="text-xs text-muted-foreground">Quantity</p>
 													<p className="text-sm font-medium">
 														{detailsTransaction.quantity.toLocaleString()}
 													</p>
@@ -559,9 +470,7 @@ export function TransactionsList({
 								{/* Account Info */}
 								{detailsTransaction.accountName && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Account
-										</label>
+										<label className="text-xs text-muted-foreground">Account</label>
 										<p className="text-sm font-medium flex items-center gap-2 mt-1">
 											<Building2 className="h-4 w-4" />
 											{detailsTransaction.accountName}
@@ -572,28 +481,19 @@ export function TransactionsList({
 								{/* Reference Number */}
 								{detailsTransaction.reference && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Reference Number
-										</label>
-										<p className="text-sm font-mono mt-1">
-											{detailsTransaction.reference}
-										</p>
+										<label className="text-xs text-muted-foreground">Reference Number</label>
+										<p className="text-sm font-mono mt-1">{detailsTransaction.reference}</p>
 									</div>
 								)}
 
 								{/* FX Details */}
 								{detailsTransaction.exchangeRate &&
-									detailsTransaction.baseCurrency !==
-										detailsTransaction.currency && (
+									detailsTransaction.baseCurrency !== detailsTransaction.currency && (
 										<div className="pt-2 border-t">
-											<label className="text-xs text-muted-foreground">
-												Foreign Exchange
-											</label>
+											<label className="text-xs text-muted-foreground">Foreign Exchange</label>
 											<div className="grid grid-cols-2 gap-4 mt-2">
 												<div>
-													<p className="text-xs text-muted-foreground">
-														Exchange Rate
-													</p>
+													<p className="text-xs text-muted-foreground">Exchange Rate</p>
 													<p className="text-sm font-mono">
 														1 {detailsTransaction.currency} ={" "}
 														{detailsTransaction.exchangeRate.toFixed(4)}{" "}
@@ -601,13 +501,10 @@ export function TransactionsList({
 													</p>
 												</div>
 												<div>
-													<p className="text-xs text-muted-foreground">
-														Converted Amount
-													</p>
+													<p className="text-xs text-muted-foreground">Converted Amount</p>
 													<p className="text-sm font-mono">
 														{formatCurrency(
-															detailsTransaction.amount *
-																detailsTransaction.exchangeRate,
+															detailsTransaction.amount * detailsTransaction.exchangeRate,
 															detailsTransaction.baseCurrency,
 														)}
 													</p>
@@ -619,45 +516,31 @@ export function TransactionsList({
 								{/* Fees */}
 								{detailsTransaction.fees && detailsTransaction.fees > 0 && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Fees
-										</label>
+										<label className="text-xs text-muted-foreground">Fees</label>
 										<p className="text-sm font-medium text-orange-600 mt-1">
-											{formatCurrency(
-												detailsTransaction.fees,
-												detailsTransaction.currency,
-											)}
+											{formatCurrency(detailsTransaction.fees, detailsTransaction.currency)}
 										</p>
 									</div>
 								)}
 
 								{/* Transfer Info */}
 								{detailsTransaction.type === "transfer" &&
-									(detailsTransaction.fromAccount ||
-										detailsTransaction.toAccount) && (
+									(detailsTransaction.fromAccount || detailsTransaction.toAccount) && (
 										<div className="pt-2 border-t">
-											<label className="text-xs text-muted-foreground">
-												Transfer Details
-											</label>
+											<label className="text-xs text-muted-foreground">Transfer Details</label>
 											<p className="text-sm font-medium mt-1">
-												{detailsTransaction.fromAccount} →{" "}
-												{detailsTransaction.toAccount}
+												{detailsTransaction.fromAccount} → {detailsTransaction.toAccount}
 											</p>
 										</div>
 									)}
 
 								{/* Category & Tags */}
-								{(detailsTransaction.category ||
-									detailsTransaction.tags?.length) && (
+								{(detailsTransaction.category || detailsTransaction.tags?.length) && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Category & Tags
-										</label>
+										<label className="text-xs text-muted-foreground">Category & Tags</label>
 										<div className="flex flex-wrap gap-1 mt-2">
 											{detailsTransaction.category && (
-												<Badge variant="secondary">
-													{detailsTransaction.category}
-												</Badge>
+												<Badge variant="secondary">{detailsTransaction.category}</Badge>
 											)}
 											{detailsTransaction.tags?.map((tag, idx) => (
 												<Badge key={idx} variant="outline">
@@ -671,9 +554,7 @@ export function TransactionsList({
 								{/* Location */}
 								{detailsTransaction.location && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Location
-										</label>
+										<label className="text-xs text-muted-foreground">Location</label>
 										<p className="text-sm font-medium flex items-center gap-2 mt-1">
 											<MapPin className="h-4 w-4" />
 											{detailsTransaction.location}
@@ -684,9 +565,7 @@ export function TransactionsList({
 								{/* Notes */}
 								{detailsTransaction.notes && (
 									<div className="pt-2 border-t">
-										<label className="text-xs text-muted-foreground">
-											Notes
-										</label>
+										<label className="text-xs text-muted-foreground">Notes</label>
 										<p className="text-sm mt-1">{detailsTransaction.notes}</p>
 									</div>
 								)}
@@ -694,10 +573,7 @@ export function TransactionsList({
 								{/* Actions */}
 								{onEditTransaction && (
 									<div className="pt-4 flex gap-2 justify-end">
-										<Button
-											variant="outline"
-											onClick={() => setDetailsTransaction(null)}
-										>
+										<Button variant="outline" onClick={() => setDetailsTransaction(null)}>
 											Close
 										</Button>
 										<Button
@@ -736,9 +612,7 @@ export function TransactionsList({
 								<div className="flex items-center gap-3 flex-1 min-w-0">
 									{(transaction.merchantLogo || transaction.assetLogo) && (
 										<Avatar className="h-10 w-10">
-											<AvatarImage
-												src={transaction.merchantLogo || transaction.assetLogo}
-											/>
+											<AvatarImage src={transaction.merchantLogo || transaction.assetLogo} />
 											<AvatarFallback>
 												{(
 													transaction.merchantName?.[0] ||
@@ -752,8 +626,7 @@ export function TransactionsList({
 										<h4 className="font-medium truncate">
 											{transaction.merchantName ||
 												transaction.assetName ||
-												transaction.type.charAt(0).toUpperCase() +
-													transaction.type.slice(1)}
+												transaction.type.charAt(0).toUpperCase() + transaction.type.slice(1)}
 										</h4>
 										<p className="text-sm text-muted-foreground truncate">
 											{formatDate(transaction.date)} • {transaction.accountName}
@@ -761,12 +634,8 @@ export function TransactionsList({
 									</div>
 								</div>
 								<div className="text-right">
-									<div
-										className={`font-mono ${getTypeColor(transaction.type)}`}
-									>
-										{["sell", "withdrawal", "fee"].includes(transaction.type)
-											? "-"
-											: "+"}
+									<div className={`font-mono ${getTypeColor(transaction.type)}`}>
+										{["sell", "withdrawal", "fee"].includes(transaction.type) ? "-" : "+"}
 										{formatCurrency(transaction.amount, transaction.currency)}
 									</div>
 								</div>

@@ -1,14 +1,4 @@
-import {
-	Building2,
-	Coins,
-	CreditCard,
-	Home,
-	Package,
-	Search,
-	Shield,
-	Watch,
-	X,
-} from "lucide-react";
+import { Building2, Coins, CreditCard, Home, Package, Shield, Watch, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,12 +11,8 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -47,10 +33,7 @@ interface AssetSearchProps {
 	excludeAssetIds?: string[];
 }
 
-const ASSET_TYPE_ICONS: Record<
-	string,
-	React.ComponentType<{ className?: string }>
-> = {
+const ASSET_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 	STOCK: Building2,
 	CRYPTO: Coins,
 	BANK_ACCOUNT: CreditCard,
@@ -63,7 +46,7 @@ const ASSET_TYPE_ICONS: Record<
 export function AssetSearch({
 	onAssetSelect,
 	selectedAssets = [],
-	placeholder = "Search assets...",
+	placeholder: _placeholder = "Search assets...",
 	className,
 	showFilters = true,
 	excludeAssetIds = [],
@@ -97,9 +80,7 @@ export function AssetSearch({
 		const selectedIds = new Set(selectedAssets.map((a) => a.id));
 		const excludedIds = new Set(excludeAssetIds);
 
-		return assets.filter(
-			(asset) => !selectedIds.has(asset.id) && !excludedIds.has(asset.id),
-		);
+		return assets.filter((asset) => !selectedIds.has(asset.id) && !excludedIds.has(asset.id));
 	}, [assets, selectedAssets, excludeAssetIds]);
 
 	const handleAssetSelect = (asset: Asset) => {
@@ -120,10 +101,7 @@ export function AssetSearch({
 			{/* Filters */}
 			{showFilters && (
 				<div className="flex gap-2 items-center">
-					<Select
-						value={selectedAssetType}
-						onValueChange={setSelectedAssetType}
-					>
+					<Select value={selectedAssetType} onValueChange={setSelectedAssetType}>
 						<SelectTrigger className="w-48">
 							<SelectValue placeholder="Asset type" />
 						</SelectTrigger>
@@ -155,17 +133,17 @@ export function AssetSearch({
 			{/* Search Input */}
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
 				<PopoverTrigger asChild>
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder={placeholder}
-							value={searchTerm}
-							onChange={(e) => setSearchTerm(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search assets..."
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						onClear={() => setSearchTerm("")}
+					/>
 				</PopoverTrigger>
-				<PopoverContent className="w-full max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0" align="start">
+				<PopoverContent
+					className="w-full max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0"
+					align="start"
+				>
 					<Command>
 						<CommandInput
 							placeholder="Search assets..."
@@ -174,24 +152,19 @@ export function AssetSearch({
 						/>
 						<CommandList>
 							{loading && (
-								<div className="p-4 text-center text-sm text-muted-foreground">
-									Searching...
-								</div>
+								<div className="p-4 text-center text-sm text-muted-foreground">Searching...</div>
 							)}
 
 							{!loading && filteredAssets.length === 0 && (
 								<CommandEmpty>
-									{debouncedSearchTerm
-										? "No assets found."
-										: "Start typing to search assets."}
+									{debouncedSearchTerm ? "No assets found." : "Start typing to search assets."}
 								</CommandEmpty>
 							)}
 
 							{!loading && filteredAssets.length > 0 && (
 								<CommandGroup>
 									{filteredAssets.map((asset) => {
-										const Icon =
-											ASSET_TYPE_ICONS[asset.assetType.name] || Package;
+										const Icon = ASSET_TYPE_ICONS[asset.assetType.name] || Package;
 										return (
 											<CommandItem
 												key={asset.id}
@@ -201,9 +174,7 @@ export function AssetSearch({
 												<Icon className="h-5 w-5 text-muted-foreground" />
 												<div className="flex-1 min-w-0">
 													<div className="flex items-center gap-2 mb-1">
-														<span className="font-medium truncate">
-															{asset.name}
-														</span>
+														<span className="font-medium truncate">{asset.name}</span>
 														{asset.symbol && (
 															<Badge variant="outline" className="text-xs">
 																{asset.symbol}

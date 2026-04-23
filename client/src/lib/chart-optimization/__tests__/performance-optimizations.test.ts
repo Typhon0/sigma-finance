@@ -40,16 +40,12 @@ describe("Data Sampling", () => {
 			const sampled = lttbSampling(mockData, 100);
 
 			expect(sampled[0]).toEqual(mockData[0]);
-			expect(sampled[sampled.length - 1]).toEqual(
-				mockData[mockData.length - 1],
-			);
+			expect(sampled[sampled.length - 1]).toEqual(mockData[mockData.length - 1]);
 		});
 
 		it("should handle edge cases", () => {
 			expect(lttbSampling([], 100)).toEqual([]);
-			expect(lttbSampling(mockData.slice(0, 50), 100)).toEqual(
-				mockData.slice(0, 50),
-			);
+			expect(lttbSampling(mockData.slice(0, 50), 100)).toEqual(mockData.slice(0, 50));
 			expect(lttbSampling(mockData, 2)).toHaveLength(2);
 		});
 	});
@@ -92,15 +88,12 @@ describe("Data Sampling", () => {
 			expect(sampled).toHaveLength(100);
 
 			// Check that timestamps are evenly distributed
-			const timeSpan =
-				sampled[sampled.length - 1].timestamp - sampled[0].timestamp;
+			const timeSpan = sampled[sampled.length - 1].timestamp - sampled[0].timestamp;
 			const expectedInterval = timeSpan / (sampled.length - 1);
 
 			for (let i = 1; i < sampled.length - 1; i++) {
 				const actualInterval = sampled[i].timestamp - sampled[i - 1].timestamp;
-				expect(Math.abs(actualInterval - expectedInterval)).toBeLessThan(
-					expectedInterval * 0.2,
-				);
+				expect(Math.abs(actualInterval - expectedInterval)).toBeLessThan(expectedInterval * 0.2);
 			}
 		});
 	});
@@ -147,16 +140,12 @@ describe("Data Sampling", () => {
 
 describe("Chart Virtualization", () => {
 	let virtualizer: ChartVirtualizer;
-	let mockDataLoader: vi.MockedFunction<
-		(start: number, end: number) => Promise<any[]>
-	>;
+	let mockDataLoader: vi.MockedFunction<(start: number, end: number) => Promise<any[]>>;
 
 	beforeEach(() => {
-		mockDataLoader = vi
-			.fn()
-			.mockImplementation(async (start: number, end: number) => {
-				return generateMockData(end - start);
-			});
+		mockDataLoader = vi.fn().mockImplementation(async (start: number, end: number) => {
+			return generateMockData(end - start);
+		});
 
 		virtualizer = new ChartVirtualizer(
 			10000, // total data points
@@ -248,11 +237,9 @@ describe("Performance Benchmarks", () => {
 	});
 
 	it("should virtualize large datasets without memory issues", async () => {
-		const mockLoader = vi
-			.fn()
-			.mockImplementation(async (start: number, end: number) => {
-				return generateMockData(Math.min(end - start, 1000));
-			});
+		const mockLoader = vi.fn().mockImplementation(async (start: number, end: number) => {
+			return generateMockData(Math.min(end - start, 1000));
+		});
 
 		const virtualizer = new ChartVirtualizer(1000000, 1000, 2, mockLoader);
 

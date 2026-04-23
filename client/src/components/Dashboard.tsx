@@ -1,9 +1,4 @@
-import {
-	Outlet,
-	useLocation,
-	useNavigate,
-	useSearch,
-} from "@tanstack/react-router";
+import { Outlet, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -55,37 +50,19 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 	const [assetTypeFilter, _setAssetTypeFilter] = useState("all");
 
 	// Selection States
-	const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(
-		null,
-	);
+	const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 	const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
-	const [_selectedSavingId, setSelectedSavingId] = useState<string | null>(
-		null,
-	);
+	const [_selectedSavingId, setSelectedSavingId] = useState<string | null>(null);
 	const [selectedCryptoId, setSelectedCryptoId] = useState<string | null>(null);
-	const [selectedCryptoSymbol, setSelectedCryptoSymbol] = useState<
-		string | null
-	>(null);
-	const [selectedStockSymbol, setSelectedStockSymbol] = useState<string | null>(
-		null,
-	);
-	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(
-		null,
-	);
-	const [selectedInsuranceId, setSelectedInsuranceId] = useState<string | null>(
-		null,
-	);
-	const [selectedCollectibleId, setSelectedCollectibleId] = useState<
-		string | null
-	>(null);
+	const [selectedCryptoSymbol, setSelectedCryptoSymbol] = useState<string | null>(null);
+	const [selectedStockSymbol, setSelectedStockSymbol] = useState<string | null>(null);
+	const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
+	const [selectedInsuranceId, setSelectedInsuranceId] = useState<string | null>(null);
+	const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
 
 	// Screener States
-	const [stockScreenerPreset, setStockScreenerPreset] = useState<
-		string | undefined
-	>(undefined);
-	const [cryptoScreenerPreset, setCryptoScreenerPreset] = useState<
-		string | undefined
-	>(undefined);
+	const [stockScreenerPreset, setStockScreenerPreset] = useState<string | undefined>(undefined);
+	const [cryptoScreenerPreset, setCryptoScreenerPreset] = useState<string | undefined>(undefined);
 
 	const { assets } = usePortfolio();
 
@@ -180,12 +157,7 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 
 			case "loans":
 				if (selectedLoanId) {
-					return (
-						<LoanDetail
-							loanId={selectedLoanId}
-							onBack={() => setSelectedLoanId(null)}
-						/>
-					);
+					return <LoanDetail loanId={selectedLoanId} onBack={() => setSelectedLoanId(null)} />;
 				}
 				return <LoansList onSelectLoan={setSelectedLoanId} />;
 
@@ -204,17 +176,11 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 			case "crypto":
 				if (selectedCryptoId) {
 					return (
-						<CryptoDetail
-							cryptoId={selectedCryptoId}
-							onBack={() => setSelectedCryptoId(null)}
-						/>
+						<CryptoDetail symbol={selectedCryptoId} onBack={() => setSelectedCryptoId(null)} />
 					);
 				}
 				return (
-					<CryptoList
-						onSelectCrypto={setSelectedCryptoId}
-						onSelectAccount={handleSelectAccount}
-					/>
+					<CryptoList onSelectCrypto={setSelectedCryptoId} onSelectAccount={handleSelectAccount} />
 				);
 
 			case "insurance":
@@ -230,9 +196,7 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 
 			case "collectibles":
 				if (selectedCollectibleId) {
-					const collectible = assets.find(
-						(a) => a.id === selectedCollectibleId,
-					);
+					const collectible = assets.find((a) => a.id === selectedCollectibleId);
 					// Route based on type
 					if (collectible?.type === "watch")
 						return (
@@ -277,13 +241,9 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 							/>
 						);
 
-					return (
-						<CollectiblesList onSelectCollectible={setSelectedCollectibleId} />
-					);
+					return <CollectiblesList onSelectCollectible={setSelectedCollectibleId} />;
 				}
-				return (
-					<CollectiblesList onSelectCollectible={setSelectedCollectibleId} />
-				);
+				return <CollectiblesList onSelectCollectible={setSelectedCollectibleId} />;
 
 			case "transactions":
 				return <TransactionManagement />;
@@ -370,11 +330,7 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 					/>
 				);
 			case "market-calendar":
-				return (
-					<MarketCalendar
-						onFilterStock={() => setActiveView("stock-screener")}
-					/>
-				);
+				return <MarketCalendar onFilterStock={() => setActiveView("stock-screener")} />;
 
 			default:
 				return <DensityDashboard />;

@@ -15,22 +15,11 @@ import {
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
 interface AddLoanFormProps {
@@ -47,12 +36,7 @@ type FormStep =
 	| "linked-assets"
 	| "ownership";
 
-type LoanType =
-	| "step"
-	| "amortizing"
-	| "in-fine"
-	| "deferred-interest"
-	| "deferred-total";
+type LoanType = "step" | "amortizing" | "in-fine" | "deferred-interest" | "deferred-total";
 
 interface CoOwner {
 	id: string;
@@ -152,9 +136,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 		{ id: "information", label: "Information" },
 		{ id: "characteristics", label: "Characteristics" },
 		{ id: "fees-ownership", label: "Fees & Ownership" },
-		...(formData.type === "step"
-			? [{ id: "steps" as FormStep, label: "Steps" }]
-			: []),
+		...(formData.type === "step" ? [{ id: "steps" as FormStep, label: "Steps" }] : []),
 		{ id: "linked-assets", label: "Linked assets" },
 		{ id: "ownership", label: "Ownership" },
 	];
@@ -201,9 +183,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 								<FileText className="h-5 w-5" />
 								Loan Information
 							</h3>
-							<p className="text-sm text-muted-foreground">
-								Basic information about your loan
-							</p>
+							<p className="text-sm text-muted-foreground">Basic information about your loan</p>
 						</div>
 
 						{/* Name */}
@@ -228,9 +208,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</Label>
 							<Select
 								value={formData.type}
-								onValueChange={(value) =>
-									handleInputChange("type", value as LoanType)
-								}
+								onValueChange={(value) => handleInputChange("type", value as LoanType)}
 							>
 								<SelectTrigger className="bg-background border-border">
 									<SelectValue placeholder="Select loan type..." />
@@ -238,24 +216,17 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 								<SelectContent>
 									<SelectItem value="amortizing">Amortizing loan</SelectItem>
 									<SelectItem value="in-fine">In fine loan</SelectItem>
-									<SelectItem value="deferred-interest">
-										Deferred interest
-									</SelectItem>
+									<SelectItem value="deferred-interest">Deferred interest</SelectItem>
 									<SelectItem value="deferred-total">Deferred total</SelectItem>
 									<SelectItem value="step">Step loan</SelectItem>
 								</SelectContent>
 							</Select>
 							<p className="text-xs text-muted-foreground mt-1">
-								{formData.type === "amortizing" &&
-									"Regular payments of principal + interest"}
-								{formData.type === "in-fine" &&
-									"Pay interest only, principal at end"}
-								{formData.type === "deferred-interest" &&
-									"Defer interest payments for a period"}
-								{formData.type === "deferred-total" &&
-									"Defer all payments for a period"}
-								{formData.type === "step" &&
-									"Variable payment schedule over time"}
+								{formData.type === "amortizing" && "Regular payments of principal + interest"}
+								{formData.type === "in-fine" && "Pay interest only, principal at end"}
+								{formData.type === "deferred-interest" && "Defer interest payments for a period"}
+								{formData.type === "deferred-total" && "Defer all payments for a period"}
+								{formData.type === "step" && "Variable payment schedule over time"}
 							</p>
 						</div>
 
@@ -272,17 +243,13 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.loanAmount}
-										onChange={(e) =>
-											handleInputChange("loanAmount", e.target.value)
-										}
+										onChange={(e) => handleInputChange("loanAmount", e.target.value)}
 										className="bg-background border-border flex-1"
 										placeholder="0.00"
 									/>
 									<Select
 										value={formData.currency}
-										onValueChange={(value) =>
-											handleInputChange("currency", value)
-										}
+										onValueChange={(value) => handleInputChange("currency", value)}
 									>
 										<SelectTrigger className="bg-background border-border w-24">
 											<SelectValue />
@@ -298,14 +265,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="downPayment"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="downPayment" className="text-sm flex items-center gap-1">
 									Down payment
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -314,9 +276,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.downPayment}
-										onChange={(e) =>
-											handleInputChange("downPayment", e.target.value)
-										}
+										onChange={(e) => handleInputChange("downPayment", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="0.00"
 									/>
@@ -331,16 +291,12 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						<div className="space-y-2">
 							<Label htmlFor="description" className="text-sm">
 								Description{" "}
-								<span className="text-xs text-muted-foreground font-normal">
-									Optional
-								</span>
+								<span className="text-xs text-muted-foreground font-normal">Optional</span>
 							</Label>
 							<Textarea
 								id="description"
 								value={formData.description}
-								onChange={(e) =>
-									handleInputChange("description", e.target.value)
-								}
+								onChange={(e) => handleInputChange("description", e.target.value)}
 								className="bg-background border-border min-h-[100px]"
 								placeholder="Add any additional notes about this loan..."
 							/>
@@ -376,9 +332,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										max="100"
 										step="0.01"
 										value={formData.interestRate}
-										onChange={(e) =>
-											handleInputChange("interestRate", e.target.value)
-										}
+										onChange={(e) => handleInputChange("interestRate", e.target.value)}
 										className="bg-background border-border pr-12"
 										placeholder="0.00"
 									/>
@@ -398,9 +352,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 									min="1"
 									step="1"
 									value={formData.duration}
-									onChange={(e) =>
-										handleInputChange("duration", e.target.value)
-									}
+									onChange={(e) => handleInputChange("duration", e.target.value)}
 									className="bg-background border-border"
 									placeholder="e.g., 240 (20 years)"
 								/>
@@ -432,7 +384,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 											mode="single"
 											selected={formData.startDate}
 											onSelect={(date) => handleInputChange("startDate", date)}
-											initialFocus
+											autoFocus
 										/>
 									</PopoverContent>
 								</Popover>
@@ -441,9 +393,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							<div className="space-y-2">
 								<Label className="text-sm flex items-center gap-1">
 									End Date
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<Popover>
 									<PopoverTrigger asChild>
@@ -464,7 +414,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 											mode="single"
 											selected={formData.endDate}
 											onSelect={(date) => handleInputChange("endDate", date)}
-											initialFocus
+											autoFocus
 										/>
 									</PopoverContent>
 								</Popover>
@@ -474,14 +424,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						{/* Monthly Payment & Remaining Balance */}
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label
-									htmlFor="monthlyPayment"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="monthlyPayment" className="text-sm flex items-center gap-1">
 									Monthly Payment
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -490,9 +435,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.monthlyPayment}
-										onChange={(e) =>
-											handleInputChange("monthlyPayment", e.target.value)
-										}
+										onChange={(e) => handleInputChange("monthlyPayment", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="Auto-calculated"
 									/>
@@ -503,14 +446,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="remainingBalance"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="remainingBalance" className="text-sm flex items-center gap-1">
 									Remaining Balance
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -519,9 +457,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.remainingBalance}
-										onChange={(e) =>
-											handleInputChange("remainingBalance", e.target.value)
-										}
+										onChange={(e) => handleInputChange("remainingBalance", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="Current balance"
 									/>
@@ -549,22 +485,15 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="loanNumber"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="loanNumber" className="text-sm flex items-center gap-1">
 									Loan Number
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<Input
 									id="loanNumber"
 									type="text"
 									value={formData.loanNumber}
-									onChange={(e) =>
-										handleInputChange("loanNumber", e.target.value)
-									}
+									onChange={(e) => handleInputChange("loanNumber", e.target.value)}
 									className="bg-background border-border"
 									placeholder="Reference number"
 								/>
@@ -580,9 +509,8 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										Payment Calculation
 									</p>
 									<p className="text-xs text-blue-700 dark:text-blue-300">
-										If you don't enter a monthly payment, it will be
-										automatically calculated based on the loan amount, interest
-										rate, and duration.
+										If you don't enter a monthly payment, it will be automatically calculated based
+										on the loan amount, interest rate, and duration.
 									</p>
 								</div>
 							</div>
@@ -607,14 +535,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						{/* Application Fee & Broker Fee */}
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label
-									htmlFor="applicationFee"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="applicationFee" className="text-sm flex items-center gap-1">
 									Application Fee
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -623,9 +546,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.applicationFee}
-										onChange={(e) =>
-											handleInputChange("applicationFee", e.target.value)
-										}
+										onChange={(e) => handleInputChange("applicationFee", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="0.00"
 									/>
@@ -636,14 +557,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="brokerFee"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="brokerFee" className="text-sm flex items-center gap-1">
 									Broker Fee
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -652,9 +568,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.brokerFee}
-										onChange={(e) =>
-											handleInputChange("brokerFee", e.target.value)
-										}
+										onChange={(e) => handleInputChange("brokerFee", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="0.00"
 									/>
@@ -668,14 +582,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						{/* Insurance Fee & Other Fees */}
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label
-									htmlFor="insuranceFee"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="insuranceFee" className="text-sm flex items-center gap-1">
 									Insurance Fee (monthly)
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -684,9 +593,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.insuranceFee}
-										onChange={(e) =>
-											handleInputChange("insuranceFee", e.target.value)
-										}
+										onChange={(e) => handleInputChange("insuranceFee", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="0.00"
 									/>
@@ -697,14 +604,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="otherFees"
-									className="text-sm flex items-center gap-1"
-								>
+								<Label htmlFor="otherFees" className="text-sm flex items-center gap-1">
 									Other Fees
-									<span className="text-xs text-muted-foreground font-normal">
-										Optional
-									</span>
+									<span className="text-xs text-muted-foreground font-normal">Optional</span>
 								</Label>
 								<div className="relative">
 									<Input
@@ -713,9 +615,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										min="0"
 										step="0.01"
 										value={formData.otherFees}
-										onChange={(e) =>
-											handleInputChange("otherFees", e.target.value)
-										}
+										onChange={(e) => handleInputChange("otherFees", e.target.value)}
 										className="bg-background border-border pr-16"
 										placeholder="0.00"
 									/>
@@ -728,14 +628,9 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 
 						{/* Early Repayment Fee */}
 						<div className="space-y-2">
-							<Label
-								htmlFor="earlyRepaymentFee"
-								className="text-sm flex items-center gap-1"
-							>
+							<Label htmlFor="earlyRepaymentFee" className="text-sm flex items-center gap-1">
 								Early Repayment Fee
-								<span className="text-xs text-muted-foreground font-normal">
-									Optional
-								</span>
+								<span className="text-xs text-muted-foreground font-normal">Optional</span>
 							</Label>
 							<div className="relative">
 								<Input
@@ -745,9 +640,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 									max="100"
 									step="0.01"
 									value={formData.earlyRepaymentFee}
-									onChange={(e) =>
-										handleInputChange("earlyRepaymentFee", e.target.value)
-									}
+									onChange={(e) => handleInputChange("earlyRepaymentFee", e.target.value)}
 									className="bg-background border-border pr-12"
 									placeholder="0.00"
 								/>
@@ -783,9 +676,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 				const updateStep = (id: string, field: keyof StepEntry, value: any) => {
 					handleInputChange(
 						"steps",
-						formData.steps.map((s) =>
-							s.id === id ? { ...s, [field]: value } : s,
-						),
+						formData.steps.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
 					);
 				};
 
@@ -811,9 +702,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-4"
 									>
 										<div className="flex items-center justify-between">
-											<span className="text-sm font-medium">
-												Step {index + 1}
-											</span>
+											<span className="text-sm font-medium">Step {index + 1}</span>
 											<Button
 												type="button"
 												variant="ghost"
@@ -846,10 +735,8 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 														<Calendar
 															mode="single"
 															selected={step.date}
-															onSelect={(date) =>
-																updateStep(step.id, "date", date)
-															}
-															initialFocus
+															onSelect={(date) => updateStep(step.id, "date", date)}
+															autoFocus
 														/>
 													</PopoverContent>
 												</Popover>
@@ -863,9 +750,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 														min="0"
 														step="0.01"
 														value={step.amount}
-														onChange={(e) =>
-															updateStep(step.id, "amount", e.target.value)
-														}
+														onChange={(e) => updateStep(step.id, "amount", e.target.value)}
 														className="bg-background border-border pr-16"
 														placeholder="0.00"
 													/>
@@ -884,13 +769,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 														max="100"
 														step="0.01"
 														value={step.interestRate}
-														onChange={(e) =>
-															updateStep(
-																step.id,
-																"interestRate",
-																e.target.value,
-															)
-														}
+														onChange={(e) => updateStep(step.id, "interestRate", e.target.value)}
 														className="bg-background border-border pr-12"
 														placeholder="0.00"
 													/>
@@ -906,12 +785,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						)}
 
 						{/* Add Step Button */}
-						<Button
-							type="button"
-							variant="outline"
-							onClick={addStep}
-							className="w-full gap-2"
-						>
+						<Button type="button" variant="outline" onClick={addStep} className="w-full gap-2">
 							<Layers className="h-4 w-4" />
 							Add Step
 						</Button>
@@ -925,9 +799,8 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										Step Loan Schedule
 									</p>
 									<p className="text-xs text-blue-700 dark:text-blue-300">
-										Define each payment period with its own amount and interest
-										rate. This is useful for loans with variable payment
-										schedules.
+										Define each payment period with its own amount and interest rate. This is useful
+										for loans with variable payment schedules.
 									</p>
 								</div>
 							</div>
@@ -1095,16 +968,10 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 					);
 				};
 
-				const updateCoOwner = (
-					id: string,
-					field: keyof CoOwner,
-					value: any,
-				) => {
+				const updateCoOwner = (id: string, field: keyof CoOwner, value: any) => {
 					handleInputChange(
 						"coOwners",
-						formData.coOwners.map((co) =>
-							co.id === id ? { ...co, [field]: value } : co,
-						),
+						formData.coOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
 					);
 				};
 
@@ -1117,10 +984,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						legalForm: "",
 						percentage: "0",
 					};
-					handleInputChange("companyOwners", [
-						...formData.companyOwners,
-						newCompanyOwner,
-					]);
+					handleInputChange("companyOwners", [...formData.companyOwners, newCompanyOwner]);
 				};
 
 				const removeCompanyOwner = (id: string) => {
@@ -1130,16 +994,10 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 					);
 				};
 
-				const updateCompanyOwner = (
-					id: string,
-					field: keyof CompanyOwner,
-					value: any,
-				) => {
+				const updateCompanyOwner = (id: string, field: keyof CompanyOwner, value: any) => {
 					handleInputChange(
 						"companyOwners",
-						formData.companyOwners.map((co) =>
-							co.id === id ? { ...co, [field]: value } : co,
-						),
+						formData.companyOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
 					);
 				};
 
@@ -1147,14 +1005,8 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 					(formData.ownershipMode === "personal"
 						? parseFloat(formData.ownershipPercentage || "0")
 						: 0) +
-					formData.coOwners.reduce(
-						(sum, co) => sum + parseFloat(co.percentage || "0"),
-						0,
-					) +
-					formData.companyOwners.reduce(
-						(sum, co) => sum + parseFloat(co.percentage || "0"),
-						0,
-					);
+					formData.coOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0) +
+					formData.companyOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0);
 
 				return (
 					<div className="space-y-6">
@@ -1173,10 +1025,10 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 							<h4 className="text-sm font-medium">Ownership Type</h4>
 							<div className="flex gap-3">
-								<button
-									type="button"
+								<Button
+									variant="ghost"
 									onClick={() => handleInputChange("ownershipMode", "personal")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
 										formData.ownershipMode === "personal"
 											? "border-primary bg-primary/5"
 											: "border-border hover:border-border/80"
@@ -1191,11 +1043,11 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 											Individual borrowers
 										</span>
 									</div>
-								</button>
-								<button
-									type="button"
+								</Button>
+								<Button
+									variant="ghost"
 									onClick={() => handleInputChange("ownershipMode", "company")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
 										formData.ownershipMode === "company"
 											? "border-primary bg-primary/5"
 											: "border-border hover:border-border/80"
@@ -1210,7 +1062,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 											Corporate borrowers
 										</span>
 									</div>
-								</button>
+								</Button>
 							</div>
 						</div>
 
@@ -1219,9 +1071,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 								<div className="flex items-center gap-2 mb-2">
 									<Users className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">
-										Your Responsibility
-									</h4>
+									<h4 className="text-sm text-muted-foreground">Your Responsibility</h4>
 								</div>
 
 								<div className="space-y-2">
@@ -1236,9 +1086,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 											max="100"
 											step="0.01"
 											value={formData.ownershipPercentage}
-											onChange={(e) =>
-												handleInputChange("ownershipPercentage", e.target.value)
-											}
+											onChange={(e) => handleInputChange("ownershipPercentage", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="100"
 										/>
@@ -1254,9 +1102,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 						{formData.coOwners.length > 0 && (
 							<div className="space-y-4">
 								<div className="flex items-center gap-2">
-									<h4 className="text-sm text-muted-foreground">
-										Co-Borrowers
-									</h4>
+									<h4 className="text-sm text-muted-foreground">Co-Borrowers</h4>
 								</div>
 
 								{formData.coOwners.map((coOwner, index) => (
@@ -1278,32 +1124,28 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										</div>
 
 										<div className="flex gap-2">
-											<button
-												type="button"
-												onClick={() =>
-													updateCoOwner(coOwner.id, "type", "registered")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											<Button
+												variant="ghost"
+												onClick={() => updateCoOwner(coOwner.id, "type", "registered")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													coOwner.type === "registered"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Registered User
-											</button>
-											<button
-												type="button"
-												onClick={() =>
-													updateCoOwner(coOwner.id, "type", "custom")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											</Button>
+											<Button
+												variant="ghost"
+												onClick={() => updateCoOwner(coOwner.id, "type", "custom")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													coOwner.type === "custom"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Custom Borrower
-											</button>
+											</Button>
 										</div>
 
 										{coOwner.type === "registered" ? (
@@ -1312,9 +1154,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 												<Select
 													value={coOwner.userId}
 													onValueChange={(value) => {
-														const user = registeredUsers.find(
-															(u) => u.id === value,
-														);
+														const user = registeredUsers.find((u) => u.id === value);
 														updateCoOwner(coOwner.id, "userId", value);
 														if (user) {
 															updateCoOwner(coOwner.id, "name", user.name);
@@ -1344,9 +1184,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 												<Input
 													type="text"
 													value={coOwner.name}
-													onChange={(e) =>
-														updateCoOwner(coOwner.id, "name", e.target.value)
-													}
+													onChange={(e) => updateCoOwner(coOwner.id, "name", e.target.value)}
 													className="bg-background border-border"
 													placeholder="Enter borrower name..."
 												/>
@@ -1354,9 +1192,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										)}
 
 										<div className="space-y-2">
-											<Label className="text-sm">
-												Responsibility percentage
-											</Label>
+											<Label className="text-sm">Responsibility percentage</Label>
 											<div className="relative">
 												<Input
 													type="number"
@@ -1364,13 +1200,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 													max="100"
 													step="0.01"
 													value={coOwner.percentage}
-													onChange={(e) =>
-														updateCoOwner(
-															coOwner.id,
-															"percentage",
-															e.target.value,
-														)
-													}
+													onChange={(e) => updateCoOwner(coOwner.id, "percentage", e.target.value)}
 													className="bg-background border-border pr-12"
 													placeholder="0"
 												/>
@@ -1389,9 +1219,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							<div className="space-y-4">
 								<div className="flex items-center gap-2">
 									<Building2 className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">
-										Company Borrowers
-									</h4>
+									<h4 className="text-sm text-muted-foreground">Company Borrowers</h4>
 								</div>
 
 								{formData.companyOwners.map((company, index) => (
@@ -1413,32 +1241,28 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										</div>
 
 										<div className="flex gap-2">
-											<button
-												type="button"
-												onClick={() =>
-													updateCompanyOwner(company.id, "type", "existing")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											<Button
+												variant="ghost"
+												onClick={() => updateCompanyOwner(company.id, "type", "existing")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													company.type === "existing"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Existing Company
-											</button>
-											<button
-												type="button"
-												onClick={() =>
-													updateCompanyOwner(company.id, "type", "new")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											</Button>
+											<Button
+												variant="ghost"
+												onClick={() => updateCompanyOwner(company.id, "type", "new")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													company.type === "new"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												New Company
-											</button>
+											</Button>
 										</div>
 
 										{company.type === "existing" ? (
@@ -1447,9 +1271,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 												<Select
 													value={company.companyId}
 													onValueChange={(value) => {
-														const comp = existingCompanies.find(
-															(c) => c.id === value,
-														);
+														const comp = existingCompanies.find((c) => c.id === value);
 														updateCompanyOwner(company.id, "companyId", value);
 														if (comp) {
 															updateCompanyOwner(company.id, "name", comp.name);
@@ -1458,11 +1280,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 																"registrationNumber",
 																comp.registrationNumber,
 															);
-															updateCompanyOwner(
-																company.id,
-																"legalForm",
-																comp.legalForm,
-															);
+															updateCompanyOwner(company.id, "legalForm", comp.legalForm);
 														}
 													}}
 												>
@@ -1490,13 +1308,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 													<Input
 														type="text"
 														value={company.name}
-														onChange={(e) =>
-															updateCompanyOwner(
-																company.id,
-																"name",
-																e.target.value,
-															)
-														}
+														onChange={(e) => updateCompanyOwner(company.id, "name", e.target.value)}
 														className="bg-background border-border"
 														placeholder="Enter company name..."
 													/>
@@ -1507,11 +1319,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 														<Select
 															value={company.legalForm}
 															onValueChange={(value) =>
-																updateCompanyOwner(
-																	company.id,
-																	"legalForm",
-																	value,
-																)
+																updateCompanyOwner(company.id, "legalForm", value)
 															}
 														>
 															<SelectTrigger className="bg-background border-border">
@@ -1530,18 +1338,12 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 														</Select>
 													</div>
 													<div className="space-y-2">
-														<Label className="text-sm">
-															Registration Number
-														</Label>
+														<Label className="text-sm">Registration Number</Label>
 														<Input
 															type="text"
 															value={company.registrationNumber}
 															onChange={(e) =>
-																updateCompanyOwner(
-																	company.id,
-																	"registrationNumber",
-																	e.target.value,
-																)
+																updateCompanyOwner(company.id, "registrationNumber", e.target.value)
 															}
 															className="bg-background border-border"
 															placeholder="000 000 000"
@@ -1552,9 +1354,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										)}
 
 										<div className="space-y-2">
-											<Label className="text-sm">
-												Responsibility percentage
-											</Label>
+											<Label className="text-sm">Responsibility percentage</Label>
 											<div className="relative">
 												<Input
 													type="number"
@@ -1563,11 +1363,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 													step="0.01"
 													value={company.percentage}
 													onChange={(e) =>
-														updateCompanyOwner(
-															company.id,
-															"percentage",
-															e.target.value,
-														)
+														updateCompanyOwner(company.id, "percentage", e.target.value)
 													}
 													className="bg-background border-border pr-12"
 													placeholder="0"
@@ -1584,12 +1380,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 
 						{/* Add Buttons */}
 						<div className="flex gap-3">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={addCoOwner}
-								className="flex-1 gap-2"
-							>
+							<Button type="button" variant="outline" onClick={addCoOwner} className="flex-1 gap-2">
 								<Users className="h-4 w-4" />
 								Add Co-Borrower
 							</Button>
@@ -1654,8 +1445,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 			<DialogContent className="max-w-[1400px] w-[95vw] h-[92vh] p-0 gap-0 overflow-hidden bg-background">
 				<DialogTitle className="sr-only">Add a loan</DialogTitle>
 				<DialogDescription className="sr-only">
-					Add a new loan to your portfolio by filling out the information step
-					by step
+					Add a new loan to your portfolio by filling out the information step by step
 				</DialogDescription>
 
 				{/* Content */}
@@ -1663,11 +1453,11 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 					{/* Left Sidebar - Steps Navigation */}
 					<div className="w-56 border-r border-border p-5 space-y-1 flex-shrink-0">
 						{steps.map((step, index) => (
-							<button
-								type="button"
+							<Button
+								variant="ghost"
 								key={step.id}
 								onClick={() => setCurrentStep(step.id)}
-								className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors text-sm ${
+								className={`w-full justify-start px-3 py-2.5 rounded-lg transition-colors text-sm h-auto ${
 									currentStep === step.id
 										? "bg-primary/10 text-primary font-medium"
 										: index <= currentStepIndex
@@ -1677,7 +1467,7 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 								disabled={index > currentStepIndex}
 							>
 								{step.label}
-							</button>
+							</Button>
 						))}
 					</div>
 
@@ -1687,14 +1477,14 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 							<div className="max-w-3xl mx-auto">
 								<div className="flex items-start justify-between mb-8">
 									<h1>Add a loan</h1>
-									<button
-										type="button"
+									<Button
+										variant="ghost"
 										onClick={onClose}
-										className="p-2 hover:bg-accent rounded-md transition-colors -mt-1"
+										className="p-2 h-auto w-auto -mt-1"
 										aria-label="Close dialog"
 									>
 										<X className="h-5 w-5" />
-									</button>
+									</Button>
 								</div>
 								{renderStepContent()}
 							</div>

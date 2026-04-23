@@ -88,32 +88,20 @@ export function AuthErrorDisplay({
 
 				{hasMultipleErrors && (
 					<p className="text-sm opacity-80">
-						{errors.length - 1} additional error{errors.length > 2 ? "s" : ""}{" "}
-						occurred.
+						{errors.length - 1} additional error{errors.length > 2 ? "s" : ""} occurred.
 					</p>
 				)}
 
 				{/* Action buttons for specific error types */}
 				<div className="flex gap-2 mt-3">
-					{primaryError.code === AUTH_ERROR_CODES.EMAIL_NOT_VERIFIED &&
-						onResendVerification && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={onResendVerification}
-								className="h-8"
-							>
-								Resend Verification
-							</Button>
-						)}
+					{primaryError.code === AUTH_ERROR_CODES.EMAIL_NOT_VERIFIED && onResendVerification && (
+						<Button variant="outline" size="sm" onClick={onResendVerification} className="h-8">
+							Resend Verification
+						</Button>
+					)}
 
 					{onRetry && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={onRetry}
-							className="h-8"
-						>
+						<Button variant="outline" size="sm" onClick={onRetry} className="h-8">
 							Try Again
 						</Button>
 					)}

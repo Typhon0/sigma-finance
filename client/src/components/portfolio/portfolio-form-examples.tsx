@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	CompactPortfolioForm,
 	CreatePortfolioDialog,
@@ -43,31 +37,26 @@ export function PortfolioFormExamples() {
 			description: data.description || null,
 		};
 
-		setPortfolios((prev) => [...prev, newPortfolio]);
-		console.log("Created portfolio:", newPortfolio);
+		setPortfolios((prev) => [...prev, newPortfolio] as typeof prev);
 	};
 
-	const handleUpdatePortfolio = async (id: string, data: PortfolioFormData) => {
+	const _handleUpdatePortfolio = async (id: string, data: PortfolioFormData) => {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		setPortfolios((prev) =>
-			prev.map((p) =>
-				p.id === id
-					? { ...p, name: data.name, description: data.description || null }
-					: p,
-			),
+		setPortfolios(
+			(prev) =>
+				prev.map((p) =>
+					p.id === id ? { ...p, name: data.name, description: data.description || null } : p,
+				) as typeof prev,
 		);
-		console.log("Updated portfolio:", id, data);
 	};
 
-	const handleSuccess = (data: PortfolioFormData) => {
-		console.log("Form submitted successfully:", data);
-	};
+	const handleSuccess = (_data: PortfolioFormData) => {};
 
-	const handleError = (error: Error) => {
-		console.error("Form submission error:", error);
-	};
+	const handleError = (
+		_error: Error | import("@/lib/validations/portfolio.schemas").PortfolioFormError,
+	) => {};
 
 	return (
 		<div className="space-y-8 p-6">
@@ -83,15 +72,14 @@ export function PortfolioFormExamples() {
 				<CardHeader>
 					<CardTitle>Enhanced Portfolio Form</CardTitle>
 					<CardDescription>
-						Full-featured form with validation, suggestions, and advanced UX
-						features.
+						Full-featured form with validation, suggestions, and advanced UX features.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<EnhancedPortfolioForm
 						mode="create"
 						onSubmit={handleCreatePortfolio}
-						onCancel={() => console.log("Cancelled")}
+						onCancel={() => {}}
 						existingPortfolioNames={existingNames}
 						onSuccess={handleSuccess}
 						onError={handleError}
@@ -103,15 +91,13 @@ export function PortfolioFormExamples() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Compact Portfolio Form</CardTitle>
-					<CardDescription>
-						Streamlined form perfect for dialogs and modals.
-					</CardDescription>
+					<CardDescription>Streamlined form perfect for dialogs and modals.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<CompactPortfolioForm
 						mode="create"
 						onSubmit={handleCreatePortfolio}
-						onCancel={() => console.log("Cancelled")}
+						onCancel={() => {}}
 						existingPortfolioNames={existingNames}
 						onSuccess={handleSuccess}
 						onError={handleError}
@@ -123,9 +109,7 @@ export function PortfolioFormExamples() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Quick Create Form</CardTitle>
-					<CardDescription>
-						Minimal form for quick portfolio creation.
-					</CardDescription>
+					<CardDescription>Minimal form for quick portfolio creation.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<QuickCreatePortfolioForm
@@ -141,9 +125,7 @@ export function PortfolioFormExamples() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Dialog Forms</CardTitle>
-					<CardDescription>
-						Portfolio forms integrated with dialog components.
-					</CardDescription>
+					<CardDescription>Portfolio forms integrated with dialog components.</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="flex gap-4">
@@ -158,13 +140,9 @@ export function PortfolioFormExamples() {
 
 						{portfolios.length > 0 && (
 							<EditPortfolioDialog
-								portfolio={portfolios[0]}
-								onSubmit={(data) =>
-									handleUpdatePortfolio(portfolios[0].id, data)
-								}
-								existingPortfolioNames={existingNames}
+								portfolioId={portfolios[0].id}
 								onSuccess={handleSuccess}
-								onError={handleError}
+								onError={handleError as (error: Error) => void}
 							>
 								<Button variant="outline">Edit "{portfolios[0].name}"</Button>
 							</EditPortfolioDialog>
@@ -177,9 +155,7 @@ export function PortfolioFormExamples() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Current Portfolios</CardTitle>
-					<CardDescription>
-						List of portfolios created using the forms above.
-					</CardDescription>
+					<CardDescription>List of portfolios created using the forms above.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{portfolios.length === 0 ? (
@@ -194,19 +170,13 @@ export function PortfolioFormExamples() {
 									<div>
 										<h4 className="font-medium">{portfolio.name}</h4>
 										{portfolio.description && (
-											<p className="text-sm text-muted-foreground">
-												{portfolio.description}
-											</p>
+											<p className="text-sm text-muted-foreground">{portfolio.description}</p>
 										)}
 									</div>
 									<EditPortfolioDialog
-										portfolio={portfolio}
-										onSubmit={(data) =>
-											handleUpdatePortfolio(portfolio.id, data)
-										}
-										existingPortfolioNames={existingNames}
+										portfolioId={portfolio.id}
 										onSuccess={handleSuccess}
-										onError={handleError}
+										onError={handleError as (error: Error) => void}
 									>
 										<Button variant="ghost" size="sm">
 											Edit
@@ -228,7 +198,7 @@ export function CreatePortfolioPage() {
 	const [error, setError] = useState<string>("");
 	const [success, setSuccess] = useState(false);
 
-	const handleSubmit = async (data: PortfolioFormData) => {
+	const handleSubmit = async (_data: PortfolioFormData) => {
 		setIsLoading(true);
 		setError("");
 
@@ -242,7 +212,6 @@ export function CreatePortfolioPage() {
 			}
 
 			setSuccess(true);
-			console.log("Portfolio created:", data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {
@@ -250,10 +219,7 @@ export function CreatePortfolioPage() {
 		}
 	};
 
-	const handleCancel = () => {
-		// Navigate back or close
-		console.log("Create cancelled");
-	};
+	const handleCancel = () => {};
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">
@@ -271,10 +237,7 @@ export function CreatePortfolioPage() {
 				isLoading={isLoading}
 				errorMessage={error}
 				showSuccessMessage={success}
-				existingPortfolioNames={[
-					"Existing Portfolio 1",
-					"Existing Portfolio 2",
-				]}
+				existingPortfolioNames={["Existing Portfolio 1", "Existing Portfolio 2"]}
 			/>
 		</div>
 	);
@@ -293,7 +256,7 @@ export function EditPortfolioPage() {
 		description: "Technology focused investment portfolio",
 	};
 
-	const handleSubmit = async (data: PortfolioFormData) => {
+	const handleSubmit = async (_data: PortfolioFormData) => {
 		setIsLoading(true);
 		setError("");
 
@@ -302,7 +265,6 @@ export function EditPortfolioPage() {
 			await new Promise((resolve) => setTimeout(resolve, 2000));
 
 			setSuccess(true);
-			console.log("Portfolio updated:", data);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "An error occurred");
 		} finally {
@@ -310,18 +272,13 @@ export function EditPortfolioPage() {
 		}
 	};
 
-	const handleCancel = () => {
-		// Navigate back
-		console.log("Edit cancelled");
-	};
+	const handleCancel = () => {};
 
 	return (
 		<div className="max-w-2xl mx-auto p-6">
 			<div className="mb-8">
 				<h1 className="text-3xl font-bold">Edit Portfolio</h1>
-				<p className="text-muted-foreground">
-					Update your portfolio information.
-				</p>
+				<p className="text-muted-foreground">Update your portfolio information.</p>
 			</div>
 
 			<EnhancedPortfolioForm

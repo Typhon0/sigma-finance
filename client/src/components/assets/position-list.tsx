@@ -1,9 +1,10 @@
-import { Grid, List, Search, SortAsc, SortDesc } from "lucide-react";
+import { Grid, List, SortAsc, SortDesc } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -67,29 +68,20 @@ export function PositionList({
 			// Search filter
 			if (filters.search) {
 				const searchLower = filters.search.toLowerCase();
-				const matchesName = position.asset.name
-					.toLowerCase()
-					.includes(searchLower);
-				const matchesSymbol = position.asset.symbol
-					?.toLowerCase()
-					.includes(searchLower);
+				const matchesName = position.asset.name.toLowerCase().includes(searchLower);
+				const matchesSymbol = position.asset.symbol?.toLowerCase().includes(searchLower);
 				if (!matchesName && !matchesSymbol) return false;
 			}
 
 			// Asset type filter
-			if (
-				filters.assetType !== "all" &&
-				position.asset.assetType.name !== filters.assetType
-			) {
+			if (filters.assetType !== "all" && position.asset.assetType.name !== filters.assetType) {
 				return false;
 			}
 
 			// Value range filter
 			const currentValue = position.currentValue || 0;
-			if (filters.minValue && currentValue < parseFloat(filters.minValue))
-				return false;
-			if (filters.maxValue && currentValue > parseFloat(filters.maxValue))
-				return false;
+			if (filters.minValue && currentValue < parseFloat(filters.minValue)) return false;
+			if (filters.maxValue && currentValue > parseFloat(filters.maxValue)) return false;
 
 			return true;
 		});
@@ -112,15 +104,11 @@ export function PositionList({
 					// Calculate performance percentage
 					const aPerf =
 						a.currentValue && a.averagePurchasePrice
-							? ((a.currentValue - a.averagePurchasePrice) /
-									a.averagePurchasePrice) *
-								100
+							? ((a.currentValue - a.averagePurchasePrice) / a.averagePurchasePrice) * 100
 							: 0;
 					const bPerf =
 						b.currentValue && b.averagePurchasePrice
-							? ((b.currentValue - b.averagePurchasePrice) /
-									b.averagePurchasePrice) *
-								100
+							? ((b.currentValue - b.averagePurchasePrice) / b.averagePurchasePrice) * 100
 							: 0;
 					aValue = aPerf;
 					bValue = bPerf;
@@ -216,10 +204,7 @@ export function PositionList({
 	};
 
 	const hasActiveFilters =
-		filters.search ||
-		filters.assetType !== "all" ||
-		filters.minValue ||
-		filters.maxValue;
+		filters.search || filters.assetType !== "all" || filters.minValue || filters.maxValue;
 
 	return (
 		<div className={`space-y-4 ${className}`}>
@@ -249,23 +234,16 @@ export function PositionList({
 				<CardContent className="space-y-4">
 					{/* Search and Asset Type Filter */}
 					<div className="grid gap-3 grid-cols-1 md:grid-cols-3">
-						<div className="relative">
-							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search positions..."
-								value={filters.search}
-								onChange={(e) =>
-									setFilters((prev) => ({ ...prev, search: e.target.value }))
-								}
-								className="pl-9"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search positions..."
+							value={filters.search}
+							onChange={(e) => setFilters((prev) => ({ ...prev, search: e.target.value }))}
+							onClear={() => setFilters((prev) => ({ ...prev, search: "" }))}
+						/>
 
 						<Select
 							value={filters.assetType}
-							onValueChange={(value) =>
-								setFilters((prev) => ({ ...prev, assetType: value }))
-							}
+							onValueChange={(value) => setFilters((prev) => ({ ...prev, assetType: value }))}
 						>
 							<SelectTrigger>
 								<SelectValue placeholder="Asset type" />
@@ -285,17 +263,13 @@ export function PositionList({
 								placeholder="Min value"
 								type="number"
 								value={filters.minValue}
-								onChange={(e) =>
-									setFilters((prev) => ({ ...prev, minValue: e.target.value }))
-								}
+								onChange={(e) => setFilters((prev) => ({ ...prev, minValue: e.target.value }))}
 							/>
 							<Input
 								placeholder="Max value"
 								type="number"
 								value={filters.maxValue}
-								onChange={(e) =>
-									setFilters((prev) => ({ ...prev, maxValue: e.target.value }))
-								}
+								onChange={(e) => setFilters((prev) => ({ ...prev, maxValue: e.target.value }))}
 							/>
 						</div>
 					</div>
@@ -303,9 +277,7 @@ export function PositionList({
 					{/* Sort Controls */}
 					<div className="flex items-center gap-2 flex-wrap">
 						<span className="text-sm text-muted-foreground">Sort by:</span>
-						{(
-							["name", "value", "performance", "allocation"] as SortField[]
-						).map((field) => (
+						{(["name", "value", "performance", "allocation"] as SortField[]).map((field) => (
 							<Button
 								key={field}
 								variant={sortField === field ? "default" : "outline"}
@@ -347,9 +319,7 @@ export function PositionList({
 					{groupPositions.length === 0 ? (
 						<Card>
 							<CardContent className="py-8 text-center">
-								<p className="text-muted-foreground">
-									No positions match your filters
-								</p>
+								<p className="text-muted-foreground">No positions match your filters</p>
 							</CardContent>
 						</Card>
 					) : (

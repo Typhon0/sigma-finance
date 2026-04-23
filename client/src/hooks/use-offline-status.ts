@@ -70,8 +70,7 @@ export function useStaleDataDetection(
 			return;
 		}
 
-		const updateTime =
-			typeof lastUpdated === "string" ? new Date(lastUpdated) : lastUpdated;
+		const updateTime = typeof lastUpdated === "string" ? new Date(lastUpdated) : lastUpdated;
 
 		const checkStale = () => {
 			const now = new Date();

@@ -18,9 +18,7 @@ describe("Authentication Error Handling Components", () => {
 			render(<AuthErrorDisplay errors={errors} />);
 
 			expect(screen.getByText("Invalid Credentials")).toBeInTheDocument();
-			expect(
-				screen.getByText("Invalid email or password. Please try again."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Invalid email or password. Please try again.")).toBeInTheDocument();
 		});
 
 		it("displays multiple errors indicator", () => {
@@ -37,9 +35,7 @@ describe("Authentication Error Handling Components", () => {
 
 			render(<AuthErrorDisplay errors={errors} />);
 
-			expect(
-				screen.getByText("1 additional error occurred."),
-			).toBeInTheDocument();
+			expect(screen.getByText("1 additional error occurred.")).toBeInTheDocument();
 		});
 
 		it("shows resend verification button for email not verified error", () => {
@@ -52,35 +48,20 @@ describe("Authentication Error Handling Components", () => {
 
 			const mockResendVerification = vi.fn();
 
-			render(
-				<AuthErrorDisplay
-					errors={errors}
-					onResendVerification={mockResendVerification}
-				/>,
-			);
+			render(<AuthErrorDisplay errors={errors} onResendVerification={mockResendVerification} />);
 
-			expect(
-				screen.getByText("Email Verification Required"),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /resend verification/i }),
-			).toBeInTheDocument();
+			expect(screen.getByText("Email Verification Required")).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /resend verification/i })).toBeInTheDocument();
 		});
 	});
 
 	describe("AuthSuccessDisplay", () => {
 		it("displays registration success message", () => {
-			render(
-				<AuthSuccessDisplay type="registration" email="test@example.com" />,
-			);
+			render(<AuthSuccessDisplay type="registration" email="test@example.com" />);
 
+			expect(screen.getByText("Account Created Successfully!")).toBeInTheDocument();
 			expect(
-				screen.getByText("Account Created Successfully!"),
-			).toBeInTheDocument();
-			expect(
-				screen.getByText(
-					/verification email has been sent to test@example.com/i,
-				),
+				screen.getByText(/verification email has been sent to test@example.com/i),
 			).toBeInTheDocument();
 		});
 
@@ -92,15 +73,11 @@ describe("Authentication Error Handling Components", () => {
 		});
 
 		it("displays password reset success message", () => {
-			render(
-				<AuthSuccessDisplay type="password-reset" email="test@example.com" />,
-			);
+			render(<AuthSuccessDisplay type="password-reset" email="test@example.com" />);
 
 			expect(screen.getByText("Reset Link Sent!")).toBeInTheDocument();
 			expect(
-				screen.getByText(
-					/password reset link has been sent to test@example.com/i,
-				),
+				screen.getByText(/password reset link has been sent to test@example.com/i),
 			).toBeInTheDocument();
 		});
 	});
@@ -121,15 +98,10 @@ describe("Authentication Error Handling Components", () => {
 
 		it("displays custom loading message", () => {
 			render(
-				<AuthLoadingDisplay
-					type="login"
-					message="Please wait while we authenticate you..."
-				/>,
+				<AuthLoadingDisplay type="login" message="Please wait while we authenticate you..." />,
 			);
 
-			expect(
-				screen.getByText("Please wait while we authenticate you..."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Please wait while we authenticate you...")).toBeInTheDocument();
 		});
 	});
 });

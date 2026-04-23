@@ -1,11 +1,5 @@
 import { ApolloError } from "@apollo/client";
-import {
-	AlertTriangle,
-	ArrowLeft,
-	Home,
-	RefreshCw,
-	WifiOff,
-} from "lucide-react";
+import { AlertTriangle, ArrowLeft, Home, RefreshCw, WifiOff } from "lucide-react";
 import type React from "react";
 import { Component, type ReactNode } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -20,12 +14,7 @@ interface DashboardErrorBoundaryProps {
 	onReset?: () => void;
 	onNavigateHome?: () => void;
 	onNavigateBack?: () => void;
-	context?:
-		| "overview"
-		| "portfolio-detail"
-		| "asset-detail"
-		| "chart"
-		| "component";
+	context?: "overview" | "portfolio-detail" | "asset-detail" | "chart" | "component";
 	componentName?: string;
 }
 
@@ -69,21 +58,21 @@ class DashboardErrorBoundary extends Component<
 
 		// Log error to console in development
 		if (process.env.NODE_ENV === "development") {
-			console.error(
-				"Dashboard Error Boundary caught an error:",
-				error,
-				errorInfo,
-			);
 		}
 
 		// Report to monitoring service if available
-		if (typeof window !== "undefined" && (window as any).reportError) {
-			(window as any).reportError(error, {
-				context: this.props.context || "dashboard",
-				componentName: this.props.componentName,
-				errorInfo,
-				retryCount: this.state.retryCount,
-			});
+		if (typeof window !== "undefined") {
+			const reportErrorFn = (
+				window as unknown as { reportError?: (error: unknown, data: unknown) => void }
+			).reportError;
+			if (typeof reportErrorFn === "function") {
+				reportErrorFn(error, {
+					context: this.props.context || "dashboard",
+					componentName: this.props.componentName,
+					errorInfo,
+					retryCount: this.state.retryCount,
+				});
+			}
 		}
 	}
 
@@ -233,9 +222,7 @@ export const DashboardErrorFallback = ({
 					)}
 					<div className="flex-1">
 						<CardTitle className="text-lg">{getContextTitle()}</CardTitle>
-						<p className="text-sm text-muted-foreground mt-1">
-							{getContextDescription()}
-						</p>
+						<p className="text-sm text-muted-foreground mt-1">{getContextDescription()}</p>
 					</div>
 					<Badge variant={severity === "major" ? "destructive" : "secondary"}>
 						{isNetwork ? "Network" : "Error"}
@@ -244,9 +231,7 @@ export const DashboardErrorFallback = ({
 			</CardHeader>
 			<CardContent className="space-y-4">
 				<div className="p-3 bg-muted rounded-lg">
-					<p className="text-sm font-medium text-muted-foreground mb-1">
-						Error Details:
-					</p>
+					<p className="text-sm font-medium text-muted-foreground mb-1">Error Details:</p>
 					<p className="text-sm">{message}</p>
 					{retryCount > 0 && (
 						<p className="text-xs text-muted-foreground mt-2">
@@ -268,33 +253,21 @@ export const DashboardErrorFallback = ({
 					)}
 
 					{!canRetry && (
-						<Button
-							onClick={resetErrorBoundary}
-							variant="outline"
-							className="gap-2"
-						>
+						<Button onClick={resetErrorBoundary} variant="outline" className="gap-2">
 							<RefreshCw className="h-4 w-4" />
 							Reset Component
 						</Button>
 					)}
 
 					{onNavigateBack && context !== "overview" && (
-						<Button
-							onClick={onNavigateBack}
-							variant="outline"
-							className="gap-2"
-						>
+						<Button onClick={onNavigateBack} variant="outline" className="gap-2">
 							<ArrowLeft className="h-4 w-4" />
 							Go Back
 						</Button>
 					)}
 
 					{onNavigateHome && context !== "overview" && (
-						<Button
-							onClick={onNavigateHome}
-							variant="outline"
-							className="gap-2"
-						>
+						<Button onClick={onNavigateHome} variant="outline" className="gap-2">
 							<Home className="h-4 w-4" />
 							Dashboard Home
 						</Button>
@@ -304,8 +277,8 @@ export const DashboardErrorFallback = ({
 				{isNetwork && (
 					<div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
 						<p className="text-sm text-orange-800">
-							<strong>Connection Issue:</strong> Check your internet connection.
-							The app will automatically retry when connection is restored.
+							<strong>Connection Issue:</strong> Check your internet connection. The app will
+							automatically retry when connection is restored.
 						</p>
 					</div>
 				)}
@@ -318,9 +291,7 @@ export const DashboardErrorFallback = ({
 						<div className="mt-2 p-3 bg-muted rounded text-xs font-mono">
 							<div className="mb-2">
 								<strong>Component Stack:</strong>
-								<pre className="mt-1 whitespace-pre-wrap">
-									{errorInfo.componentStack}
-								</pre>
+								<pre className="mt-1 whitespace-pre-wrap">{errorInfo.componentStack}</pre>
 							</div>
 							<div>
 								<strong>Error Stack:</strong>

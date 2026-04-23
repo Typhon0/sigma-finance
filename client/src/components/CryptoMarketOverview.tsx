@@ -20,13 +20,7 @@ import React, { useState } from "react";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
 import { Separator } from "./ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -470,10 +464,7 @@ export function CryptoMarketOverview({
 		{ value: 422, name: "Others", itemStyle: { color: "#94A3B8" } },
 	];
 
-	const totalMarketCap = marketCapData.reduce(
-		(sum, item) => sum + item.value,
-		0,
-	);
+	const totalMarketCap = marketCapData.reduce((sum, item) => sum + item.value, 0);
 
 	// Market cap distribution chart
 	const marketCapDistribution = {
@@ -494,13 +485,9 @@ export function CryptoMarketOverview({
 					left: "center",
 					top: "middle",
 					style: {
-						text: hoveredMarketData
-							? hoveredMarketData.name
-							: `${totalMarketCap}B`,
+						text: hoveredMarketData ? hoveredMarketData.name : `${totalMarketCap}B`,
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#fafafa"
-							: "#0a0a0a",
+						fill: document.documentElement.classList.contains("dark") ? "#fafafa" : "#0a0a0a",
 						fontSize: hoveredMarketData ? 18 : 28,
 						fontWeight: "600",
 						lineHeight: 1.2,
@@ -514,9 +501,7 @@ export function CryptoMarketOverview({
 					style: {
 						text: hoveredMarketData ? `${hoveredMarketData.value}B` : "Total",
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#a3a3a3"
-							: "#737373",
+						fill: document.documentElement.classList.contains("dark") ? "#a3a3a3" : "#737373",
 						fontSize: hoveredMarketData ? 16 : 13,
 						fontWeight: hoveredMarketData ? "500" : "400",
 						y: hoveredMarketData ? 26 : 38,
@@ -528,13 +513,9 @@ export function CryptoMarketOverview({
 					left: "center",
 					top: "middle",
 					style: {
-						text: hoveredMarketData
-							? `${hoveredMarketData.percent.toFixed(1)}%`
-							: "",
+						text: hoveredMarketData ? `${hoveredMarketData.percent.toFixed(1)}%` : "",
 						textAlign: "center",
-						fill: document.documentElement.classList.contains("dark")
-							? "#737373"
-							: "#a3a3a3",
+						fill: document.documentElement.classList.contains("dark") ? "#737373" : "#a3a3a3",
 						fontSize: 13,
 						fontWeight: "400",
 						y: 48,
@@ -549,9 +530,7 @@ export function CryptoMarketOverview({
 				avoidLabelOverlap: false,
 				itemStyle: {
 					borderRadius: 4,
-					borderColor: document.documentElement.classList.contains("dark")
-						? "#0a0a0a"
-						: "#fafafa",
+					borderColor: document.documentElement.classList.contains("dark") ? "#0a0a0a" : "#fafafa",
 					borderWidth: 3,
 				},
 				label: {
@@ -577,21 +556,12 @@ export function CryptoMarketOverview({
 		grid: { left: 60, right: 30, top: 30, bottom: 30 },
 		xAxis: {
 			type: "category",
-			data: [
-				"4h ago",
-				"8h ago",
-				"12h ago",
-				"16h ago",
-				"20h ago",
-				"24h ago",
-				"Now",
-			],
+			data: ["4h ago", "8h ago", "12h ago", "16h ago", "20h ago", "24h ago", "Now"],
 		},
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) =>
-					`${currencySymbol}${(value / 1e9).toFixed(0)}B`,
+				formatter: (value: number) => `${currencySymbol}${(value / 1e9).toFixed(0)}B`,
 			},
 		},
 		series: [
@@ -599,8 +569,8 @@ export function CryptoMarketOverview({
 				name: "Volume",
 				type: "bar",
 				data: [
-					118000000000, 122000000000, 115000000000, 128000000000, 120000000000,
-					125000000000, 125000000000,
+					118000000000, 122000000000, 115000000000, 128000000000, 120000000000, 125000000000,
+					125000000000,
 				],
 				itemStyle: {
 					color: "#26a69a",
@@ -630,9 +600,7 @@ export function CryptoMarketOverview({
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 				<Card className="overflow-hidden">
 					<CardHeader className="pb-2 pt-4">
-						<CardDescription className="text-xs truncate">
-							Total Market Cap
-						</CardDescription>
+						<CardDescription className="text-xs truncate">Total Market Cap</CardDescription>
 						<CardTitle className="text-xl font-mono truncate">
 							{formatLargeNumber(globalMarket.totalMarketCap)}
 						</CardTitle>
@@ -697,9 +665,7 @@ export function CryptoMarketOverview({
 
 				<Card>
 					<CardHeader className="pb-1 pt-3">
-						<CardDescription className="text-xs">
-							Fear & Greed Index
-						</CardDescription>
+						<CardDescription className="text-xs">Fear & Greed Index</CardDescription>
 					</CardHeader>
 					<CardContent className="pb-2 pt-0">
 						<ReactECharts
@@ -724,9 +690,7 @@ export function CryptoMarketOverview({
 				<Card>
 					<CardHeader>
 						<CardTitle>Market Cap Distribution</CardTitle>
-						<CardDescription>
-							Total crypto market capitalization breakdown
-						</CardDescription>
+						<CardDescription>Total crypto market capitalization breakdown</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -740,9 +704,7 @@ export function CryptoMarketOverview({
 				<Card>
 					<CardHeader>
 						<CardTitle>24h Volume Trend</CardTitle>
-						<CardDescription>
-							Trading volume evolution over 24 hours
-						</CardDescription>
+						<CardDescription>Trading volume evolution over 24 hours</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -760,14 +722,9 @@ export function CryptoMarketOverview({
 					<div className="flex items-center justify-between">
 						<div>
 							<CardTitle>Sector Performance</CardTitle>
-							<CardDescription>
-								Performance by cryptocurrency category
-							</CardDescription>
+							<CardDescription>Performance by cryptocurrency category</CardDescription>
 						</div>
-						<Button
-							variant="outline"
-							onClick={() => onNavigateToHeatmap?.("sectors")}
-						>
+						<Button variant="outline" onClick={() => onNavigateToHeatmap?.("sectors")}>
 							<BarChart3 className="h-4 w-4 mr-2" />
 							View Heatmap
 						</Button>
@@ -780,9 +737,7 @@ export function CryptoMarketOverview({
 								key={sector.name}
 								className="p-4 rounded-lg border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
 								onClick={() =>
-									onNavigateToCryptoScreener?.(
-										sector.name.toLowerCase().replace(" ", "-"),
-									)
+									onNavigateToCryptoScreener?.(sector.name.toLowerCase().replace(" ", "-"))
 								}
 							>
 								<div className="flex items-start justify-between mb-3">
@@ -792,20 +747,14 @@ export function CryptoMarketOverview({
 										</div>
 										<div>
 											<h4 className="font-medium">{sector.name}</h4>
-											<p className="text-xs text-muted-foreground">
-												{sector.count} assets
-											</p>
+											<p className="text-xs text-muted-foreground">{sector.count} assets</p>
 										</div>
 									</div>
 								</div>
 								<div className="space-y-2">
 									<div className="flex items-baseline justify-between">
-										<span className="text-xs text-muted-foreground">
-											Market Cap
-										</span>
-										<span className="font-mono text-sm">
-											{formatLargeNumber(sector.marketCap)}
-										</span>
+										<span className="text-xs text-muted-foreground">Market Cap</span>
+										<span className="font-mono text-sm">{formatLargeNumber(sector.marketCap)}</span>
 									</div>
 									<div className="flex items-baseline justify-between">
 										<span className="text-xs text-muted-foreground">24h</span>
@@ -837,10 +786,7 @@ export function CryptoMarketOverview({
 				<CardHeader>
 					<div className="flex items-center justify-between">
 						<CardTitle>Top Cryptocurrencies</CardTitle>
-						<Button
-							variant="outline"
-							onClick={() => onNavigateToCryptoScreener?.("top-100")}
-						>
+						<Button variant="outline" onClick={() => onNavigateToCryptoScreener?.("top-100")}>
 							View All <ChevronRight className="h-4 w-4 ml-2" />
 						</Button>
 					</div>
@@ -860,9 +806,7 @@ export function CryptoMarketOverview({
 									<div>
 										<div className="flex items-center gap-2 mb-1">
 											<span className="font-medium">{crypto.symbol}</span>
-											<span className="text-sm text-muted-foreground">
-												{crypto.name}
-											</span>
+											<span className="text-sm text-muted-foreground">{crypto.name}</span>
 										</div>
 										<div className="flex items-center gap-3 text-xs text-muted-foreground">
 											<span>Rank #{topCryptos.indexOf(crypto) + 1}</span>
@@ -872,9 +816,7 @@ export function CryptoMarketOverview({
 									</div>
 								</div>
 								<div className="text-right">
-									<div className="font-mono mb-1">
-										{formatCurrency(crypto.price)}
-									</div>
+									<div className="font-mono mb-1">{formatCurrency(crypto.price)}</div>
 									<div
 										className={`text-sm font-mono ${crypto.change24h >= 0 ? "text-green-600" : "text-red-600"}`}
 									>
@@ -883,20 +825,12 @@ export function CryptoMarketOverview({
 									</div>
 								</div>
 								<div className="text-right ml-6">
-									<div className="text-sm text-muted-foreground mb-1">
-										Market Cap
-									</div>
-									<div className="font-mono text-sm">
-										{formatLargeNumber(crypto.marketCap)}
-									</div>
+									<div className="text-sm text-muted-foreground mb-1">Market Cap</div>
+									<div className="font-mono text-sm">{formatLargeNumber(crypto.marketCap)}</div>
 								</div>
 								<div className="text-right ml-6">
-									<div className="text-sm text-muted-foreground mb-1">
-										Volume 24h
-									</div>
-									<div className="font-mono text-sm">
-										{formatLargeNumber(crypto.volume24h)}
-									</div>
+									<div className="text-sm text-muted-foreground mb-1">Volume 24h</div>
+									<div className="font-mono text-sm">{formatLargeNumber(crypto.volume24h)}</div>
 								</div>
 							</div>
 						))}
@@ -908,9 +842,7 @@ export function CryptoMarketOverview({
 			<Card>
 				<CardHeader>
 					<CardTitle>Market Movers</CardTitle>
-					<CardDescription>
-						Top trending cryptocurrencies by performance and volume
-					</CardDescription>
+					<CardDescription>Top trending cryptocurrencies by performance and volume</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -948,24 +880,18 @@ export function CryptoMarketOverview({
 														{crypto.category}
 													</Badge>
 												</div>
-												<p className="text-xs text-muted-foreground">
-													{crypto.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{crypto.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(crypto.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(crypto.price)}</div>
 											<div className="text-sm text-green-600 font-mono">
 												+{crypto.change.toFixed(2)}%
 											</div>
 										</div>
 										<div className="text-right ml-4">
 											<p className="text-xs text-muted-foreground">Volume</p>
-											<p className="text-sm font-mono">
-												{formatLargeNumber(crypto.volume)}
-											</p>
+											<p className="text-sm font-mono">{formatLargeNumber(crypto.volume)}</p>
 										</div>
 										<Button variant="ghost" size="icon" className="ml-2">
 											<Eye className="h-4 w-4" />
@@ -1001,24 +927,18 @@ export function CryptoMarketOverview({
 														{crypto.category}
 													</Badge>
 												</div>
-												<p className="text-xs text-muted-foreground">
-													{crypto.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{crypto.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(crypto.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(crypto.price)}</div>
 											<div className="text-sm text-red-600 font-mono">
 												{crypto.change.toFixed(2)}%
 											</div>
 										</div>
 										<div className="text-right ml-4">
 											<p className="text-xs text-muted-foreground">Volume</p>
-											<p className="text-sm font-mono">
-												{formatLargeNumber(crypto.volume)}
-											</p>
+											<p className="text-sm font-mono">{formatLargeNumber(crypto.volume)}</p>
 										</div>
 										<Button variant="ghost" size="icon" className="ml-2">
 											<Eye className="h-4 w-4" />
@@ -1049,15 +969,11 @@ export function CryptoMarketOverview({
 											</div>
 											<div>
 												<span className="font-mono">{crypto.symbol}</span>
-												<p className="text-xs text-muted-foreground">
-													{crypto.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{crypto.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(crypto.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(crypto.price)}</div>
 											<div
 												className={`text-sm font-mono ${crypto.change >= 0 ? "text-green-600" : "text-red-600"}`}
 											>
@@ -1066,12 +982,8 @@ export function CryptoMarketOverview({
 											</div>
 										</div>
 										<div className="text-right ml-4">
-											<p className="text-xs text-muted-foreground">
-												Volume 24h
-											</p>
-											<p className="text-sm font-mono">
-												{formatLargeNumber(crypto.volume)}
-											</p>
+											<p className="text-xs text-muted-foreground">Volume 24h</p>
+											<p className="text-sm font-mono">{formatLargeNumber(crypto.volume)}</p>
 										</div>
 										<Button variant="ghost" size="icon" className="ml-2">
 											<Eye className="h-4 w-4" />
@@ -1102,9 +1014,7 @@ export function CryptoMarketOverview({
 									<Zap className="h-5 w-5" />
 									Derivatives Overview
 								</CardTitle>
-								<CardDescription>
-									Futures and perpetuals market metrics
-								</CardDescription>
+								<CardDescription>Futures and perpetuals market metrics</CardDescription>
 							</div>
 							<Button
 								variant="outline"
@@ -1120,16 +1030,8 @@ export function CryptoMarketOverview({
 						{/* Total OI */}
 						<div className="p-3 rounded-lg bg-muted/50">
 							<div className="flex items-center justify-between mb-2">
-								<span className="text-sm text-muted-foreground">
-									Total Open Interest
-								</span>
-								<Badge
-									variant={
-										derivativesOverview.oiChange24h >= 0
-											? "default"
-											: "destructive"
-									}
-								>
+								<span className="text-sm text-muted-foreground">Total Open Interest</span>
+								<Badge variant={derivativesOverview.oiChange24h >= 0 ? "default" : "destructive"}>
 									{derivativesOverview.oiChange24h >= 0 ? "+" : ""}
 									{derivativesOverview.oiChange24h.toFixed(2)}% 24h
 								</Badge>
@@ -1142,9 +1044,7 @@ export function CryptoMarketOverview({
 						{/* Avg Funding & Liquidations */}
 						<div className="grid grid-cols-2 gap-3">
 							<div className="p-3 rounded-lg bg-muted/50">
-								<p className="text-xs text-muted-foreground mb-1">
-									Avg Funding Rate
-								</p>
+								<p className="text-xs text-muted-foreground mb-1">Avg Funding Rate</p>
 								<p
 									className={`text-lg font-mono ${derivativesOverview.avgFundingRate >= 0 ? "text-green-600" : "text-red-600"}`}
 								>
@@ -1153,12 +1053,8 @@ export function CryptoMarketOverview({
 								</p>
 							</div>
 							<div className="p-3 rounded-lg bg-muted/50">
-								<p className="text-xs text-muted-foreground mb-1">
-									Long/Short Ratio
-								</p>
-								<p className="text-lg font-mono">
-									{derivativesOverview.longShortRatio.toFixed(2)}
-								</p>
+								<p className="text-xs text-muted-foreground mb-1">Long/Short Ratio</p>
+								<p className="text-lg font-mono">{derivativesOverview.longShortRatio.toFixed(2)}</p>
 							</div>
 						</div>
 
@@ -1181,9 +1077,7 @@ export function CryptoMarketOverview({
 								<div>
 									<p className="text-muted-foreground">Total</p>
 									<p className="font-mono">
-										{formatLargeNumber(
-											derivativesOverview.totalLiquidations24h,
-										)}
+										{formatLargeNumber(derivativesOverview.totalLiquidations24h)}
 									</p>
 								</div>
 							</div>
@@ -1194,10 +1088,7 @@ export function CryptoMarketOverview({
 						<div className="space-y-2">
 							<p className="text-sm font-medium">Top Perpetuals</p>
 							{topDerivatives.slice(0, 3).map((deriv) => (
-								<div
-									key={deriv.symbol}
-									className="flex items-center justify-between text-sm"
-								>
+								<div key={deriv.symbol} className="flex items-center justify-between text-sm">
 									<span className="font-mono">{deriv.symbol}</span>
 									<Badge
 										variant={deriv.funding >= 0 ? "default" : "destructive"}
@@ -1224,9 +1115,7 @@ export function CryptoMarketOverview({
 									<Network className="h-5 w-5" />
 									On-chain Metrics
 								</CardTitle>
-								<CardDescription>
-									Aggregated blockchain network activity
-								</CardDescription>
+								<CardDescription>Aggregated blockchain network activity</CardDescription>
 							</div>
 							<Button
 								variant="outline"
@@ -1244,9 +1133,7 @@ export function CryptoMarketOverview({
 							<div className="flex items-center justify-between mb-2">
 								<div className="flex items-center gap-2">
 									<Users className="h-4 w-4 text-muted-foreground" />
-									<span className="text-sm text-muted-foreground">
-										Active Addresses
-									</span>
+									<span className="text-sm text-muted-foreground">Active Addresses</span>
 								</div>
 								<span
 									className={`text-xs ${onChainMetrics.activeAddressesChange >= 0 ? "text-green-600" : "text-red-600"}`}
@@ -1265,9 +1152,7 @@ export function CryptoMarketOverview({
 							<div className="flex items-center justify-between mb-2">
 								<div className="flex items-center gap-2">
 									<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-									<span className="text-sm text-muted-foreground">
-										Transactions (24h)
-									</span>
+									<span className="text-sm text-muted-foreground">Transactions (24h)</span>
 								</div>
 								<span
 									className={`text-xs ${onChainMetrics.transactionsChange >= 0 ? "text-green-600" : "text-red-600"}`}
@@ -1288,9 +1173,7 @@ export function CryptoMarketOverview({
 									<Zap className="h-3 w-3" />
 									Avg Gas (ETH)
 								</p>
-								<p className="font-mono">
-									{onChainMetrics.avgGasPrice.toFixed(1)} Gwei
-								</p>
+								<p className="font-mono">{onChainMetrics.avgGasPrice.toFixed(1)} Gwei</p>
 								<p
 									className={`text-xs ${onChainMetrics.gasChange >= 0 ? "text-red-600" : "text-green-600"}`}
 								>
@@ -1303,13 +1186,8 @@ export function CryptoMarketOverview({
 									<Activity className="h-3 w-3" />
 									Network Usage
 								</p>
-								<p className="font-mono">
-									{onChainMetrics.networkUtilization}%
-								</p>
-								<Progress
-									value={onChainMetrics.networkUtilization}
-									className="h-1 mt-1"
-								/>
+								<p className="font-mono">{onChainMetrics.networkUtilization}%</p>
+								<Progress value={onChainMetrics.networkUtilization} className="h-1 mt-1" />
 							</div>
 						</div>
 
@@ -1338,17 +1216,13 @@ export function CryptoMarketOverview({
 									{network.validators && (
 										<div className="flex items-center gap-2">
 											<span className="text-muted-foreground">Validators:</span>
-											<span className="font-mono">
-												{formatCompact(network.validators)}
-											</span>
+											<span className="font-mono">{formatCompact(network.validators)}</span>
 										</div>
 									)}
 									{network.tps && (
 										<div className="flex items-center gap-2">
 											<span className="text-muted-foreground">TPS:</span>
-											<span className="font-mono">
-												{formatCompact(network.tps)}
-											</span>
+											<span className="font-mono">{formatCompact(network.tps)}</span>
 										</div>
 									)}
 								</div>

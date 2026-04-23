@@ -27,12 +27,7 @@ describe("Portfolio Loading Indicators", () => {
 
 	describe("AsyncOperationIndicator", () => {
 		it("shows loading state", () => {
-			render(
-				<AsyncOperationIndicator
-					isLoading={true}
-					loadingMessage="Creating portfolio..."
-				/>,
-			);
+			render(<AsyncOperationIndicator isLoading={true} loadingMessage="Creating portfolio..." />);
 			expect(screen.getByText("Creating portfolio...")).toBeInTheDocument();
 		});
 
@@ -44,9 +39,7 @@ describe("Portfolio Loading Indicators", () => {
 					successMessage="Portfolio created successfully"
 				/>,
 			);
-			expect(
-				screen.getByText("Portfolio created successfully"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Portfolio created successfully")).toBeInTheDocument();
 		});
 
 		it("shows error state with retry button", () => {
@@ -58,9 +51,7 @@ describe("Portfolio Loading Indicators", () => {
 					onRetry={mockRetry}
 				/>,
 			);
-			expect(
-				screen.getByText("Failed to create portfolio"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Failed to create portfolio")).toBeInTheDocument();
 			expect(screen.getByText("Retry")).toBeInTheDocument();
 		});
 	});
@@ -92,9 +83,7 @@ describe("Portfolio Loading Indicators", () => {
 		});
 
 		it("renders nothing when no operations are active", () => {
-			const { container } = render(
-				<PortfolioOperationStatus operations={{}} />,
-			);
+			const { container } = render(<PortfolioOperationStatus operations={{}} />);
 			expect(container.firstChild).toBeNull();
 		});
 	});

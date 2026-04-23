@@ -1,12 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { format } from "date-fns";
-import {
-	AlertCircle,
-	CalendarIcon,
-	DollarSign,
-	FileText,
-	Hash,
-} from "lucide-react";
+import { AlertCircle, CalendarIcon, DollarSign, FileText, Hash } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -22,11 +16,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -35,7 +25,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Asset, Portfolio, TransactionType } from "@/gql/graphql";
+import type { Asset, Portfolio } from "@/gql/graphql";
 import { cn } from "@/lib/utils";
 import {
 	type TransactionFormData,
@@ -55,7 +45,7 @@ interface TransactionFormProps {
 }
 
 const transactionTypes: {
-	value: TransactionType;
+	value: TransactionFormData["transactionType"];
 	label: string;
 	description: string;
 }[] = [
@@ -94,10 +84,11 @@ export function TransactionForm({
 	mode = "create",
 	initialData,
 }: TransactionFormProps) {
-	const [_selectedTransactionType, setSelectedTransactionType] =
-		useState<TransactionType | null>(initialData?.transactionType || null);
+	const [_selectedTransactionType, setSelectedTransactionType] = useState<
+		TransactionFormData["transactionType"] | null
+	>(initialData?.transactionType || null);
 
-	const form = useForm<TransactionFormData>({
+	const form = useForm({
 		resolver: zodResolver(transactionFormSchema),
 		defaultValues: {
 			portfolioId: selectedPortfolio?.id || initialData?.portfolioId || "",
@@ -134,16 +125,12 @@ export function TransactionForm({
 
 	// Check if transaction type requires quantity
 	const requiresQuantity = ["BUY", "SELL"].includes(watchedTransactionType);
-	const requiresAsset = !["DEPOSIT", "WITHDRAWAL"].includes(
-		watchedTransactionType,
-	);
+	const requiresAsset = !["DEPOSIT", "WITHDRAWAL"].includes(watchedTransactionType);
 
 	const handleSubmit = async (data: TransactionFormData) => {
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Transaction submission error:", error);
-		}
+		} catch (_error) {}
 	};
 
 	return (
@@ -156,10 +143,7 @@ export function TransactionForm({
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-6"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
 						{/* Portfolio Selection */}
 						<FormField
 							control={form.control}
@@ -167,10 +151,7 @@ export function TransactionForm({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Portfolio *</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										defaultValue={field.value}
-									>
+									<Select onValueChange={field.onChange} defaultValue={field.value}>
 										<FormControl>
 											<SelectTrigger>
 												<SelectValue placeholder="Select portfolio" />
@@ -199,7 +180,7 @@ export function TransactionForm({
 									<Select
 										onValueChange={(value) => {
 											field.onChange(value);
-											setSelectedTransactionType(value as TransactionType);
+											setSelectedTransactionType(value as TransactionFormData["transactionType"]);
 										}}
 										defaultValue={field.value}
 									>
@@ -234,10 +215,7 @@ export function TransactionForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Asset *</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select asset" />
@@ -281,7 +259,7 @@ export function TransactionForm({
 														step="0.00000001"
 														min="0"
 														placeholder="0.00"
-														className="pl-10"
+														style={{ paddingLeft: "2.5rem" }}
 														{...field}
 														onChange={(e) => {
 															field.onChange(parseFloat(e.target.value) || 0);
@@ -306,13 +284,13 @@ export function TransactionForm({
 											<FormLabel>Price Per Unit *</FormLabel>
 											<FormControl>
 												<div className="relative">
-													<DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+													<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 													<Input
 														type="number"
 														step="0.01"
 														min="0"
 														placeholder="0.00"
-														className="pl-10"
+														style={{ paddingLeft: "2.5rem" }}
 														{...field}
 														onChange={(e) => {
 															field.onChange(parseFloat(e.target.value) || 0);
@@ -338,17 +316,15 @@ export function TransactionForm({
 										<FormLabel>Amount *</FormLabel>
 										<FormControl>
 											<div className="relative">
-												<DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+												<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 												<Input
 													type="number"
 													step="0.01"
 													min="0"
 													placeholder="0.00"
-													className="pl-10"
+													style={{ paddingLeft: "2.5rem" }}
 													{...field}
-													onChange={(e) =>
-														field.onChange(parseFloat(e.target.value) || 0)
-													}
+													onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 													readOnly={requiresQuantity}
 												/>
 											</div>
@@ -372,17 +348,15 @@ export function TransactionForm({
 										<FormLabel>Fee</FormLabel>
 										<FormControl>
 											<div className="relative">
-												<DollarSign className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+												<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 												<Input
 													type="number"
 													step="0.01"
 													min="0"
 													placeholder="0.00"
-													className="pl-10"
+													style={{ paddingLeft: "2.5rem" }}
 													{...field}
-													onChange={(e) =>
-														field.onChange(parseFloat(e.target.value) || 0)
-													}
+													onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 												/>
 											</div>
 										</FormControl>
@@ -409,11 +383,7 @@ export function TransactionForm({
 														!field.value && "text-muted-foreground",
 													)}
 												>
-													{field.value ? (
-														format(field.value, "PPP")
-													) : (
-														<span>Pick a date</span>
-													)}
+													{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
 													<CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
 												</Button>
 											</FormControl>
@@ -423,10 +393,8 @@ export function TransactionForm({
 												mode="single"
 												selected={field.value}
 												onSelect={field.onChange}
-												disabled={(date) =>
-													date > new Date() || date < new Date("1900-01-01")
-												}
-												initialFocus
+												disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+												autoFocus
 											/>
 										</PopoverContent>
 									</Popover>
@@ -447,7 +415,7 @@ export function TransactionForm({
 											<FileText className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
 											<Textarea
 												placeholder="Add any additional notes about this transaction..."
-												className="pl-10 min-h-[80px]"
+												className="min-h-[80px]"
 												{...field}
 											/>
 										</div>
@@ -462,9 +430,8 @@ export function TransactionForm({
 							<Alert>
 								<AlertCircle className="h-4 w-4" />
 								<AlertDescription>
-									For {watchedTransactionType.toLowerCase()} transactions, both
-									quantity and price per unit are required. The total amount
-									will be calculated automatically.
+									For {watchedTransactionType.toLowerCase()} transactions, both quantity and price
+									per unit are required. The total amount will be calculated automatically.
 								</AlertDescription>
 							</Alert>
 						)}
@@ -478,12 +445,7 @@ export function TransactionForm({
 										? "Record Transaction"
 										: "Update Transaction"}
 							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={onCancel}
-								disabled={isLoading}
-							>
+							<Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
 								Cancel
 							</Button>
 						</div>

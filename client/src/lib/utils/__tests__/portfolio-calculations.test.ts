@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type {
-	Asset,
-	AssetType,
-	Portfolio,
-	PortfolioAsset as Position,
-} from "@/gql/graphql";
+import type { Asset, AssetType, Portfolio, PortfolioAsset as Position } from "@/gql/graphql";
 import {
 	calculateAssetAllocation,
 	calculateAssetPerformance,
@@ -324,10 +319,7 @@ describe("Portfolio Calculations", () => {
 				assets: [{ ...mockPosition, id: "2", quantity: 5 }],
 			};
 
-			const result = calculatePortfolioAllocation([
-				mockPortfolio,
-				secondPortfolio,
-			]);
+			const result = calculatePortfolioAllocation([mockPortfolio, secondPortfolio]);
 
 			expect(result).toHaveLength(2);
 			expect(result[0].value).toBe(1500);

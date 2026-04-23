@@ -1,11 +1,4 @@
-import {
-	Activity,
-	BarChart3,
-	Bell,
-	DollarSign,
-	TrendingUp,
-	Wifi,
-} from "lucide-react";
+import { Activity, BarChart3, Bell, DollarSign, TrendingUp, Wifi } from "lucide-react";
 import { useState } from "react";
 import {
 	FloatingAlertNotification,
@@ -105,19 +98,14 @@ export function RealTimeDashboardExample() {
 	};
 
 	return (
-		<RealTimeDashboardProvider
-			trackedAssets={allAssetIds}
-			trackedPortfolios={allPortfolioIds}
-		>
+		<RealTimeDashboardProvider trackedAssets={allAssetIds} trackedPortfolios={allPortfolioIds}>
 			<div className="min-h-screen bg-gray-50">
 				{/* Global Header with Connection Status */}
 				<header className="bg-white border-b px-6 py-4">
 					<div className="flex items-center justify-between">
 						<div>
 							<h1 className="text-2xl font-bold">Portfolio Tracker</h1>
-							<p className="text-sm text-gray-600">
-								Real-time portfolio management
-							</p>
+							<p className="text-sm text-gray-600">Real-time portfolio management</p>
 						</div>
 						<div className="flex items-center gap-4">
 							<GlobalConnectionStatus />
@@ -137,13 +125,12 @@ export function RealTimeDashboardExample() {
 						/>
 					)}
 
-					{viewState.viewMode === "portfolio-detail" &&
-						viewState.selectedPortfolio && (
-							<InlinePortfolioDetail
-								portfolio={viewState.selectedPortfolio}
-								onBack={handleBackToOverview}
-							/>
-						)}
+					{viewState.viewMode === "portfolio-detail" && viewState.selectedPortfolio && (
+						<InlinePortfolioDetail
+							portfolio={viewState.selectedPortfolio}
+							onBack={handleBackToOverview}
+						/>
+					)}
 				</main>
 
 				{/* Floating Alert Notifications */}
@@ -160,7 +147,7 @@ interface DashboardOverviewProps {
 
 function DashboardOverview({
 	portfolios,
-	onPortfolioSelect,
+	onPortfolioSelect: _onPortfolioSelect,
 }: DashboardOverviewProps) {
 	return (
 		<div className="space-y-6">
@@ -168,9 +155,7 @@ function DashboardOverview({
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-					<p className="text-muted-foreground">
-						Monitor your portfolios with real-time updates
-					</p>
+					<p className="text-muted-foreground">Monitor your portfolios with real-time updates</p>
 				</div>
 				<ConnectionStatus variant="full" />
 			</div>
@@ -183,7 +168,6 @@ function DashboardOverview({
 						portfolioId={portfolio.id}
 						portfolioName={portfolio.name}
 						className="cursor-pointer hover:shadow-lg transition-shadow"
-						onClick={() => onPortfolioSelect(portfolio)}
 					/>
 				))}
 			</div>
@@ -212,18 +196,8 @@ function DashboardOverview({
 				<TabsContent value="charts" className="space-y-6">
 					<div className="grid gap-6 lg:grid-cols-2">
 						{/* Real-time charts for major assets */}
-						<RealTimeChart
-							assetId="asset-1"
-							symbol="AAPL"
-							chartType="line"
-							height={300}
-						/>
-						<RealTimeChart
-							assetId="asset-3"
-							symbol="BTC"
-							chartType="line"
-							height={300}
-						/>
+						<RealTimeChart assetId="asset-1" symbol="AAPL" chartType="line" height={300} />
+						<RealTimeChart assetId="asset-3" symbol="BTC" chartType="line" height={300} />
 					</div>
 				</TabsContent>
 

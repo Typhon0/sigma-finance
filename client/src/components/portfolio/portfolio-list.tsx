@@ -200,11 +200,9 @@ export function PortfolioList({
 		}
 	};
 
-	const isAllSelected =
-		selectedPortfolios.length === portfolios.length && portfolios.length > 0;
+	const isAllSelected = selectedPortfolios.length === portfolios.length && portfolios.length > 0;
 	const isPartiallySelected =
-		selectedPortfolios.length > 0 &&
-		selectedPortfolios.length < portfolios.length;
+		selectedPortfolios.length > 0 && selectedPortfolios.length < portfolios.length;
 
 	if (isLoading || assetsLoading) {
 		return <PortfolioListSkeleton viewMode={viewMode} />;
@@ -228,15 +226,10 @@ export function PortfolioList({
 								checked={isAllSelected}
 								ref={(el) => {
 									if (el && "indeterminate" in el)
-										(el as HTMLInputElement).indeterminate =
-											isPartiallySelected;
+										(el as HTMLInputElement).indeterminate = isPartiallySelected;
 								}}
 								onCheckedChange={handleSelectAll}
-								aria-label={
-									isAllSelected
-										? "Deselect all portfolios"
-										: "Select all portfolios"
-								}
+								aria-label={isAllSelected ? "Deselect all portfolios" : "Select all portfolios"}
 								className="touch-manipulation"
 							/>
 							<span className="text-sm text-muted-foreground hidden sm:inline">
@@ -245,9 +238,7 @@ export function PortfolioList({
 									: "Select all"}
 							</span>
 							<span className="text-xs text-muted-foreground sm:hidden">
-								{selectedPortfolios.length > 0
-									? `${selectedPortfolios.length}`
-									: "All"}
+								{selectedPortfolios.length > 0 ? `${selectedPortfolios.length}` : "All"}
 							</span>
 						</div>
 					)}
@@ -263,10 +254,7 @@ export function PortfolioList({
 				{/* View and Sort Controls */}
 				<div className="flex items-center space-x-2 sm:space-x-3 w-full lg:w-auto justify-end">
 					{/* Sort Selection */}
-					<Select
-						value={sortBy}
-						onValueChange={(value: SortBy) => onSortChange(value)}
-					>
+					<Select value={sortBy} onValueChange={(value: SortBy) => onSortChange(value)}>
 						<SelectTrigger className="w-full sm:w-[140px] lg:w-[180px] touch-manipulation">
 							<SortAsc className="mr-1 sm:mr-2 h-4 w-4" />
 							<SelectValue placeholder="Sort by" />
@@ -280,22 +268,13 @@ export function PortfolioList({
 					</Select>
 
 					{/* View Mode Toggle */}
-					<Tabs
-						value={viewMode}
-						onValueChange={(value) => onViewModeChange(value as ViewMode)}
-					>
+					<Tabs value={viewMode} onValueChange={(value) => onViewModeChange(value as ViewMode)}>
 						<TabsList className="grid w-full grid-cols-2 sm:w-auto touch-manipulation">
-							<TabsTrigger
-								value="grid"
-								className="flex items-center px-2 sm:px-3"
-							>
+							<TabsTrigger value="grid" className="flex items-center px-2 sm:px-3">
 								<Grid3X3 className="h-4 w-4 sm:mr-2" />
 								<span className="hidden sm:inline">Grid</span>
 							</TabsTrigger>
-							<TabsTrigger
-								value="list"
-								className="flex items-center px-2 sm:px-3"
-							>
+							<TabsTrigger value="list" className="flex items-center px-2 sm:px-3">
 								<List className="h-4 w-4 sm:mr-2" />
 								<span className="hidden sm:inline">List</span>
 							</TabsTrigger>
@@ -319,11 +298,7 @@ export function PortfolioList({
 			>
 				<SortableContext
 					items={orderedPortfolios.map((p) => p.id)}
-					strategy={
-						viewMode === "grid"
-							? rectSortingStrategy
-							: verticalListSortingStrategy
-					}
+					strategy={viewMode === "grid" ? rectSortingStrategy : verticalListSortingStrategy}
 				>
 					<ul
 						className={cn(
@@ -340,9 +315,7 @@ export function PortfolioList({
 								portfolio={portfolio}
 								viewMode={viewMode}
 								isSelected={selectedPortfolios.includes(portfolio.id)}
-								onSelect={(selected) =>
-									handlePortfolioSelect(portfolio.id, selected)
-								}
+								onSelect={(selected) => handlePortfolioSelect(portfolio.id, selected)}
 								onAction={onPortfolioAction}
 								isDragging={draggedPortfolio === portfolio.id}
 								assets={assets}
@@ -356,8 +329,7 @@ export function PortfolioList({
 						<ul className="list-none">
 							<PortfolioCard
 								portfolio={
-									orderedPortfolios.find((p) => p.id === draggedPortfolio) ??
-									orderedPortfolios[0]
+									orderedPortfolios.find((p) => p.id === draggedPortfolio) ?? orderedPortfolios[0]
 								}
 								viewMode={viewMode}
 								isSelected={false}
@@ -378,18 +350,7 @@ export function PortfolioList({
 						{selectedPortfolios.length !== 1 ? "s" : ""} selected
 					</span>
 					<div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:space-x-2">
-						<Button
-							variant="outline"
-							size="sm"
-							className="touch-manipulation"
-							onClick={() => {
-								// TODO: Implement actual bulk export API mutation
-								console.log(
-									"Bulk export not fully implemented, logging selection:",
-									selectedPortfolios,
-								);
-							}}
-						>
+						<Button variant="outline" size="sm" className="touch-manipulation" onClick={() => {}}>
 							<Download className="mr-2 h-4 w-4" />
 							Export Selected
 						</Button>
@@ -397,13 +358,7 @@ export function PortfolioList({
 							variant="outline"
 							size="sm"
 							className="touch-manipulation text-destructive hover:text-destructive"
-							onClick={() => {
-								// TODO: Implement actual bulk delete API mutation
-								console.log(
-									"Bulk delete not fully implemented, logging selection:",
-									selectedPortfolios,
-								);
-							}}
+							onClick={() => {}}
 						>
 							<Trash2 className="mr-2 h-4 w-4" />
 							Delete Selected

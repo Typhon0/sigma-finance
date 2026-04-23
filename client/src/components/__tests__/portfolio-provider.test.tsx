@@ -1,5 +1,4 @@
 import { render, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { PortfolioProvider, usePortfolio } from "../PortfolioProvider";
 
@@ -28,7 +27,7 @@ vi.mock("@/hooks/use-asset-mutations", () => ({
 }));
 
 vi.mock("@/hooks/use-portfolio-analytics", () => ({
-	usePortfolioAnalytics: (userId: string) => ({
+	usePortfolioAnalytics: (_userId: string) => ({
 		data: {
 			portfolios: [
 				{
@@ -81,11 +80,7 @@ vi.mock("@apollo/client", () => ({
 }));
 
 // Test component that uses the portfolio context
-const TestConsumer = ({
-	selector,
-}: {
-	selector?: (assets: unknown[]) => unknown;
-}) => {
+const TestConsumer = ({ selector }: { selector?: (assets: unknown[]) => unknown }) => {
 	const { assets, allAssets } = usePortfolio();
 
 	if (selector) {

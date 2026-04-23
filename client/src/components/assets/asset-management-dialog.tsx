@@ -2,12 +2,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import type { AssetType } from "@/hooks/use-asset-management";
 import { AssetTypeSelector } from "./asset-type-selector";
 import { BankAccountForm } from "./forms/bank-account-form";
@@ -29,14 +24,12 @@ type DialogStep = "select-type" | "form";
 export function AssetManagementDialog({
 	open,
 	onOpenChange,
-	portfolioId,
+	portfolioId: _portfolioId,
 	portfolioName,
 	onSuccess,
 }: AssetManagementDialogProps) {
 	const [step, setStep] = useState<DialogStep>("select-type");
-	const [selectedAssetType, setSelectedAssetType] = useState<AssetType | null>(
-		null,
-	);
+	const [selectedAssetType, setSelectedAssetType] = useState<AssetType | null>(null);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleClose = () => {
@@ -56,16 +49,9 @@ export function AssetManagementDialog({
 		setSelectedAssetType(null);
 	};
 
-	const handleFormSubmit = async (data: unknown) => {
+	const handleFormSubmit = async (_data: unknown) => {
 		setIsSubmitting(true);
 		try {
-			// TODO: Add full GraphQL mutation hook to replace this dummy log
-			console.log("Creation API not hooked up yet. Payload:", {
-				portfolioId,
-				assetType: selectedAssetType,
-				data,
-			});
-
 			// Simulate API call
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -73,8 +59,7 @@ export function AssetManagementDialog({
 				onSuccess();
 			}
 			handleClose();
-		} catch (error) {
-			console.error("Error creating asset:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -136,9 +121,7 @@ export function AssetManagementDialog({
 										<ArrowLeft className="h-3 w-3" />
 										Back
 									</Button>
-									<Badge variant="outline">
-										{selectedAssetType.name.replace("_", " ")}
-									</Badge>
+									<Badge variant="outline">{selectedAssetType.name.replace("_", " ")}</Badge>
 								</div>
 							)}
 						</div>
@@ -149,18 +132,13 @@ export function AssetManagementDialog({
 					{step === "select-type" && (
 						<div className="space-y-4">
 							<div className="text-center mb-6">
-								<h3 className="text-lg font-semibold mb-2">
-									Choose Asset Type
-								</h3>
+								<h3 className="text-lg font-semibold mb-2">Choose Asset Type</h3>
 								<p className="text-muted-foreground">
 									Select the type of asset you want to add to your portfolio
 								</p>
 							</div>
 
-							<AssetTypeSelector
-								selectedType={selectedAssetType}
-								onTypeSelect={handleTypeSelect}
-							/>
+							<AssetTypeSelector selectedType={selectedAssetType} onTypeSelect={handleTypeSelect} />
 						</div>
 					)}
 

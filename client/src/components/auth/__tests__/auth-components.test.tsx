@@ -45,15 +45,9 @@ describe("Authentication Components", () => {
 				</TestWrapper>,
 			);
 
-			expect(
-				screen.getByRole("textbox", { name: /email/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByPlaceholderText(/enter your password/i),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /sign in/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
+			expect(screen.getByPlaceholderText(/enter your password/i)).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
 		});
 
 		it("shows validation errors for invalid inputs", async () => {
@@ -94,10 +88,7 @@ describe("Authentication Components", () => {
 			fireEvent.click(submitButton);
 
 			await waitFor(() => {
-				expect(mockLogin).toHaveBeenCalledWith(
-					"test@example.com",
-					"password123",
-				);
+				expect(mockLogin).toHaveBeenCalledWith("test@example.com", "password123");
 			});
 		});
 	});
@@ -110,18 +101,10 @@ describe("Authentication Components", () => {
 				</TestWrapper>,
 			);
 
-			expect(
-				screen.getByRole("textbox", { name: /full name/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("textbox", { name: /email/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByPlaceholderText(/create a strong password/i),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /create account/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("textbox", { name: /full name/i })).toBeInTheDocument();
+			expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
+			expect(screen.getByPlaceholderText(/create a strong password/i)).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /create account/i })).toBeInTheDocument();
 		});
 
 		it("shows password requirements", () => {
@@ -131,9 +114,7 @@ describe("Authentication Components", () => {
 				</TestWrapper>,
 			);
 
-			expect(
-				screen.getByText(/password must be at least 8 characters/i),
-			).toBeInTheDocument();
+			expect(screen.getByText(/password must be at least 8 characters/i)).toBeInTheDocument();
 		});
 	});
 
@@ -145,12 +126,8 @@ describe("Authentication Components", () => {
 				</TestWrapper>,
 			);
 
-			expect(
-				screen.getByRole("textbox", { name: /email/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /send reset link/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("textbox", { name: /email/i })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /send reset link/i })).toBeInTheDocument();
 		});
 
 		it("calls resetPassword function when form is submitted", async () => {

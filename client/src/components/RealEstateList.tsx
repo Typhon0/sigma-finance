@@ -13,41 +13,23 @@ import {
 	MapPin,
 	Maximize,
 	Plus,
-	Search,
 	SortAsc,
+	TrendingDown,
+	TrendingUp,
 } from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import exampleImage from "@/assets/placeholder.svg";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { AddRealEstateForm } from "./AddRealEstateForm";
 import { RealEstateAnalytics } from "./RealEstateAnalytics";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface RealEstateListProps {
@@ -66,22 +48,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
 	const itemsPerPage = viewMode === "grid" ? 9 : 15;
 
-	const realEstateAssets = assets.filter(
-		(asset) => asset.type === "real_estate",
-	);
+	const realEstateAssets = assets.filter((asset) => asset.type === "real_estate");
 
 	// Debug log
 	React.useEffect(() => {
-		console.log("📊 RealEstateList Debug:");
-		console.log("Total assets:", assets.length);
-		console.log("Real estate assets:", realEstateAssets.length);
-		console.log("Real estate data:", realEstateAssets);
 		if (realEstateAssets.length === 0) {
-			console.warn(
-				'⚠️ No real estate assets found. Try logging out and back in, or use "Reset Demo Data" from user menu.',
-			);
 		}
-	}, [assets.length, realEstateAssets.length]);
+	}, [realEstateAssets.length, realEstateAssets]);
 
 	const filteredProperties = realEstateAssets
 		.filter((property) => {
@@ -89,8 +62,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 				property.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				property.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				property.city?.toLowerCase().includes(searchTerm.toLowerCase());
-			const matchesType =
-				filterType === "all" || property.propertyType === filterType;
+			const matchesType = filterType === "all" || property.propertyType === filterType;
 			return matchesSearch && matchesType;
 		})
 		.sort((a, b) => {
@@ -110,10 +82,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 		});
 
 	const getTotalValue = () => {
-		return realEstateAssets.reduce(
-			(sum, asset) => sum + (asset.currentValue || 0),
-			0,
-		);
+		return realEstateAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
 	};
 
 	const getTotalGain = () => {
@@ -145,9 +114,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 				bedrooms: undefined,
 				bathrooms: undefined,
 				currentValue:
-					parseFloat(formData.currentValuation) ||
-					parseFloat(formData.purchasePrice) ||
-					undefined,
+					parseFloat(formData.currentValuation) || parseFloat(formData.purchasePrice) || undefined,
 				purchasePrice: parseFloat(formData.purchasePrice) || undefined,
 				purchaseDate: formData.purchaseDate || undefined,
 			});
@@ -161,13 +128,11 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 				throw new Error("createRealEstateAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding property:", error);
 			toast.error("Failed to add property. Please try again.");
 			throw error;
 		}
 	};
-	const totalGainPercent =
-		totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
+	const totalGainPercent = totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
 
 	// Pagination
 	const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
@@ -178,7 +143,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 	// Reset to page 1 when filters change
 	React.useEffect(() => {
 		setCurrentPage(1);
-	}, [searchTerm, filterType, sortBy, viewMode]);
+	}, []);
 
 	return (
 		<div className="space-y-6">
@@ -186,9 +151,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl">Real Estate Portfolio</h1>
-					<p className="text-muted-foreground">
-						Manage your property investments
-					</p>
+					<p className="text-muted-foreground">Manage your property investments</p>
 				</div>
 				<Button onClick={() => setIsAddFormOpen(true)}>
 					<Plus className="h-4 w-4 mr-2" />
@@ -224,16 +187,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 											No Properties Found
 										</h4>
 										<p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-											It looks like your demo data hasn't loaded. This can
-											happen if you were using the app before the Real Estate
-											feature was added.
+											It looks like your demo data hasn't loaded. This can happen if you were using
+											the app before the Real Estate feature was added.
 										</p>
 										<p className="text-sm text-blue-700 dark:text-blue-300">
-											<strong>Quick fix:</strong> Click on your profile picture
-											in the top-right corner and select{" "}
-											<strong>"Reset Demo Data"</strong> or simply{" "}
-											<strong>log out and log back in</strong> to reload the
-											demo properties.
+											<strong>Quick fix:</strong> Click on your profile picture in the top-right
+											corner and select <strong>"Reset Demo Data"</strong> or simply{" "}
+											<strong>log out and log back in</strong> to reload the demo properties.
 										</p>
 									</div>
 								</div>
@@ -248,17 +208,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 								<div className="flex items-center justify-between">
 									<div>
 										<CardTitle>Performance Overview</CardTitle>
-										<CardDescription>
-											Quick snapshot of your real estate portfolio
-										</CardDescription>
+										<CardDescription>Quick snapshot of your real estate portfolio</CardDescription>
 									</div>
 									<Button
 										variant="ghost"
 										size="sm"
 										onClick={() => {
-											const tabsElement = document.querySelector(
-												'[value="analytics"]',
-											);
+											const tabsElement = document.querySelector('[value="analytics"]');
 											if (tabsElement instanceof HTMLElement) {
 												tabsElement.click();
 											}
@@ -275,18 +231,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<div className="p-4 rounded-lg border bg-card">
 										<div className="flex items-center gap-2 mb-2">
 											<Home className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">
-												Total Value
-											</p>
+											<p className="text-xs text-muted-foreground">Total Value</p>
 										</div>
-										<div className="font-mono text-xl">
-											€{(totalValue / 1000).toFixed(0)}k
-										</div>
+										<div className="font-mono text-xl">€{(totalValue / 1000).toFixed(0)}k</div>
 										<p
 											className={`text-xs mt-1 ${totalGain >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
-											{totalGain >= 0 ? "+" : ""}€
-											{(Math.abs(totalGain) / 1000).toFixed(0)}k (
+											{totalGain >= 0 ? "+" : ""}€{(Math.abs(totalGain) / 1000).toFixed(0)}k (
 											{totalGain >= 0 ? "+" : ""}
 											{totalGainPercent.toFixed(1)}%)
 										</p>
@@ -295,25 +246,18 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<div className="p-4 rounded-lg border bg-card">
 										<div className="flex items-center gap-2 mb-2">
 											<Building2 className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">
-												Properties
-											</p>
+											<p className="text-xs text-muted-foreground">Properties</p>
 										</div>
-										<div className="font-mono text-xl">
-											{realEstateAssets.length}
-										</div>
+										<div className="font-mono text-xl">{realEstateAssets.length}</div>
 										<p className="text-xs text-muted-foreground mt-1">
-											{new Set(realEstateAssets.map((p) => p.city)).size}{" "}
-											locations
+											{new Set(realEstateAssets.map((p) => p.city)).size} locations
 										</p>
 									</div>
 
 									<div className="p-4 rounded-lg border bg-card">
 										<div className="flex items-center gap-2 mb-2">
 											<Maximize className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">
-												Total Surface
-											</p>
+											<p className="text-xs text-muted-foreground">Total Surface</p>
 										</div>
 										<div className="font-mono text-xl">
 											{realEstateAssets
@@ -324,10 +268,8 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 										<p className="text-xs text-muted-foreground mt-1">
 											Avg:{" "}
 											{Math.round(
-												realEstateAssets.reduce(
-													(sum, p) => sum + (p.surface || 0),
-													0,
-												) / realEstateAssets.length,
+												realEstateAssets.reduce((sum, p) => sum + (p.surface || 0), 0) /
+													realEstateAssets.length,
 											)}{" "}
 											m²
 										</p>
@@ -336,9 +278,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<div className="p-4 rounded-lg border bg-card">
 										<div className="flex items-center gap-2 mb-2">
 											<Euro className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">
-												Avg. Price/m²
-											</p>
+											<p className="text-xs text-muted-foreground">Avg. Price/m²</p>
 										</div>
 										<div className="font-mono text-xl">
 											€{(() => {
@@ -347,15 +287,11 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													0,
 												);
 												return totalSurface > 0
-													? Math.round(
-															totalValue / totalSurface,
-														).toLocaleString()
+													? Math.round(totalValue / totalSurface).toLocaleString()
 													: "0";
 											})()}
 										</div>
-										<p className="text-xs text-muted-foreground mt-1">
-											per square meter
-										</p>
+										<p className="text-xs text-muted-foreground mt-1">per square meter</p>
 									</div>
 								</div>
 
@@ -365,26 +301,20 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<div className="p-4 rounded-lg border bg-card">
 										<div className="flex items-center gap-2 mb-4">
 											<MapPin className="h-4 w-4" />
-											<h4 className="text-sm font-medium">
-												Geographic Distribution
-											</h4>
+											<h4 className="text-sm font-medium">Geographic Distribution</h4>
 										</div>
 										<ReactECharts
 											option={{
 												tooltip: {
 													trigger: "axis",
-													backgroundColor:
-														document.documentElement.classList.contains("dark")
-															? "#161b22"
-															: "#ffffff",
-													borderColor:
-														document.documentElement.classList.contains("dark")
-															? "#30363d"
-															: "#e9e9e7",
+													backgroundColor: document.documentElement.classList.contains("dark")
+														? "#161b22"
+														: "#ffffff",
+													borderColor: document.documentElement.classList.contains("dark")
+														? "#30363d"
+														: "#e9e9e7",
 													textStyle: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#e6edf3"
 															: "#37352f",
 													},
@@ -402,21 +332,16 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													axisLine: { show: false },
 													axisTick: { show: false },
 													axisLabel: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#7d8590"
 															: "#888888",
 														formatter: "€{value}k",
 													},
 													splitLine: {
 														lineStyle: {
-															color:
-																document.documentElement.classList.contains(
-																	"dark",
-																)
-																	? "#30363d"
-																	: "#e9e9e7",
+															color: document.documentElement.classList.contains("dark")
+																? "#30363d"
+																: "#e9e9e7",
 															type: "dashed",
 														},
 													},
@@ -427,8 +352,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														const cities: { [key: string]: number } = {};
 														realEstateAssets.forEach((p) => {
 															const city = p.city || "Unknown";
-															cities[city] =
-																(cities[city] || 0) + (p.currentValue || 0);
+															cities[city] = (cities[city] || 0) + (p.currentValue || 0);
 														});
 														return Object.entries(cities)
 															.sort((a, b) => b[1] - a[1])
@@ -437,9 +361,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													axisLine: { show: false },
 													axisTick: { show: false },
 													axisLabel: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#e6edf3"
 															: "#37352f",
 														fontSize: 11,
@@ -452,8 +374,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 															const cities: { [key: string]: number } = {};
 															realEstateAssets.forEach((p) => {
 																const city = p.city || "Unknown";
-																cities[city] =
-																	(cities[city] || 0) + (p.currentValue || 0);
+																cities[city] = (cities[city] || 0) + (p.currentValue || 0);
 															});
 															const colors = [
 																"#3b82f6",
@@ -478,12 +399,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 															show: true,
 															position: "right",
 															formatter: "€{c}k",
-															color:
-																document.documentElement.classList.contains(
-																	"dark",
-																)
-																	? "#e6edf3"
-																	: "#37352f",
+															color: document.documentElement.classList.contains("dark")
+																? "#e6edf3"
+																: "#37352f",
 															fontSize: 10,
 														},
 													},
@@ -504,18 +422,14 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 											option={{
 												tooltip: {
 													trigger: "item",
-													backgroundColor:
-														document.documentElement.classList.contains("dark")
-															? "#161b22"
-															: "#ffffff",
-													borderColor:
-														document.documentElement.classList.contains("dark")
-															? "#30363d"
-															: "#e9e9e7",
+													backgroundColor: document.documentElement.classList.contains("dark")
+														? "#161b22"
+														: "#ffffff",
+													borderColor: document.documentElement.classList.contains("dark")
+														? "#30363d"
+														: "#e9e9e7",
 													textStyle: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#e6edf3"
 															: "#37352f",
 													},
@@ -532,9 +446,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													orient: "horizontal",
 													bottom: 0,
 													textStyle: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#e6edf3"
 															: "#37352f",
 														fontSize: 10,
@@ -559,8 +471,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 															const types: { [key: string]: number } = {};
 															realEstateAssets.forEach((p) => {
 																const type = p.propertyType || "Unknown";
-																types[type] =
-																	(types[type] || 0) + (p.currentValue || 0);
+																types[type] = (types[type] || 0) + (p.currentValue || 0);
 															});
 															const colors = [
 																"#3b82f6",
@@ -569,15 +480,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 																"#f59e0b",
 																"#10b981",
 															];
-															return Object.entries(types).map(
-																([name, value], index) => ({
-																	name,
-																	value: Math.round(value / 1000),
-																	itemStyle: {
-																		color: colors[index % colors.length],
-																	},
-																}),
-															);
+															return Object.entries(types).map(([name, value], index) => ({
+																name,
+																value: Math.round(value / 1000),
+																itemStyle: {
+																	color: colors[index % colors.length],
+																},
+															}));
 														})(),
 													},
 												],
@@ -593,9 +502,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<div className="flex items-center justify-between mb-4">
 										<div className="flex items-center gap-2">
 											<Euro className="h-4 w-4" />
-											<h4 className="text-sm font-medium">
-												Price per m² Analysis
-											</h4>
+											<h4 className="text-sm font-medium">Price per m² Analysis</h4>
 										</div>
 										<span className="text-xs text-muted-foreground">
 											Top {Math.min(6, realEstateAssets.length)} properties
@@ -605,18 +512,14 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 										option={{
 											tooltip: {
 												trigger: "axis",
-												backgroundColor:
-													document.documentElement.classList.contains("dark")
-														? "#161b22"
-														: "#ffffff",
-												borderColor:
-													document.documentElement.classList.contains("dark")
-														? "#30363d"
-														: "#e9e9e7",
+												backgroundColor: document.documentElement.classList.contains("dark")
+													? "#161b22"
+													: "#ffffff",
+												borderColor: document.documentElement.classList.contains("dark")
+													? "#30363d"
+													: "#e9e9e7",
 												textStyle: {
-													color: document.documentElement.classList.contains(
-														"dark",
-													)
+													color: document.documentElement.classList.contains("dark")
 														? "#e6edf3"
 														: "#37352f",
 												},
@@ -634,18 +537,14 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 												axisLine: { show: false },
 												axisTick: { show: false },
 												axisLabel: {
-													color: document.documentElement.classList.contains(
-														"dark",
-													)
+													color: document.documentElement.classList.contains("dark")
 														? "#7d8590"
 														: "#888888",
 													formatter: "€{value}",
 												},
 												splitLine: {
 													lineStyle: {
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#30363d"
 															: "#e9e9e7",
 														type: "dashed",
@@ -659,23 +558,18 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														.filter((p) => (p.surface || 0) > 0)
 														.map((p) => ({
 															name: p.name,
-															pricePerSqm:
-																(p.currentValue || 0) / (p.surface || 1),
+															pricePerSqm: (p.currentValue || 0) / (p.surface || 1),
 														}))
 														.sort((a, b) => b.pricePerSqm - a.pricePerSqm)
 														.slice(0, 6);
 													return propsWithPrice.map((p) =>
-														p.name.length > 18
-															? `${p.name.substring(0, 18)}...`
-															: p.name,
+														p.name.length > 18 ? `${p.name.substring(0, 18)}...` : p.name,
 													);
 												})(),
 												axisLine: { show: false },
 												axisTick: { show: false },
 												axisLabel: {
-													color: document.documentElement.classList.contains(
-														"dark",
-													)
+													color: document.documentElement.classList.contains("dark")
 														? "#e6edf3"
 														: "#37352f",
 													fontSize: 10,
@@ -688,14 +582,11 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														const propsWithPrice = realEstateAssets
 															.filter((p) => (p.surface || 0) > 0)
 															.map((p) => ({
-																pricePerSqm:
-																	(p.currentValue || 0) / (p.surface || 1),
+																pricePerSqm: (p.currentValue || 0) / (p.surface || 1),
 															}))
 															.sort((a, b) => b.pricePerSqm - a.pricePerSqm)
 															.slice(0, 6);
-														const maxPrice = Math.max(
-															...propsWithPrice.map((p) => p.pricePerSqm),
-														);
+														const maxPrice = Math.max(...propsWithPrice.map((p) => p.pricePerSqm));
 														return propsWithPrice.map((p) => ({
 															value: Math.round(p.pricePerSqm),
 															itemStyle: {
@@ -709,10 +600,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 																		{ offset: 0, color: "#3b82f6" },
 																		{
 																			offset: 1,
-																			color:
-																				p.pricePerSqm === maxPrice
-																					? "#8b5cf6"
-																					: "#3b82f6",
+																			color: p.pricePerSqm === maxPrice ? "#8b5cf6" : "#3b82f6",
 																		},
 																	],
 																},
@@ -725,9 +613,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														show: true,
 														position: "right",
 														formatter: "€{c}/m²",
-														color: document.documentElement.classList.contains(
-															"dark",
-														)
+														color: document.documentElement.classList.contains("dark")
 															? "#e6edf3"
 															: "#37352f",
 														fontSize: 10,
@@ -748,15 +634,13 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 						<CardContent className="pt-6">
 							<div className="flex flex-col gap-4">
 								<div className="flex flex-col md:flex-row gap-4">
-									<div className="flex-1 relative">
-										<Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-										<Input
-											placeholder="Search by name, address, or city..."
-											value={searchTerm}
-											onChange={(e) => setSearchTerm(e.target.value)}
-											className="pl-10"
-										/>
-									</div>
+									<SearchInput
+										placeholder="Search by name, address, or city..."
+										value={searchTerm}
+										onChange={(e) => setSearchTerm(e.target.value)}
+										onClear={() => setSearchTerm("")}
+										containerClassName="flex-1"
+									/>
 
 									<Select value={filterType} onValueChange={setFilterType}>
 										<SelectTrigger className="w-full md:w-[180px]">
@@ -820,9 +704,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 						<Card>
 							<CardContent className="flex flex-col items-center justify-center py-12">
 								<Home className="h-12 w-12 text-muted-foreground mb-4" />
-								<h3 className="text-lg font-medium mb-2">
-									No properties found
-								</h3>
+								<h3 className="text-lg font-medium mb-2">No properties found</h3>
 								<p className="text-sm text-muted-foreground mb-4">
 									{searchTerm
 										? "Try adjusting your search or filters"
@@ -840,11 +722,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 								const currentValue = property.currentValue || 0;
 								const purchasePrice = property.purchasePrice || 0;
 								const gain = currentValue - purchasePrice;
-								const gainPercent =
-									purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
+								const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
 								const surfaceArea = property.surfaceArea || 0;
-								const pricePerM2 =
-									surfaceArea > 0 ? Math.round(currentValue / surfaceArea) : 0;
+								const pricePerM2 = surfaceArea > 0 ? Math.round(currentValue / surfaceArea) : 0;
 
 								return (
 									<Card
@@ -875,9 +755,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 												<div className="space-y-3">
 													{/* Name and Location */}
 													<div>
-														<h3 className="font-medium mb-1">
-															{property.name}
-														</h3>
+														<h3 className="font-medium mb-1">{property.name}</h3>
 														<div className="flex items-center text-xs text-muted-foreground">
 															<MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
 															<span className="truncate">
@@ -888,15 +766,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 
 													{/* Price and Gain */}
 													<div>
-														<div className="font-mono">
-															€{currentValue.toLocaleString()}
-														</div>
+														<div className="font-mono">€{currentValue.toLocaleString()}</div>
 														<div className="flex items-center space-x-1 mt-0.5">
-															{gain >= 0 ? (
-																<TrendArrowUp />
-															) : (
-																<TrendArrowDown />
-															)}
+															{gain >= 0 ? <TrendArrowUp /> : <TrendArrowDown />}
 															<span
 																className={`text-xs ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
 															>
@@ -914,9 +786,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														</div>
 														<div>
 															<p className="text-muted-foreground">€/m²</p>
-															<p className="font-medium">
-																€{pricePerM2.toLocaleString()}
-															</p>
+															<p className="font-medium">€{pricePerM2.toLocaleString()}</p>
 														</div>
 													</div>
 												</div>
@@ -947,13 +817,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 										const currentValue = property.currentValue || 0;
 										const purchasePrice = property.purchasePrice || 0;
 										const gain = currentValue - purchasePrice;
-										const gainPercent =
-											purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
+										const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
 										const surfaceArea = property.surfaceArea || 0;
-										const pricePerM2 =
-											surfaceArea > 0
-												? Math.round(currentValue / surfaceArea)
-												: 0;
+										const pricePerM2 = surfaceArea > 0 ? Math.round(currentValue / surfaceArea) : 0;
 
 										return (
 											<TableRow
@@ -985,13 +851,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													</Badge>
 												</TableCell>
 												<TableCell className="text-right">
-													<div className="font-mono">
-														€{currentValue.toLocaleString()}
-													</div>
+													<div className="font-mono">€{currentValue.toLocaleString()}</div>
 													{pricePerM2 > 0 && (
-														<div className="text-xs text-muted-foreground">
-															€{pricePerM2}/m²
-														</div>
+														<div className="text-xs text-muted-foreground">€{pricePerM2}/m²</div>
 													)}
 												</TableCell>
 												<TableCell className="text-right">
@@ -1009,8 +871,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 														<span
 															className={`font-mono ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
 														>
-															{gain >= 0 ? "+" : ""}€
-															{Math.abs(gain).toLocaleString()}
+															{gain >= 0 ? "+" : ""}€{Math.abs(gain).toLocaleString()}
 														</span>
 													</div>
 													<div
@@ -1029,11 +890,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													)}
 												</TableCell>
 												<TableCell>
-													<Button
-														variant="ghost"
-														size="icon"
-														className="h-8 w-8"
-													>
+													<Button variant="ghost" size="icon" className="h-8 w-8">
 														<ArrowRight className="h-4 w-4" />
 													</Button>
 												</TableCell>
@@ -1053,9 +910,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() =>
-											setCurrentPage((prev) => Math.max(1, prev - 1))
-										}
+										onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
 										disabled={currentPage === 1}
 									>
 										<ChevronLeft className="h-4 w-4 mr-1" />
@@ -1066,21 +921,17 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 										{/* Show page numbers with smart truncation */}
 										{totalPages <= 7 ? (
 											// Show all pages if 7 or less
-											Array.from({ length: totalPages }, (_, i) => i + 1).map(
-												(page) => (
-													<Button
-														key={page}
-														variant={
-															currentPage === page ? "default" : "outline"
-														}
-														size="sm"
-														onClick={() => setCurrentPage(page)}
-														className="w-8 h-8 p-0"
-													>
-														{page}
-													</Button>
-												),
-											)
+											Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+												<Button
+													key={page}
+													variant={currentPage === page ? "default" : "outline"}
+													size="sm"
+													onClick={() => setCurrentPage(page)}
+													className="w-8 h-8 p-0"
+												>
+													{page}
+												</Button>
+											))
 										) : (
 											// Smart pagination for many pages
 											<>
@@ -1095,11 +946,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 												</Button>
 
 												{/* Left ellipsis */}
-												{currentPage > 3 && (
-													<span className="px-2 text-muted-foreground">
-														...
-													</span>
-												)}
+												{currentPage > 3 && <span className="px-2 text-muted-foreground">...</span>}
 
 												{/* Pages around current */}
 												{Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -1110,9 +957,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 													.map((page) => (
 														<Button
 															key={page}
-															variant={
-																currentPage === page ? "default" : "outline"
-															}
+															variant={currentPage === page ? "default" : "outline"}
 															size="sm"
 															onClick={() => setCurrentPage(page)}
 															className="w-8 h-8 p-0"
@@ -1123,16 +968,12 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 
 												{/* Right ellipsis */}
 												{currentPage < totalPages - 2 && (
-													<span className="px-2 text-muted-foreground">
-														...
-													</span>
+													<span className="px-2 text-muted-foreground">...</span>
 												)}
 
 												{/* Last page */}
 												<Button
-													variant={
-														currentPage === totalPages ? "default" : "outline"
-													}
+													variant={currentPage === totalPages ? "default" : "outline"}
 													size="sm"
 													onClick={() => setCurrentPage(totalPages)}
 													className="w-8 h-8 p-0"
@@ -1146,9 +987,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<Button
 										variant="outline"
 										size="sm"
-										onClick={() =>
-											setCurrentPage((prev) => Math.min(totalPages, prev + 1))
-										}
+										onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
 										disabled={currentPage === totalPages}
 									>
 										Next

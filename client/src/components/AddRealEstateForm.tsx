@@ -28,22 +28,11 @@ import {
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Switch } from "./ui/switch";
 import { Textarea } from "./ui/textarea";
 
@@ -152,11 +141,7 @@ interface FormData {
 	companyOwners: CompanyOwner[];
 }
 
-export function AddRealEstateForm({
-	open,
-	onClose,
-	onSubmit,
-}: AddRealEstateFormProps) {
+export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateFormProps) {
 	const [currentStep, setCurrentStep] = useState<FormStep>("description");
 	const [formData, setFormData] = useState<FormData>({
 		name: "",
@@ -259,7 +244,7 @@ export function AddRealEstateForm({
 
 	const handleInputChange = (
 		field: keyof FormData,
-		value: string | Date | undefined | boolean,
+		value: string | Date | undefined | boolean | CoOwner[] | CompanyOwner[],
 	) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
@@ -300,15 +285,12 @@ export function AddRealEstateForm({
 
 						<div className="space-y-2">
 							<Label htmlFor="description" className="text-sm">
-								Description{" "}
-								<span className="text-muted-foreground">Optional</span>
+								Description <span className="text-muted-foreground">Optional</span>
 							</Label>
 							<Textarea
 								id="description"
 								value={formData.description}
-								onChange={(e) =>
-									handleInputChange("description", e.target.value)
-								}
+								onChange={(e) => handleInputChange("description", e.target.value)}
 								placeholder="test"
 								className="bg-background border-border min-h-[100px]"
 							/>
@@ -323,10 +305,7 @@ export function AddRealEstateForm({
 									value={formData.type}
 									onValueChange={(value) => handleInputChange("type", value)}
 								>
-									<SelectTrigger
-										id="type"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="type" className="bg-background border-border">
 										<SelectValue placeholder="Parking" />
 									</SelectTrigger>
 									<SelectContent>
@@ -347,14 +326,9 @@ export function AddRealEstateForm({
 								</Label>
 								<Select
 									value={formData.category}
-									onValueChange={(value) =>
-										handleInputChange("category", value)
-									}
+									onValueChange={(value) => handleInputChange("category", value)}
 								>
-									<SelectTrigger
-										id="category"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="category" className="bg-background border-border">
 										<SelectValue placeholder="Other" />
 									</SelectTrigger>
 									<SelectContent>
@@ -376,10 +350,7 @@ export function AddRealEstateForm({
 
 							<div className="space-y-2">
 								<Label htmlFor="address" className="text-sm">
-									Street Address{" "}
-									<span className="text-muted-foreground text-xs">
-										Optional
-									</span>
+									Street Address <span className="text-muted-foreground text-xs">Optional</span>
 								</Label>
 								<Input
 									id="address"
@@ -406,10 +377,7 @@ export function AddRealEstateForm({
 
 								<div className="space-y-2">
 									<Label htmlFor="state" className="text-sm">
-										State / Region{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										State / Region <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<Input
 										id="state"
@@ -424,17 +392,12 @@ export function AddRealEstateForm({
 							<div className="grid grid-cols-2 gap-3">
 								<div className="space-y-2">
 									<Label htmlFor="postalCode" className="text-sm">
-										Postal Code{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										Postal Code <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<Input
 										id="postalCode"
 										value={formData.postalCode}
-										onChange={(e) =>
-											handleInputChange("postalCode", e.target.value)
-										}
+										onChange={(e) => handleInputChange("postalCode", e.target.value)}
 										placeholder="75001"
 										className="bg-background border-border"
 									/>
@@ -446,14 +409,9 @@ export function AddRealEstateForm({
 									</Label>
 									<Select
 										value={formData.country}
-										onValueChange={(value) =>
-											handleInputChange("country", value)
-										}
+										onValueChange={(value) => handleInputChange("country", value)}
 									>
-										<SelectTrigger
-											id="country"
-											className="bg-background border-border"
-										>
+										<SelectTrigger id="country" className="bg-background border-border">
 											<SelectValue placeholder="Select country" />
 										</SelectTrigger>
 										<SelectContent>
@@ -484,9 +442,7 @@ export function AddRealEstateForm({
 				// Show land surface ONLY for houses (as per Finary screenshots)
 				const showLandSurface = formData.type === "house";
 				// Show PriceHubble box ONLY for apartment, house, building
-				const showPriceHubble = ["apartment", "house", "building"].includes(
-					formData.type,
-				);
+				const showPriceHubble = ["apartment", "house", "building"].includes(formData.type);
 				// Show furnishing costs for all EXCEPT parking
 				const showFurnishingCosts = !isParking;
 
@@ -496,16 +452,11 @@ export function AddRealEstateForm({
 						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 							<div className="flex items-center gap-2 mb-2">
 								<Building2 className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Property Value
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Property Value</h4>
 							</div>
 
 							<div className="space-y-2">
-								<Label
-									htmlFor="purchasePrice"
-									className="text-sm flex items-center gap-2"
-								>
+								<Label htmlFor="purchasePrice" className="text-sm flex items-center gap-2">
 									<span>Purchase price (without fees)</span>
 								</Label>
 								<div className="relative">
@@ -513,9 +464,7 @@ export function AddRealEstateForm({
 										id="purchasePrice"
 										type="number"
 										value={formData.purchasePrice}
-										onChange={(e) =>
-											handleInputChange("purchasePrice", e.target.value)
-										}
+										onChange={(e) => handleInputChange("purchasePrice", e.target.value)}
 										className="bg-background border-border pr-12"
 										placeholder="0"
 									/>
@@ -529,8 +478,8 @@ export function AddRealEstateForm({
 							{showPriceHubble && (
 								<div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-2">
 									<p className="text-xs text-muted-foreground">
-										The current value of your real estate will be automatically
-										calculated & updated.
+										The current value of your real estate will be automatically calculated &
+										updated.
 									</p>
 									<div className="flex items-center gap-2 text-xs">
 										<svg
@@ -565,13 +514,13 @@ export function AddRealEstateForm({
 											/>
 										</svg>
 										<span className="font-medium">PriceHubble</span>
-										<button
-											type="button"
-											className="text-primary hover:underline flex items-center gap-1"
+										<Button
+											variant="link"
+											className="text-primary hover:underline flex items-center gap-1 h-auto p-0"
 										>
 											How does it work?
 											<Info className="h-3 w-3" />
-										</button>
+										</Button>
 									</div>
 								</div>
 							)}
@@ -579,15 +528,10 @@ export function AddRealEstateForm({
 							{/* Current valuation - Show for all except land */}
 							{showCurrentValuation && (
 								<div className="space-y-2">
-									<Label
-										htmlFor="currentValuation"
-										className="text-sm flex items-center gap-2"
-									>
+									<Label htmlFor="currentValuation" className="text-sm flex items-center gap-2">
 										<span>
 											Current valuation{" "}
-											<span className="text-muted-foreground text-xs">
-												Optional
-											</span>
+											<span className="text-muted-foreground text-xs">Optional</span>
 										</span>
 									</Label>
 									<div className="relative">
@@ -595,9 +539,7 @@ export function AddRealEstateForm({
 											id="currentValuation"
 											type="number"
 											value={formData.currentValuation}
-											onChange={(e) =>
-												handleInputChange("currentValuation", e.target.value)
-											}
+											onChange={(e) => handleInputChange("currentValuation", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="0"
 										/>
@@ -613,9 +555,7 @@ export function AddRealEstateForm({
 						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 							<div className="flex items-center gap-2 mb-2">
 								<Layers className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Property Details
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Property Details</h4>
 							</div>
 
 							{showLandSurface ? (
@@ -630,9 +570,7 @@ export function AddRealEstateForm({
 												id="surface"
 												type="number"
 												value={formData.surface}
-												onChange={(e) =>
-													handleInputChange("surface", e.target.value)
-												}
+												onChange={(e) => handleInputChange("surface", e.target.value)}
 												className="bg-background border-border pr-10"
 												placeholder="0"
 											/>
@@ -643,10 +581,7 @@ export function AddRealEstateForm({
 									</div>
 
 									<div className="space-y-2">
-										<Label
-											htmlFor="landSurface"
-											className="text-sm flex items-center gap-1"
-										>
+										<Label htmlFor="landSurface" className="text-sm flex items-center gap-1">
 											Land surface
 											<Info className="h-3 w-3 text-muted-foreground" />
 										</Label>
@@ -655,9 +590,7 @@ export function AddRealEstateForm({
 												id="landSurface"
 												type="number"
 												value={formData.landSurface}
-												onChange={(e) =>
-													handleInputChange("landSurface", e.target.value)
-												}
+												onChange={(e) => handleInputChange("landSurface", e.target.value)}
 												className="bg-background border-border pr-10"
 												placeholder="0"
 											/>
@@ -679,9 +612,7 @@ export function AddRealEstateForm({
 												id="surface"
 												type="number"
 												value={formData.surface}
-												onChange={(e) =>
-													handleInputChange("surface", e.target.value)
-												}
+												onChange={(e) => handleInputChange("surface", e.target.value)}
 												className="bg-background border-border pr-10"
 												placeholder="0"
 											/>
@@ -698,9 +629,7 @@ export function AddRealEstateForm({
 											</Label>
 											<Select
 												value={formData.constructionPeriod}
-												onValueChange={(value) =>
-													handleInputChange("constructionPeriod", value)
-												}
+												onValueChange={(value) => handleInputChange("constructionPeriod", value)}
 											>
 												<SelectTrigger
 													id="constructionPeriod"
@@ -709,9 +638,7 @@ export function AddRealEstateForm({
 													<SelectValue placeholder="Select period" />
 												</SelectTrigger>
 												<SelectContent>
-													<SelectItem value="before-1900">
-														Before 1900
-													</SelectItem>
+													<SelectItem value="before-1900">Before 1900</SelectItem>
 													<SelectItem value="1900-1945">1900-1945</SelectItem>
 													<SelectItem value="1946-1970">1946-1970</SelectItem>
 													<SelectItem value="1971-1990">1971-1990</SelectItem>
@@ -735,9 +662,7 @@ export function AddRealEstateForm({
 										</Label>
 										<Select
 											value={formData.constructionPeriod}
-											onValueChange={(value) =>
-												handleInputChange("constructionPeriod", value)
-											}
+											onValueChange={(value) => handleInputChange("constructionPeriod", value)}
 										>
 											<SelectTrigger
 												id="constructionPeriod"
@@ -760,21 +685,13 @@ export function AddRealEstateForm({
 
 									<div className="space-y-2">
 										<Label htmlFor="energyLabel" className="text-sm">
-											Energy label{" "}
-											<span className="text-muted-foreground text-xs">
-												Optional
-											</span>
+											Energy label <span className="text-muted-foreground text-xs">Optional</span>
 										</Label>
 										<Select
 											value={formData.energyLabel}
-											onValueChange={(value) =>
-												handleInputChange("energyLabel", value)
-											}
+											onValueChange={(value) => handleInputChange("energyLabel", value)}
 										>
-											<SelectTrigger
-												id="energyLabel"
-												className="bg-background border-border"
-											>
+											<SelectTrigger id="energyLabel" className="bg-background border-border">
 												<SelectValue placeholder="Select label" />
 											</SelectTrigger>
 											<SelectContent>
@@ -795,21 +712,13 @@ export function AddRealEstateForm({
 							{!showLandSurface && (
 								<div className="space-y-2">
 									<Label htmlFor="energyLabel" className="text-sm">
-										Energy label{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										Energy label <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<Select
 										value={formData.energyLabel}
-										onValueChange={(value) =>
-											handleInputChange("energyLabel", value)
-										}
+										onValueChange={(value) => handleInputChange("energyLabel", value)}
 									>
-										<SelectTrigger
-											id="energyLabel"
-											className="bg-background border-border"
-										>
+										<SelectTrigger id="energyLabel" className="bg-background border-border">
 											<SelectValue placeholder="Select label" />
 										</SelectTrigger>
 										<SelectContent>
@@ -836,19 +745,14 @@ export function AddRealEstateForm({
 							<div className="grid grid-cols-2 gap-3">
 								<div className="space-y-2">
 									<Label htmlFor="agencyFees" className="text-sm">
-										Agency fees{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										Agency fees <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<div className="relative">
 										<Input
 											id="agencyFees"
 											type="number"
 											value={formData.agencyFees}
-											onChange={(e) =>
-												handleInputChange("agencyFees", e.target.value)
-											}
+											onChange={(e) => handleInputChange("agencyFees", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="0"
 										/>
@@ -860,19 +764,14 @@ export function AddRealEstateForm({
 
 								<div className="space-y-2">
 									<Label htmlFor="notaryFees" className="text-sm">
-										Notary fees{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										Notary fees <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<div className="relative">
 										<Input
 											id="notaryFees"
 											type="number"
 											value={formData.notaryFees}
-											onChange={(e) =>
-												handleInputChange("notaryFees", e.target.value)
-											}
+											onChange={(e) => handleInputChange("notaryFees", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="0"
 										/>
@@ -886,19 +785,14 @@ export function AddRealEstateForm({
 							<div className="grid grid-cols-2 gap-3">
 								<div className="space-y-2">
 									<Label htmlFor="renovationFees" className="text-sm">
-										Renovation fees{" "}
-										<span className="text-muted-foreground text-xs">
-											Optional
-										</span>
+										Renovation fees <span className="text-muted-foreground text-xs">Optional</span>
 									</Label>
 									<div className="relative">
 										<Input
 											id="renovationFees"
 											type="number"
 											value={formData.renovationFees}
-											onChange={(e) =>
-												handleInputChange("renovationFees", e.target.value)
-											}
+											onChange={(e) => handleInputChange("renovationFees", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="0"
 										/>
@@ -912,18 +806,14 @@ export function AddRealEstateForm({
 									<div className="space-y-2">
 										<Label htmlFor="furnishingCosts" className="text-sm">
 											Furnishing costs{" "}
-											<span className="text-muted-foreground text-xs">
-												Optional
-											</span>
+											<span className="text-muted-foreground text-xs">Optional</span>
 										</Label>
 										<div className="relative">
 											<Input
 												id="furnishingCosts"
 												type="number"
 												value={formData.furnishingCosts}
-												onChange={(e) =>
-													handleInputChange("furnishingCosts", e.target.value)
-												}
+												onChange={(e) => handleInputChange("furnishingCosts", e.target.value)}
 												className="bg-background border-border pr-12"
 												placeholder="0"
 											/>
@@ -940,17 +830,12 @@ export function AddRealEstateForm({
 						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 							<div className="flex items-center gap-2 mb-2">
 								<CalendarIcon className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Purchase Information
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Purchase Information</h4>
 							</div>
 
 							<div className="space-y-2">
 								<Label htmlFor="purchaseDate" className="text-sm">
-									Purchase date{" "}
-									<span className="text-muted-foreground text-xs">
-										Optional
-									</span>
+									Purchase date <span className="text-muted-foreground text-xs">Optional</span>
 								</Label>
 								<Popover>
 									<PopoverTrigger asChild>
@@ -963,9 +848,7 @@ export function AddRealEstateForm({
 											{formData.purchaseDate ? (
 												format(formData.purchaseDate, "MM/dd/yyyy")
 											) : (
-												<span className="text-muted-foreground">
-													mm/dd/yyyy
-												</span>
+												<span className="text-muted-foreground">mm/dd/yyyy</span>
 											)}
 										</Button>
 									</PopoverTrigger>
@@ -973,10 +856,8 @@ export function AddRealEstateForm({
 										<Calendar
 											mode="single"
 											selected={formData.purchaseDate}
-											onSelect={(date) =>
-												handleInputChange("purchaseDate", date)
-											}
-											initialFocus
+											onSelect={(date) => handleInputChange("purchaseDate", date)}
+											autoFocus
 										/>
 									</PopoverContent>
 								</Popover>
@@ -996,20 +877,13 @@ export function AddRealEstateForm({
 								</Label>
 								<Select
 									value={formData.rentalType}
-									onValueChange={(value) =>
-										handleInputChange("rentalType", value)
-									}
+									onValueChange={(value) => handleInputChange("rentalType", value)}
 								>
-									<SelectTrigger
-										id="rentalType"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="rentalType" className="bg-background border-border">
 										<SelectValue placeholder="Select type" />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="furnished-rental">
-											Furnished rental
-										</SelectItem>
+										<SelectItem value="furnished-rental">Furnished rental</SelectItem>
 										<SelectItem value="sci">SCI</SelectItem>
 										<SelectItem value="unfurnished">Unfurnished</SelectItem>
 										<SelectItem value="pinel">Pinel</SelectItem>
@@ -1023,14 +897,9 @@ export function AddRealEstateForm({
 								</Label>
 								<Select
 									value={formData.rentalPeriod}
-									onValueChange={(value) =>
-										handleInputChange("rentalPeriod", value)
-									}
+									onValueChange={(value) => handleInputChange("rentalPeriod", value)}
 								>
-									<SelectTrigger
-										id="rentalPeriod"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="rentalPeriod" className="bg-background border-border">
 										<SelectValue placeholder="Select period" />
 									</SelectTrigger>
 									<SelectContent>
@@ -1057,9 +926,7 @@ export function AddRealEstateForm({
 									id="monthlyRent"
 									type="number"
 									value={formData.monthlyRent}
-									onChange={(e) =>
-										handleInputChange("monthlyRent", e.target.value)
-									}
+									onChange={(e) => handleInputChange("monthlyRent", e.target.value)}
 									className="bg-background border-border"
 								/>
 							</div>
@@ -1079,9 +946,7 @@ export function AddRealEstateForm({
 									id="utilityCosts"
 									type="number"
 									value={formData.utilityCosts}
-									onChange={(e) =>
-										handleInputChange("utilityCosts", e.target.value)
-									}
+									onChange={(e) => handleInputChange("utilityCosts", e.target.value)}
 									className="bg-background border-border"
 								/>
 							</div>
@@ -1102,9 +967,7 @@ export function AddRealEstateForm({
 								id="yearlyMiscCosts"
 								type="number"
 								value={formData.yearlyMiscCosts}
-								onChange={(e) =>
-									handleInputChange("yearlyMiscCosts", e.target.value)
-								}
+								onChange={(e) => handleInputChange("yearlyMiscCosts", e.target.value)}
 								className="bg-background border-border"
 							/>
 						</div>
@@ -1121,10 +984,7 @@ export function AddRealEstateForm({
 
 				// Building, Land, Commercial, Other have same layout as Building
 				const isBuildingLike =
-					detailsIsBuilding ||
-					detailsIsLand ||
-					detailsIsCommercial ||
-					detailsIsOther;
+					detailsIsBuilding || detailsIsLand || detailsIsCommercial || detailsIsOther;
 
 				const incrementValue = (field: keyof FormData) => {
 					const currentValue = parseInt(formData[field] as string, 10) || 0;
@@ -1155,14 +1015,9 @@ export function AddRealEstateForm({
 							{Icon && (
 								<Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
 							)}
-							<Label
-								htmlFor={field}
-								className="text-sm cursor-pointer flex items-center gap-2"
-							>
+							<Label htmlFor={field} className="text-sm cursor-pointer flex items-center gap-2">
 								{label}
-								{tooltip && (
-									<Info className="h-3.5 w-3.5 text-muted-foreground" />
-								)}
+								{tooltip && <Info className="h-3.5 w-3.5 text-muted-foreground" />}
 							</Label>
 						</div>
 						<div className="flex items-center gap-2">
@@ -1176,7 +1031,7 @@ export function AddRealEstateForm({
 								<Minus className="h-4 w-4" />
 							</Button>
 							<div className="w-12 text-center font-medium tabular-nums">
-								{formData[field]}
+								{String(formData[field] ?? "")}
 							</div>
 							<Button
 								type="button"
@@ -1208,14 +1063,9 @@ export function AddRealEstateForm({
 							{Icon && (
 								<Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
 							)}
-							<Label
-								htmlFor={field}
-								className="text-sm cursor-pointer flex items-center gap-2"
-							>
+							<Label htmlFor={field} className="text-sm cursor-pointer flex items-center gap-2">
 								{label}
-								{tooltip && (
-									<Info className="h-3.5 w-3.5 text-muted-foreground" />
-								)}
+								{tooltip && <Info className="h-3.5 w-3.5 text-muted-foreground" />}
 							</Label>
 						</div>
 						<Switch
@@ -1232,9 +1082,7 @@ export function AddRealEstateForm({
 						<div className="space-y-3">
 							<div className="flex items-center gap-2 mb-4">
 								<Building2 className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Building Information
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Building Information</h4>
 							</div>
 
 							{/* Floor of the apartment - ONLY for apartments */}
@@ -1257,52 +1105,29 @@ export function AddRealEstateForm({
 						<div className="space-y-3">
 							<div className="flex items-center gap-2 mb-4">
 								<Bed className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Rooms & Spaces
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Rooms & Spaces</h4>
 							</div>
 
-							<NumberControl
-								field="rooms"
-								label="No. rooms"
-								icon={Bed}
-								tooltip
-							/>
-							<NumberControl
-								field="bathrooms"
-								label="No. bathrooms"
-								icon={Bath}
-							/>
+							<NumberControl field="rooms" label="No. rooms" icon={Bed} tooltip />
+							<NumberControl field="bathrooms" label="No. bathrooms" icon={Bath} />
 							<NumberControl field="garages" label="No. garages" icon={Car} />
-							<NumberControl
-								field="parkingSpaces"
-								label="No. parking spaces"
-								icon={Car}
-							/>
+							<NumberControl field="parkingSpaces" label="No. parking spaces" icon={Car} />
 						</div>
 
 						{/* Outdoor Spaces */}
 						<div className="space-y-3">
 							<div className="flex items-center gap-2 mb-4">
 								<Leaf className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Outdoor Spaces
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Outdoor Spaces</h4>
 							</div>
 
 							{detailsIsApartment ? (
 								<div className="grid grid-cols-2 gap-3">
 									<div className="space-y-2">
-										<Label
-											htmlFor="garden"
-											className="text-sm flex items-center gap-2"
-										>
+										<Label htmlFor="garden" className="text-sm flex items-center gap-2">
 											<Leaf className="h-4 w-4 text-muted-foreground" />
 											<span>
-												Garden{" "}
-												<span className="text-muted-foreground text-xs">
-													Optional
-												</span>
+												Garden <span className="text-muted-foreground text-xs">Optional</span>
 											</span>
 										</Label>
 										<div className="relative">
@@ -1310,9 +1135,7 @@ export function AddRealEstateForm({
 												id="garden"
 												type="number"
 												value={formData.garden}
-												onChange={(e) =>
-													handleInputChange("garden", e.target.value)
-												}
+												onChange={(e) => handleInputChange("garden", e.target.value)}
 												className="bg-background border-border pr-10"
 												placeholder="0"
 											/>
@@ -1323,16 +1146,10 @@ export function AddRealEstateForm({
 									</div>
 
 									<div className="space-y-2">
-										<Label
-											htmlFor="balcony"
-											className="text-sm flex items-center gap-2"
-										>
+										<Label htmlFor="balcony" className="text-sm flex items-center gap-2">
 											<Mountain className="h-4 w-4 text-muted-foreground" />
 											<span>
-												Balcony{" "}
-												<span className="text-muted-foreground text-xs">
-													Optional
-												</span>
+												Balcony <span className="text-muted-foreground text-xs">Optional</span>
 											</span>
 										</Label>
 										<div className="relative">
@@ -1340,9 +1157,7 @@ export function AddRealEstateForm({
 												id="balcony"
 												type="number"
 												value={formData.balcony}
-												onChange={(e) =>
-													handleInputChange("balcony", e.target.value)
-												}
+												onChange={(e) => handleInputChange("balcony", e.target.value)}
 												className="bg-background border-border pr-10"
 												placeholder="0"
 											/>
@@ -1354,16 +1169,10 @@ export function AddRealEstateForm({
 								</div>
 							) : (
 								<div className="space-y-2">
-									<Label
-										htmlFor="balcony"
-										className="text-sm flex items-center gap-2"
-									>
+									<Label htmlFor="balcony" className="text-sm flex items-center gap-2">
 										<Mountain className="h-4 w-4 text-muted-foreground" />
 										<span>
-											Balcony{" "}
-											<span className="text-muted-foreground text-xs">
-												Optional
-											</span>
+											Balcony <span className="text-muted-foreground text-xs">Optional</span>
 										</span>
 									</Label>
 									<div className="relative">
@@ -1371,9 +1180,7 @@ export function AddRealEstateForm({
 											id="balcony"
 											type="number"
 											value={formData.balcony}
-											onChange={(e) =>
-												handleInputChange("balcony", e.target.value)
-											}
+											onChange={(e) => handleInputChange("balcony", e.target.value)}
 											className="bg-background border-border pr-10"
 											placeholder="0"
 										/>
@@ -1389,17 +1196,11 @@ export function AddRealEstateForm({
 						<div className="space-y-3">
 							<div className="flex items-center gap-2 mb-4">
 								<Sofa className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">
-									Features & Amenities
-								</h4>
+								<h4 className="text-sm text-muted-foreground">Features & Amenities</h4>
 							</div>
 
 							{(detailsIsApartment || isBuildingLike) && (
-								<SwitchControl
-									field="lift"
-									label="Elevator / Lift"
-									icon={Layers}
-								/>
+								<SwitchControl field="lift" label="Elevator / Lift" icon={Layers} />
 							)}
 
 							<SwitchControl
@@ -1411,11 +1212,7 @@ export function AddRealEstateForm({
 
 							{detailsIsHouse && (
 								<>
-									<SwitchControl
-										field="pool"
-										label="Swimming pool"
-										icon={Waves}
-									/>
+									<SwitchControl field="pool" label="Swimming pool" icon={Waves} />
 									<SwitchControl field="sauna" label="Sauna" icon={Droplets} />
 								</>
 							)}
@@ -1455,17 +1252,12 @@ export function AddRealEstateForm({
 						<h4 className="text-sm">{title}</h4>
 						<div className="grid grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<Label
-									htmlFor={qualityField}
-									className="text-sm text-muted-foreground"
-								>
+								<Label htmlFor={qualityField} className="text-sm text-muted-foreground">
 									Quality <span className="text-xs">Optional</span>
 								</Label>
 								<Select
 									value={formData[qualityField] as string}
-									onValueChange={(value) =>
-										handleInputChange(qualityField, value)
-									}
+									onValueChange={(value) => handleInputChange(qualityField, value)}
 								>
 									<SelectTrigger
 										id={qualityField}
@@ -1483,17 +1275,12 @@ export function AddRealEstateForm({
 								</Select>
 							</div>
 							<div className="space-y-2">
-								<Label
-									htmlFor={conditionField}
-									className="text-sm text-muted-foreground"
-								>
+								<Label htmlFor={conditionField} className="text-sm text-muted-foreground">
 									Condition <span className="text-xs">Optional</span>
 								</Label>
 								<Select
 									value={formData[conditionField] as string}
-									onValueChange={(value) =>
-										handleInputChange(conditionField, value)
-									}
+									onValueChange={(value) => handleInputChange(conditionField, value)}
 								>
 									<SelectTrigger
 										id={conditionField}
@@ -1520,8 +1307,8 @@ export function AddRealEstateForm({
 						<div className="space-y-2">
 							<h3>Quality</h3>
 							<p className="text-sm text-muted-foreground">
-								Indicating the quality and condition of the facilities helps
-								refine the estimate even further
+								Indicating the quality and condition of the facilities helps refine the estimate
+								even further
 							</p>
 						</div>
 
@@ -1600,19 +1387,13 @@ export function AddRealEstateForm({
 						<div className="space-y-4">
 							<div className="space-y-2">
 								<Label htmlFor="linkedLoanId" className="text-sm">
-									Select Loan{" "}
-									<span className="text-muted-foreground">Optional</span>
+									Select Loan <span className="text-muted-foreground">Optional</span>
 								</Label>
 								<Select
 									value={formData.linkedLoanId}
-									onValueChange={(value) =>
-										handleInputChange("linkedLoanId", value)
-									}
+									onValueChange={(value) => handleInputChange("linkedLoanId", value)}
 								>
-									<SelectTrigger
-										id="linkedLoanId"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="linkedLoanId" className="bg-background border-border">
 										<SelectValue placeholder="Select an existing loan..." />
 									</SelectTrigger>
 									<SelectContent>
@@ -1631,8 +1412,7 @@ export function AddRealEstateForm({
 								{formData.linkedLoanId && (
 									<div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
 										<p className="text-xs text-muted-foreground">
-											✓ This property will be linked to the selected loan in
-											your portfolio
+											✓ This property will be linked to the selected loan in your portfolio
 										</p>
 									</div>
 								)}
@@ -1646,12 +1426,9 @@ export function AddRealEstateForm({
 									</div>
 									<div className="flex-1 space-y-2">
 										<div>
-											<h4 className="text-sm font-medium">
-												Don't have a loan yet?
-											</h4>
+											<h4 className="text-sm font-medium">Don't have a loan yet?</h4>
 											<p className="text-xs text-muted-foreground mt-1">
-												Create a new loan in the Loans section first, then link
-												it to this property
+												Create a new loan in the Loans section first, then link it to this property
 											</p>
 										</div>
 										<Button
@@ -1659,10 +1436,7 @@ export function AddRealEstateForm({
 											variant="outline"
 											size="sm"
 											className="gap-2"
-											onClick={() => {
-												// TODO: Navigate to loans page or open loan creation modal
-												console.log("Open loan creation form");
-											}}
+											onClick={() => {}}
 										>
 											<FileText className="h-3.5 w-3.5" />
 											Create New Loan
@@ -1676,8 +1450,8 @@ export function AddRealEstateForm({
 								<div className="flex gap-2">
 									<Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
 									<p className="text-xs text-blue-900 dark:text-blue-100">
-										Linking a loan helps you track total debt, monthly payments,
-										and calculate your true property equity and net worth
+										Linking a loan helps you track total debt, monthly payments, and calculate your
+										true property equity and net worth
 									</p>
 								</div>
 							</div>
@@ -1733,16 +1507,10 @@ export function AddRealEstateForm({
 					);
 				};
 
-				const updateCoOwner = (
-					id: string,
-					field: keyof CoOwner,
-					value: any,
-				) => {
+				const updateCoOwner = (id: string, field: keyof CoOwner, value: any) => {
 					handleInputChange(
 						"coOwners",
-						formData.coOwners.map((co) =>
-							co.id === id ? { ...co, [field]: value } : co,
-						),
+						formData.coOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
 					);
 				};
 
@@ -1755,10 +1523,7 @@ export function AddRealEstateForm({
 						legalForm: "",
 						percentage: "0",
 					};
-					handleInputChange("companyOwners", [
-						...formData.companyOwners,
-						newCompanyOwner,
-					]);
+					handleInputChange("companyOwners", [...formData.companyOwners, newCompanyOwner]);
 				};
 
 				const removeCompanyOwner = (id: string) => {
@@ -1768,16 +1533,10 @@ export function AddRealEstateForm({
 					);
 				};
 
-				const updateCompanyOwner = (
-					id: string,
-					field: keyof CompanyOwner,
-					value: any,
-				) => {
+				const updateCompanyOwner = (id: string, field: keyof CompanyOwner, value: any) => {
 					handleInputChange(
 						"companyOwners",
-						formData.companyOwners.map((co) =>
-							co.id === id ? { ...co, [field]: value } : co,
-						),
+						formData.companyOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
 					);
 				};
 
@@ -1785,14 +1544,8 @@ export function AddRealEstateForm({
 					(formData.ownershipMode === "personal"
 						? parseFloat(formData.ownershipPercentage || "0")
 						: 0) +
-					formData.coOwners.reduce(
-						(sum, co) => sum + parseFloat(co.percentage || "0"),
-						0,
-					) +
-					formData.companyOwners.reduce(
-						(sum, co) => sum + parseFloat(co.percentage || "0"),
-						0,
-					);
+					formData.coOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0) +
+					formData.companyOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0);
 
 				return (
 					<div className="space-y-6">
@@ -1811,10 +1564,10 @@ export function AddRealEstateForm({
 						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 							<h4 className="text-sm font-medium">Ownership Type</h4>
 							<div className="flex gap-3">
-								<button
-									type="button"
+								<Button
+									variant="ghost"
 									onClick={() => handleInputChange("ownershipMode", "personal")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
 										formData.ownershipMode === "personal"
 											? "border-primary bg-primary/5"
 											: "border-border hover:border-border/80"
@@ -1829,11 +1582,11 @@ export function AddRealEstateForm({
 											Owned by individuals
 										</span>
 									</div>
-								</button>
-								<button
-									type="button"
+								</Button>
+								<Button
+									variant="ghost"
 									onClick={() => handleInputChange("ownershipMode", "company")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all ${
+									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
 										formData.ownershipMode === "company"
 											? "border-primary bg-primary/5"
 											: "border-border hover:border-border/80"
@@ -1848,7 +1601,7 @@ export function AddRealEstateForm({
 											Owned by companies
 										</span>
 									</div>
-								</button>
+								</Button>
 							</div>
 						</div>
 
@@ -1857,9 +1610,7 @@ export function AddRealEstateForm({
 							<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
 								<div className="flex items-center gap-2 mb-2">
 									<Users className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">
-										Your Ownership
-									</h4>
+									<h4 className="text-sm text-muted-foreground">Your Ownership</h4>
 								</div>
 
 								<div className="space-y-2">
@@ -1874,9 +1625,7 @@ export function AddRealEstateForm({
 											max="100"
 											step="0.01"
 											value={formData.ownershipPercentage}
-											onChange={(e) =>
-												handleInputChange("ownershipPercentage", e.target.value)
-											}
+											onChange={(e) => handleInputChange("ownershipPercentage", e.target.value)}
 											className="bg-background border-border pr-12"
 											placeholder="100"
 										/>
@@ -1915,32 +1664,28 @@ export function AddRealEstateForm({
 
 										{/* Owner Type Selection */}
 										<div className="flex gap-2">
-											<button
-												type="button"
-												onClick={() =>
-													updateCoOwner(coOwner.id, "type", "registered")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											<Button
+												variant="ghost"
+												onClick={() => updateCoOwner(coOwner.id, "type", "registered")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													coOwner.type === "registered"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Registered User
-											</button>
-											<button
-												type="button"
-												onClick={() =>
-													updateCoOwner(coOwner.id, "type", "custom")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											</Button>
+											<Button
+												variant="ghost"
+												onClick={() => updateCoOwner(coOwner.id, "type", "custom")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													coOwner.type === "custom"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Custom Owner
-											</button>
+											</Button>
 										</div>
 
 										{/* Owner Selection/Input */}
@@ -1950,9 +1695,7 @@ export function AddRealEstateForm({
 												<Select
 													value={coOwner.userId}
 													onValueChange={(value) => {
-														const user = registeredUsers.find(
-															(u) => u.id === value,
-														);
+														const user = registeredUsers.find((u) => u.id === value);
 														updateCoOwner(coOwner.id, "userId", value);
 														if (user) {
 															updateCoOwner(coOwner.id, "name", user.name);
@@ -1982,9 +1725,7 @@ export function AddRealEstateForm({
 												<Input
 													type="text"
 													value={coOwner.name}
-													onChange={(e) =>
-														updateCoOwner(coOwner.id, "name", e.target.value)
-													}
+													onChange={(e) => updateCoOwner(coOwner.id, "name", e.target.value)}
 													className="bg-background border-border"
 													placeholder="Enter owner name..."
 												/>
@@ -2001,13 +1742,7 @@ export function AddRealEstateForm({
 													max="100"
 													step="0.01"
 													value={coOwner.percentage}
-													onChange={(e) =>
-														updateCoOwner(
-															coOwner.id,
-															"percentage",
-															e.target.value,
-														)
-													}
+													onChange={(e) => updateCoOwner(coOwner.id, "percentage", e.target.value)}
 													className="bg-background border-border pr-12"
 													placeholder="0"
 												/>
@@ -2026,9 +1761,7 @@ export function AddRealEstateForm({
 							<div className="space-y-4">
 								<div className="flex items-center gap-2">
 									<Building2 className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">
-										Company Owners
-									</h4>
+									<h4 className="text-sm text-muted-foreground">Company Owners</h4>
 								</div>
 
 								{formData.companyOwners.map((company, index) => (
@@ -2051,32 +1784,28 @@ export function AddRealEstateForm({
 
 										{/* Company Type Selection */}
 										<div className="flex gap-2">
-											<button
-												type="button"
-												onClick={() =>
-													updateCompanyOwner(company.id, "type", "existing")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											<Button
+												variant="ghost"
+												onClick={() => updateCompanyOwner(company.id, "type", "existing")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													company.type === "existing"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												Existing Company
-											</button>
-											<button
-												type="button"
-												onClick={() =>
-													updateCompanyOwner(company.id, "type", "new")
-												}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all ${
+											</Button>
+											<Button
+												variant="ghost"
+												onClick={() => updateCompanyOwner(company.id, "type", "new")}
+												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
 													company.type === "new"
 														? "border-primary bg-primary/5 text-primary"
 														: "border-border hover:border-border/80"
 												}`}
 											>
 												New Company
-											</button>
+											</Button>
 										</div>
 
 										{/* Company Selection/Input */}
@@ -2086,9 +1815,7 @@ export function AddRealEstateForm({
 												<Select
 													value={company.companyId}
 													onValueChange={(value) => {
-														const comp = existingCompanies.find(
-															(c) => c.id === value,
-														);
+														const comp = existingCompanies.find((c) => c.id === value);
 														updateCompanyOwner(company.id, "companyId", value);
 														if (comp) {
 															updateCompanyOwner(company.id, "name", comp.name);
@@ -2097,11 +1824,7 @@ export function AddRealEstateForm({
 																"registrationNumber",
 																comp.registrationNumber,
 															);
-															updateCompanyOwner(
-																company.id,
-																"legalForm",
-																comp.legalForm,
-															);
+															updateCompanyOwner(company.id, "legalForm", comp.legalForm);
 														}
 													}}
 												>
@@ -2129,13 +1852,7 @@ export function AddRealEstateForm({
 													<Input
 														type="text"
 														value={company.name}
-														onChange={(e) =>
-															updateCompanyOwner(
-																company.id,
-																"name",
-																e.target.value,
-															)
-														}
+														onChange={(e) => updateCompanyOwner(company.id, "name", e.target.value)}
 														className="bg-background border-border"
 														placeholder="Enter company name..."
 													/>
@@ -2146,11 +1863,7 @@ export function AddRealEstateForm({
 														<Select
 															value={company.legalForm}
 															onValueChange={(value) =>
-																updateCompanyOwner(
-																	company.id,
-																	"legalForm",
-																	value,
-																)
+																updateCompanyOwner(company.id, "legalForm", value)
 															}
 														>
 															<SelectTrigger className="bg-background border-border">
@@ -2169,18 +1882,12 @@ export function AddRealEstateForm({
 														</Select>
 													</div>
 													<div className="space-y-2">
-														<Label className="text-sm">
-															Registration Number
-														</Label>
+														<Label className="text-sm">Registration Number</Label>
 														<Input
 															type="text"
 															value={company.registrationNumber}
 															onChange={(e) =>
-																updateCompanyOwner(
-																	company.id,
-																	"registrationNumber",
-																	e.target.value,
-																)
+																updateCompanyOwner(company.id, "registrationNumber", e.target.value)
 															}
 															className="bg-background border-border"
 															placeholder="000 000 000"
@@ -2201,11 +1908,7 @@ export function AddRealEstateForm({
 													step="0.01"
 													value={company.percentage}
 													onChange={(e) =>
-														updateCompanyOwner(
-															company.id,
-															"percentage",
-															e.target.value,
-														)
+														updateCompanyOwner(company.id, "percentage", e.target.value)
 													}
 													className="bg-background border-border pr-12"
 													placeholder="0"
@@ -2222,12 +1925,7 @@ export function AddRealEstateForm({
 
 						{/* Add Co-Owner/Company Buttons */}
 						<div className="flex gap-3">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={addCoOwner}
-								className="flex-1 gap-2"
-							>
+							<Button type="button" variant="outline" onClick={addCoOwner} className="flex-1 gap-2">
 								<UserPlus className="h-4 w-4" />
 								Add Co-Owner
 							</Button>
@@ -2292,8 +1990,8 @@ export function AddRealEstateForm({
 			<DialogContent className=" w-[80%] h-[92vh] p-0 gap-0 overflow-hidden bg-background">
 				<DialogTitle className="sr-only">Add my Real Estate</DialogTitle>
 				<DialogDescription className="sr-only">
-					Add a new real estate property to your portfolio by filling out the
-					information step by step
+					Add a new real estate property to your portfolio by filling out the information step by
+					step
 				</DialogDescription>
 
 				{/* Content */}
@@ -2301,11 +1999,11 @@ export function AddRealEstateForm({
 					{/* Left Sidebar - Steps Navigation */}
 					<div className="w-56 border-r border-border p-5 space-y-1 flex-shrink-0">
 						{steps.map((step, index) => (
-							<button
-								type="button"
+							<Button
+								variant="ghost"
 								key={step.id}
 								onClick={() => setCurrentStep(step.id)}
-								className={`w-full text-left px-3 py-2.5 rounded-lg transition-colors text-sm ${
+								className={`w-full justify-start px-3 py-2.5 rounded-lg transition-colors text-sm h-auto ${
 									currentStep === step.id
 										? "bg-primary/10 text-primary font-medium"
 										: index <= currentStepIndex
@@ -2315,7 +2013,7 @@ export function AddRealEstateForm({
 								disabled={index > currentStepIndex}
 							>
 								{step.label}
-							</button>
+							</Button>
 						))}
 					</div>
 
@@ -2325,14 +2023,14 @@ export function AddRealEstateForm({
 							<div className="max-w-3xl mx-auto">
 								<div className="flex items-start justify-between mb-8">
 									<h1>Add my Real Estate</h1>
-									<button
-										type="button"
+									<Button
+										variant="ghost"
 										onClick={onClose}
-										className="p-2 hover:bg-accent rounded-md transition-colors -mt-1"
+										className="p-2 h-auto w-auto -mt-1"
 										aria-label="Close dialog"
 									>
 										<X className="h-5 w-5" />
-									</button>
+									</Button>
 								</div>
 								{renderStepContent()}
 							</div>
@@ -2350,10 +2048,7 @@ export function AddRealEstateForm({
 									<ChevronLeft className="h-4 w-4" />
 									Back
 								</Button>
-								<Button
-									onClick={handleNext}
-									className="gap-2 bg-primary hover:bg-primary/90"
-								>
+								<Button onClick={handleNext} className="gap-2 bg-primary hover:bg-primary/90">
 									{currentStepIndex === steps.length - 1 ? "Submit" : "Next"}
 									<ChevronRight className="h-4 w-4" />
 								</Button>

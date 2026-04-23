@@ -2,8 +2,7 @@
  * Performance-optimized dashboard component with all optimizations applied
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { memo, Suspense, useCallback, useMemo } from "react";
+import { memo, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { ErrorBoundary } from "react-error-boundary";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -11,17 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 // Types
-import type { Portfolio } from "@/gql/graphql";
 import { useCurrency } from "@/hooks/use-currency";
 // Optimized hooks and utilities
 import { useOptimizedDashboardState } from "@/hooks/use-optimized-dashboard-state";
 import { DataSampler } from "@/lib/chart-optimization/data-sampling";
 // Lazy-loaded components
 import {
-	ChartLibraryPreloader,
 	LazyAssetAllocationChart,
 	LazyPerformanceChart,
-	useProgressiveLoading,
 	withLazyLoad,
 } from "@/lib/chart-optimization/lazy-loading";
 import { useChartVirtualization } from "@/lib/chart-optimization/virtualization";
@@ -60,29 +56,22 @@ const ChartSkeleton = memo(() => (
 	</Card>
 ));
 
-// Memoized error fallback
-const ErrorFallback = memo(
-	({
-		error,
-		resetErrorBoundary,
-	}: {
-		error: Error;
-		resetErrorBoundary: () => void;
-	}) => (
-		<Alert variant="destructive">
-			<AlertDescription>
-				Something went wrong: {error.message}
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={resetErrorBoundary}
-					className="ml-2"
-				>
-					Try again
-				</Button>
-			</AlertDescription>
-		</Alert>
-	),
+// Memoized error fallback - matches FallbackProps { error: Error; retry: () => void }
+const ErrorFallback = ({
+	error,
+	resetErrorBoundary,
+}: {
+	error: Error;
+	resetErrorBoundary: () => void;
+}) => (
+	<Alert variant="destructive">
+		<AlertDescription>
+			Something went wrong: {error.message}
+			<Button variant="outline" size="sm" onClick={resetErrorBoundary} className="ml-2">
+				Try again
+			</Button>
+		</AlertDescription>
+	</Alert>
 );
 
 // Optimized chart components with lazy loading
@@ -90,14 +79,12 @@ const OptimizedAssetAllocationChart = withLazyLoad(LazyAssetAllocationChart, {
 	threshold: 0.1,
 	rootMargin: "100px",
 	fallback: ChartSkeleton,
-	errorBoundary: ErrorFallback,
 });
 
 const OptimizedPerformanceChart = withLazyLoad(LazyPerformanceChart, {
 	threshold: 0.1,
 	rootMargin: "100px",
 	fallback: ChartSkeleton,
-	errorBoundary: ErrorFallback,
 });
 
 // Data sampling configuration
@@ -138,9 +125,7 @@ const PortfolioMetrics = memo(
 						<CardTitle className="text-sm font-medium">Total Value</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
-							{formatCurrency(totalValue)}
-						</div>
+						<div className="text-2xl font-bold">{formatCurrency(totalValue)}</div>
 					</CardContent>
 				</Card>
 
@@ -154,9 +139,7 @@ const PortfolioMetrics = memo(
 						>
 							{formatCurrency(totalChange)}
 						</div>
-						<p
-							className={`text-xs ${totalChange >= 0 ? "text-green-600" : "text-red-600"}`}
-						>
+						<p className={`text-xs ${totalChange >= 0 ? "text-green-600" : "text-red-600"}`}>
 							{formatPercent(changePercent)}
 						</p>
 					</CardContent>
@@ -186,13 +169,20 @@ const PortfolioMetrics = memo(
 );
 
 // Portfolio list component with virtualization for large lists
+interface DashboardPortfolio {
+	id: string;
+	name: string;
+	totalValue: number;
+	assetCount: number;
+}
+
 const PortfolioList = memo(
 	({
 		portfolios,
 		onPortfolioSelect,
 	}: {
-		portfolios: Portfolio[];
-		onPortfolioSelect: (portfolio: Portfolio) => void;
+		portfolios: DashboardPortfolio[];
+		onPortfolioSelect: (portfolio: DashboardPortfolio) => void;
 	}) => {
 		// Memoize portfolio cards to prevent unnecessary re-renders
 		const portfolioCards = useMemo(
@@ -210,74 +200,92 @@ const PortfolioList = memo(
 							<div className="text-2xl font-bold">
 								${(portfolio.totalValue / 100).toLocaleString()}
 							</div>
-							<p className="text-sm text-muted-foreground">
-								{portfolio.assetCount} assets
-							</p>
+							<p className="text-sm text-muted-foreground">{portfolio.assetCount} assets</p>
 						</CardContent>
 					</Card>
 				)),
 			[portfolios, onPortfolioSelect],
 		);
 
-		return (
-			<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-				{portfolioCards}
-			</div>
-		);
+		return <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">{portfolioCards}</div>;
 	},
 );
 
 // Main dashboard component
 export function PerformanceOptimizedDashboard() {
 	// Optimized state management
-	const [dashboardState, dashboardActions] = useOptimizedDashboardState();
+	const [_dashboardState, dashboardActions] = useOptimizedDashboardState();
 
 	// Progressive loading for heavy components
-	const { isComponentLoaded } = useProgressiveLoading(
-		["metrics", "portfolios", "charts", "performance"],
-		50,
+	const [loadedComponents, setLoadedComponents] = useState<Set<string>>(new Set());
+	useEffect(() => {
+		const components = ["metrics", "portfolios", "charts", "performance"];
+		components.forEach((comp, i) => {
+			setTimeout(
+				() => {
+					setLoadedComponents((prev) => new Set([...prev, comp]));
+				},
+				(i + 1) * 50,
+			);
+		});
+	}, []);
+	const isComponentLoaded = useCallback(
+		(name: string) => loadedComponents.has(name),
+		[loadedComponents],
 	);
 
-	// Optimized data fetching with React Query
-	const {
-		data: dashboardData,
-		isLoading,
-		error,
-		refetch,
-	} = useQuery({
-		queryKey: ["dashboard", dashboardState.viewMode],
-		queryFn: async () => {
-			// Simulate API call with caching
-			await new Promise((resolve) => setTimeout(resolve, 100));
-			return {
-				totalValue: 125000000, // $1,250,000.00
-				totalChange: 250000, // $2,500.00
-				changePercent: 0.02, // 2%
-				assetCount: 15,
-				portfolios: [
-					{
-						id: "1",
-						name: "Investment Portfolio",
-						totalValue: 75000000,
-						assetCount: 8,
-					},
-					{
-						id: "2",
-						name: "Retirement Fund",
-						totalValue: 50000000,
-						assetCount: 7,
-					},
-				] as Portfolio[],
-				chartData: Array.from({ length: 100 }, (_, i) => ({
-					timestamp: Date.now() - (100 - i) * 24 * 60 * 60 * 1000,
-					value: 125000000 + Math.random() * 10000000 - 5000000,
-				})),
-			};
-		},
-		staleTime: 30 * 1000, // 30 seconds
-		cacheTime: 5 * 60 * 1000, // 5 minutes
-		refetchInterval: 60 * 1000, // 1 minute
-	});
+	// Optimized data fetching (simulated)
+	const [dashboardData, setDashboardData] = useState<{
+		totalValue: number;
+		totalChange: number;
+		changePercent: number;
+		assetCount: number;
+		portfolios: DashboardPortfolio[];
+		chartData: { timestamp: number; value: number }[];
+	} | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+	const [error, setError] = useState<Error | null>(null);
+
+	useEffect(() => {
+		let cancelled = false;
+		(async () => {
+			try {
+				await new Promise((resolve) => setTimeout(resolve, 100));
+				if (cancelled) return;
+				setDashboardData({
+					totalValue: 125000000,
+					totalChange: 250000,
+					changePercent: 0.02,
+					assetCount: 15,
+					portfolios: [
+						{
+							id: "1",
+							name: "Investment Portfolio",
+							totalValue: 75000000,
+							assetCount: 8,
+						},
+						{
+							id: "2",
+							name: "Retirement Fund",
+							totalValue: 50000000,
+							assetCount: 7,
+						},
+					] as unknown as DashboardPortfolio[],
+					chartData: Array.from({ length: 100 }, (_, i) => ({
+						timestamp: Date.now() - (100 - i) * 24 * 60 * 60 * 1000,
+						value: 125000000 + Math.random() * 10000000 - 5000000,
+					})),
+				});
+			} catch (err) {
+				if (!cancelled) setError(err as Error);
+			} finally {
+				if (!cancelled) setIsLoading(false);
+			}
+		})();
+		return () => {
+			cancelled = true;
+		};
+	}, []);
 
 	// Chart virtualization for large datasets
 	const chartDataLoader = useCallback(
@@ -289,6 +297,14 @@ export function PerformanceOptimizedDashboard() {
 		[dashboardData?.chartData],
 	);
 
+	const refetch = useCallback(async () => {
+		setIsLoading(true);
+		setError(null);
+		// Simulate refetch
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		setIsLoading(false);
+	}, []);
+
 	const { updateViewport: _updateChartViewport, isLoading: isChartLoading } =
 		useChartVirtualization(
 			dashboardData?.chartData?.length || 0,
@@ -298,9 +314,9 @@ export function PerformanceOptimizedDashboard() {
 
 	// Memoized handlers to prevent unnecessary re-renders
 	const handlePortfolioSelect = useCallback(
-		(portfolio: Portfolio) => {
-			dashboardActions.preloadData(`portfolio_${portfolio.id}`, portfolio);
-			dashboardActions.viewPortfolio(portfolio);
+		(portfolio: DashboardPortfolio) => {
+			dashboardActions.preloadData(`portfolio_${portfolio.id}`, portfolio as any);
+			dashboardActions.viewPortfolio(portfolio as any);
 		},
 		[dashboardActions],
 	);
@@ -330,12 +346,7 @@ export function PerformanceOptimizedDashboard() {
 			<Alert variant="destructive">
 				<AlertDescription>
 					Failed to load dashboard data.
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={handleRefresh}
-						className="ml-2"
-					>
+					<Button variant="outline" size="sm" onClick={handleRefresh} className="ml-2">
 						Retry
 					</Button>
 				</AlertDescription>
@@ -346,11 +357,14 @@ export function PerformanceOptimizedDashboard() {
 	return (
 		<div className="space-y-6">
 			{/* Preload chart libraries */}
-			<ChartLibraryPreloader />
 
 			{/* Portfolio Metrics - Load first */}
 			{isComponentLoaded("metrics") && dashboardData && (
-				<ErrorBoundary FallbackComponent={ErrorFallback}>
+				<ErrorBoundary
+					fallbackRender={({ error, resetErrorBoundary }) => (
+						<ErrorFallback error={error as Error} resetErrorBoundary={resetErrorBoundary} />
+					)}
+				>
 					<PortfolioMetrics
 						totalValue={dashboardData.totalValue}
 						totalChange={dashboardData.totalChange}
@@ -362,7 +376,11 @@ export function PerformanceOptimizedDashboard() {
 
 			{/* Portfolio List - Load second */}
 			{isComponentLoaded("portfolios") && dashboardData?.portfolios && (
-				<ErrorBoundary FallbackComponent={ErrorFallback}>
+				<ErrorBoundary
+					fallbackRender={({ error, resetErrorBoundary }) => (
+						<ErrorFallback error={error as Error} resetErrorBoundary={resetErrorBoundary} />
+					)}
+				>
 					<Card>
 						<CardHeader>
 							<CardTitle>Your Portfolios</CardTitle>
@@ -380,7 +398,11 @@ export function PerformanceOptimizedDashboard() {
 			{/* Charts - Load third with lazy loading */}
 			{isComponentLoaded("charts") && (
 				<div className="grid gap-6 lg:grid-cols-2">
-					<ErrorBoundary FallbackComponent={ErrorFallback}>
+					<ErrorBoundary
+						fallbackRender={({ error, resetErrorBoundary }) => (
+							<ErrorFallback error={error as Error} resetErrorBoundary={resetErrorBoundary} />
+						)}
+					>
 						<Suspense fallback={<ChartSkeleton />}>
 							<OptimizedPerformanceChart
 								data={sampledChartData}
@@ -390,7 +412,11 @@ export function PerformanceOptimizedDashboard() {
 						</Suspense>
 					</ErrorBoundary>
 
-					<ErrorBoundary FallbackComponent={ErrorFallback}>
+					<ErrorBoundary
+						fallbackRender={({ error, resetErrorBoundary }) => (
+							<ErrorFallback error={error as Error} resetErrorBoundary={resetErrorBoundary} />
+						)}
+					>
 						<Suspense fallback={<ChartSkeleton />}>
 							<OptimizedAssetAllocationChart
 								data={[
@@ -407,7 +433,11 @@ export function PerformanceOptimizedDashboard() {
 
 			{/* Performance Analytics - Load last */}
 			{isComponentLoaded("performance") && (
-				<ErrorBoundary FallbackComponent={ErrorFallback}>
+				<ErrorBoundary
+					fallbackRender={({ error, resetErrorBoundary }) => (
+						<ErrorFallback error={error as Error} resetErrorBoundary={resetErrorBoundary} />
+					)}
+				>
 					<Card>
 						<CardHeader>
 							<CardTitle>Performance Analytics</CardTitle>

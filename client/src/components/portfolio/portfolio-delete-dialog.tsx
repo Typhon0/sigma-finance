@@ -73,9 +73,7 @@ export function PortfolioDeleteDialog({
 										{totalValue > 0 && (
 											<div className="flex justify-between">
 												<span>Portfolio value:</span>
-												<span className="font-medium">
-													{formatCurrency(totalValue)}
-												</span>
+												<span className="font-medium">{formatCurrency(totalValue)}</span>
 											</div>
 										)}
 									</div>
@@ -105,9 +103,7 @@ export function PortfolioDeleteDialog({
 								</ul>
 							</div>
 
-							<p className="text-sm font-medium text-destructive">
-								This action cannot be undone.
-							</p>
+							<p className="text-sm font-medium text-destructive">This action cannot be undone.</p>
 						</div>
 					</AlertDialogDescription>
 				</AlertDialogHeader>

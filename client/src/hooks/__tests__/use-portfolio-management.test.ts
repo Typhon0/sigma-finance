@@ -63,11 +63,7 @@ describe("usePortfolioManagement", () => {
 
 	it("should provide portfolio management functionality", () => {
 		const wrapper = ({ children }: { children: React.ReactNode }) =>
-			React.createElement(
-				MockedProvider,
-				{ mocks, addTypename: false },
-				children,
-			);
+			React.createElement(MockedProvider, { mocks, addTypename: false }, children);
 
 		const { result } = renderHook(() => usePortfolioManagement(), { wrapper });
 
@@ -89,11 +85,7 @@ describe("usePortfolioCreation", () => {
 
 	it("should provide form-friendly creation interface", () => {
 		const wrapper = ({ children }: { children: React.ReactNode }) =>
-			React.createElement(
-				MockedProvider,
-				{ mocks, addTypename: false },
-				children,
-			);
+			React.createElement(MockedProvider, { mocks, addTypename: false }, children);
 
 		const { result } = renderHook(() => usePortfolioCreation(), { wrapper });
 
@@ -112,11 +104,7 @@ describe("usePortfolioOperations", () => {
 
 	it("should provide single portfolio operations", () => {
 		const wrapper = ({ children }: { children: React.ReactNode }) =>
-			React.createElement(
-				MockedProvider,
-				{ mocks, addTypename: false },
-				children,
-			);
+			React.createElement(MockedProvider, { mocks, addTypename: false }, children);
 
 		const { result } = renderHook(() => usePortfolioOperations("portfolio-1"), {
 			wrapper,

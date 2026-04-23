@@ -1,32 +1,13 @@
-import {
-	Building2,
-	DollarSign,
-	Info,
-	Percent,
-	Users,
-	Wallet,
-	X,
-} from "lucide-react";
+import { Building2, DollarSign, Info, Percent, Users, Wallet, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/use-currency";
 import { Logo } from "./Logo";
 import { Button } from "./ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AddSavingFormProps {
 	open: boolean;
@@ -170,9 +151,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 
 					<div>
 						<h2 className="text-2xl">Add Savings Account</h2>
-						<p className="text-sm text-muted-foreground mt-1">
-							Enter your savings account details
-						</p>
+						<p className="text-sm text-muted-foreground mt-1">Enter your savings account details</p>
 					</div>
 				</div>
 
@@ -200,19 +179,14 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									type="text"
 									placeholder="e.g., BNP Paribas, Crédit Agricole..."
 									value={formData.bankName}
-									onChange={(e) =>
-										handleInputChange("bankName", e.target.value)
-									}
+									onChange={(e) => handleInputChange("bankName", e.target.value)}
 									className="bg-background border-border"
 								/>
 							</div>
 
 							{/* Account Name */}
 							<div className="space-y-2">
-								<Label
-									htmlFor="accountName"
-									className="flex items-center gap-2"
-								>
+								<Label htmlFor="accountName" className="flex items-center gap-2">
 									<Wallet className="h-4 w-4 text-primary" />
 									Account Name <span className="text-destructive">*</span>
 								</Label>
@@ -221,9 +195,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									type="text"
 									placeholder="e.g., Livret A, Savings Account..."
 									value={formData.accountName}
-									onChange={(e) =>
-										handleInputChange("accountName", e.target.value)
-									}
+									onChange={(e) => handleInputChange("accountName", e.target.value)}
 									className="bg-background border-border"
 								/>
 							</div>
@@ -235,38 +207,24 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 								</Label>
 								<Select
 									value={formData.accountType}
-									onValueChange={(value) =>
-										handleInputChange("accountType", value)
-									}
+									onValueChange={(value) => handleInputChange("accountType", value)}
 								>
-									<SelectTrigger
-										id="accountType"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="accountType" className="bg-background border-border">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="savings">Savings Account</SelectItem>
 										<SelectItem value="money-market">Money Market</SelectItem>
-										<SelectItem value="high-yield">
-											High Yield Savings
-										</SelectItem>
-										<SelectItem value="fixed-deposit">
-											Fixed Deposit / CD
-										</SelectItem>
-										<SelectItem value="business-savings">
-											Business Savings
-										</SelectItem>
+										<SelectItem value="high-yield">High Yield Savings</SelectItem>
+										<SelectItem value="fixed-deposit">Fixed Deposit / CD</SelectItem>
+										<SelectItem value="business-savings">Business Savings</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 
 							{/* Account Number */}
 							<div className="space-y-2">
-								<Label
-									htmlFor="accountNumber"
-									className="flex items-center gap-2"
-								>
+								<Label htmlFor="accountNumber" className="flex items-center gap-2">
 									<Wallet className="h-4 w-4 text-primary" />
 									Account Number <span className="text-destructive">*</span>
 								</Label>
@@ -275,9 +233,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									type="text"
 									placeholder="e.g., IBAN, account number..."
 									value={formData.accountNumber}
-									onChange={(e) =>
-										handleInputChange("accountNumber", e.target.value)
-									}
+									onChange={(e) => handleInputChange("accountNumber", e.target.value)}
 									className="bg-background border-border"
 								/>
 							</div>
@@ -289,14 +245,9 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 								</Label>
 								<Select
 									value={formData.currency}
-									onValueChange={(value) =>
-										handleInputChange("currency", value)
-									}
+									onValueChange={(value) => handleInputChange("currency", value)}
 								>
-									<SelectTrigger
-										id="currency"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="currency" className="bg-background border-border">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
@@ -328,15 +279,9 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 
 							{/* Interest Rate */}
 							<div className="space-y-2">
-								<Label
-									htmlFor="interestRate"
-									className="flex items-center gap-2"
-								>
+								<Label htmlFor="interestRate" className="flex items-center gap-2">
 									<Percent className="h-4 w-4 text-primary" />
-									Interest Rate{" "}
-									<span className="text-muted-foreground text-xs">
-										(Annual %)
-									</span>
+									Interest Rate <span className="text-muted-foreground text-xs">(Annual %)</span>
 								</Label>
 								<Input
 									id="interestRate"
@@ -344,9 +289,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									step="0.01"
 									placeholder="e.g., 3.0"
 									value={formData.interestRate}
-									onChange={(e) =>
-										handleInputChange("interestRate", e.target.value)
-									}
+									onChange={(e) => handleInputChange("interestRate", e.target.value)}
 									className="bg-background border-border font-mono"
 								/>
 							</div>
@@ -359,14 +302,9 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 								</Label>
 								<Select
 									value={formData.ownership}
-									onValueChange={(value: string) =>
-										handleInputChange("ownership", value)
-									}
+									onValueChange={(value: string) => handleInputChange("ownership", value)}
 								>
-									<SelectTrigger
-										id="ownership"
-										className="bg-background border-border"
-									>
+									<SelectTrigger id="ownership" className="bg-background border-border">
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
@@ -375,9 +313,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 												<Users className="h-4 w-4" />
 												<div>
 													<div>Personal</div>
-													<div className="text-xs text-muted-foreground">
-														Individual account
-													</div>
+													<div className="text-xs text-muted-foreground">Individual account</div>
 												</div>
 											</div>
 										</SelectItem>
@@ -397,9 +333,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 												<Building2 className="h-4 w-4" />
 												<div>
 													<div>Company</div>
-													<div className="text-xs text-muted-foreground">
-														Business account
-													</div>
+													<div className="text-xs text-muted-foreground">Business account</div>
 												</div>
 											</div>
 										</SelectItem>
@@ -410,22 +344,18 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 								{formData.ownership === "joint" && (
 									<div className="space-y-2 pt-2">
 										<Label htmlFor="jointOwnerName" className="text-sm">
-											Joint Account Holder Name{" "}
-											<span className="text-destructive">*</span>
+											Joint Account Holder Name <span className="text-destructive">*</span>
 										</Label>
 										<Input
 											id="jointOwnerName"
 											type="text"
 											placeholder="e.g., Spouse name, Family member..."
 											value={formData.jointOwnerName}
-											onChange={(e) =>
-												handleInputChange("jointOwnerName", e.target.value)
-											}
+											onChange={(e) => handleInputChange("jointOwnerName", e.target.value)}
 											className="bg-background border-border"
 										/>
 										<p className="text-xs text-muted-foreground">
-											Enter the name of the person with whom you share this
-											account
+											Enter the name of the person with whom you share this account
 										</p>
 									</div>
 								)}
@@ -435,17 +365,12 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									<div className="space-y-3 pt-2">
 										<div className="space-y-2">
 											<Label className="text-sm">
-												Select Company{" "}
-												<span className="text-muted-foreground">
-													(Optional)
-												</span>
+												Select Company <span className="text-muted-foreground">(Optional)</span>
 											</Label>
 											<Select
 												value={formData.companyId}
 												onValueChange={(value) => {
-													const company = existingCompanies.find(
-														(c) => c.id === value,
-													);
+													const company = existingCompanies.find((c) => c.id === value);
 													handleInputChange("companyId", value);
 													if (company) {
 														handleInputChange("companyName", company.name);
@@ -461,8 +386,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 															<div className="flex flex-col">
 																<span>{company.name}</span>
 																<span className="text-xs text-muted-foreground">
-																	{company.legalForm} •{" "}
-																	{company.registrationNumber}
+																	{company.legalForm} • {company.registrationNumber}
 																</span>
 															</div>
 														</SelectItem>
@@ -480,9 +404,7 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 												type="text"
 												placeholder="e.g., My Business SARL..."
 												value={formData.companyName}
-												onChange={(e) =>
-													handleInputChange("companyName", e.target.value)
-												}
+												onChange={(e) => handleInputChange("companyName", e.target.value)}
 												className="bg-background border-border"
 											/>
 											<p className="text-xs text-muted-foreground">
@@ -502,14 +424,14 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 											)}
 											{formData.ownership === "joint" && (
 												<p>
-													Joint accounts are shared between two account holders
-													with equal access and ownership
+													Joint accounts are shared between two account holders with equal access
+													and ownership
 												</p>
 											)}
 											{formData.ownership === "company" && (
 												<p>
-													Business accounts help separate personal and
-													professional finances for tax and accounting purposes
+													Business accounts help separate personal and professional finances for tax
+													and accounting purposes
 												</p>
 											)}
 										</div>
@@ -539,12 +461,8 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 									</div>
 									{formData.accountNumber && (
 										<div className="flex justify-between">
-											<span className="text-muted-foreground">
-												Account No.:
-											</span>
-											<span className="font-mono text-sm">
-												{formData.accountNumber}
-											</span>
+											<span className="text-muted-foreground">Account No.:</span>
+											<span className="font-mono text-sm">{formData.accountNumber}</span>
 										</div>
 									)}
 									<div className="flex justify-between">
@@ -555,45 +473,31 @@ export function AddSavingForm({ open, onClose, onSubmit }: AddSavingFormProps) {
 										<span className="text-muted-foreground">Balance:</span>
 										<span className="font-mono font-medium text-green-600">
 											{currencySymbol}
-											{parseFloat(formData.balance || "0").toLocaleString(
-												"en-US",
-												{ minimumFractionDigits: 2 },
-											)}
+											{parseFloat(formData.balance || "0").toLocaleString("en-US", {
+												minimumFractionDigits: 2,
+											})}
 										</span>
 									</div>
 									{formData.interestRate && (
 										<div className="flex justify-between">
-											<span className="text-muted-foreground">
-												Interest Rate:
-											</span>
-											<span className="font-mono">
-												{formData.interestRate}%
-											</span>
+											<span className="text-muted-foreground">Interest Rate:</span>
+											<span className="font-mono">{formData.interestRate}%</span>
 										</div>
 									)}
 									<div className="flex justify-between pt-2 border-t">
 										<span className="text-muted-foreground">Ownership:</span>
-										<span className="font-medium capitalize">
-											{formData.ownership}
-										</span>
+										<span className="font-medium capitalize">{formData.ownership}</span>
 									</div>
-									{formData.ownership === "joint" &&
-										formData.jointOwnerName && (
-											<div className="flex justify-between">
-												<span className="text-muted-foreground">
-													Joint Holder:
-												</span>
-												<span className="font-medium">
-													{formData.jointOwnerName}
-												</span>
-											</div>
-										)}
+									{formData.ownership === "joint" && formData.jointOwnerName && (
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">Joint Holder:</span>
+											<span className="font-medium">{formData.jointOwnerName}</span>
+										</div>
+									)}
 									{formData.ownership === "company" && formData.companyName && (
 										<div className="flex justify-between">
 											<span className="text-muted-foreground">Company:</span>
-											<span className="font-medium">
-												{formData.companyName}
-											</span>
+											<span className="font-medium">{formData.companyName}</span>
 										</div>
 									)}
 								</div>

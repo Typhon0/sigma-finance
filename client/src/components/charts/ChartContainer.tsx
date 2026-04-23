@@ -45,9 +45,7 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
 			<CardHeader className="pb-3">
 				<CardTitle className="text-lg font-semibold flex items-center justify-between">
 					<span>{chartTitle}</span>
-					<span className="text-sm font-normal text-muted-foreground">
-						{assetType}
-					</span>
+					<span className="text-sm font-normal text-muted-foreground">{assetType}</span>
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="p-0">

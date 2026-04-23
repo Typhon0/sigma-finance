@@ -1,22 +1,8 @@
-import {
-	ArrowDown,
-	ArrowUp,
-	Minus,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowDown, ArrowUp, Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
-import {
-	AssetListSkeleton,
-	useComponentErrorHandler,
-} from "@/components/dashboard/error-handling";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { AssetListSkeleton, useComponentErrorHandler } from "@/components/dashboard/error-handling";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 
 const getPerformanceColorClass = (change: number) => {
@@ -44,15 +30,8 @@ interface AssetPerformanceProps {
 	onAssetClick: (assetId: string) => void;
 }
 
-export function AssetPerformance({
-	assets,
-	isLoading,
-	onAssetClick,
-}: AssetPerformanceProps) {
-	const { handleErrorWithRetry } = useComponentErrorHandler(
-		"AssetPerformance",
-		"component",
-	);
+export function AssetPerformance({ assets, isLoading, onAssetClick }: AssetPerformanceProps) {
+	const { handleErrorWithRetry } = useComponentErrorHandler("AssetPerformance", "component");
 	const sortedAssets = useMemo(() => {
 		if (!assets) return [];
 		return [...assets].sort((a, b) => {
@@ -67,9 +46,7 @@ export function AssetPerformance({
 			<Card>
 				<CardHeader>
 					<CardTitle>Top Performing Assets</CardTitle>
-					<CardDescription>
-						Assets with the best performance today.
-					</CardDescription>
+					<CardDescription>Assets with the best performance today.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<AssetListSkeleton count={5} showActions={false} />
@@ -83,9 +60,7 @@ export function AssetPerformance({
 			<Card>
 				<CardHeader>
 					<CardTitle>Top Performing Assets</CardTitle>
-					<CardDescription>
-						Assets with the best performance today.
-					</CardDescription>
+					<CardDescription>Assets with the best performance today.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="text-center text-muted-foreground py-8">
@@ -100,22 +75,20 @@ export function AssetPerformance({
 		<Card>
 			<CardHeader>
 				<CardTitle>Top Performing Assets</CardTitle>
-				<CardDescription>
-					Assets with the best performance today.
-				</CardDescription>
+				<CardDescription>Assets with the best performance today.</CardDescription>
 			</CardHeader>
 			<CardContent>
 				<div className="space-y-4">
 					{sortedAssets.slice(0, 5).map(({ asset, performance }) => (
-						<button
+						<Button
 							key={asset.id}
-							type="button"
+							variant="ghost"
 							onClick={async () => {
 								await handleErrorWithRetry(async () => {
 									onAssetClick(asset.id);
 								});
 							}}
-							className="w-full flex items-center justify-between p-2 rounded-md hover:bg-muted transition-colors"
+							className="w-full flex items-center justify-between p-2 rounded-md h-auto"
 						>
 							<div className="flex items-center gap-4">
 								<div className="p-2 bg-muted rounded-full">
@@ -129,17 +102,13 @@ export function AssetPerformance({
 								</div>
 								<div>
 									<div className="font-semibold">{asset.name}</div>
-									<div className="text-sm text-muted-foreground">
-										{asset.symbol}
-									</div>
+									<div className="text-sm text-muted-foreground">{asset.symbol}</div>
 								</div>
 							</div>
 							<div className="text-right">
 								<div
 									className={`font-semibold ${
-										performance
-											? getPerformanceColorClass(performance.change)
-											: "text-gray-500"
+										performance ? getPerformanceColorClass(performance.change) : "text-gray-500"
 									}`}
 								>
 									{performance ? formatCurrency(performance.change) : "$0.00"}
@@ -165,7 +134,7 @@ export function AssetPerformance({
 									)}
 								</div>
 							</div>
-						</button>
+						</Button>
 					))}
 				</div>
 			</CardContent>

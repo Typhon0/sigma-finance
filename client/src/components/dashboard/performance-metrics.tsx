@@ -12,11 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-	formatCurrency,
-	formatPercentage,
-	getPerformanceColorClass,
-} from "@/lib/utils/formatters";
+import { formatCurrency, formatPercentage, getPerformanceColorClass } from "@/lib/utils/formatters";
 
 export interface PerformanceMetric {
 	label: string;
@@ -40,10 +36,7 @@ export interface PerformanceMetricsProps {
 	onMetricClick?: (metric: PerformanceMetric) => void;
 }
 
-const formatMetricValue = (
-	value: number,
-	format: PerformanceMetric["format"],
-): string => {
+const formatMetricValue = (value: number, format: PerformanceMetric["format"]): string => {
 	switch (format) {
 		case "currency":
 			return formatCurrency(value);
@@ -73,26 +66,17 @@ const getChangeIndicator = (change?: number, changePercent?: number) => {
 	if (change === undefined && changePercent === undefined) return null;
 
 	const displayValue =
-		changePercent !== undefined
-			? formatPercentage(changePercent)
-			: formatCurrency(change!);
-	const isPositive =
-		(changePercent !== undefined ? changePercent : change!) > 0;
+		changePercent !== undefined ? formatPercentage(changePercent) : formatCurrency(change!);
+	const isPositive = (changePercent !== undefined ? changePercent : change!) > 0;
 
 	return (
 		<div
 			className={cn(
 				"flex items-center gap-1 text-sm",
-				getPerformanceColorClass(
-					changePercent !== undefined ? changePercent : change!,
-				),
+				getPerformanceColorClass(changePercent !== undefined ? changePercent : change!),
 			)}
 		>
-			{isPositive ? (
-				<ArrowUp className="h-3 w-3" />
-			) : (
-				<ArrowDown className="h-3 w-3" />
-			)}
+			{isPositive ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
 			{displayValue}
 		</div>
 	);
@@ -109,9 +93,7 @@ const MetricCard: React.FC<{
 	const isClickable = onClick !== undefined;
 
 	const targetDifference = hasTarget ? metric.value - metric.target! : 0;
-	const benchmarkDifference = hasBenchmark
-		? metric.value - metric.benchmark!
-		: 0;
+	const benchmarkDifference = hasBenchmark ? metric.value - metric.benchmark! : 0;
 
 	return (
 		<Card
@@ -129,12 +111,7 @@ const MetricCard: React.FC<{
 							{getMetricIcon(metric)}
 						</div>
 						<div>
-							<p
-								className={cn(
-									"text-sm font-medium text-muted-foreground",
-									compact && "text-xs",
-								)}
-							>
+							<p className={cn("text-sm font-medium text-muted-foreground", compact && "text-xs")}>
 								{metric.label}
 							</p>
 							<p className={cn("text-2xl font-bold", compact && "text-lg")}>
@@ -179,9 +156,7 @@ const MetricCard: React.FC<{
 
 				{/* Description */}
 				{metric.description && !compact && (
-					<p className="text-xs text-muted-foreground mt-2">
-						{metric.description}
-					</p>
+					<p className="text-xs text-muted-foreground mt-2">{metric.description}</p>
 				)}
 			</CardContent>
 		</Card>
@@ -209,9 +184,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
 				<div
 					className={cn(
 						"grid gap-4",
-						compact
-							? "grid-cols-2 lg:grid-cols-4"
-							: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+						compact ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
 					)}
 				>
 					{Array.from({ length: compact ? 4 : 6 }).map((_, i) => (
@@ -265,9 +238,7 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({
 			<div
 				className={cn(
 					"grid gap-4",
-					compact
-						? "grid-cols-2 lg:grid-cols-4"
-						: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+					compact ? "grid-cols-2 lg:grid-cols-4" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
 				)}
 			>
 				{metrics.map((metric, index) => (

@@ -1,20 +1,10 @@
-import {
-	AlertCircle,
-	AlertTriangle,
-	CheckCircle,
-	Info,
-	XCircle,
-} from "lucide-react";
+import { AlertCircle, AlertTriangle, CheckCircle, Info, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { formatCurrency } from "@/lib/utils/formatters";
 import type { TransactionFormData } from "@/lib/validations/transaction.schemas";
 import { transactionErrorMessages } from "@/lib/validations/transaction.schemas";
@@ -76,10 +66,7 @@ export function TransactionValidation({
 		}
 
 		// Asset validation for non-cash transactions
-		if (
-			!["DEPOSIT", "WITHDRAWAL"].includes(transaction.transactionType) &&
-			!transaction.assetId
-		) {
+		if (!["DEPOSIT", "WITHDRAWAL"].includes(transaction.transactionType) && !transaction.assetId) {
 			errors.push({
 				field: "assetId",
 				message: transactionErrorMessages.assetRequired,
@@ -115,9 +102,8 @@ export function TransactionValidation({
 			}
 
 			// Amount vs quantity * price validation
-			if (transaction.quantity && transaction.pricePerUnit) {
-				const calculatedAmount =
-					transaction.quantity * transaction.pricePerUnit;
+			if (transaction.quantity != null && transaction.pricePerUnit) {
+				const calculatedAmount = transaction.quantity * transaction.pricePerUnit;
 				const tolerance = 0.01;
 				if (Math.abs(calculatedAmount - transaction.amount) > tolerance) {
 					warnings.push({
@@ -125,9 +111,7 @@ export function TransactionValidation({
 						message: transactionErrorMessages.amountMismatch,
 						severity: "warning",
 					});
-					suggestions.push(
-						`Expected amount: ${formatCurrency(calculatedAmount)}`,
-					);
+					suggestions.push(`Expected amount: ${formatCurrency(calculatedAmount)}`);
 				}
 			}
 		}
@@ -136,6 +120,7 @@ export function TransactionValidation({
 		if (transaction.transactionType === "SELL") {
 			if (
 				availableQuantity !== undefined &&
+				transaction.quantity != null &&
 				transaction.quantity > availableQuantity
 			) {
 				errors.push({
@@ -143,26 +128,19 @@ export function TransactionValidation({
 					message: transactionErrorMessages.insufficientQuantity,
 					severity: "error",
 				});
-				suggestions.push(
-					`Available quantity: ${availableQuantity.toLocaleString()}`,
-				);
+				suggestions.push(`Available quantity: ${availableQuantity.toLocaleString()}`);
 			}
 		}
 
 		// Balance validation for buy transactions
 		if (["BUY", "WITHDRAWAL"].includes(transaction.transactionType)) {
-			if (
-				availableBalance !== undefined &&
-				transaction.amount > availableBalance
-			) {
+			if (availableBalance !== undefined && transaction.amount > availableBalance) {
 				warnings.push({
 					field: "amount",
 					message: "Transaction amount exceeds available balance",
 					severity: "warning",
 				});
-				suggestions.push(
-					`Available balance: ${formatCurrency(availableBalance)}`,
-				);
+				suggestions.push(`Available balance: ${formatCurrency(availableBalance)}`);
 			}
 		}
 
@@ -172,9 +150,7 @@ export function TransactionValidation({
 			transaction.pricePerUnit &&
 			["BUY", "SELL"].includes(transaction.transactionType)
 		) {
-			const priceDifference = Math.abs(
-				transaction.pricePerUnit - currentMarketPrice,
-			);
+			const priceDifference = Math.abs(transaction.pricePerUnit - currentMarketPrice);
 			const percentageDifference = (priceDifference / currentMarketPrice) * 100;
 
 			if (percentageDifference > 10) {
@@ -238,10 +214,7 @@ export function TransactionValidation({
 					<XCircle className="h-4 w-4" />
 					<AlertDescription>
 						<div className="flex items-center justify-between">
-							<span>
-								{validation.errors.length} error(s) must be fixed before
-								submitting.
-							</span>
+							<span>{validation.errors.length} error(s) must be fixed before submitting.</span>
 							{onRetry && (
 								<Button variant="outline" size="sm" onClick={onRetry}>
 									Retry Validation
@@ -259,8 +232,7 @@ export function TransactionValidation({
 					<AlertDescription className="text-yellow-800">
 						<div className="flex items-center justify-between">
 							<span>
-								{validation.warnings.length} warning(s) detected. Review before
-								proceeding.
+								{validation.warnings.length} warning(s) detected. Review before proceeding.
 							</span>
 							{onIgnoreWarnings && (
 								<Button variant="outline" size="sm" onClick={onIgnoreWarnings}>
@@ -274,10 +246,7 @@ export function TransactionValidation({
 
 			{/* Detailed Validation Results */}
 			{showDetails && (validation.errors.length > 0 || hasWarnings) && (
-				<Collapsible
-					open={showValidationDetails}
-					onOpenChange={setShowValidationDetails}
-				>
+				<Collapsible open={showValidationDetails} onOpenChange={setShowValidationDetails}>
 					<CollapsibleTrigger asChild>
 						<Button variant="outline" className="w-full">
 							<Info className="h-4 w-4 mr-2" />
@@ -309,9 +278,7 @@ export function TransactionValidation({
 															<Badge variant="outline" className="text-xs">
 																{error.field}
 															</Badge>
-															<span className="text-sm text-red-800">
-																{error.message}
-															</span>
+															<span className="text-sm text-red-800">{error.message}</span>
 														</div>
 													</div>
 												</div>
@@ -339,9 +306,7 @@ export function TransactionValidation({
 															<Badge variant="outline" className="text-xs">
 																{warning.field}
 															</Badge>
-															<span className="text-sm text-yellow-800">
-																{warning.message}
-															</span>
+															<span className="text-sm text-yellow-800">{warning.message}</span>
 														</div>
 													</div>
 												</div>
@@ -364,9 +329,7 @@ export function TransactionValidation({
 													className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg"
 												>
 													<Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-													<span className="text-sm text-blue-800">
-														{suggestion}
-													</span>
+													<span className="text-sm text-blue-800">{suggestion}</span>
 												</div>
 											))}
 										</div>
@@ -389,12 +352,11 @@ export function InlineValidationStatus({
 	transaction: TransactionFormData;
 	availableQuantity?: number;
 }) {
-	const hasErrors =
-		!transaction.portfolioId || !transaction.amount || transaction.amount <= 0;
+	const hasErrors = !transaction.portfolioId || !transaction.amount || transaction.amount <= 0;
 	const hasQuantityError =
 		transaction.transactionType === "SELL" &&
 		availableQuantity !== undefined &&
-		transaction.quantity > availableQuantity;
+		(transaction.quantity ?? 0) > availableQuantity;
 
 	if (hasErrors || hasQuantityError) {
 		return (

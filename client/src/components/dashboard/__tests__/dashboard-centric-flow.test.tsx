@@ -50,12 +50,8 @@ function TestDashboardComponent() {
 	return (
 		<div>
 			<div data-testid="view-mode">{viewState.viewMode}</div>
-			<div data-testid="selected-portfolio">
-				{viewState.selectedPortfolio?.name || "none"}
-			</div>
-			<div data-testid="selected-asset">
-				{viewState.selectedAsset?.name || "none"}
-			</div>
+			<div data-testid="selected-portfolio">{viewState.selectedPortfolio?.name || "none"}</div>
+			<div data-testid="selected-asset">{viewState.selectedAsset?.name || "none"}</div>
 
 			<button
 				type="button"
@@ -104,9 +100,7 @@ describe("Dashboard-Centric Portfolio View", () => {
 			render(<TestDashboardComponent />);
 
 			expect(screen.getByTestId("view-mode")).toHaveTextContent("overview");
-			expect(screen.getByTestId("selected-portfolio")).toHaveTextContent(
-				"none",
-			);
+			expect(screen.getByTestId("selected-portfolio")).toHaveTextContent("none");
 			expect(screen.getByTestId("selected-asset")).toHaveTextContent("none");
 		});
 
@@ -116,12 +110,8 @@ describe("Dashboard-Centric Portfolio View", () => {
 			fireEvent.click(screen.getByTestId("view-portfolio-btn"));
 
 			await waitFor(() => {
-				expect(screen.getByTestId("view-mode")).toHaveTextContent(
-					"portfolio-detail",
-				);
-				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent(
-					"Test Portfolio",
-				);
+				expect(screen.getByTestId("view-mode")).toHaveTextContent("portfolio-detail");
+				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent("Test Portfolio");
 				expect(screen.getByTestId("selected-asset")).toHaveTextContent("none");
 			});
 		});
@@ -132,15 +122,9 @@ describe("Dashboard-Centric Portfolio View", () => {
 			fireEvent.click(screen.getByTestId("view-asset-btn"));
 
 			await waitFor(() => {
-				expect(screen.getByTestId("view-mode")).toHaveTextContent(
-					"asset-detail",
-				);
-				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent(
-					"Test Portfolio",
-				);
-				expect(screen.getByTestId("selected-asset")).toHaveTextContent(
-					"Apple Inc.",
-				);
+				expect(screen.getByTestId("view-mode")).toHaveTextContent("asset-detail");
+				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent("Test Portfolio");
+				expect(screen.getByTestId("selected-asset")).toHaveTextContent("Apple Inc.");
 			});
 		});
 
@@ -150,18 +134,14 @@ describe("Dashboard-Centric Portfolio View", () => {
 			// Go to portfolio detail first
 			fireEvent.click(screen.getByTestId("view-portfolio-btn"));
 			await waitFor(() => {
-				expect(screen.getByTestId("view-mode")).toHaveTextContent(
-					"portfolio-detail",
-				);
+				expect(screen.getByTestId("view-mode")).toHaveTextContent("portfolio-detail");
 			});
 
 			// Navigate back to overview
 			fireEvent.click(screen.getByTestId("back-to-overview-btn"));
 			await waitFor(() => {
 				expect(screen.getByTestId("view-mode")).toHaveTextContent("overview");
-				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent(
-					"none",
-				);
+				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent("none");
 			});
 		});
 
@@ -171,21 +151,15 @@ describe("Dashboard-Centric Portfolio View", () => {
 			// Go to asset detail first
 			fireEvent.click(screen.getByTestId("view-asset-btn"));
 			await waitFor(() => {
-				expect(screen.getByTestId("view-mode")).toHaveTextContent(
-					"asset-detail",
-				);
+				expect(screen.getByTestId("view-mode")).toHaveTextContent("asset-detail");
 			});
 
 			// Navigate back to portfolio
 			fireEvent.click(screen.getByTestId("back-to-portfolio-btn"));
 			await waitFor(() => {
-				expect(screen.getByTestId("view-mode")).toHaveTextContent(
-					"portfolio-detail",
-				);
+				expect(screen.getByTestId("view-mode")).toHaveTextContent("portfolio-detail");
 				expect(screen.getByTestId("selected-asset")).toHaveTextContent("none");
-				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent(
-					"Test Portfolio",
-				);
+				expect(screen.getByTestId("selected-portfolio")).toHaveTextContent("Test Portfolio");
 			});
 		});
 	});
@@ -250,9 +224,7 @@ describe("Dashboard-Centric Portfolio View", () => {
 			);
 
 			expect(screen.getByText("Test Portfolio")).toBeInTheDocument();
-			expect(
-				screen.getByText("A test portfolio for dashboard functionality"),
-			).toBeInTheDocument();
+			expect(screen.getByText("A test portfolio for dashboard functionality")).toBeInTheDocument();
 			expect(screen.getByText("Back to Dashboard")).toBeInTheDocument();
 
 			fireEvent.click(screen.getByText("Back to Dashboard"));
@@ -282,13 +254,7 @@ describe("Dashboard-Centric Portfolio View", () => {
 		it("should render asset details with back navigation", () => {
 			const mockOnBack = vi.fn();
 
-			render(
-				<InlineAssetDetail
-					asset={mockAsset}
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-				/>,
-			);
+			render(<InlineAssetDetail asset={mockAsset} portfolio={mockPortfolio} onBack={mockOnBack} />);
 
 			expect(screen.getByText("Apple Inc.")).toBeInTheDocument();
 			expect(screen.getByText("AAPL")).toBeInTheDocument();
@@ -301,13 +267,7 @@ describe("Dashboard-Centric Portfolio View", () => {
 		it("should display asset metrics and information", () => {
 			const mockOnBack = vi.fn();
 
-			render(
-				<InlineAssetDetail
-					asset={mockAsset}
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-				/>,
-			);
+			render(<InlineAssetDetail asset={mockAsset} portfolio={mockPortfolio} onBack={mockOnBack} />);
 
 			expect(screen.getByText("Type: STOCK")).toBeInTheDocument();
 			expect(screen.getByText("Portfolio: Test Portfolio")).toBeInTheDocument();
@@ -340,11 +300,7 @@ describe("Dashboard Navigation Flow Integration", () => {
 		rerender(
 			<div>
 				<div data-testid="sidebar">Sidebar</div>
-				<InlineAssetDetail
-					asset={mockAsset}
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-				/>
+				<InlineAssetDetail asset={mockAsset} portfolio={mockPortfolio} onBack={mockOnBack} />
 			</div>,
 		);
 

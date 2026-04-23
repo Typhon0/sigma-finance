@@ -9,7 +9,6 @@ import {
 	Filter,
 	History,
 	Percent,
-	Search,
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
@@ -18,12 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -41,12 +36,7 @@ interface AlertHistoryProps {
 	className?: string;
 }
 
-export function AlertHistory({
-	history,
-	onFilter,
-	onExport,
-	className,
-}: AlertHistoryProps) {
+export function AlertHistory({ history, onFilter, onExport, className }: AlertHistoryProps) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterType, setFilterType] = useState<string>("all");
 	const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -186,9 +176,7 @@ export function AlertHistory({
 		return (
 			<div className={`text-center py-8 ${className}`}>
 				<History className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-				<h3 className="text-lg font-medium text-muted-foreground mb-2">
-					No Alert History
-				</h3>
+				<h3 className="text-lg font-medium text-muted-foreground mb-2">No Alert History</h3>
 				<p className="text-sm text-muted-foreground">
 					Alert trigger history will appear here once your alerts are activated.
 				</p>
@@ -202,15 +190,13 @@ export function AlertHistory({
 			<div className="flex flex-col lg:flex-row gap-4">
 				<div className="flex-1 space-y-4 lg:space-y-0 lg:flex lg:gap-4">
 					{/* Search */}
-					<div className="relative flex-1">
-						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search alert history..."
-							value={searchTerm}
-							onChange={(e) => handleSearch(e.target.value)}
-							className="pl-10"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search alert history..."
+						value={searchTerm}
+						onChange={(e) => handleSearch(e.target.value)}
+						onClear={() => handleSearch("")}
+						containerClassName="flex-1"
+					/>
 
 					{/* Type Filter */}
 					<Select
@@ -253,16 +239,12 @@ export function AlertHistory({
 					{/* Date Range Filter */}
 					<Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
 						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								className="w-[200px] justify-start text-left font-normal"
-							>
+							<Button variant="outline" className="w-[200px] justify-start text-left font-normal">
 								<Calendar className="mr-2 h-4 w-4" />
 								{dateRange.from ? (
 									dateRange.to ? (
 										<>
-											{dateRange.from.toLocaleDateString()} -{" "}
-											{dateRange.to.toLocaleDateString()}
+											{dateRange.from.toLocaleDateString()} - {dateRange.to.toLocaleDateString()}
 										</>
 									) : (
 										dateRange.from.toLocaleDateString()
@@ -290,12 +272,7 @@ export function AlertHistory({
 
 				{/* Export Button */}
 				{onExport && (
-					<Button
-						variant="outline"
-						onClick={handleExport}
-						disabled={isExporting}
-						className="gap-2"
-					>
+					<Button variant="outline" onClick={handleExport} disabled={isExporting} className="gap-2">
 						<Download className="h-4 w-4" />
 						{isExporting ? "Exporting..." : "Export"}
 					</Button>
@@ -308,12 +285,8 @@ export function AlertHistory({
 					<CardContent className="p-4">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Total Triggers
-								</p>
-								<div className="text-2xl font-bold">
-									{filteredHistory.length}
-								</div>
+								<p className="text-sm font-medium text-muted-foreground">Total Triggers</p>
+								<div className="text-2xl font-bold">{filteredHistory.length}</div>
 							</div>
 							<History className="h-4 w-4 text-muted-foreground" />
 						</div>
@@ -324,9 +297,7 @@ export function AlertHistory({
 					<CardContent className="p-4">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Acknowledged
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Acknowledged</p>
 								<div className="text-2xl font-bold">
 									{filteredHistory.filter((h) => h.acknowledgedAt).length}
 								</div>
@@ -340,9 +311,7 @@ export function AlertHistory({
 					<CardContent className="p-4">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Pending
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Pending</p>
 								<div className="text-2xl font-bold">
 									{filteredHistory.filter((h) => !h.acknowledgedAt).length}
 								</div>
@@ -356,9 +325,7 @@ export function AlertHistory({
 					<CardContent className="p-4">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									This Week
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">This Week</p>
 								<div className="text-2xl font-bold">
 									{
 										filteredHistory.filter((h) => {
@@ -382,9 +349,7 @@ export function AlertHistory({
 					.map(([date, items]) => (
 						<div key={date} className="space-y-3">
 							<div className="flex items-center gap-3">
-								<h3 className="text-lg font-medium">
-									{formatDate(new Date(date))}
-								</h3>
+								<h3 className="text-lg font-medium">{formatDate(new Date(date))}</h3>
 								<Badge variant="outline">
 									{items.length} trigger{items.length !== 1 ? "s" : ""}
 								</Badge>
@@ -392,9 +357,7 @@ export function AlertHistory({
 
 							<div className="space-y-3 pl-4 border-l-2 border-muted">
 								{items
-									.sort(
-										(a, b) => b.triggeredAt.getTime() - a.triggeredAt.getTime(),
-									)
+									.sort((a, b) => b.triggeredAt.getTime() - a.triggeredAt.getTime())
 									.map((item) => (
 										<Card key={item.id} className="ml-4">
 											<CardContent className="p-4">
@@ -402,26 +365,18 @@ export function AlertHistory({
 													<div className="flex-1 min-w-0">
 														<div className="flex items-center gap-3 mb-2">
 															{getAlertTypeIcon(item.alertType)}
-															<Badge variant="outline">
-																{getAlertTypeLabel(item.alertType)}
-															</Badge>
+															<Badge variant="outline">{getAlertTypeLabel(item.alertType)}</Badge>
 															<div className="flex items-center gap-1 text-sm text-muted-foreground">
 																<Clock className="h-3 w-3" />
 																{formatTime(item.triggeredAt)}
 															</div>
 															{item.acknowledgedAt ? (
-																<Badge
-																	variant="secondary"
-																	className="text-green-600"
-																>
+																<Badge variant="secondary" className="text-green-600">
 																	<CheckCircle className="h-3 w-3 mr-1" />
 																	Acknowledged
 																</Badge>
 															) : (
-																<Badge
-																	variant="secondary"
-																	className="text-orange-600"
-																>
+																<Badge variant="secondary" className="text-orange-600">
 																	<AlertCircle className="h-3 w-3 mr-1" />
 																	Pending
 																</Badge>
@@ -430,17 +385,11 @@ export function AlertHistory({
 
 														<div className="space-y-2">
 															<h4 className="font-medium">{item.alertName}</h4>
-															<p className="text-sm text-muted-foreground">
-																{item.message}
-															</p>
+															<p className="text-sm text-muted-foreground">{item.message}</p>
 
 															<div className="flex items-center gap-4 text-sm text-muted-foreground">
-																{item.assetName && (
-																	<span>Asset: {item.assetName}</span>
-																)}
-																{item.portfolioName && (
-																	<span>Portfolio: {item.portfolioName}</span>
-																)}
+																{item.assetName && <span>Asset: {item.assetName}</span>}
+																{item.portfolioName && <span>Portfolio: {item.portfolioName}</span>}
 															</div>
 
 															{(item.currentValue !== undefined ||
@@ -450,10 +399,7 @@ export function AlertHistory({
 																		<span>
 																			Current:{" "}
 																			<span className="font-medium">
-																				{formatValue(
-																					item.currentValue,
-																					item.alertType,
-																				)}
+																				{formatValue(item.currentValue, item.alertType)}
 																			</span>
 																		</span>
 																	)}
@@ -461,10 +407,7 @@ export function AlertHistory({
 																		<span>
 																			Threshold:{" "}
 																			<span className="font-medium">
-																				{formatValue(
-																					item.thresholdValue,
-																					item.alertType,
-																				)}
+																				{formatValue(item.thresholdValue, item.alertType)}
 																			</span>
 																		</span>
 																	)}
@@ -473,8 +416,7 @@ export function AlertHistory({
 
 															{item.acknowledgedAt && (
 																<div className="text-xs text-muted-foreground">
-																	Acknowledged on{" "}
-																	{item.acknowledgedAt.toLocaleString()}
+																	Acknowledged on {item.acknowledgedAt.toLocaleString()}
 																</div>
 															)}
 														</div>
@@ -491,9 +433,7 @@ export function AlertHistory({
 			{filteredHistory.length === 0 && history.length > 0 && (
 				<div className="text-center py-8">
 					<Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<h3 className="text-lg font-medium text-muted-foreground mb-2">
-						No Matching History
-					</h3>
+					<h3 className="text-lg font-medium text-muted-foreground mb-2">No Matching History</h3>
 					<p className="text-sm text-muted-foreground">
 						Try adjusting your search or filter criteria.
 					</p>

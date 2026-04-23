@@ -81,11 +81,7 @@ describe("useDashboardMonitoring", () => {
 		});
 
 		expect(mockOperation).toHaveBeenCalled();
-		expect(mockTrackDataLoad).toHaveBeenCalledWith(
-			"test-data-type",
-			expect.any(Number),
-			true,
-		);
+		expect(mockTrackDataLoad).toHaveBeenCalledWith("test-data-type", expect.any(Number), true);
 	});
 
 	it("should track errors during data loading", async () => {

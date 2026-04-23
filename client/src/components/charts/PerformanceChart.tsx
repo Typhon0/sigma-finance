@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts";
 import ReactECharts from "echarts-for-react";
 import { Download, Maximize2, Minimize2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
@@ -64,7 +64,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 	}, [data]);
 
 	// Create chart configuration
-	const chartOption = useMemo((): EChartsOption => {
+	const chartOption = useMemo((): EChartsCoreOption => {
 		if (!optimizedData || optimizedData.length === 0) {
 			return {};
 		}
@@ -78,56 +78,54 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 
 		// Add performance optimizations for large datasets
 		if (optimizedData.length > 500) {
-			Object.assign(
-				baseConfig,
-				EChartsPerformanceManager.getPerformanceOptions(),
-			);
+			Object.assign(baseConfig, EChartsPerformanceManager.getPerformanceOptions());
 		}
 
 		// Compact mode adjustments
 		if (compact) {
+			const grid = typeof baseConfig.grid === "object" && baseConfig.grid ? baseConfig.grid : {};
+			const xAxis =
+				typeof baseConfig.xAxis === "object" && baseConfig.xAxis && !Array.isArray(baseConfig.xAxis)
+					? (baseConfig.xAxis as Record<string, unknown>)
+					: {};
+			const yAxis =
+				typeof baseConfig.yAxis === "object" && baseConfig.yAxis && !Array.isArray(baseConfig.yAxis)
+					? (baseConfig.yAxis as Record<string, unknown>)
+					: {};
 			return {
 				...baseConfig,
 				grid: {
-					...baseConfig.grid,
+					...grid,
 					left: "5%",
 					right: "5%",
 					top: "10%",
 					bottom: "15%",
 				},
 				xAxis: {
-					...baseConfig.xAxis,
+					...xAxis,
 					axisLabel: {
-						...baseConfig.xAxis?.axisLabel,
+						...((xAxis.axisLabel as Record<string, unknown>) || {}),
 						fontSize: 10,
 					},
 				},
 				yAxis: {
-					...baseConfig.yAxis,
+					...yAxis,
 					axisLabel: {
-						...baseConfig.yAxis?.axisLabel,
+						...((yAxis.axisLabel as Record<string, unknown>) || {}),
 						fontSize: 10,
 					},
 				},
-			};
+			} as EChartsCoreOption;
 		}
 
 		return baseConfig;
-	}, [
-		optimizedData,
-		title,
-		showHeader,
-		yAxisFormatter,
-		color,
-		chartType,
-		compact,
-	]);
+	}, [optimizedData, title, showHeader, yAxisFormatter, color, chartType, compact]);
 
 	// Handle export functionality
 	const handleExport = (format: "png" | "svg") => {
 		if (chartRef.current) {
 			const chartInstance = chartRef.current.getEchartsInstance();
-			const dataURL = chartInstance.getDataURL({
+			const dataUrl = chartInstance.getDataURL({
 				type: format,
 				pixelRatio: 2,
 				backgroundColor: "#fff",
@@ -136,7 +134,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 			// Create download link
 			const link = document.createElement("a");
 			link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-chart.${format}`;
-			link.href = dataURL;
+			link.href = dataUrl;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -156,7 +154,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 			const chartInstance = chartRef.current.getEchartsInstance();
 			setTimeout(() => chartInstance.resize(), 100);
 		}
-	}, [isFullscreen]);
+	}, []);
 
 	// Loading state
 	if (loading) {
@@ -174,9 +172,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 					>
 						<div className="text-center">
 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
-							<p className="text-sm text-muted-foreground">
-								Loading chart data...
-							</p>
+							<p className="text-sm text-muted-foreground">Loading chart data...</p>
 						</div>
 					</div>
 				</CardContent>
@@ -224,9 +220,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 					>
 						<div className="text-center text-muted-foreground">
 							<p className="font-medium">No data available</p>
-							<p className="text-sm">
-								Performance data will appear here when available
-							</p>
+							<p className="text-sm">Performance data will appear here when available</p>
 						</div>
 					</div>
 				</CardContent>
@@ -244,7 +238,6 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 			}}
 			opts={{
 				renderer: "canvas",
-				useDirtyRect: true,
 			}}
 		/>
 	);
@@ -254,13 +247,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 	}
 
 	return (
-		<Card
-			className={cn(
-				"w-full",
-				isFullscreen && "fixed inset-4 z-50 bg-background",
-				className,
-			)}
-		>
+		<Card className={cn("w-full", isFullscreen && "fixed inset-4 z-50 bg-background", className)}>
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<CardTitle className="text-lg font-semibold">{title}</CardTitle>

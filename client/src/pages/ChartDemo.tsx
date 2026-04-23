@@ -54,9 +54,7 @@ const ChartDemo: React.FC = () => {
 				<CardContent className="space-y-4">
 					<div className="flex items-center space-x-4">
 						<div className="flex-1">
-							<label className="text-sm font-medium mb-2 block">
-								Select Symbol
-							</label>
+							<label className="text-sm font-medium mb-2 block">Select Symbol</label>
 							<Select value={selectedSymbol} onValueChange={handleSymbolChange}>
 								<SelectTrigger>
 									<SelectValue placeholder="Choose a symbol" />
@@ -82,12 +80,8 @@ const ChartDemo: React.FC = () => {
 							</Select>
 						</div>
 						<div>
-							<label className="text-sm font-medium mb-2 block">
-								Asset Type
-							</label>
-							<div className="px-3 py-2 bg-gray-100 rounded-md text-sm">
-								{selectedAssetType}
-							</div>
+							<label className="text-sm font-medium mb-2 block">Asset Type</label>
+							<div className="px-3 py-2 bg-gray-100 rounded-md text-sm">{selectedAssetType}</div>
 						</div>
 					</div>
 				</CardContent>
@@ -106,7 +100,7 @@ const ChartDemo: React.FC = () => {
 				<ChartContainer
 					symbol={selectedSymbol}
 					assetType={selectedAssetType}
-					title={`${selectedSymbol.split(":")[0]} Recharts Fallback`}
+					title={`${selectedSymbol.split(":")[0]} ECharts Fallback`}
 					height="500px"
 					useLightweightCharts={false}
 					fallbackToSimpleChart={true}
@@ -120,34 +114,24 @@ const ChartDemo: React.FC = () => {
 				</CardHeader>
 				<CardContent className="space-y-4">
 					<div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-						<h4 className="font-semibold text-blue-900 mb-2">
-							TradingView Library Required
-						</h4>
+						<h4 className="font-semibold text-blue-900 mb-2">TradingView Library Required</h4>
 						<p className="text-blue-800 text-sm mb-3">
-							To see live charts, you need to install the TradingView Charting
-							Library.
+							To see live charts, you need to install the TradingView Charting Library.
 						</p>
 						<div className="space-y-2 text-sm text-blue-700">
-							<p>
-								1. Download the library from TradingView's GitHub repository
-							</p>
+							<p>1. Download the library from TradingView's GitHub repository</p>
 							<p>
 								2. Extract to{" "}
-								<code className="bg-blue-100 px-1 rounded">
-									client/public/charting_library/
-								</code>
+								<code className="bg-blue-100 px-1 rounded">client/public/charting_library/</code>
 							</p>
 							<p>3. Refresh this page to see the interactive charts</p>
 						</div>
 					</div>
 
 					<div className="bg-green-50 border border-green-200 rounded-lg p-4">
-						<h4 className="font-semibold text-green-900 mb-2">
-							Market Data Integration
-						</h4>
+						<h4 className="font-semibold text-green-900 mb-2">Market Data Integration</h4>
 						<p className="text-green-800 text-sm">
-							The charts are connected to our market data service with support
-							for:
+							The charts are connected to our market data service with support for:
 						</p>
 						<ul className="list-disc list-inside text-sm text-green-700 mt-2 space-y-1">
 							<li>Real-time price updates</li>

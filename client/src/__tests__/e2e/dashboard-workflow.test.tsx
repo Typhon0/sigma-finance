@@ -1,11 +1,5 @@
 import { MockedProvider } from "@apollo/client/testing";
-import {
-	fireEvent,
-	render,
-	screen,
-	waitFor,
-	within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "@/components/theme-provider";
@@ -216,9 +210,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Wait for portfolio detail view
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Verify portfolio detail state
@@ -229,9 +221,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			// Verify breadcrumb navigation
 			const breadcrumb = screen.getByRole("navigation");
 			expect(within(breadcrumb).getByText("Dashboard")).toBeInTheDocument();
-			expect(
-				within(breadcrumb).getByText("Growth Portfolio"),
-			).toBeInTheDocument();
+			expect(within(breadcrumb).getByText("Growth Portfolio")).toBeInTheDocument();
 
 			// Navigate back to overview via breadcrumb
 			const dashboardBreadcrumb = within(breadcrumb).getByText("Dashboard");
@@ -262,9 +252,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Navigate back to overview
@@ -278,9 +266,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Crypto Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("Cryptocurrency investments"),
-				).toBeInTheDocument();
+				expect(screen.getByText("Cryptocurrency investments")).toBeInTheDocument();
 			});
 
 			// Verify correct portfolio is displayed
@@ -305,9 +291,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Click on Apple asset
@@ -316,9 +300,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Wait for asset detail view
 			await waitFor(() => {
-				expect(
-					screen.getByText("Back to Growth Portfolio"),
-				).toBeInTheDocument();
+				expect(screen.getByText("Back to Growth Portfolio")).toBeInTheDocument();
 			});
 
 			// Verify asset detail state
@@ -329,18 +311,14 @@ describe("Dashboard Workflow E2E Tests", () => {
 			// Verify breadcrumb navigation
 			const breadcrumb = screen.getByRole("navigation");
 			expect(within(breadcrumb).getByText("Dashboard")).toBeInTheDocument();
-			expect(
-				within(breadcrumb).getByText("Growth Portfolio"),
-			).toBeInTheDocument();
+			expect(within(breadcrumb).getByText("Growth Portfolio")).toBeInTheDocument();
 			expect(within(breadcrumb).getByText("Apple Inc.")).toBeInTheDocument();
 
 			// Navigate back to portfolio
 			fireEvent.click(screen.getByText("Back to Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Verify we're back to portfolio detail
@@ -363,9 +341,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Navigate to Apple asset
@@ -379,9 +355,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Back to Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Navigate to Microsoft asset
@@ -409,9 +383,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			});
 
 			// Click on asset from top performing assets section
-			const topPerformingSection = screen
-				.getByText("Top Performing Assets")
-				.closest("div");
+			const topPerformingSection = screen.getByText("Top Performing Assets").closest("div");
 			const appleAsset = within(topPerformingSection!).getByText("Apple Inc.");
 			fireEvent.click(appleAsset);
 
@@ -423,9 +395,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			// Verify breadcrumb shows correct path
 			const breadcrumb = screen.getByRole("navigation");
 			expect(within(breadcrumb).getByText("Dashboard")).toBeInTheDocument();
-			expect(
-				within(breadcrumb).getByText("Growth Portfolio"),
-			).toBeInTheDocument();
+			expect(within(breadcrumb).getByText("Growth Portfolio")).toBeInTheDocument();
 			expect(within(breadcrumb).getByText("Apple Inc.")).toBeInTheDocument();
 
 			// Navigate back to overview via breadcrumb
@@ -458,9 +428,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Verify sidebar is still present
@@ -498,15 +466,11 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Verify sidebar toggle is still functional
-			expect(
-				screen.getByRole("button", { name: /toggle sidebar/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /toggle sidebar/i })).toBeInTheDocument();
 
 			// Expand sidebar again
 			fireEvent.click(screen.getByRole("button", { name: /toggle sidebar/i }));
@@ -532,9 +496,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			fireEvent.click(screen.getByText("Apple Inc."));
@@ -555,9 +517,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Crypto Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("Cryptocurrency investments"),
-				).toBeInTheDocument();
+				expect(screen.getByText("Cryptocurrency investments")).toBeInTheDocument();
 			});
 
 			// Verify correct context is maintained
@@ -580,9 +540,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Simulate browser back button
@@ -596,9 +554,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			window.history.forward();
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 		});
 	});
@@ -637,9 +593,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Wait for error state
 			await waitFor(() => {
-				expect(
-					screen.getByText("Failed to load dashboard"),
-				).toBeInTheDocument();
+				expect(screen.getByText("Failed to load dashboard")).toBeInTheDocument();
 			});
 
 			// Verify error message and retry button
@@ -693,9 +647,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Verify empty states are handled
 			expect(screen.getByText("No portfolios yet")).toBeInTheDocument();
-			expect(
-				screen.getByText("Create your first portfolio to get started"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Create your first portfolio to get started")).toBeInTheDocument();
 		});
 	});
 
@@ -742,9 +694,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Verify mobile layout is maintained
@@ -766,15 +716,11 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			// Simulate swipe gesture to go back
-			const portfolioDetail = screen
-				.getByText("High-growth technology stocks")
-				.closest("div");
+			const portfolioDetail = screen.getByText("High-growth technology stocks").closest("div");
 
 			fireEvent.touchStart(portfolioDetail!, {
 				touches: [{ clientX: 0, clientY: 0 }],
@@ -809,9 +755,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 			fireEvent.click(screen.getByText("Growth Portfolio"));
 
 			await waitFor(() => {
-				expect(
-					screen.getByText("High-growth technology stocks"),
-				).toBeInTheDocument();
+				expect(screen.getByText("High-growth technology stocks")).toBeInTheDocument();
 			});
 
 			fireEvent.click(screen.getByText("Apple Inc."));
@@ -847,9 +791,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Wait for final state to settle
 			await waitFor(() => {
-				expect(
-					screen.getByText("Cryptocurrency investments"),
-				).toBeInTheDocument();
+				expect(screen.getByText("Cryptocurrency investments")).toBeInTheDocument();
 			});
 
 			// Verify correct final state

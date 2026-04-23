@@ -34,17 +34,11 @@ export function PortfolioSummaryCards({
 }: PortfolioSummaryCardsProps) {
 	const navigate = useNavigate();
 	const { formatCurrency } = useCurrency();
-	const { handleErrorWithRetry } = useComponentErrorHandler(
-		"PortfolioSummaryCards",
-		"component",
-	);
+	const { handleErrorWithRetry } = useComponentErrorHandler("PortfolioSummaryCards", "component");
 
 	if (portfolios.length === 0) {
 		return (
-			<section
-				className="text-center py-8"
-				aria-labelledby="empty-portfolios-title"
-			>
+			<section className="text-center py-8" aria-labelledby="empty-portfolios-title">
 				<Card>
 					<CardContent className="p-6">
 						<h3 id="empty-portfolios-title" className="text-xl font-semibold">
@@ -110,28 +104,24 @@ export function PortfolioSummaryCards({
 
 				const assetCount = portfolio.assets?.length || 0;
 				const allocationPercentage =
-					totalOverallValue > 0
-						? (metrics.totalValue / totalOverallValue) * 100
-						: 0;
+					totalOverallValue > 0 ? (metrics.totalValue / totalOverallValue) * 100 : 0;
 
 				return (
 					<Card
 						key={portfolio.id}
 						className="flex flex-col justify-between transition-transform duration-200 hover:scale-[1.02] focus-within:scale-[1.02] hover:shadow-lg focus-within:shadow-lg"
 					>
-						<button
-							type="button"
+						<Button
+							variant="ghost"
 							onClick={() => handlePortfolioClick(portfolio)}
-							className="h-full w-full text-left p-4 rounded-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							className="h-full w-full text-left p-4 rounded-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-auto"
 							aria-label={`View details for ${portfolio.name}. Value: ${formatCurrency(metrics.totalValue)}. ${assetCount} assets. ${allocationPercentage.toFixed(1)}% of total portfolio.`}
 						>
 							<div className="flex justify-between items-start mb-2">
 								<h3 className="font-semibold text-lg truncate pr-2">
 									{portfolio.name}
 									<Badge
-										variant={
-											metrics.totalGainLoss >= 0 ? "default" : "destructive"
-										}
+										variant={metrics.totalGainLoss >= 0 ? "default" : "destructive"}
 										className={cn(
 											"text-xs",
 											metrics.totalGainLoss >= 0 &&
@@ -143,18 +133,14 @@ export function PortfolioSummaryCards({
 									</Badge>
 								</h3>
 							</div>
-							<p className="text-2xl font-bold">
-								{formatCurrency(metrics.totalValue)}
-							</p>
+							<p className="text-2xl font-bold">{formatCurrency(metrics.totalValue)}</p>
 							<div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
 								<span>
 									{assetCount} {assetCount === 1 ? "asset" : "assets"}
 								</span>
-								<span className="font-mono">
-									({allocationPercentage.toFixed(1)}%)
-								</span>
+								<span className="font-mono">({allocationPercentage.toFixed(1)}%)</span>
 							</div>
-						</button>
+						</Button>
 						<CardFooter className="p-4 pt-2 flex justify-end">
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
@@ -168,13 +154,8 @@ export function PortfolioSummaryCards({
 										<span className="sr-only">More options</span>
 									</Button>
 								</DropdownMenuTrigger>
-								<DropdownMenuContent
-									align="end"
-									onClick={(e) => e.stopPropagation()}
-								>
-									<DropdownMenuItem
-										onSelect={() => handlePortfolioClick(portfolio)}
-									>
+								<DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+									<DropdownMenuItem onSelect={() => handlePortfolioClick(portfolio)}>
 										<Eye className="mr-2 h-4 w-4" />
 										View
 									</DropdownMenuItem>

@@ -1,3 +1,5 @@
+import type { EChartsCoreOption } from "echarts";
+import ReactECharts from "echarts-for-react";
 import {
 	AlertTriangle,
 	Award,
@@ -7,49 +9,18 @@ import {
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
-import { useState } from "react";
-import {
-	Bar,
-	BarChart,
-	CartesianGrid,
-	Cell,
-	Line,
-	LineChart,
-	Pie,
-	PieChart as RechartsPieChart,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from "recharts";
+import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 export function Analytics() {
-	const {
-		assets,
-		transactions,
-		getPortfolioValue,
-		getPortfolioGainLoss,
-		selectedPortfolio,
-	} = usePortfolio();
+	const { assets, transactions, getPortfolioValue, getPortfolioGainLoss, selectedPortfolio } =
+		usePortfolio();
 	const [timeframe, setTimeframe] = useState("1y");
 	const [viewType, setViewType] = useState("overview");
 
@@ -57,8 +28,7 @@ export function Analytics() {
 	const { gain, gainPercent } = getPortfolioGainLoss();
 
 	// Use real performance history from selectedPortfolio if available
-	const performanceHistory =
-		selectedPortfolio?.analytics?.performanceHistory ?? [];
+	const performanceHistory = selectedPortfolio?.analytics?.performanceHistory ?? [];
 	const performanceData =
 		performanceHistory.length > 0
 			? performanceHistory.map((p: { date: string; value: number }) => ({
@@ -78,19 +48,20 @@ export function Analytics() {
 				];
 
 	// Calculate asset allocation for pie chart
-	const assetAllocation = assets.reduce((acc, asset) => {
+	const assetAllocation: Record<string, number> = {};
+	for (const asset of assets as Array<{
+		type: string;
+		currentValue?: number;
+	}>) {
 		const value = asset.currentValue || 0;
-		acc[asset.type] = (acc[asset.type] || 0) + value;
-		return acc;
-	}, {});
+		assetAllocation[asset.type] = (assetAllocation[asset.type] || 0) + value;
+	}
 
-	const allocationData = Object.entries(assetAllocation).map(
-		([type, value]) => ({
-			name: getAssetTypeLabel(type),
-			value: value,
-			percentage: (value / portfolioValue) * 100,
-		}),
-	);
+	const allocationData = Object.entries(assetAllocation).map(([type, value]: [string, number]) => ({
+		name: getAssetTypeLabel(type),
+		value: value,
+		percentage: (value / portfolioValue) * 100,
+	}));
 
 	// Asset performance data
 	const assetPerformanceData = assets
@@ -123,22 +94,11 @@ export function Analytics() {
 		return labels[type] || type;
 	}
 
-	const COLORS = [
-		"#0088FE",
-		"#00C49F",
-		"#FFBB28",
-		"#FF8042",
-		"#8884D8",
-		"#82CA9D",
-		"#FFC658",
-	];
+	const Colors = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8", "#82CA9D", "#FFC658"];
 
 	// Portfolio statistics
 	const _totalAssets = assets.length;
-	const diversificationScore = Math.min(
-		Object.keys(assetAllocation).length * 20,
-		100,
-	);
+	const diversificationScore = Math.min(Object.keys(assetAllocation).length * 20, 100);
 	const riskScore = Math.max(Math.min(Math.abs(gainPercent) * 2, 100), 20);
 
 	// Use real risk metrics from selectedPortfolio if available
@@ -146,6 +106,137 @@ export function Analytics() {
 	const volatility = riskMetrics?.volatility ?? Math.abs(gainPercent);
 	const monthlyReturn = riskMetrics ? gainPercent / 12 : gainPercent / 12;
 	const yearToDateReturn = gainPercent;
+	const performanceTrendOption = useMemo<EChartsCoreOption>(() => {
+		return {
+			grid: {
+				left: 36,
+				right: 16,
+				top: 24,
+				bottom: 30,
+				containLabel: true,
+			},
+			legend: {
+				top: 0,
+				right: 8,
+				data: ["Portfolio", "S&P 500"],
+			},
+			xAxis: {
+				type: "category",
+				data: performanceData.map((point) => point.date),
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: "value",
+				splitLine: { lineStyle: { type: "dashed", color: "#e5e7eb" } },
+			},
+			tooltip: {
+				trigger: "axis",
+				formatter: (params) => {
+					if (!Array.isArray(params) || params.length === 0) {
+						return "";
+					}
+
+					const lines = params.map((item) => {
+						const rawValue = item.value;
+						const value = typeof rawValue === "number" ? rawValue : Number(rawValue ?? 0);
+						return `${item.marker}${item.seriesName}: $${value.toLocaleString()}`;
+					});
+
+					return `${params[0].axisValueLabel}<br/>${lines.join("<br/>")}`;
+				},
+			},
+			series: [
+				{
+					name: "Portfolio",
+					type: "line",
+					smooth: true,
+					showSymbol: false,
+					lineStyle: { color: "#0088FE", width: 2 },
+					data: performanceData.map((point) => point.value),
+				},
+				{
+					name: "S&P 500",
+					type: "line",
+					smooth: true,
+					showSymbol: false,
+					lineStyle: { color: "#888", width: 1, type: "dashed" },
+					data: performanceData.map((point) => point.benchmark),
+				},
+			],
+		};
+	}, [performanceData]);
+	const allocationOption = useMemo<EChartsCoreOption>(() => {
+		return {
+			tooltip: {
+				trigger: "item",
+				formatter: (params) => {
+					if (typeof params !== "object" || params === null || !("value" in params)) {
+						return "";
+					}
+					const value = typeof params.value === "number" ? params.value : Number(params.value ?? 0);
+					return `${params.name}<br/>Value: $${value.toLocaleString()}`;
+				},
+			},
+			series: [
+				{
+					type: "pie",
+					radius: "65%",
+					center: ["50%", "50%"],
+					label: {
+						formatter: (params: { name: string; percent: number }) =>
+							`${params.name} ${params.percent.toFixed(1)}%`,
+					},
+					data: allocationData.map((item, index) => ({
+						name: item.name,
+						value: item.value,
+						itemStyle: { color: Colors[index % Colors.length] },
+					})),
+				},
+			],
+		};
+	}, [Colors, allocationData]);
+	const assetPerformanceOption = useMemo<EChartsCoreOption>(() => {
+		return {
+			grid: {
+				left: 28,
+				right: 16,
+				top: 24,
+				bottom: 32,
+				containLabel: true,
+			},
+			xAxis: {
+				type: "category",
+				data: assetPerformanceData.map((asset) => asset.name),
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: "value",
+				axisLabel: {
+					formatter: (value: number) => `${value.toFixed(0)}%`,
+				},
+				splitLine: { lineStyle: { type: "dashed", color: "#e5e7eb" } },
+			},
+			tooltip: {
+				trigger: "axis",
+				formatter: (params) => {
+					if (!Array.isArray(params) || params.length === 0) {
+						return "";
+					}
+					const item = params[0];
+					const rawValue = item.value;
+					const value = typeof rawValue === "number" ? rawValue : Number(rawValue ?? 0);
+					return `${item.axisValueLabel}<br/>Return: ${value.toFixed(2)}%`;
+				},
+			},
+			series: [
+				{
+					type: "bar",
+					data: assetPerformanceData.map((asset) => asset.gainPercent),
+					itemStyle: { color: "#0088FE" },
+				},
+			],
+		};
+	}, [assetPerformanceData]);
 
 	return (
 		<div className="space-y-6">
@@ -153,9 +244,7 @@ export function Analytics() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl font-mono">Analytics & Reports</h1>
-					<p className="text-muted-foreground">
-						Comprehensive portfolio analysis and insights
-					</p>
+					<p className="text-muted-foreground">Comprehensive portfolio analysis and insights</p>
 				</div>
 				<div className="flex space-x-2">
 					<Select value={timeframe} onValueChange={setTimeframe}>
@@ -187,9 +276,7 @@ export function Analytics() {
 						<CardTitle className="text-sm">Portfolio Value</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono">
-							${portfolioValue.toLocaleString()}
-						</div>
+						<div className="text-2xl font-mono">${portfolioValue.toLocaleString()}</div>
 						<div
 							className={`flex items-center mt-1 ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
 						>
@@ -198,9 +285,7 @@ export function Analytics() {
 							) : (
 								<TrendingDown className="h-4 w-4 mr-1" />
 							)}
-							<span className="text-sm">
-								{gainPercent.toFixed(2)}% total return
-							</span>
+							<span className="text-sm">{gainPercent.toFixed(2)}% total return</span>
 						</div>
 					</CardContent>
 				</Card>
@@ -210,9 +295,7 @@ export function Analytics() {
 						<CardTitle className="text-sm">Monthly Return</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono text-green-600">
-							+{monthlyReturn}%
-						</div>
+						<div className="text-2xl font-mono text-green-600">+{monthlyReturn}%</div>
 						<p className="text-xs text-muted-foreground">Last 30 days</p>
 					</CardContent>
 				</Card>
@@ -222,9 +305,7 @@ export function Analytics() {
 						<CardTitle className="text-sm">YTD Return</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono text-green-600">
-							+{yearToDateReturn}%
-						</div>
+						<div className="text-2xl font-mono text-green-600">+{yearToDateReturn}%</div>
 						<p className="text-xs text-muted-foreground">Year to date</p>
 					</CardContent>
 				</Card>
@@ -254,40 +335,16 @@ export function Analytics() {
 						<Card>
 							<CardHeader>
 								<CardTitle>Portfolio Performance</CardTitle>
-								<CardDescription>
-									Portfolio value vs benchmark over time
-								</CardDescription>
+								<CardDescription>Portfolio value vs benchmark over time</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="h-80">
-									<ResponsiveContainer width="100%" height="100%">
-										<LineChart data={performanceData}>
-											<CartesianGrid strokeDasharray="3 3" />
-											<XAxis dataKey="date" />
-											<YAxis />
-											<Tooltip
-												formatter={(value) => [
-													`$${value.toLocaleString()}`,
-													"",
-												]}
-											/>
-											<Line
-												type="monotone"
-												dataKey="value"
-												stroke="#0088FE"
-												strokeWidth={2}
-												name="Portfolio"
-											/>
-											<Line
-												type="monotone"
-												dataKey="benchmark"
-												stroke="#888"
-												strokeWidth={1}
-												strokeDasharray="5 5"
-												name="S&P 500"
-											/>
-										</LineChart>
-									</ResponsiveContainer>
+									<ReactECharts
+										option={performanceTrendOption}
+										notMerge={true}
+										lazyUpdate={true}
+										style={{ height: "100%", width: "100%" }}
+									/>
 								</div>
 							</CardContent>
 						</Card>
@@ -296,39 +353,16 @@ export function Analytics() {
 						<Card>
 							<CardHeader>
 								<CardTitle>Asset Allocation</CardTitle>
-								<CardDescription>
-									Distribution of your portfolio by asset type
-								</CardDescription>
+								<CardDescription>Distribution of your portfolio by asset type</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="h-80">
-									<ResponsiveContainer width="100%" height="100%">
-										<RechartsPieChart>
-											<Pie
-												data={allocationData}
-												cx="50%"
-												cy="50%"
-												outerRadius={80}
-												dataKey="value"
-												label={({ name, percentage }) =>
-													`${name} ${percentage.toFixed(1)}%`
-												}
-											>
-												{allocationData.map((_entry, index) => (
-													<Cell
-														key={`cell-${index}`}
-														fill={COLORS[index % COLORS.length]}
-													/>
-												))}
-											</Pie>
-											<Tooltip
-												formatter={(value) => [
-													`$${value.toLocaleString()}`,
-													"Value",
-												]}
-											/>
-										</RechartsPieChart>
-									</ResponsiveContainer>
+									<ReactECharts
+										option={allocationOption}
+										notMerge={true}
+										lazyUpdate={true}
+										style={{ height: "100%", width: "100%" }}
+									/>
 								</div>
 							</CardContent>
 						</Card>
@@ -338,15 +372,11 @@ export function Analytics() {
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Diversification Score
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Diversification Score</CardTitle>
 								<Target className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-mono mb-2">
-									{diversificationScore}/100
-								</div>
+								<div className="text-2xl font-mono mb-2">{diversificationScore}/100</div>
 								<Progress value={diversificationScore} className="mb-2" />
 								<p className="text-xs text-muted-foreground">
 									{diversificationScore >= 80
@@ -360,29 +390,21 @@ export function Analytics() {
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Risk Level
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Risk Level</CardTitle>
 								<AlertTriangle className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-mono mb-2">{riskScore}/100</div>
 								<Progress value={riskScore} className="mb-2" />
 								<p className="text-xs text-muted-foreground">
-									{riskScore <= 30
-										? "Conservative"
-										: riskScore <= 60
-											? "Moderate"
-											: "Aggressive"}
+									{riskScore <= 30 ? "Conservative" : riskScore <= 60 ? "Moderate" : "Aggressive"}
 								</p>
 							</CardContent>
 						</Card>
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Performance Grade
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Performance Grade</CardTitle>
 								<Award className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
@@ -397,9 +419,7 @@ export function Analytics() {
 													? "B"
 													: "C"}
 								</div>
-								<p className="text-xs text-muted-foreground">
-									Based on {timeframe} performance
-								</p>
+								<p className="text-xs text-muted-foreground">Based on {timeframe} performance</p>
 							</CardContent>
 						</Card>
 					</div>
@@ -410,23 +430,16 @@ export function Analytics() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Individual Asset Performance</CardTitle>
-							<CardDescription>
-								Performance of each asset in your portfolio
-							</CardDescription>
+							<CardDescription>Performance of each asset in your portfolio</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="h-80">
-								<ResponsiveContainer width="100%" height="100%">
-									<BarChart data={assetPerformanceData}>
-										<CartesianGrid strokeDasharray="3 3" />
-										<XAxis dataKey="name" />
-										<YAxis />
-										<Tooltip
-											formatter={(value) => [`${value.toFixed(2)}%`, "Return"]}
-										/>
-										<Bar dataKey="gainPercent" fill="#0088FE" />
-									</BarChart>
-								</ResponsiveContainer>
+								<ReactECharts
+									option={assetPerformanceOption}
+									notMerge={true}
+									lazyUpdate={true}
+									style={{ height: "100%", width: "100%" }}
+								/>
 							</div>
 						</CardContent>
 					</Card>
@@ -441,10 +454,7 @@ export function Analytics() {
 							<CardContent>
 								<div className="space-y-4">
 									{assetPerformanceData.slice(0, 5).map((asset, index) => (
-										<div
-											key={asset.name}
-											className="flex items-center justify-between"
-										>
+										<div key={asset.name} className="flex items-center justify-between">
 											<div className="flex items-center space-x-3">
 												<div className="bg-green-100 text-green-800 rounded-full w-6 h-6 flex items-center justify-center text-xs font-medium">
 													{index + 1}
@@ -478,14 +488,9 @@ export function Analytics() {
 							<CardContent>
 								<div className="space-y-4">
 									{transactions.slice(0, 5).map((transaction, _index) => {
-										const asset = assets.find(
-											(a) => a.id === transaction.assetId,
-										);
+										const asset = assets.find((a) => a.id === transaction.assetId);
 										return (
-											<div
-												key={transaction.id}
-												className="flex items-center justify-between"
-											>
+											<div key={transaction.id} className="flex items-center justify-between">
 												<div className="space-y-1">
 													<div className="font-medium">
 														{transaction.type.toUpperCase()} {asset?.symbol}
@@ -495,9 +500,7 @@ export function Analytics() {
 													</div>
 												</div>
 												<div className="text-right">
-													<div className="font-mono">
-														${transaction.total.toLocaleString()}
-													</div>
+													<div className="font-mono">${transaction.total.toLocaleString()}</div>
 													<Badge variant="outline" className="text-xs">
 														{transaction.type}
 													</Badge>
@@ -527,17 +530,17 @@ export function Analytics() {
 													<div
 														className="w-3 h-3 rounded-full"
 														style={{
-															backgroundColor: COLORS[index % COLORS.length],
+															backgroundColor: Colors[index % Colors.length],
 														}}
 													/>
 													<span className="font-medium">{item.name}</span>
 												</div>
 												<div className="text-right">
 													<div className="font-mono">
-														${item.value.toLocaleString()}
+														${(item.value as number).toLocaleString()}
 													</div>
 													<div className="text-sm text-muted-foreground">
-														{item.percentage.toFixed(1)}%
+														{(item.percentage as number).toFixed(1)}%
 													</div>
 												</div>
 											</div>
@@ -586,9 +589,8 @@ export function Analytics() {
 								</div>
 								<div className="mt-4 p-4 bg-muted rounded-lg">
 									<p className="text-sm text-muted-foreground">
-										This is a moderate risk allocation suitable for long-term
-										growth. Adjust based on your risk tolerance and investment
-										goals.
+										This is a moderate risk allocation suitable for long-term growth. Adjust based
+										on your risk tolerance and investment goals.
 									</p>
 								</div>
 							</CardContent>
@@ -641,9 +643,7 @@ export function Analytics() {
 						<Card>
 							<CardHeader>
 								<CardTitle>Risk Recommendations</CardTitle>
-								<CardDescription>
-									Suggestions to optimize your portfolio
-								</CardDescription>
+								<CardDescription>Suggestions to optimize your portfolio</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-4">
@@ -652,9 +652,7 @@ export function Analytics() {
 											!
 										</div>
 										<div>
-											<div className="font-medium">
-												Consider Diversification
-											</div>
+											<div className="font-medium">Consider Diversification</div>
 											<div className="text-sm text-muted-foreground">
 												Add bonds or international stocks to reduce volatility
 											</div>
@@ -668,8 +666,7 @@ export function Analytics() {
 										<div>
 											<div className="font-medium">Rebalance Portfolio</div>
 											<div className="text-sm text-muted-foreground">
-												Some assets may be overweight relative to target
-												allocation
+												Some assets may be overweight relative to target allocation
 											</div>
 										</div>
 									</div>

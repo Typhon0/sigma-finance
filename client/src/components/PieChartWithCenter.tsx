@@ -112,12 +112,5 @@ export function PieChartWithCenter({
 		],
 	};
 
-	return (
-		<ReactECharts
-			option={option}
-			style={{ height }}
-			notMerge={true}
-			lazyUpdate={true}
-		/>
-	);
+	return <ReactECharts option={option} style={{ height }} notMerge={true} lazyUpdate={true} />;
 }

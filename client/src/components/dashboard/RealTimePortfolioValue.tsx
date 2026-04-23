@@ -1,15 +1,8 @@
-import {
-	Loader2,
-	Minus,
-	TrendingDown,
-	TrendingUp,
-	Wifi,
-	WifiOff,
-} from "lucide-react";
+import { Loader2, Minus, TrendingDown, TrendingUp, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRealTimeDashboard } from "@/contexts/RealTimeDashboardContext";
+import { type PortfolioData, useRealTimeDashboard } from "@/contexts/RealTimeDashboardContext";
 import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
 
@@ -29,18 +22,14 @@ export function RealTimePortfolioValue({
 	const { state, actions } = useRealTimeDashboard();
 	const [isUpdating, setIsUpdating] = useState(false);
 	const [lastUpdate, setLastUpdate] = useState<number | null>(null);
-	const [valueDirection, setValueDirection] = useState<
-		"up" | "down" | "neutral"
-	>("neutral");
+	const [valueDirection, setValueDirection] = useState<"up" | "down" | "neutral">("neutral");
 	const [previousValue, setPreviousValue] = useState<number | null>(null);
 
 	const portfolioData = actions.getPortfolioValue(portfolioId);
-	const optimisticUpdate = state.optimisticUpdates.get(
-		`portfolio-${portfolioId}`,
-	);
+	const optimisticUpdate = state.optimisticUpdates.get(`portfolio-${portfolioId}`);
 
 	// Use optimistic update if available, otherwise use real-time data
-	const currentData = optimisticUpdate || portfolioData;
+	const currentData = (optimisticUpdate || portfolioData) as PortfolioData | undefined;
 
 	// Handle value changes and animations
 	useEffect(() => {
@@ -123,13 +112,9 @@ export function RealTimePortfolioValue({
 		>
 			<CardHeader className="pb-2">
 				<div className="flex items-center justify-between">
-					<CardTitle className="text-lg font-semibold">
-						{portfolioName}
-					</CardTitle>
+					<CardTitle className="text-lg font-semibold">{portfolioName}</CardTitle>
 					<div className="flex items-center gap-2">
-						{isUpdating && (
-							<Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-						)}
+						{isUpdating && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
 						{getTrendIcon()}
 						<Badge variant={state.isConnected ? "default" : "destructive"}>
 							{state.isConnected ? (
@@ -155,9 +140,7 @@ export function RealTimePortfolioValue({
 						<div className="space-y-1">
 							<div className="flex items-center justify-between">
 								<span className="text-sm text-gray-600">Total Value</span>
-								<span className="text-xs text-gray-500">
-									{getLastUpdateText()}
-								</span>
+								<span className="text-xs text-gray-500">{getLastUpdateText()}</span>
 							</div>
 							<div
 								className={cn(
@@ -199,9 +182,7 @@ export function RealTimePortfolioValue({
 							<div className="grid grid-cols-2 gap-4 pt-2 border-t">
 								<div className="space-y-1">
 									<span className="text-xs text-gray-500">Cost Basis</span>
-									<div className="text-sm font-medium">
-										{formatCurrency(currentData.totalCost)}
-									</div>
+									<div className="text-sm font-medium">{formatCurrency(currentData.totalCost)}</div>
 								</div>
 								<div className="space-y-1">
 									<span className="text-xs text-gray-500">Return</span>

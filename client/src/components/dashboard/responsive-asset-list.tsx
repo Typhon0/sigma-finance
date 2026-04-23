@@ -1,10 +1,4 @@
-import {
-	Minus,
-	MoreVertical,
-	Plus,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { Minus, MoreVertical, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import type React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -59,12 +53,7 @@ export function ResponsiveAssetList({
 			<div className="text-center py-8">
 				<p className="text-muted-foreground mb-4">{emptyMessage}</p>
 				{emptyAction || (
-					<Button
-						className={cn(
-							"touch-manipulation",
-							responsiveState.isMobile && "h-11",
-						)}
-					>
+					<Button className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}>
 						<Plus className="mr-2 h-4 w-4" />
 						Add Your First Asset
 					</Button>
@@ -74,8 +63,7 @@ export function ResponsiveAssetList({
 	}
 
 	const getChangeIcon = (change?: number) => {
-		if (!change || change === 0)
-			return <Minus className="h-3 w-3 text-gray-500" />;
+		if (!change || change === 0) return <Minus className="h-3 w-3 text-gray-500" />;
 		return change > 0 ? (
 			<TrendingUp className="h-3 w-3 text-green-500" />
 		) : (
@@ -105,17 +93,11 @@ export function ResponsiveAssetList({
 							key={asset.id || index}
 							className={cn(
 								"transition-colors touch-manipulation",
-								onAssetClick &&
-									"cursor-pointer hover:bg-muted/50 active:bg-muted",
+								onAssetClick && "cursor-pointer hover:bg-muted/50 active:bg-muted",
 							)}
 							onClick={() => {
 								if (onAssetClick) {
-									onAssetClick({
-										id: asset.id,
-										name: asset.name,
-										symbol: asset.symbol,
-										type: asset.type || "UNKNOWN",
-									});
+									onAssetClick(asset as any);
 								}
 							}}
 						>
@@ -132,28 +114,20 @@ export function ResponsiveAssetList({
 										</div>
 
 										{asset.symbol && (
-											<p className="text-sm text-muted-foreground font-mono mb-2">
-												{asset.symbol}
-											</p>
+											<p className="text-sm text-muted-foreground font-mono mb-2">{asset.symbol}</p>
 										)}
 
 										<div className="text-sm text-muted-foreground">
-											{quantity.toLocaleString()} @{" "}
-											{formatCurrency(averagePrice)}
+											{quantity.toLocaleString()} @ {formatCurrency(averagePrice)}
 										</div>
 									</div>
 
 									<div className="text-right shrink-0 ml-3">
-										<div className="font-medium text-lg mb-1">
-											{formatCurrency(currentValue)}
-										</div>
+										<div className="font-medium text-lg mb-1">{formatCurrency(currentValue)}</div>
 
 										{(change !== 0 || changePercent !== 0) && (
 											<div
-												className={cn(
-													"flex items-center gap-1 text-sm",
-													getChangeColor(change),
-												)}
+												className={cn("flex items-center gap-1 text-sm", getChangeColor(change))}
 											>
 												{getChangeIcon(change)}
 												<span>
@@ -178,9 +152,7 @@ export function ResponsiveAssetList({
 												</DropdownMenuTrigger>
 												<DropdownMenuContent align="end">
 													{onEditAsset && (
-														<DropdownMenuItem
-															onClick={() => onEditAsset(asset.id)}
-														>
+														<DropdownMenuItem onClick={() => onEditAsset(asset.id)}>
 															Edit Asset
 														</DropdownMenuItem>
 													)}
@@ -225,12 +197,7 @@ export function ResponsiveAssetList({
 						)}
 						onClick={() => {
 							if (onAssetClick) {
-								onAssetClick({
-									id: asset.id,
-									name: asset.name,
-									symbol: asset.symbol,
-									type: asset.type || "UNKNOWN",
-								});
+								onAssetClick(asset as any);
 							}
 						}}
 					>
@@ -239,9 +206,7 @@ export function ResponsiveAssetList({
 								<div className="min-w-0 flex-1">
 									<h4 className="font-medium truncate">{asset.name}</h4>
 									<div className="flex items-center gap-2 text-sm text-muted-foreground">
-										{asset.symbol && (
-											<span className="font-mono">{asset.symbol}</span>
-										)}
+										{asset.symbol && <span className="font-mono">{asset.symbol}</span>}
 										{asset.type && (
 											<Badge variant="outline" className="text-xs">
 												{asset.type}
@@ -254,9 +219,7 @@ export function ResponsiveAssetList({
 
 						<div className="flex items-center gap-4">
 							<div className="text-right">
-								<div className="font-medium">
-									{formatCurrency(currentValue)}
-								</div>
+								<div className="font-medium">{formatCurrency(currentValue)}</div>
 								<div className="text-sm text-muted-foreground">
 									{quantity.toLocaleString()} @ {formatCurrency(averagePrice)}
 								</div>

@@ -1,14 +1,5 @@
 import { useParams } from "@tanstack/react-router";
-import {
-	ArrowLeft,
-	Copy,
-	Download,
-	Edit,
-	Minus,
-	MoreHorizontal,
-	Plus,
-	Trash2,
-} from "lucide-react";
+import { ArrowLeft, Copy, Download, Edit, Minus, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AddAssetDialog } from "@/components/portfolio/add-asset-dialog";
@@ -29,13 +20,7 @@ import {
 import { RemoveAssetDialog } from "@/components/portfolio/remove-asset-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -44,27 +29,22 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import {
-	SidebarInset,
-	SidebarProvider,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { PortfolioAsset } from "@/gql/graphql";
 import { useCurrency } from "@/hooks/use-currency";
 import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
 
 export default function PortfolioDetailPage() {
-	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId" });
-	const { portfolio, loading, error, isUnauthorized, navigateToList, retry } =
-		usePortfolioDetail({ portfolioId });
+	const { portfolioId } = useParams({ from: "/_app/portfolios/$portfolioId" });
+	const { portfolio, loading, error, isUnauthorized, navigateToList, retry } = usePortfolioDetail({
+		portfolioId,
+	});
 
 	// Enhanced retry mechanism for portfolio detail operations
 	const portfolioRetry = usePortfolioRetry({
 		maxRetries: 3,
-		onRetryAttempt: (attempt) => {
-			console.log(`Portfolio detail retry attempt ${attempt}`);
-		},
+		onRetryAttempt: (_attempt) => {},
 	});
 
 	return (
@@ -82,10 +62,7 @@ export default function PortfolioDetailPage() {
 						<div className="flex items-center gap-2 px-4">
 							<SidebarTrigger className="-ml-1" />
 							<Separator orientation="vertical" className="mr-2 h-4" />
-							<InlineLoading
-								isLoading={loading && !portfolio}
-								loadingText="Loading..."
-							>
+							<InlineLoading isLoading={loading && !portfolio} loadingText="Loading...">
 								<PortfolioBreadcrumb
 									items={portfolioBreadcrumbs.portfolioDetail(
 										portfolio?.name || "Portfolio Details",
@@ -135,9 +112,7 @@ export default function PortfolioDetailPage() {
 									/>
 								</div>
 							)}
-							{portfolio && (
-								<PortfolioDetailContent portfolioId={portfolioId} />
-							)}
+							{portfolio && <PortfolioDetailContent portfolioId={portfolioId} />}
 						</>
 					)}
 				</SidebarInset>
@@ -154,7 +129,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 		isUnauthorized,
 		showDeleteDialog,
 		isDeleting,
-		_navigateToEdit,
+		navigateToEdit: _navigateToEdit,
 		navigateToList,
 		handleDeleteClick,
 		handleDeleteCancel,
@@ -167,9 +142,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 	// Dialog states for asset management
 	const [showAddAssetDialog, setShowAddAssetDialog] = useState(false);
 	const [showRemoveAssetDialog, setShowRemoveAssetDialog] = useState(false);
-	const [selectedAsset, setSelectedAsset] = useState<PortfolioAsset | null>(
-		null,
-	);
+	const [selectedAsset, setSelectedAsset] = useState<PortfolioAsset | null>(null);
 
 	const handleAddAsset = () => {
 		setShowAddAssetDialog(true);
@@ -239,13 +212,9 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 						</p>
 					)}
 					<div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
-						<span>
-							Created {new Date(portfolio.createdAt).toLocaleDateString()}
-						</span>
+						<span>Created {new Date(portfolio.createdAt).toLocaleDateString()}</span>
 						<Separator orientation="vertical" className="h-4 hidden sm:block" />
-						<span>
-							Last updated {new Date(portfolio.updatedAt).toLocaleDateString()}
-						</span>
+						<span>Last updated {new Date(portfolio.updatedAt).toLocaleDateString()}</span>
 					</div>
 				</div>
 
@@ -259,11 +228,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 								refetch();
 							}}
 						>
-							<Button
-								variant="outline"
-								size="sm"
-								className="touch-manipulation"
-							>
+							<Button variant="outline" size="sm" className="touch-manipulation">
 								<Edit className="mr-2 h-4 w-4" />
 								<span className="hidden sm:inline">Edit</span>
 								<span className="sm:hidden">Edit</span>
@@ -378,14 +343,9 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
 						<div>
 							<CardTitle className="text-lg sm:text-xl">Assets</CardTitle>
-							<CardDescription className="text-sm">
-								Assets in this portfolio
-							</CardDescription>
+							<CardDescription className="text-sm">Assets in this portfolio</CardDescription>
 						</div>
-						<Button
-							onClick={handleAddAsset}
-							className="touch-manipulation w-full sm:w-auto"
-						>
+						<Button onClick={handleAddAsset} className="touch-manipulation w-full sm:w-auto">
 							<Plus className="mr-2 h-4 w-4" />
 							Add Asset
 						</Button>
@@ -410,22 +370,15 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 												</p>
 											)}
 										</div>
-										<Badge
-											variant="secondary"
-											className="text-xs self-start sm:self-center"
-										>
+										<Badge variant="secondary" className="text-xs self-start sm:self-center">
 											{asset.asset.assetType.name}
 										</Badge>
 									</div>
 									<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
 										<div className="grid grid-cols-2 sm:block sm:text-right gap-2 sm:gap-0">
 											<div className="text-xs sm:text-sm">
-												<span className="text-muted-foreground sm:hidden">
-													Qty:{" "}
-												</span>
-												<span className="font-medium">
-													{asset.quantity.toLocaleString()}
-												</span>
+												<span className="text-muted-foreground sm:hidden">Qty: </span>
+												<span className="font-medium">{asset.quantity.toLocaleString()}</span>
 											</div>
 											<div className="text-xs sm:text-sm text-muted-foreground">
 												<span className="sm:hidden">Avg: </span>
@@ -439,32 +392,19 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 											)}
 											{asset.asset.currentValue && (
 												<div className="text-xs sm:text-sm font-medium col-span-2 sm:col-span-1">
-													<span className="text-muted-foreground sm:hidden">
-														Current:{" "}
-													</span>
-													{formatCurrency(
-														asset.asset.currentValue * asset.quantity,
-													)}
+													<span className="text-muted-foreground sm:hidden">Current: </span>
+													{formatCurrency(asset.asset.currentValue * asset.quantity)}
 												</div>
 											)}
 										</div>
 										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
-												<Button
-													variant="ghost"
-													size="sm"
-													className="touch-manipulation"
-												>
+												<Button variant="ghost" size="sm" className="touch-manipulation">
 													<MoreHorizontal className="h-4 w-4" />
 												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end" className="w-48">
-												<DropdownMenuItem
-													onClick={() =>
-														console.log("Edit asset:", asset.asset.id)
-													}
-													className="touch-manipulation py-3"
-												>
+												<DropdownMenuItem onClick={() => {}} className="touch-manipulation py-3">
 													<Edit className="mr-2 h-4 w-4" />
 													Edit Position
 												</DropdownMenuItem>
@@ -487,10 +427,7 @@ function PortfolioDetailContent({ portfolioId }: { portfolioId: string }) {
 							<p className="text-muted-foreground mb-4 text-sm sm:text-base">
 								No assets in this portfolio yet.
 							</p>
-							<Button
-								onClick={handleAddAsset}
-								className="touch-manipulation w-full sm:w-auto"
-							>
+							<Button onClick={handleAddAsset} className="touch-manipulation w-full sm:w-auto">
 								<Plus className="mr-2 h-4 w-4" />
 								Add Your First Asset
 							</Button>

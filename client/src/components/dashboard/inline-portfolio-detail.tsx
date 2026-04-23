@@ -1,18 +1,7 @@
-import {
-	ArrowLeft,
-	Bell,
-	Calculator,
-	Minus,
-	Plus,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, Bell, Calculator, Minus, Plus, TrendingDown, TrendingUp } from "lucide-react";
 import { RealTimeAlertNotifications } from "@/components/alerts/RealTimeAlertNotifications";
 import { RealTimeChart } from "@/components/charts/RealTimeChart";
-import {
-	ExportQuickActions,
-	QuickExportButton,
-} from "@/components/export/export-quick-actions";
+import { ExportQuickActions, QuickExportButton } from "@/components/export/export-quick-actions";
 import type {
 	BulkTransactionData,
 	TransactionFilterData,
@@ -33,10 +22,7 @@ import {
 import { cn, formatCurrency, formatPercentage } from "@/lib/utils";
 import { AlertDashboardIntegration } from "./alert-dashboard-integration";
 import { ConnectionStatus } from "./ConnectionStatus";
-import {
-	RealTimePortfolioValue,
-	useOptimisticPortfolioUpdate,
-} from "./RealTimePortfolioValue";
+import { RealTimePortfolioValue, useOptimisticPortfolioUpdate } from "./RealTimePortfolioValue";
 
 interface InlinePortfolioDetailProps {
 	portfolio: Portfolio;
@@ -59,13 +45,7 @@ interface MetricCardProps {
 	icon?: React.ReactNode;
 }
 
-function MetricCard({
-	title,
-	value,
-	change,
-	changePercent,
-	icon,
-}: MetricCardProps) {
+function MetricCard({ title, value, change, changePercent, icon }: MetricCardProps) {
 	const getChangeDisplay = () => {
 		if (change === undefined || change === 0) {
 			return {
@@ -108,9 +88,7 @@ function MetricCard({
 						<div className={`flex items-center gap-1 ${changeDisplay.color}`}>
 							<ChangeIcon className="h-3 w-3" />
 							<span className="text-xs font-medium">
-								{changePercent !== undefined
-									? formatPercentage(Math.abs(changePercent))
-									: ""}
+								{changePercent !== undefined ? formatPercentage(Math.abs(changePercent)) : ""}
 							</span>
 						</div>
 					)}
@@ -143,10 +121,9 @@ export function InlinePortfolioDetail({
 	onBulkImport,
 	onExportTransactions,
 }: InlinePortfolioDetailProps) {
-	const { _state, actions } = useRealTimeDashboard();
-	const { _updatePortfolioOptimistically } = useOptimisticPortfolioUpdate(
-		portfolio.id,
-	);
+	const { state: _state, actions } = useRealTimeDashboard();
+	const { updatePortfolioOptimistically: _updatePortfolioOptimistically } =
+		useOptimisticPortfolioUpdate(portfolio.id);
 	const [responsiveState] = useResponsiveDashboard();
 	const { getChartConfig } = useResponsiveChartDimensions();
 
@@ -168,8 +145,7 @@ export function InlinePortfolioDetail({
 	const totalCost = realTimePortfolioData?.totalCost || totalValue; // Simplified - would be actual cost basis
 	const gainLoss = realTimePortfolioData?.gainLoss || totalValue - totalCost;
 	const _gainLossPercent =
-		realTimePortfolioData?.gainLossPercent ||
-		(totalCost > 0 ? (gainLoss / totalCost) * 100 : 0);
+		realTimePortfolioData?.gainLossPercent || (totalCost > 0 ? (gainLoss / totalCost) * 100 : 0);
 
 	// Extract asset IDs for real-time price tracking
 	const _assetIds = assets.map((position) => position.asset.id).filter(Boolean);
@@ -259,9 +235,7 @@ export function InlinePortfolioDetail({
 						className={cn(
 							"flex items-center",
 							// Stack on mobile for better layout
-							responsiveState.isMobile
-								? "flex-col gap-3 items-start"
-								: "flex-row justify-between",
+							responsiveState.isMobile ? "flex-col gap-3 items-start" : "flex-row justify-between",
 						)}
 					>
 						<CardTitle>Assets</CardTitle>
@@ -280,10 +254,7 @@ export function InlinePortfolioDetail({
 							/>
 							<Button
 								size={responsiveState.isMobile ? "default" : "sm"}
-								className={cn(
-									"touch-manipulation",
-									responsiveState.isMobile && "h-11",
-								)}
+								className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}
 							>
 								<Plus className="mr-2 h-4 w-4" />
 								{responsiveState.isMobile ? "Add" : "Add Asset"}
@@ -293,16 +264,11 @@ export function InlinePortfolioDetail({
 				</CardHeader>
 				<CardContent>
 					<ResponsiveAssetList
-						assets={assets}
-						onAssetClick={onAssetSelect}
+						assets={assets as any}
+						onAssetClick={onAssetSelect as any}
 						showInlineActions={!responsiveState.isMobile} // Hide inline actions on mobile for cleaner UI
 						emptyAction={
-							<Button
-								className={cn(
-									"touch-manipulation",
-									responsiveState.isMobile && "h-11",
-								)}
-							>
+							<Button className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}>
 								<Plus className="mr-2 h-4 w-4" />
 								Add Your First Asset
 							</Button>
@@ -317,34 +283,24 @@ export function InlinePortfolioDetail({
 					className={cn(
 						"grid w-full",
 						// Responsive tabs: 2x2 grid on mobile, single row on larger screens
-						responsiveState.isMobile
-							? "grid-cols-2 grid-rows-2 h-auto"
-							: "grid-cols-4",
+						responsiveState.isMobile ? "grid-cols-2 grid-rows-2 h-auto" : "grid-cols-4",
 					)}
 				>
 					<TabsTrigger
 						value="overview"
-						className={cn(
-							"touch-manipulation",
-							responsiveState.isMobile && "h-11",
-						)}
+						className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}
 					>
 						Overview
 					</TabsTrigger>
 					<TabsTrigger
 						value="transactions"
-						className={cn(
-							"touch-manipulation",
-							responsiveState.isMobile && "h-11",
-						)}
+						className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}
 					>
 						{responsiveState.isMobile ? "Txns" : "Transactions"}
 						{transactions.length > 0 && (
 							<Badge
 								variant="secondary"
-								className={cn(
-									responsiveState.isMobile ? "ml-1 text-xs" : "ml-2",
-								)}
+								className={cn(responsiveState.isMobile ? "ml-1 text-xs" : "ml-2")}
 							>
 								{transactions.length}
 							</Badge>
@@ -352,20 +308,14 @@ export function InlinePortfolioDetail({
 					</TabsTrigger>
 					<TabsTrigger
 						value="alerts"
-						className={cn(
-							"touch-manipulation",
-							responsiveState.isMobile && "h-11",
-						)}
+						className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}
 					>
 						<Bell className="h-4 w-4 mr-1 sm:mr-2" />
 						Alerts
 					</TabsTrigger>
 					<TabsTrigger
 						value="analytics"
-						className={cn(
-							"touch-manipulation",
-							responsiveState.isMobile && "h-11",
-						)}
+						className={cn("touch-manipulation", responsiveState.isMobile && "h-11")}
 					>
 						Analytics
 					</TabsTrigger>
@@ -384,8 +334,7 @@ export function InlinePortfolioDetail({
 						)}
 					>
 						{/* Show real-time charts for tradeable assets */}
-						{assets.length > 0 &&
-						assets.some((position) => position.asset.symbol) ? (
+						{assets.length > 0 && assets.some((position) => position.asset.symbol) ? (
 							assets
 								.filter((position) => position.asset.symbol)
 								.slice(0, responsiveState.isMobile ? 1 : 2) // Show only 1 chart on mobile
@@ -447,7 +396,7 @@ export function InlinePortfolioDetail({
 					{/* Transaction Management */}
 					{onAddTransaction && onEditTransaction && onDeleteTransaction ? (
 						<TransactionManagement
-							portfolio={portfolio}
+							portfolio={portfolio as any}
 							assets={assets.map((position) => position.asset)}
 							transactions={transactions}
 							positions={positions}
@@ -472,8 +421,8 @@ export function InlinePortfolioDetail({
 										Transaction Management
 									</h3>
 									<p className="text-sm text-muted-foreground">
-										Transaction management functionality will be available once
-										GraphQL resolvers are implemented.
+										Transaction management functionality will be available once GraphQL resolvers
+										are implemented.
 									</p>
 								</div>
 							</CardContent>
@@ -484,9 +433,9 @@ export function InlinePortfolioDetail({
 				<TabsContent value="alerts" className="space-y-6">
 					{/* Alert Management for Portfolio */}
 					<AlertDashboardIntegration
-						portfolios={[portfolio]}
-						assets={assets.map((position) => position.asset)}
-						currentPortfolio={portfolio}
+						portfolios={[portfolio] as any[]}
+						assets={assets.map((position) => position.asset) as any[]}
+						currentPortfolio={portfolio as any}
 					/>
 				</TabsContent>
 
@@ -498,8 +447,7 @@ export function InlinePortfolioDetail({
 						<CardContent>
 							<div className="text-center py-8">
 								<p className="text-muted-foreground">
-									Advanced analytics and performance metrics will be available
-									here.
+									Advanced analytics and performance metrics will be available here.
 								</p>
 							</div>
 						</CardContent>

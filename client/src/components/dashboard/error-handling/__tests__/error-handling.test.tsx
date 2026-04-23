@@ -22,11 +22,7 @@ const TestComponentWithErrorManager = () => {
 	const { actions } = useDashboardErrorManager();
 
 	const handleError = () => {
-		actions.reportError(
-			new Error("Manual error"),
-			"component",
-			"TestComponent",
-		);
+		actions.reportError(new Error("Manual error"), "component", "TestComponent");
 	};
 
 	return (
@@ -68,9 +64,7 @@ const TestOfflineComponent = () => {
 	return (
 		<div>
 			<span>Online: {offlineState.isOnline.toString()}</span>
-			<span>
-				Offline Since: {offlineState.offlineSince?.toISOString() || "null"}
-			</span>
+			<span>Offline Since: {offlineState.offlineSince?.toISOString() || "null"}</span>
 		</div>
 	);
 };
@@ -87,38 +81,26 @@ describe("Dashboard Error Handling", () => {
 
 	describe("DashboardErrorBoundary", () => {
 		it("should catch and display errors", () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 			render(
-				<DashboardErrorBoundary
-					context="component"
-					componentName="TestComponent"
-				>
+				<DashboardErrorBoundary context="component" componentName="TestComponent">
 					<TestComponent shouldError={true} />
 				</DashboardErrorBoundary>,
 			);
 
 			expect(screen.getByText("TestComponent Error")).toBeInTheDocument();
 			expect(
-				screen.getByText(
-					"This component encountered an error and needs to be reloaded.",
-				),
+				screen.getByText("This component encountered an error and needs to be reloaded."),
 			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /retry/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
 
 			consoleSpy.mockRestore();
 		});
 
 		it("should render children when no error occurs", () => {
 			render(
-				<DashboardErrorBoundary
-					context="component"
-					componentName="TestComponent"
-				>
+				<DashboardErrorBoundary context="component" componentName="TestComponent">
 					<TestComponent shouldError={false} />
 				</DashboardErrorBoundary>,
 			);
@@ -127,9 +109,7 @@ describe("Dashboard Error Handling", () => {
 		});
 
 		it("should handle network errors differently", () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 			const networkError = new ApolloError({
 				networkError: new Error("Network error"),
 			});
@@ -139,10 +119,7 @@ describe("Dashboard Error Handling", () => {
 			};
 
 			render(
-				<DashboardErrorBoundary
-					context="component"
-					componentName="TestComponent"
-				>
+				<DashboardErrorBoundary context="component" componentName="TestComponent">
 					<ThrowNetworkError />
 				</DashboardErrorBoundary>,
 			);
@@ -153,9 +130,7 @@ describe("Dashboard Error Handling", () => {
 		});
 
 		it("should provide navigation options for detail views", () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 			const onNavigateBack = vi.fn();
 			const onNavigateHome = vi.fn();
 
@@ -170,12 +145,8 @@ describe("Dashboard Error Handling", () => {
 				</DashboardErrorBoundary>,
 			);
 
-			expect(
-				screen.getByRole("button", { name: /go back/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /dashboard home/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /go back/i })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /dashboard home/i })).toBeInTheDocument();
 
 			fireEvent.click(screen.getByRole("button", { name: /go back/i }));
 			expect(onNavigateBack).toHaveBeenCalled();
@@ -249,19 +220,12 @@ describe("Dashboard Error Handling", () => {
 			const error = new Error("Chart loading failed");
 
 			render(
-				<ChartErrorFallback
-					error={error}
-					onRetry={onRetry}
-					chartType="pie"
-					title="Test Chart"
-				/>,
+				<ChartErrorFallback error={error} onRetry={onRetry} chartType="pie" title="Test Chart" />,
 			);
 
 			expect(screen.getByText("Test Chart")).toBeInTheDocument();
 			expect(screen.getByText("Chart Unavailable")).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /retry/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
 
 			fireEvent.click(screen.getByRole("button", { name: /retry/i }));
 			expect(onRetry).toHaveBeenCalled();
@@ -296,9 +260,7 @@ describe("Dashboard Error Handling", () => {
 
 	describe("Error Recovery", () => {
 		it("should reset error state on successful retry", async () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 			let shouldError = true;
 
 			const ToggleErrorComponent = () => {
@@ -309,18 +271,13 @@ describe("Dashboard Error Handling", () => {
 			};
 
 			const { _rerender } = render(
-				<DashboardErrorBoundary
-					context="component"
-					componentName="ToggleErrorComponent"
-				>
+				<DashboardErrorBoundary context="component" componentName="ToggleErrorComponent">
 					<ToggleErrorComponent />
 				</DashboardErrorBoundary>,
 			);
 
 			// Should show error
-			expect(
-				screen.getByText("ToggleErrorComponent Error"),
-			).toBeInTheDocument();
+			expect(screen.getByText("ToggleErrorComponent Error")).toBeInTheDocument();
 
 			// Fix the error condition
 			shouldError = false;
@@ -339,15 +296,10 @@ describe("Dashboard Error Handling", () => {
 
 	describe("Context-Specific Error Handling", () => {
 		it("should show different messages for different contexts", () => {
-			const consoleSpy = vi
-				.spyOn(console, "error")
-				.mockImplementation(() => {});
+			const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
 			const { rerender } = render(
-				<DashboardErrorBoundary
-					context="overview"
-					componentName="TestComponent"
-				>
+				<DashboardErrorBoundary context="overview" componentName="TestComponent">
 					<TestComponent shouldError={true} />
 				</DashboardErrorBoundary>,
 			);

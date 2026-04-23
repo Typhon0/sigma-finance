@@ -29,9 +29,7 @@ export interface AssetAllocationData {
  * @param portfolios - An array of Portfolio objects.
  * @returns An object containing totalValue, totalCost, totalGainLoss, and totalGainLossPercent.
  */
-export function calculatePortfolioMetrics(
-	portfolios: Readonly<Portfolio[]>,
-): PortfolioMetrics {
+export function calculatePortfolioMetrics(portfolios: Readonly<Portfolio[]>): PortfolioMetrics {
 	let totalValue = 0;
 	let totalCost = 0;
 
@@ -46,16 +44,13 @@ export function calculatePortfolioMetrics(
 	}
 
 	const totalGainLoss = totalValue - totalCost;
-	const totalGainLossPercent =
-		totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+	const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
 	return {
 		totalValue: Number.isNaN(totalValue) ? 0 : totalValue,
 		totalCost: Number.isNaN(totalCost) ? 0 : totalCost,
 		totalGainLoss: Number.isNaN(totalGainLoss) ? 0 : totalGainLoss,
-		totalGainLossPercent: Number.isNaN(totalGainLossPercent)
-			? 0
-			: totalGainLossPercent,
+		totalGainLossPercent: Number.isNaN(totalGainLossPercent) ? 0 : totalGainLossPercent,
 	};
 }
 
@@ -64,9 +59,7 @@ export function calculatePortfolioMetrics(
  * @param portfolio - A single Portfolio object.
  * @returns An object containing totalValue, totalCost, totalGainLoss, and totalGainLossPercent.
  */
-export function calculateIndividualPortfolioMetrics(
-	portfolio: Portfolio,
-): PortfolioMetrics {
+export function calculateIndividualPortfolioMetrics(portfolio: Portfolio): PortfolioMetrics {
 	let totalValue = 0;
 	let totalCost = 0;
 
@@ -78,16 +71,13 @@ export function calculateIndividualPortfolioMetrics(
 	}
 
 	const totalGainLoss = totalValue - totalCost;
-	const totalGainLossPercent =
-		totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
+	const totalGainLossPercent = totalCost > 0 ? (totalGainLoss / totalCost) * 100 : 0;
 
 	return {
 		totalValue: Number.isNaN(totalValue) ? 0 : totalValue,
 		totalCost: Number.isNaN(totalCost) ? 0 : totalCost,
 		totalGainLoss: Number.isNaN(totalGainLoss) ? 0 : totalGainLoss,
-		totalGainLossPercent: Number.isNaN(totalGainLossPercent)
-			? 0
-			: totalGainLossPercent,
+		totalGainLossPercent: Number.isNaN(totalGainLossPercent) ? 0 : totalGainLossPercent,
 	};
 }
 
@@ -122,9 +112,7 @@ export function calculatePositionCost(position: PortfolioAsset): number {
  * @param portfolios - An array of Portfolio objects.
  * @returns An array of AssetPerformance objects.
  */
-export function calculateAssetPerformance(
-	portfolios: Readonly<Portfolio[]>,
-): AssetPerformance[] {
+export function calculateAssetPerformance(portfolios: Readonly<Portfolio[]>): AssetPerformance[] {
 	const assetMap = new Map<string, AssetPerformance>();
 
 	for (const portfolio of portfolios) {
@@ -135,8 +123,7 @@ export function calculateAssetPerformance(
 				const currentValue = calculatePositionValue(position);
 				const purchaseValue = calculatePositionCost(position);
 				const changeAmount = currentValue - purchaseValue;
-				const changePercent =
-					purchaseValue > 0 ? (changeAmount / purchaseValue) * 100 : 0;
+				const changePercent = purchaseValue > 0 ? (changeAmount / purchaseValue) * 100 : 0;
 
 				if (assetMap.has(assetId)) {
 					const existing = assetMap.get(assetId)!;
@@ -144,9 +131,7 @@ export function calculateAssetPerformance(
 					const totalPurchaseValue = existing.purchaseValue + purchaseValue;
 					const totalChangeAmount = totalCurrentValue - totalPurchaseValue;
 					const totalChangePercent =
-						totalPurchaseValue > 0
-							? (totalChangeAmount / totalPurchaseValue) * 100
-							: 0;
+						totalPurchaseValue > 0 ? (totalChangeAmount / totalPurchaseValue) * 100 : 0;
 
 					assetMap.set(assetId, {
 						asset: position.asset,
@@ -202,9 +187,7 @@ export function getWorstPerformingAssets(
 /**
  * Calculate asset allocation by asset type
  */
-export function calculateAssetAllocation(
-	portfolios: Readonly<Portfolio[]>,
-): AssetAllocationData[] {
+export function calculateAssetAllocation(portfolios: Readonly<Portfolio[]>): AssetAllocationData[] {
 	const allocationMap = new Map<string, { value: number; color: string }>();
 	let totalValue = 0;
 
@@ -255,9 +238,7 @@ export function calculateAssetAllocation(
 /**
  * Calculate portfolio allocation percentages relative to total assets
  */
-export function calculatePortfolioAllocation(
-	portfolios: Readonly<Portfolio[]>,
-): Array<{
+export function calculatePortfolioAllocation(portfolios: Readonly<Portfolio[]>): Array<{
 	portfolio: Portfolio;
 	value: number;
 	percentage: number;
@@ -269,8 +250,7 @@ export function calculatePortfolioAllocation(
 		return {
 			portfolio,
 			value: portfolioMetrics.totalValue,
-			percentage:
-				totalValue > 0 ? (portfolioMetrics.totalValue / totalValue) * 100 : 0,
+			percentage: totalValue > 0 ? (portfolioMetrics.totalValue / totalValue) * 100 : 0,
 		};
 	});
 }

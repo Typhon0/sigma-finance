@@ -31,17 +31,13 @@ class MockWebSocket {
 
 	close() {
 		this.readyState = MockWebSocket.CLOSED;
-		this.onclose?.(
-			new CloseEvent("close", { code: 1000, reason: "Normal closure" }),
-		);
+		this.onclose?.(new CloseEvent("close", { code: 1000, reason: "Normal closure" }));
 	}
 
 	// Helper method to simulate incoming messages
-	simulateMessage(data: any) {
+	simulateMessage(data: Record<string, unknown>) {
 		if (this.readyState === MockWebSocket.OPEN) {
-			this.onmessage?.(
-				new MessageEvent("message", { data: JSON.stringify(data) }),
-			);
+			this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(data) }));
 		}
 	}
 
@@ -52,7 +48,7 @@ class MockWebSocket {
 }
 
 // Mock global WebSocket
-global.WebSocket = MockWebSocket as any;
+global.WebSocket = MockWebSocket as unknown as typeof WebSocket;
 
 describe("WebSocketManager", () => {
 	let wsManager: WebSocketManager;
@@ -84,7 +80,7 @@ describe("WebSocketManager", () => {
 
 			// Simulate connection error
 			vi.advanceTimersByTime(5);
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateError();
 
 			await expect(connectPromise).rejects.toThrow();
@@ -107,9 +103,7 @@ describe("WebSocketManager", () => {
 			vi.advanceTimersByTime(20);
 
 			await expect(connectPromise1).resolves.toBeUndefined();
-			await expect(connectPromise2).rejects.toThrow(
-				"Connection already in progress",
-			);
+			await expect(connectPromise2).rejects.toThrow("Connection already in progress");
 		});
 	});
 
@@ -136,7 +130,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(priceUpdate);
 
 			expect(handler).toHaveBeenCalledWith(priceUpdate);
@@ -159,7 +153,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(portfolioUpdate);
 
 			expect(handler).toHaveBeenCalledWith(portfolioUpdate);
@@ -183,7 +177,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(alertNotification);
 
 			expect(handler).toHaveBeenCalledWith(alertNotification);
@@ -193,7 +187,7 @@ describe("WebSocketManager", () => {
 			const handler = vi.fn();
 			wsManager.subscribe("PRICE_UPDATE", handler);
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 
 			// Simulate malformed JSON
 			if (ws.onmessage) {
@@ -223,7 +217,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(priceUpdate);
 
 			expect(handler1).toHaveBeenCalledWith(priceUpdate);
@@ -243,7 +237,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(priceUpdate);
 
 			expect(handler).not.toHaveBeenCalled();
@@ -264,7 +258,7 @@ describe("WebSocketManager", () => {
 				timestamp: Date.now(),
 			};
 
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.simulateMessage(priceUpdate);
 
 			expect(errorHandler).toHaveBeenCalled();
@@ -279,7 +273,7 @@ describe("WebSocketManager", () => {
 		});
 
 		it("should send messages when connected", () => {
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			const sendSpy = vi.spyOn(ws, "send");
 
 			const message = {
@@ -321,7 +315,7 @@ describe("WebSocketManager", () => {
 			expect(wsManager.isConnected()).toBe(true);
 
 			// Simulate connection loss
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			ws.close();
 
 			expect(wsManager.isConnected()).toBe(false);
@@ -356,7 +350,7 @@ describe("WebSocketManager", () => {
 		});
 
 		it("should send ping messages periodically", () => {
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			const sendSpy = vi.spyOn(ws, "send");
 
 			// Fast-forward 30 seconds (heartbeat interval)
@@ -366,7 +360,7 @@ describe("WebSocketManager", () => {
 		});
 
 		it("should stop heartbeat on disconnect", () => {
-			const ws = (wsManager as any).ws as MockWebSocket;
+			const ws = (wsManager as unknown as { ws: MockWebSocket }).ws;
 			const sendSpy = vi.spyOn(ws, "send");
 
 			wsManager.disconnect();
@@ -374,9 +368,7 @@ describe("WebSocketManager", () => {
 			// Fast-forward past heartbeat interval
 			vi.advanceTimersByTime(35000);
 
-			expect(sendSpy).not.toHaveBeenCalledWith(
-				JSON.stringify({ type: "PING" }),
-			);
+			expect(sendSpy).not.toHaveBeenCalledWith(JSON.stringify({ type: "PING" }));
 		});
 	});
 });

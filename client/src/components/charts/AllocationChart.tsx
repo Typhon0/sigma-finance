@@ -1,20 +1,11 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts";
 import ReactECharts from "echarts-for-react";
-import {
-	Download,
-	Grid3X3,
-	Maximize2,
-	Minimize2,
-	PieChart,
-} from "lucide-react";
+import { Download, Grid3X3, Maximize2, Minimize2, PieChart } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAssetTypeColor } from "@/lib/chart-colors";
-import {
-	createAllocationPieChart,
-	createTreemapChart,
-} from "@/lib/charts/echarts";
+import { createAllocationPieChart, createTreemapChart } from "@/lib/charts/echarts";
 import { cn } from "@/lib/utils";
 
 export interface AllocationDataPoint {
@@ -52,7 +43,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	showHeader = true,
 	showExport = true,
 	showFullscreen = true,
-	_showLabels = true,
+	showLabels: _showLabels = true,
 	showPercentage = true,
 	compact = false,
 	interactive = true,
@@ -72,18 +63,17 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 
 		return data.map((item) => ({
 			...item,
-			percentage:
-				item.percentage ?? (total > 0 ? (item.value / total) * 100 : 0),
+			percentage: item.percentage ?? (total > 0 ? (item.value / total) * 100 : 0),
 		}));
 	}, [data]);
 
 	// Create chart configuration
-	const chartOption = useMemo((): EChartsOption => {
+	const chartOption = useMemo((): EChartsCoreOption => {
 		if (!processedData || processedData.length === 0) {
 			return {};
 		}
 
-		let baseConfig: EChartsOption;
+		let baseConfig: EChartsCoreOption;
 
 		if (currentChartType === "treemap") {
 			baseConfig = createTreemapChart(processedData, {
@@ -116,7 +106,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 					series: (baseConfig.series as any[])?.map((series) => ({
 						...series,
 						label: {
-							...series.label,
+							...((series.label as object) || {}),
 							fontSize: 10,
 						},
 					})),
@@ -125,7 +115,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 				return {
 					...baseConfig,
 					legend: {
-						...baseConfig.legend,
+						...((baseConfig.legend as object) || {}),
 						orient: "horizontal",
 						bottom: 0,
 						left: "center",
@@ -138,7 +128,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 						radius: compact ? "60%" : "70%",
 						center: ["50%", "45%"],
 						label: {
-							...series.label,
+							...((series.label as object) || {}),
 							fontSize: 10,
 						},
 					})),
@@ -161,9 +151,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	// Handle chart click events
 	const handleChartClick = (params: any) => {
 		if (interactive && onSegmentClick && params.data) {
-			const clickedData = processedData.find(
-				(item) => item.name === params.data.name,
-			);
+			const clickedData = processedData.find((item) => item.name === params.data.name);
 			if (clickedData) {
 				onSegmentClick(clickedData);
 			}
@@ -174,7 +162,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	const handleExport = (format: "png" | "svg") => {
 		if (chartRef.current) {
 			const chartInstance = chartRef.current.getEchartsInstance();
-			const dataURL = chartInstance.getDataURL({
+			const dataUrl = chartInstance.getDataURL({
 				type: format,
 				pixelRatio: 2,
 				backgroundColor: "#fff",
@@ -183,7 +171,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 			// Create download link
 			const link = document.createElement("a");
 			link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-chart.${format}`;
-			link.href = dataURL;
+			link.href = dataUrl;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -206,7 +194,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 			const chartInstance = chartRef.current.getEchartsInstance();
 			setTimeout(() => chartInstance.resize(), 100);
 		}
-	}, [isFullscreen, currentChartType]);
+	}, []);
 
 	// Loading state
 	if (loading) {
@@ -224,9 +212,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 					>
 						<div className="text-center">
 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
-							<p className="text-sm text-muted-foreground">
-								Loading allocation data...
-							</p>
+							<p className="text-sm text-muted-foreground">Loading allocation data...</p>
 						</div>
 					</div>
 				</CardContent>
@@ -274,9 +260,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 					>
 						<div className="text-center text-muted-foreground">
 							<p className="font-medium">No allocation data</p>
-							<p className="text-sm">
-								Asset allocation will appear here when you have positions
-							</p>
+							<p className="text-sm">Asset allocation will appear here when you have positions</p>
 						</div>
 					</div>
 				</CardContent>
@@ -294,7 +278,6 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 			}}
 			opts={{
 				renderer: "canvas",
-				useDirtyRect: true,
 			}}
 			onEvents={{
 				click: handleChartClick,
@@ -307,13 +290,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	}
 
 	return (
-		<Card
-			className={cn(
-				"w-full",
-				isFullscreen && "fixed inset-4 z-50 bg-background",
-				className,
-			)}
-		>
+		<Card className={cn("w-full", isFullscreen && "fixed inset-4 z-50 bg-background", className)}>
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<CardTitle className="text-lg font-semibold">{title}</CardTitle>

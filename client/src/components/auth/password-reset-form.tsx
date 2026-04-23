@@ -21,7 +21,7 @@ export function PasswordResetForm({ onSwitchToLogin }: PasswordResetFormProps) {
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [submittedEmail, setSubmittedEmail] = useState("");
 	const { resetPassword } = useAuth();
-	const { _handleAuthResponse } = useAuthErrorHandler();
+	const { handleAuthResponse: _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,
@@ -42,10 +42,13 @@ export function PasswordResetForm({ onSwitchToLogin }: PasswordResetFormProps) {
 			setSubmittedEmail(data.email);
 			setShowSuccess(true);
 			reset(); // Clear the form after successful submission
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const gqlErr = error as {
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			if (gqlErr?.graphQLErrors?.[0]?.extensions?.errors) {
+				setAuthErrors(gqlErr.graphQLErrors[0].extensions.errors);
 			} else {
 				setAuthErrors([
 					{
@@ -66,9 +69,7 @@ export function PasswordResetForm({ onSwitchToLogin }: PasswordResetFormProps) {
 		if (submittedEmail) {
 			try {
 				await resetPassword(submittedEmail);
-			} catch (error) {
-				console.error("Failed to resend reset email:", error);
-			}
+			} catch (_error) {}
 		}
 	};
 
@@ -88,7 +89,6 @@ export function PasswordResetForm({ onSwitchToLogin }: PasswordResetFormProps) {
 			<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 				<AuthFormField
 					id="email"
-					name="email"
 					type="email"
 					label="Email"
 					placeholder="Enter your email"

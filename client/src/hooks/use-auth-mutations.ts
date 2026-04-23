@@ -26,31 +26,24 @@ import type {
 
 // Register mutation hook
 export const useRegisterMutation = () => {
-	return useMutation<{ register: AuthResponse }, { input: RegisterInput }>(
-		REGISTER_MUTATION,
-	);
+	return useMutation<{ register: AuthResponse }, { input: RegisterInput }>(REGISTER_MUTATION);
 };
 
 // Login mutation hook
 export const useLoginMutation = () => {
-	return useMutation<{ login: AuthResponse }, { input: LoginInput }>(
-		LOGIN_MUTATION,
-	);
+	return useMutation<{ login: AuthResponse }, { input: LoginInput }>(LOGIN_MUTATION);
 };
 
 // Logout mutation hook
 export const useLogoutMutation = () => {
-	return useMutation<{ logout: LogoutResponse }, { input: LogoutInput }>(
-		LOGOUT_MUTATION,
-	);
+	return useMutation<{ logout: LogoutResponse }, { input: LogoutInput }>(LOGOUT_MUTATION);
 };
 
 // Reset password mutation hook
 export const useResetPasswordMutation = () => {
-	return useMutation<
-		{ resetPassword: PasswordResetResponse },
-		{ input: PasswordResetInput }
-	>(RESET_PASSWORD_MUTATION);
+	return useMutation<{ resetPassword: PasswordResetResponse }, { input: PasswordResetInput }>(
+		RESET_PASSWORD_MUTATION,
+	);
 };
 
 // Confirm password reset mutation hook
@@ -63,10 +56,9 @@ export const useConfirmPasswordResetMutation = () => {
 
 // Verify email mutation hook
 export const useVerifyEmailMutation = () => {
-	return useMutation<
-		{ verifyEmail: EmailVerificationResponse },
-		{ input: EmailVerificationInput }
-	>(VERIFY_EMAIL_MUTATION);
+	return useMutation<{ verifyEmail: EmailVerificationResponse }, { input: EmailVerificationInput }>(
+		VERIFY_EMAIL_MUTATION,
+	);
 };
 
 // Resend verification mutation hook
@@ -79,8 +71,7 @@ export const useResendVerificationMutation = () => {
 
 // Refresh token mutation hook
 export const useRefreshTokenMutation = () => {
-	return useMutation<
-		{ refreshToken: AuthResponse },
-		{ input: RefreshTokenInput }
-	>(REFRESH_TOKEN_MUTATION);
+	return useMutation<{ refreshToken: AuthResponse }, { input: RefreshTokenInput }>(
+		REFRESH_TOKEN_MUTATION,
+	);
 };

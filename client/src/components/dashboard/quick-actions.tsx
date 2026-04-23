@@ -1,13 +1,7 @@
 import { useNavigate } from "@tanstack/react-router";
-import {
-	BarChart3,
-	FileText,
-	FolderPlus,
-	Settings,
-	TrendingUp,
-	Wallet,
-} from "lucide-react";
+import { BarChart3, FileText, FolderPlus, Settings, TrendingUp, Wallet } from "lucide-react";
 import { useCallback } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withErrorBoundary } from "@/components/ui/error-boundary";
@@ -38,7 +32,7 @@ export function QuickActions({
 			onAddTransaction();
 		} else {
 			// For now, just show an alert instead of opening a modal
-			alert("Add Transaction functionality will be implemented soon!");
+			toast.info("Add Transaction functionality will be implemented soon!");
 		}
 	}, [onAddTransaction]);
 
@@ -47,7 +41,7 @@ export function QuickActions({
 			onAddAsset();
 		} else {
 			// For now, just show an alert instead of opening a modal
-			alert("Add Asset functionality will be implemented soon!");
+			toast.info("Add Asset functionality will be implemented soon!");
 		}
 	}, [onAddAsset]);
 
@@ -71,7 +65,10 @@ export function QuickActions({
 		if (onViewAnalytics) {
 			onViewAnalytics();
 		} else {
-			navigate({ to: "/dashboard", search: { view: "analytics" } });
+			navigate({
+				to: "/dashboard",
+				search: { view: "analytics", portfolioId: undefined },
+			});
 		}
 	}, [onViewAnalytics, navigate]);
 
@@ -100,9 +97,7 @@ export function QuickActions({
 						<FolderPlus className="h-6 w-6" />
 						<div className="flex flex-col">
 							<span className="font-semibold">Create Portfolio</span>
-							<span className="text-xs opacity-90">
-								Start organizing assets
-							</span>
+							<span className="text-xs opacity-90">Start organizing assets</span>
 						</div>
 					</Button>
 

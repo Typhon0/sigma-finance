@@ -3,17 +3,11 @@ import { act, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "../../lib/auth-context";
-import {
-	useAuthentication,
-	useAuthForm,
-	useAuthGuard,
-} from "../use-authentication";
+import { useAuthentication, useAuthForm, useAuthGuard } from "../use-authentication";
 
 // Mock the auth context
 vi.mock("../../lib/auth-context", () => ({
-	AuthProvider: ({ children }: { children: ReactNode }) => (
-		<div>{children}</div>
-	),
+	AuthProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	useAuth: () => ({
 		user: {
 			id: "1",

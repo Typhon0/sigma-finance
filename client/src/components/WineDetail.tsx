@@ -1,12 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	DollarSign,
-	FileText,
-	Trash2,
-	TrendingUp,
-	Wine,
-} from "lucide-react";
+import { ArrowLeft, DollarSign, FileText, Trash2, TrendingUp, Wine } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -23,13 +16,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface WineDetailProps {
 	wineId: string;
@@ -72,8 +59,7 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 	};
 
 	const gain = (wine.currentValue || 0) - (wine.purchasePrice || 0);
-	const gainPercent =
-		wine.purchasePrice > 0 ? (gain / wine.purchasePrice) * 100 : 0;
+	const gainPercent = wine.purchasePrice > 0 ? (gain / wine.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -171,10 +157,7 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 					</Button>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -192,13 +175,9 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 							<div>
 								<CardTitle className="mb-2">{wine.name}</CardTitle>
 								<div className="flex flex-wrap gap-2 mb-3">
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 									{wine.brand && <Badge variant="outline">{wine.brand}</Badge>}
-									{wine.model && (
-										<Badge variant="secondary">{wine.model}</Badge>
-									)}
+									{wine.model && <Badge variant="secondary">{wine.model}</Badge>}
 								</div>
 								<CardDescription className="max-w-2xl">
 									{wine.description || "No description available"}
@@ -210,20 +189,12 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(wine.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(wine.currentValue || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(wine.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(wine.purchasePrice || 0)}</p>
 						</div>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Gain/Loss</p>
@@ -256,28 +227,20 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 					<CardContent className="space-y-4">
 						{wine.brand && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Estate/Producer
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Estate/Producer</p>
 								<p>{wine.brand}</p>
 							</div>
 						)}
 						{wine.model && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Appellation/Type
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Appellation/Type</p>
 								<p>{wine.model}</p>
 							</div>
 						)}
 						{wine.condition && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Storage Condition
-								</p>
-								<Badge variant={conditionBadge.variant}>
-									{conditionBadge.label}
-								</Badge>
+								<p className="text-sm text-muted-foreground mb-1">Storage Condition</p>
+								<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 							</div>
 						)}
 					</CardContent>
@@ -293,9 +256,7 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Date
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Date</p>
 							<p>
 								{wine.purchaseDate
 									? new Date(wine.purchaseDate).toLocaleDateString("fr-FR")
@@ -303,20 +264,12 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(wine.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(wine.purchasePrice || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(wine.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(wine.currentValue || 0)}</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -329,9 +282,7 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 						<TrendingUp className="h-5 w-5" />
 						Value Appreciation
 					</CardTitle>
-					<CardDescription>
-						Historical value trend since purchase
-					</CardDescription>
+					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
@@ -339,16 +290,12 @@ export function WineDetail({ wineId, onBack }: WineDetailProps) {
 			</Card>
 
 			{/* Delete Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Wine</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{wine.name}"? This action cannot
-							be undone.
+							Are you sure you want to delete "{wine.name}"? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

@@ -38,12 +38,7 @@ import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
 export interface PerformanceAlert {
 	id: string;
 	name: string;
-	type:
-		| "price"
-		| "percentage"
-		| "portfolio_value"
-		| "allocation"
-		| "performance";
+	type: "price" | "percentage" | "portfolio_value" | "allocation" | "performance";
 	condition: "above" | "below" | "increase_by" | "decrease_by";
 	threshold: number;
 	targetAsset?: string;
@@ -161,10 +156,7 @@ const getAlertIcon = (type: PerformanceAlert["type"]) => {
 
 const getAlertStatusColor = (alert: PerformanceAlert) => {
 	if (!alert.isActive) return "secondary";
-	if (
-		alert.lastTriggered &&
-		Date.now() - alert.lastTriggered.getTime() < 24 * 60 * 60 * 1000
-	) {
+	if (alert.lastTriggered && Date.now() - alert.lastTriggered.getTime() < 24 * 60 * 60 * 1000) {
 		return "destructive";
 	}
 	return "default";
@@ -217,11 +209,9 @@ const AlertForm: React.FC<{
 	};
 
 	const needsAssetTarget = ["price", "percentage"].includes(formData.type);
-	const needsPortfolioTarget = [
-		"portfolio_value",
-		"allocation",
-		"performance",
-	].includes(formData.type);
+	const needsPortfolioTarget = ["portfolio_value", "allocation", "performance"].includes(
+		formData.type,
+	);
 
 	return (
 		<form onSubmit={handleSubmit} className="space-y-4">
@@ -230,9 +220,7 @@ const AlertForm: React.FC<{
 				<Input
 					id="name"
 					value={formData.name}
-					onChange={(e) =>
-						setFormData((prev) => ({ ...prev, name: e.target.value }))
-					}
+					onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
 					placeholder="Enter alert name..."
 					required
 				/>
@@ -255,9 +243,7 @@ const AlertForm: React.FC<{
 								<SelectItem key={type.value} value={type.value}>
 									<div>
 										<div className="font-medium">{type.label}</div>
-										<div className="text-xs text-muted-foreground">
-											{type.description}
-										</div>
+										<div className="text-xs text-muted-foreground">{type.description}</div>
 									</div>
 								</SelectItem>
 							))}
@@ -310,9 +296,7 @@ const AlertForm: React.FC<{
 					<Label htmlFor="targetAsset">Target Asset</Label>
 					<Select
 						value={formData.targetAsset}
-						onValueChange={(value) =>
-							setFormData((prev) => ({ ...prev, targetAsset: value }))
-						}
+						onValueChange={(value) => setFormData((prev) => ({ ...prev, targetAsset: value }))}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder="Select asset..." />
@@ -333,9 +317,7 @@ const AlertForm: React.FC<{
 					<Label htmlFor="targetPortfolio">Target Portfolio</Label>
 					<Select
 						value={formData.targetPortfolio}
-						onValueChange={(value) =>
-							setFormData((prev) => ({ ...prev, targetPortfolio: value }))
-						}
+						onValueChange={(value) => setFormData((prev) => ({ ...prev, targetPortfolio: value }))}
 					>
 						<SelectTrigger>
 							<SelectValue placeholder="Select portfolio..." />
@@ -367,9 +349,7 @@ const AlertForm: React.FC<{
 							<SelectItem key={freq.value} value={freq.value}>
 								<div>
 									<div className="font-medium">{freq.label}</div>
-									<div className="text-xs text-muted-foreground">
-										{freq.description}
-									</div>
+									<div className="text-xs text-muted-foreground">{freq.description}</div>
 								</div>
 							</SelectItem>
 						))}
@@ -389,17 +369,12 @@ const AlertForm: React.FC<{
 									if (e.target.checked) {
 										setFormData((prev) => ({
 											...prev,
-											notificationMethods: [
-												...prev.notificationMethods,
-												method,
-											],
+											notificationMethods: [...prev.notificationMethods, method],
 										}));
 									} else {
 										setFormData((prev) => ({
 											...prev,
-											notificationMethods: prev.notificationMethods.filter(
-												(m) => m !== method,
-											),
+											notificationMethods: prev.notificationMethods.filter((m) => m !== method),
 										}));
 									}
 								}}
@@ -415,9 +390,7 @@ const AlertForm: React.FC<{
 				<Textarea
 					id="description"
 					value={formData.description}
-					onChange={(e) =>
-						setFormData((prev) => ({ ...prev, description: e.target.value }))
-					}
+					onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
 					placeholder="Add notes about this alert..."
 					rows={3}
 				/>
@@ -447,12 +420,7 @@ const AlertCard: React.FC<{
 	const conditionInfo = conditions.find((c) => c.value === alert.condition);
 
 	return (
-		<Card
-			className={cn(
-				"transition-all duration-200",
-				!alert.isActive && "opacity-60",
-			)}
-		>
+		<Card className={cn("transition-all duration-200", !alert.isActive && "opacity-60")}>
 			<CardContent className={cn("p-4", compact && "p-3")}>
 				<div className="flex items-start justify-between">
 					<div className="flex items-start gap-3 flex-1">
@@ -461,21 +429,12 @@ const AlertCard: React.FC<{
 						</div>
 						<div className="flex-1 min-w-0">
 							<div className="flex items-center gap-2 mb-1">
-								<h4
-									className={cn("font-semibold truncate", compact && "text-sm")}
-								>
-									{alert.name}
-								</h4>
+								<h4 className={cn("font-semibold truncate", compact && "text-sm")}>{alert.name}</h4>
 								<Badge variant={statusColor} className="text-xs">
 									{alert.isActive ? "Active" : "Inactive"}
 								</Badge>
 							</div>
-							<p
-								className={cn(
-									"text-sm text-muted-foreground mb-2",
-									compact && "text-xs",
-								)}
-							>
+							<p className={cn("text-sm text-muted-foreground mb-2", compact && "text-xs")}>
 								{typeInfo?.label} {conditionInfo?.label.toLowerCase()}{" "}
 								{formatThreshold(alert.threshold, alert.type)}
 							</p>
@@ -496,22 +455,12 @@ const AlertCard: React.FC<{
 							className="data-[state=checked]:bg-green-500"
 						/>
 						{onEdit && (
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={onEdit}
-								className="h-6 w-6 p-0"
-							>
+							<Button size="sm" variant="ghost" onClick={onEdit} className="h-6 w-6 p-0">
 								<Edit className="h-3 w-3" />
 							</Button>
 						)}
 						{onDelete && (
-							<Button
-								size="sm"
-								variant="ghost"
-								onClick={onDelete}
-								className="h-6 w-6 p-0"
-							>
+							<Button size="sm" variant="ghost" onClick={onDelete} className="h-6 w-6 p-0">
 								<Trash2 className="h-3 w-3" />
 							</Button>
 						)}
@@ -535,16 +484,12 @@ export const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
 	onToggleAlert,
 }) => {
 	const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-	const [editingAlert, setEditingAlert] = useState<PerformanceAlert | null>(
-		null,
-	);
+	const [editingAlert, setEditingAlert] = useState<PerformanceAlert | null>(null);
 
 	const alertStats = useMemo(() => {
 		const active = alerts.filter((a) => a.isActive).length;
 		const triggered = alerts.filter(
-			(a) =>
-				a.lastTriggered &&
-				Date.now() - a.lastTriggered.getTime() < 24 * 60 * 60 * 1000,
+			(a) => a.lastTriggered && Date.now() - a.lastTriggered.getTime() < 24 * 60 * 60 * 1000,
 		).length;
 
 		return { total: alerts.length, active, triggered };
@@ -591,10 +536,7 @@ export const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
 						<Bell className="h-5 w-5" />
 						Performance Alerts
 					</CardTitle>
-					<Dialog
-						open={isCreateDialogOpen}
-						onOpenChange={setIsCreateDialogOpen}
-					>
+					<Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
 						<DialogTrigger asChild>
 							<Button size="sm">
 								<Plus className="h-4 w-4 mr-2" />
@@ -637,8 +579,8 @@ export const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
 						<Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
 						<h3 className="text-lg font-semibold mb-2">No Alerts Set</h3>
 						<p className="text-muted-foreground mb-4">
-							Create alerts to monitor your portfolio performance and get
-							notified of important changes.
+							Create alerts to monitor your portfolio performance and get notified of important
+							changes.
 						</p>
 						<Button onClick={() => setIsCreateDialogOpen(true)}>
 							<Plus className="h-4 w-4 mr-2" />
@@ -661,10 +603,7 @@ export const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
 				)}
 
 				{/* Edit Alert Dialog */}
-				<Dialog
-					open={!!editingAlert}
-					onOpenChange={() => setEditingAlert(null)}
-				>
+				<Dialog open={!!editingAlert} onOpenChange={() => setEditingAlert(null)}>
 					<DialogContent className="max-w-lg">
 						<DialogHeader>
 							<DialogTitle>Edit Performance Alert</DialogTitle>

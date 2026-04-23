@@ -1,19 +1,5 @@
-import {
-	Building2,
-	Coins,
-	CreditCard,
-	Home,
-	Package,
-	Shield,
-	Watch,
-} from "lucide-react";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Building2, Coins, CreditCard, Home, Package, Shield, Watch } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { AssetType } from "@/hooks/use-asset-management";
 import { useAssetTypes } from "@/hooks/use-asset-management";
 
@@ -23,10 +9,7 @@ interface AssetTypeSelectorProps {
 	className?: string;
 }
 
-const ASSET_TYPE_ICONS: Record<
-	string,
-	React.ComponentType<{ className?: string }>
-> = {
+const ASSET_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 	STOCK: Building2,
 	CRYPTO: Coins,
 	BANK_ACCOUNT: CreditCard,
@@ -91,15 +74,11 @@ export function AssetTypeSelector({
 								<Icon
 									className={`h-5 w-5 ${isSelected ? "text-primary" : "text-muted-foreground"}`}
 								/>
-								<CardTitle className="text-sm">
-									{type.name.replace("_", " ")}
-								</CardTitle>
+								<CardTitle className="text-sm">{type.name.replace("_", " ")}</CardTitle>
 							</div>
 						</CardHeader>
 						<CardContent>
-							<CardDescription className="text-xs leading-relaxed">
-								{description}
-							</CardDescription>
+							<CardDescription className="text-xs leading-relaxed">{description}</CardDescription>
 						</CardContent>
 					</Card>
 				);

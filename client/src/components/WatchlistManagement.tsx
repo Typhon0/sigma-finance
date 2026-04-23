@@ -4,7 +4,6 @@ import {
 	EyeOff,
 	MoreHorizontal,
 	Plus,
-	Search,
 	ShoppingCart,
 	Trash2,
 	TrendingDown,
@@ -12,6 +11,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -32,25 +32,11 @@ import {
 } from "./ui/dropdown-menu";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 export function WatchlistManagement() {
-	const { watchlist, removeFromWatchlist, addToWatchlist, addAsset } =
-		usePortfolio();
+	const { watchlist, removeFromWatchlist, addToWatchlist, addAsset } = usePortfolio();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedType, setSelectedType] = useState("all");
 	const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -135,16 +121,11 @@ export function WatchlistManagement() {
 
 	// Mock watchlist stats
 	const totalItems = watchlist.length;
-	const gainers = watchlist.filter(
-		(item) => (item.changePercent || 0) > 0,
-	).length;
-	const losers = watchlist.filter(
-		(item) => (item.changePercent || 0) < 0,
-	).length;
+	const gainers = watchlist.filter((item) => (item.changePercent || 0) > 0).length;
+	const losers = watchlist.filter((item) => (item.changePercent || 0) < 0).length;
 	const avgChange =
 		watchlist.length > 0
-			? watchlist.reduce((sum, item) => sum + (item.changePercent || 0), 0) /
-				watchlist.length
+			? watchlist.reduce((sum, item) => sum + (item.changePercent || 0), 0) / watchlist.length
 			: 0;
 
 	return (
@@ -153,9 +134,7 @@ export function WatchlistManagement() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl font-mono">Watchlist</h1>
-					<p className="text-muted-foreground">
-						Monitor assets you're interested in
-					</p>
+					<p className="text-muted-foreground">Monitor assets you're interested in</p>
 				</div>
 				<Dialog open={isAddItemOpen} onOpenChange={setIsAddItemOpen}>
 					<DialogTrigger asChild>
@@ -175,9 +154,7 @@ export function WatchlistManagement() {
 								<Label htmlFor="item-type">Asset Type *</Label>
 								<Select
 									value={newItem.type}
-									onValueChange={(value) =>
-										setNewItem({ ...newItem, type: value })
-									}
+									onValueChange={(value) => setNewItem({ ...newItem, type: value })}
 								>
 									<SelectTrigger>
 										<SelectValue placeholder="Select type" />
@@ -212,9 +189,7 @@ export function WatchlistManagement() {
 									<Input
 										id="name"
 										value={newItem.name}
-										onChange={(e) =>
-											setNewItem({ ...newItem, name: e.target.value })
-										}
+										onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
 										placeholder="Apple Inc."
 									/>
 								</div>
@@ -228,9 +203,7 @@ export function WatchlistManagement() {
 										type="number"
 										step="0.01"
 										value={newItem.currentPrice}
-										onChange={(e) =>
-											setNewItem({ ...newItem, currentPrice: e.target.value })
-										}
+										onChange={(e) => setNewItem({ ...newItem, currentPrice: e.target.value })}
 										placeholder="185.50"
 									/>
 								</div>
@@ -242,9 +215,7 @@ export function WatchlistManagement() {
 										type="number"
 										step="0.01"
 										value={newItem.targetPrice}
-										onChange={(e) =>
-											setNewItem({ ...newItem, targetPrice: e.target.value })
-										}
+										onChange={(e) => setNewItem({ ...newItem, targetPrice: e.target.value })}
 										placeholder="200.00"
 									/>
 								</div>
@@ -314,15 +285,14 @@ export function WatchlistManagement() {
 				<CardHeader>
 					<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
 						<div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-							<div className="relative">
-								<Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-								<Input
-									placeholder="Search watchlist..."
-									value={searchTerm}
-									onChange={(e) => setSearchTerm(e.target.value)}
-									className="pl-10 w-64"
-								/>
-							</div>
+							<SearchInput
+								placeholder="Search watchlist..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								onClear={() => setSearchTerm("")}
+								className="w-64"
+								iconClassName="top-3"
+							/>
 
 							<Select value={selectedType} onValueChange={setSelectedType}>
 								<SelectTrigger className="w-40">
@@ -361,18 +331,14 @@ export function WatchlistManagement() {
 									const changePercent = item.changePercent || 0;
 									const isNearTarget =
 										item.targetPrice &&
-										Math.abs(item.currentPrice - item.targetPrice) /
-											item.targetPrice <
-											0.05;
+										Math.abs(item.currentPrice - item.targetPrice) / item.targetPrice < 0.05;
 
 									return (
 										<TableRow key={item.id}>
 											<TableCell>
 												<div className="space-y-1">
 													<div className="font-medium">{item.symbol}</div>
-													<div className="text-sm text-muted-foreground">
-														{item.name}
-													</div>
+													<div className="text-sm text-muted-foreground">{item.name}</div>
 												</div>
 											</TableCell>
 											<TableCell>
@@ -405,9 +371,7 @@ export function WatchlistManagement() {
 											<TableCell>
 												{item.targetPrice ? (
 													<div className="space-y-1">
-														<div className="font-mono">
-															${item.targetPrice.toLocaleString()}
-														</div>
+														<div className="font-mono">${item.targetPrice.toLocaleString()}</div>
 														{isNearTarget && (
 															<Badge variant="secondary" className="text-xs">
 																<Bell className="h-3 w-3 mr-1" />
@@ -427,9 +391,7 @@ export function WatchlistManagement() {
 														</Button>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end">
-														<DropdownMenuItem
-															onClick={() => handleAddToPortfolio(item)}
-														>
+														<DropdownMenuItem onClick={() => handleAddToPortfolio(item)}>
 															<ShoppingCart className="h-4 w-4 mr-2" />
 															Add to Portfolio
 														</DropdownMenuItem>

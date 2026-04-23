@@ -56,7 +56,6 @@ export function useAuthGuard(options: UseAuthGuardOptions = {}) {
 		isLoading,
 		isAuthenticated,
 		user,
-		canAccess:
-			isAuthenticated && (!requireEmailVerified || user?.emailVerified),
+		canAccess: isAuthenticated && (!requireEmailVerified || user?.emailVerified),
 	};
 }

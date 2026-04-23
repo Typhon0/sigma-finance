@@ -70,17 +70,11 @@ export function getChartThemeColors() {
 
 	return {
 		background: "transparent",
-		foreground: oklchToRgb(
-			computedStyle.getPropertyValue("--foreground").trim(),
-		),
+		foreground: oklchToRgb(computedStyle.getPropertyValue("--foreground").trim()),
 		card: oklchToRgb(computedStyle.getPropertyValue("--card").trim()),
-		cardForeground: oklchToRgb(
-			computedStyle.getPropertyValue("--card-foreground").trim(),
-		),
+		cardForeground: oklchToRgb(computedStyle.getPropertyValue("--card-foreground").trim()),
 		border: oklchToRgb(computedStyle.getPropertyValue("--border").trim()),
-		mutedForeground: oklchToRgb(
-			computedStyle.getPropertyValue("--muted-foreground").trim(),
-		),
+		mutedForeground: oklchToRgb(computedStyle.getPropertyValue("--muted-foreground").trim()),
 	};
 }
 

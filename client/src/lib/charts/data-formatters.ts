@@ -137,9 +137,7 @@ export class EChartsFormatter {
 			.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
 		return {
-			dates: sortedData.map((item) =>
-				EChartsFormatter.formatDateForAxis(item.date),
-			),
+			dates: sortedData.map((item) => EChartsFormatter.formatDateForAxis(item.date)),
 			values: sortedData.map((item) => item.value),
 			formattedData: sortedData.map((item) => ({
 				date: EChartsFormatter.formatDateForAxis(item.date),
@@ -160,10 +158,7 @@ export class EChartsFormatter {
 		itemStyle?: { color: string };
 	}> {
 		return data
-			.filter(
-				(item) =>
-					item?.name && typeof item.value === "number" && item.value > 0,
-			)
+			.filter((item) => item?.name && typeof item.value === "number" && item.value > 0)
 			.map((item) => ({
 				name: item.name,
 				value: item.value,
@@ -226,10 +221,7 @@ export class EChartsFormatter {
 	/**
 	 * Format currency values
 	 */
-	private static formatCurrency(
-		value: number,
-		currency: string = "USD",
-	): string {
+	private static formatCurrency(value: number, currency: string = "USD"): string {
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
 			currency: currency,
@@ -293,10 +285,7 @@ export class DataAggregator {
 	/**
 	 * Calculate moving average
 	 */
-	static calculateMovingAverage(
-		data: RawPerformanceData[],
-		window: number,
-	): RawPerformanceData[] {
+	static calculateMovingAverage(data: RawPerformanceData[], window: number): RawPerformanceData[] {
 		if (data.length < window) return data;
 
 		const result: RawPerformanceData[] = [];
@@ -317,9 +306,7 @@ export class DataAggregator {
 	/**
 	 * Calculate percentage change
 	 */
-	static calculatePercentageChange(
-		data: RawPerformanceData[],
-	): RawPerformanceData[] {
+	static calculatePercentageChange(data: RawPerformanceData[]): RawPerformanceData[] {
 		if (data.length < 2) return data;
 
 		const result: RawPerformanceData[] = [data[0]];
@@ -341,10 +328,7 @@ export class DataAggregator {
 	/**
 	 * Resample data to reduce points
 	 */
-	static resampleData<T extends { date: string }>(
-		data: T[],
-		maxPoints: number,
-	): T[] {
+	static resampleData<T extends { date: string }>(data: T[], maxPoints: number): T[] {
 		if (data.length <= maxPoints) return data;
 
 		const step = Math.ceil(data.length / maxPoints);
@@ -370,10 +354,7 @@ export class TimeRangeUtils {
 	/**
 	 * Filter data by time range
 	 */
-	static filterByTimeRange<T extends { date: string }>(
-		data: T[],
-		range: ChartTimeRange,
-	): T[] {
+	static filterByTimeRange<T extends { date: string }>(data: T[], range: ChartTimeRange): T[] {
 		if (range === "ALL") return data;
 
 		const now = new Date();
@@ -414,9 +395,7 @@ export class TimeRangeUtils {
 	/**
 	 * Get appropriate data aggregation period for time range
 	 */
-	static getAggregationPeriod(
-		range: ChartTimeRange,
-	): "hour" | "day" | "week" | "month" {
+	static getAggregationPeriod(range: ChartTimeRange): "hour" | "day" | "week" | "month" {
 		switch (range) {
 			case "1H":
 			case "4H":
@@ -439,10 +418,7 @@ export class TimeRangeUtils {
 	/**
 	 * Generate date labels for time range
 	 */
-	static generateDateLabels(
-		range: ChartTimeRange,
-		count: number = 10,
-	): string[] {
+	static generateDateLabels(range: ChartTimeRange, count: number = 10): string[] {
 		const now = new Date();
 		const labels: string[] = [];
 
@@ -536,9 +512,7 @@ export class DataValidator {
 				item.high < Math.max(item.open, item.close) ||
 				item.low > Math.min(item.open, item.close)
 			) {
-				errors.push(
-					`Item ${index} has invalid price relationships (high/low vs open/close)`,
-				);
+				errors.push(`Item ${index} has invalid price relationships (high/low vs open/close)`);
 				return;
 			}
 
@@ -624,9 +598,7 @@ export class DataValidator {
 			}
 
 			if (typeof item.value !== "number" || item.value < 0) {
-				errors.push(
-					`Item ${index} has invalid value (must be positive number)`,
-				);
+				errors.push(`Item ${index} has invalid value (must be positive number)`);
 				return;
 			}
 

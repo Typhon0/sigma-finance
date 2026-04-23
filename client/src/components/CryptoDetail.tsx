@@ -26,30 +26,19 @@ import { toast } from "sonner";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Progress } from "./ui/progress";
 import { ScrollArea } from "./ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface CryptoDetailProps {
-	symbol: string;
+	cryptoId?: string;
+	symbol?: string;
 	onBack?: () => void;
 	onNavigateToScreener?: (filters: any) => void;
 }
@@ -59,11 +48,7 @@ type ChartType = "candlestick" | "line" | "area";
 type Indicator = "ma" | "rsi" | "macd" | "bollinger";
 type Benchmark = "BTC" | "ETH" | "TOTAL";
 
-export function CryptoDetail({
-	symbol,
-	onBack,
-	onNavigateToScreener,
-}: CryptoDetailProps) {
+export function CryptoDetail({ symbol, onBack, onNavigateToScreener }: CryptoDetailProps) {
 	const [timeRange, setTimeRange] = useState<TimeRange>("7D");
 	const [chartType, setChartType] = useState<ChartType>("candlestick");
 	const [activeIndicators, setActiveIndicators] = useState<Indicator[]>(["ma"]);
@@ -141,7 +126,11 @@ export function CryptoDetail({
 	};
 
 	// Generate candlestick data
-	const generateCandlestickData = () => {
+	const generateCandlestickData = (): {
+		date: string;
+		values: number[];
+		volume: number;
+	}[] => {
 		const days =
 			timeRange === "1D"
 				? 1
@@ -156,7 +145,7 @@ export function CryptoDetail({
 								: timeRange === "1Y"
 									? 365
 									: 730;
-		const data = [];
+		const data: { date: string; values: number[]; volume: number }[] = [];
 		let currentPrice = cryptoData.price - Math.random() * 5000;
 
 		for (let i = days; i >= 0; i--) {
@@ -167,9 +156,7 @@ export function CryptoDetail({
 			const close = currentPrice + (Math.random() - 0.5) * 2000;
 			const high = Math.max(open, close) + Math.random() * 500;
 			const low = Math.min(open, close) - Math.random() * 500;
-			const volume = Math.floor(
-				(Math.random() * 0.5 + 0.75) * cryptoData.volume24h,
-			);
+			const volume = Math.floor((Math.random() * 0.5 + 0.75) * cryptoData.volume24h);
 
 			data.push({
 				date: date.toISOString().split("T")[0],
@@ -183,11 +170,11 @@ export function CryptoDetail({
 		return data;
 	};
 
-	const candlestickData = useMemo(() => generateCandlestickData(), [timeRange]);
+	const candlestickData = useMemo(() => generateCandlestickData(), [generateCandlestickData]);
 
 	// Calculate technical indicators
-	const calculateMA = (period: number) => {
-		const ma = [];
+	const calculateMa = (period: number) => {
+		const ma: (number | null)[] = [];
 		for (let i = 0; i < candlestickData.length; i++) {
 			if (i < period - 1) {
 				ma.push(null);
@@ -202,14 +189,12 @@ export function CryptoDetail({
 		return ma;
 	};
 
-	const calculateRSI = (period: number = 14) => {
-		const rsi = [];
-		const changes = [];
+	const calculateRsi = (period: number = 14) => {
+		const rsi: (number | null)[] = [];
+		const changes: number[] = [];
 
 		for (let i = 1; i < candlestickData.length; i++) {
-			changes.push(
-				candlestickData[i].values[1] - candlestickData[i - 1].values[1],
-			);
+			changes.push(candlestickData[i].values[1] - candlestickData[i - 1].values[1]);
 		}
 
 		for (let i = 0; i < changes.length; i++) {
@@ -371,7 +356,7 @@ export function CryptoDetail({
 						{
 							name: "EMA20",
 							type: "line",
-							data: calculateMA(20),
+							data: calculateMa(20),
 							smooth: true,
 							lineStyle: { opacity: 0.8, width: 1.5, color: "#2196F3" },
 							showSymbol: false,
@@ -380,7 +365,7 @@ export function CryptoDetail({
 						{
 							name: "SMA50",
 							type: "line",
-							data: calculateMA(50),
+							data: calculateMa(50),
 							smooth: true,
 							lineStyle: { opacity: 0.8, width: 1.5, color: "#FF9800" },
 							showSymbol: false,
@@ -396,10 +381,7 @@ export function CryptoDetail({
 				data: candlestickData.map((d, i) => ({
 					value: d.volume,
 					itemStyle: {
-						color:
-							i > 0 && d.values[1] > candlestickData[i - 1].values[1]
-								? "#26a69a"
-								: "#ef5350",
+						color: i > 0 && d.values[1] > candlestickData[i - 1].values[1] ? "#26a69a" : "#ef5350",
 					},
 				})),
 			},
@@ -429,7 +411,7 @@ export function CryptoDetail({
 			{
 				name: "RSI",
 				type: "line",
-				data: calculateRSI(),
+				data: calculateRsi(),
 				smooth: true,
 				lineStyle: { color: "#9C27B0", width: 2 },
 				areaStyle: {
@@ -551,8 +533,7 @@ export function CryptoDetail({
 		return num.toFixed(0);
 	};
 
-	const supplyProgress =
-		(cryptoData.circulatingSupply / cryptoData.maxSupply) * 100;
+	const supplyProgress = (cryptoData.circulatingSupply / cryptoData.maxSupply) * 100;
 
 	return (
 		<div className="space-y-6">
@@ -574,9 +555,7 @@ export function CryptoDetail({
 								<div className="flex items-center gap-3 mb-2">
 									<div className="text-3xl">{cryptoData.icon}</div>
 									<h1 className="text-3xl">{cryptoData.symbol}</h1>
-									<Badge variant="outline">
-										Rank #{cryptoData.marketCapRank}
-									</Badge>
+									<Badge variant="outline">Rank #{cryptoData.marketCapRank}</Badge>
 									<Badge variant="secondary">{cryptoData.category}</Badge>
 								</div>
 								<p className="text-muted-foreground">{cryptoData.name}</p>
@@ -590,9 +569,7 @@ export function CryptoDetail({
 							</div>
 
 							<div className="flex items-baseline gap-4">
-								<div className="text-4xl font-mono">
-									{formatCurrency(cryptoData.price)}
-								</div>
+								<div className="text-4xl font-mono">{formatCurrency(cryptoData.price)}</div>
 								<div
 									className={`flex items-center gap-2 text-xl ${cryptoData.change >= 0 ? "text-green-600" : "text-red-600"}`}
 								>
@@ -603,8 +580,7 @@ export function CryptoDetail({
 									)}
 									<span className="font-mono">
 										{cryptoData.change >= 0 ? "+" : ""}
-										{formatCurrency(cryptoData.change)} (
-										{cryptoData.changePercent >= 0 ? "+" : ""}
+										{formatCurrency(cryptoData.change)} ({cryptoData.changePercent >= 0 ? "+" : ""}
 										{cryptoData.changePercent.toFixed(2)}%)
 									</span>
 								</div>
@@ -615,8 +591,7 @@ export function CryptoDetail({
 								<div className="flex items-center justify-between text-sm">
 									<span className="text-muted-foreground">24h Range</span>
 									<span className="font-mono">
-										{formatCurrency(cryptoData.low24h)} -{" "}
-										{formatCurrency(cryptoData.high24h)}
+										{formatCurrency(cryptoData.low24h)} - {formatCurrency(cryptoData.high24h)}
 									</span>
 								</div>
 								<Progress
@@ -632,18 +607,11 @@ export function CryptoDetail({
 
 						{/* Right: Quick Actions */}
 						<div className="flex flex-wrap gap-2">
-							<Button
-								onClick={() =>
-									toast.success(`Added ${cryptoData.symbol} to watchlist`)
-								}
-							>
+							<Button onClick={() => toast.success(`Added ${cryptoData.symbol} to watchlist`)}>
 								<Star className="h-4 w-4 mr-2" />
 								Add to Watchlist
 							</Button>
-							<Button
-								variant="outline"
-								onClick={() => toast.success("Alert created")}
-							>
+							<Button variant="outline" onClick={() => toast.success("Alert created")}>
 								<Bell className="h-4 w-4 mr-2" />
 								Create Alert
 							</Button>
@@ -664,9 +632,7 @@ export function CryptoDetail({
 					<div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
 						<div>
 							<p className="text-muted-foreground">Market Cap</p>
-							<p className="font-mono">
-								{formatLargeNumber(cryptoData.marketCap)}
-							</p>
+							<p className="font-mono">{formatLargeNumber(cryptoData.marketCap)}</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">FDV</p>
@@ -682,9 +648,7 @@ export function CryptoDetail({
 									{cryptoData.volumeChange24h.toFixed(1)}%
 								</span>
 							</p>
-							<p className="font-mono">
-								{formatLargeNumber(cryptoData.volume24h)}
-							</p>
+							<p className="font-mono">{formatLargeNumber(cryptoData.volume24h)}</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">Dominance</p>
@@ -692,9 +656,7 @@ export function CryptoDetail({
 						</div>
 						<div>
 							<p className="text-muted-foreground">Circulating Supply</p>
-							<p className="font-mono">
-								{formatNumber(cryptoData.circulatingSupply)}
-							</p>
+							<p className="font-mono">{formatNumber(cryptoData.circulatingSupply)}</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">Max Supply</p>
@@ -703,35 +665,24 @@ export function CryptoDetail({
 						<div>
 							<p className="text-muted-foreground">Bid × Ask</p>
 							<p className="font-mono text-xs">
-								{formatCurrency(cryptoData.bid)} ×{" "}
-								{formatCurrency(cryptoData.ask)}
+								{formatCurrency(cryptoData.bid)} × {formatCurrency(cryptoData.ask)}
 							</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">ATH</p>
-							<p className="font-mono text-green-600">
-								{formatCurrency(cryptoData.ath)}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{cryptoData.athDate}
-							</p>
+							<p className="font-mono text-green-600">{formatCurrency(cryptoData.ath)}</p>
+							<p className="text-xs text-muted-foreground">{cryptoData.athDate}</p>
 						</div>
 						<div>
 							<p className="text-muted-foreground">ATL</p>
-							<p className="font-mono text-red-600">
-								{formatCurrency(cryptoData.atl)}
-							</p>
-							<p className="text-xs text-muted-foreground">
-								{cryptoData.atlDate}
-							</p>
+							<p className="font-mono text-red-600">{formatCurrency(cryptoData.atl)}</p>
+							<p className="text-xs text-muted-foreground">{cryptoData.atlDate}</p>
 						</div>
 						<div className="col-span-3">
 							<p className="text-muted-foreground mb-1">Supply Progress</p>
 							<div className="flex items-center gap-2">
 								<Progress value={supplyProgress} className="flex-1 h-2" />
-								<span className="text-xs font-mono">
-									{supplyProgress.toFixed(1)}%
-								</span>
+								<span className="text-xs font-mono">{supplyProgress.toFixed(1)}%</span>
 							</div>
 						</div>
 					</div>
@@ -751,9 +702,7 @@ export function CryptoDetail({
 								<div className="flex flex-wrap items-center gap-2">
 									{/* Timeframe Selector */}
 									<div className="flex gap-1">
-										{(
-											["1D", "7D", "1M", "3M", "6M", "1Y", "MAX"] as TimeRange[]
-										).map((range) => (
+										{(["1D", "7D", "1M", "3M", "6M", "1Y", "MAX"] as TimeRange[]).map((range) => (
 											<Button
 												key={range}
 												variant={timeRange === range ? "default" : "outline"}
@@ -785,9 +734,7 @@ export function CryptoDetail({
 									<Select
 										value={benchmark || "none"}
 										onValueChange={(value) =>
-											setBenchmark(
-												value === "none" ? null : (value as Benchmark),
-											)
+											setBenchmark(value === "none" ? null : (value as Benchmark))
 										}
 									>
 										<SelectTrigger className="w-32 h-8">
@@ -811,9 +758,7 @@ export function CryptoDetail({
 										</PopoverTrigger>
 										<PopoverContent className="w-64">
 											<div className="space-y-3">
-												<h4 className="font-medium text-sm">
-													Technical Indicators
-												</h4>
+												<h4 className="font-medium text-sm">Technical Indicators</h4>
 												<Separator />
 												<div className="space-y-2">
 													<div className="flex items-center space-x-2">
@@ -850,9 +795,7 @@ export function CryptoDetail({
 														<Checkbox
 															id="bollinger"
 															checked={activeIndicators.includes("bollinger")}
-															onCheckedChange={() =>
-																toggleIndicator("bollinger")
-															}
+															onCheckedChange={() => toggleIndicator("bollinger")}
 														/>
 														<Label htmlFor="bollinger" className="text-sm">
 															Bollinger Bands
@@ -879,9 +822,7 @@ export function CryptoDetail({
 						<Card>
 							<CardHeader>
 								<div className="flex items-center justify-between">
-									<CardTitle className="text-base">
-										Relative Strength Index (RSI)
-									</CardTitle>
+									<CardTitle className="text-base">Relative Strength Index (RSI)</CardTitle>
 									<Popover>
 										<PopoverTrigger asChild>
 											<Button variant="ghost" size="icon" className="h-6 w-6">
@@ -925,24 +866,20 @@ export function CryptoDetail({
 											<div className="space-y-2 text-sm">
 												<p className="font-medium">Derivatives Metrics:</p>
 												<p>
-													• <strong>Funding Rate</strong>: Cost to hold perps,
-													positive = longs pay shorts
+													• <strong>Funding Rate</strong>: Cost to hold perps, positive = longs pay
+													shorts
 												</p>
 												<p>
-													• <strong>Open Interest</strong>: Total value of open
-													futures/perps
+													• <strong>Open Interest</strong>: Total value of open futures/perps
 												</p>
 												<p>
-													• <strong>Long/Short Ratio</strong>: Sentiment gauge
-													from positions
+													• <strong>Long/Short Ratio</strong>: Sentiment gauge from positions
 												</p>
 											</div>
 										</PopoverContent>
 									</Popover>
 								</div>
-								<CardDescription>
-									Perpetual futures and leverage metrics
-								</CardDescription>
+								<CardDescription>Perpetual futures and leverage metrics</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-4">
@@ -951,16 +888,10 @@ export function CryptoDetail({
 										<div className="flex items-center justify-between mb-3">
 											<div className="flex items-center gap-2">
 												<Zap className="h-4 w-4 text-muted-foreground" />
-												<span className="text-sm font-medium">
-													Funding Rate
-												</span>
+												<span className="text-sm font-medium">Funding Rate</span>
 											</div>
 											<Badge
-												variant={
-													derivativesData.fundingRate >= 0
-														? "default"
-														: "destructive"
-												}
+												variant={derivativesData.fundingRate >= 0 ? "default" : "destructive"}
 												className="font-mono"
 											>
 												{derivativesData.fundingRate >= 0 ? "+" : ""}
@@ -970,23 +901,17 @@ export function CryptoDetail({
 										<div className="grid grid-cols-2 gap-3 text-sm">
 											<div>
 												<p className="text-muted-foreground">Interval</p>
-												<p className="font-mono">
-													{derivativesData.fundingInterval}
-												</p>
+												<p className="font-mono">{derivativesData.fundingInterval}</p>
 											</div>
 											<div>
 												<p className="text-muted-foreground">Next Funding</p>
-												<p className="font-mono">
-													{derivativesData.nextFunding}
-												</p>
+												<p className="font-mono">{derivativesData.nextFunding}</p>
 											</div>
 										</div>
 										{derivativesData.fundingRate > 0.01 && (
 											<div className="mt-3 flex items-start gap-2 text-xs text-amber-600 dark:text-amber-500">
 												<AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
-												<span>
-													High positive funding indicates overleveraged longs
-												</span>
+												<span>High positive funding indicates overleveraged longs</span>
 											</div>
 										)}
 									</div>
@@ -996,9 +921,7 @@ export function CryptoDetail({
 										<div className="flex items-center justify-between mb-3">
 											<div className="flex items-center gap-2">
 												<Activity className="h-4 w-4 text-muted-foreground" />
-												<span className="text-sm font-medium">
-													Open Interest
-												</span>
+												<span className="text-sm font-medium">Open Interest</span>
 											</div>
 											<div className="text-right">
 												<p className="font-mono">
@@ -1007,11 +930,8 @@ export function CryptoDetail({
 												<p
 													className={`text-xs ${derivativesData.openInterestChange24h >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
-													{derivativesData.openInterestChange24h >= 0
-														? "+"
-														: ""}
-													{derivativesData.openInterestChange24h.toFixed(2)}%
-													24h
+													{derivativesData.openInterestChange24h >= 0 ? "+" : ""}
+													{derivativesData.openInterestChange24h.toFixed(2)}% 24h
 												</p>
 											</div>
 										</div>
@@ -1022,9 +942,7 @@ export function CryptoDetail({
 										<div className="flex items-center justify-between mb-3">
 											<div className="flex items-center gap-2">
 												<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-												<span className="text-sm font-medium">
-													Long/Short Ratio
-												</span>
+												<span className="text-sm font-medium">Long/Short Ratio</span>
 											</div>
 											<Badge variant="outline" className="font-mono">
 												{derivativesData.longShortRatio.toFixed(2)}
@@ -1060,33 +978,25 @@ export function CryptoDetail({
 									<div className="p-4 rounded-lg bg-muted/50">
 										<div className="flex items-center gap-2 mb-3">
 											<Target className="h-4 w-4 text-muted-foreground" />
-											<span className="text-sm font-medium">
-												Liquidations (24h)
-											</span>
+											<span className="text-sm font-medium">Liquidations (24h)</span>
 										</div>
 										<div className="grid grid-cols-3 gap-3 text-sm">
 											<div className="text-center">
 												<p className="text-muted-foreground">Longs</p>
 												<p className="font-mono text-red-600">
-													{formatLargeNumber(
-														derivativesData.liquidations24h.longs,
-													)}
+													{formatLargeNumber(derivativesData.liquidations24h.longs)}
 												</p>
 											</div>
 											<div className="text-center">
 												<p className="text-muted-foreground">Shorts</p>
 												<p className="font-mono text-green-600">
-													{formatLargeNumber(
-														derivativesData.liquidations24h.shorts,
-													)}
+													{formatLargeNumber(derivativesData.liquidations24h.shorts)}
 												</p>
 											</div>
 											<div className="text-center">
 												<p className="text-muted-foreground">Total</p>
 												<p className="font-mono">
-													{formatLargeNumber(
-														derivativesData.liquidations24h.total,
-													)}
+													{formatLargeNumber(derivativesData.liquidations24h.total)}
 												</p>
 											</div>
 										</div>
@@ -1100,9 +1010,7 @@ export function CryptoDetail({
 					<Card>
 						<CardHeader>
 							<CardTitle>Performance</CardTitle>
-							<CardDescription>
-								Historical returns across different periods
-							</CardDescription>
+							<CardDescription>Historical returns across different periods</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<Tabs defaultValue="absolute">
@@ -1115,13 +1023,8 @@ export function CryptoDetail({
 								<TabsContent value="absolute">
 									<div className="grid grid-cols-3 md:grid-cols-6 gap-3">
 										{performancePeriods.map((period) => (
-											<div
-												key={period.label}
-												className="text-center p-3 rounded-lg bg-muted/50"
-											>
-												<p className="text-xs text-muted-foreground mb-1">
-													{period.label}
-												</p>
+											<div key={period.label} className="text-center p-3 rounded-lg bg-muted/50">
+												<p className="text-xs text-muted-foreground mb-1">{period.label}</p>
 												<p
 													className={`font-mono ${period.value >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
@@ -1136,13 +1039,8 @@ export function CryptoDetail({
 								<TabsContent value="vsBTC">
 									<div className="grid grid-cols-3 md:grid-cols-6 gap-3">
 										{performancePeriods.map((period) => (
-											<div
-												key={period.label}
-												className="text-center p-3 rounded-lg bg-muted/50"
-											>
-												<p className="text-xs text-muted-foreground mb-1">
-													{period.label}
-												</p>
+											<div key={period.label} className="text-center p-3 rounded-lg bg-muted/50">
+												<p className="text-xs text-muted-foreground mb-1">{period.label}</p>
 												<p
 													className={`font-mono ${period.vsBTC >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
@@ -1157,13 +1055,8 @@ export function CryptoDetail({
 								<TabsContent value="vsETH">
 									<div className="grid grid-cols-3 md:grid-cols-6 gap-3">
 										{performancePeriods.map((period) => (
-											<div
-												key={period.label}
-												className="text-center p-3 rounded-lg bg-muted/50"
-											>
-												<p className="text-xs text-muted-foreground mb-1">
-													{period.label}
-												</p>
+											<div key={period.label} className="text-center p-3 rounded-lg bg-muted/50">
+												<p className="text-xs text-muted-foreground mb-1">{period.label}</p>
 												<p
 													className={`font-mono ${period.vsETH >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
@@ -1189,9 +1082,7 @@ export function CryptoDetail({
 									<CardTitle className="text-base">On-chain Snapshot</CardTitle>
 									<Badge variant="outline">{onChainData.coverage}</Badge>
 								</div>
-								<CardDescription>
-									Network activity and holder behavior
-								</CardDescription>
+								<CardDescription>Network activity and holder behavior</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
 								{/* Active Addresses */}
@@ -1201,9 +1092,7 @@ export function CryptoDetail({
 										<span className="text-sm">Active Addresses</span>
 									</div>
 									<div className="text-right">
-										<p className="font-mono">
-											{formatNumber(onChainData.activeAddresses)}
-										</p>
+										<p className="font-mono">{formatNumber(onChainData.activeAddresses)}</p>
 										<p
 											className={`text-xs ${onChainData.activeAddressesChange >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
@@ -1217,9 +1106,7 @@ export function CryptoDetail({
 								<div className="p-3 rounded-lg bg-muted/50 space-y-3">
 									<div className="flex items-center gap-2">
 										<ArrowUpDown className="h-4 w-4 text-muted-foreground" />
-										<span className="text-sm font-medium">
-											Exchange Flows (24h)
-										</span>
+										<span className="text-sm font-medium">Exchange Flows (24h)</span>
 									</div>
 									<div className="grid grid-cols-2 gap-3 text-sm">
 										<div>
@@ -1243,9 +1130,7 @@ export function CryptoDetail({
 									</div>
 									<div className="pt-2 border-t border-border">
 										<div className="flex items-center justify-between">
-											<span className="text-xs text-muted-foreground">
-												Net Flow
-											</span>
+											<span className="text-xs text-muted-foreground">Net Flow</span>
 											<div className="flex items-center gap-1">
 												{onChainData.netFlow24h < 0 ? (
 													<>
@@ -1270,17 +1155,13 @@ export function CryptoDetail({
 								{/* Supply Metrics */}
 								<div className="space-y-3">
 									<div className="flex items-center justify-between text-sm">
-										<span className="text-muted-foreground">
-											Supply on Exchanges
-										</span>
+										<span className="text-muted-foreground">Supply on Exchanges</span>
 										<span className="font-mono">
 											{onChainData.supplyOnExchangesPercent.toFixed(2)}%
 										</span>
 									</div>
 									<div className="flex items-center justify-between text-sm">
-										<span className="text-muted-foreground">
-											Supply in Profit
-										</span>
+										<span className="text-muted-foreground">Supply in Profit</span>
 										<span className="font-mono text-green-600">
 											{onChainData.supplyInProfit.toFixed(1)}%
 										</span>
@@ -1302,15 +1183,11 @@ export function CryptoDetail({
 									</div>
 									<div className="flex items-center justify-between text-sm">
 										<span className="text-muted-foreground">Realized Cap</span>
-										<span className="font-mono">
-											{formatLargeNumber(onChainData.realizedCap)}
-										</span>
+										<span className="font-mono">{formatLargeNumber(onChainData.realizedCap)}</span>
 									</div>
 									<div className="flex items-center justify-between text-sm">
 										<span className="text-muted-foreground">NVT Ratio</span>
-										<span className="font-mono">
-											{onChainData.nvt.toFixed(1)}
-										</span>
+										<span className="font-mono">{onChainData.nvt.toFixed(1)}</span>
 									</div>
 								</div>
 
@@ -1346,17 +1223,13 @@ export function CryptoDetail({
 								<Button
 									variant="ghost"
 									size="sm"
-									onClick={() =>
-										onNavigateToScreener?.({ category: cryptoData.category })
-									}
+									onClick={() => onNavigateToScreener?.({ category: cryptoData.category })}
 								>
 									<Search className="h-4 w-4 mr-2" />
 									View All
 								</Button>
 							</div>
-							<CardDescription>
-								Other {cryptoData.category} cryptocurrencies
-							</CardDescription>
+							<CardDescription>Other {cryptoData.category} cryptocurrencies</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-2">
@@ -1368,18 +1241,14 @@ export function CryptoDetail({
 										<div className="flex-1">
 											<div className="flex items-center gap-2 mb-1">
 												<span className="font-medium">{crypto.symbol}</span>
-												<span className="text-xs text-muted-foreground">
-													{crypto.name}
-												</span>
+												<span className="text-xs text-muted-foreground">{crypto.name}</span>
 											</div>
 											<p className="text-xs text-muted-foreground">
 												{formatLargeNumber(crypto.marketCap)}
 											</p>
 										</div>
 										<div className="text-right">
-											<p className="font-mono">
-												{formatCurrency(crypto.price)}
-											</p>
+											<p className="font-mono">{formatCurrency(crypto.price)}</p>
 											<p
 												className={`text-xs ${crypto.change >= 0 ? "text-green-600" : "text-red-600"}`}
 											>
@@ -1403,18 +1272,13 @@ export function CryptoDetail({
 							<ScrollArea className="h-[400px] pr-4">
 								<div className="space-y-4">
 									{newsItems.map((news) => (
-										<div
-											key={news.id}
-											className="space-y-2 pb-4 border-b last:border-0"
-										>
+										<div key={news.id} className="space-y-2 pb-4 border-b last:border-0">
 											<div className="flex items-start gap-2">
 												<div
 													className={`h-2 w-2 rounded-full mt-1.5 flex-shrink-0 ${news.sentiment === "positive" ? "bg-green-600" : news.sentiment === "negative" ? "bg-red-600" : "bg-gray-400"}`}
 												/>
 												<div className="flex-1 min-w-0">
-													<h4 className="text-sm font-medium leading-tight mb-1">
-														{news.title}
-													</h4>
+													<h4 className="text-sm font-medium leading-tight mb-1">{news.title}</h4>
 													<div className="flex items-center gap-2 text-xs text-muted-foreground">
 														<span>{news.source}</span>
 														<span>•</span>
@@ -1422,21 +1286,13 @@ export function CryptoDetail({
 													</div>
 													<div className="flex flex-wrap gap-1 mt-2">
 														{news.tags.map((tag) => (
-															<Badge
-																key={tag}
-																variant="secondary"
-																className="text-xs"
-															>
+															<Badge key={tag} variant="secondary" className="text-xs">
 																{tag}
 															</Badge>
 														))}
 													</div>
 												</div>
-												<Button
-													variant="ghost"
-													size="icon"
-													className="h-6 w-6 flex-shrink-0"
-												>
+												<Button variant="ghost" size="icon" className="h-6 w-6 flex-shrink-0">
 													<ExternalLink className="h-3 w-3" />
 												</Button>
 											</div>

@@ -4,13 +4,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -89,8 +83,7 @@ export function BankAccountForm({
 		setIsSubmitting(true);
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Error submitting bank account:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -103,18 +96,13 @@ export function BankAccountForm({
 					<CreditCard className="h-5 w-5 text-blue-600" />
 					<div>
 						<CardTitle className="text-lg">Bank Account</CardTitle>
-						<CardDescription>
-							Add checking, savings, and other bank accounts
-						</CardDescription>
+						<CardDescription>Add checking, savings, and other bank accounts</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 						<FormField
 							control={form.control}
 							name="name"
@@ -150,10 +138,7 @@ export function BankAccountForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Account Type</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select account type" />
@@ -200,9 +185,7 @@ export function BankAccountForm({
 												step="0.01"
 												placeholder="10000.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -216,10 +199,7 @@ export function BankAccountForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Currency</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select currency" />
@@ -227,10 +207,7 @@ export function BankAccountForm({
 											</FormControl>
 											<SelectContent>
 												{CURRENCIES.map((currency) => (
-													<SelectItem
-														key={currency.value}
-														value={currency.value}
-													>
+													<SelectItem key={currency.value} value={currency.value}>
 														{currency.label}
 													</SelectItem>
 												))}
@@ -251,11 +228,7 @@ export function BankAccountForm({
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isLoading}
-								className="gap-2"
-							>
+							<Button type="submit" disabled={isSubmitting || isLoading} className="gap-2">
 								<Building className="h-4 w-4" />
 								{isSubmitting ? "Adding..." : "Add Account"}
 							</Button>

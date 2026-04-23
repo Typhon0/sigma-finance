@@ -2,20 +2,20 @@ import { gql } from "@apollo/client";
 
 // Enum types for sync operations
 export enum AssetSyncType {
-  EQUITIES = "EQUITIES",
-  ETFs = "ETFS",
-  FUNDS = "FUNDS",
-  INDICES = "INDICES",
-  CRYPTOCURRENCIES = "CRYPTOCURRENCIES",
-  CURRENCIES = "CURRENCIES",
-  MONEY_MARKETS = "MONEY_MARKETS",
+	EQUITIES = "EQUITIES",
+	ETFs = "ETFS",
+	FUNDS = "FUNDS",
+	INDICES = "INDICES",
+	CRYPTOCURRENCIES = "CRYPTOCURRENCIES",
+	CURRENCIES = "CURRENCIES",
+	MONEY_MARKETS = "MONEY_MARKETS",
 }
 
 export enum SyncStatus {
-  IDLE = "IDLE",
-  SYNCING = "SYNCING",
-  COMPLETE = "COMPLETE",
-  ERROR = "ERROR",
+	IDLE = "IDLE",
+	SYNCING = "SYNCING",
+	COMPLETE = "COMPLETE",
+	ERROR = "ERROR",
 }
 
 export const GET_FINANCE_DATABASE_SYNC_STATUS = gql`

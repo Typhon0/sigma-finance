@@ -16,7 +16,7 @@ export interface ExportRequest {
 		start: Date;
 		end: Date;
 	};
-	filters?: Record<string, any>;
+	filters?: Record<string, unknown>;
 	includeMetadata?: boolean;
 }
 
@@ -105,7 +105,7 @@ export interface AuditTrailData {
 		entityType: string;
 		entityId: string;
 		action: string;
-		changes?: Record<string, any>;
+		changes?: Record<string, unknown>;
 		userId: string;
 		ipAddress?: string;
 		userAgent?: string;

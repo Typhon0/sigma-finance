@@ -4,33 +4,20 @@ import { CloudDownload, Eye, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataPreviewTable } from "@/components/sync/data-preview-table";
-import {
-	SyncHistory,
-	type SyncHistoryEntry,
-} from "@/components/sync/sync-history";
+import { SyncHistory, type SyncHistoryEntry } from "@/components/sync/sync-history";
 import { SyncProgress } from "@/components/sync/sync-progress";
+import { type AssetType, SyncToggleCard } from "@/components/sync/sync-toggle-card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { AssetSyncType } from "@/graphql/queries/sync";
 import {
-	type SyncStatus,
 	useFinanceDatabaseSyncHistory,
 	useFinanceDatabaseSyncStatus,
 	useImportFinanceDatabaseAssets,
 	useTriggerFinanceDatabaseSync,
 	useUpdateFinanceDatabaseSyncEnabled,
 } from "@/hooks/use-sync-management";
-import {
-	type AssetType,
-	SyncToggleCard,
-} from "@/components/sync/sync-toggle-card";
-import { AssetSyncType } from "@/graphql/queries/sync";
-import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 
 const assetTypeToSyncAssetType = (assetType: AssetType): AssetSyncType => {
 	switch (assetType) {
@@ -55,7 +42,9 @@ const assetTypeToSyncAssetType = (assetType: AssetType): AssetSyncType => {
 	}
 };
 
-const syncStatusToCardStatus = (status?: string | null): SyncStatus => {
+const syncStatusToCardStatus = (
+	status?: string | null,
+): "idle" | "syncing" | "error" | "complete" => {
 	switch ((status ?? "IDLE").toUpperCase()) {
 		case "SYNCING":
 			return "syncing";
@@ -93,8 +82,12 @@ const syncAssetTypeToCardType = (assetType: string): AssetType => {
 };
 
 export function FinanceDatabaseSettings() {
-	const { assetTypes, loading: statusLoading, error: statusError, refetch } =
-		useFinanceDatabaseSyncStatus();
+	const {
+		assetTypes,
+		loading: statusLoading,
+		error: statusError,
+		refetch,
+	} = useFinanceDatabaseSyncStatus();
 	const {
 		history,
 		loading: historyLoading,
@@ -102,14 +95,10 @@ export function FinanceDatabaseSettings() {
 		refetch: refetchHistory,
 	} = useFinanceDatabaseSyncHistory(20);
 	const { triggerSync, loading: triggerLoading } = useTriggerFinanceDatabaseSync();
-	const { updateEnabled, loading: toggleLoading } =
-		useUpdateFinanceDatabaseSyncEnabled();
-	const { importAssets, loading: importLoading } =
-		useImportFinanceDatabaseAssets();
+	const { updateEnabled, loading: toggleLoading } = useUpdateFinanceDatabaseSyncEnabled();
+	const { importAssets, loading: importLoading } = useImportFinanceDatabaseAssets();
 
-	const [previewAssetType, setPreviewAssetType] = useState<AssetType | null>(
-		null,
-	);
+	const [previewAssetType, setPreviewAssetType] = useState<AssetType | null>(null);
 	const [isSyncSequenceRunning, setIsSyncSequenceRunning] = useState(false);
 
 	const assetStates = useMemo(
@@ -140,9 +129,7 @@ export function FinanceDatabaseSettings() {
 		[history],
 	);
 
-	const syncingAssets = assetStates.filter(
-		(state) => state.syncStatus === "syncing",
-	);
+	const syncingAssets = assetStates.filter((state) => (state.syncStatus as string) === "syncing");
 	const isAnySyncing = syncingAssets.length > 0 || isSyncSequenceRunning;
 
 	const waitForSyncToFinish = useCallback(
@@ -173,9 +160,7 @@ export function FinanceDatabaseSettings() {
 					`${assetType.charAt(0).toUpperCase()}${assetType.slice(1)} sync ${enabled ? "enabled" : "disabled"}`,
 				);
 			} catch (err) {
-				toast.error(
-					err instanceof Error ? err.message : "Failed to update sync setting",
-				);
+				toast.error(err instanceof Error ? err.message : "Failed to update sync setting");
 			}
 		},
 		[refetch, refetchHistory, updateEnabled],
@@ -189,9 +174,7 @@ export function FinanceDatabaseSettings() {
 				await refetchHistory();
 				toast.success(`${assetType.toUpperCase()} sync started`);
 			} catch (err) {
-				toast.error(
-					err instanceof Error ? err.message : "Failed to sync catalog",
-				);
+				toast.error(err instanceof Error ? err.message : "Failed to sync catalog");
 			}
 		},
 		[refetch, refetchHistory, triggerSync],
@@ -215,9 +198,7 @@ export function FinanceDatabaseSettings() {
 			}
 			toast.success("Enabled catalogs synced");
 		} catch (err) {
-			toast.error(
-				err instanceof Error ? err.message : "Failed to sync enabled catalogs",
-			);
+			toast.error(err instanceof Error ? err.message : "Failed to sync enabled catalogs");
 		} finally {
 			setIsSyncSequenceRunning(false);
 		}
@@ -227,19 +208,13 @@ export function FinanceDatabaseSettings() {
 		async (symbols: string[]) => {
 			if (!previewAssetType) return;
 			try {
-				const result = await importAssets(
-					assetTypeToSyncAssetType(previewAssetType),
-					symbols,
-				);
+				const result = await importAssets(assetTypeToSyncAssetType(previewAssetType), symbols);
 				await refetch();
 				await refetchHistory();
-				const importedCount =
-					result.data?.importFinanceDatabaseAssets.importedCount ?? 0;
+				const importedCount = result.data?.importFinanceDatabaseAssets.importedCount ?? 0;
 				toast.success(`Imported ${importedCount} selected instruments`);
 			} catch (err) {
-				toast.error(
-					err instanceof Error ? err.message : "Failed to import selected instruments",
-				);
+				toast.error(err instanceof Error ? err.message : "Failed to import selected instruments");
 			}
 		},
 		[importAssets, previewAssetType, refetch, refetchHistory],
@@ -251,10 +226,10 @@ export function FinanceDatabaseSettings() {
 				<div>
 					<h1 className="text-2xl font-semibold flex items-center gap-2">
 						<CloudDownload className="h-6 w-6" />
-						Finance Database
+						Catalog Source
 					</h1>
 					<p className="text-muted-foreground mt-1">
-						Inspect, refresh, and import the catalog sourced from FinanceDatabase
+						Inspect CoinGecko-backed catalog status and import behavior
 					</p>
 				</div>
 				<Button
@@ -263,7 +238,7 @@ export function FinanceDatabaseSettings() {
 					disabled={triggerLoading || toggleLoading || statusLoading || isAnySyncing}
 				>
 					<RefreshCw className="h-4 w-4" />
-					{isAnySyncing ? "Sync Running" : "Sync All Enabled"}
+					{isAnySyncing ? "Sync Running" : "Run Admin Sync"}
 				</Button>
 			</div>
 
@@ -345,9 +320,7 @@ export function FinanceDatabaseSettings() {
 			<Card>
 				<CardHeader>
 					<CardTitle className="text-base">Sync History</CardTitle>
-					<CardDescription>
-						View past sync operations and their status
-					</CardDescription>
+					<CardDescription>View past sync operations and their status</CardDescription>
 				</CardHeader>
 				<CardContent>
 					{historyLoading ? (
@@ -366,9 +339,7 @@ export function FinanceDatabaseSettings() {
 			/>
 
 			{importLoading && (
-				<p className="text-xs text-muted-foreground">
-					Importing selected instruments...
-				</p>
+				<p className="text-xs text-muted-foreground">Importing selected instruments...</p>
 			)}
 		</div>
 	);

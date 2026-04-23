@@ -92,9 +92,7 @@ export function PortfolioForm({
 			if (!portfolio) {
 				form.reset();
 			}
-		} catch (error) {
-			// Error handling is done in the parent component
-			console.error("Form submission error:", error);
+		} catch (_error) {
 			setIsSubmitSuccessful(false);
 		}
 	};
@@ -127,7 +125,7 @@ export function PortfolioForm({
 		<div className="space-y-6">
 			{/* Success Message */}
 			{(isSubmitSuccessful || showSuccessMessage) && (
-				<Alert variant="success">
+				<Alert variant="default">
 					<CheckCircle className="h-4 w-4" />
 					<AlertDescription>
 						Portfolio {portfolio ? "updated" : "created"} successfully!
@@ -144,10 +142,7 @@ export function PortfolioForm({
 			)}
 
 			<Form {...form}>
-				<form
-					onSubmit={form.handleSubmit(handleFormSubmit)}
-					className="space-y-6"
-				>
+				<form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
 					{/* Portfolio Name Field */}
 					<FormField
 						control={form.control}
@@ -158,15 +153,11 @@ export function PortfolioForm({
 									Portfolio Name <span className="text-destructive">*</span>
 								</FormLabel>
 								<FormControl>
-									<Input
-										placeholder="Enter portfolio name"
-										disabled={isFormLoading}
-										{...field}
-									/>
+									<Input placeholder="Enter portfolio name" disabled={isFormLoading} {...field} />
 								</FormControl>
 								<FormDescription>
-									Choose a unique name for your portfolio. Use letters, numbers,
-									spaces, hyphens, and underscores only.
+									Choose a unique name for your portfolio. Use letters, numbers, spaces, hyphens,
+									and underscores only.
 								</FormDescription>
 								<FormMessage />
 							</FormItem>
@@ -189,8 +180,8 @@ export function PortfolioForm({
 									/>
 								</FormControl>
 								<FormDescription>
-									Add a description to help you remember this portfolio's
-									purpose (max 500 characters).
+									Add a description to help you remember this portfolio's purpose (max 500
+									characters).
 								</FormDescription>
 								<FormMessage />
 							</FormItem>
@@ -234,9 +225,7 @@ export function PortfolioForm({
 							disabled={isFormLoading || !form.formState.isValid}
 							className="w-full sm:w-auto touch-manipulation order-1 sm:order-3"
 						>
-							{isFormLoading && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							)}
+							{isFormLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							{portfolio ? "Update Portfolio" : "Create Portfolio"}
 						</Button>
 					</div>

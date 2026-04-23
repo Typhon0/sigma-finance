@@ -1,11 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-	ChevronLeft,
-	ChevronRight,
-	Folder,
-	Home,
-	TrendingUp,
-} from "lucide-react";
+import { ChevronLeft, ChevronRight, Folder, Home, TrendingUp } from "lucide-react";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -75,9 +69,7 @@ export function DashboardBreadcrumb({ items }: DashboardBreadcrumbProps) {
 				)}
 				<div className="flex items-center gap-1 min-w-0">
 					{getIcon(currentItem, items.length - 1)}
-					<span className="text-sm font-medium truncate max-w-[200px]">
-						{currentItem.title}
-					</span>
+					<span className="text-sm font-medium truncate max-w-[200px]">{currentItem.title}</span>
 				</div>
 			</div>
 		);
@@ -106,16 +98,16 @@ export function DashboardBreadcrumb({ items }: DashboardBreadcrumbProps) {
 							<BreadcrumbItem>
 								{item.onClick ? (
 									<BreadcrumbLink asChild>
-										<button
-											type="button"
+										<Button
+											variant="ghost"
 											onClick={item.onClick}
-											className="flex items-center gap-1 touch-manipulation hover:underline transition-colors min-h-[44px] px-2 -mx-2 rounded-md"
+											className="flex items-center gap-1 touch-manipulation hover:underline transition-colors min-h-[44px] px-2 -mx-2 rounded-md h-auto p-0 font-normal"
 										>
 											<span className="hidden sm:inline">{icon}</span>
 											<span className="text-sm sm:text-base truncate max-w-[120px] sm:max-w-[200px] lg:max-w-none">
 												{item.title}
 											</span>
-										</button>
+										</Button>
 									</BreadcrumbLink>
 								) : item.href ? (
 									<BreadcrumbLink
@@ -162,10 +154,7 @@ export function DashboardBreadcrumb({ items }: DashboardBreadcrumbProps) {
 export const dashboardBreadcrumbs = {
 	overview: (): BreadcrumbItemType[] => [{ title: "Dashboard" }],
 
-	portfolioDetail: (
-		portfolioName: string,
-		onBackToDashboard: () => void,
-	): BreadcrumbItemType[] => [
+	portfolioDetail: (portfolioName: string, onBackToDashboard: () => void): BreadcrumbItemType[] => [
 		{
 			title: "Dashboard",
 			onClick: onBackToDashboard,

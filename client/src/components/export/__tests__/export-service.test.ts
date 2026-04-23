@@ -27,10 +27,7 @@ describe("ExportService", () => {
 
 	describe("exportPortfolioData", () => {
 		it("should export portfolio data as CSV", async () => {
-			const result = await ExportService.exportPortfolioData(
-				"portfolio-1",
-				"csv",
-			);
+			const result = await ExportService.exportPortfolioData("portfolio-1", "csv");
 
 			expect(result.success).toBe(true);
 			expect(result.filename).toContain("portfolio_data");
@@ -38,10 +35,7 @@ describe("ExportService", () => {
 		});
 
 		it("should export portfolio data as PDF", async () => {
-			const result = await ExportService.exportPortfolioData(
-				"portfolio-1",
-				"pdf",
-			);
+			const result = await ExportService.exportPortfolioData("portfolio-1", "pdf");
 
 			expect(result.success).toBe(true);
 			expect(result.filename).toContain("portfolio_data");
@@ -49,10 +43,7 @@ describe("ExportService", () => {
 		});
 
 		it("should export portfolio data as JSON", async () => {
-			const result = await ExportService.exportPortfolioData(
-				"portfolio-1",
-				"json",
-			);
+			const result = await ExportService.exportPortfolioData("portfolio-1", "json");
 
 			expect(result.success).toBe(true);
 			expect(result.filename).toContain("portfolio_data");
@@ -60,10 +51,7 @@ describe("ExportService", () => {
 		});
 
 		it("should handle unsupported format", async () => {
-			const result = await ExportService.exportPortfolioData(
-				"portfolio-1",
-				"xml" as any,
-			);
+			const result = await ExportService.exportPortfolioData("portfolio-1", "xml" as any);
 
 			expect(result.success).toBe(false);
 			expect(result.error).toContain("Unsupported format");

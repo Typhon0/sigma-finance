@@ -2,7 +2,7 @@ import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { createEChartsConfig } from "@/lib/charts/echarts";
+import { type EChartsTheme, getDefaultEChartsConfig } from "@/lib/charts/echarts";
 import { formatCurrency, formatPercentage } from "@/lib/utils";
 
 interface PerformanceDataPoint {
@@ -26,64 +26,69 @@ export function CompactPerformanceChart({
 	currentValue,
 	previousValue,
 	height = 120,
-	_showGrid = false,
+	showGrid: _showGrid = false,
 	className,
 }: CompactPerformanceChartProps) {
 	const chartConfig = useMemo(() => {
 		if (!data || data.length === 0) return null;
 
-		return createEChartsConfig({
-			type: "line",
-			data: data.map((point) => ({
-				name: point.date,
-				value: point.value,
-			})),
-			options: {
-				grid: {
-					left: 10,
-					right: 10,
-					top: 10,
-					bottom: 20,
-					containLabel: false,
-				},
-				xAxis: {
-					type: "category",
-					show: false,
-					data: data.map((point) => point.date),
-				},
-				yAxis: {
-					type: "value",
-					show: false,
-					scale: true,
-				},
-				series: [
-					{
-						type: "line",
-						smooth: true,
-						symbol: "none",
-						lineStyle: {
-							width: 2,
-						},
-						areaStyle: {
-							opacity: 0.1,
-						},
-						data: data.map((point) => point.value),
+		const theme = {
+			backgroundColor: "transparent",
+			textColor: "#333",
+			tooltipBackgroundColor: "#fff",
+			tooltipBorderColor: "#ddd",
+			axisLineColor: "#ccc",
+			splitLineColor: "#eee",
+			legendTextColor: "#333",
+			gridBorderColor: "#ddd",
+		} satisfies EChartsTheme;
+
+		return {
+			...getDefaultEChartsConfig(theme),
+			grid: {
+				left: 10,
+				right: 10,
+				top: 10,
+				bottom: 20,
+				containLabel: false,
+			},
+			xAxis: {
+				type: "category",
+				show: false,
+				data: data.map((point) => point.date),
+			},
+			yAxis: {
+				type: "value",
+				show: false,
+				scale: true,
+			},
+			series: [
+				{
+					type: "line",
+					smooth: true,
+					symbol: "none",
+					lineStyle: {
+						width: 2,
 					},
-				],
-				tooltip: {
-					trigger: "axis",
-					formatter: (params: any) => {
-						const point = params[0];
-						return `
+					areaStyle: {
+						opacity: 0.1,
+					},
+					data: data.map((point) => point.value),
+				},
+			],
+			tooltip: {
+				trigger: "axis",
+				formatter: (params: any) => {
+					const point = params[0];
+					return `
               <div class="text-sm">
                 <div class="font-medium">${point.name}</div>
                 <div class="text-blue-600">${formatCurrency(point.value)}</div>
               </div>
             `;
-					},
 				},
 			},
-		});
+		};
 	}, [data]);
 
 	// Calculate performance metrics
@@ -136,10 +141,7 @@ export function CompactPerformanceChart({
 				<div className="flex items-center justify-between">
 					<CardTitle className="text-sm font-medium">{title}</CardTitle>
 					{performanceMetrics && (
-						<Badge
-							variant="outline"
-							className={`gap-1 ${performanceColor} border-current`}
-						>
+						<Badge variant="outline" className={`gap-1 ${performanceColor} border-current`}>
 							<PerformanceIcon className="h-3 w-3" />
 							{formatPercentage(performanceMetrics.changePercent)}
 						</Badge>
@@ -150,9 +152,7 @@ export function CompactPerformanceChart({
 				<div className="space-y-2">
 					{currentValue && (
 						<div className="flex items-center justify-between">
-							<span className="text-lg font-semibold">
-								{formatCurrency(currentValue)}
-							</span>
+							<span className="text-lg font-semibold">{formatCurrency(currentValue)}</span>
 							{performanceMetrics && (
 								<span className={`text-sm ${performanceColor}`}>
 									{performanceMetrics.change >= 0 ? "+" : ""}

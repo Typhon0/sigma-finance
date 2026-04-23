@@ -88,9 +88,7 @@ export function AssetManagementExample({
 	portfolioId = "demo-portfolio",
 	portfolioName = "Demo Portfolio",
 }: AssetManagementExampleProps) {
-	const [selectedAssetType, setSelectedAssetType] = useState<AssetType | null>(
-		null,
-	);
+	const [selectedAssetType, setSelectedAssetType] = useState<AssetType | null>(null);
 	const [selectedAssets, setSelectedAssets] = useState<Asset[]>([]);
 	const [showAssetDialog, setShowAssetDialog] = useState(false);
 	const [activeTab, setActiveTab] = useState("positions");
@@ -99,17 +97,11 @@ export function AssetManagementExample({
 		setSelectedAssets((prev) => [...prev, asset]);
 	};
 
-	const handlePositionClick = (position: PortfolioAsset) => {
-		console.log("Position clicked:", position);
-	};
+	const handlePositionClick = (_position: PortfolioAsset) => {};
 
-	const handleEditPosition = (position: PortfolioAsset) => {
-		console.log("Edit position:", position);
-	};
+	const handleEditPosition = (_position: PortfolioAsset) => {};
 
-	const handleDeletePosition = (positionId: string) => {
-		console.log("Delete position:", positionId);
-	};
+	const handleDeletePosition = (_positionId: string) => {};
 
 	return (
 		<div className="space-y-6">
@@ -117,9 +109,7 @@ export function AssetManagementExample({
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-2xl font-bold">Asset Management</h2>
-					<p className="text-muted-foreground">
-						Manage assets for {portfolioName}
-					</p>
+					<p className="text-muted-foreground">Manage assets for {portfolioName}</p>
 				</div>
 				<Button onClick={() => setShowAssetDialog(true)}>
 					<Plus className="mr-2 h-4 w-4" />
@@ -206,15 +196,12 @@ export function AssetManagementExample({
 							</CardHeader>
 							<CardContent>
 								<p className="text-muted-foreground mb-4">
-									These compact charts are optimized for inline dashboard
-									display:
+									These compact charts are optimized for inline dashboard display:
 								</p>
 								<ul className="text-sm space-y-2">
 									<li>• Performance charts show portfolio value over time</li>
 									<li>• Allocation charts display asset type distribution</li>
-									<li>
-										• Price charts show candlestick data for tradeable assets
-									</li>
+									<li>• Price charts show candlestick data for tradeable assets</li>
 									<li>• All charts are responsive and mobile-friendly</li>
 								</ul>
 							</CardContent>
@@ -236,12 +223,10 @@ export function AssetManagementExample({
 							{selectedAssetType && (
 								<div className="mt-4 p-4 bg-muted rounded-lg">
 									<p className="text-sm">
-										Selected:{" "}
-										<strong>{selectedAssetType.name.replace("_", " ")}</strong>
+										Selected: <strong>{selectedAssetType.name.replace("_", " ")}</strong>
 									</p>
 									<p className="text-xs text-muted-foreground mt-1">
-										This would show the appropriate form for adding this asset
-										type.
+										This would show the appropriate form for adding this asset type.
 									</p>
 								</div>
 							)}
@@ -257,7 +242,6 @@ export function AssetManagementExample({
 				portfolioId={portfolioId}
 				portfolioName={portfolioName}
 				onSuccess={() => {
-					console.log("Asset added successfully");
 					// Refresh positions data here
 				}}
 			/>

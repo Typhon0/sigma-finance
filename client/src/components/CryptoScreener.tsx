@@ -6,7 +6,6 @@ import {
 	Filter,
 	Network,
 	Save,
-	Search,
 	Star,
 	TrendingUp,
 	X,
@@ -14,6 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -21,21 +21,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ScrollArea } from "./ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface CryptoScreenerProps {
@@ -67,12 +54,19 @@ interface Crypto {
 	exchangeOutflow?: number;
 }
 
-export function CryptoScreener({
-	initialPreset,
-	onSelectCrypto,
-}: CryptoScreenerProps) {
+export function CryptoScreener({ initialPreset, onSelectCrypto }: CryptoScreenerProps) {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+	interface CryptoFilters {
+		category?: string;
+		change24hMin?: number;
+		volume24hMin?: number;
+		marketCapMin?: number;
+		fundingRateMax?: number;
+		oiChange24hMin?: number;
+		activeAddressesMin?: number;
+		netFlowPositive?: boolean;
+	}
+	const [activeFilters, setActiveFilters] = useState<CryptoFilters>({});
 	const [selectedPreset, setSelectedPreset] = useState(initialPreset || "all");
 	const [currentTab, setCurrentTab] = useState("spot");
 
@@ -350,23 +344,10 @@ export function CryptoScreener({
 			}
 
 			// Active filters
-			if (activeFilters.category && crypto.category !== activeFilters.category)
-				return false;
-			if (
-				activeFilters.change24hMin &&
-				crypto.change24h < activeFilters.change24hMin
-			)
-				return false;
-			if (
-				activeFilters.volume24hMin &&
-				crypto.volume24h < activeFilters.volume24hMin
-			)
-				return false;
-			if (
-				activeFilters.marketCapMin &&
-				crypto.marketCap < activeFilters.marketCapMin
-			)
-				return false;
+			if (activeFilters.category && crypto.category !== activeFilters.category) return false;
+			if (activeFilters.change24hMin && crypto.change24h < activeFilters.change24hMin) return false;
+			if (activeFilters.volume24hMin && crypto.volume24h < activeFilters.volume24hMin) return false;
+			if (activeFilters.marketCapMin && crypto.marketCap < activeFilters.marketCapMin) return false;
 
 			// Derivatives filters
 			if (
@@ -389,18 +370,14 @@ export function CryptoScreener({
 				crypto.activeAddresses < activeFilters.activeAddressesMin
 			)
 				return false;
-			if (
-				activeFilters.netFlowPositive &&
-				crypto.exchangeOutflow &&
-				crypto.exchangeInflow
-			) {
+			if (activeFilters.netFlowPositive && crypto.exchangeOutflow && crypto.exchangeInflow) {
 				const netFlow = crypto.exchangeOutflow - crypto.exchangeInflow;
 				if (netFlow <= 0) return false;
 			}
 
 			return true;
 		});
-	}, [searchQuery, activeFilters]);
+	}, [searchQuery, activeFilters, mockCryptos.filter]);
 
 	const { formatCurrency, currencySymbol } = useCurrency();
 
@@ -431,29 +408,23 @@ export function CryptoScreener({
 	};
 
 	const renderFilterChips = () => {
-		const chips = [];
+		const chips: React.ReactNode[] = [];
 		Object.entries(activeFilters).forEach(([key, value]) => {
 			let label = "";
 			if (key === "category") label = `Category: ${value}`;
 			else if (key === "change24hMin") label = `Change ≥ ${value}%`;
-			else if (key === "volume24hMin")
-				label = `Vol ≥ ${formatLargeNumber(value)}`;
-			else if (key === "marketCapMin")
-				label = `MCap ≥ ${formatLargeNumber(value)}`;
+			else if (key === "volume24hMin") label = `Vol ≥ ${formatLargeNumber(value)}`;
+			else if (key === "marketCapMin") label = `MCap ≥ ${formatLargeNumber(value)}`;
 			else if (key === "fundingRateMax") label = `Funding ≤ ${value}%`;
 			else if (key === "oiChange24hMin") label = `OI Change ≥ ${value}%`;
-			else if (key === "activeAddressesMin")
-				label = `Active Addr ≥ ${formatCompact(value)}`;
+			else if (key === "activeAddressesMin") label = `Active Addr ≥ ${formatCompact(value)}`;
 			else if (key === "netFlowPositive") label = "Positive Net Flow";
 
 			if (label) {
 				chips.push(
 					<Badge key={key} variant="secondary" className="gap-2">
 						{label}
-						<X
-							className="h-3 w-3 cursor-pointer"
-							onClick={() => removeFilter(key)}
-						/>
+						<X className="h-3 w-3 cursor-pointer" onClick={() => removeFilter(key)} />
 					</Badge>,
 				);
 			}
@@ -468,8 +439,8 @@ export function CryptoScreener({
 				<div>
 					<h1 className="text-3xl">Crypto Screener</h1>
 					<p className="text-muted-foreground mt-1">
-						Screen {mockCryptos.length} cryptocurrencies with spot, derivatives,
-						and on-chain metrics
+						Screen {mockCryptos.length} cryptocurrencies with spot, derivatives, and on-chain
+						metrics
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -481,11 +452,7 @@ export function CryptoScreener({
 						<Save className="h-4 w-4 mr-2" />
 						Save View
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => toast.success("Exporting to CSV...")}
-					>
+					<Button variant="outline" size="sm" onClick={() => toast.success("Exporting to CSV...")}>
 						<Download className="h-4 w-4 mr-2" />
 						Export CSV
 					</Button>
@@ -525,15 +492,13 @@ export function CryptoScreener({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Search */}
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search by symbol or name..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search cryptocurrencies..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+						containerClassName="flex-1"
+					/>
 
 					{/* Active Filters Chips */}
 					{renderFilterChips().length > 0 && (
@@ -648,9 +613,7 @@ export function CryptoScreener({
 
 					{/* Results Counter */}
 					<div className="pt-2">
-						<Badge variant="outline">
-							{filteredCryptos.length} cryptocurrencies found
-						</Badge>
+						<Badge variant="outline">{filteredCryptos.length} cryptocurrencies found</Badge>
 					</div>
 				</CardContent>
 			</Card>
@@ -690,9 +653,7 @@ export function CryptoScreener({
 												className="cursor-pointer hover:bg-muted/50"
 												onClick={() => onSelectCrypto?.(crypto.symbol)}
 											>
-												<TableCell className="font-mono">
-													{crypto.symbol}
-												</TableCell>
+												<TableCell className="font-mono">{crypto.symbol}</TableCell>
 												<TableCell>{crypto.name}</TableCell>
 												<TableCell className="text-right font-mono">
 													{formatCurrency(crypto.price)}
@@ -717,20 +678,14 @@ export function CryptoScreener({
 														<Button
 															variant="ghost"
 															size="icon"
-															onClick={() =>
-																toast.info(`Viewing ${crypto.symbol}`)
-															}
+															onClick={() => toast.info(`Viewing ${crypto.symbol}`)}
 														>
 															<Eye className="h-4 w-4" />
 														</Button>
 														<Button
 															variant="ghost"
 															size="icon"
-															onClick={() =>
-																toast.success(
-																	`Added ${crypto.symbol} to watchlist`,
-																)
-															}
+															onClick={() => toast.success(`Added ${crypto.symbol} to watchlist`)}
 														>
 															<Star className="h-4 w-4" />
 														</Button>
@@ -751,15 +706,9 @@ export function CryptoScreener({
 											<TableHead>Symbol</TableHead>
 											<TableHead className="text-right">Price</TableHead>
 											<TableHead className="text-right">Funding Rate</TableHead>
-											<TableHead className="text-right">
-												Open Interest
-											</TableHead>
-											<TableHead className="text-right">
-												OI Change 24h
-											</TableHead>
-											<TableHead className="text-right">
-												Liquidations 24h
-											</TableHead>
+											<TableHead className="text-right">Open Interest</TableHead>
+											<TableHead className="text-right">OI Change 24h</TableHead>
+											<TableHead className="text-right">Liquidations 24h</TableHead>
 											<TableHead className="text-right">Actions</TableHead>
 										</TableRow>
 									</TableHeader>
@@ -770,9 +719,7 @@ export function CryptoScreener({
 												className="cursor-pointer hover:bg-muted/50"
 												onClick={() => onSelectCrypto?.(crypto.symbol)}
 											>
-												<TableCell className="font-mono">
-													{crypto.symbol}
-												</TableCell>
+												<TableCell className="font-mono">{crypto.symbol}</TableCell>
 												<TableCell className="text-right font-mono">
 													{formatCurrency(crypto.price)}
 												</TableCell>
@@ -787,7 +734,7 @@ export function CryptoScreener({
 												<TableCell
 													className={`text-right font-mono ${(crypto.oiChange24h || 0) >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
-													{crypto.oiChange24h >= 0 ? "+" : ""}
+													{(crypto.oiChange24h ?? 0) >= 0 ? "+" : ""}
 													{(crypto.oiChange24h || 0).toFixed(2)}%
 												</TableCell>
 												<TableCell className="text-right font-mono text-red-600">
@@ -817,36 +764,24 @@ export function CryptoScreener({
 										<TableRow>
 											<TableHead>Symbol</TableHead>
 											<TableHead className="text-right">Price</TableHead>
-											<TableHead className="text-right">
-												Active Addresses
-											</TableHead>
+											<TableHead className="text-right">Active Addresses</TableHead>
 											<TableHead className="text-right">Txns 24h</TableHead>
-											<TableHead className="text-right">
-												Supply in Profit
-											</TableHead>
-											<TableHead className="text-right">
-												Exchange Inflow
-											</TableHead>
-											<TableHead className="text-right">
-												Exchange Outflow
-											</TableHead>
+											<TableHead className="text-right">Supply in Profit</TableHead>
+											<TableHead className="text-right">Exchange Inflow</TableHead>
+											<TableHead className="text-right">Exchange Outflow</TableHead>
 											<TableHead className="text-right">Actions</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{filteredCryptos.map((crypto) => {
-											const netFlow =
-												(crypto.exchangeOutflow || 0) -
-												(crypto.exchangeInflow || 0);
+											const netFlow = (crypto.exchangeOutflow || 0) - (crypto.exchangeInflow || 0);
 											return (
 												<TableRow
 													key={crypto.symbol}
 													className="cursor-pointer hover:bg-muted/50"
 													onClick={() => onSelectCrypto?.(crypto.symbol)}
 												>
-													<TableCell className="font-mono">
-														{crypto.symbol}
-													</TableCell>
+													<TableCell className="font-mono">{crypto.symbol}</TableCell>
 													<TableCell className="text-right font-mono">
 														{formatCurrency(crypto.price)}
 													</TableCell>

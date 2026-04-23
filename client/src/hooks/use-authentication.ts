@@ -23,8 +23,7 @@ export const useAuthentication = () => {
 					// Success message is handled by the auth context
 				}
 				return result;
-			} catch (error) {
-				console.error(`${actionName} error:`, error);
+			} catch (_error) {
 				return null;
 			} finally {
 				setActionLoading(null);
@@ -42,10 +41,7 @@ export const useAuthentication = () => {
 
 	const register = useCallback(
 		async (email: string, password: string, name: string) => {
-			return handleAuthAction(
-				() => auth.register(email, password, name),
-				"register",
-			);
+			return handleAuthAction(() => auth.register(email, password, name), "register");
 		},
 		[auth.register, handleAuthAction],
 	);
@@ -80,10 +76,7 @@ export const useAuthentication = () => {
 
 	const resendVerification = useCallback(
 		async (email: string) => {
-			return handleAuthAction(
-				() => auth.resendVerification(email),
-				"resendVerification",
-			);
+			return handleAuthAction(() => auth.resendVerification(email), "resendVerification");
 		},
 		[auth.resendVerification, handleAuthAction],
 	);
@@ -139,12 +132,15 @@ export const useAuthForm = () => {
 				const result = await action();
 				onSuccess?.(result);
 				return result;
-			} catch (error: any) {
+			} catch (error: unknown) {
 				// Extract field errors if available
-				if (error.graphQLErrors) {
-					const authErrors: AuthError[] = error.graphQLErrors
-						.map((gqlError: any) => gqlError.extensions?.authError)
-						.filter(Boolean);
+				const gqlErr = error as {
+					graphQLErrors?: Array<{ extensions?: { authError?: AuthError } }>;
+				} | null;
+				if (gqlErr?.graphQLErrors) {
+					const authErrors: AuthError[] = gqlErr.graphQLErrors
+						.map((gqlError) => gqlError.extensions?.authError)
+						.filter((e): e is AuthError => e !== undefined);
 
 					if (authErrors.length > 0) {
 						setFieldErrors(AuthErrorHandler.getFieldErrors(authErrors));

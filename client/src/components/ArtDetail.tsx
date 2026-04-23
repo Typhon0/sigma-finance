@@ -1,12 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	DollarSign,
-	FileText,
-	Palette,
-	Trash2,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, DollarSign, FileText, Palette, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -24,13 +17,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface ArtDetailProps {
 	artId: string;
@@ -73,8 +60,7 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 	};
 
 	const gain = (art.currentValue || 0) - (art.purchasePrice || 0);
-	const gainPercent =
-		art.purchasePrice > 0 ? (gain / art.purchasePrice) * 100 : 0;
+	const gainPercent = art.purchasePrice > 0 ? (gain / art.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -172,10 +158,7 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 					</Button>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -193,9 +176,7 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 							<div>
 								<CardTitle className="mb-2">{art.name}</CardTitle>
 								<div className="flex flex-wrap gap-2 mb-3">
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 									{art.brand && <Badge variant="outline">{art.brand}</Badge>}
 								</div>
 								<CardDescription className="max-w-2xl">
@@ -208,20 +189,12 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(art.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(art.currentValue || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(art.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(art.purchasePrice || 0)}</p>
 						</div>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Gain/Loss</p>
@@ -260,18 +233,14 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 						)}
 						{art.model && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Type/Medium
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Type/Medium</p>
 								<p>{art.model}</p>
 							</div>
 						)}
 						{art.condition && (
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Condition</p>
-								<Badge variant={conditionBadge.variant}>
-									{conditionBadge.label}
-								</Badge>
+								<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 							</div>
 						)}
 					</CardContent>
@@ -287,30 +256,18 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Date
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Date</p>
 							<p>
-								{art.purchaseDate
-									? new Date(art.purchaseDate).toLocaleDateString("fr-FR")
-									: "N/A"}
+								{art.purchaseDate ? new Date(art.purchaseDate).toLocaleDateString("fr-FR") : "N/A"}
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(art.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(art.purchasePrice || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(art.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(art.currentValue || 0)}</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -323,9 +280,7 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 						<TrendingUp className="h-5 w-5" />
 						Value Appreciation
 					</CardTitle>
-					<CardDescription>
-						Historical value trend since purchase
-					</CardDescription>
+					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
@@ -333,16 +288,12 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 			</Card>
 
 			{/* Delete Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Art Piece</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{art.name}"? This action cannot
-							be undone.
+							Are you sure you want to delete "{art.name}"? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

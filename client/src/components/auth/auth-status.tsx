@@ -8,13 +8,9 @@ interface AuthStatusProps {
 	className?: string;
 }
 
-export function AuthStatus({
-	showDetails = false,
-	className,
-}: AuthStatusProps) {
+export function AuthStatus({ showDetails = false, className }: AuthStatusProps) {
 	const { user, isAuthenticated, isLoading } = useAuth();
-	const { isEmailVerified, needsVerification, resendVerification } =
-		useEmailVerification();
+	const { isEmailVerified, needsVerification, resendVerification } = useEmailVerification();
 
 	if (isLoading) {
 		return (
@@ -44,16 +40,11 @@ export function AuthStatus({
 				)}
 
 				<div className="flex flex-col">
-					<span className="text-sm font-medium">
-						{user?.name || user?.email}
-					</span>
+					<span className="text-sm font-medium">{user?.name || user?.email}</span>
 
 					{showDetails && (
 						<div className="flex items-center space-x-2">
-							<Badge
-								variant={isEmailVerified ? "default" : "secondary"}
-								className="text-xs"
-							>
+							<Badge variant={isEmailVerified ? "default" : "secondary"} className="text-xs">
 								{isEmailVerified ? "Verified" : "Unverified"}
 							</Badge>
 

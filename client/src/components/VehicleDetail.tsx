@@ -1,12 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	Car,
-	DollarSign,
-	FileText,
-	Trash2,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, Car, DollarSign, FileText, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -23,13 +16,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface VehicleDetailProps {
 	vehicleId: string;
@@ -72,8 +59,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 	};
 
 	const gain = (vehicle.currentValue || 0) - (vehicle.purchasePrice || 0);
-	const gainPercent =
-		vehicle.purchasePrice > 0 ? (gain / vehicle.purchasePrice) * 100 : 0;
+	const gainPercent = vehicle.purchasePrice > 0 ? (gain / vehicle.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -171,10 +157,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 					</Button>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -192,16 +175,10 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 							<div>
 								<CardTitle className="mb-2">{vehicle.name}</CardTitle>
 								<div className="flex flex-wrap gap-2 mb-3">
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
-									{vehicle.brand && (
-										<Badge variant="outline">{vehicle.brand}</Badge>
-									)}
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
+									{vehicle.brand && <Badge variant="outline">{vehicle.brand}</Badge>}
 									{vehicle.yearManufactured && (
-										<Badge variant="secondary">
-											{vehicle.yearManufactured}
-										</Badge>
+										<Badge variant="secondary">{vehicle.yearManufactured}</Badge>
 									)}
 								</div>
 								<CardDescription className="max-w-2xl">
@@ -214,20 +191,12 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(vehicle.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(vehicle.currentValue || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(vehicle.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(vehicle.purchasePrice || 0)}</p>
 						</div>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Gain/Loss</p>
@@ -278,18 +247,14 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 						)}
 						{vehicle.serialNumber && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									VIN/Serial Number
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">VIN/Serial Number</p>
 								<p className="font-mono text-sm">{vehicle.serialNumber}</p>
 							</div>
 						)}
 						{vehicle.condition && (
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Condition</p>
-								<Badge variant={conditionBadge.variant}>
-									{conditionBadge.label}
-								</Badge>
+								<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 							</div>
 						)}
 					</CardContent>
@@ -305,9 +270,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Date
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Date</p>
 							<p>
 								{vehicle.purchaseDate
 									? new Date(vehicle.purchaseDate).toLocaleDateString("fr-FR")
@@ -315,20 +278,12 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(vehicle.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(vehicle.purchasePrice || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(vehicle.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(vehicle.currentValue || 0)}</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -341,9 +296,7 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 						<TrendingUp className="h-5 w-5" />
 						Value Appreciation
 					</CardTitle>
-					<CardDescription>
-						Historical value trend since purchase
-					</CardDescription>
+					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
@@ -351,16 +304,12 @@ export function VehicleDetail({ vehicleId, onBack }: VehicleDetailProps) {
 			</Card>
 
 			{/* Delete Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Vehicle</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{vehicle.name}"? This action
-							cannot be undone.
+							Are you sure you want to delete "{vehicle.name}"? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

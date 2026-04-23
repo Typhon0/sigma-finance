@@ -17,13 +17,7 @@ import { useCurrency } from "@/hooks/use-currency";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface StockMarketOverviewProps {
@@ -426,9 +420,7 @@ export function StockMarketOverview({
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl">Stock Market Overview</h1>
-					<p className="text-muted-foreground mt-1">
-						Real-time stock market data and insights
-					</p>
+					<p className="text-muted-foreground mt-1">Real-time stock market data and insights</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Badge variant="outline" className="gap-1">
@@ -446,32 +438,19 @@ export function StockMarketOverview({
 						<Globe className="h-5 w-5" />
 						Global Market Indices
 					</CardTitle>
-					<CardDescription>
-						Major stock market performance worldwide
-					</CardDescription>
+					<CardDescription>Major stock market performance worldwide</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-4 gap-4">
 						{indices.map((index) => (
-							<Card
-								key={index.symbol}
-								className="cursor-pointer hover:shadow-md transition-shadow"
-							>
+							<Card key={index.symbol} className="cursor-pointer hover:shadow-md transition-shadow">
 								<CardContent className="pt-6">
 									<div className="space-y-2">
 										<div className="flex items-center justify-between">
-											<span className="text-xs text-muted-foreground">
-												{index.symbol}
-											</span>
-											{index.change >= 0 ? (
-												<TrendArrowUp />
-											) : (
-												<TrendArrowDown />
-											)}
+											<span className="text-xs text-muted-foreground">{index.symbol}</span>
+											{index.change >= 0 ? <TrendArrowUp /> : <TrendArrowDown />}
 										</div>
-										<div className="font-mono text-lg">
-											{index.value.toLocaleString()}
-										</div>
+										<div className="font-mono text-lg">{index.value.toLocaleString()}</div>
 										<div
 											className={`text-xs font-mono ${index.change >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
@@ -503,11 +482,7 @@ export function StockMarketOverview({
 								<DollarSign className="h-6 w-6 text-blue-600" />
 							</div>
 						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="w-full mt-4 justify-between"
-						>
+						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
 							Screen Now <ArrowRight className="h-4 w-4" />
 						</Button>
 					</CardContent>
@@ -527,11 +502,7 @@ export function StockMarketOverview({
 								<TrendingUp className="h-6 w-6 text-green-600" />
 							</div>
 						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="w-full mt-4 justify-between"
-						>
+						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
 							Screen Now <ArrowRight className="h-4 w-4" />
 						</Button>
 					</CardContent>
@@ -551,11 +522,7 @@ export function StockMarketOverview({
 								<Percent className="h-6 w-6 text-purple-600" />
 							</div>
 						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="w-full mt-4 justify-between"
-						>
+						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
 							Screen Now <ArrowRight className="h-4 w-4" />
 						</Button>
 					</CardContent>
@@ -575,11 +542,7 @@ export function StockMarketOverview({
 								<BarChart3 className="h-6 w-6 text-orange-600" />
 							</div>
 						</div>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="w-full mt-4 justify-between"
-						>
+						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
 							View Map <ArrowRight className="h-4 w-4" />
 						</Button>
 					</CardContent>
@@ -615,11 +578,7 @@ export function StockMarketOverview({
 								</CardTitle>
 								<CardDescription>Visual sector performance</CardDescription>
 							</div>
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => onNavigateToHeatmap("sectors")}
-							>
+							<Button variant="outline" size="sm" onClick={() => onNavigateToHeatmap("sectors")}>
 								Full View
 							</Button>
 						</div>
@@ -669,15 +628,11 @@ export function StockMarketOverview({
 														{stock.sector}
 													</Badge>
 												</div>
-												<p className="text-xs text-muted-foreground">
-													{stock.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{stock.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(stock.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(stock.price)}</div>
 											<div className="text-sm text-green-600 font-mono">
 												+{stock.change.toFixed(2)}%
 											</div>
@@ -720,15 +675,11 @@ export function StockMarketOverview({
 														{stock.sector}
 													</Badge>
 												</div>
-												<p className="text-xs text-muted-foreground">
-													{stock.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{stock.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(stock.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(stock.price)}</div>
 											<div className="text-sm text-red-600 font-mono">
 												{stock.change.toFixed(2)}%
 											</div>
@@ -766,15 +717,11 @@ export function StockMarketOverview({
 											</div>
 											<div>
 												<span className="font-mono">{stock.symbol}</span>
-												<p className="text-xs text-muted-foreground">
-													{stock.name}
-												</p>
+												<p className="text-xs text-muted-foreground">{stock.name}</p>
 											</div>
 										</div>
 										<div className="text-right">
-											<div className="font-mono">
-												{formatCurrency(stock.price)}
-											</div>
+											<div className="font-mono">{formatCurrency(stock.price)}</div>
 											<div
 												className={`text-sm font-mono ${stock.change >= 0 ? "text-green-600" : "text-red-600"}`}
 											>
@@ -816,11 +763,7 @@ export function StockMarketOverview({
 							<CardDescription>Companies reporting this week</CardDescription>
 						</div>
 						{onNavigateToCalendar && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={onNavigateToCalendar}
-							>
+							<Button variant="outline" size="sm" onClick={onNavigateToCalendar}>
 								View Calendar <ArrowRight className="h-4 w-4 ml-2" />
 							</Button>
 						)}
@@ -835,15 +778,11 @@ export function StockMarketOverview({
 							>
 								<div className="flex items-center gap-3">
 									<div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-										<span className="font-mono">
-											{earning.symbol.slice(0, 2)}
-										</span>
+										<span className="font-mono">{earning.symbol.slice(0, 2)}</span>
 									</div>
 									<div>
 										<span className="font-mono">{earning.symbol}</span>
-										<p className="text-xs text-muted-foreground">
-											{earning.company}
-										</p>
+										<p className="text-xs text-muted-foreground">{earning.company}</p>
 									</div>
 								</div>
 								<div className="text-center">

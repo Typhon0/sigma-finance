@@ -1,13 +1,7 @@
 import { Database, Download, FileText, Settings, Shield } from "lucide-react";
 import { DataBackupRestore } from "@/components/export/data-backup-restore";
 import { ExportQuickActions } from "@/components/export/export-quick-actions";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 
 interface DashboardSettingsProps {
@@ -33,8 +27,7 @@ export function DashboardSettings({ userId }: DashboardSettingsProps) {
 							Data Export
 						</CardTitle>
 						<CardDescription>
-							Export your portfolio data, transactions, and reports in various
-							formats.
+							Export your portfolio data, transactions, and reports in various formats.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -58,8 +51,7 @@ export function DashboardSettings({ userId }: DashboardSettingsProps) {
 							Data Backup & Restore
 						</CardTitle>
 						<CardDescription>
-							Create complete backups of your data or restore from previous
-							backups.
+							Create complete backups of your data or restore from previous backups.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -75,8 +67,7 @@ export function DashboardSettings({ userId }: DashboardSettingsProps) {
 							Compliance & Audit
 						</CardTitle>
 						<CardDescription>
-							Export audit trails and compliance reports for regulatory
-							requirements.
+							Export audit trails and compliance reports for regulatory requirements.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
@@ -84,27 +75,17 @@ export function DashboardSettings({ userId }: DashboardSettingsProps) {
 							<div className="space-y-2">
 								<h4 className="font-medium">Audit Trail</h4>
 								<p className="text-sm text-muted-foreground">
-									Export complete activity logs for compliance and security
-									auditing.
+									Export complete activity logs for compliance and security auditing.
 								</p>
-								<ExportQuickActions
-									variant="outline"
-									size="sm"
-									showLabel={false}
-								/>
+								<ExportQuickActions variant="outline" size="sm" showLabel={false} />
 							</div>
 
 							<div className="space-y-2">
 								<h4 className="font-medium">Tax Reports</h4>
 								<p className="text-sm text-muted-foreground">
-									Generate tax-ready reports with realized gains, losses, and
-									dividend income.
+									Generate tax-ready reports with realized gains, losses, and dividend income.
 								</p>
-								<ExportQuickActions
-									variant="outline"
-									size="sm"
-									showLabel={false}
-								/>
+								<ExportQuickActions variant="outline" size="sm" showLabel={false} />
 							</div>
 						</div>
 					</CardContent>
@@ -124,9 +105,7 @@ export function DashboardSettings({ userId }: DashboardSettingsProps) {
 					<CardContent>
 						<div className="text-center py-8">
 							<FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-							<h3 className="text-lg font-medium text-muted-foreground mb-2">
-								Export History
-							</h3>
+							<h3 className="text-lg font-medium text-muted-foreground mb-2">Export History</h3>
 							<p className="text-sm text-muted-foreground">
 								Export history tracking will be implemented in a future update.
 							</p>

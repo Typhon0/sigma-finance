@@ -68,7 +68,7 @@ export function useBinanceKline({
 		manager
 			.connect([streamName])
 			.then(() => setIsConnected(true))
-			.catch((err) => console.error("Binance connection failed:", err));
+			.catch((_err) => {});
 
 		return () => {
 			unsubscribe();
@@ -124,7 +124,7 @@ export function useBinanceTicker(symbol: string, enabled = true) {
 		manager
 			.connect([streamName])
 			.then(() => setIsConnected(true))
-			.catch((err) => console.error("Binance connection failed:", err));
+			.catch((_err) => {});
 
 		return () => {
 			unsubscribe();

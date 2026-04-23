@@ -93,8 +93,7 @@ export function OfflineIndicator({
 	variant = "badge",
 	className,
 }: OfflineIndicatorProps) {
-	const { isOnline, offlineSince, pendingActions, hasOfflineData } =
-		offlineState;
+	const { isOnline, offlineSince, pendingActions, hasOfflineData } = offlineState;
 
 	const getOfflineDuration = () => {
 		if (!offlineSince) return "";
@@ -113,12 +112,7 @@ export function OfflineIndicator({
 	if (variant === "minimal") {
 		return (
 			<div className={cn("flex items-center gap-1", className)}>
-				<div
-					className={cn(
-						"w-2 h-2 rounded-full",
-						isOnline ? "bg-green-500" : "bg-red-500",
-					)}
-				/>
+				<div className={cn("w-2 h-2 rounded-full", isOnline ? "bg-green-500" : "bg-red-500")} />
 				{!isOnline && <span className="text-xs text-red-600">Offline</span>}
 			</div>
 		);
@@ -128,10 +122,7 @@ export function OfflineIndicator({
 		if (isOnline) return null;
 
 		return (
-			<Badge
-				variant="destructive"
-				className={cn("flex items-center gap-1", className)}
-			>
+			<Badge variant="destructive" className={cn("flex items-center gap-1", className)}>
 				<WifiOff className="h-3 w-3" />
 				Offline {getOfflineDuration()}
 			</Badge>
@@ -161,17 +152,14 @@ export function OfflineIndicator({
 						{pendingActions > 0 && (
 							<div className="flex items-center gap-2 text-sm text-orange-600">
 								<AlertCircle className="h-4 w-4" />
-								{pendingActions} action{pendingActions > 1 ? "s" : ""} pending
-								sync
+								{pendingActions} action{pendingActions > 1 ? "s" : ""} pending sync
 							</div>
 						)}
 					</div>
 				)}
 
 				{isOnline && offlineState.wasOffline && (
-					<div className="text-sm text-green-600">
-						Connection restored. Syncing data...
-					</div>
+					<div className="text-sm text-green-600">Connection restored. Syncing data...</div>
 				)}
 			</CardContent>
 		</Card>
@@ -235,12 +223,7 @@ export function OfflineDataWrapper({
 				</Alert>
 			)}
 
-			<div
-				className={cn(
-					"transition-opacity duration-200",
-					!isOnline && "opacity-75",
-				)}
-			>
+			<div className={cn("transition-opacity duration-200", !isOnline && "opacity-75")}>
 				{children}
 			</div>
 
@@ -276,9 +259,7 @@ export function OfflineEmptyState({
 			<CardContent className="flex flex-col items-center justify-center p-8 text-center">
 				<WifiOff className="h-12 w-12 text-orange-500 mb-4" />
 				<h3 className="font-semibold text-orange-700 mb-2">{title}</h3>
-				<p className="text-sm text-muted-foreground mb-4 max-w-sm">
-					{description}
-				</p>
+				<p className="text-sm text-muted-foreground mb-4 max-w-sm">{description}</p>
 				{onRetry && (
 					<Button onClick={onRetry} variant="outline" className="gap-2">
 						<RefreshCw className="h-4 w-4" />
@@ -357,9 +338,7 @@ export function useOfflineCache<T>(key: string) {
 				);
 				setCachedData(data);
 				setLastCacheTime(new Date());
-			} catch (error) {
-				console.warn("Failed to cache data:", error);
-			}
+			} catch (_error) {}
 		},
 		[key],
 	);
@@ -373,9 +352,7 @@ export function useOfflineCache<T>(key: string) {
 				setLastCacheTime(new Date(timestamp));
 				return data;
 			}
-		} catch (error) {
-			console.warn("Failed to load cached data:", error);
-		}
+		} catch (_error) {}
 		return null;
 	}, [key]);
 
@@ -384,9 +361,7 @@ export function useOfflineCache<T>(key: string) {
 			localStorage.removeItem(`offline_cache_${key}`);
 			setCachedData(null);
 			setLastCacheTime(null);
-		} catch (error) {
-			console.warn("Failed to clear cache:", error);
-		}
+		} catch (_error) {}
 	}, [key]);
 
 	useEffect(() => {

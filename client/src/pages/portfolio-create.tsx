@@ -3,31 +3,19 @@ import { AlertCircle, ArrowLeft, CheckCircle } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
-import {
-	EnhancedPortfolioForm,
-	type PortfolioFormData,
-} from "@/components/portfolio";
+import { EnhancedPortfolioForm, type PortfolioFormData } from "@/components/portfolio";
 import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-	SidebarInset,
-	SidebarProvider,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { useAuth } from "@/lib/auth-context";
+import type { PortfolioFormError } from "@/lib/validations/portfolio.schemas";
 
 export default function PortfolioCreatePage() {
 	return (
@@ -91,22 +79,17 @@ function PortfolioCreateContent() {
 				} else {
 					throw new Error("Failed to create portfolio. Please try again.");
 				}
-			} catch (error: any) {
-				console.error("Error creating portfolio:", error);
-
+			} catch (error: unknown) {
 				// Handle specific error types
 				let errorMsg = "Failed to create portfolio. Please try again.";
 
-				if (
-					error.message?.includes("duplicate") ||
-					error.message?.includes("already exists")
-				) {
-					errorMsg =
-						"A portfolio with this name already exists. Please choose a different name.";
-				} else if (error.message?.includes("validation")) {
+				const message = error instanceof Error ? error.message : "";
+				if (message.includes("duplicate") || message.includes("already exists")) {
+					errorMsg = "A portfolio with this name already exists. Please choose a different name.";
+				} else if (message.includes("validation")) {
 					errorMsg = "Please check your input and try again.";
-				} else if (error.message) {
-					errorMsg = error.message;
+				} else if (message) {
+					errorMsg = message;
 				}
 
 				setErrorMessage(errorMsg);
@@ -124,7 +107,7 @@ function PortfolioCreateContent() {
 		// Success is handled in handleSubmit
 	}, []);
 
-	const handleError = useCallback((_error: Error) => {
+	const handleError = useCallback((_error: PortfolioFormError) => {
 		// Error is handled in handleSubmit
 	}, []);
 
@@ -146,9 +129,7 @@ function PortfolioCreateContent() {
 
 			<div className="max-w-2xl">
 				<div className="mb-6">
-					<h1 className="text-3xl font-bold tracking-tight">
-						Create Portfolio
-					</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Create Portfolio</h1>
 					<p className="text-muted-foreground">
 						Create a new portfolio to organize and track your investments.
 					</p>
@@ -156,14 +137,11 @@ function PortfolioCreateContent() {
 
 				{/* Success Message */}
 				{showSuccess && createdPortfolio && (
-					<Alert
-						variant="default"
-						className="mb-6 border-green-200 bg-green-50 text-green-800"
-					>
+					<Alert variant="default" className="mb-6 border-green-200 bg-green-50 text-green-800">
 						<CheckCircle className="h-4 w-4 text-green-600" />
 						<AlertDescription>
-							Portfolio "{createdPortfolio.name}" created successfully!
-							Redirecting to portfolio details...
+							Portfolio "{createdPortfolio.name}" created successfully! Redirecting to portfolio
+							details...
 						</AlertDescription>
 					</Alert>
 				)}
@@ -180,9 +158,8 @@ function PortfolioCreateContent() {
 					<CardHeader>
 						<CardTitle>Portfolio Details</CardTitle>
 						<CardDescription>
-							Enter the basic information for your new portfolio. Choose a
-							unique name that helps you identify this portfolio's purpose or
-							strategy.
+							Enter the basic information for your new portfolio. Choose a unique name that helps
+							you identify this portfolio's purpose or strategy.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>

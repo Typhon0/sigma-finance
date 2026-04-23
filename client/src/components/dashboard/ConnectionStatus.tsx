@@ -1,11 +1,4 @@
-import {
-	AlertCircle,
-	CheckCircle,
-	Loader2,
-	RefreshCw,
-	Wifi,
-	WifiOff,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, RefreshCw, Wifi, WifiOff } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -24,9 +17,7 @@ export function ConnectionStatus({
 	variant = "badge",
 }: ConnectionStatusProps) {
 	const { state } = useRealTimeDashboard();
-	const [lastConnectedTime, setLastConnectedTime] = useState<number | null>(
-		null,
-	);
+	const [lastConnectedTime, setLastConnectedTime] = useState<number | null>(null);
 	const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
 	useEffect(() => {
@@ -66,10 +57,8 @@ export function ConnectionStatus({
 		const diff = now - lastConnectedTime;
 
 		if (diff < 60000) return "Connected just now";
-		if (diff < 3600000)
-			return `Last connected ${Math.floor(diff / 60000)}m ago`;
-		if (diff < 86400000)
-			return `Last connected ${Math.floor(diff / 3600000)}h ago`;
+		if (diff < 3600000) return `Last connected ${Math.floor(diff / 60000)}m ago`;
+		if (diff < 86400000) return `Last connected ${Math.floor(diff / 3600000)}h ago`;
 		return `Last connected ${Math.floor(diff / 86400000)}d ago`;
 	};
 
@@ -83,9 +72,7 @@ export function ConnectionStatus({
 		return (
 			<div className={cn("flex items-center gap-1", className)}>
 				<div className={cn("w-2 h-2 rounded-full", getStatusColor())} />
-				{!state.isConnected && (
-					<span className="text-xs text-gray-500">Offline</span>
-				)}
+				{!state.isConnected && <span className="text-xs text-gray-500">Offline</span>}
 			</div>
 		);
 	}
@@ -103,26 +90,18 @@ export function ConnectionStatus({
 	}
 
 	return (
-		<div
-			className={cn("flex items-center gap-3 p-3 rounded-lg border", className)}
-		>
+		<div className={cn("flex items-center gap-3 p-3 rounded-lg border", className)}>
 			<div className="flex items-center gap-2">
 				{getStatusIcon()}
 				<div>
 					<div className="flex items-center gap-2">
 						<span className="font-medium text-sm">{getStatusText()}</span>
-						{state.isConnected && (
-							<CheckCircle className="h-4 w-4 text-green-500" />
-						)}
-						{state.connectionError && (
-							<AlertCircle className="h-4 w-4 text-red-500" />
-						)}
+						{state.isConnected && <CheckCircle className="h-4 w-4 text-green-500" />}
+						{state.connectionError && <AlertCircle className="h-4 w-4 text-red-500" />}
 					</div>
 
 					{!state.isConnected && (
-						<p className="text-xs text-gray-500 mt-1">
-							{getLastConnectedText()}
-						</p>
+						<p className="text-xs text-gray-500 mt-1">{getLastConnectedText()}</p>
 					)}
 
 					{state.connectionError && (
@@ -170,18 +149,16 @@ export function GlobalConnectionStatus() {
 
 	return (
 		<div className="relative">
-			<button
-				type="button"
+			<Button
+				variant="ghost"
 				onClick={() => setShowDetails(!showDetails)}
-				className="flex items-center gap-2 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+				className="flex items-center gap-2 px-2 py-1 h-auto"
 			>
 				<ConnectionStatus variant="minimal" />
 				{!state.isConnected && (
-					<span className="text-xs text-red-600 font-medium">
-						Connection Lost
-					</span>
+					<span className="text-xs text-red-600 font-medium">Connection Lost</span>
 				)}
-			</button>
+			</Button>
 
 			{showDetails && (
 				<div className="absolute top-full right-0 mt-2 w-80 z-50">
@@ -191,8 +168,7 @@ export function GlobalConnectionStatus() {
 						<div className="mt-3 pt-3 border-t text-xs text-gray-600">
 							<p>Real-time updates require an active connection.</p>
 							<p className="mt-1">
-								While offline, you'll see cached data with limited
-								functionality.
+								While offline, you'll see cached data with limited functionality.
 							</p>
 						</div>
 					</div>

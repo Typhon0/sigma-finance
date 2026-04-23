@@ -2,26 +2,20 @@
  * Lazy loading utilities for chart libraries and heavy components
  */
 
-import React, {
-	type ComponentType,
-	type LazyExoticComponent,
-	lazy,
-} from "react";
+import React, { type ComponentType, type LazyExoticComponent, lazy } from "react";
 
 // Chart library lazy imports with error boundaries
 export const LazyLightweightCharts = lazy(() =>
 	import("lightweight-charts")
-		.then((module) => ({
-			default: (props: any) => {
-				console.log("LightweightCharts loaded", module);
+		.then((_module) => ({
+			default: (props: Record<string, unknown>) => {
 				return <div {...props} />;
 			},
 		}))
 		.catch((error) => {
-			console.error("Failed to load Lightweight Charts:", error);
 			throw error;
 		}),
-) as any;
+) as unknown as React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>>;
 
 export const LazyECharts = lazy(() =>
 	import("echarts-for-react")
@@ -29,23 +23,24 @@ export const LazyECharts = lazy(() =>
 			default: module.default,
 		}))
 		.catch((error) => {
-			console.error("Failed to load ECharts:", error);
 			throw error;
 		}),
 );
 
 // Dashboard component lazy imports
 // Using safe fallbacks for components that might be in migration
-export const LazyAssetAllocationChart = lazy(() =>
-	import("../components/AssetDistributionChart").catch(() => ({
-		default: () => null,
-	})),
+export const LazyAssetAllocationChart = lazy(
+	() =>
+		import("../../components/AssetDistributionChart") as unknown as Promise<{
+			default: React.ComponentType<Record<string, unknown>>;
+		}>,
 );
 
-export const LazyPerformanceChart = lazy(() =>
-	import("../components/Analytics").catch(() => ({
-		default: () => null,
-	})),
+export const LazyPerformanceChart = lazy(
+	() =>
+		import("../../components/Analytics") as unknown as Promise<{
+			default: React.ComponentType<Record<string, unknown>>;
+		}>,
 );
 
 /**
@@ -121,7 +116,7 @@ export function withLazyLoad<P extends object>(
 		}
 
 		return (
-			<div ref={elementRef as any} className="min-h-[200px]">
+			<div ref={elementRef as React.RefObject<HTMLDivElement | null>} className="min-h-[200px]">
 				{shouldLoad ? (
 					<React.Suspense
 						fallback={
@@ -151,8 +146,8 @@ export function withLazyLoad<P extends object>(
  */
 class ChartLibraryLoader {
 	private static instance: ChartLibraryLoader;
-	private loadedLibraries = new Map<string, any>();
-	private loadingPromises = new Map<string, Promise<any>>();
+	private loadedLibraries = new Map<string, Record<string, unknown>>();
+	private loadingPromises = new Map<string, Promise<unknown>>();
 
 	static getInstance(): ChartLibraryLoader {
 		if (!ChartLibraryLoader.instance) {
@@ -161,7 +156,7 @@ class ChartLibraryLoader {
 		return ChartLibraryLoader.instance;
 	}
 
-	async loadLightweightCharts(): Promise<any> {
+	async loadLightweightCharts(): Promise<unknown> {
 		const key = "lightweight-charts";
 
 		if (this.loadedLibraries.has(key)) {
@@ -178,7 +173,6 @@ class ChartLibraryLoader {
 				return module;
 			})
 			.catch((error) => {
-				console.error("Failed to load Lightweight Charts:", error);
 				throw error;
 			})
 			.finally(() => {
@@ -189,7 +183,7 @@ class ChartLibraryLoader {
 		return loadPromise;
 	}
 
-	async loadECharts(): Promise<any> {
+	async loadECharts(): Promise<unknown> {
 		const key = "echarts";
 
 		if (this.loadedLibraries.has(key)) {
@@ -201,7 +195,7 @@ class ChartLibraryLoader {
 		}
 
 		const loadPromise = Promise.all([
-			import("echarts" as any).catch(() => ({})),
+			import("echarts").catch(() => ({})),
 			import("echarts-for-react"),
 		])
 			.then(([echarts, echartsForReact]) => {
@@ -210,7 +204,6 @@ class ChartLibraryLoader {
 				return module;
 			})
 			.catch((error) => {
-				console.error("Failed to load ECharts:", error);
 				throw error;
 			})
 			.finally(() => {
@@ -229,7 +222,7 @@ class ChartLibraryLoader {
 		return this.loadingPromises.has(library);
 	}
 
-	getLibrary(library: string): any {
+	getLibrary(library: string): Record<string, unknown> | undefined {
 		return this.loadedLibraries.get(library);
 	}
 
@@ -252,13 +245,13 @@ export function useChartLibrary(library: "lightweight-charts" | "echarts") {
 	const [isLoaded, setIsLoaded] = React.useState(false);
 	const [isLoading, setIsLoading] = React.useState(false);
 	const [error, setError] = React.useState<Error | null>(null);
-	const [libraryModule, setLibraryModule] = React.useState<any>(null);
+	const [libraryModule, setLibraryModule] = React.useState<Record<string, unknown> | null>(null);
 
 	const loader = ChartLibraryLoader.getInstance();
 
 	const loadLibrary = React.useCallback(async () => {
 		if (loader.isLoaded(library)) {
-			setLibraryModule(loader.getLibrary(library));
+			setLibraryModule(loader.getLibrary(library) ?? null);
 			setIsLoaded(true);
 			return;
 		}
@@ -271,11 +264,11 @@ export function useChartLibrary(library: "lightweight-charts" | "echarts") {
 		setError(null);
 
 		try {
-			let module;
+			let module: Record<string, unknown> | null;
 			if (library === "lightweight-charts") {
-				module = await loader.loadLightweightCharts();
+				module = (await loader.loadLightweightCharts()) as Record<string, unknown>;
 			} else {
-				module = await loader.loadECharts();
+				module = (await loader.loadECharts()) as Record<string, unknown>;
 			}
 
 			setLibraryModule(module);

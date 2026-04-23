@@ -82,22 +82,14 @@ export function usePriceUpdates(assetIds?: string[]) {
 	}, [assetIds]);
 
 	useEffect(() => {
-		const unsubscribe = wsManager.subscribe(
-			"PRICE_UPDATE",
-			(message: WebSocketMessage) => {
-				const priceUpdate = message.payload as PriceUpdate;
+		const unsubscribe = wsManager.subscribe("PRICE_UPDATE", (message: WebSocketMessage) => {
+			const priceUpdate = message.payload as PriceUpdate;
 
-				// Only update if we're tracking this asset
-				if (
-					!assetIdsRef.current ||
-					assetIdsRef.current.includes(priceUpdate.assetId)
-				) {
-					setPrices(
-						(prev) => new Map(prev.set(priceUpdate.assetId, priceUpdate)),
-					);
-				}
-			},
-		);
+			// Only update if we're tracking this asset
+			if (!assetIdsRef.current || assetIdsRef.current.includes(priceUpdate.assetId)) {
+				setPrices((prev) => new Map(prev.set(priceUpdate.assetId, priceUpdate)));
+			}
+		});
 
 		// Subscribe to specific assets if provided
 		if (assetIds && assetIds.length > 0) {
@@ -117,7 +109,7 @@ export function usePriceUpdates(assetIds?: string[]) {
 				});
 			}
 		};
-	}, [wsManager]);
+	}, [wsManager, assetIds]);
 
 	const getPriceForAsset = useCallback(
 		(assetId: string) => {
@@ -136,9 +128,7 @@ export function usePriceUpdates(assetIds?: string[]) {
  * Hook for subscribing to real-time portfolio updates
  */
 export function usePortfolioUpdates(portfolioIds?: string[]) {
-	const [portfolios, setPortfolios] = useState<Map<string, PortfolioUpdate>>(
-		new Map(),
-	);
+	const [portfolios, setPortfolios] = useState<Map<string, PortfolioUpdate>>(new Map());
 	const wsManager = getWebSocketManager();
 	const portfolioIdsRef = useRef(portfolioIds);
 
@@ -147,23 +137,17 @@ export function usePortfolioUpdates(portfolioIds?: string[]) {
 	}, [portfolioIds]);
 
 	useEffect(() => {
-		const unsubscribe = wsManager.subscribe(
-			"PORTFOLIO_UPDATE",
-			(message: WebSocketMessage) => {
-				const portfolioUpdate = message.payload as PortfolioUpdate;
+		const unsubscribe = wsManager.subscribe("PORTFOLIO_UPDATE", (message: WebSocketMessage) => {
+			const portfolioUpdate = message.payload as PortfolioUpdate;
 
-				// Only update if we're tracking this portfolio
-				if (
-					!portfolioIdsRef.current ||
-					portfolioIdsRef.current.includes(portfolioUpdate.portfolioId)
-				) {
-					setPortfolios(
-						(prev) =>
-							new Map(prev.set(portfolioUpdate.portfolioId, portfolioUpdate)),
-					);
-				}
-			},
-		);
+			// Only update if we're tracking this portfolio
+			if (
+				!portfolioIdsRef.current ||
+				portfolioIdsRef.current.includes(portfolioUpdate.portfolioId)
+			) {
+				setPortfolios((prev) => new Map(prev.set(portfolioUpdate.portfolioId, portfolioUpdate)));
+			}
+		});
 
 		// Subscribe to specific portfolios if provided
 		if (portfolioIds && portfolioIds.length > 0) {
@@ -179,11 +163,11 @@ export function usePortfolioUpdates(portfolioIds?: string[]) {
 			if (portfolioIds && portfolioIds.length > 0) {
 				wsManager.send({
 					type: "UNSUBSCRIBE_PORTFOLIOS",
-					portfolioIds,
+					portfolioIds: portfolioIds!,
 				});
 			}
 		};
-	}, [wsManager]);
+	}, [wsManager, portfolioIds]);
 
 	const getPortfolioUpdate = useCallback(
 		(portfolioId: string) => {
@@ -207,22 +191,19 @@ export function useAlertNotifications() {
 	const wsManager = getWebSocketManager();
 
 	useEffect(() => {
-		const unsubscribe = wsManager.subscribe(
-			"ALERT_NOTIFICATION",
-			(message: WebSocketMessage) => {
-				const alert = message.payload as AlertNotification;
+		const unsubscribe = wsManager.subscribe("ALERT_NOTIFICATION", (message: WebSocketMessage) => {
+			const alert = message.payload as AlertNotification;
 
-				setAlerts((prev) => {
-					const newAlerts = [alert, ...prev];
-					// Keep only last 50 alerts
-					return newAlerts.slice(0, 50);
-				});
+			setAlerts((prev) => {
+				const newAlerts = [alert, ...prev];
+				// Keep only last 50 alerts
+				return newAlerts.slice(0, 50);
+			});
 
-				if (!alert.acknowledged) {
-					setUnreadCount((prev) => prev + 1);
-				}
-			},
-		);
+			if (!alert.acknowledged) {
+				setUnreadCount((prev) => prev + 1);
+			}
+		});
 
 		return unsubscribe;
 	}, [wsManager]);
@@ -230,9 +211,7 @@ export function useAlertNotifications() {
 	const acknowledgeAlert = useCallback(
 		(alertId: string) => {
 			setAlerts((prev) =>
-				prev.map((alert) =>
-					alert.id === alertId ? { ...alert, acknowledged: true } : alert,
-				),
+				prev.map((alert) => (alert.id === alertId ? { ...alert, acknowledged: true } : alert)),
 			);
 
 			setUnreadCount((prev) => Math.max(0, prev - 1));

@@ -1,28 +1,13 @@
 import ReactECharts from "echarts-for-react";
-import {
-	AlertCircle,
-	BookmarkPlus,
-	Download,
-	FileText,
-	Filter,
-	Plus,
-	Search,
-	Tag,
-	X,
-} from "lucide-react";
+import { AlertCircle, BookmarkPlus, Download, FileText, Filter, Plus, Tag, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
 import { TransactionsList } from "./TransactionsList";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -43,13 +28,7 @@ import {
 } from "./ui/dropdown-menu";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 export function TransactionManagement() {
 	const { transactions, assets, addTransaction } = usePortfolio();
@@ -58,12 +37,8 @@ export function TransactionManagement() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [selectedAccount, setSelectedAccount] = useState("all");
 	const [selectedTypes, setSelectedTypes] = useState<Set<string>>(new Set());
-	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(
-		new Set(),
-	);
-	const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(
-		new Set(["completed"]),
-	);
+	const [selectedCategories, setSelectedCategories] = useState<Set<string>>(new Set());
+	const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(["completed"]));
 	const [dateRange, setDateRange] = useState("all");
 	const [minAmount, setMinAmount] = useState("");
 	const [maxAmount, setMaxAmount] = useState("");
@@ -98,17 +73,19 @@ export function TransactionManagement() {
 	}));
 
 	// Extract unique values for filters
-	const availableAccounts = useMemo(() => {
-		const accounts = new Set(
-			allTransactions.map((t) => t.accountName).filter(Boolean),
-		);
+	const availableAccounts = useMemo<string[]>(() => {
+		const accounts = new Set<string>();
+		allTransactions.forEach((t) => {
+			if (t.accountName) accounts.add(t.accountName);
+		});
 		return Array.from(accounts);
 	}, [allTransactions]);
 
-	const availableCategories = useMemo(() => {
-		const categories = new Set(
-			allTransactions.map((t) => t.category).filter(Boolean),
-		);
+	const availableCategories = useMemo<string[]>(() => {
+		const categories = new Set<string>();
+		allTransactions.forEach((t) => {
+			if (t.category) categories.add(t.category);
+		});
 		return Array.from(categories);
 	}, [allTransactions]);
 
@@ -143,10 +120,7 @@ export function TransactionManagement() {
 			}
 
 			// Account filter
-			if (
-				selectedAccount !== "all" &&
-				transaction.accountName !== selectedAccount
-			) {
+			if (selectedAccount !== "all" && transaction.accountName !== selectedAccount) {
 				return false;
 			}
 
@@ -156,18 +130,12 @@ export function TransactionManagement() {
 			}
 
 			// Category filter
-			if (
-				selectedCategories.size > 0 &&
-				!selectedCategories.has(transaction.category || "")
-			) {
+			if (selectedCategories.size > 0 && !selectedCategories.has(transaction.category || "")) {
 				return false;
 			}
 
 			// Status filter
-			if (
-				selectedStatuses.size > 0 &&
-				!selectedStatuses.has(transaction.status)
-			) {
+			if (selectedStatuses.size > 0 && !selectedStatuses.has(transaction.status)) {
 				return false;
 			}
 
@@ -183,8 +151,7 @@ export function TransactionManagement() {
 			if (dateRange !== "all") {
 				const transactionDate = new Date(transaction.date);
 				const now = new Date();
-				const daysDiff =
-					(now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24);
+				const daysDiff = (now.getTime() - transactionDate.getTime()) / (1000 * 60 * 60 * 24);
 
 				switch (dateRange) {
 					case "7d":
@@ -222,14 +189,10 @@ export function TransactionManagement() {
 
 		switch (sortBy) {
 			case "date-desc":
-				sorted.sort(
-					(a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-				);
+				sorted.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 				break;
 			case "date-asc":
-				sorted.sort(
-					(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-				);
+				sorted.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 				break;
 			case "amount-desc":
 				sorted.sort((a, b) => b.amount - a.amount);
@@ -248,27 +211,15 @@ export function TransactionManagement() {
 	// Analytics Calculations
 	const analytics = useMemo(() => {
 		const total = sortedTransactions.length;
-		const completed = sortedTransactions.filter(
-			(t) => t.status === "completed",
-		).length;
-		const pending = sortedTransactions.filter(
-			(t) => t.status === "pending",
-		).length;
+		const completed = sortedTransactions.filter((t) => t.status === "completed").length;
+		const pending = sortedTransactions.filter((t) => t.status === "pending").length;
 
 		const inflow = sortedTransactions
-			.filter(
-				(t) =>
-					["buy", "deposit", "dividend"].includes(t.type) &&
-					t.status === "completed",
-			)
+			.filter((t) => ["buy", "deposit", "dividend"].includes(t.type) && t.status === "completed")
 			.reduce((sum, t) => sum + t.amount, 0);
 
 		const outflow = sortedTransactions
-			.filter(
-				(t) =>
-					["sell", "withdrawal", "fee"].includes(t.type) &&
-					t.status === "completed",
-			)
+			.filter((t) => ["sell", "withdrawal", "fee"].includes(t.type) && t.status === "completed")
 			.reduce((sum, t) => sum + t.amount, 0);
 
 		const totalFees = sortedTransactions
@@ -298,7 +249,7 @@ export function TransactionManagement() {
 			totalFees,
 			byType,
 		};
-	}, [sortedTransactions]);
+	}, [sortedTransactions, transactionTypes.map]);
 
 	// Chart Options
 	const getTransactionsByTypeChart = () => {
@@ -385,17 +336,12 @@ export function TransactionManagement() {
 
 		const transaction = {
 			...newTransaction,
-			quantity: newTransaction.quantity
-				? parseFloat(newTransaction.quantity)
-				: undefined,
-			price: newTransaction.price
-				? parseFloat(newTransaction.price)
-				: undefined,
+			quantity: newTransaction.quantity ? parseFloat(newTransaction.quantity) : undefined,
+			price: newTransaction.price ? parseFloat(newTransaction.price) : undefined,
 			amount: parseFloat(newTransaction.amount),
 			total:
 				newTransaction.quantity && newTransaction.price
-					? parseFloat(newTransaction.quantity) *
-						parseFloat(newTransaction.price)
+					? parseFloat(newTransaction.quantity) * parseFloat(newTransaction.price)
 					: parseFloat(newTransaction.amount),
 		};
 
@@ -421,13 +367,7 @@ export function TransactionManagement() {
 	};
 
 	const handleExport = (format: "csv" | "json") => {
-		// Mock export functionality
-		console.log(
-			`Exporting ${sortedTransactions.length} transactions as ${format.toUpperCase()}`,
-		);
-		alert(
-			`Exporting ${sortedTransactions.length} transactions as ${format.toUpperCase()}`,
-		);
+		alert(`Exporting ${sortedTransactions.length} transactions as ${format.toUpperCase()}`);
 	};
 
 	const handleSaveFilter = () => {
@@ -481,9 +421,7 @@ export function TransactionManagement() {
 		(selectedAccount !== "all" ? 1 : 0) +
 		selectedTypes.size +
 		selectedCategories.size +
-		(selectedStatuses.size !== 1 || !selectedStatuses.has("completed")
-			? 1
-			: 0) +
+		(selectedStatuses.size !== 1 || !selectedStatuses.has("completed") ? 1 : 0) +
 		(dateRange !== "all" ? 1 : 0) +
 		(minAmount ? 1 : 0) +
 		(maxAmount ? 1 : 0);
@@ -520,10 +458,7 @@ export function TransactionManagement() {
 						</DropdownMenuContent>
 					</DropdownMenu>
 
-					<Dialog
-						open={isAddTransactionOpen}
-						onOpenChange={setIsAddTransactionOpen}
-					>
+					<Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
 						<DialogTrigger asChild>
 							<Button>
 								<Plus className="h-4 w-4 mr-2" />
@@ -533,9 +468,7 @@ export function TransactionManagement() {
 						<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 							<DialogHeader>
 								<DialogTitle>Add New Transaction</DialogTitle>
-								<DialogDescription>
-									Record a new transaction for your portfolio
-								</DialogDescription>
+								<DialogDescription>Record a new transaction for your portfolio</DialogDescription>
 							</DialogHeader>
 
 							<div className="space-y-4">
@@ -730,10 +663,7 @@ export function TransactionManagement() {
 							</div>
 
 							<DialogFooter>
-								<Button
-									variant="outline"
-									onClick={() => setIsAddTransactionOpen(false)}
-								>
+								<Button variant="outline" onClick={() => setIsAddTransactionOpen(false)}>
 									Cancel
 								</Button>
 								<Button onClick={handleAddTransaction}>Add Transaction</Button>
@@ -766,9 +696,7 @@ export function TransactionManagement() {
 							{currencySymbol}
 							{analytics.inflow.toLocaleString()}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Deposits, purchases, dividends
-						</p>
+						<p className="text-xs text-muted-foreground">Deposits, purchases, dividends</p>
 					</CardContent>
 				</Card>
 
@@ -781,9 +709,7 @@ export function TransactionManagement() {
 							{currencySymbol}
 							{analytics.outflow.toLocaleString()}
 						</div>
-						<p className="text-xs text-muted-foreground">
-							Withdrawals, sales, fees
-						</p>
+						<p className="text-xs text-muted-foreground">Withdrawals, sales, fees</p>
 					</CardContent>
 				</Card>
 
@@ -812,15 +738,10 @@ export function TransactionManagement() {
 				<Card>
 					<CardHeader>
 						<CardTitle>Transactions by Type</CardTitle>
-						<CardDescription>
-							Distribution across transaction types
-						</CardDescription>
+						<CardDescription>Distribution across transaction types</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
-							option={getTransactionsByTypeChart()}
-							style={{ height: "300px" }}
-						/>
+						<ReactECharts option={getTransactionsByTypeChart()} style={{ height: "300px" }} />
 					</CardContent>
 				</Card>
 
@@ -830,10 +751,7 @@ export function TransactionManagement() {
 						<CardDescription>Daily transaction amounts</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
-							option={getVolumeChart()}
-							style={{ height: "300px" }}
-						/>
+						<ReactECharts option={getVolumeChart()} style={{ height: "300px" }} />
 					</CardContent>
 				</Card>
 			</div>
@@ -861,10 +779,7 @@ export function TransactionManagement() {
 										<DropdownMenuLabel>Load Saved Filter</DropdownMenuLabel>
 										<DropdownMenuSeparator />
 										{savedFilters.map((filter) => (
-											<DropdownMenuItem
-												key={filter.id}
-												onClick={() => loadSavedFilter(filter)}
-											>
+											<DropdownMenuItem key={filter.id} onClick={() => loadSavedFilter(filter)}>
 												{filter.name}
 											</DropdownMenuItem>
 										))}
@@ -897,25 +812,20 @@ export function TransactionManagement() {
 				<CardContent>
 					<div className="space-y-4">
 						{/* Search Bar */}
-						<div className="relative">
-							<Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search by asset, account, merchant, reference, category, notes..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="pl-10"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search transactions..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							onClear={() => setSearchTerm("")}
+							containerClassName="flex-1"
+						/>
 
 						{/* Filter Row 1 */}
 						<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
 							{/* Account Filter */}
 							<div className="space-y-2">
 								<Label>Account</Label>
-								<Select
-									value={selectedAccount}
-									onValueChange={setSelectedAccount}
-								>
+								<Select value={selectedAccount} onValueChange={setSelectedAccount}>
 									<SelectTrigger>
 										<SelectValue />
 									</SelectTrigger>
@@ -935,14 +845,9 @@ export function TransactionManagement() {
 								<Label>Type</Label>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button
-											variant="outline"
-											className="w-full justify-between"
-										>
+										<Button variant="outline" className="w-full justify-between">
 											<span>
-												{selectedTypes.size === 0
-													? "All Types"
-													: `${selectedTypes.size} selected`}
+												{selectedTypes.size === 0 ? "All Types" : `${selectedTypes.size} selected`}
 											</span>
 											<Filter className="h-4 w-4" />
 										</Button>
@@ -974,10 +879,7 @@ export function TransactionManagement() {
 								<Label>Category</Label>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button
-											variant="outline"
-											className="w-full justify-between"
-										>
+										<Button variant="outline" className="w-full justify-between">
 											<span>
 												{selectedCategories.size === 0
 													? "All Categories"
@@ -1013,10 +915,7 @@ export function TransactionManagement() {
 								<Label>Status</Label>
 								<DropdownMenu>
 									<DropdownMenuTrigger asChild>
-										<Button
-											variant="outline"
-											className="w-full justify-between"
-										>
+										<Button variant="outline" className="w-full justify-between">
 											<span>
 												{selectedStatuses.size === 0
 													? "All Statuses"
@@ -1097,18 +996,10 @@ export function TransactionManagement() {
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="date-desc">
-											Date (Newest First)
-										</SelectItem>
-										<SelectItem value="date-asc">
-											Date (Oldest First)
-										</SelectItem>
-										<SelectItem value="amount-desc">
-											Amount (Highest First)
-										</SelectItem>
-										<SelectItem value="amount-asc">
-											Amount (Lowest First)
-										</SelectItem>
+										<SelectItem value="date-desc">Date (Newest First)</SelectItem>
+										<SelectItem value="date-asc">Date (Oldest First)</SelectItem>
+										<SelectItem value="amount-desc">Amount (Highest First)</SelectItem>
+										<SelectItem value="amount-asc">Amount (Lowest First)</SelectItem>
 										<SelectItem value="type">Type</SelectItem>
 									</SelectContent>
 								</Select>
@@ -1123,9 +1014,7 @@ export function TransactionManagement() {
 				<div className="flex items-center justify-between mb-4">
 					<div className="flex items-center gap-2">
 						<h3>Transactions</h3>
-						<Badge variant="secondary">
-							{sortedTransactions.length} results
-						</Badge>
+						<Badge variant="secondary">{sortedTransactions.length} results</Badge>
 					</div>
 				</div>
 
@@ -1138,10 +1027,7 @@ export function TransactionManagement() {
 			</div>
 
 			{/* Save Filter Dialog */}
-			<Dialog
-				open={showSaveFilterDialog}
-				onOpenChange={setShowSaveFilterDialog}
-			>
+			<Dialog open={showSaveFilterDialog} onOpenChange={setShowSaveFilterDialog}>
 				<DialogContent>
 					<DialogHeader>
 						<DialogTitle>Save Current Filter</DialogTitle>
@@ -1163,10 +1049,7 @@ export function TransactionManagement() {
 					</div>
 
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setShowSaveFilterDialog(false)}
-						>
+						<Button variant="outline" onClick={() => setShowSaveFilterDialog(false)}>
 							Cancel
 						</Button>
 						<Button onClick={handleSaveFilter} disabled={!filterName.trim()}>

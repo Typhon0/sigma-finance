@@ -4,10 +4,7 @@ import { useForm } from "react-hook-form";
 import { useAuth } from "../../lib/auth-context";
 import { useAuthErrorHandler } from "../../lib/auth-error-handler";
 import type { AuthError } from "../../lib/types/auth.types";
-import {
-	type LoginFormData,
-	loginSchema,
-} from "../../lib/validations/auth.schemas";
+import { type LoginFormData, loginSchema } from "../../lib/validations/auth.schemas";
 import { Button } from "../ui/button";
 import { AuthButton } from "./auth-button";
 import { AuthFormField } from "./auth-form-field";
@@ -18,13 +15,10 @@ interface LoginFormProps {
 	onSwitchToReset?: () => void;
 }
 
-export function LoginForm({
-	onSwitchToRegister,
-	onSwitchToReset,
-}: LoginFormProps) {
+export function LoginForm({ onSwitchToRegister, onSwitchToReset }: LoginFormProps) {
 	const [authErrors, setAuthErrors] = useState<AuthError[]>([]);
 	const { login, isLoading } = useAuth();
-	const { _handleAuthResponse } = useAuthErrorHandler();
+	useAuthErrorHandler();
 
 	const {
 		register,
@@ -44,9 +38,12 @@ export function LoginForm({
 		try {
 			await login(normalizedEmail, data.password);
 			reset(); // Clear form on successful login
-		} catch (error: any) {
-			const authErrors = error?.authErrors ??
-				(error?.graphQLErrors?.[0]?.extensions?.errors as AuthError[] | undefined);
+		} catch (error: unknown) {
+			const gqlErr = error as {
+				authErrors?: AuthError[];
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			const authErrors = gqlErr?.authErrors ?? gqlErr?.graphQLErrors?.[0]?.extensions?.errors;
 
 			if (Array.isArray(authErrors) && authErrors.length > 0) {
 				setAuthErrors(authErrors);
@@ -54,10 +51,7 @@ export function LoginForm({
 				setAuthErrors([
 					{
 						code: "INTERNAL_ERROR",
-						message:
-							error instanceof Error
-								? error.message
-								: "Login failed. Please try again.",
+						message: error instanceof Error ? error.message : "Login failed. Please try again.",
 					},
 				]);
 			}
@@ -82,7 +76,6 @@ export function LoginForm({
 			<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 				<AuthFormField
 					id="email"
-					name="email"
 					type="email"
 					label="Email"
 					placeholder="Enter your email"
@@ -96,7 +89,6 @@ export function LoginForm({
 
 				<AuthFormField
 					id="password"
-					name="password"
 					type="password"
 					label="Password"
 					placeholder="Enter your password"

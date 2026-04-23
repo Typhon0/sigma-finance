@@ -105,9 +105,7 @@ export function EditPortfolioDialog({
 		}
 
 		if (!isOwner) {
-			const error = new Error(
-				"You do not have permission to edit this portfolio",
-			);
+			const error = new Error("You do not have permission to edit this portfolio");
 			setErrorMessage(error.message);
 			onError?.(error);
 			return;
@@ -137,21 +135,12 @@ export function EditPortfolioDialog({
 				setSuccessMessage("");
 			}, 1500);
 		} catch (error) {
-			console.error("Failed to update portfolio:", error);
-
 			let errorMsg = "An error occurred while updating the portfolio.";
 
 			if (error instanceof Error) {
-				if (
-					error.message.includes("unique") ||
-					error.message.includes("exists")
-				) {
-					errorMsg =
-						"A portfolio with this name already exists. Please choose a different name.";
-				} else if (
-					error.message.includes("unauthorized") ||
-					error.message.includes("permission")
-				) {
+				if (error.message.includes("unique") || error.message.includes("exists")) {
+					errorMsg = "A portfolio with this name already exists. Please choose a different name.";
+				} else if (error.message.includes("unauthorized") || error.message.includes("permission")) {
 					errorMsg = "You do not have permission to edit this portfolio.";
 				} else if (error.message.includes("not found")) {
 					errorMsg = "Portfolio not found. It may have been deleted.";
@@ -203,11 +192,7 @@ export function EditPortfolioDialog({
 						</DialogDescription>
 					</DialogHeader>
 					<div className="flex justify-end">
-						<Button
-							variant="outline"
-							onClick={() => setOpen(false)}
-							className="touch-manipulation"
-						>
+						<Button variant="outline" onClick={() => setOpen(false)} className="touch-manipulation">
 							Close
 						</Button>
 					</div>
@@ -245,10 +230,7 @@ export function EditPortfolioDialog({
 
 				{/* Success Message */}
 				{successMessage && (
-					<Alert
-						variant="default"
-						className="border-green-200 bg-green-50 text-green-800"
-					>
+					<Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
 						<CheckCircle className="h-4 w-4 text-green-600" />
 						<AlertDescription>{successMessage}</AlertDescription>
 					</Alert>
@@ -304,11 +286,7 @@ export function EditPortfolioButton({
 	onError,
 }: EditPortfolioButtonProps) {
 	return (
-		<EditPortfolioDialog
-			portfolioId={portfolioId}
-			onSuccess={onSuccess}
-			onError={onError}
-		>
+		<EditPortfolioDialog portfolioId={portfolioId} onSuccess={onSuccess} onError={onError}>
 			<Button variant={variant} size={size} className={className}>
 				<Edit className="h-4 w-4 mr-2" />
 				Edit

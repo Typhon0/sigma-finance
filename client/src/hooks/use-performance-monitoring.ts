@@ -147,7 +147,7 @@ interface SystemHealth {
 	metricsCount: number;
 	alertsCount: number;
 	recentErrors: number;
-	details: Record<string, any>;
+	details: Record<string, unknown>;
 }
 
 interface UserEngagementMetrics {
@@ -174,11 +174,11 @@ interface NavigationPattern {
 	conversion: number;
 }
 
-interface DashboardEvent {
+export interface DashboardEvent {
 	type: string;
 	userId?: string;
 	sessionId?: string;
-	data: Record<string, any>;
+	data: Record<string, unknown>;
 }
 
 // Performance monitoring hook
@@ -192,6 +192,78 @@ export function usePerformanceMonitoring() {
 	const stateTransitionTimes = useRef<Map<string, number>>(new Map());
 
 	const [recordEvent] = useMutation(RECORD_DASHBOARD_EVENT);
+
+	// Record dashboard event
+	const recordDashboardEvent = useCallback(
+		async (event: Omit<DashboardEvent, "sessionId">) => {
+			try {
+				await recordEvent({
+					variables: {
+						input: {
+							...event,
+							userId: userId || undefined,
+							sessionId,
+						},
+					},
+				});
+			} catch (_error) {}
+		},
+		[recordEvent, userId, sessionId],
+	);
+
+	// Record error event
+	const recordErrorEvent = useCallback(
+		(errorData: Record<string, unknown>) => {
+			recordDashboardEvent({
+				type: "error_occurred",
+				data: {
+					...errorData,
+					component: "dashboard",
+					severity: "error",
+					timestamp: Date.now(),
+				},
+			});
+		},
+		[recordDashboardEvent],
+	);
+
+	// Handle performance entries
+	const handlePerformanceEntry = useCallback(
+		(entry: PerformanceEntry) => {
+			const eventData: Record<string, unknown> = {
+				entry_type: entry.entryType,
+				name: entry.name,
+				start_time: entry.startTime,
+				duration: entry.duration,
+			};
+
+			// Add specific data based on entry type
+			if (entry.entryType === "navigation") {
+				const navEntry = entry as PerformanceNavigationTiming;
+				eventData.dom_content_loaded =
+					navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart;
+				eventData.load_complete = navEntry.loadEventEnd - navEntry.loadEventStart;
+				eventData.dns_lookup = navEntry.domainLookupEnd - navEntry.domainLookupStart;
+				eventData.tcp_connect = navEntry.connectEnd - navEntry.connectStart;
+			} else if (entry.entryType === "paint") {
+				eventData.paint_type = entry.name;
+			} else if (entry.entryType === "largest-contentful-paint") {
+				eventData.element = (entry as any).element?.tagName;
+				eventData.size = (entry as any).size;
+			}
+
+			recordDashboardEvent({
+				type: "performance_metric",
+				data: {
+					metric_name: entry.entryType,
+					value: entry.duration || entry.startTime,
+					component: "browser_performance",
+					...eventData,
+				},
+			});
+		},
+		[recordDashboardEvent],
+	);
 
 	// Initialize performance monitoring
 	useEffect(() => {
@@ -240,91 +312,15 @@ export function usePerformanceMonitoring() {
 		return () => {
 			performanceObserver.current?.disconnect();
 			window.removeEventListener("error", handleError);
-			window.removeEventListener(
-				"unhandledrejection",
-				handleUnhandledRejection,
-			);
+			window.removeEventListener("unhandledrejection", handleUnhandledRejection);
 		};
-	}, []);
-
-	// Handle performance entries
-	const handlePerformanceEntry = useCallback((entry: PerformanceEntry) => {
-		const eventData: Record<string, any> = {
-			entry_type: entry.entryType,
-			name: entry.name,
-			start_time: entry.startTime,
-			duration: entry.duration,
-		};
-
-		// Add specific data based on entry type
-		if (entry.entryType === "navigation") {
-			const navEntry = entry as PerformanceNavigationTiming;
-			eventData.dom_content_loaded =
-				navEntry.domContentLoadedEventEnd - navEntry.domContentLoadedEventStart;
-			eventData.load_complete = navEntry.loadEventEnd - navEntry.loadEventStart;
-			eventData.dns_lookup =
-				navEntry.domainLookupEnd - navEntry.domainLookupStart;
-			eventData.tcp_connect = navEntry.connectEnd - navEntry.connectStart;
-		} else if (entry.entryType === "paint") {
-			eventData.paint_type = entry.name;
-		} else if (entry.entryType === "largest-contentful-paint") {
-			eventData.element = (entry as any).element?.tagName;
-			eventData.size = (entry as any).size;
-		}
-
-		recordDashboardEvent({
-			type: "performance_metric",
-			data: {
-				metric_name: entry.entryType,
-				value: entry.duration || entry.startTime,
-				component: "browser_performance",
-				...eventData,
-			},
-		});
-	}, []);
-
-	// Record dashboard event
-	const recordDashboardEvent = useCallback(
-		async (event: Omit<DashboardEvent, "sessionId">) => {
-			try {
-				await recordEvent({
-					variables: {
-						input: {
-							...event,
-							userId: userId || undefined,
-							sessionId,
-						},
-					},
-				});
-			} catch (error) {
-				console.warn("Failed to record dashboard event:", error);
-			}
-		},
-		[recordEvent, userId, sessionId],
-	);
-
-	// Record error event
-	const recordErrorEvent = useCallback(
-		(errorData: Record<string, any>) => {
-			recordDashboardEvent({
-				type: "error_occurred",
-				data: {
-					...errorData,
-					component: "dashboard",
-					severity: "error",
-					timestamp: Date.now(),
-				},
-			});
-		},
-		[recordDashboardEvent],
-	);
+	}, [handlePerformanceEntry, recordErrorEvent]);
 
 	// Track dashboard state transitions
 	const trackStateTransition = useCallback(
 		(fromState: string, toState: string) => {
 			const transitionKey = `${fromState}->${toState}`;
-			const startTime =
-				stateTransitionTimes.current.get(fromState) || Date.now();
+			const startTime = stateTransitionTimes.current.get(fromState) || Date.now();
 			const duration = Date.now() - startTime;
 
 			recordDashboardEvent({
@@ -363,11 +359,7 @@ export function usePerformanceMonitoring() {
 
 	// Track user interactions
 	const trackUserInteraction = useCallback(
-		(
-			action: string,
-			component: string,
-			additionalData?: Record<string, any>,
-		) => {
+		(action: string, component: string, additionalData?: Record<string, unknown>) => {
 			recordDashboardEvent({
 				type: "user_interaction",
 				data: {
@@ -383,12 +375,7 @@ export function usePerformanceMonitoring() {
 
 	// Track market data updates
 	const trackMarketDataUpdate = useCallback(
-		(
-			source: string,
-			assetCount: number,
-			duration: number,
-			success: boolean,
-		) => {
+		(source: string, assetCount: number, duration: number, success: boolean) => {
 			recordDashboardEvent({
 				type: "market_data_update",
 				data: {
@@ -456,9 +443,7 @@ export function useUserEngagementMetrics(timeRange?: string) {
 	});
 
 	return {
-		engagement: data?.userEngagementMetrics as
-			| UserEngagementMetrics
-			| undefined,
+		engagement: data?.userEngagementMetrics as UserEngagementMetrics | undefined,
 		loading,
 		error,
 	};
@@ -466,11 +451,8 @@ export function useUserEngagementMetrics(timeRange?: string) {
 
 // Hook for real-time performance monitoring
 export function useRealTimePerformanceMonitoring() {
-	const { data: subscriptionData } = useSubscription(
-		PERFORMANCE_METRICS_SUBSCRIPTION,
-	);
-	const [realtimeMetrics, setRealtimeMetrics] =
-		useState<PerformanceMetrics | null>(null);
+	const { data: subscriptionData } = useSubscription(PERFORMANCE_METRICS_SUBSCRIPTION);
+	const [realtimeMetrics, setRealtimeMetrics] = useState<PerformanceMetrics | null>(null);
 
 	useEffect(() => {
 		if (subscriptionData?.performanceMetricsUpdated) {
@@ -507,10 +489,7 @@ export function useMeasureAsyncOperation() {
 	const { trackDataLoad } = usePerformanceMonitoring();
 
 	return useCallback(
-		async <T>(
-			operation: () => Promise<T>,
-			operationType: string,
-		): Promise<T> => {
+		async <T>(operation: () => Promise<T>, operationType: string): Promise<T> => {
 			const startTime = Date.now();
 			try {
 				const result = await operation();

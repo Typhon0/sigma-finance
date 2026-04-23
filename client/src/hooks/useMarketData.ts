@@ -1,12 +1,14 @@
 import { gql, useQuery } from "@apollo/client";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface MarketDataHookOptions {
-	symbol: string;
-	assetType: string;
+	instrumentId?: string;
+	symbol?: string;
+	assetType?: string;
 	interval?: string;
 	from?: Date;
 	to?: Date;
+	preferredProvider?: string;
 	autoRefresh?: boolean;
 	refreshInterval?: number;
 }
@@ -26,12 +28,37 @@ interface MarketDataState {
 	loading: boolean;
 	error: string | null;
 	lastUpdated: Date | null;
-	/** The timestamp of the price data from the provider (not fetch time) */
 	priceTimestamp: Date | null;
+	sourceProvider: string | null;
+	fallbackUsed: boolean;
 }
 
-const MARKET_DATA_QUERY = gql`
-  query GetMarketData(
+interface SymbolQueryData {
+	candles: MarketDataPoint[];
+	realTimePrice: {
+		close: number;
+		timestamp: string;
+	} | null;
+}
+
+interface InstrumentQueryData {
+	candlesByInstrument: {
+		candles: MarketDataPoint[];
+		sourceProvider: string;
+		fallbackUsed: boolean;
+	};
+	realTimePriceByInstrument: {
+		candle: {
+			close: number;
+			timestamp: string;
+		} | null;
+		sourceProvider: string;
+		fallbackUsed: boolean;
+	} | null;
+}
+
+const MARKET_DATA_BY_SYMBOL_QUERY = gql`
+  query GetMarketDataBySymbol(
     $symbol: String!
     $assetType: String!
     $interval: String!
@@ -60,20 +87,100 @@ const MARKET_DATA_QUERY = gql`
   }
 `;
 
+const MARKET_DATA_BY_INSTRUMENT_QUERY = gql`
+  query GetMarketDataByInstrument(
+    $instrumentId: ID!
+    $interval: String!
+    $from: Time!
+    $to: Time!
+    $preferredProvider: String
+  ) {
+    candlesByInstrument(
+      instrumentId: $instrumentId
+      interval: $interval
+      from: $from
+      to: $to
+      limit: 100
+      preferredProvider: $preferredProvider
+    ) {
+      sourceProvider
+      fallbackUsed
+      candles {
+        timestamp
+        open
+        high
+        low
+        close
+        volume
+      }
+    }
+    realTimePriceByInstrument(
+      instrumentId: $instrumentId
+      preferredProvider: $preferredProvider
+    ) {
+      sourceProvider
+      fallbackUsed
+      candle {
+        close
+        timestamp
+      }
+    }
+  }
+`;
+
 export const useMarketData = ({
+	instrumentId,
 	symbol,
 	assetType,
 	interval = "1D",
-	from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+	from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
 	to = new Date(),
+	preferredProvider,
 	autoRefresh = false,
-	refreshInterval = 30000, // 30 seconds
+	refreshInterval = 30000,
 }: MarketDataHookOptions) => {
-	const { data, loading, error, refetch } = useQuery(MARKET_DATA_QUERY, {
-		variables: { symbol, assetType, interval, from, to },
-		pollInterval: autoRefresh ? refreshInterval : 0,
-		fetchPolicy: "network-only",
-	});
+	const useInstrumentPath = Boolean(instrumentId && instrumentId.trim().length > 0);
+
+	const skipQuery = useMemo(() => {
+		if (useInstrumentPath) {
+			return false;
+		}
+		return !(symbol && symbol.trim().length > 0 && assetType && assetType.trim().length > 0);
+	}, [assetType, symbol, useInstrumentPath]);
+
+	const queryDocument = useInstrumentPath
+		? MARKET_DATA_BY_INSTRUMENT_QUERY
+		: MARKET_DATA_BY_SYMBOL_QUERY;
+
+	const variables = useMemo(() => {
+		if (useInstrumentPath) {
+			return {
+				instrumentId: instrumentId ?? "",
+				interval,
+				from,
+				to,
+				preferredProvider,
+			};
+		}
+
+		return {
+			symbol: symbol ?? "",
+			assetType: assetType ?? "",
+			interval,
+			from,
+			to,
+		};
+	}, [assetType, from, instrumentId, interval, preferredProvider, symbol, to, useInstrumentPath]);
+
+	const { data, loading, error, refetch } = useQuery<SymbolQueryData | InstrumentQueryData>(
+		queryDocument,
+		{
+			variables,
+			skip: skipQuery,
+			pollInterval: autoRefresh ? refreshInterval : 0,
+			fetchPolicy: "network-only",
+		},
+	);
 
 	const [state, setState] = useState<MarketDataState>({
 		data: [],
@@ -82,16 +189,26 @@ export const useMarketData = ({
 		error: null,
 		lastUpdated: null,
 		priceTimestamp: null,
+		sourceProvider: null,
+		fallbackUsed: false,
 	});
 
 	useEffect(() => {
+		if (skipQuery) {
+			setState((prev) => ({
+				...prev,
+				loading: false,
+				error: "Instrument selection is required",
+			}));
+			return;
+		}
+
 		if (loading) {
 			setState((prev) => ({ ...prev, loading: true, error: null }));
 			return;
 		}
 
 		if (error) {
-			console.error("Market data fetch error:", error);
 			setState((prev) => ({
 				...prev,
 				loading: false,
@@ -100,22 +217,49 @@ export const useMarketData = ({
 			return;
 		}
 
-		if (data) {
-			const { candles, realTimePrice } = data;
-			// Extract the actual price timestamp from the API response
-			const priceTimestamp = realTimePrice?.timestamp
-				? new Date(realTimePrice.timestamp)
-				: null;
+		if (!data) {
+			return;
+		}
+
+		if (useInstrumentPath) {
+			const instrumentData = data as InstrumentQueryData;
+			const candles = instrumentData.candlesByInstrument?.candles ?? [];
+			const realTime = instrumentData.realTimePriceByInstrument?.candle ?? null;
+			const sourceProvider =
+				instrumentData.realTimePriceByInstrument?.sourceProvider ??
+				instrumentData.candlesByInstrument?.sourceProvider ??
+				null;
+			const fallbackUsed =
+				instrumentData.realTimePriceByInstrument?.fallbackUsed ??
+				instrumentData.candlesByInstrument?.fallbackUsed ??
+				false;
+
 			setState({
-				data: candles || [],
-				currentPrice: realTimePrice?.close || null,
+				data: candles,
+				currentPrice: realTime?.close ?? null,
 				loading: false,
 				error: null,
-				lastUpdated: new Date(), // When we fetched the data
-				priceTimestamp, // When the price was actually recorded
+				lastUpdated: new Date(),
+				priceTimestamp: realTime?.timestamp ? new Date(realTime.timestamp) : null,
+				sourceProvider,
+				fallbackUsed,
 			});
+			return;
 		}
-	}, [data, loading, error]);
+
+		const symbolData = data as SymbolQueryData;
+		const realTime = symbolData.realTimePrice;
+		setState({
+			data: symbolData.candles ?? [],
+			currentPrice: realTime?.close ?? null,
+			loading: false,
+			error: null,
+			lastUpdated: new Date(),
+			priceTimestamp: realTime?.timestamp ? new Date(realTime.timestamp) : null,
+			sourceProvider: null,
+			fallbackUsed: false,
+		});
+	}, [data, error, loading, skipQuery, useInstrumentPath]);
 
 	return {
 		...state,

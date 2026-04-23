@@ -29,10 +29,7 @@ const DEFAULT_RETRY_CONFIG: RetryConfig = {
 	jitter: true,
 };
 
-export function useRetryMechanism(
-	retryFn: () => Promise<void>,
-	config: Partial<RetryConfig> = {},
-) {
+export function useRetryMechanism(retryFn: () => Promise<void>, config: Partial<RetryConfig> = {}) {
 	const fullConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
 	const [retryState, setRetryState] = useState<RetryState>({
 		isRetrying: false,
@@ -47,8 +44,7 @@ export function useRetryMechanism(
 
 	const calculateDelay = useCallback(
 		(attempt: number): number => {
-			let delay =
-				fullConfig.baseDelay * fullConfig.backoffMultiplier ** attempt;
+			let delay = fullConfig.baseDelay * fullConfig.backoffMultiplier ** attempt;
 			delay = Math.min(delay, fullConfig.maxDelay);
 
 			if (fullConfig.jitter) {
@@ -246,8 +242,7 @@ export function RetryStatus({
 	className,
 	showProgress = true,
 }: RetryStatusProps) {
-	const { isRetrying, retryCount, nextRetryIn, lastError, canRetry } =
-		retryState;
+	const { isRetrying, retryCount, nextRetryIn, lastError, canRetry } = retryState;
 
 	const getStatusIcon = () => {
 		if (isRetrying) {
@@ -287,8 +282,7 @@ export function RetryStatus({
 
 	const progressPercentage =
 		showProgress && nextRetryIn > 0
-			? ((config.baseDelay / 1000 - nextRetryIn) / (config.baseDelay / 1000)) *
-				100
+			? ((config.baseDelay / 1000 - nextRetryIn) / (config.baseDelay / 1000)) * 100
 			: 0;
 
 	return (
@@ -304,9 +298,7 @@ export function RetryStatus({
 				<Progress value={progressPercentage} className="h-1" />
 			)}
 
-			{lastError && (
-				<p className="text-xs text-muted-foreground">{lastError.message}</p>
-			)}
+			{lastError && <p className="text-xs text-muted-foreground">{lastError.message}</p>}
 		</div>
 	);
 }
@@ -328,32 +320,21 @@ export function AutoRetryWrapper({
 	showButton = true,
 	className,
 }: AutoRetryWrapperProps) {
-	const {
-		retryState,
-		retry,
-		config: fullConfig,
-	} = useRetryMechanism(retryFn, config);
+	const { retryState, retry, config: fullConfig } = useRetryMechanism(retryFn, config);
 
 	return (
 		<div className={cn("space-y-3", className)}>
 			{children}
 
-			{(showStatus || showButton) &&
-				(retryState.lastError || retryState.isRetrying) && (
-					<div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
-						{showStatus && (
-							<RetryStatus
-								retryState={retryState}
-								config={fullConfig}
-								className="flex-1"
-							/>
-						)}
+			{(showStatus || showButton) && (retryState.lastError || retryState.isRetrying) && (
+				<div className="flex items-center justify-between gap-3 p-3 bg-muted/50 rounded-lg">
+					{showStatus && (
+						<RetryStatus retryState={retryState} config={fullConfig} className="flex-1" />
+					)}
 
-						{showButton && (
-							<RetryButton onRetry={retry} retryState={retryState} />
-						)}
-					</div>
-				)}
+					{showButton && <RetryButton onRetry={retry} retryState={retryState} />}
+				</div>
+			)}
 		</div>
 	);
 }

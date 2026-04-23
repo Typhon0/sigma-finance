@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Coins, Wallet } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, Coins, Wallet } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -7,15 +8,9 @@ import {
 	TradeableInstrumentSearch,
 	type TradeableInstrumentSelection,
 } from "@/components/assets/tradeable-instrument-search";
-import { InstrumentAssetType } from "@/gql/graphql";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -25,6 +20,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -32,16 +28,16 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { InstrumentAssetType } from "@/gql/graphql";
+import { cn } from "@/lib/utils";
 
 const cryptoAssetSchema = z.object({
+	instrumentId: z.string().optional(),
 	name: z.string().min(1, "Asset name is required"),
 	symbol: z.string().min(1, "Symbol is required").max(10, "Symbol too long"),
 	quantity: z.number().min(0.00000001, "Quantity must be greater than 0"),
-	purchasePrice: z
-		.number()
-		.min(0, "Purchase price must be positive")
-		.optional(),
-	purchaseDate: z.string().optional(),
+	purchasePrice: z.number().min(0, "Purchase price must be positive").optional(),
+	purchaseDate: z.date().optional(),
 	walletAddress: z.string().optional(),
 	blockchainNetwork: z.string().min(1, "Blockchain network is required"),
 });
@@ -73,20 +69,22 @@ export function CryptoAssetForm({
 	initialData,
 }: CryptoAssetFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedInstrument, setSelectedInstrument] =
-		useState<TradeableInstrumentSelection | null>(null);
+	const [selectedInstrument, setSelectedInstrument] = useState<TradeableInstrumentSelection | null>(
+		null,
+	);
 
 	const form = useForm<CryptoAssetFormData>({
 		resolver: zodResolver(cryptoAssetSchema),
 		defaultValues: {
+			instrumentId: initialData?.instrumentId || "",
 			name: initialData?.name || "",
 			symbol: initialData?.symbol || "",
 			quantity: initialData?.quantity || 0,
 			purchasePrice: initialData?.purchasePrice || undefined,
-			purchaseDate: initialData?.purchaseDate || "",
+			purchaseDate: initialData?.purchaseDate ? new Date(initialData.purchaseDate) : undefined,
 			walletAddress: initialData?.walletAddress || "",
 			blockchainNetwork: initialData?.blockchainNetwork || "",
-			},
+		},
 	});
 	const instrumentTypes = [InstrumentAssetType.Crypto] as const;
 
@@ -94,8 +92,7 @@ export function CryptoAssetForm({
 		setIsSubmitting(true);
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Error submitting crypto asset:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -108,23 +105,19 @@ export function CryptoAssetForm({
 					<Coins className="h-5 w-5 text-amber-600" />
 					<div>
 						<CardTitle className="text-lg">Cryptocurrency Asset</CardTitle>
-						<CardDescription>
-							Add cryptocurrencies and digital assets
-						</CardDescription>
+						<CardDescription>Add cryptocurrencies and digital assets</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 						<TradeableInstrumentSearch
 							assetTypes={instrumentTypes}
 							value={selectedInstrument}
 							onChange={(selection) => {
 								setSelectedInstrument(selection);
+								form.setValue("instrumentId", selection?.id ?? "");
 								form.setValue("symbol", selection?.symbol ?? "");
 								form.setValue("name", selection?.name ?? "");
 							}}
@@ -143,9 +136,7 @@ export function CryptoAssetForm({
 												placeholder="BTC"
 												{...field}
 												className="uppercase"
-												onChange={(e) =>
-													field.onChange(e.target.value.toUpperCase())
-												}
+												onChange={(e) => field.onChange(e.target.value.toUpperCase())}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -174,10 +165,7 @@ export function CryptoAssetForm({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>Blockchain Network</FormLabel>
-									<Select
-										onValueChange={field.onChange}
-										defaultValue={field.value}
-									>
+									<Select onValueChange={field.onChange} defaultValue={field.value}>
 										<FormControl>
 											<SelectTrigger>
 												<SelectValue placeholder="Select blockchain network" />
@@ -209,9 +197,7 @@ export function CryptoAssetForm({
 												step="0.00000001"
 												placeholder="1.5"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -231,11 +217,7 @@ export function CryptoAssetForm({
 												step="0.01"
 												placeholder="45000.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(
-														parseFloat(e.target.value) || undefined,
-													)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -266,11 +248,33 @@ export function CryptoAssetForm({
 							control={form.control}
 							name="purchaseDate"
 							render={({ field }) => (
-								<FormItem>
+								<FormItem className="flex flex-col">
 									<FormLabel>Purchase Date (Optional)</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
+									<Popover>
+										<PopoverTrigger asChild>
+											<FormControl>
+												<Button
+													variant="outline"
+													className={cn(
+														"w-full pl-3 text-left font-normal",
+														!field.value && "text-muted-foreground",
+													)}
+												>
+													<CalendarIcon className="mr-2 h-4 w-4" />
+													{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+												</Button>
+											</FormControl>
+										</PopoverTrigger>
+										<PopoverContent className="w-auto p-0" align="start">
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+												autoFocus
+											/>
+										</PopoverContent>
+									</Popover>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -285,11 +289,7 @@ export function CryptoAssetForm({
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isLoading}
-								className="gap-2"
-							>
+							<Button type="submit" disabled={isSubmitting || isLoading} className="gap-2">
 								<Wallet className="h-4 w-4" />
 								{isSubmitting ? "Adding..." : "Add Crypto"}
 							</Button>

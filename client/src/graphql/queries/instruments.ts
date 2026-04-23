@@ -44,6 +44,14 @@ export const SEARCH_INSTRUMENTS_ONLINE = graphql(/* GraphQL */ `
 				country
 				currency
 				assetType
+				source
+				externalId
+				marketCapRank
+				imageUrl
+				platforms {
+					platform
+					address
+				}
 				providerSource
 				providerExternalId
 				isin
@@ -60,6 +68,8 @@ export const SEARCH_INSTRUMENTS_ONLINE = graphql(/* GraphQL */ `
 				searchOnlineHint
 			}
 			providerUsed
+			coverageStatus
+			errorMessage
 		}
 	}
 `);
@@ -84,6 +94,18 @@ export const MANUAL_INSTRUMENTS = graphql(/* GraphQL */ `
 				status
 				providerSource
 				providerExternalId
+				summary
+				sector
+				industryGroup
+				industry
+				categoryGroup
+				category
+				family
+				website
+				marketCap
+				state
+				city
+				zipcode
 				firstSeenAt
 				lastVerifiedAt
 				lastUsedAt

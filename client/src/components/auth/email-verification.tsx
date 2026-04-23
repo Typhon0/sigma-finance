@@ -10,21 +10,12 @@ interface EmailVerificationProps {
 	onSuccess?: () => void;
 }
 
-type VerificationStatus =
-	| "idle"
-	| "verifying"
-	| "success"
-	| "error"
-	| "resending"
-	| "resent";
+type VerificationStatus = "idle" | "verifying" | "success" | "error" | "resending" | "resent";
 
-export function EmailVerification({
-	token,
-	email,
-	onSuccess,
-}: EmailVerificationProps) {
-	const [verificationStatus, setVerificationStatus] =
-		useState<VerificationStatus>(token ? "verifying" : "idle");
+export function EmailVerification({ token, email, onSuccess }: EmailVerificationProps) {
+	const [verificationStatus, setVerificationStatus] = useState<VerificationStatus>(
+		token ? "verifying" : "idle",
+	);
 	const [authErrors, setAuthErrors] = useState<AuthError[]>([]);
 	const [resendCooldown, setResendCooldown] = useState(0);
 	const { verifyEmail, resendVerification } = useAuth();
@@ -39,12 +30,6 @@ export function EmailVerification({
 		}
 	}, [resendCooldown]);
 
-	useEffect(() => {
-		if (token) {
-			handleVerification();
-		}
-	}, [token]);
-
 	const handleVerification = async () => {
 		if (!token) return;
 
@@ -54,13 +39,15 @@ export function EmailVerification({
 			await verifyEmail(token);
 			setVerificationStatus("success");
 			onSuccess?.();
-		} catch (error: any) {
-			console.error("Email verification failed:", error);
+		} catch (error: unknown) {
 			setVerificationStatus("error");
 
 			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const gqlErr = error as {
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			if (gqlErr?.graphQLErrors?.[0]?.extensions?.errors) {
+				setAuthErrors(gqlErr.graphQLErrors[0].extensions.errors);
 			} else {
 				setAuthErrors([
 					{
@@ -71,6 +58,12 @@ export function EmailVerification({
 			}
 		}
 	};
+
+	useEffect(() => {
+		if (token) {
+			handleVerification();
+		}
+	}, [token, handleVerification]);
 
 	const handleResendVerification = async () => {
 		if (!email || resendCooldown > 0) return;
@@ -86,13 +79,15 @@ export function EmailVerification({
 			setTimeout(() => {
 				setVerificationStatus("idle");
 			}, 3000);
-		} catch (error: any) {
-			console.error("Resend verification failed:", error);
+		} catch (error: unknown) {
 			setVerificationStatus("error");
 
 			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const gqlErr = error as {
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			if (gqlErr?.graphQLErrors?.[0]?.extensions?.errors) {
+				setAuthErrors(gqlErr.graphQLErrors[0].extensions.errors);
 			} else {
 				setAuthErrors([
 					{
@@ -112,10 +107,8 @@ export function EmailVerification({
 	};
 
 	// Determine what to show based on status
-	const isLoading =
-		verificationStatus === "verifying" || verificationStatus === "resending";
-	const showSuccess =
-		verificationStatus === "success" || verificationStatus === "resent";
+	const isLoading = verificationStatus === "verifying" || verificationStatus === "resending";
+	const showSuccess = verificationStatus === "success" || verificationStatus === "resent";
 	const showErrors = verificationStatus === "error" && authErrors.length > 0;
 
 	const getTitle = () => {
@@ -144,16 +137,23 @@ export function EmailVerification({
 		}
 	};
 
-	const getLoadingType = () => {
-		return verificationStatus === "resending"
-			? "email-verification"
-			: "email-verification";
+	const getLoadingType = ():
+		| "register"
+		| "login"
+		| "logout"
+		| "password-reset"
+		| "email-verification" => {
+		return "email-verification";
 	};
 
-	const getSuccessType = () => {
-		return verificationStatus === "resent"
-			? "email-verification"
-			: "email-verification";
+	const getSuccessType = ():
+		| "login"
+		| "logout"
+		| "password-reset"
+		| "email-verification"
+		| "registration"
+		| "password-change" => {
+		return "email-verification";
 	};
 
 	return (
@@ -173,8 +173,7 @@ export function EmailVerification({
 			{verificationStatus === "idle" && email && (
 				<div className="space-y-4">
 					<p className="text-sm text-muted-foreground text-center">
-						Didn't receive the email? Check your spam folder or request a new
-						one.
+						Didn't receive the email? Check your spam folder or request a new one.
 					</p>
 					<AuthButton
 						authType="resend"
@@ -183,9 +182,7 @@ export function EmailVerification({
 						fullWidth
 						disabled={resendCooldown > 0}
 					>
-						{resendCooldown > 0
-							? `Resend in ${resendCooldown}s`
-							: "Resend Verification Email"}
+						{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Verification Email"}
 					</AuthButton>
 				</div>
 			)}
@@ -198,9 +195,7 @@ export function EmailVerification({
 					fullWidth
 					disabled={resendCooldown > 0}
 				>
-					{resendCooldown > 0
-						? `Resend in ${resendCooldown}s`
-						: "Resend Verification Email"}
+					{resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Verification Email"}
 				</AuthButton>
 			)}
 		</AuthFormWrapper>

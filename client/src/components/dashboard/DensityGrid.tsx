@@ -1,4 +1,6 @@
 import { format } from "date-fns";
+import type { EChartsCoreOption } from "echarts";
+import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	ArrowDownRight,
@@ -9,27 +11,10 @@ import {
 	Wallet,
 } from "lucide-react";
 import React from "react";
-import {
-	Area,
-	AreaChart,
-	Bar,
-	BarChart,
-	Cell,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from "recharts";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { useCurrency } from "@/hooks/use-currency";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "../ui/card";
-import { cn } from "../ui/utils";
+import { cn } from "@/lib/utils";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 // --- SUBCOMPONENTS ---
 
@@ -43,7 +28,7 @@ const KpiCard = ({
 	title: string;
 	value: string;
 	change: string;
-	icon: any;
+	icon: React.ComponentType<{ className?: string }>;
 	trend: "up" | "down" | "neutral";
 }) => (
 	<Card className="border-border/60 bg-card/50 shadow-sm backdrop-blur-sm">
@@ -71,15 +56,25 @@ const KpiCard = ({
 					<TrendingDown className="mr-1 h-3 w-3" />
 				)}
 				{change}
-				<span className="text-muted-foreground ml-1 font-normal">
-					from last month
-				</span>
+				<span className="text-muted-foreground ml-1 font-normal">from last month</span>
 			</p>
 		</CardContent>
 	</Card>
 );
 
-const AssetAllocationChart = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: (val: number) => string }) => {
+const AssetAllocationChart = ({
+	assets,
+	formatCurrency,
+}: {
+	assets: Array<{
+		type: string;
+		amount?: number;
+		currentValue?: number;
+		quantity?: number;
+		currentPrice?: number;
+	}>;
+	formatCurrency: (val: number) => string;
+}) => {
 	// Aggregate data
 	const data = React.useMemo(() => {
 		const groups: Record<string, number> = {};
@@ -98,7 +93,7 @@ const AssetAllocationChart = ({ assets, formatCurrency }: { assets: any[]; forma
 			const val =
 				a.type === "loan"
 					? a.amount || 0
-					: a.currentValue || a.quantity * a.currentPrice || 0;
+					: (a.currentValue ?? (a.quantity ?? 0) * (a.currentPrice ?? 0));
 			groups[type] = (groups[type] || 0) + val;
 		});
 
@@ -107,59 +102,89 @@ const AssetAllocationChart = ({ assets, formatCurrency }: { assets: any[]; forma
 			.sort((a, b) => b.value - a.value);
 	}, [assets]);
 
-	const COLORS = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#ef4444"];
+	const Colors = ["#2563eb", "#16a34a", "#d97706", "#9333ea", "#ef4444"];
+	const option = React.useMemo<EChartsCoreOption>(() => {
+		return {
+			grid: {
+				left: 12,
+				right: 20,
+				top: 0,
+				bottom: 0,
+				containLabel: true,
+			},
+			xAxis: {
+				type: "value",
+				show: false,
+			},
+			yAxis: {
+				type: "category",
+				data: data.map((item) => item.name),
+				axisLine: { show: false },
+				axisTick: { show: false },
+				axisLabel: { fontSize: 10 },
+			},
+			tooltip: {
+				trigger: "axis",
+				axisPointer: { type: "shadow" },
+				formatter: (params) => {
+					if (!Array.isArray(params) || params.length === 0) {
+						return "";
+					}
+					const point = params[0];
+					const value = typeof point.value === "number" ? point.value : Number(point.value ?? 0);
+					return `${point.name}<br/>${formatCurrency(value)}`;
+				},
+			},
+			series: [
+				{
+					type: "bar",
+					data: data.map((item, index) => ({
+						value: item.value,
+						itemStyle: {
+							color: Colors[index % Colors.length],
+							borderRadius: [0, 4, 4, 0],
+						},
+					})),
+					barWidth: 20,
+				},
+			],
+		};
+	}, [Colors, data, formatCurrency]);
 
 	return (
 		<div className="h-[200px] w-full">
-			<ResponsiveContainer width="100%" height="100%">
-				<BarChart
-					data={data}
-					layout="vertical"
-					margin={{ top: 0, right: 30, left: 20, bottom: 0 }}
-				>
-					<XAxis type="number" hide />
-					<YAxis
-						dataKey="name"
-						type="category"
-						width={80}
-						tick={{ fontSize: 10 }}
-						axisLine={false}
-						tickLine={false}
-					/>
-					<Tooltip
-						cursor={{ fill: "transparent" }}
-						contentStyle={{
-							backgroundColor: "var(--popover)",
-							borderColor: "var(--border)",
-							borderRadius: "6px",
-						}}
-						formatter={(value: number) => formatCurrency(value)}
-					/>
-					<Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={20}>
-						{data.map((_entry, index) => (
-							<Cell
-								key={`cell-${index}`}
-								fill={COLORS[index % COLORS.length]}
-							/>
-						))}
-					</Bar>
-				</BarChart>
-			</ResponsiveContainer>
+			<ReactECharts
+				option={option}
+				notMerge={true}
+				lazyUpdate={true}
+				style={{ height: "100%", width: "100%" }}
+			/>
 		</div>
 	);
 };
 
-const TopMovers = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: (val: number) => string }) => {
+const TopMovers = ({
+	assets,
+	formatCurrency,
+}: {
+	assets: Array<{
+		id: string;
+		type: string;
+		symbol?: string;
+		name?: string;
+		currentPrice?: number;
+		currentValue?: number;
+		purchasePrice?: number;
+	}>;
+	formatCurrency: (val: number) => string;
+}) => {
 	const movers = React.useMemo(() => {
 		return assets
 			.filter((a) => ["stock", "crypto"].includes(a.type))
 			.map((a) => {
 				const currentVal = a.currentPrice || a.currentValue || 0;
 				const purchaseVal = a.purchasePrice || 0;
-				const change =
-					purchaseVal > 0
-						? ((currentVal - purchaseVal) / purchaseVal) * 100
-						: 0;
+				const change = purchaseVal > 0 ? ((currentVal - purchaseVal) / purchaseVal) * 100 : 0;
 				return {
 					...a,
 					change,
@@ -189,9 +214,7 @@ const TopMovers = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: 
 							{asset.symbol ? asset.symbol.substring(0, 2) : "AS"}
 						</div>
 						<div>
-							<div className="font-medium text-sm">
-								{asset.symbol || asset.name}
-							</div>
+							<div className="font-medium text-sm">{asset.symbol || asset.name}</div>
 							<div className="text-xs text-muted-foreground">{asset.name}</div>
 						</div>
 					</div>
@@ -218,28 +241,71 @@ const TopMovers = ({ assets, formatCurrency }: { assets: any[]; formatCurrency: 
 // --- MAIN COMPONENT ---
 
 export function DensityDashboard() {
-	const {
-		assets,
-		getPortfolioValue,
-		getPortfolioGainLoss,
-		transactions,
-		selectedPortfolio,
-	} = usePortfolio();
+	const { assets, getPortfolioValue, getPortfolioGainLoss, transactions, selectedPortfolio } =
+		usePortfolio();
 
 	const totalValue = getPortfolioValue();
 	const { gain, gainPercent } = getPortfolioGainLoss();
 
-	const performanceHistory =
-		selectedPortfolio?.analytics?.performanceHistory ?? [];
+	const performanceHistory = selectedPortfolio?.analytics?.performanceHistory ?? [];
 	const performanceData =
 		performanceHistory.length > 0
-			? performanceHistory.map((p: any) => ({
+			? performanceHistory.map((p: { date: string; value: number }) => ({
 					name: new Date(p.date).toLocaleDateString("en-US", {
 						month: "short",
 					}),
 					val: p.value,
 				}))
 			: [{ name: "No Data", val: 0 }];
+	const performanceOption = React.useMemo<EChartsCoreOption>(() => {
+		return {
+			grid: {
+				left: 24,
+				right: 16,
+				top: 12,
+				bottom: 28,
+				containLabel: true,
+			},
+			xAxis: {
+				type: "category",
+				data: performanceData.map((point) => point.name),
+				axisLine: { show: false },
+				axisTick: { show: false },
+			},
+			yAxis: {
+				type: "value",
+				show: false,
+			},
+			tooltip: {
+				trigger: "axis",
+			},
+			series: [
+				{
+					type: "line",
+					data: performanceData.map((point) => point.val),
+					smooth: true,
+					showSymbol: false,
+					lineStyle: {
+						color: "#2563eb",
+						width: 2,
+					},
+					areaStyle: {
+						color: {
+							type: "linear",
+							x: 0,
+							y: 0,
+							x2: 0,
+							y2: 1,
+							colorStops: [
+								{ offset: 0, color: "rgba(37,99,235,0.3)" },
+								{ offset: 1, color: "rgba(37,99,235,0)" },
+							],
+						},
+					},
+				},
+			],
+		};
+	}, [performanceData]);
 
 	const liabilities = assets
 		.filter((a) => a.type === "loan")
@@ -274,22 +340,14 @@ export function DensityDashboard() {
 				<KpiCard
 					title="Liabilities"
 					value={formatCurrency(liabilities)}
-					change={
-						totalAssets > 0
-							? `${((liabilities / totalAssets) * 100).toFixed(1)}%`
-							: "0%"
-					}
+					change={totalAssets > 0 ? `${((liabilities / totalAssets) * 100).toFixed(1)}%` : "0%"}
 					trend={liabilities > 0 ? "down" : "up"}
 					icon={TrendingDown}
 				/>
 				<KpiCard
 					title="Liquid Assets"
 					value={formatCurrency(liquidAssets)}
-					change={
-						totalAssets > 0
-							? `${((liquidAssets / totalAssets) * 100).toFixed(1)}%`
-							: "0%"
-					}
+					change={totalAssets > 0 ? `${((liquidAssets / totalAssets) * 100).toFixed(1)}%` : "0%"}
 					trend="up"
 					icon={Activity}
 				/>
@@ -302,37 +360,15 @@ export function DensityDashboard() {
 					<Card className="h-[400px] border-border/60">
 						<CardHeader>
 							<CardTitle>Portfolio Performance</CardTitle>
-							<CardDescription>
-								Time-weighted returns vs. S&P 500 benchmark
-							</CardDescription>
+							<CardDescription>Time-weighted returns vs. S&P 500 benchmark</CardDescription>
 						</CardHeader>
 						<CardContent className="h-[320px]">
-							<ResponsiveContainer width="100%" height="100%">
-								<AreaChart data={performanceData}>
-									<defs>
-										<linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
-											<stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-											<stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-										</linearGradient>
-									</defs>
-									<XAxis dataKey="name" axisLine={false} tickLine={false} />
-									<YAxis hide domain={["dataMin", "dataMax"]} />
-									<Tooltip
-										contentStyle={{
-											backgroundColor: "var(--card)",
-											borderColor: "var(--border)",
-										}}
-									/>
-									<Area
-										type="monotone"
-										dataKey="val"
-										stroke="#2563eb"
-										fillOpacity={1}
-										fill="url(#colorVal)"
-										strokeWidth={2}
-									/>
-								</AreaChart>
-							</ResponsiveContainer>
+							<ReactECharts
+								option={performanceOption}
+								notMerge={true}
+								lazyUpdate={true}
+								style={{ height: "100%", width: "100%" }}
+							/>
 						</CardContent>
 					</Card>
 
@@ -343,9 +379,9 @@ export function DensityDashboard() {
 									Allocation
 								</CardTitle>
 							</CardHeader>
-						<CardContent>
-							<AssetAllocationChart assets={assets} formatCurrency={formatCurrency} />
-						</CardContent>
+							<CardContent>
+								<AssetAllocationChart assets={assets} formatCurrency={formatCurrency} />
+							</CardContent>
 						</Card>
 
 						<Card className="border-border/60">
@@ -379,19 +415,14 @@ export function DensityDashboard() {
 												<div className="flex flex-col">
 													<span className="font-medium">
 														{tx.type === "buy" ? "Bought" : "Sold"}{" "}
-														{assets.find((a) => a.id === tx.assetId)?.symbol ||
-															"Asset"}
+														{assets.find((a) => a.id === tx.assetId)?.symbol || "Asset"}
 													</span>
 													<span className="text-xs text-muted-foreground">
-														{tx.date
-															? format(new Date(tx.date), "MMM d, yyyy")
-															: "Unknown date"}
+														{tx.date ? format(new Date(tx.date), "MMM d, yyyy") : "Unknown date"}
 													</span>
 												</div>
 											</div>
-											<span className="font-mono font-medium">
-												{formatCurrency(tx.total || 0)}
-											</span>
+											<span className="font-mono font-medium">{formatCurrency(tx.total || 0)}</span>
 										</div>
 									))}
 									{transactions.length === 0 && (
@@ -412,16 +443,14 @@ export function DensityDashboard() {
 							<CardTitle>Top Movers</CardTitle>
 							<CardDescription>Intraday performance</CardDescription>
 						</CardHeader>
-					<CardContent className="pt-6">
-						<TopMovers assets={assets} formatCurrency={formatCurrency} />
-					</CardContent>
+						<CardContent className="pt-6">
+							<TopMovers assets={assets} formatCurrency={formatCurrency} />
+						</CardContent>
 					</Card>
 
 					<Card className="border-border/60">
 						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-medium">
-								Portfolio Stats
-							</CardTitle>
+							<CardTitle className="text-sm font-medium">Portfolio Stats</CardTitle>
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-4">
@@ -431,9 +460,7 @@ export function DensityDashboard() {
 									</div>
 									<div>
 										<p className="font-medium">Total Assets</p>
-										<p className="text-xs text-muted-foreground">
-											{assets.length} holdings
-										</p>
+										<p className="text-xs text-muted-foreground">{assets.length} holdings</p>
 									</div>
 								</div>
 								<div className="flex items-start gap-3 text-sm">

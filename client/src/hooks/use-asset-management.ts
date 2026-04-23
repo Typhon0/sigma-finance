@@ -124,9 +124,9 @@ export function invalidateDashboardData(cache: any) {
 	cache.gc();
 }
 
-export function invalidatePortfolio(cache: any, portfolioID: string) {
+export function invalidatePortfolio(cache: any, portfolioId: string) {
 	cache.evict({
-		id: cache.identify({ __typename: "Portfolio", id: portfolioID }),
+		id: cache.identify({ __typename: "Portfolio", id: portfolioId }),
 	});
 	cache.gc();
 }
@@ -201,66 +201,40 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 			if (mutationData?.addAssetToPortfolio) {
 				invalidatePortfolioQueries(cache);
 				invalidateDashboardData(cache);
-				invalidatePortfolio(
-					cache,
-					mutationData.addAssetToPortfolio.portfolioID,
-				);
+				invalidatePortfolio(cache, mutationData.addAssetToPortfolio.portfolioID);
 			}
 		},
-		onError: (error) => {
-			console.error("Add asset to portfolio error:", error);
-		},
+		onError: (_error) => {},
 	});
 
-	const [removeAssetFromPortfolioMutation] = useMutation(
-		REMOVE_ASSET_FROM_PORTFOLIO,
-		{
-			client: apolloClient,
-			update: (cache, { data: mutationData }, { variables }) => {
-				if (mutationData?.removeAssetFromPortfolio && variables) {
-					const portfolioId =
-						typeof variables.portfolioID === "string"
-							? variables.portfolioID
-							: "";
+	const [removeAssetFromPortfolioMutation] = useMutation(REMOVE_ASSET_FROM_PORTFOLIO, {
+		client: apolloClient,
+		update: (cache, { data: mutationData }, { variables }) => {
+			if (mutationData?.removeAssetFromPortfolio && variables) {
+				const portfolioId = typeof variables.portfolioID === "string" ? variables.portfolioID : "";
 
-					if (portfolioId) {
-						invalidatePortfolioQueries(cache);
-						invalidateDashboardData(cache);
-						invalidatePortfolio(cache, portfolioId);
-					}
+				if (portfolioId) {
+					invalidatePortfolioQueries(cache);
+					invalidateDashboardData(cache);
+					invalidatePortfolio(cache, portfolioId);
 				}
-			},
-			onError: (error) => {
-				console.error("Remove asset from portfolio error:", error);
-			},
+			}
 		},
-	);
+		onError: (_error) => {},
+	});
 
 	const addAssetToPortfolio = async (input: PortfolioAssetInput) => {
-		try {
-			const result = await addAssetToPortfolioMutation({
-				variables: { input },
-			});
-			return result;
-		} catch (error) {
-			console.error("Error adding asset to portfolio:", error);
-			throw error;
-		}
+		const result = await addAssetToPortfolioMutation({
+			variables: { input },
+		});
+		return result;
 	};
 
-	const removeAssetFromPortfolio = async (
-		portfolioID: string,
-		assetID: string,
-	) => {
-		try {
-			const result = await removeAssetFromPortfolioMutation({
-				variables: { portfolioID, assetID },
-			});
-			return result;
-		} catch (error) {
-			console.error("Error removing asset from portfolio:", error);
-			throw error;
-		}
+	const removeAssetFromPortfolio = async (portfolioId: string, assetId: string) => {
+		const result = await removeAssetFromPortfolioMutation({
+			variables: { portfolioID: portfolioId, assetID: assetId },
+		});
+		return result;
 	};
 
 	return {

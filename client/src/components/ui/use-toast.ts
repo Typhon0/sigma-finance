@@ -9,10 +9,7 @@ type ToastOptions = {
 	};
 };
 
-type ToastFunction = (
-	message: ReactNode,
-	options?: ToastOptions,
-) => string | number;
+type ToastFunction = (message: ReactNode, options?: ToastOptions) => string | number;
 
 interface Toast extends ToastFunction {
 	success: ToastFunction;
@@ -26,12 +23,10 @@ const toast = ((message: ReactNode, options?: ToastOptions) =>
 
 toast.success = (message: ReactNode, options?: ToastOptions) =>
 	sonnerToast.success(message, options);
-toast.info = (message: ReactNode, options?: ToastOptions) =>
-	sonnerToast.info(message, options);
+toast.info = (message: ReactNode, options?: ToastOptions) => sonnerToast.info(message, options);
 toast.warning = (message: ReactNode, options?: ToastOptions) =>
 	sonnerToast.warning(message, options);
-toast.error = (message: ReactNode, options?: ToastOptions) =>
-	sonnerToast.error(message, options);
+toast.error = (message: ReactNode, options?: ToastOptions) => sonnerToast.error(message, options);
 
 export const useToast = () => {
 	return { toast };

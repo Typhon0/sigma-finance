@@ -271,9 +271,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			fireEvent.click(deleteButtons[0]);
 
 			await waitFor(() => {
-				expect(mockOnPortfolioDelete).toHaveBeenCalledWith(
-					mockPortfolios[0].id,
-				);
+				expect(mockOnPortfolioDelete).toHaveBeenCalledWith(mockPortfolios[0].id);
 			});
 		});
 
@@ -321,11 +319,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			const mockOnAssetClick = vi.fn();
 
 			render(
-				<AssetPerformance
-					assets={mockAssets}
-					isLoading={false}
-					onAssetClick={mockOnAssetClick}
-				/>,
+				<AssetPerformance assets={mockAssets} isLoading={false} onAssetClick={mockOnAssetClick} />,
 			);
 
 			expect(screen.getByText("Top Performing Assets")).toBeInTheDocument();
@@ -341,11 +335,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			const mockOnAssetClick = vi.fn();
 
 			render(
-				<AssetPerformance
-					assets={mockAssets}
-					isLoading={false}
-					onAssetClick={mockOnAssetClick}
-				/>,
+				<AssetPerformance assets={mockAssets} isLoading={false} onAssetClick={mockOnAssetClick} />,
 			);
 
 			expect(screen.getByText("+$5.25")).toBeInTheDocument();
@@ -359,11 +349,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			const mockOnAssetClick = vi.fn();
 
 			render(
-				<AssetPerformance
-					assets={mockAssets}
-					isLoading={false}
-					onAssetClick={mockOnAssetClick}
-				/>,
+				<AssetPerformance assets={mockAssets} isLoading={false} onAssetClick={mockOnAssetClick} />,
 			);
 
 			const appleAsset = screen.getByText("Apple Inc.");
@@ -377,13 +363,7 @@ describe("Dashboard Asset Management UI Components", () => {
 		it("should show loading state", () => {
 			const mockOnAssetClick = vi.fn();
 
-			render(
-				<AssetPerformance
-					assets={[]}
-					isLoading={true}
-					onAssetClick={mockOnAssetClick}
-				/>,
-			);
+			render(<AssetPerformance assets={[]} isLoading={true} onAssetClick={mockOnAssetClick} />);
 
 			expect(screen.getByText("Loading assets...")).toBeInTheDocument();
 		});
@@ -392,11 +372,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			const mockOnAssetClick = vi.fn();
 
 			render(
-				<AssetPerformance
-					assets={mockAssets}
-					isLoading={false}
-					onAssetClick={mockOnAssetClick}
-				/>,
+				<AssetPerformance assets={mockAssets} isLoading={false} onAssetClick={mockOnAssetClick} />,
 			);
 
 			const charts = screen.getAllByTestId("mock-chart");
@@ -406,13 +382,7 @@ describe("Dashboard Asset Management UI Components", () => {
 		it("should handle empty asset list", () => {
 			const mockOnAssetClick = vi.fn();
 
-			render(
-				<AssetPerformance
-					assets={[]}
-					isLoading={false}
-					onAssetClick={mockOnAssetClick}
-				/>,
-			);
+			render(<AssetPerformance assets={[]} isLoading={false} onAssetClick={mockOnAssetClick} />);
 
 			expect(screen.getByText("No assets to display")).toBeInTheDocument();
 		});
@@ -432,12 +402,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			const mockCreatePortfolio = vi.fn();
 			const mockAddAsset = vi.fn();
 
-			render(
-				<QuickActions
-					onCreatePortfolio={mockCreatePortfolio}
-					onAddAsset={mockAddAsset}
-				/>,
-			);
+			render(<QuickActions onCreatePortfolio={mockCreatePortfolio} onAddAsset={mockAddAsset} />);
 
 			const createPortfolioBtn = screen.getByText("Create Portfolio");
 			fireEvent.click(createPortfolioBtn);
@@ -520,9 +485,7 @@ describe("Dashboard Asset Management UI Components", () => {
 			render(<RecentTransactions transactions={[]} />);
 
 			expect(screen.getByText("No recent transactions")).toBeInTheDocument();
-			expect(
-				screen.getByText("Your transaction history will appear here"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Your transaction history will appear here")).toBeInTheDocument();
 		});
 
 		it("should show transaction type indicators with correct styling", () => {
@@ -574,12 +537,7 @@ describe("Dashboard Asset Management UI Components", () => {
 		it("should handle asset selection in both formats", async () => {
 			const mockOnAssetSelect = vi.fn();
 
-			render(
-				<ResponsiveAssetList
-					assets={mockAssets}
-					onAssetSelect={mockOnAssetSelect}
-				/>,
-			);
+			render(<ResponsiveAssetList assets={mockAssets} onAssetSelect={mockOnAssetSelect} />);
 
 			const appleAsset = screen.getByText("Apple Inc.");
 			fireEvent.click(appleAsset);
@@ -626,11 +584,7 @@ describe("Dashboard Asset Management UI Components", () => {
 						onPortfolioSelect={mockOnPortfolioSelect}
 						onPortfolioDelete={mockOnPortfolioDelete}
 					/>
-					<AssetPerformance
-						assets={mockAssets}
-						isLoading={false}
-						onAssetClick={mockOnAssetClick}
-					/>
+					<AssetPerformance assets={mockAssets} isLoading={false} onAssetClick={mockOnAssetClick} />
 					<QuickActions />
 					<RecentTransactions transactions={mockTransactions} />
 				</div>,
@@ -657,11 +611,7 @@ describe("Dashboard Asset Management UI Components", () => {
 						onPortfolioDelete={mockOnPortfolioDelete}
 						loading={true}
 					/>
-					<AssetPerformance
-						assets={[]}
-						isLoading={true}
-						onAssetClick={mockOnAssetClick}
-					/>
+					<AssetPerformance assets={[]} isLoading={true} onAssetClick={mockOnAssetClick} />
 					<RecentTransactions transactions={[]} loading={true} />
 				</div>,
 			);

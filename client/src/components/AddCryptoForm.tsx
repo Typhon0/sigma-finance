@@ -17,33 +17,22 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Logo } from "./Logo";
 import {
 	TradeableInstrumentSearch,
 	type TradeableInstrumentSelection,
 } from "@/components/assets/tradeable-instrument-search";
 import { InstrumentAssetType } from "@/gql/graphql";
+import { Logo } from "./Logo";
+import { usePortfolio } from "./PortfolioProvider";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
 import { Card } from "./ui/card";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
-import { usePortfolio } from "./PortfolioProvider";
 
 interface AddCryptoFormProps {
 	open: boolean;
@@ -67,6 +56,8 @@ interface AddCryptoFormSubmitData {
 	quoteCurrency: string;
 }
 
+type SupportedCurrency = "USD" | "EUR" | "GBP";
+
 interface FormData {
 	instrumentID: string;
 	cryptoId: string;
@@ -78,13 +69,18 @@ interface FormData {
 	purchaseDate: Date | undefined;
 	walletAddress: string;
 	notes: string;
-	quoteCurrency: string;
+	quoteCurrency: SupportedCurrency;
 }
 
 const CURRENCIES = [
 	{ value: "USD", label: "US Dollar (USD)", symbol: "$", icon: DollarSign },
 	{ value: "EUR", label: "Euro (EUR)", symbol: "€", icon: Euro },
-	{ value: "GBP", label: "British Pound (GBP)", symbol: "£", icon: PoundSterling },
+	{
+		value: "GBP",
+		label: "British Pound (GBP)",
+		symbol: "£",
+		icon: PoundSterling,
+	},
 ] as const;
 
 const SUPPORTED_CURRENCIES = new Set(CURRENCIES.map((currency) => currency.value));
@@ -92,8 +88,7 @@ const SUPPORTED_CURRENCIES = new Set(CURRENCIES.map((currency) => currency.value
 export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 	const { user } = usePortfolio();
 	const [addType, setAddType] = useState<AddType>(null);
-	const [selectedCrypto, setSelectedCrypto] =
-		useState<TradeableInstrumentSelection | null>(null);
+	const [selectedCrypto, setSelectedCrypto] = useState<TradeableInstrumentSelection | null>(null);
 	const userDisplayCurrency = (user?.displayCurrency ?? "USD").toUpperCase();
 	const [formData, setFormData] = useState<FormData>({
 		instrumentID: "",
@@ -106,22 +101,19 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 		purchaseDate: undefined,
 		walletAddress: "",
 		notes: "",
-		quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+		quoteCurrency: (SUPPORTED_CURRENCIES.has(userDisplayCurrency)
 			? userDisplayCurrency
-			: "USD",
+			: "USD") as SupportedCurrency,
 	});
 
-	const handleInputChange = <K extends keyof FormData>(
-		field: K,
-		value: FormData[K],
-	) => {
+	const handleInputChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
 	const handleSelectCrypto = (crypto: TradeableInstrumentSelection) => {
 		const instrumentCurrency = (crypto.currency ?? "").toUpperCase();
-		const resolvedCurrency = SUPPORTED_CURRENCIES.has(instrumentCurrency)
-			? instrumentCurrency
+		const resolvedCurrency = SUPPORTED_CURRENCIES.has(instrumentCurrency as SupportedCurrency)
+			? (instrumentCurrency as SupportedCurrency)
 			: "";
 		setSelectedCrypto(crypto);
 		setFormData((prev) => ({
@@ -180,10 +172,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			toast.error("Please enter a valid quantity");
 			return;
 		}
-		if (
-			!formData.averageBuyPrice ||
-			parseFloat(formData.averageBuyPrice) <= 0
-		) {
+		if (!formData.averageBuyPrice || parseFloat(formData.averageBuyPrice) <= 0) {
 			toast.error("Please enter a valid purchase price");
 			return;
 		}
@@ -221,9 +210,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			purchaseDate: undefined,
 			walletAddress: "",
 			notes: "",
-			quoteCurrency: SUPPORTED_CURRENCIES.has(userDisplayCurrency)
+			quoteCurrency: (SUPPORTED_CURRENCIES.has(userDisplayCurrency)
 				? userDisplayCurrency
-				: "USD",
+				: "USD") as SupportedCurrency,
 		});
 		setSelectedCrypto(null);
 		onClose();
@@ -236,7 +225,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 	const isQuoteCurrencyLocked =
 		!!selectedCrypto &&
 		selectedCrypto.source !== "manual" &&
-		SUPPORTED_CURRENCIES.has(selectedInstrumentCurrency);
+		SUPPORTED_CURRENCIES.has(selectedInstrumentCurrency as SupportedCurrency);
 	const currencySymbol = getCurrencySymbol(formData.quoteCurrency);
 
 	// Step 1: Choose add type
@@ -263,10 +252,14 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			<div className="flex-1 overflow-y-auto p-6">
 				<div className="grid gap-4">
 					{/* Exchange Sync */}
-					<button
-						type="button"
+					<div
+						role="button"
+						tabIndex={0}
 						onClick={() => setAddType("exchange")}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") setAddType("exchange");
+						}}
+						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -275,33 +268,28 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 							<div className="flex-1">
 								<h3 className="font-medium mb-1">Exchange Sync</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Connect your exchange account to automatically sync your
-									crypto holdings
+									Connect your exchange account to automatically sync your crypto holdings
 								</p>
 								<div className="flex flex-wrap gap-2">
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Binance
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Coinbase
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Kraken
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										+10 more
-									</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Binance</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Coinbase</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Kraken</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">+10 more</span>
 								</div>
 							</div>
 							<ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
 						</div>
-					</button>
+					</div>
 
 					{/* Wallet Sync */}
-					<button
-						type="button"
+					<div
+						role="button"
+						tabIndex={0}
 						onClick={() => setAddType("wallet")}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") setAddType("wallet");
+						}}
+						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400">
@@ -310,33 +298,28 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 							<div className="flex-1">
 								<h3 className="font-medium mb-1">Wallet Sync</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Connect your wallet address to track your on-chain crypto
-									holdings
+									Connect your wallet address to track your on-chain crypto holdings
 								</p>
 								<div className="flex flex-wrap gap-2">
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										MetaMask
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Trust Wallet
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Ledger
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Any Address
-									</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">MetaMask</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Trust Wallet</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Ledger</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Any Address</span>
 								</div>
 							</div>
 							<ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
 						</div>
-					</button>
+					</div>
 
 					{/* Manual Entry */}
-					<button
-						type="button"
+					<div
+						role="button"
+						tabIndex={0}
 						onClick={() => setAddType("manual")}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") setAddType("manual");
+						}}
+						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-green-500/10 text-green-600 dark:text-green-400">
@@ -348,17 +331,13 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 									Manually add a single cryptocurrency holding to your portfolio
 								</p>
 								<div className="flex flex-wrap gap-2">
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Quick & Simple
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Full Control
-									</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Quick & Simple</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Full Control</span>
 								</div>
 							</div>
 							<ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
 						</div>
-					</button>
+					</div>
 				</div>
 
 				{/* Info Box */}
@@ -368,8 +347,8 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 						<div className="text-xs text-blue-900 dark:text-blue-100">
 							<p className="font-medium mb-1">Privacy & Security</p>
 							<p>
-								All your crypto data is stored locally and never shared. API
-								keys are encrypted and can be revoked at any time.
+								All your crypto data is stored locally and never shared. API keys are encrypted and
+								can be revoked at any time.
 							</p>
 						</div>
 					</div>
@@ -428,8 +407,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								<div className="space-y-3">
 									<Label className="flex items-center gap-2">
 										<Bitcoin className="h-4 w-4 text-primary" />
-										Select Cryptocurrency{" "}
-										<span className="text-destructive">*</span>
+										Select Cryptocurrency <span className="text-destructive">*</span>
 									</Label>
 
 									{!selectedCrypto ? (
@@ -465,28 +443,28 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 														<Bitcoin className="h-6 w-6" />
 													</div>
 													<div>
-														<div className="font-medium text-lg">
-															{selectedCryptoDisplay?.name}
-														</div>
+														<div className="font-medium text-lg">{selectedCryptoDisplay?.name}</div>
 														<div className="text-sm text-muted-foreground">
 															{selectedCryptoDisplay?.symbol}
 														</div>
 													</div>
 												</div>
-													<div className="text-right">
-														<div className="text-sm text-muted-foreground">
-															{selectedCryptoDisplay?.exchange}
-														</div>
-														<div className="text-xs text-muted-foreground">
-															{selectedCryptoDisplay?.providerSource}
-														</div>
-														{SUPPORTED_CURRENCIES.has(selectedInstrumentCurrency) ? (
-															<div className="text-xs text-muted-foreground">
-																Quote: {selectedInstrumentCurrency}
-															</div>
-														) : null}
+												<div className="text-right">
+													<div className="text-sm text-muted-foreground">
+														{selectedCryptoDisplay?.exchange}
 													</div>
+													<div className="text-xs text-muted-foreground">
+														{selectedCryptoDisplay?.providerSource}
+													</div>
+													{SUPPORTED_CURRENCIES.has(
+														selectedInstrumentCurrency as SupportedCurrency,
+													) ? (
+														<div className="text-xs text-muted-foreground">
+															Quote: {selectedInstrumentCurrency}
+														</div>
+													) : null}
 												</div>
+											</div>
 											<Button
 												type="button"
 												variant="ghost"
@@ -523,10 +501,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 
 										{/* Quantity */}
 										<div className="space-y-2">
-											<Label
-												htmlFor="quantity"
-												className="flex items-center gap-2"
-											>
+											<Label htmlFor="quantity" className="flex items-center gap-2">
 												<Hash className="h-4 w-4 text-primary" />
 												Quantity <span className="text-destructive">*</span>
 											</Label>
@@ -536,9 +511,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 												step="0.00000001"
 												placeholder="0.00000000"
 												value={formData.quantity}
-												onChange={(e) =>
-													handleInputChange("quantity", e.target.value)
-												}
+												onChange={(e) => handleInputChange("quantity", e.target.value)}
 												className="font-mono"
 											/>
 											<p className="text-xs text-muted-foreground">
@@ -548,10 +521,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 
 										{/* Average Buy Price */}
 										<div className="space-y-2">
-											<Label
-												htmlFor="averageBuyPrice"
-												className="flex items-center gap-2"
-											>
+											<Label htmlFor="averageBuyPrice" className="flex items-center gap-2">
 												<DollarSign className="h-4 w-4 text-primary" />
 												Average Buy Price ({formData.quoteCurrency}){" "}
 												<span className="text-destructive">*</span>
@@ -562,9 +532,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 												step="0.01"
 												placeholder="0.00"
 												value={formData.averageBuyPrice}
-												onChange={(e) =>
-													handleInputChange("averageBuyPrice", e.target.value)
-												}
+												onChange={(e) => handleInputChange("averageBuyPrice", e.target.value)}
 												className="font-mono"
 											/>
 											<p className="text-xs text-muted-foreground">
@@ -577,7 +545,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 											<Select
 												value={formData.quoteCurrency}
 												onValueChange={(value) =>
-													handleInputChange("quoteCurrency", value)
+													handleInputChange("quoteCurrency", value as SupportedCurrency)
 												}
 												disabled={isQuoteCurrencyLocked}
 											>
@@ -604,9 +572,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 											<Label className="flex items-center gap-2">
 												<CalendarIcon className="h-4 w-4 text-primary" />
 												Purchase Date{" "}
-												<span className="text-muted-foreground text-xs">
-													(Optional)
-												</span>
+												<span className="text-muted-foreground text-xs">(Optional)</span>
 											</Label>
 											<Popover>
 												<PopoverTrigger asChild>
@@ -624,10 +590,8 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 													<Calendar
 														mode="single"
 														selected={formData.purchaseDate}
-														onSelect={(date) =>
-															handleInputChange("purchaseDate", date)
-														}
-														initialFocus
+														onSelect={(date) => handleInputChange("purchaseDate", date)}
+														autoFocus
 													/>
 												</PopoverContent>
 											</Popover>
@@ -646,19 +610,14 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 										{/* Wallet Address */}
 										<div className="space-y-2">
 											<Label htmlFor="walletAddress" className="text-sm">
-												Wallet Address{" "}
-												<span className="text-muted-foreground">
-													(Optional)
-												</span>
+												Wallet Address <span className="text-muted-foreground">(Optional)</span>
 											</Label>
 											<Input
 												id="walletAddress"
 												type="text"
 												placeholder="0x..."
 												value={formData.walletAddress}
-												onChange={(e) =>
-													handleInputChange("walletAddress", e.target.value)
-												}
+												onChange={(e) => handleInputChange("walletAddress", e.target.value)}
 												className="font-mono text-xs"
 											/>
 											<p className="text-xs text-muted-foreground">
@@ -669,18 +628,13 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 										{/* Notes */}
 										<div className="space-y-2">
 											<Label htmlFor="notes" className="text-sm">
-												Notes{" "}
-												<span className="text-muted-foreground">
-													(Optional)
-												</span>
+												Notes <span className="text-muted-foreground">(Optional)</span>
 											</Label>
 											<Textarea
 												id="notes"
 												placeholder="Add any notes about this investment..."
 												value={formData.notes}
-												onChange={(e) =>
-													handleInputChange("notes", e.target.value)
-												}
+												onChange={(e) => handleInputChange("notes", e.target.value)}
 												className="resize-none"
 												rows={3}
 											/>
@@ -689,68 +643,57 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								)}
 
 								{/* Summary */}
-								{selectedCrypto &&
-									formData.quantity &&
-									formData.averageBuyPrice && (
-										<div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-											<h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-												<TrendingUp className="h-4 w-4" />
-												Investment Summary
-											</h4>
-											<div className="space-y-2 text-sm">
-												<div className="flex justify-between">
-													<span className="text-muted-foreground">
-														Total Cost:
-													</span>
-													<span className="font-mono">
+								{selectedCrypto && formData.quantity && formData.averageBuyPrice && (
+									<div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
+										<h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+											<TrendingUp className="h-4 w-4" />
+											Investment Summary
+										</h4>
+										<div className="space-y-2 text-sm">
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Total Cost:</span>
+												<span className="font-mono">
+													{currencySymbol}
+													{calculateTotalCost().toLocaleString("en-US", {
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													})}
+												</span>
+											</div>
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Current Value:</span>
+												<span className="font-mono">
+													{currencySymbol}
+													{calculateTotalValue().toLocaleString("en-US", {
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													})}
+												</span>
+											</div>
+											<div className="flex justify-between pt-2 border-t">
+												<span className="text-muted-foreground">Profit/Loss:</span>
+												<div className="text-right">
+													<div
+														className={`font-mono ${profitLoss.amount >= 0 ? "text-green-600" : "text-red-600"}`}
+													>
+														{profitLoss.amount >= 0 ? "+" : ""}
 														{currencySymbol}
-														{calculateTotalCost().toLocaleString("en-US", {
+														{Math.abs(profitLoss.amount).toLocaleString("en-US", {
 															minimumFractionDigits: 2,
 															maximumFractionDigits: 2,
 														})}
-													</span>
-												</div>
-												<div className="flex justify-between">
-													<span className="text-muted-foreground">
-														Current Value:
-													</span>
-													<span className="font-mono">
-														{currencySymbol}
-														{calculateTotalValue().toLocaleString("en-US", {
-															minimumFractionDigits: 2,
-															maximumFractionDigits: 2,
-														})}
-													</span>
-												</div>
-												<div className="flex justify-between pt-2 border-t">
-													<span className="text-muted-foreground">
-														Profit/Loss:
-													</span>
-													<div className="text-right">
-														<div
-															className={`font-mono ${profitLoss.amount >= 0 ? "text-green-600" : "text-red-600"}`}
-														>
-															{profitLoss.amount >= 0 ? "+" : ""}
-															{currencySymbol}
-															{Math.abs(profitLoss.amount).toLocaleString(
-																"en-US",
-																{
-																	minimumFractionDigits: 2,
-																	maximumFractionDigits: 2,
-																},
-															)}
-														</div>
-														<div
-															className={`text-xs ${profitLoss.amount >= 0 ? "text-green-600" : "text-red-600"}`}
-														>
-															{profitLoss.amount >= 0 ? "+" : ""}
-															{profitLoss.percent.toFixed(2)}%
-														</div>
+													</div>
+													<div
+														className={`text-xs ${profitLoss.amount >= 0 ? "text-green-600" : "text-red-600"}`}
+													>
+														{profitLoss.amount >= 0 ? "+" : ""}
+														{profitLoss.percent.toFixed(2)}%
 													</div>
 												</div>
 											</div>
 										</div>
-									)}
+									</div>
+								)}
 
 								{/* Info Box */}
 								<div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
@@ -759,9 +702,8 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 										<div className="text-xs text-blue-900 dark:text-blue-100">
 											<p className="font-medium mb-1">Privacy & Security</p>
 											<p>
-												Your wallet addresses and crypto holdings are stored
-												locally and never shared. Always verify addresses before
-												transactions.
+												Your wallet addresses and crypto holdings are stored locally and never
+												shared. Always verify addresses before transactions.
 											</p>
 										</div>
 									</div>
@@ -828,17 +770,12 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 							<div className="space-y-4">
 								<div className="text-center py-12">
 									<RefreshCw className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-									<h3 className="font-medium mb-2">
-										Exchange Sync Coming Soon
-									</h3>
+									<h3 className="font-medium mb-2">Exchange Sync Coming Soon</h3>
 									<p className="text-sm text-muted-foreground mb-4">
-										We're working on integrating with major exchanges like
-										Binance, Coinbase, and Kraken.
+										We're working on integrating with major exchanges like Binance, Coinbase, and
+										Kraken.
 									</p>
-									<Button
-										variant="outline"
-										onClick={() => setAddType("manual")}
-									>
+									<Button variant="outline" onClick={() => setAddType("manual")}>
 										Use Manual Entry Instead
 									</Button>
 								</div>
@@ -872,9 +809,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								<div className="h-4 w-px bg-border" />
 								<div className="flex-1">
 									<h2 className="text-2xl">Wallet Sync</h2>
-									<p className="text-sm text-muted-foreground mt-1">
-										Connect your wallet address
-									</p>
+									<p className="text-sm text-muted-foreground mt-1">Connect your wallet address</p>
 								</div>
 							</div>
 						</div>
@@ -886,13 +821,10 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 									<Link2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
 									<h3 className="font-medium mb-2">Wallet Sync Coming Soon</h3>
 									<p className="text-sm text-muted-foreground mb-4">
-										We're working on blockchain integration to automatically
-										track your wallet balances.
+										We're working on blockchain integration to automatically track your wallet
+										balances.
 									</p>
-									<Button
-										variant="outline"
-										onClick={() => setAddType("manual")}
-									>
+									<Button variant="outline" onClick={() => setAddType("manual")}>
 										Use Manual Entry Instead
 									</Button>
 								</div>

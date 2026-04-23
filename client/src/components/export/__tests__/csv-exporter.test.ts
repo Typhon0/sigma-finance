@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { CSVExporter } from "../csv-exporter";
-import type {
-	AuditTrailData,
-	PortfolioExportData,
-	TaxReportData,
-} from "../types";
+import type { AuditTrailData, PortfolioExportData, TaxReportData } from "../types";
 
 describe("CSVExporter", () => {
 	describe("escapeCSVField", () => {
@@ -262,9 +258,7 @@ describe("CSVExporter", () => {
 
 			const csv = CSVExporter.exportAuditTrail(mockData);
 
-			expect(csv).toContain(
-				"AUDIT TRAIL - 2024-01-01T00:00:00Z to 2024-12-31T23:59:59Z",
-			);
+			expect(csv).toContain("AUDIT TRAIL - 2024-01-01T00:00:00Z to 2024-12-31T23:59:59Z");
 			expect(csv).toContain("Timestamp,Event Type,Entity Type");
 			expect(csv).toContain("PORTFOLIO_CREATED");
 			expect(csv).toContain("CREATE");

@@ -1,12 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	AlertCircle,
-	CheckCircle,
-	Loader2,
-	RotateCcw,
-	Save,
-	X,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, RotateCcw, Save, X } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -96,7 +89,7 @@ export function EnhancedPortfolioForm({
 }: EnhancedPortfolioFormProps) {
 	// Form state
 	const form = useForm<PortfolioFormData>({
-		resolver: zodResolver(portfolioFormSchema),
+		resolver: zodResolver(portfolioFormSchema) as any,
 		defaultValues: {
 			name: portfolio?.name || "",
 			description: portfolio?.description || "",
@@ -114,9 +107,7 @@ export function EnhancedPortfolioForm({
 	// Memoized values
 	const isEditMode = mode === "edit";
 	const isFormDisabled = disabled || isLoading || form.formState.isSubmitting;
-	const defaultSubmitText = isEditMode
-		? "Update Portfolio"
-		: "Create Portfolio";
+	const defaultSubmitText = isEditMode ? "Update Portfolio" : "Create Portfolio";
 	const finalSubmitText = submitButtonText || defaultSubmitText;
 
 	// Watch form changes
@@ -196,7 +187,6 @@ export function EnhancedPortfolioForm({
 				form.reset();
 			}
 		} catch (error) {
-			console.error("Form submission error:", error);
 			setIsSubmitSuccessful(false);
 
 			// Call error callback
@@ -236,16 +226,10 @@ export function EnhancedPortfolioForm({
 
 	// Name suggestions
 	const nameSuggestions = useMemo(() => {
-		if (
-			!watchedName ||
-			nameValidationError !== portfolioErrorMessages.nameExists
-		) {
+		if (!watchedName || nameValidationError !== portfolioErrorMessages.nameExists) {
 			return [];
 		}
-		return portfolioValidationHelpers.generateNameSuggestions(
-			watchedName,
-			existingPortfolioNames,
-		);
+		return portfolioValidationHelpers.generateNameSuggestions(watchedName, existingPortfolioNames);
 	}, [watchedName, nameValidationError, existingPortfolioNames]);
 
 	// Form validation state
@@ -256,10 +240,7 @@ export function EnhancedPortfolioForm({
 		<div className={`space-y-6 ${className}`}>
 			{/* Success Message */}
 			{(isSubmitSuccessful || showSuccessMessage) && (
-				<Alert
-					variant="default"
-					className="border-green-200 bg-green-50 text-green-800"
-				>
+				<Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
 					<CheckCircle className="h-4 w-4 text-green-600" />
 					<AlertDescription>
 						Portfolio {isEditMode ? "updated" : "created"} successfully!
@@ -276,11 +257,7 @@ export function EnhancedPortfolioForm({
 			)}
 
 			<Form {...form}>
-				<form
-					onSubmit={form.handleSubmit(handleFormSubmit)}
-					className="space-y-6"
-					noValidate
-				>
+				<form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6" noValidate>
 					{/* Portfolio Name Field */}
 					<FormField
 						control={form.control}
@@ -302,22 +279,18 @@ export function EnhancedPortfolioForm({
 									/>
 								</FormControl>
 								<FormDescription>
-									Choose a unique name for your portfolio. Use letters, numbers,
-									spaces, hyphens, underscores, and periods only.
+									Choose a unique name for your portfolio. Use letters, numbers, spaces, hyphens,
+									underscores, and periods only.
 								</FormDescription>
 								<FormMessage />
 								{nameValidationError && (
-									<p className="text-sm font-medium text-destructive">
-										{nameValidationError}
-									</p>
+									<p className="text-sm font-medium text-destructive">{nameValidationError}</p>
 								)}
 
 								{/* Name Suggestions */}
 								{nameSuggestions.length > 0 && (
 									<div className="mt-2">
-										<p className="text-sm text-muted-foreground mb-2">
-											Suggestions:
-										</p>
+										<p className="text-sm text-muted-foreground mb-2">Suggestions:</p>
 										<div className="flex flex-wrap gap-2">
 											{nameSuggestions.map((suggestion, index) => (
 												<Button
@@ -362,9 +335,8 @@ export function EnhancedPortfolioForm({
 									/>
 								</FormControl>
 								<FormDescription>
-									Add a description to help you remember this portfolio's
-									purpose (max {portfolioFormConfig.description.maxLength}{" "}
-									characters).
+									Add a description to help you remember this portfolio's purpose (max{" "}
+									{portfolioFormConfig.description.maxLength} characters).
 								</FormDescription>
 								<FormMessage />
 							</FormItem>
@@ -409,14 +381,8 @@ export function EnhancedPortfolioForm({
 							</Button>
 						)}
 
-						<Button
-							type="submit"
-							disabled={!canSubmit}
-							className="w-full sm:w-auto"
-						>
-							{isFormDisabled && (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							)}
+						<Button type="submit" disabled={!canSubmit} className="w-full sm:w-auto">
+							{isFormDisabled && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							{!isFormDisabled && <Save className="mr-2 h-4 w-4" />}
 							{finalSubmitText}
 						</Button>

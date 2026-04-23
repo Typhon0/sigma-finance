@@ -1,10 +1,4 @@
-import {
-	AlertTriangle,
-	BarChart3,
-	PieChart,
-	RefreshCw,
-	TrendingUp,
-} from "lucide-react";
+import { AlertTriangle, BarChart3, PieChart, RefreshCw, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -100,22 +94,13 @@ export function ChartErrorFallback({
 						<div className="flex flex-col items-center gap-3">
 							<AlertTriangle className="h-12 w-12 text-orange-500" />
 							<div>
-								<h3 className="font-semibold text-orange-700 mb-1">
-									Chart Unavailable
-								</h3>
-								<p className="text-sm text-muted-foreground max-w-sm">
-									{getErrorMessage()}
-								</p>
+								<h3 className="font-semibold text-orange-700 mb-1">Chart Unavailable</h3>
+								<p className="text-sm text-muted-foreground max-w-sm">{getErrorMessage()}</p>
 							</div>
 						</div>
 
 						{onRetry && (
-							<Button
-								onClick={onRetry}
-								variant="outline"
-								size="sm"
-								className="gap-2"
-							>
+							<Button onClick={onRetry} variant="outline" size="sm" className="gap-2">
 								<RefreshCw className="h-4 w-4" />
 								Retry
 							</Button>
@@ -134,12 +119,7 @@ function LineChartFallback({ height }: { height: number }) {
 			<svg width="100%" height="100%" className="text-muted-foreground">
 				<title>Chart</title>
 				<defs>
-					<pattern
-						id="grid"
-						width="20"
-						height="20"
-						patternUnits="userSpaceOnUse"
-					>
+					<pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
 						<path
 							d="M 20 0 L 0 0 0 20"
 							fill="none"
@@ -181,21 +161,9 @@ function PieChartFallback() {
 					strokeDasharray="5,5"
 					opacity="0.6"
 				/>
-				<path
-					d="M 80 20 A 60 60 0 0 1 120 140 L 80 80 Z"
-					fill="currentColor"
-					opacity="0.3"
-				/>
-				<path
-					d="M 120 140 A 60 60 0 0 1 40 140 L 80 80 Z"
-					fill="currentColor"
-					opacity="0.2"
-				/>
-				<path
-					d="M 40 140 A 60 60 0 0 1 80 20 L 80 80 Z"
-					fill="currentColor"
-					opacity="0.1"
-				/>
+				<path d="M 80 20 A 60 60 0 0 1 120 140 L 80 80 Z" fill="currentColor" opacity="0.3" />
+				<path d="M 120 140 A 60 60 0 0 1 40 140 L 80 80 Z" fill="currentColor" opacity="0.2" />
+				<path d="M 40 140 A 60 60 0 0 1 80 20 L 80 80 Z" fill="currentColor" opacity="0.1" />
 			</svg>
 		</div>
 	);
@@ -203,10 +171,7 @@ function PieChartFallback() {
 
 function BarChartFallback({ height }: { height: number }) {
 	return (
-		<div
-			className="w-full flex items-end justify-center gap-2 px-4"
-			style={{ height }}
-		>
+		<div className="w-full flex items-end justify-center gap-2 px-4" style={{ height }}>
 			{[60, 80, 45, 90, 70, 55, 85].map((barHeight, index) => (
 				<div
 					key={index}

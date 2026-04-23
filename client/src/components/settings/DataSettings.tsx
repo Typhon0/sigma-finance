@@ -1,13 +1,7 @@
 import { Database, Download, FileText, Shield } from "lucide-react";
 import { DataBackupRestore } from "@/components/export/data-backup-restore";
 import { ExportQuickActions } from "@/components/export/export-quick-actions";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth-context";
 
@@ -18,9 +12,7 @@ export function DataSettings() {
 		<div className="space-y-6">
 			<div>
 				<h1 className="text-2xl font-semibold">Data & Privacy</h1>
-				<p className="text-muted-foreground">
-					Manage your data exports and backup preferences
-				</p>
+				<p className="text-muted-foreground">Manage your data exports and backup preferences</p>
 			</div>
 
 			<Card>
@@ -30,8 +22,7 @@ export function DataSettings() {
 						Data Export
 					</CardTitle>
 					<CardDescription>
-						Export your portfolio data, transactions, and reports in various
-						formats.
+						Export your portfolio data, transactions, and reports in various formats.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -54,8 +45,7 @@ export function DataSettings() {
 						Data Backup & Restore
 					</CardTitle>
 					<CardDescription>
-						Create complete backups of your data or restore from previous
-						backups.
+						Create complete backups of your data or restore from previous backups.
 					</CardDescription>
 				</CardHeader>
 				<CardContent>
@@ -70,8 +60,7 @@ export function DataSettings() {
 						Compliance & Audit
 					</CardTitle>
 					<CardDescription>
-						Export audit trails and compliance reports for regulatory
-						requirements.
+						Export audit trails and compliance reports for regulatory requirements.
 					</CardDescription>
 				</CardHeader>
 				<CardContent className="space-y-4">
@@ -79,27 +68,17 @@ export function DataSettings() {
 						<div className="space-y-2">
 							<h4 className="font-medium">Audit Trail</h4>
 							<p className="text-sm text-muted-foreground">
-								Export complete activity logs for compliance and security
-								auditing.
+								Export complete activity logs for compliance and security auditing.
 							</p>
-							<ExportQuickActions
-								variant="outline"
-								size="sm"
-								showLabel={false}
-							/>
+							<ExportQuickActions variant="outline" size="sm" showLabel={false} />
 						</div>
 
 						<div className="space-y-2">
 							<h4 className="font-medium">Tax Reports</h4>
 							<p className="text-sm text-muted-foreground">
-								Generate tax-ready reports with realized gains, losses, and
-								dividend income.
+								Generate tax-ready reports with realized gains, losses, and dividend income.
 							</p>
-							<ExportQuickActions
-								variant="outline"
-								size="sm"
-								showLabel={false}
-							/>
+							<ExportQuickActions variant="outline" size="sm" showLabel={false} />
 						</div>
 					</div>
 				</CardContent>
@@ -111,9 +90,7 @@ export function DataSettings() {
 						<FileText className="h-5 w-5" />
 						Data Retention
 					</CardTitle>
-					<CardDescription>
-						Configure how long your data is retained and archived.
-					</CardDescription>
+					<CardDescription>Configure how long your data is retained and archived.</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="space-y-4">

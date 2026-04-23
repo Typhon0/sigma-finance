@@ -1,16 +1,14 @@
-import { DollarSign, Package, Watch } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, DollarSign, Package, Watch } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { Calendar } from "./ui/calendar";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
 interface WatchFormData {
@@ -36,11 +34,7 @@ interface AddWatchFormProps {
 	initialData?: Partial<WatchFormData>;
 }
 
-export function AddWatchForm({
-	onSubmit,
-	onCancel,
-	initialData,
-}: AddWatchFormProps) {
+export function AddWatchForm({ onSubmit, onCancel, initialData }: AddWatchFormProps) {
 	const [formData, setFormData] = useState({
 		name: initialData?.name || "",
 		brand: initialData?.brand || "",
@@ -215,9 +209,7 @@ export function AddWatchForm({
 							onChange={(e) => handleChange("currentValue", e.target.value)}
 							required
 						/>
-						<p className="text-xs text-muted-foreground">
-							Current market value
-						</p>
+						<p className="text-xs text-muted-foreground">Current market value</p>
 					</div>
 
 					<div className="space-y-2">
@@ -236,12 +228,33 @@ export function AddWatchForm({
 
 				<div className="space-y-2">
 					<Label htmlFor="purchaseDate">Purchase Date</Label>
-					<Input
-						id="purchaseDate"
-						type="date"
-						value={formData.purchaseDate}
-						onChange={(e) => handleChange("purchaseDate", e.target.value)}
-					/>
+					<Popover>
+						<PopoverTrigger asChild>
+							<Button
+								variant="outline"
+								className={cn(
+									"w-full pl-3 text-left font-normal",
+									!formData.purchaseDate && "text-muted-foreground",
+								)}
+							>
+								<CalendarIcon className="mr-2 h-4 w-4" />
+								{formData.purchaseDate ? (
+									format(new Date(formData.purchaseDate), "PPP")
+								) : (
+									<span>Pick a date</span>
+								)}
+							</Button>
+						</PopoverTrigger>
+						<PopoverContent className="w-auto p-0" align="start">
+							<Calendar
+								mode="single"
+								selected={formData.purchaseDate ? new Date(formData.purchaseDate) : undefined}
+								onSelect={(date) => handleChange("purchaseDate", date ? date.toISOString() : "")}
+								disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+								autoFocus
+							/>
+						</PopoverContent>
+					</Popover>
 				</div>
 			</div>
 
@@ -308,12 +321,7 @@ export function AddWatchForm({
 
 			{/* Actions */}
 			<div className="flex gap-3 pt-4 border-t">
-				<Button
-					type="button"
-					variant="outline"
-					onClick={onCancel}
-					className="flex-1"
-				>
+				<Button type="button" variant="outline" onClick={onCancel} className="flex-1">
 					Cancel
 				</Button>
 				<Button type="submit" className="flex-1">

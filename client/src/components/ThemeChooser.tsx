@@ -1,14 +1,9 @@
 import { Check, Laptop, Moon, Palette, Sun, Type } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { RadioGroup, RadioGroupItem } from "./ui/radio-group";
 
 const themes = [
@@ -104,8 +99,7 @@ const fontOptions = [
 		id: "sourcesans",
 		name: "Source Sans 3",
 		description: "Balanced and versatile",
-		fontFamily:
-			"'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
+		fontFamily: "'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif",
 		preview: "The quick brown fox jumps",
 	},
 	{
@@ -150,8 +144,7 @@ export function ThemeChooser() {
 	const applyTheme = () => {
 		const isDark =
 			selectedTheme === "dark" ||
-			(selectedTheme === "system" &&
-				window.matchMedia("(prefers-color-scheme: dark)").matches);
+			(selectedTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
 
 		if (isDark) {
 			document.documentElement.classList.add("dark");
@@ -162,10 +155,7 @@ export function ThemeChooser() {
 		// Apply font
 		const selectedFontOption = fontOptions.find((f) => f.id === selectedFont);
 		if (selectedFontOption) {
-			document.documentElement.style.setProperty(
-				"--font-family",
-				selectedFontOption.fontFamily,
-			);
+			document.documentElement.style.setProperty("--font-family", selectedFontOption.fontFamily);
 		}
 
 		// Store preferences
@@ -205,18 +195,14 @@ export function ThemeChooser() {
 			{/* Header */}
 			<div>
 				<h1 className="text-3xl mb-2">Theme Customization</h1>
-				<p className="text-muted-foreground">
-					Personalize your Sigma Finance experience
-				</p>
+				<p className="text-muted-foreground">Personalize your Sigma Finance experience</p>
 			</div>
 
 			{/* Theme Mode */}
 			<Card>
 				<CardHeader>
 					<CardTitle>Appearance</CardTitle>
-					<CardDescription>
-						Choose how Sigma Finance looks to you
-					</CardDescription>
+					<CardDescription>Choose how Sigma Finance looks to you</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<RadioGroup value={selectedTheme} onValueChange={setSelectedTheme}>
@@ -251,19 +237,11 @@ export function ThemeChooser() {
 											</div>
 											<div className="flex-1">
 												<div className="flex items-center gap-2">
-													<RadioGroupItem
-														value={theme.id}
-														id={theme.id}
-														className="sr-only"
-													/>
+													<RadioGroupItem value={theme.id} id={theme.id} className="sr-only" />
 													<span className="font-medium">{theme.name}</span>
-													{selectedTheme === theme.id && (
-														<Check className="h-4 w-4 text-primary" />
-													)}
+													{selectedTheme === theme.id && <Check className="h-4 w-4 text-primary" />}
 												</div>
-												<p className="text-sm text-muted-foreground mt-1">
-													{theme.description}
-												</p>
+												<p className="text-sm text-muted-foreground mt-1">{theme.description}</p>
 											</div>
 										</div>
 									</label>
@@ -281,9 +259,7 @@ export function ThemeChooser() {
 						<Type className="h-5 w-5" />
 						Font Family
 					</CardTitle>
-					<CardDescription>
-						Choose the typeface for your interface
-					</CardDescription>
+					<CardDescription>Choose the typeface for your interface</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<RadioGroup value={selectedFont} onValueChange={setSelectedFont}>
@@ -310,18 +286,11 @@ export function ThemeChooser() {
 													className="sr-only"
 												/>
 												<span className="font-medium">{font.name}</span>
-												{selectedFont === font.id && (
-													<Check className="h-4 w-4 text-primary" />
-												)}
+												{selectedFont === font.id && <Check className="h-4 w-4 text-primary" />}
 											</div>
 										</div>
-										<p className="text-xs text-muted-foreground">
-											{font.description}
-										</p>
-										<p
-											className="text-sm mt-1"
-											style={{ fontFamily: font.fontFamily }}
-										>
+										<p className="text-xs text-muted-foreground">{font.description}</p>
+										<p className="text-sm mt-1" style={{ fontFamily: font.fontFamily }}>
 											{font.preview}
 										</p>
 									</div>
@@ -336,38 +305,33 @@ export function ThemeChooser() {
 			<Card>
 				<CardHeader>
 					<CardTitle>Accent Color</CardTitle>
-					<CardDescription>
-						Choose your preferred accent color (Coming Soon)
-					</CardDescription>
+					<CardDescription>Choose your preferred accent color (Coming Soon)</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-11 gap-2">
+						{" "}
 						{accentColors.map((color) => (
-							<button
-								type="button"
+							<Button
 								key={color.id}
+								variant="outline"
 								onClick={() => setSelectedAccent(color.id)}
-								className={`
-                  relative h-10 w-10 rounded-lg border-2 transition-all
-                  hover:scale-110
-                  ${
-										selectedAccent === color.id
-											? "border-foreground ring-2 ring-ring ring-offset-2 ring-offset-background"
-											: "border-transparent"
-									}
-                `}
+								className={cn(
+									"relative h-10 w-10 rounded-lg border-2 transition-all hover:scale-110 p-0",
+									selectedAccent === color.id
+										? "border-foreground ring-2 ring-ring ring-offset-2 ring-offset-background"
+										: "border-transparent",
+								)}
 								style={{ backgroundColor: color.color }}
 								title={color.name}
 							>
 								{selectedAccent === color.id && (
 									<Check className="h-4 w-4 text-white absolute inset-0 m-auto drop-shadow-md" />
 								)}
-							</button>
+							</Button>
 						))}
 					</div>
 					<p className="text-xs text-muted-foreground mt-4">
-						Note: Accent color customization will be available in a future
-						update
+						Note: Accent color customization will be available in a future update
 					</p>
 				</CardContent>
 			</Card>
@@ -392,14 +356,11 @@ export function ThemeChooser() {
 							<Card>
 								<CardHeader>
 									<CardTitle>Sample Card</CardTitle>
-									<CardDescription>
-										This is how cards will appear
-									</CardDescription>
+									<CardDescription>This is how cards will appear</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<p className="text-sm">
-										Your portfolio content will be displayed in cards like this
-										one.
+										Your portfolio content will be displayed in cards like this one.
 									</p>
 								</CardContent>
 							</Card>
@@ -419,9 +380,7 @@ export function ThemeChooser() {
 										</div>
 										<div className="flex items-center justify-between">
 											<span className="text-sm">Daily Change</span>
-											<span className="text-green-600 font-semibold">
-												+$1,234.56
-											</span>
+											<span className="text-green-600 font-semibold">+$1,234.56</span>
 										</div>
 									</div>
 								</CardContent>

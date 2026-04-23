@@ -47,33 +47,20 @@ describe("Apache ECharts Components", () => {
 
 	describe("PerformanceChart", () => {
 		it("renders with data", () => {
-			render(
-				<PerformanceChart
-					data={mockPerformanceData}
-					title="Test Performance Chart"
-				/>,
-			);
+			render(<PerformanceChart data={mockPerformanceData} title="Test Performance Chart" />);
 
 			expect(screen.getByText("Test Performance Chart")).toBeInTheDocument();
 			expect(screen.getByTestId("mock-chart")).toBeInTheDocument();
 		});
 
 		it("shows loading state", () => {
-			render(
-				<PerformanceChart data={[]} title="Loading Chart" loading={true} />,
-			);
+			render(<PerformanceChart data={[]} title="Loading Chart" loading={true} />);
 
 			expect(screen.getByText("Loading chart data...")).toBeInTheDocument();
 		});
 
 		it("shows error state", () => {
-			render(
-				<PerformanceChart
-					data={[]}
-					title="Error Chart"
-					error="Failed to load data"
-				/>,
-			);
+			render(<PerformanceChart data={[]} title="Error Chart" error="Failed to load data" />);
 
 			expect(screen.getByText("Failed to load chart")).toBeInTheDocument();
 			expect(screen.getByText("Failed to load data")).toBeInTheDocument();
@@ -88,25 +75,16 @@ describe("Apache ECharts Components", () => {
 
 	describe("AllocationChart", () => {
 		it("renders with data", () => {
-			render(
-				<AllocationChart
-					data={mockAllocationData}
-					title="Test Allocation Chart"
-				/>,
-			);
+			render(<AllocationChart data={mockAllocationData} title="Test Allocation Chart" />);
 
 			expect(screen.getByText("Test Allocation Chart")).toBeInTheDocument();
 			expect(screen.getByTestId("mock-chart")).toBeInTheDocument();
 		});
 
 		it("shows loading state", () => {
-			render(
-				<AllocationChart data={[]} title="Loading Chart" loading={true} />,
-			);
+			render(<AllocationChart data={[]} title="Loading Chart" loading={true} />);
 
-			expect(
-				screen.getByText("Loading allocation data..."),
-			).toBeInTheDocument();
+			expect(screen.getByText("Loading allocation data...")).toBeInTheDocument();
 		});
 
 		it("shows no data state", () => {
@@ -119,10 +97,7 @@ describe("Apache ECharts Components", () => {
 	describe("PortfolioComparisonChart", () => {
 		it("renders with data", () => {
 			render(
-				<PortfolioComparisonChart
-					portfolios={mockPortfolioData}
-					title="Test Comparison Chart"
-				/>,
+				<PortfolioComparisonChart portfolios={mockPortfolioData} title="Test Comparison Chart" />,
 			);
 
 			expect(screen.getByText("Test Comparison Chart")).toBeInTheDocument();
@@ -130,9 +105,7 @@ describe("Apache ECharts Components", () => {
 		});
 
 		it("shows no data state", () => {
-			render(
-				<PortfolioComparisonChart portfolios={[]} title="No Data Chart" />,
-			);
+			render(<PortfolioComparisonChart portfolios={[]} title="No Data Chart" />);
 
 			expect(screen.getByText("No portfolios to compare")).toBeInTheDocument();
 		});
@@ -152,12 +125,7 @@ describe("Apache ECharts Components", () => {
 		});
 
 		it("renders MiniPerformanceSparkline with change indicator", () => {
-			render(
-				<MiniPerformanceSparkline
-					data={mockPerformanceData}
-					showChange={true}
-				/>,
-			);
+			render(<MiniPerformanceSparkline data={mockPerformanceData} showChange={true} />);
 
 			expect(screen.getByTestId("mock-chart")).toBeInTheDocument();
 			// Should show positive change (1050 vs 1000 = +5%)
@@ -165,9 +133,7 @@ describe("Apache ECharts Components", () => {
 		});
 
 		it("renders MiniAllocationDonut with legend", () => {
-			render(
-				<MiniAllocationDonut data={mockAllocationData} showLegend={true} />,
-			);
+			render(<MiniAllocationDonut data={mockAllocationData} showLegend={true} />);
 
 			expect(screen.getByTestId("mock-chart")).toBeInTheDocument();
 			expect(screen.getByText("Stocks")).toBeInTheDocument();
@@ -183,9 +149,7 @@ describe("Apache ECharts Components", () => {
 		});
 
 		it("handles undefined data gracefully", () => {
-			render(
-				<AllocationChart data={undefined as any} title="Undefined Chart" />,
-			);
+			render(<AllocationChart data={undefined as any} title="Undefined Chart" />);
 
 			expect(screen.getByText("No allocation data")).toBeInTheDocument();
 		});
@@ -211,11 +175,7 @@ describe("Apache ECharts Components", () => {
 
 		it("shows export button when enabled", () => {
 			render(
-				<PerformanceChart
-					data={mockPerformanceData}
-					title="Exportable Chart"
-					showExport={true}
-				/>,
+				<PerformanceChart data={mockPerformanceData} title="Exportable Chart" showExport={true} />,
 			);
 
 			// Export button should be present (Download icon)

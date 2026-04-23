@@ -72,9 +72,7 @@ export const portfolioValidationHelpers = {
 		}
 
 		// Check if name exists in the list
-		return !existingNames.some(
-			(existing) => existing.trim().toLowerCase() === trimmedName,
-		);
+		return !existingNames.some((existing) => existing.trim().toLowerCase() === trimmedName);
 	},
 
 	/**
@@ -97,34 +95,21 @@ export const portfolioValidationHelpers = {
 	/**
 	 * Generates portfolio name suggestions
 	 */
-	generateNameSuggestions: (
-		baseName: string,
-		existingNames: string[],
-	): string[] => {
+	generateNameSuggestions: (baseName: string, existingNames: string[]): string[] => {
 		const suggestions: string[] = [];
 		const sanitizedBase = portfolioValidationHelpers.sanitizeName(baseName);
 
 		if (!sanitizedBase) return suggestions;
 
 		// Try base name first
-		if (
-			portfolioValidationHelpers.validateNameUniqueness(
-				sanitizedBase,
-				existingNames,
-			)
-		) {
+		if (portfolioValidationHelpers.validateNameUniqueness(sanitizedBase, existingNames)) {
 			suggestions.push(sanitizedBase);
 		}
 
 		// Generate numbered variations
 		for (let i = 2; i <= 10; i++) {
 			const suggestion = `${sanitizedBase} ${i}`;
-			if (
-				portfolioValidationHelpers.validateNameUniqueness(
-					suggestion,
-					existingNames,
-				)
-			) {
+			if (portfolioValidationHelpers.validateNameUniqueness(suggestion, existingNames)) {
 				suggestions.push(suggestion);
 			}
 			if (suggestions.length >= 5) break;
@@ -134,12 +119,7 @@ export const portfolioValidationHelpers = {
 		const today = new Date();
 		const dateStr = today.toISOString().split("T")[0]; // YYYY-MM-DD
 		const dateVariation = `${sanitizedBase} ${dateStr}`;
-		if (
-			portfolioValidationHelpers.validateNameUniqueness(
-				dateVariation,
-				existingNames,
-			)
-		) {
+		if (portfolioValidationHelpers.validateNameUniqueness(dateVariation, existingNames)) {
 			suggestions.push(dateVariation);
 		}
 
@@ -150,8 +130,7 @@ export const portfolioValidationHelpers = {
 // Form field configurations
 export const portfolioFormConfig = {
 	name: {
-		placeholder:
-			'Enter portfolio name (e.g., "Tech Stocks", "Retirement Fund")',
+		placeholder: 'Enter portfolio name (e.g., "Tech Stocks", "Retirement Fund")',
 		maxLength: 100,
 		autoComplete: "off",
 		autoFocus: true,
@@ -172,8 +151,7 @@ export const portfolioErrorMessages = {
 	nameInvalidChars: "Portfolio name contains invalid characters",
 	nameExists: "A portfolio with this name already exists",
 	descriptionTooLong: "Description must be less than 500 characters",
-	networkError:
-		"Network error occurred. Please check your connection and try again.",
+	networkError: "Network error occurred. Please check your connection and try again.",
 	serverError: "Server error occurred. Please try again later.",
 	unauthorized: "You are not authorized to perform this action",
 	notFound: "Portfolio not found",

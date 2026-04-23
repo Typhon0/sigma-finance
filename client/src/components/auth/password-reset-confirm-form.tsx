@@ -2,7 +2,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../lib/auth-context";
-import { useAuthErrorHandler } from "../../lib/auth-error-handler";
 import type { AuthError } from "../../lib/types/auth.types";
 import {
 	type PasswordResetConfirmFormData,
@@ -17,14 +16,10 @@ interface PasswordResetConfirmFormProps {
 	onSuccess?: () => void;
 }
 
-export function PasswordResetConfirmForm({
-	token,
-	onSuccess,
-}: PasswordResetConfirmFormProps) {
+export function PasswordResetConfirmForm({ token, onSuccess }: PasswordResetConfirmFormProps) {
 	const [authErrors, setAuthErrors] = useState<AuthError[]>([]);
 	const [showSuccess, setShowSuccess] = useState(false);
 	const { confirmPasswordReset } = useAuth();
-	const { _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,
@@ -47,10 +42,13 @@ export function PasswordResetConfirmForm({
 			await confirmPasswordReset(data.token, data.newPassword);
 			setShowSuccess(true);
 			reset(); // Clear form on successful password reset
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const gqlErr = error as {
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			if (gqlErr?.graphQLErrors?.[0]?.extensions?.errors) {
+				setAuthErrors(gqlErr.graphQLErrors[0].extensions.errors);
 			} else {
 				setAuthErrors([
 					{
@@ -84,7 +82,6 @@ export function PasswordResetConfirmForm({
 
 				<AuthFormField
 					id="newPassword"
-					name="newPassword"
 					type="password"
 					label="New Password"
 					placeholder="Enter your new password"
@@ -100,7 +97,6 @@ export function PasswordResetConfirmForm({
 
 				<AuthFormField
 					id="confirmPassword"
-					name="confirmPassword"
 					type="password"
 					label="Confirm New Password"
 					placeholder="Confirm your new password"

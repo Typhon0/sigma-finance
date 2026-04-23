@@ -198,9 +198,7 @@ const LightweightChart: React.FC<LightweightChartProps> = ({
 			{/* Current price indicator */}
 			{currentPrice && (
 				<div className="absolute top-2 left-2 z-10 bg-white/90 backdrop-blur-sm rounded-lg px-3 py-1 shadow-sm border">
-					<div className="text-sm font-medium">
-						${currentPrice.toLocaleString()}
-					</div>
+					<div className="text-sm font-medium">${currentPrice.toLocaleString()}</div>
 					<div className="text-xs text-gray-500">Current Price</div>
 				</div>
 			)}
@@ -213,11 +211,7 @@ const LightweightChart: React.FC<LightweightChartProps> = ({
 			</div>
 
 			{/* Chart container */}
-			<div
-				ref={chartContainerRef}
-				className="w-full h-full"
-				style={{ height }}
-			/>
+			<div ref={chartContainerRef} className="w-full h-full" style={{ height }} />
 		</div>
 	);
 };

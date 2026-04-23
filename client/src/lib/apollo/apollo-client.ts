@@ -34,15 +34,10 @@ const retryLink = new RetryLink({
 // Error handling link
 const errorLink = onError(({ graphQLErrors, networkError }) => {
 	if (graphQLErrors) {
-		graphQLErrors.forEach(({ message, locations, path }) => {
-			console.error(
-				`GraphQL error: Message: ${message}, Location: ${locations}, Path: ${path}`,
-			);
-		});
+		graphQLErrors.forEach(({ message: _message, locations: _locations, path: _path }) => {});
 	}
 
 	if (networkError) {
-		console.error(`Network error: ${networkError}`);
 	}
 });
 const cache = apolloCacheConfig;
@@ -72,23 +67,23 @@ export const clearCache = () => {
 	localStorage.removeItem("apollo-cache");
 };
 
-export const evictUserData = (userID: string) => {
+export const evictUserData = (userId: string) => {
 	// Evict user-specific data from cache
 	cache.evict({
 		fieldName: "portfolios",
-		args: { filter: { userID } },
+		args: { filter: { userID: userId } },
 	});
 	cache.evict({
 		fieldName: "transactions",
-		args: { filter: { userID } },
+		args: { filter: { userID: userId } },
 	});
 	cache.evict({
 		fieldName: "assets",
-		args: { filter: { userID } },
+		args: { filter: { userID: userId } },
 	});
 	cache.evict({
 		fieldName: "alerts",
-		args: { filter: { userID } },
+		args: { filter: { userID: userId } },
 	});
 
 	// Garbage collect
@@ -100,27 +95,23 @@ export const getCacheSize = () => {
 	try {
 		const cacheData = JSON.stringify(cache.extract());
 		return new Blob([cacheData]).size;
-	} catch (error) {
-		console.warn("Failed to calculate cache size:", error);
+	} catch (_error) {
 		return 0;
 	}
 };
 
 export const logCacheStats = () => {
 	const size = getCacheSize();
-	const sizeInMB = (size / (1024 * 1024)).toFixed(2);
-	console.log(`Apollo Cache Size: ${sizeInMB} MB`);
+	const _sizeInMb = (size / (1024 * 1024)).toFixed(2);
 };
 
 // Preload critical queries
-export const preloadCriticalData = async (userID: string) => {
+export const preloadCriticalData = async (userId: string) => {
 	try {
 		await apolloClient.query({
 			query: GET_DASHBOARD_CRITICAL,
-			variables: { userID },
+			variables: { userID: userId },
 			fetchPolicy: "cache-first",
 		});
-	} catch (error) {
-		console.warn("Failed to preload critical data:", error);
-	}
+	} catch (_error) {}
 };

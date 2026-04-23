@@ -287,10 +287,7 @@ export const DEFAULT_PERFORMANCE_SETTINGS: ChartPerformanceSettings = {
 /**
  * Performance settings by chart type
  */
-export const CHART_PERFORMANCE_SETTINGS: Record<
-	ChartType,
-	Partial<ChartPerformanceSettings>
-> = {
+export const CHART_PERFORMANCE_SETTINGS: Record<ChartType, Partial<ChartPerformanceSettings>> = {
 	candlestick: {
 		maxDataPoints: 10000,
 		enableSampling: true,
@@ -342,9 +339,7 @@ export const CHART_PERFORMANCE_SETTINGS: Record<
 /**
  * Get performance settings for chart type
  */
-export function getPerformanceSettings(
-	type: ChartType,
-): ChartPerformanceSettings {
+export function getPerformanceSettings(type: ChartType): ChartPerformanceSettings {
 	return {
 		...DEFAULT_PERFORMANCE_SETTINGS,
 		...CHART_PERFORMANCE_SETTINGS[type],
@@ -443,9 +438,7 @@ export class ChartValidator {
 			config.library === "lightweight" &&
 			!["candlestick", "line", "area", "histogram"].includes(config.type)
 		) {
-			errors.push(
-				`Chart type '${config.type}' is not supported by Lightweight Charts`,
-			);
+			errors.push(`Chart type '${config.type}' is not supported by Lightweight Charts`);
 		}
 
 		if (config.size && typeof config.size === "object") {
@@ -463,10 +456,7 @@ export class ChartValidator {
 	/**
 	 * Validate chart data
 	 */
-	static validateData(
-		data: any[],
-		type: ChartType,
-	): { valid: boolean; errors: string[] } {
+	static validateData(data: any[], type: ChartType): { valid: boolean; errors: string[] } {
 		const errors: string[] = [];
 
 		if (!Array.isArray(data)) {
@@ -483,13 +473,7 @@ export class ChartValidator {
 		switch (type) {
 			case "candlestick":
 				data.forEach((item, index) => {
-					if (
-						!item.time ||
-						!item.open ||
-						!item.high ||
-						!item.low ||
-						!item.close
-					) {
+					if (!item.time || !item.open || !item.high || !item.low || !item.close) {
 						errors.push(
 							`Candlestick data item ${index} is missing required fields (time, open, high, low, close)`,
 						);
@@ -498,9 +482,7 @@ export class ChartValidator {
 						item.high < Math.max(item.open, item.close) ||
 						item.low > Math.min(item.open, item.close)
 					) {
-						errors.push(
-							`Candlestick data item ${index} has invalid price relationships`,
-						);
+						errors.push(`Candlestick data item ${index} has invalid price relationships`);
 					}
 				});
 				break;
@@ -509,9 +491,7 @@ export class ChartValidator {
 			case "area":
 				data.forEach((item, index) => {
 					if (typeof item.value !== "number") {
-						errors.push(
-							`Line/Area data item ${index} must have a numeric value`,
-						);
+						errors.push(`Line/Area data item ${index} must have a numeric value`);
 					}
 				});
 				break;
@@ -520,9 +500,7 @@ export class ChartValidator {
 			case "donut":
 				data.forEach((item, index) => {
 					if (!item.name || typeof item.value !== "number" || item.value < 0) {
-						errors.push(
-							`Pie/Donut data item ${index} must have a name and positive numeric value`,
-						);
+						errors.push(`Pie/Donut data item ${index} must have a name and positive numeric value`);
 					}
 				});
 				break;

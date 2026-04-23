@@ -1,13 +1,7 @@
 import type { ReactNode } from "react";
 import type { AuthError } from "../../lib/types/auth.types";
 import { cn } from "../../lib/utils";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { AuthErrorDisplay } from "./auth-error-display";
 import { AuthLoadingDisplay } from "./auth-loading-display";
 import { AuthSuccessDisplay } from "./auth-success-display";
@@ -18,12 +12,7 @@ interface AuthFormWrapperProps {
 	children: ReactNode;
 	errors?: AuthError[];
 	isLoading?: boolean;
-	loadingType?:
-		| "login"
-		| "register"
-		| "logout"
-		| "password-reset"
-		| "email-verification";
+	loadingType?: "login" | "register" | "logout" | "password-reset" | "email-verification";
 	loadingMessage?: string;
 	successType?:
 		| "registration"
@@ -69,24 +58,14 @@ export function AuthFormWrapper({
 	};
 
 	return (
-		<Card
-			className={cn("w-full mx-auto", maxWidthClasses[maxWidth], className)}
-		>
+		<Card className={cn("w-full mx-auto", maxWidthClasses[maxWidth], className)}>
 			<CardHeader className="space-y-1">
-				<CardTitle className="text-2xl font-bold text-center">
-					{title}
-				</CardTitle>
-				{description && (
-					<CardDescription className="text-center">
-						{description}
-					</CardDescription>
-				)}
+				<CardTitle className="text-2xl font-bold text-center">{title}</CardTitle>
+				{description && <CardDescription className="text-center">{description}</CardDescription>}
 			</CardHeader>
 			<CardContent className="space-y-4">
 				{/* Loading state */}
-				{isLoading && (
-					<AuthLoadingDisplay type={loadingType} message={loadingMessage} />
-				)}
+				{isLoading && <AuthLoadingDisplay type={loadingType} message={loadingMessage} />}
 
 				{/* Success state */}
 				{showSuccess && successType && (

@@ -1,4 +1,4 @@
-import { Filter, Search, SortAsc, SortDesc, X } from "lucide-react";
+import { Filter, SortAsc, SortDesc, X } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import type { Portfolio } from "@/gql/graphql";
 import type { SortConfig } from "@/hooks/use-debounced-search";
 
@@ -19,7 +19,7 @@ interface PortfolioSearchProps {
 	onSearchChange: (term: string) => void;
 	onFilterChange: (key: string, value: any) => void;
 	onSortChange: (config: SortConfig<Portfolio> | null) => void;
-	filters: Record<string, any>;
+	filters: Record<string, unknown>;
 	sortConfig: SortConfig<Portfolio> | null;
 	resultCount: number;
 	totalCount: number;
@@ -41,8 +41,7 @@ export function PortfolioSearch({
 }: PortfolioSearchProps) {
 	const [showFilters, setShowFilters] = useState(false);
 
-	const hasActiveFilters =
-		Object.keys(filters).length > 0 || searchTerm.trim() !== "";
+	const hasActiveFilters = Object.keys(filters).length > 0 || searchTerm.trim() !== "";
 
 	const sortOptions: Array<{
 		label: string;
@@ -57,10 +56,7 @@ export function PortfolioSearch({
 		{ label: "Updated (Oldest)", field: "updatedAt", direction: "asc" },
 	];
 
-	const handleSortSelect = (
-		field: keyof Portfolio,
-		direction: "asc" | "desc",
-	) => {
+	const handleSortSelect = (field: keyof Portfolio, direction: "asc" | "desc") => {
 		onSortChange({ field, direction });
 	};
 
@@ -71,25 +67,12 @@ export function PortfolioSearch({
 	return (
 		<div className="space-y-4">
 			{/* Search Bar */}
-			<div className="relative">
-				<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-				<Input
-					placeholder="Search portfolios by name or description..."
-					value={searchTerm}
-					onChange={(e) => onSearchChange(e.target.value)}
-					className="pl-10 pr-10"
-				/>
-				{searchTerm && (
-					<Button
-						variant="ghost"
-						size="sm"
-						className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 p-0"
-						onClick={() => onSearchChange("")}
-					>
-						<X className="h-4 w-4" />
-					</Button>
-				)}
-			</div>
+			<SearchInput
+				placeholder="Search portfolios..."
+				value={searchTerm}
+				onChange={(e) => onSearchChange(e.target.value)}
+				onClear={() => onSearchChange("")}
+			/>
 
 			{/* Filter and Sort Controls */}
 			<div className="flex items-center justify-between gap-2">
@@ -159,12 +142,9 @@ export function PortfolioSearch({
 							{sortOptions.map((option) => (
 								<DropdownMenuItem
 									key={`${option.field}-${option.direction}`}
-									onClick={() =>
-										handleSortSelect(option.field, option.direction)
-									}
+									onClick={() => handleSortSelect(option.field, option.direction)}
 									className={
-										sortConfig?.field === option.field &&
-										sortConfig?.direction === option.direction
+										sortConfig?.field === option.field && sortConfig?.direction === option.direction
 											? "bg-accent"
 											: ""
 									}
@@ -175,9 +155,7 @@ export function PortfolioSearch({
 							{sortConfig && (
 								<>
 									<DropdownMenuSeparator />
-									<DropdownMenuItem onClick={clearSort}>
-										Clear Sort
-									</DropdownMenuItem>
+									<DropdownMenuItem onClick={clearSort}>Clear Sort</DropdownMenuItem>
 								</>
 							)}
 						</DropdownMenuContent>
@@ -238,12 +216,7 @@ export function PortfolioSearch({
 					{sortConfig && (
 						<Badge variant="secondary" className="gap-1">
 							Sort: {String(sortConfig.field)} ({sortConfig.direction})
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-4 w-4 p-0"
-								onClick={clearSort}
-							>
+							<Button variant="ghost" size="sm" className="h-4 w-4 p-0" onClick={clearSort}>
 								<X className="h-3 w-3" />
 							</Button>
 						</Badge>

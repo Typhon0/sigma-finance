@@ -1,10 +1,5 @@
-import {
-	Search,
-	ShieldAlert,
-	Loader2,
-	ExternalLink,
-	CornerDownRight,
-} from "lucide-react";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { CornerDownRight, ExternalLink, Loader2, Search, ShieldAlert } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,19 +11,8 @@ import {
 	CommandItem,
 	CommandList,
 } from "@/components/ui/command";
-import { Input } from "@/components/ui/input";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
-import { PERSIST_DISCOVERED_INSTRUMENT } from "@/graphql/mutations/instruments";
-import {
-	SEARCH_INSTRUMENTS,
-	SEARCH_INSTRUMENTS_ONLINE,
-} from "@/graphql/queries/instruments";
-import { useDebounce } from "@/hooks/use-debounce";
-import type { InstrumentAssetType } from "@/gql/graphql";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { SearchInput } from "@/components/ui/search-input";
 import type {
 	PersistDiscoveredInstrumentMutation,
 	PersistDiscoveredInstrumentMutationVariables,
@@ -37,7 +21,10 @@ import type {
 	SearchInstrumentsQuery,
 	SearchInstrumentsQueryVariables,
 } from "@/gql/graphql";
-import { useLazyQuery, useMutation, useQuery } from "@apollo/client";
+import { InstrumentAssetType } from "@/gql/graphql";
+import { PERSIST_DISCOVERED_INSTRUMENT } from "@/graphql/mutations/instruments";
+import { SEARCH_INSTRUMENTS, SEARCH_INSTRUMENTS_ONLINE } from "@/graphql/queries/instruments";
+import { useDebounce } from "@/hooks/use-debounce";
 
 const CURRENCY_CONFIG: Record<string, { symbol: string }> = {
 	USD: { symbol: "$" },
@@ -76,7 +63,8 @@ export interface TradeableInstrumentSearchProps {
 }
 
 type LocalSearchResult = SearchInstrumentsQuery["searchInstruments"]["localResults"][number];
-type OnlineSearchResult = SearchInstrumentsOnlineQuery["searchInstrumentsOnline"]["onlineResults"][number];
+type OnlineSearchResult =
+	SearchInstrumentsOnlineQuery["searchInstrumentsOnline"]["onlineResults"][number];
 
 function mapLocalResult(result: LocalSearchResult): TradeableInstrumentSelection {
 	return {
@@ -116,7 +104,9 @@ function mapPersistedResult(
 	};
 }
 
-function mapOnlineResult(result: OnlineSearchResult): PersistDiscoveredInstrumentMutationVariables["input"]["instrument"] {
+function mapOnlineResult(
+	result: OnlineSearchResult,
+): PersistDiscoveredInstrumentMutationVariables["input"]["instrument"] {
 	return {
 		symbol: result.symbol,
 		name: result.name,
@@ -167,22 +157,19 @@ export function TradeableInstrumentSearch({
 	const [isSearchingOnline, setIsSearchingOnline] = useState(false);
 
 	const debouncedSearchTerm = useDebounce(searchTerm.trim(), 250);
-	const searchVariables = useMemo<SearchInstrumentsQueryVariables | undefined>(
-		() => {
-			if (debouncedSearchTerm.length < 2) {
-				return undefined;
-			}
-			return {
-				input: {
-					query: debouncedSearchTerm,
-					assetTypes: [...assetTypes],
-					limit: 8,
-					offset: 0,
-				},
-			};
-		},
-		[assetTypes, debouncedSearchTerm],
-	);
+	const searchVariables = useMemo<SearchInstrumentsQueryVariables | undefined>(() => {
+		if (debouncedSearchTerm.length < 2) {
+			return undefined;
+		}
+		return {
+			input: {
+				query: debouncedSearchTerm,
+				assetTypes: [...assetTypes],
+				limit: 8,
+				offset: 0,
+			},
+		};
+	}, [assetTypes, debouncedSearchTerm]);
 
 	const { data: localData, loading: isSearchingLocal } = useQuery<
 		SearchInstrumentsQuery,
@@ -192,13 +179,12 @@ export function TradeableInstrumentSearch({
 		skip: searchVariables === undefined,
 		fetchPolicy: "cache-and-network",
 	});
-	const [fetchOnline, { data: onlineData }] =
-		useLazyQuery<SearchInstrumentsOnlineQuery, SearchInstrumentsOnlineQueryVariables>(
-			SEARCH_INSTRUMENTS_ONLINE,
-			{
-				fetchPolicy: "network-only",
-			},
-		);
+	const [fetchOnline, { data: onlineData }] = useLazyQuery<
+		SearchInstrumentsOnlineQuery,
+		SearchInstrumentsOnlineQueryVariables
+	>(SEARCH_INSTRUMENTS_ONLINE, {
+		fetchPolicy: "network-only",
+	});
 	const [persistDiscoveredInstrument] = useMutation<
 		PersistDiscoveredInstrumentMutation,
 		PersistDiscoveredInstrumentMutationVariables
@@ -207,8 +193,7 @@ export function TradeableInstrumentSearch({
 	const localResults = localData?.searchInstruments.localResults ?? [];
 	const onlineResults = onlineData?.searchInstrumentsOnline.onlineResults ?? [];
 	const queryMetadata = localData?.searchInstruments.queryMetadata;
-	const canSearchOnline =
-		Boolean(queryMetadata?.weakResults) || localResults.length === 0;
+	const canSearchOnline = Boolean(queryMetadata?.weakResults) || localResults.length === 0;
 
 	const handleSelectLocal = (result: LocalSearchResult) => {
 		onChange(mapLocalResult(result));
@@ -296,15 +281,12 @@ export function TradeableInstrumentSearch({
 
 			<Popover open={isOpen} onOpenChange={setIsOpen}>
 				<PopoverTrigger asChild>
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							value={searchTerm}
-							onChange={(event) => setSearchTerm(event.target.value)}
-							placeholder={placeholder}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search instruments..."
+						value={searchTerm}
+						onChange={(e) => setSearchTerm(e.target.value)}
+						onClear={() => setSearchTerm("")}
+					/>
 				</PopoverTrigger>
 				<PopoverContent
 					className="w-[min(100vw-2rem,36rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0"
@@ -324,9 +306,11 @@ export function TradeableInstrumentSearch({
 								</div>
 							)}
 
-							{!isSearchingLocal && localResults.length === 0 && debouncedSearchTerm.length >= 2 && (
-								<CommandEmpty>No local matches found.</CommandEmpty>
-							)}
+							{!isSearchingLocal &&
+								localResults.length === 0 &&
+								debouncedSearchTerm.length >= 2 && (
+									<CommandEmpty>No local matches found.</CommandEmpty>
+								)}
 
 							{localResults.length > 0 && (
 								<CommandGroup heading="Local Results">
@@ -421,9 +405,7 @@ export function TradeableInstrumentSearch({
 														{result.providerSource}
 													</Badge>
 												</div>
-												<div className="truncate text-xs text-muted-foreground">
-													{result.name}
-												</div>
+												<div className="truncate text-xs text-muted-foreground">{result.name}</div>
 											</div>
 											<ShieldAlert className="h-4 w-4 text-muted-foreground" />
 										</CommandItem>
@@ -433,12 +415,7 @@ export function TradeableInstrumentSearch({
 
 							{value && (
 								<div className="border-t px-3 py-3">
-									<Button
-										type="button"
-										variant="ghost"
-										className="w-full"
-										onClick={clearSelection}
-									>
+									<Button type="button" variant="ghost" className="w-full" onClick={clearSelection}>
 										Clear selection
 									</Button>
 								</div>

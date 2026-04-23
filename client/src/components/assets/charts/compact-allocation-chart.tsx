@@ -25,7 +25,7 @@ export function CompactAllocationChart({
 	data,
 	title = "Asset Allocation",
 	totalValue,
-	_height = 120,
+	height: _height = 120,
 	showLegend = true,
 	maxItems = 5,
 	className,
@@ -43,10 +43,7 @@ export function CompactAllocationChart({
 			const otherItems = sorted.slice(maxItems - 1);
 
 			const othersTotal = otherItems.reduce((sum, item) => sum + item.value, 0);
-			const othersPercentage = otherItems.reduce(
-				(sum, item) => sum + item.percentage,
-				0,
-			);
+			const othersPercentage = otherItems.reduce((sum, item) => sum + item.percentage, 0);
 			const othersCount = otherItems.reduce((sum, item) => sum + item.count, 0);
 
 			return [
@@ -89,9 +86,7 @@ export function CompactAllocationChart({
 			<CardHeader className="pb-2">
 				<div className="flex items-center justify-between">
 					<CardTitle className="text-sm font-medium">{title}</CardTitle>
-					{totalValue && (
-						<Badge variant="outline">{formatCurrency(totalValue)}</Badge>
-					)}
+					{totalValue && <Badge variant="outline">{formatCurrency(totalValue)}</Badge>}
 				</div>
 			</CardHeader>
 			<CardContent className="p-4 pt-0">
@@ -117,10 +112,7 @@ export function CompactAllocationChart({
 					{showLegend && (
 						<div className="space-y-1">
 							{segments.map((segment) => (
-								<div
-									key={segment.assetType}
-									className="flex items-center justify-between text-xs"
-								>
+								<div key={segment.assetType} className="flex items-center justify-between text-xs">
 									<div className="flex items-center gap-2">
 										<div
 											className="w-3 h-3 rounded-sm"
@@ -132,12 +124,8 @@ export function CompactAllocationChart({
 										</span>
 									</div>
 									<div className="flex items-center gap-2">
-										<span className="font-medium">
-											{formatPercentage(segment.percentage)}
-										</span>
-										<span className="text-muted-foreground">
-											{formatCurrency(segment.value)}
-										</span>
+										<span className="font-medium">{formatPercentage(segment.percentage)}</span>
+										<span className="text-muted-foreground">{formatCurrency(segment.value)}</span>
 									</div>
 								</div>
 							))}
@@ -151,8 +139,7 @@ export function CompactAllocationChart({
 								{data.length} asset {data.length === 1 ? "type" : "types"}
 							</span>
 							<span className="text-muted-foreground">
-								{data.reduce((sum, item) => sum + item.count, 0)} total
-								positions
+								{data.reduce((sum, item) => sum + item.count, 0)} total positions
 							</span>
 						</div>
 					</div>

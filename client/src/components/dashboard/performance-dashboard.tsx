@@ -19,21 +19,13 @@ import AssetAllocation, {
 	type AllocationItem,
 	type AllocationRecommendation,
 } from "./asset-allocation";
-import PerformanceAlerts, {
-	type AlertFormData,
-	type PerformanceAlert,
-} from "./performance-alerts";
+import PerformanceAlerts, { type AlertFormData, type PerformanceAlert } from "./performance-alerts";
 import PerformanceComparison, {
 	type BenchmarkData,
 	type PortfolioPerformanceData,
 } from "./performance-comparison";
-import PerformanceMetrics, {
-	type PerformanceMetric,
-} from "./performance-metrics";
-import PerformanceReports, {
-	type ReportConfig,
-	type ReportData,
-} from "./performance-reports";
+import PerformanceMetrics, { type PerformanceMetric } from "./performance-metrics";
+import PerformanceReports, { type ReportConfig, type ReportData } from "./performance-reports";
 
 export interface PerformanceDashboardData {
 	metrics: PerformanceMetric[];
@@ -86,13 +78,7 @@ const PerformanceOverview: React.FC<{
 	totalChangePercent: number;
 	timeRange?: string;
 	compact?: boolean;
-}> = ({
-	totalValue,
-	totalChange,
-	totalChangePercent,
-	timeRange,
-	compact = false,
-}) => {
+}> = ({ totalValue, totalChange, totalChangePercent, timeRange, compact = false }) => {
 	const isPositive = totalChange >= 0;
 
 	return (
@@ -100,12 +86,7 @@ const PerformanceOverview: React.FC<{
 			<CardContent className={cn("p-6", compact && "p-4")}>
 				<div className="flex items-center justify-between">
 					<div>
-						<p
-							className={cn(
-								"text-sm text-muted-foreground mb-1",
-								compact && "text-xs",
-							)}
-						>
+						<p className={cn("text-sm text-muted-foreground mb-1", compact && "text-xs")}>
 							Total Portfolio Value
 						</p>
 						<p className={cn("text-3xl font-bold", compact && "text-2xl")}>
@@ -113,12 +94,7 @@ const PerformanceOverview: React.FC<{
 						</p>
 					</div>
 					<div className="text-right">
-						<p
-							className={cn(
-								"text-sm text-muted-foreground mb-1",
-								compact && "text-xs",
-							)}
-						>
+						<p className={cn("text-sm text-muted-foreground mb-1", compact && "text-xs")}>
 							{timeRange ? `${timeRange} Change` : "Total Change"}
 						</p>
 						<div className="flex items-center gap-2">
@@ -131,10 +107,7 @@ const PerformanceOverview: React.FC<{
 							>
 								{formatCurrency(totalChange)}
 							</p>
-							<Badge
-								variant={isPositive ? "default" : "destructive"}
-								className="text-xs"
-							>
+							<Badge variant={isPositive ? "default" : "destructive"} className="text-xs">
 								{formatPercentage(totalChangePercent)}
 							</Badge>
 						</div>
@@ -150,12 +123,7 @@ const QuickActions: React.FC<{
 	onCreateAlert?: () => void;
 	onViewAnalytics?: () => void;
 	compact?: boolean;
-}> = ({
-	onGenerateReport,
-	onCreateAlert,
-	onViewAnalytics,
-	compact = false,
-}) => {
+}> = ({ onGenerateReport, onCreateAlert, onViewAnalytics, compact = false }) => {
 	const actions = [
 		{
 			icon: FileText,
@@ -180,9 +148,7 @@ const QuickActions: React.FC<{
 	return (
 		<Card>
 			<CardHeader className={cn("pb-3", compact && "pb-2")}>
-				<CardTitle className={cn("text-lg", compact && "text-base")}>
-					Quick Actions
-				</CardTitle>
+				<CardTitle className={cn("text-lg", compact && "text-base")}>Quick Actions</CardTitle>
 			</CardHeader>
 			<CardContent className={cn("space-y-2", compact && "space-y-1")}>
 				{actions.map((action, index) => (
@@ -231,9 +197,7 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
 
 		const activeAlerts = data.alerts.filter((a) => a.isActive).length;
 		const recentlyTriggered = data.alerts.filter(
-			(a) =>
-				a.lastTriggered &&
-				Date.now() - a.lastTriggered.getTime() < 24 * 60 * 60 * 1000,
+			(a) => a.lastTriggered && Date.now() - a.lastTriggered.getTime() < 24 * 60 * 60 * 1000,
 		).length;
 		const highPriorityRecommendations = data.recommendations.filter(
 			(r) => r.priority === "high",
@@ -324,33 +288,25 @@ export const PerformanceDashboard: React.FC<PerformanceDashboardProps> = ({
 				<div className="grid grid-cols-2 md:grid-cols-5 gap-4">
 					<Card>
 						<CardContent className="p-4 text-center">
-							<p className="text-2xl font-bold text-blue-600">
-								{summaryStats.portfolioCount}
-							</p>
+							<p className="text-2xl font-bold text-blue-600">{summaryStats.portfolioCount}</p>
 							<p className="text-xs text-muted-foreground">Portfolios</p>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardContent className="p-4 text-center">
-							<p className="text-2xl font-bold text-green-600">
-								{summaryStats.assetTypes}
-							</p>
+							<p className="text-2xl font-bold text-green-600">{summaryStats.assetTypes}</p>
 							<p className="text-xs text-muted-foreground">Asset Types</p>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardContent className="p-4 text-center">
-							<p className="text-2xl font-bold text-orange-600">
-								{summaryStats.activeAlerts}
-							</p>
+							<p className="text-2xl font-bold text-orange-600">{summaryStats.activeAlerts}</p>
 							<p className="text-xs text-muted-foreground">Active Alerts</p>
 						</CardContent>
 					</Card>
 					<Card>
 						<CardContent className="p-4 text-center">
-							<p className="text-2xl font-bold text-red-600">
-								{summaryStats.recentlyTriggered}
-							</p>
+							<p className="text-2xl font-bold text-red-600">{summaryStats.recentlyTriggered}</p>
 							<p className="text-xs text-muted-foreground">Recent Triggers</p>
 						</CardContent>
 					</Card>

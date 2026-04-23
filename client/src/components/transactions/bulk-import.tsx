@@ -1,13 +1,7 @@
-import {
-	AlertCircle,
-	CheckCircle,
-	Download,
-	Eye,
-	Upload,
-	X,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Download, Eye, Upload, X } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,48 +62,16 @@ interface ImportProgress {
 	errors: Array<{ row: number; error: string }>;
 }
 
-export function BulkImport({
-	portfolios,
-	onImport,
-	onCancel,
-	isLoading = false,
-}: BulkImportProps) {
+export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }: BulkImportProps) {
 	const [csvData, setCsvData] = useState<string>("");
-	const [parsedTransactions, setParsedTransactions] = useState<
-		ParsedTransaction[]
-	>([]);
-	const [columnMapping, setColumnMapping] = useState<Record<string, string>>(
-		{},
-	);
+	const [parsedTransactions, setParsedTransactions] = useState<ParsedTransaction[]>([]);
+	const [columnMapping, setColumnMapping] = useState<Record<string, string>>({});
 	const [selectedPortfolio, setSelectedPortfolio] = useState<string>("");
-	const [importProgress, setImportProgress] = useState<ImportProgress | null>(
-		null,
-	);
+	const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 	const [showPreview, setShowPreview] = useState(false);
-	const [validationOnly, setValidationOnly] = useState(true);
+	const [validateOnly, setValidationOnly] = useState(true);
 
-	const onDrop = useCallback((acceptedFiles: File[]) => {
-		const file = acceptedFiles[0];
-		if (file && file.type === "text/csv") {
-			const reader = new FileReader();
-			reader.onload = (e) => {
-				const csv = e.target?.result as string;
-				setCsvData(csv);
-				parseCSV(csv);
-			};
-			reader.readAsText(file);
-		}
-	}, []);
-
-	const { getRootProps, getInputProps, isDragActive } = useDropzone({
-		onDrop,
-		accept: {
-			"text/csv": [".csv"],
-		},
-		multiple: false,
-	});
-
-	const parseCSV = (csv: string) => {
+	const parseCsv = (csv: string) => {
 		const lines = csv.split("\n").filter((line) => line.trim());
 		if (lines.length < 2) return;
 
@@ -120,9 +82,7 @@ export function BulkImport({
 		const mapping: Record<string, string> = {};
 		Object.entries(csvColumnMapping).forEach(([key, possibleNames]) => {
 			const matchedHeader = headers.find((header) =>
-				possibleNames.some((name) =>
-					header.toLowerCase().includes(name.toLowerCase()),
-				),
+				possibleNames.some((name) => header.toLowerCase().includes(name.toLowerCase())),
 			);
 			if (matchedHeader) {
 				mapping[key] = matchedHeader;
@@ -138,9 +98,7 @@ export function BulkImport({
 				date: getCellValue(cells, headers, mapping.date) || "",
 				type: getCellValue(cells, headers, mapping.type) || "",
 				asset: getCellValue(cells, headers, mapping.asset) || "",
-				quantity: parseFloat(
-					getCellValue(cells, headers, mapping.quantity) || "0",
-				),
+				quantity: parseFloat(getCellValue(cells, headers, mapping.quantity) || "0"),
 				price: parseFloat(getCellValue(cells, headers, mapping.price) || "0"),
 				amount: parseFloat(getCellValue(cells, headers, mapping.amount) || "0"),
 				fee: parseFloat(getCellValue(cells, headers, mapping.fee) || "0"),
@@ -157,11 +115,31 @@ export function BulkImport({
 		setParsedTransactions(transactions);
 	};
 
-	const getCellValue = (
-		cells: string[],
-		headers: string[],
-		columnName?: string,
-	): string => {
+	const onDrop = useCallback(
+		(acceptedFiles: File[]) => {
+			const file = acceptedFiles[0];
+			if (file && file.type === "text/csv") {
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					const csv = e.target?.result as string;
+					setCsvData(csv);
+					parseCsv(csv);
+				};
+				reader.readAsText(file);
+			}
+		},
+		[parseCsv],
+	);
+
+	const { getRootProps, getInputProps, isDragActive } = useDropzone({
+		onDrop,
+		accept: {
+			"text/csv": [".csv"],
+		},
+		multiple: false,
+	});
+
+	const getCellValue = (cells: string[], headers: string[], columnName?: string): string => {
 		if (!columnName) return "";
 		const index = headers.indexOf(columnName);
 		return index >= 0 ? cells[index] || "" : "";
@@ -199,10 +177,7 @@ export function BulkImport({
 			}
 		}
 
-		if (
-			!transaction.asset &&
-			!["DEPOSIT", "WITHDRAWAL"].includes(transaction.type.toUpperCase())
-		) {
+		if (!transaction.asset && !["DEPOSIT", "WITHDRAWAL"].includes(transaction.type.toUpperCase())) {
 			errors.push("Asset is required for this transaction type");
 		}
 
@@ -227,19 +202,17 @@ export function BulkImport({
 
 		// Re-parse with new mapping
 		if (csvData) {
-			parseCSV(csvData);
+			parseCsv(csvData);
 		}
 	};
 
 	const handleImport = async () => {
 		if (!selectedPortfolio || parsedTransactions.length === 0) return;
 
-		const validTransactions = parsedTransactions.filter(
-			(t) => t.errors.length === 0,
-		);
+		const validTransactions = parsedTransactions.filter((t) => t.errors.length === 0);
 
 		if (validTransactions.length === 0) {
-			alert("No valid transactions to import");
+			toast.error("No valid transactions to import");
 			return;
 		}
 
@@ -279,9 +252,7 @@ export function BulkImport({
 						}
 					: null,
 			);
-		} catch (error) {
-			console.error("Import failed:", error);
-		}
+		} catch (_error) {}
 	};
 
 	const downloadTemplate = () => {
@@ -301,11 +272,8 @@ export function BulkImport({
 		URL.revokeObjectURL(url);
 	};
 
-	const validTransactionCount = parsedTransactions.filter(
-		(t) => t.errors.length === 0,
-	).length;
-	const invalidTransactionCount =
-		parsedTransactions.length - validTransactionCount;
+	const validTransactionCount = parsedTransactions.filter((t) => t.errors.length === 0).length;
+	const invalidTransactionCount = parsedTransactions.length - validTransactionCount;
 
 	return (
 		<Card className="w-full max-w-4xl">
@@ -335,9 +303,7 @@ export function BulkImport({
 					<div
 						{...getRootProps()}
 						className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-							isDragActive
-								? "border-primary bg-primary/5"
-								: "border-muted-foreground/25"
+							isDragActive ? "border-primary bg-primary/5" : "border-muted-foreground/25"
 						}`}
 					>
 						<input {...getInputProps()} />
@@ -356,38 +322,31 @@ export function BulkImport({
 					<div className="space-y-4">
 						<h3 className="font-medium">Map CSV Columns</h3>
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-							{Object.entries(csvColumnMapping).map(
-								([field, _possibleNames]) => (
-									<div key={field} className="space-y-2">
-										<label className="text-sm font-medium capitalize">
-											{field.replace("_", " ")}
-										</label>
-										<Select
-											value={columnMapping[field] || ""}
-											onValueChange={(value) =>
-												handleColumnMappingChange(field, value)
-											}
-										>
-											<SelectTrigger>
-												<SelectValue placeholder="Select column" />
-											</SelectTrigger>
-											<SelectContent>
-												{csvData
-													.split("\n")[0]
-													?.split(",")
-													.map((header, index) => (
-														<SelectItem
-															key={index}
-															value={header.trim().replace(/"/g, "")}
-														>
-															{header.trim().replace(/"/g, "")}
-														</SelectItem>
-													))}
-											</SelectContent>
-										</Select>
-									</div>
-								),
-							)}
+							{Object.entries(csvColumnMapping).map(([field, _possibleNames]) => (
+								<div key={field} className="space-y-2">
+									<label className="text-sm font-medium capitalize">
+										{field.replace("_", " ")}
+									</label>
+									<Select
+										value={columnMapping[field] || ""}
+										onValueChange={(value) => handleColumnMappingChange(field, value)}
+									>
+										<SelectTrigger>
+											<SelectValue placeholder="Select column" />
+										</SelectTrigger>
+										<SelectContent>
+											{csvData
+												.split("\n")[0]
+												?.split(",")
+												.map((header, index) => (
+													<SelectItem key={index} value={header.trim().replace(/"/g, "")}>
+														{header.trim().replace(/"/g, "")}
+													</SelectItem>
+												))}
+										</SelectContent>
+									</Select>
+								</div>
+							))}
 						</div>
 					</div>
 				)}
@@ -397,13 +356,8 @@ export function BulkImport({
 					<div className="space-y-4">
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div className="space-y-2">
-								<label className="text-sm font-medium">
-									Target Portfolio *
-								</label>
-								<Select
-									value={selectedPortfolio}
-									onValueChange={setSelectedPortfolio}
-								>
+								<label className="text-sm font-medium">Target Portfolio *</label>
+								<Select value={selectedPortfolio} onValueChange={setSelectedPortfolio}>
 									<SelectTrigger>
 										<SelectValue placeholder="Select portfolio" />
 									</SelectTrigger>
@@ -422,10 +376,8 @@ export function BulkImport({
 								<div className="flex items-center space-x-2">
 									<Checkbox
 										id="validation-only"
-										checked={validationOnly}
-										onCheckedChange={(checked) =>
-											setValidationOnly(checked as boolean)
-										}
+										checked={validateOnly}
+										onCheckedChange={(checked) => setValidationOnly(checked as boolean)}
 									/>
 									<label htmlFor="validation-only" className="text-sm">
 										Validation only (don't save transactions)
@@ -438,27 +390,19 @@ export function BulkImport({
 						<div className="grid grid-cols-3 gap-4">
 							<Card>
 								<CardContent className="p-4 text-center">
-									<div className="text-2xl font-bold">
-										{parsedTransactions.length}
-									</div>
-									<div className="text-sm text-muted-foreground">
-										Total Rows
-									</div>
+									<div className="text-2xl font-bold">{parsedTransactions.length}</div>
+									<div className="text-sm text-muted-foreground">Total Rows</div>
 								</CardContent>
 							</Card>
 							<Card>
 								<CardContent className="p-4 text-center">
-									<div className="text-2xl font-bold text-green-600">
-										{validTransactionCount}
-									</div>
+									<div className="text-2xl font-bold text-green-600">{validTransactionCount}</div>
 									<div className="text-sm text-muted-foreground">Valid</div>
 								</CardContent>
 							</Card>
 							<Card>
 								<CardContent className="p-4 text-center">
-									<div className="text-2xl font-bold text-red-600">
-										{invalidTransactionCount}
-									</div>
+									<div className="text-2xl font-bold text-red-600">{invalidTransactionCount}</div>
 									<div className="text-sm text-muted-foreground">Invalid</div>
 								</CardContent>
 							</Card>
@@ -469,8 +413,8 @@ export function BulkImport({
 							<Alert>
 								<AlertCircle className="h-4 w-4" />
 								<AlertDescription>
-									{invalidTransactionCount} transaction(s) have validation
-									errors. Please review and fix the issues before importing.
+									{invalidTransactionCount} transaction(s) have validation errors. Please review and
+									fix the issues before importing.
 								</AlertDescription>
 							</Alert>
 						)}
@@ -513,10 +457,7 @@ export function BulkImport({
 													<TableCell>{transaction.amount}</TableCell>
 													<TableCell>
 														{transaction.errors.length === 0 ? (
-															<Badge
-																variant="default"
-																className="bg-green-100 text-green-800"
-															>
+															<Badge variant="default" className="bg-green-100 text-green-800">
 																<CheckCircle className="h-3 w-3 mr-1" />
 																Valid
 															</Badge>
@@ -551,21 +492,15 @@ export function BulkImport({
 								<div className="text-sm text-muted-foreground">Total</div>
 							</div>
 							<div>
-								<div className="text-lg font-bold">
-									{importProgress.processed}
-								</div>
+								<div className="text-lg font-bold">{importProgress.processed}</div>
 								<div className="text-sm text-muted-foreground">Processed</div>
 							</div>
 							<div>
-								<div className="text-lg font-bold text-green-600">
-									{importProgress.successful}
-								</div>
+								<div className="text-lg font-bold text-green-600">{importProgress.successful}</div>
 								<div className="text-sm text-muted-foreground">Successful</div>
 							</div>
 							<div>
-								<div className="text-lg font-bold text-red-600">
-									{importProgress.failed}
-								</div>
+								<div className="text-lg font-bold text-red-600">{importProgress.failed}</div>
 								<div className="text-sm text-muted-foreground">Failed</div>
 							</div>
 						</div>
@@ -582,7 +517,7 @@ export function BulkImport({
 						>
 							{isLoading
 								? "Processing..."
-								: validationOnly
+								: validateOnly
 									? "Validate Transactions"
 									: "Import Transactions"}
 						</Button>

@@ -9,16 +9,16 @@ import {
 	BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 
-interface BreadcrumbItem {
+interface BreadcrumbEntry {
 	label?: string;
-	title?: string; // Support both label and title for compatibility
+	title?: string;
 	href?: string;
 	icon?: React.ReactNode;
 	onClick?: () => void;
 }
 
 interface PortfolioBreadcrumbProps {
-	items?: BreadcrumbItem[];
+	items?: BreadcrumbEntry[];
 }
 
 export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
@@ -63,10 +63,7 @@ export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
 									</BreadcrumbLink>
 								) : item.href ? (
 									<BreadcrumbLink asChild>
-										<Link
-											to={item.href}
-											className="flex items-center gap-1 touch-manipulation"
-										>
+										<Link to={item.href} className="flex items-center gap-1 touch-manipulation">
 											<span className="hidden sm:inline">{item.icon}</span>
 											<span className="text-sm sm:text-base truncate max-w-[120px] sm:max-w-none">
 												{displayText}

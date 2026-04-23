@@ -65,10 +65,7 @@ export function ResponsiveChartContainer({
 		const newDimensions = getResponsiveChartSize(containerWidth, aspectRatio);
 
 		// Apply min/max height constraints
-		newDimensions.height = Math.max(
-			minHeight,
-			Math.min(maxHeight, newDimensions.height),
-		);
+		newDimensions.height = Math.max(minHeight, Math.min(maxHeight, newDimensions.height));
 
 		setDimensions(newDimensions);
 		onResize?.(newDimensions);
@@ -188,7 +185,7 @@ export function ResponsiveChartContainer({
 
 	// Get responsive classes
 	const getResponsiveClasses = () => {
-		const classes = [];
+		const classes: string[] = [];
 
 		if (dimensions.width < CHART_BREAKPOINTS.sm) {
 			classes.push("chart-xs");
@@ -252,11 +249,7 @@ export function ResponsiveChartContainer({
 						className="h-7 w-7 p-0 bg-background/80 backdrop-blur-sm"
 						onClick={handleToggleFullscreen}
 					>
-						{isFullscreen ? (
-							<Minimize2 className="h-3 w-3" />
-						) : (
-							<Maximize2 className="h-3 w-3" />
-						)}
+						{isFullscreen ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
 					</Button>
 				)}
 			</div>
@@ -366,7 +359,7 @@ export function useResponsiveChartDimensions(
 		return () => {
 			resizeObserver.disconnect();
 		};
-	}, [aspectRatio]);
+	}, [aspectRatio, containerRef.current.clientWidth, containerRef.current]);
 
 	return dimensions;
 }

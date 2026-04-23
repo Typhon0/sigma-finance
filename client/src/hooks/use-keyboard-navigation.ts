@@ -33,9 +33,7 @@ export function useKeyboardNavigation(options: KeyboardNavigationOptions = {}) {
 	const updateFocusableElements = useCallback(() => {
 		if (!containerRef.current) return;
 
-		const elements = Array.from(
-			containerRef.current.querySelectorAll(selector),
-		) as HTMLElement[];
+		const elements = Array.from(containerRef.current.querySelectorAll(selector)) as HTMLElement[];
 
 		const filteredElements = elements.filter((element) => {
 			if (skipDisabled) {
@@ -330,20 +328,15 @@ export function useSkipLinks() {
 		}>
 	>([]);
 
-	const registerSkipTarget = useCallback(
-		(id: string, label: string, element: HTMLElement) => {
-			setSkipTargets((prev) => {
-				const existing = prev.find((target) => target.id === id);
-				if (existing) {
-					return prev.map((target) =>
-						target.id === id ? { id, label, element } : target,
-					);
-				}
-				return [...prev, { id, label, element }];
-			});
-		},
-		[],
-	);
+	const registerSkipTarget = useCallback((id: string, label: string, element: HTMLElement) => {
+		setSkipTargets((prev) => {
+			const existing = prev.find((target) => target.id === id);
+			if (existing) {
+				return prev.map((target) => (target.id === id ? { id, label, element } : target));
+			}
+			return [...prev, { id, label, element }];
+		});
+	}, []);
 
 	const unregisterSkipTarget = useCallback((id: string) => {
 		setSkipTargets((prev) => prev.filter((target) => target.id !== id));

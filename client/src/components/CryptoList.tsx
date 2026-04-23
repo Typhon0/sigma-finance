@@ -10,7 +10,6 @@ import {
 	MoreVertical,
 	PieChart,
 	Plus,
-	Search,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -18,27 +17,14 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-	type PortfolioAssetItem,
-	usePortfolio,
-} from "@/components/PortfolioProvider";
+import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
 import { AddCryptoForm } from "./AddCryptoForm";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "./ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -46,22 +32,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 /** Crypto holding derived from portfolio asset data */
 interface CryptoHolding {
@@ -128,10 +100,7 @@ interface CryptoListProps {
 
 type GroupByMode = "account" | "asset";
 
-export function CryptoList({
-	onSelectCrypto,
-	onSelectAccount,
-}: CryptoListProps) {
+export function CryptoList({ onSelectCrypto, onSelectAccount }: CryptoListProps) {
 	const { assets, loading, addCrypto, currentPortfolio } = usePortfolio();
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [_viewMode, _setViewMode] = useState<"list" | "grid">("list");
@@ -139,9 +108,7 @@ export function CryptoList({
 	const [searchQuery, setSearchQuery] = useState("");
 	const [sortBy, setSortBy] = useState("value-desc");
 	const [filterExchange, setFilterExchange] = useState("all");
-	const [distributionChartType, setDistributionChartType] = useState<
-		"pie" | "treemap"
-	>("pie");
+	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [timePeriod, setTimePeriod] = useState("1Y");
 
 	// Derive crypto holdings from real portfolio data
@@ -187,22 +154,17 @@ export function CryptoList({
 	const totalValue = cryptoHoldings.reduce((sum, h) => sum + h.value, 0);
 	const totalCost = cryptoHoldings.reduce((sum, h) => sum + h.cost, 0);
 	const totalProfitLoss = totalValue - totalCost;
-	const totalProfitLossPercent =
-		totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+	const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 	const numberOfHoldings = cryptoHoldings.length;
 
 	// Best/Worst performers (may be undefined when no holdings)
 	const bestPerformer =
 		cryptoHoldings.length > 0
-			? [...cryptoHoldings].sort(
-					(a, b) => b.profitLossPercent - a.profitLossPercent,
-				)[0]
+			? [...cryptoHoldings].sort((a, b) => b.profitLossPercent - a.profitLossPercent)[0]
 			: null;
 	const worstPerformer =
 		cryptoHoldings.length > 0
-			? [...cryptoHoldings].sort(
-					(a, b) => a.profitLossPercent - b.profitLossPercent,
-				)[0]
+			? [...cryptoHoldings].sort((a, b) => a.profitLossPercent - b.profitLossPercent)[0]
 			: null;
 
 	// Filter and sort
@@ -220,14 +182,10 @@ export function CryptoList({
 	});
 
 	// Sort
-	if (sortBy === "value-desc")
-		filteredHoldings.sort((a, b) => b.value - a.value);
-	else if (sortBy === "value-asc")
-		filteredHoldings.sort((a, b) => a.value - b.value);
-	else if (sortBy === "profit-desc")
-		filteredHoldings.sort((a, b) => b.profitLoss - a.profitLoss);
-	else if (sortBy === "profit-asc")
-		filteredHoldings.sort((a, b) => a.profitLoss - b.profitLoss);
+	if (sortBy === "value-desc") filteredHoldings.sort((a, b) => b.value - a.value);
+	else if (sortBy === "value-asc") filteredHoldings.sort((a, b) => a.value - b.value);
+	else if (sortBy === "profit-desc") filteredHoldings.sort((a, b) => b.profitLoss - a.profitLoss);
+	else if (sortBy === "profit-asc") filteredHoldings.sort((a, b) => a.profitLoss - b.profitLoss);
 	else if (sortBy === "name-asc")
 		filteredHoldings.sort((a, b) => a.cryptoName.localeCompare(b.cryptoName));
 
@@ -293,9 +251,7 @@ export function CryptoList({
 			asset.profitLossPercent = (asset.profitLoss / asset.cost) * 100;
 		});
 
-		return Object.values(aggregated).sort(
-			(a: any, b: any) => b.value - a.value,
-		);
+		return Object.values(aggregated).sort((a: any, b: any) => b.value - a.value);
 	};
 
 	// TODO: Replace with real historical price data from market data service
@@ -393,10 +349,7 @@ export function CryptoList({
 		percent: number;
 	} | null>(null);
 
-	const totalCryptoValue = cryptoHoldings.reduce(
-		(sum, crypto) => sum + crypto.value,
-		0,
-	);
+	const totalCryptoValue = cryptoHoldings.reduce((sum, crypto) => sum + crypto.value, 0);
 
 	const distributionChartOption =
 		distributionChartType === "pie"
@@ -422,9 +375,7 @@ export function CryptoList({
 										? hoveredCryptoData.name
 										: `${totalCryptoValue.toLocaleString()}`,
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#fafafa"
-										: "#0a0a0a",
+									fill: document.documentElement.classList.contains("dark") ? "#fafafa" : "#0a0a0a",
 									fontSize: hoveredCryptoData ? 18 : 28,
 									fontWeight: "600",
 									lineHeight: 1.2,
@@ -436,13 +387,9 @@ export function CryptoList({
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredCryptoData
-										? `${hoveredCryptoData.value.toLocaleString()}`
-										: "Total",
+									text: hoveredCryptoData ? `${hoveredCryptoData.value.toLocaleString()}` : "Total",
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#a3a3a3"
-										: "#737373",
+									fill: document.documentElement.classList.contains("dark") ? "#a3a3a3" : "#737373",
 									fontSize: hoveredCryptoData ? 16 : 13,
 									fontWeight: hoveredCryptoData ? "500" : "400",
 									y: hoveredCryptoData ? 26 : 38,
@@ -454,13 +401,9 @@ export function CryptoList({
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredCryptoData
-										? `${hoveredCryptoData.percent.toFixed(1)}%`
-										: "",
+									text: hoveredCryptoData ? `${hoveredCryptoData.percent.toFixed(1)}%` : "",
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#737373"
-										: "#a3a3a3",
+									fill: document.documentElement.classList.contains("dark") ? "#737373" : "#a3a3a3",
 									fontSize: 13,
 									fontWeight: "400",
 									y: 48,
@@ -576,8 +519,8 @@ export function CryptoList({
 					<Coins className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
 					<h2 className="text-2xl font-bold mb-2">No Crypto Holdings</h2>
 					<p className="text-muted-foreground mb-6 max-w-md mx-auto">
-						You don't have any cryptocurrency positions yet. Add your first
-						crypto to start tracking.
+						You don't have any cryptocurrency positions yet. Add your first crypto to start
+						tracking.
 					</p>
 					<Button onClick={() => setShowAddForm(true)}>
 						<Plus className="h-4 w-4 mr-2" />
@@ -589,9 +532,7 @@ export function CryptoList({
 					onClose={() => setShowAddForm(false)}
 					onSubmit={async (data) => {
 						if (!currentPortfolio) {
-							toast.error(
-								"No portfolio selected. Please select a portfolio first.",
-							);
+							toast.error("No portfolio selected. Please select a portfolio first.");
 							throw new Error("No portfolio selected");
 						}
 						try {
@@ -601,8 +542,7 @@ export function CryptoList({
 								assetTypeID: "2",
 								quantity: data.quantity || 0,
 								purchasePrice: data.averageBuyPrice || 0,
-								currentValue:
-									data.currentPrice * data.quantity || undefined,
+								currentValue: data.currentPrice * data.quantity || undefined,
 								purchaseDate: data.purchaseDate,
 								walletAddress: data.walletAddress || undefined,
 								blockchainNetwork: undefined,
@@ -610,15 +550,12 @@ export function CryptoList({
 							});
 
 							if (result.asset || result.portfolioAsset) {
-								toast.success(
-									`Added ${data.quantity} ${data.symbol} to your portfolio!`,
-								);
+								toast.success(`Added ${data.quantity} ${data.symbol} to your portfolio!`);
 								setShowAddForm(false);
 							} else {
 								throw new Error("createCryptoAsset returned no asset");
 							}
 						} catch (error) {
-							console.error("Error adding crypto:", error);
 							toast.error("Failed to add crypto. Please try again.");
 							throw error;
 						}
@@ -635,9 +572,7 @@ export function CryptoList({
 				<Card>
 					<CardHeader className="pb-3">
 						<CardDescription>Total Value</CardDescription>
-						<CardTitle className="text-2xl font-mono">
-							{formatCurrency(totalValue)}
-						</CardTitle>
+						<CardTitle className="text-2xl font-mono">{formatCurrency(totalValue)}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div
@@ -649,8 +584,7 @@ export function CryptoList({
 								<TrendingDown className="h-4 w-4" />
 							)}
 							<span className="font-mono">
-								{formatCurrency(totalProfitLoss)} (
-								{totalProfitLoss >= 0 ? "+" : ""}
+								{formatCurrency(totalProfitLoss)} ({totalProfitLoss >= 0 ? "+" : ""}
 								{totalProfitLossPercent.toFixed(2)}%)
 							</span>
 						</div>
@@ -660,14 +594,10 @@ export function CryptoList({
 				<Card>
 					<CardHeader className="pb-3">
 						<CardDescription>Total Cost</CardDescription>
-						<CardTitle className="text-2xl font-mono">
-							{formatCurrency(totalCost)}
-						</CardTitle>
+						<CardTitle className="text-2xl font-mono">{formatCurrency(totalCost)}</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground">
-							{numberOfHoldings} positions
-						</p>
+						<p className="text-sm text-muted-foreground">{numberOfHoldings} positions</p>
 					</CardContent>
 				</Card>
 
@@ -680,9 +610,7 @@ export function CryptoList({
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm font-mono">
-							{bestPerformer
-								? `+${bestPerformer.profitLossPercent.toFixed(2)}%`
-								: "—"}
+							{bestPerformer ? `+${bestPerformer.profitLossPercent.toFixed(2)}%` : "—"}
 						</p>
 					</CardContent>
 				</Card>
@@ -696,9 +624,7 @@ export function CryptoList({
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm font-mono">
-							{worstPerformer
-								? `${worstPerformer.profitLossPercent.toFixed(2)}%`
-								: "—"}
+							{worstPerformer ? `${worstPerformer.profitLossPercent.toFixed(2)}%` : "—"}
 						</p>
 					</CardContent>
 				</Card>
@@ -745,9 +671,7 @@ export function CryptoList({
 						</div>
 						<div className="flex gap-2">
 							<Button
-								variant={
-									distributionChartType === "pie" ? "default" : "outline"
-								}
+								variant={distributionChartType === "pie" ? "default" : "outline"}
 								size="sm"
 								onClick={() => setDistributionChartType("pie")}
 							>
@@ -755,9 +679,7 @@ export function CryptoList({
 								Pie Chart
 							</Button>
 							<Button
-								variant={
-									distributionChartType === "treemap" ? "default" : "outline"
-								}
+								variant={distributionChartType === "treemap" ? "default" : "outline"}
 								size="sm"
 								onClick={() => setDistributionChartType("treemap")}
 							>
@@ -774,10 +696,7 @@ export function CryptoList({
 						opts={{ renderer: "svg" }}
 						onEvents={{
 							mouseover: (params: any) => {
-								if (
-									params.componentType === "series" &&
-									params.seriesType === "pie"
-								) {
+								if (params.componentType === "series" && params.seriesType === "pie") {
 									setHoveredCryptoData({
 										name: params.name,
 										value: params.value,
@@ -799,9 +718,7 @@ export function CryptoList({
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 						<div>
 							<CardTitle>Crypto Holdings</CardTitle>
-							<CardDescription>
-								Manage your cryptocurrency positions
-							</CardDescription>
+							<CardDescription>Manage your cryptocurrency positions</CardDescription>
 						</div>
 						<div className="flex gap-2">
 							<Button onClick={() => setShowAddForm(true)}>
@@ -819,15 +736,13 @@ export function CryptoList({
 					<div className="space-y-4">
 						{/* Filters & View Mode Toggle */}
 						<div className="flex flex-col sm:flex-row gap-3">
-							<div className="relative flex-1">
-								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-								<Input
-									placeholder="Search crypto or account..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
+							<SearchInput
+								placeholder="Search crypto..."
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								onClear={() => setSearchQuery("")}
+								containerClassName="flex-1"
+							/>
 
 							<Select value={filterExchange} onValueChange={setFilterExchange}>
 								<SelectTrigger className="w-[180px]">
@@ -882,212 +797,174 @@ export function CryptoList({
 						{/* Results count */}
 						<div className="flex items-center justify-between text-sm text-muted-foreground">
 							<span>{filteredHoldings.length} positions</span>
-							<Badge variant="outline">
-								{formatCurrency(totalValue)} total value
-							</Badge>
+							<Badge variant="outline">{formatCurrency(totalValue)} total value</Badge>
 						</div>
 
 						{/* Group By Account View - Using Accordions for scalability */}
 						{groupBy === "account" && (
 							<Accordion type="multiple" className="space-y-3">
-								{Object.entries(groupByAccount()).map(
-									([account, holdings], _index) => {
-										const accountValue = holdings.reduce(
-											(sum, h) => sum + h.value,
-											0,
-										);
-										const accountPL = holdings.reduce(
-											(sum, h) => sum + h.profitLoss,
-											0,
-										);
-										const accountPLPercent =
-											(accountPL / (accountValue - accountPL)) * 100;
-										const accountType = holdings[0].accountType;
+								{Object.entries(groupByAccount()).map(([account, holdings], _index) => {
+									const accountValue = holdings.reduce((sum, h) => sum + h.value, 0);
+									const accountPl = holdings.reduce((sum, h) => sum + h.profitLoss, 0);
+									const accountPlPercent = (accountPl / (accountValue - accountPl)) * 100;
+									const accountType = holdings[0].accountType;
 
-										return (
-											<AccordionItem
-												key={account}
-												value={account}
-												className="border rounded-lg overflow-hidden"
-											>
-												<AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline">
-													<div className="flex items-center justify-between w-full pr-2">
-														<div className="flex items-center gap-3">
-															<div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-																<AccountIcon type={accountType} />
-															</div>
-															<div className="text-left">
-																<span
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		onSelectAccount?.(account);
-																	}}
-																	className="font-medium hover:text-primary transition-colors text-left cursor-pointer"
-																>
-																	{account}
-																</span>
-																<p className="text-xs text-muted-foreground">
-																	{holdings.length}{" "}
-																	{holdings.length === 1 ? "asset" : "assets"}
-																</p>
-															</div>
+									return (
+										<AccordionItem
+											key={account}
+											value={account}
+											className="border rounded-lg overflow-hidden"
+										>
+											<AccordionTrigger className="px-4 py-3 hover:bg-muted/50 hover:no-underline">
+												<div className="flex items-center justify-between w-full pr-2">
+													<div className="flex items-center gap-3">
+														<div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+															<AccountIcon type={accountType} />
 														</div>
-														<div className="text-right flex items-center gap-6">
-															<div>
-																<p className="font-mono">
-																	{formatCurrency(accountValue)}
-																</p>
-																<p
-																	className={`text-sm font-mono ${accountPL >= 0 ? "text-green-600" : "text-red-600"}`}
-																>
-																	{accountPL >= 0 ? "+" : ""}
-																	{formatCurrency(accountPL)} (
-																	{accountPL >= 0 ? "+" : ""}
-																	{accountPLPercent.toFixed(2)}%)
-																</p>
-															</div>
+														<div className="text-left">
+															<span
+																onClick={(e) => {
+																	e.stopPropagation();
+																	onSelectAccount?.(account);
+																}}
+																className="font-medium hover:text-primary transition-colors text-left cursor-pointer"
+															>
+																{account}
+															</span>
+															<p className="text-xs text-muted-foreground">
+																{holdings.length} {holdings.length === 1 ? "asset" : "assets"}
+															</p>
 														</div>
 													</div>
-												</AccordionTrigger>
-												<AccordionContent className="px-0 pb-0">
-													<div className="border-t">
-														<Table>
-															<TableHeader>
-																<TableRow>
-																	<TableHead>Asset</TableHead>
-																	<TableHead className="text-right">
-																		Quantity
-																	</TableHead>
-																	<TableHead className="text-right">
-																		Avg Price
-																	</TableHead>
-																	<TableHead className="text-right">
-																		Current Price
-																	</TableHead>
-																	<TableHead className="text-right">
-																		Value
-																	</TableHead>
-																	<TableHead className="text-right">
-																		P&L
-																	</TableHead>
-																	<TableHead className="text-right">
-																		24h
-																	</TableHead>
-																	<TableHead className="text-right">
-																		Actions
-																	</TableHead>
-																</TableRow>
-															</TableHeader>
-															<TableBody>
-																{holdings.map((holding) => (
-																	<TableRow
-																		key={holding.id}
-																		className="cursor-pointer hover:bg-muted/50"
-																		onClick={() =>
-																			onSelectCrypto(holding.cryptoId)
-																		}
+													<div className="text-right flex items-center gap-6">
+														<div>
+															<p className="font-mono">{formatCurrency(accountValue)}</p>
+															<p
+																className={`text-sm font-mono ${accountPl >= 0 ? "text-green-600" : "text-red-600"}`}
+															>
+																{accountPl >= 0 ? "+" : ""}
+																{formatCurrency(accountPl)} ({accountPl >= 0 ? "+" : ""}
+																{accountPlPercent.toFixed(2)}%)
+															</p>
+														</div>
+													</div>
+												</div>
+											</AccordionTrigger>
+											<AccordionContent className="px-0 pb-0">
+												<div className="border-t">
+													<Table>
+														<TableHeader>
+															<TableRow>
+																<TableHead>Asset</TableHead>
+																<TableHead className="text-right">Quantity</TableHead>
+																<TableHead className="text-right">Avg Price</TableHead>
+																<TableHead className="text-right">Current Price</TableHead>
+																<TableHead className="text-right">Value</TableHead>
+																<TableHead className="text-right">P&L</TableHead>
+																<TableHead className="text-right">24h</TableHead>
+																<TableHead className="text-right">Actions</TableHead>
+															</TableRow>
+														</TableHeader>
+														<TableBody>
+															{holdings.map((holding) => (
+																<TableRow
+																	key={holding.id}
+																	className="cursor-pointer hover:bg-muted/50"
+																	onClick={() => onSelectCrypto(holding.cryptoId)}
+																>
+																	<TableCell>
+																		<div className="flex items-center gap-3">
+																			<div
+																				className="h-8 w-8 rounded-full flex items-center justify-center text-lg"
+																				style={{
+																					backgroundColor: `${holding.color}20`,
+																					color: holding.color,
+																				}}
+																			>
+																				{holding.icon}
+																			</div>
+																			<div>
+																				<p className="font-medium">{holding.cryptoName}</p>
+																				<p className="text-xs text-muted-foreground">
+																					{holding.symbol}
+																				</p>
+																			</div>
+																		</div>
+																	</TableCell>
+																	<TableCell className="text-right font-mono">
+																		{formatNumber(holding.quantity, 4)}
+																	</TableCell>
+																	<TableCell className="text-right font-mono">
+																		{formatCurrency(holding.averageBuyPrice)}
+																	</TableCell>
+																	<TableCell className="text-right font-mono">
+																		{formatCurrency(holding.currentPrice)}
+																	</TableCell>
+																	<TableCell className="text-right font-mono">
+																		{formatCurrency(holding.value)}
+																	</TableCell>
+																	<TableCell
+																		className={`text-right font-mono ${holding.profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}
 																	>
-																		<TableCell>
-																			<div className="flex items-center gap-3">
-																				<div
-																					className="h-8 w-8 rounded-full flex items-center justify-center text-lg"
-																					style={{
-																						backgroundColor: `${holding.color}20`,
-																						color: holding.color,
+																		<div>
+																			{holding.profitLoss >= 0 ? "+" : ""}
+																			{formatCurrency(holding.profitLoss)}
+																		</div>
+																		<div className="text-xs">
+																			({holding.profitLossPercent >= 0 ? "+" : ""}
+																			{holding.profitLossPercent.toFixed(2)}%)
+																		</div>
+																	</TableCell>
+																	<TableCell
+																		className={`text-right font-mono ${holding.change24h >= 0 ? "text-green-600" : "text-red-600"}`}
+																	>
+																		{holding.change24h >= 0 ? "+" : ""}
+																		{holding.change24h.toFixed(2)}%
+																	</TableCell>
+																	<TableCell className="text-right">
+																		<DropdownMenu>
+																			<DropdownMenuTrigger
+																				asChild
+																				onClick={(e) => e.stopPropagation()}
+																			>
+																				<Button variant="ghost" size="icon">
+																					<MoreVertical className="h-4 w-4" />
+																				</Button>
+																			</DropdownMenuTrigger>
+																			<DropdownMenuContent align="end">
+																				<DropdownMenuItem
+																					onClick={(e) => {
+																						e.stopPropagation();
+																						onSelectCrypto(holding.cryptoId);
 																					}}
 																				>
-																					{holding.icon}
-																				</div>
-																				<div>
-																					<p className="font-medium">
-																						{holding.cryptoName}
-																					</p>
-																					<p className="text-xs text-muted-foreground">
-																						{holding.symbol}
-																					</p>
-																				</div>
-																			</div>
-																		</TableCell>
-																		<TableCell className="text-right font-mono">
-																			{formatNumber(holding.quantity, 4)}
-																		</TableCell>
-																		<TableCell className="text-right font-mono">
-																			{formatCurrency(holding.averageBuyPrice)}
-																		</TableCell>
-																		<TableCell className="text-right font-mono">
-																			{formatCurrency(holding.currentPrice)}
-																		</TableCell>
-																		<TableCell className="text-right font-mono">
-																			{formatCurrency(holding.value)}
-																		</TableCell>
-																		<TableCell
-																			className={`text-right font-mono ${holding.profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}
-																		>
-																			<div>
-																				{holding.profitLoss >= 0 ? "+" : ""}
-																				{formatCurrency(holding.profitLoss)}
-																			</div>
-																			<div className="text-xs">
-																				(
-																				{holding.profitLossPercent >= 0
-																					? "+"
-																					: ""}
-																				{holding.profitLossPercent.toFixed(2)}%)
-																			</div>
-																		</TableCell>
-																		<TableCell
-																			className={`text-right font-mono ${holding.change24h >= 0 ? "text-green-600" : "text-red-600"}`}
-																		>
-																			{holding.change24h >= 0 ? "+" : ""}
-																			{holding.change24h.toFixed(2)}%
-																		</TableCell>
-																		<TableCell className="text-right">
-																			<DropdownMenu>
-																				<DropdownMenuTrigger
-																					asChild
+																					<Eye className="h-4 w-4 mr-2" />
+																					View Details
+																				</DropdownMenuItem>
+																				<DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+																					<Edit className="h-4 w-4 mr-2" />
+																					Edit
+																				</DropdownMenuItem>
+																				<DropdownMenuSeparator />
+																				<DropdownMenuItem
+																					className="text-destructive"
 																					onClick={(e) => e.stopPropagation()}
 																				>
-																					<Button variant="ghost" size="icon">
-																						<MoreVertical className="h-4 w-4" />
-																					</Button>
-																				</DropdownMenuTrigger>
-																				<DropdownMenuContent align="end">
-																					<DropdownMenuItem
-																						onClick={(e) => {
-																							e.stopPropagation();
-																							onSelectCrypto(holding.cryptoId);
-																						}}
-																					>
-																						<Eye className="h-4 w-4 mr-2" />
-																						View Details
-																					</DropdownMenuItem>
-																					<DropdownMenuItem
-																						onClick={(e) => e.stopPropagation()}
-																					>
-																						<Edit className="h-4 w-4 mr-2" />
-																						Edit
-																					</DropdownMenuItem>
-																					<DropdownMenuSeparator />
-																					<DropdownMenuItem
-																						className="text-destructive"
-																						onClick={(e) => e.stopPropagation()}
-																					>
-																						<Trash2 className="h-4 w-4 mr-2" />
-																						Delete
-																					</DropdownMenuItem>
-																				</DropdownMenuContent>
-																			</DropdownMenu>
-																		</TableCell>
-																	</TableRow>
-																))}
-															</TableBody>
-														</Table>
-													</div>
-												</AccordionContent>
-											</AccordionItem>
-										);
-									},
-								)}
+																					<Trash2 className="h-4 w-4 mr-2" />
+																					Delete
+																				</DropdownMenuItem>
+																			</DropdownMenuContent>
+																		</DropdownMenu>
+																	</TableCell>
+																</TableRow>
+															))}
+														</TableBody>
+													</Table>
+												</div>
+											</AccordionContent>
+										</AccordionItem>
+									);
+								})}
 							</Accordion>
 						)}
 
@@ -1126,9 +1003,7 @@ export function CryptoList({
 													</div>
 													<div>
 														<p className="font-medium">{asset.cryptoName}</p>
-														<p className="text-xs text-muted-foreground">
-															{asset.symbol}
-														</p>
+														<p className="text-xs text-muted-foreground">{asset.symbol}</p>
 													</div>
 												</div>
 											</TableCell>
@@ -1167,10 +1042,7 @@ export function CryptoList({
 											</TableCell>
 											<TableCell className="text-right">
 												<DropdownMenu>
-													<DropdownMenuTrigger
-														asChild
-														onClick={(e) => e.stopPropagation()}
-													>
+													<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 														<Button variant="ghost" size="icon">
 															<MoreVertical className="h-4 w-4" />
 														</Button>
@@ -1185,9 +1057,7 @@ export function CryptoList({
 															<Eye className="h-4 w-4 mr-2" />
 															View Details
 														</DropdownMenuItem>
-														<DropdownMenuItem
-															onClick={(e) => e.stopPropagation()}
-														>
+														<DropdownMenuItem onClick={(e) => e.stopPropagation()}>
 															<Wallet className="h-4 w-4 mr-2" />
 															View Accounts
 														</DropdownMenuItem>
@@ -1209,9 +1079,7 @@ export function CryptoList({
 				onClose={() => setShowAddForm(false)}
 				onSubmit={async (data) => {
 					if (!currentPortfolio) {
-						toast.error(
-							"No portfolio selected. Please select a portfolio first.",
-						);
+						toast.error("No portfolio selected. Please select a portfolio first.");
 						throw new Error("No portfolio selected");
 					}
 					try {
@@ -1221,8 +1089,7 @@ export function CryptoList({
 							assetTypeID: "2", // Crypto asset type ID from server
 							quantity: data.quantity || 0,
 							purchasePrice: data.averageBuyPrice || 0,
-							currentValue:
-								data.currentPrice * data.quantity || undefined,
+							currentValue: data.currentPrice * data.quantity || undefined,
 							purchaseDate: data.purchaseDate,
 							walletAddress: data.walletAddress || undefined,
 							blockchainNetwork: undefined,
@@ -1230,15 +1097,12 @@ export function CryptoList({
 						});
 
 						if (result.asset || result.portfolioAsset) {
-							toast.success(
-								`Added ${data.quantity} ${data.symbol} to your portfolio!`,
-							);
+							toast.success(`Added ${data.quantity} ${data.symbol} to your portfolio!`);
 							setShowAddForm(false);
 						} else {
 							throw new Error("createCryptoAsset returned no asset");
 						}
 					} catch (error) {
-						console.error("Error adding crypto:", error);
 						toast.error("Failed to add crypto. Please try again.");
 						throw error;
 					}

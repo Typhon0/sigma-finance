@@ -27,16 +27,12 @@ class MockWebSocket {
 
 	close() {
 		this.readyState = MockWebSocket.CLOSED;
-		this.onclose?.(
-			new CloseEvent("close", { code: 1000, reason: "Normal closure" }),
-		);
+		this.onclose?.(new CloseEvent("close", { code: 1000, reason: "Normal closure" }));
 	}
 
 	// Helper method to simulate incoming messages
 	simulateMessage(data: any) {
-		this.onmessage?.(
-			new MessageEvent("message", { data: JSON.stringify(data) }),
-		);
+		this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(data) }));
 	}
 }
 

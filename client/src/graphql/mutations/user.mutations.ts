@@ -8,3 +8,21 @@ export const UPDATE_USER_DISPLAY_CURRENCY_MUTATION = gql`
     }
   }
 `;
+
+export const UPDATE_USER_THEME_PREFERENCES_MUTATION = gql`
+  mutation UpdateUserThemePreferences($input: UpdateUserThemePreferencesInput!) {
+    updateUserThemePreferences(input: $input) {
+      id
+      themePreference
+      themeBaseColor
+      themeAccentColor
+      themeFontPreference
+      themeHeadingFont
+      themeMenuAccent
+      themeMenuColor
+      themeStyle
+      themeRadius
+      themeRTL
+    }
+  }
+`;

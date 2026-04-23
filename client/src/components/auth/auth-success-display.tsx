@@ -88,12 +88,7 @@ export function AuthSuccessDisplay({
 	const showResendOption = type === "registration" || type === "password-reset";
 
 	return (
-		<Alert
-			variant="success"
-			className={className}
-			role="alert"
-			aria-live="polite"
-		>
+		<Alert variant="default" className={className} role="alert" aria-live="polite">
 			{getSuccessIcon()}
 			<AlertTitle>{getSuccessTitle()}</AlertTitle>
 			<AlertDescription className="space-y-3">
@@ -123,12 +118,7 @@ export function AuthSuccessDisplay({
 
 				<div className="flex gap-2 mt-3">
 					{showResendOption && onResendEmail && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={onResendEmail}
-							className="h-8"
-						>
+						<Button variant="outline" size="sm" onClick={onResendEmail} className="h-8">
 							Resend Email
 						</Button>
 					)}

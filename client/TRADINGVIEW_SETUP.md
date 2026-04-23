@@ -12,7 +12,7 @@ We provide multiple chart implementations to ensure compatibility and performanc
 - **Professional** - High-quality candlestick charts
 - **Easy integration** - Available as npm package
 
-### 2. Recharts Fallback
+### 2. ECharts Fallback
 - **Reliable fallback** - Always works without external dependencies
 - **Simple line charts** - Good for basic price visualization
 - **Responsive** - Works well on all devices

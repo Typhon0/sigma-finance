@@ -12,22 +12,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Asset, Portfolio, Position, Transaction } from "@/gql/graphql";
 
 // Mock data for demonstration
-const mockPortfolio: Portfolio = {
+const mockPortfolio = {
 	id: "1",
 	name: "Tech Portfolio",
 	description: "Technology focused investments",
 	user: {
 		id: "1",
-		name: "John Doe",
 		email: "john@example.com",
-		emailVerified: true,
-	},
+		name: "John Doe",
+	} as unknown as Portfolio["user"],
 	assets: [],
 	analytics: null,
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	sortOrder: 1,
-};
+	tags: [],
+	transactions: [],
+} as Portfolio;
 
 const mockAssets: Asset[] = [
 	{
@@ -54,15 +55,18 @@ const mockAssets: Asset[] = [
 	},
 ];
 
-const mockTransactions: Transaction[] = [
+const mockTransactions = [
 	{
 		id: "1",
 		asset: mockAssets[0],
 		portfolio: mockPortfolio,
 		transactionType: "BUY",
 		quantity: 100,
-		pricePerUnit: 140.0,
-		transactionDate: new Date("2024-01-15").toISOString(),
+		unitPriceAmount: 140.0,
+		unitPriceCurrency: "USD",
+		feesAmount: 0,
+		feesCurrency: "USD",
+		executedAt: new Date("2024-01-15").toISOString(),
 		notes: "Initial purchase",
 	},
 	{
@@ -71,13 +75,16 @@ const mockTransactions: Transaction[] = [
 		portfolio: mockPortfolio,
 		transactionType: "BUY",
 		quantity: 0.5,
-		pricePerUnit: 42000.0,
-		transactionDate: new Date("2024-01-20").toISOString(),
+		unitPriceAmount: 42000.0,
+		unitPriceCurrency: "USD",
+		feesAmount: 0,
+		feesCurrency: "USD",
+		executedAt: new Date("2024-01-20").toISOString(),
 		notes: "Bitcoin investment",
 	},
-];
+] as Transaction[];
 
-const mockPositions: Position[] = [
+const mockPositions = [
 	{
 		id: "1",
 		portfolio: mockPortfolio,
@@ -85,9 +92,6 @@ const mockPositions: Position[] = [
 		quantity: 100,
 		ownershipPct: 100,
 		averagePurchasePrice: 140.0,
-		notes: null,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
 	},
 	{
 		id: "2",
@@ -96,11 +100,8 @@ const mockPositions: Position[] = [
 		quantity: 0.5,
 		ownershipPct: 100,
 		averagePurchasePrice: 42000.0,
-		notes: null,
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
 	},
-];
+] as Position[];
 
 export function TransactionIntegrationExample() {
 	const [isLoading, setIsLoading] = useState(false);
@@ -112,25 +113,25 @@ export function TransactionIntegrationExample() {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 
-		const newTransaction: Transaction = {
+		const newTransaction = {
 			id: Date.now().toString(),
 			asset: mockAssets.find((a) => a.id === data.assetId) || mockAssets[0],
 			portfolio: mockPortfolio,
 			transactionType: data.transactionType,
 			quantity: data.quantity || 0,
-			pricePerUnit: data.pricePerUnit || 0,
-			transactionDate: data.transactionDate.toISOString(),
+			unitPriceAmount: data.pricePerUnit || 0,
+			unitPriceCurrency: "USD",
+			feesAmount: 0,
+			feesCurrency: "USD",
+			executedAt: data.transactionDate.toISOString(),
 			notes: data.notes || null,
-		};
+		} as Transaction;
 
 		setTransactions((prev) => [newTransaction, ...prev]);
 		setIsLoading(false);
 	};
 
-	const handleEditTransaction = async (
-		id: string,
-		data: TransactionFormData,
-	) => {
+	const handleEditTransaction = async (id: string, data: TransactionFormData) => {
 		setIsLoading(true);
 
 		// Simulate API call
@@ -139,14 +140,14 @@ export function TransactionIntegrationExample() {
 		setTransactions((prev) =>
 			prev.map((t) =>
 				t.id === id
-					? {
+					? ({
 							...t,
 							transactionType: data.transactionType,
 							quantity: data.quantity || 0,
-							pricePerUnit: data.pricePerUnit || 0,
-							transactionDate: data.transactionDate.toISOString(),
+							unitPriceAmount: data.pricePerUnit || 0,
+							executedAt: data.transactionDate.toISOString(),
 							notes: data.notes || null,
-						}
+						} as Transaction)
 					: t,
 			),
 		);
@@ -163,25 +164,21 @@ export function TransactionIntegrationExample() {
 		setIsLoading(false);
 	};
 
-	const handleBulkImport = async (data: BulkTransactionData) => {
+	const handleBulkImport = async (_data: BulkTransactionData) => {
 		setIsLoading(true);
 
 		// Simulate bulk import
 		await new Promise((resolve) => setTimeout(resolve, 2000));
-
-		console.log("Bulk import data:", data);
 		setIsLoading(false);
 	};
 
-	const handleExportTransactions = async (filters: TransactionFilterData) => {
-		console.log("Export transactions with filters:", filters);
-
+	const handleExportTransactions = async (_filters: TransactionFilterData) => {
 		// Simulate export
 		const csvContent = [
 			"Date,Type,Asset,Quantity,Price,Amount,Notes",
 			...transactions.map(
 				(t) =>
-					`${t.transactionDate},${t.transactionType},${t.asset.name},${t.quantity},${t.pricePerUnit},${t.quantity * t.pricePerUnit},"${t.notes || ""}"`,
+					`${t.executedAt},${t.transactionType},${t.asset.name},${t.quantity},${t.unitPriceAmount},${t.quantity * (t.unitPriceAmount ?? 0)},"${t.notes || ""}"`,
 			),
 		].join("\n");
 
@@ -210,31 +207,23 @@ export function TransactionIntegrationExample() {
 					<Alert className="mb-6">
 						<Info className="h-4 w-4" />
 						<AlertDescription>
-							This is a demonstration of the transaction management interface
-							integrated with the dashboard. In the real application, this would
-							connect to GraphQL resolvers for data persistence.
+							This is a demonstration of the transaction management interface integrated with the
+							dashboard. In the real application, this would connect to GraphQL resolvers for data
+							persistence.
 						</AlertDescription>
 					</Alert>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
 						<Card>
 							<CardContent className="p-4 text-center">
-								<div className="text-2xl font-bold text-green-600">
-									{transactions.length}
-								</div>
-								<div className="text-sm text-muted-foreground">
-									Total Transactions
-								</div>
+								<div className="text-2xl font-bold text-green-600">{transactions.length}</div>
+								<div className="text-sm text-muted-foreground">Total Transactions</div>
 							</CardContent>
 						</Card>
 						<Card>
 							<CardContent className="p-4 text-center">
-								<div className="text-2xl font-bold text-blue-600">
-									{mockPositions.length}
-								</div>
-								<div className="text-sm text-muted-foreground">
-									Active Positions
-								</div>
+								<div className="text-2xl font-bold text-blue-600">{mockPositions.length}</div>
+								<div className="text-sm text-muted-foreground">Active Positions</div>
 							</CardContent>
 						</Card>
 						<Card>
@@ -242,16 +231,10 @@ export function TransactionIntegrationExample() {
 								<div className="text-2xl font-bold text-purple-600">
 									$
 									{mockPositions
-										.reduce(
-											(sum, p) =>
-												sum + p.quantity * (p.asset.currentValue || 0),
-											0,
-										)
+										.reduce((sum, p) => sum + p.quantity * (p.asset.currentValue || 0), 0)
 										.toLocaleString()}
 								</div>
-								<div className="text-sm text-muted-foreground">
-									Portfolio Value
-								</div>
+								<div className="text-sm text-muted-foreground">Portfolio Value</div>
 							</CardContent>
 						</Card>
 					</div>
@@ -318,10 +301,7 @@ export function TransactionIntegrationExample() {
 						</div>
 						<div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
 							<span className="font-medium">GraphQL Integration</span>
-							<Badge
-								variant="outline"
-								className="bg-yellow-100 text-yellow-800"
-							>
+							<Badge variant="outline" className="bg-yellow-100 text-yellow-800">
 								Pending Task 9
 							</Badge>
 						</div>

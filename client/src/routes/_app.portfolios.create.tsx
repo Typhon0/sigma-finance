@@ -11,11 +11,11 @@ function PortfolioCreatePage() {
 		<div className="flex flex-col h-full">
 			<header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear">
 				<div className="flex items-center gap-2 px-4">
-					<PortfolioBreadcrumb items={portfolioBreadcrumbs.portfolioCreate()} />
+					<PortfolioBreadcrumb items={portfolioBreadcrumbs.portfolioCreate} />
 				</div>
 			</header>
 			<main className="flex-1 p-6">
-				<EnhancedPortfolioForm />
+				<EnhancedPortfolioForm mode="create" onSubmit={async () => {}} onCancel={() => {}} />
 			</main>
 		</div>
 	);

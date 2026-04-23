@@ -62,12 +62,8 @@ vi.mock("../ui/dialog", () => ({
 	DialogContent: ({ children }: { children: ReactNode }) => (
 		<div data-testid="dialog-content">{children}</div>
 	),
-	DialogDescription: ({ children }: { children: ReactNode }) => (
-		<span>{children}</span>
-	),
-	DialogTitle: ({ children }: { children: ReactNode }) => (
-		<span>{children}</span>
-	),
+	DialogDescription: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+	DialogTitle: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 
 vi.mock("../ui/button", () => ({
@@ -82,7 +78,7 @@ vi.mock("../ui/button", () => ({
 		disabled?: boolean;
 		variant?: string;
 	}) => (
-		<button onClick={onClick} disabled={disabled} data-variant={variant}>
+		<button type="button" onClick={onClick} disabled={disabled} data-variant={variant}>
 			{children}
 		</button>
 	),
@@ -105,11 +101,7 @@ vi.mock("../ui/input", () => ({
 		<input
 			type={type || "text"}
 			value={value}
-			onChange={
-				onChange
-					? (e) => onChange({ target: { value: e.target.value } })
-					: undefined
-			}
+			onChange={onChange ? (e) => onChange({ target: { value: e.target.value } }) : undefined}
 			placeholder={placeholder}
 			id={id}
 		/>
@@ -130,16 +122,10 @@ vi.mock("../ui/badge", () => ({
 
 vi.mock("../ui/select", () => ({
 	Select: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-	SelectContent: ({ children }: { children: ReactNode }) => (
-		<div>{children}</div>
-	),
+	SelectContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 	SelectItem: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-	SelectTrigger: ({ children }: { children: ReactNode }) => (
-		<div>{children}</div>
-	),
-	SelectValue: ({ children }: { children: ReactNode }) => (
-		<span>{children}</span>
-	),
+	SelectTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	SelectValue: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 }));
 
 vi.mock("../ui/calendar", () => ({
@@ -148,12 +134,8 @@ vi.mock("../ui/calendar", () => ({
 
 vi.mock("../ui/popover", () => ({
 	Popover: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-	PopoverContent: ({ children }: { children: ReactNode }) => (
-		<div>{children}</div>
-	),
-	PopoverTrigger: ({ children }: { children: ReactNode }) => (
-		<div>{children}</div>
-	),
+	PopoverContent: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	PopoverTrigger: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../ui/textarea", () => ({
@@ -166,11 +148,7 @@ vi.mock("../ui/textarea", () => ({
 	}) => (
 		<textarea
 			value={value}
-			onChange={
-				onChange
-					? (e) => onChange({ target: { value: e.target.value } })
-					: undefined
-			}
+			onChange={onChange ? (e) => onChange({ target: { value: e.target.value } }) : undefined}
 		/>
 	),
 }));
@@ -224,44 +202,22 @@ describe("AddStockForm", () => {
 
 	describe("Initial Dialog State", () => {
 		it("shows Add Position title when dialog opens", () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			expect(screen.getAllByText("Add Position").length).toBeGreaterThan(0);
 		});
 
 		it("shows Broker Sync and Manual Entry options", () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
-			expect(
-				screen.getByRole("button", { name: /Broker Sync/i }),
-			).toBeInTheDocument();
-			expect(
-				screen.getByRole("button", { name: /Manual Entry/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /Broker Sync/i })).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /Manual Entry/i })).toBeInTheDocument();
 		});
 	});
 
 	describe("Manual Entry Flow", () => {
 		it("navigates to Manual Entry form when clicked", async () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			const manualEntryButton = screen.getByRole("button", {
 				name: /Manual Entry/i,
@@ -274,13 +230,7 @@ describe("AddStockForm", () => {
 		});
 
 		it("shows search input in Manual Entry form", async () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			const manualEntryButton = screen.getByRole("button", {
 				name: /Manual Entry/i,
@@ -288,22 +238,14 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(
-					screen.getByPlaceholderText(/Search symbol/i),
-				).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
 			});
 		});
 	});
 
 	describe("Stock Selection and Form Fields", () => {
 		it("displays stock list when searching", async () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			// Navigate to manual entry
 			const manualEntryButton = screen.getByRole("button", {
@@ -312,9 +254,7 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(
-					screen.getByPlaceholderText(/Search symbol/i),
-				).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
 			});
 
 			// Search for AAPL
@@ -327,13 +267,7 @@ describe("AddStockForm", () => {
 		});
 
 		it("selects a stock and shows quantity/price fields", async () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			// Navigate to manual entry
 			const manualEntryButton = screen.getByRole("button", {
@@ -342,9 +276,7 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(
-					screen.getByPlaceholderText(/Search symbol/i),
-				).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
 			});
 
 			// Search for AAPL and select it
@@ -366,13 +298,7 @@ describe("AddStockForm", () => {
 		});
 
 		it("fills in quantity and price fields", async () => {
-			render(
-				<AddStockForm
-					open={true}
-					onClose={mockOnClose}
-					onSubmit={mockOnSubmit}
-				/>,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
 
 			// Navigate to manual entry and select stock
 			const manualEntryButton = screen.getByRole("button", {
@@ -381,9 +307,7 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(
-					screen.getByPlaceholderText(/Search symbol/i),
-				).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
 			});
 
 			const searchInput = screen.getByPlaceholderText(/Search symbol/i);
@@ -410,9 +334,7 @@ describe("AddStockForm", () => {
 		it("calls onSubmit with correct data when form is filled", async () => {
 			const onSubmit = vi.fn().mockResolvedValue(undefined);
 
-			render(
-				<AddStockForm open={true} onClose={mockOnClose} onSubmit={onSubmit} />,
-			);
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={onSubmit} />);
 
 			// Navigate to manual entry and select stock
 			const manualEntryButton = screen.getByRole("button", {
@@ -421,9 +343,7 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(
-					screen.getByPlaceholderText(/Search symbol/i),
-				).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
 			});
 
 			const searchInput = screen.getByPlaceholderText(/Search symbol/i);

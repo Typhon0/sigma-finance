@@ -1,25 +1,10 @@
-import {
-	Bell,
-	Check,
-	Globe,
-	MapPin,
-	Search,
-	Settings,
-	Shield,
-	User,
-	X,
-} from "lucide-react";
+import { Bell, Check, Globe, MapPin, Settings, Shield, User, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { ScrollArea } from "./ui/scroll-area";
@@ -144,20 +129,12 @@ const countries: Country[] = [
 	{ code: "MA", name: "Morocco", flag: "🇲🇦", region: "Middle East & Africa" },
 ];
 
-const regions = [
-	"All",
-	"Europe",
-	"Americas",
-	"Asia-Pacific",
-	"Middle East & Africa",
-];
+const regions = ["All", "Europe", "Americas", "Asia-Pacific", "Middle East & Africa"];
 
 export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 	const [name, setName] = useState(user.name || "");
 	const [email, setEmail] = useState(user.email || "");
-	const [selectedCountries, setSelectedCountries] = useState<string[]>(
-		user.countries || ["FR"],
-	);
+	const [selectedCountries, setSelectedCountries] = useState<string[]>(user.countries || ["FR"]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedRegion, setSelectedRegion] = useState("All");
 	const [activeTab, setActiveTab] = useState<
@@ -168,8 +145,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 		const matchesSearch =
 			country.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
 			country.code.toLowerCase().includes(searchQuery.toLowerCase());
-		const matchesRegion =
-			selectedRegion === "All" || country.region === selectedRegion;
+		const matchesRegion = selectedRegion === "All" || country.region === selectedRegion;
 		return matchesSearch && matchesRegion;
 	});
 
@@ -211,9 +187,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 			{/* Header */}
 			<div>
 				<h1 className="text-3xl mb-2">Settings</h1>
-				<p className="text-muted-foreground">
-					Manage your account settings and preferences
-				</p>
+				<p className="text-muted-foreground">Manage your account settings and preferences</p>
 			</div>
 
 			{/* Tabs */}
@@ -292,9 +266,8 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 						<CardHeader>
 							<CardTitle>Tax Jurisdictions</CardTitle>
 							<CardDescription>
-								Select the countries where you have tax residency or investment
-								interests. This will customize the available asset types for
-								your situation.
+								Select the countries where you have tax residency or investment interests. This will
+								customize the available asset types for your situation.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
@@ -322,9 +295,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 									})}
 								</div>
 								{selectedCountries.length === 0 && (
-									<p className="text-sm text-muted-foreground">
-										No jurisdictions selected
-									</p>
+									<p className="text-sm text-muted-foreground">No jurisdictions selected</p>
 								)}
 							</div>
 
@@ -332,23 +303,18 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 
 							{/* Search and Filter */}
 							<div className="space-y-3">
-								<div className="relative">
-									<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-									<Input
-										placeholder="Search countries..."
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										className="pl-9"
-									/>
-								</div>
+								<SearchInput
+									placeholder="Search settings..."
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									onClear={() => setSearchQuery("")}
+								/>
 
 								<div className="flex gap-2 flex-wrap">
 									{regions.map((region) => (
 										<Button
 											key={region}
-											variant={
-												selectedRegion === region ? "default" : "outline"
-											}
+											variant={selectedRegion === region ? "default" : "outline"}
 											size="sm"
 											onClick={() => setSelectedRegion(region)}
 										>
@@ -361,9 +327,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 							{/* Popular Countries */}
 							{searchQuery === "" && selectedRegion === "All" && (
 								<div className="space-y-2">
-									<p className="text-sm font-medium text-muted-foreground">
-										Popular
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">Popular</p>
 									<div className="grid grid-cols-2 md:grid-cols-3 gap-2">
 										{countries
 											.filter((c) => c.popular)
@@ -382,9 +346,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 							{/* All Countries */}
 							<div className="space-y-2">
 								{searchQuery === "" && selectedRegion === "All" && (
-									<p className="text-sm font-medium text-muted-foreground">
-										All Countries
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">All Countries</p>
 								)}
 								<ScrollArea className="h-[400px] pr-4">
 									<div className="grid grid-cols-2 md:grid-cols-3 gap-2">
@@ -400,9 +362,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 									{filteredCountries.length === 0 && (
 										<div className="text-center py-8">
 											<Globe className="h-12 w-12 text-muted-foreground mx-auto mb-2 opacity-50" />
-											<p className="text-muted-foreground">
-												No countries found
-											</p>
+											<p className="text-muted-foreground">No countries found</p>
 										</div>
 									)}
 								</ScrollArea>
@@ -416,10 +376,9 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 											Asset Type Availability
 										</p>
 										<p className="text-sm text-blue-700 dark:text-blue-300">
-											Some asset types are only available in specific countries
-											(e.g., SCPI in France, 401k in USA). Your jurisdiction
-											selection will customize which assets you can add to your
-											portfolio.
+											Some asset types are only available in specific countries (e.g., SCPI in
+											France, 401k in USA). Your jurisdiction selection will customize which assets
+											you can add to your portfolio.
 										</p>
 									</div>
 								</div>
@@ -435,23 +394,17 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 					<Card>
 						<CardHeader>
 							<CardTitle>Application Preferences</CardTitle>
-							<CardDescription>
-								Customize your application experience
-							</CardDescription>
+							<CardDescription>Customize your application experience</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<p className="text-sm text-muted-foreground">
-								Preferences coming soon...
-							</p>
+							<p className="text-sm text-muted-foreground">Preferences coming soon...</p>
 						</CardContent>
 					</Card>
 
 					<Card>
 						<CardHeader>
 							<CardTitle>Data Management</CardTitle>
-							<CardDescription>
-								Reset your portfolio to default demo data
-							</CardDescription>
+							<CardDescription>Reset your portfolio to default demo data</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
@@ -462,9 +415,9 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 											Reset to Default Portfolio
 										</p>
 										<p className="text-sm text-amber-700 dark:text-amber-300">
-											This will delete all your current assets and restore the
-											default demo portfolio with all asset categories (stocks,
-											crypto, real estate, collectibles, etc.).
+											This will delete all your current assets and restore the default demo
+											portfolio with all asset categories (stocks, crypto, real estate,
+											collectibles, etc.).
 										</p>
 										<Button
 											variant="destructive"
@@ -478,9 +431,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 													localStorage.removeItem("assets");
 													localStorage.removeItem("transactions");
 													localStorage.removeItem("watchlist");
-													toast.success(
-														"Data reset! Please refresh the page to see the changes.",
-													);
+													toast.success("Data reset! Please refresh the page to see the changes.");
 													setTimeout(() => window.location.reload(), 1500);
 												}
 											}}
@@ -504,9 +455,7 @@ export function UserSettings({ user, onUpdateUser }: UserSettingsProps) {
 							<CardDescription>Manage your account security</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
-							<p className="text-sm text-muted-foreground">
-								Security settings coming soon...
-							</p>
+							<p className="text-sm text-muted-foreground">Security settings coming soon...</p>
 						</CardContent>
 					</Card>
 				</div>

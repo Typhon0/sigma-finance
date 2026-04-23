@@ -30,8 +30,6 @@ export function useErrorHandling(options: ErrorHandlingOptions = {}) {
 
 	const handleError = useCallback(
 		(error: Error | ApolloError) => {
-			console.error("Dashboard section error:", error);
-
 			setErrorState({
 				hasError: true,
 				error,
@@ -44,11 +42,16 @@ export function useErrorHandling(options: ErrorHandlingOptions = {}) {
 			}
 
 			// Report to monitoring service if available
-			if (typeof window !== "undefined" && (window as any).reportError) {
-				(window as any).reportError(error, {
-					context: "dashboard-section",
-					retryCount,
-				});
+			if (typeof window !== "undefined") {
+				const reportErrorFn = (
+					window as unknown as { reportError?: (error: unknown, data: unknown) => void }
+				).reportError;
+				if (typeof reportErrorFn === "function") {
+					reportErrorFn(error, {
+						context: "dashboard-section",
+						retryCount,
+					});
+				}
 			}
 		},
 		[onError, retryCount],
@@ -57,9 +60,6 @@ export function useErrorHandling(options: ErrorHandlingOptions = {}) {
 	const retry = useCallback(
 		async (retryFn?: () => Promise<void> | void) => {
 			if (retryCount >= maxRetries) {
-				console.warn(
-					`Max retries (${maxRetries}) reached for dashboard section`,
-				);
 				return;
 			}
 
@@ -182,14 +182,8 @@ export function useApolloErrorHandling(options: ErrorHandlingOptions = {}) {
 	return {
 		...errorHandling,
 		handleApolloError,
-		isNetworkError: errorHandling.error
-			? isNetworkError(errorHandling.error)
-			: false,
-		isGraphQLError: errorHandling.error
-			? isGraphQLError(errorHandling.error)
-			: false,
-		userFriendlyMessage: errorHandling.error
-			? getErrorMessage(errorHandling.error)
-			: "",
+		isNetworkError: errorHandling.error ? isNetworkError(errorHandling.error) : false,
+		isGraphQLError: errorHandling.error ? isGraphQLError(errorHandling.error) : false,
+		userFriendlyMessage: errorHandling.error ? getErrorMessage(errorHandling.error) : "",
 	};
 }

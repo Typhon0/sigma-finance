@@ -1,21 +1,10 @@
-import {
-	Calculator,
-	Eye,
-	EyeOff,
-	Info,
-	TrendingDown,
-	TrendingUp,
-} from "lucide-react";
+import { Calculator, Eye, EyeOff, Info, TrendingDown, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Position, Transaction } from "@/gql/graphql";
 import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
@@ -74,9 +63,7 @@ export function CostBasisDisplay({
 					<div className="flex items-center justify-between">
 						<div>
 							<p className="text-sm font-medium">Cost Basis</p>
-							<p className="text-lg font-bold">
-								{formatCurrency(averageCostBasis)}
-							</p>
+							<p className="text-lg font-bold">{formatCurrency(averageCostBasis)}</p>
 							<p className="text-xs text-muted-foreground">
 								{totalQuantity.toLocaleString()} shares
 							</p>
@@ -84,9 +71,7 @@ export function CostBasisDisplay({
 						<div className="text-right">
 							<div className={`flex items-center gap-1 ${gainLossColor}`}>
 								<GainLossIcon className="h-4 w-4" />
-								<span className="font-medium">
-									{formatCurrency(Math.abs(unrealizedGainLoss))}
-								</span>
+								<span className="font-medium">{formatCurrency(Math.abs(unrealizedGainLoss))}</span>
 							</div>
 							<p className={`text-sm ${gainLossColor}`}>
 								{formatPercentage(unrealizedGainLossPercent)}
@@ -114,27 +99,19 @@ export function CostBasisDisplay({
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Total Cost Basis</p>
-						<p className="text-lg font-semibold">
-							{formatCurrency(totalCostBasis)}
-						</p>
+						<p className="text-lg font-semibold">{formatCurrency(totalCostBasis)}</p>
 					</div>
 					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Average Cost</p>
-						<p className="text-lg font-semibold">
-							{formatCurrency(averageCostBasis)}
-						</p>
+						<p className="text-lg font-semibold">{formatCurrency(averageCostBasis)}</p>
 					</div>
 					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Current Value</p>
-						<p className="text-lg font-semibold">
-							{formatCurrency(currentValue)}
-						</p>
+						<p className="text-lg font-semibold">{formatCurrency(currentValue)}</p>
 					</div>
 					<div className="space-y-1">
 						<p className="text-sm text-muted-foreground">Total Quantity</p>
-						<p className="text-lg font-semibold">
-							{totalQuantity.toLocaleString()}
-						</p>
+						<p className="text-lg font-semibold">{totalQuantity.toLocaleString()}</p>
 					</div>
 				</div>
 
@@ -144,9 +121,7 @@ export function CostBasisDisplay({
 						<CardContent className="p-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Unrealized Gain/Loss
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">Unrealized Gain/Loss</p>
 									<div className={`flex items-center gap-2 ${gainLossColor}`}>
 										<GainLossIcon className="h-5 w-5" />
 										<span className="text-xl font-bold">
@@ -166,9 +141,7 @@ export function CostBasisDisplay({
 						<CardContent className="p-4">
 							<div className="flex items-center justify-between">
 								<div>
-									<p className="text-sm font-medium text-muted-foreground">
-										Realized Gain/Loss
-									</p>
+									<p className="text-sm font-medium text-muted-foreground">Realized Gain/Loss</p>
 									<div
 										className={`flex items-center gap-2 ${realizedGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}
 									>
@@ -192,9 +165,8 @@ export function CostBasisDisplay({
 				<Alert>
 					<Info className="h-4 w-4" />
 					<AlertDescription>
-						Cost basis is calculated using the FIFO (First In, First Out)
-						method. This means the oldest shares are considered sold first when
-						calculating realized gains/losses.
+						Cost basis is calculated using the FIFO (First In, First Out) method. This means the
+						oldest shares are considered sold first when calculating realized gains/losses.
 					</AlertDescription>
 				</Alert>
 
@@ -218,7 +190,7 @@ export function CostBasisDisplay({
 								<div className="space-y-2">
 									{transactions.map((transaction, _index) => {
 										const transactionValue =
-											transaction.quantity * transaction.pricePerUnit;
+											transaction.quantity * (transaction.unitPriceAmount ?? 0);
 										const isBuy = transaction.transactionType === "BUY";
 
 										return (
@@ -233,19 +205,15 @@ export function CostBasisDisplay({
 													<div>
 														<p className="text-sm font-medium">
 															{transaction.quantity.toLocaleString()} shares @{" "}
-															{formatCurrency(transaction.pricePerUnit)}
+															{formatCurrency(transaction.unitPriceAmount ?? 0)}
 														</p>
 														<p className="text-xs text-muted-foreground">
-															{new Date(
-																transaction.transactionDate,
-															).toLocaleDateString()}
+															{new Date(transaction.executedAt).toLocaleDateString()}
 														</p>
 													</div>
 												</div>
 												<div className="text-right">
-													<p
-														className={`font-medium ${isBuy ? "text-red-600" : "text-green-600"}`}
-													>
+													<p className={`font-medium ${isBuy ? "text-red-600" : "text-green-600"}`}>
 														{isBuy ? "-" : "+"}
 														{formatCurrency(transactionValue)}
 													</p>
@@ -261,24 +229,20 @@ export function CostBasisDisplay({
 								<h4 className="font-medium">FIFO Calculation</h4>
 								<div className="text-sm text-muted-foreground space-y-2">
 									<p>
-										<strong>Total Purchases:</strong>{" "}
-										{formatCurrency(totalCostBasis)}(
+										<strong>Total Purchases:</strong> {formatCurrency(totalCostBasis)}(
 										{totalQuantity.toLocaleString()} shares)
 									</p>
 									<p>
-										<strong>Average Cost per Share:</strong>{" "}
-										{formatCurrency(averageCostBasis)}
+										<strong>Average Cost per Share:</strong> {formatCurrency(averageCostBasis)}
 									</p>
 									<p>
-										<strong>Current Market Value:</strong>{" "}
-										{formatCurrency(currentValue)}
+										<strong>Current Market Value:</strong> {formatCurrency(currentValue)}
 									</p>
 									<p>
 										<strong>Unrealized Gain/Loss:</strong>
 										<span className={gainLossColor}>
 											{" "}
-											{formatCurrency(currentValue)} -{" "}
-											{formatCurrency(totalCostBasis)} ={" "}
+											{formatCurrency(currentValue)} - {formatCurrency(totalCostBasis)} ={" "}
 											{formatCurrency(unrealizedGainLoss)}
 										</span>
 									</p>

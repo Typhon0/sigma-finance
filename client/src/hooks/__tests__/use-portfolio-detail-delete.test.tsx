@@ -104,17 +104,14 @@ describe("usePortfolioDetail - Delete Functionality", () => {
 			expect(toast.error).toHaveBeenCalledWith(
 				"Cannot delete portfolio with positions",
 				expect.objectContaining({
-					description:
-						"Please remove all assets from this portfolio before deleting it.",
+					description: "Please remove all assets from this portfolio before deleting it.",
 				}),
 			);
 		});
 	});
 
 	it("should handle unauthorized deletion error", async () => {
-		const error = new Error(
-			"You don't have permission to delete this portfolio",
-		);
+		const error = new Error("You don't have permission to delete this portfolio");
 		mockDeletePortfolio.mockRejectedValue(error);
 
 		const { result } = renderHook(() =>

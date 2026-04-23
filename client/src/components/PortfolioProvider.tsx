@@ -1,13 +1,6 @@
 import { useMutation } from "@apollo/client";
 import type React from "react";
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useMemo,
-	useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { CREATE_PORTFOLIO } from "@/graphql/mutations";
 import { useAssetManagement } from "@/hooks/use-asset-management";
 import type {
@@ -38,6 +31,10 @@ export interface PortfolioAssetItem {
 	exchange: string | null;
 	dayChange: number | null;
 	dayChangePercent: number | null;
+	portfolioWeight: number;
+	dividendYield?: number;
+	peRatio?: number;
+	sparklineData: number[];
 	// BankAccount-specific metadata
 	accountType?: string;
 	institution?: string;
@@ -62,6 +59,34 @@ function extractBankAccountFields(
 		interestRate: asset.interestRate as number | null | undefined,
 		balance: asset.balance as number | null | undefined,
 	};
+}
+
+function extractOptionalMetric(
+	asset: Record<string, unknown>,
+	key: "dividendYield" | "peRatio",
+): number | undefined {
+	const value = asset[key];
+	return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function buildSparklineData(
+	currentPrice: number,
+	dayChangePercent: number | null | undefined,
+): number[] {
+	const safeCurrentPrice = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 0;
+	const safeDayChange =
+		typeof dayChangePercent === "number" && Number.isFinite(dayChangePercent)
+			? dayChangePercent
+			: 0;
+
+	if (safeCurrentPrice === 0) {
+		return [0, 0, 0, 0, 0, 0, 0];
+	}
+
+	const startPrice = safeCurrentPrice / (1 + safeDayChange / 100);
+	const step = (safeCurrentPrice - startPrice) / 6;
+
+	return Array.from({ length: 7 }, (_, index) => Number((startPrice + step * index).toFixed(4)));
 }
 
 export const usePortfolio = () => {
@@ -97,7 +122,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		} else if (!isAuthenticated && currentPortfolio) {
 			setCurrentPortfolio("");
 		}
-	}, [isAuthenticated, data?.portfolios?.length, currentPortfolio, loading]);
+	}, [isAuthenticated, data?.portfolios?.length, currentPortfolio, data?.portfolios?.[0]?.id]);
 
 	const allPortfolios = data?.portfolios || [];
 
@@ -108,58 +133,90 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
 	const allAssets = useMemo((): PortfolioAssetItem[] => {
 		if (!data) return [];
-		return data.portfolios.flatMap((p) =>
+		const mappedAssets = data.portfolios.flatMap((p) =>
 			(p.assets ?? []).map((a) => {
 				const assetType = a.asset?.assetType?.name?.toLowerCase() || "stock";
+				const assetRecord = (a.asset ?? {}) as Record<string, unknown>;
 				const bankFields = extractBankAccountFields(
 					a.asset as { __typename?: string } & Record<string, unknown>,
 				);
+				const currentPrice = a.asset?.currentValue ?? 0;
+				const dayChangePercent = a.dayChangePercent ?? null;
+
 				return {
 					id: a.asset?.id ?? "",
 					portfolioId: p.id,
 					name: a.asset?.name || "Unnamed Asset",
 					symbol: a.asset?.symbol || "",
-					currentPrice: a.asset?.currentValue ?? 0,
+					currentPrice,
 					purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
 					quantity: a.quantity ?? 1,
 					currentValue: a.currentValue ?? 0,
 					sector: a.asset?.sector ?? null,
 					exchange: a.asset?.exchange ?? null,
 					dayChange: a.dayChange ?? null,
-					dayChangePercent: a.dayChangePercent ?? null,
+					dayChangePercent,
+					portfolioWeight: 0,
+					dividendYield: extractOptionalMetric(assetRecord, "dividendYield"),
+					peRatio: extractOptionalMetric(assetRecord, "peRatio"),
+					sparklineData: buildSparklineData(currentPrice, dayChangePercent),
 					...bankFields,
 					// Ensure type is set correctly after spread (bankFields may override)
 					type: bankFields.type || assetType,
 				};
 			}),
 		);
+
+		const totalValue = mappedAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
+
+		return mappedAssets.map((asset) => ({
+			...asset,
+			portfolioWeight:
+				totalValue > 0 ? Number(((asset.currentValue / totalValue) * 100).toFixed(2)) : 0,
+		}));
 	}, [data]);
 
 	const assets = useMemo((): PortfolioAssetItem[] => {
 		if (!selectedPortfolio) return [];
-		return (selectedPortfolio.assets ?? []).map((a) => {
+		const mappedAssets = (selectedPortfolio.assets ?? []).map((a) => {
 			const assetType = a.asset?.assetType?.name?.toLowerCase() || "stock";
+			const assetRecord = (a.asset ?? {}) as Record<string, unknown>;
 			const bankFields = extractBankAccountFields(
 				a.asset as { __typename?: string } & Record<string, unknown>,
 			);
+			const currentPrice = a.asset?.currentValue ?? 0;
+			const dayChangePercent = a.dayChangePercent ?? null;
+
 			return {
 				id: a.asset?.id ?? "",
 				portfolioId: selectedPortfolio.id,
 				name: a.asset?.name || "Unnamed Asset",
 				symbol: a.asset?.symbol || "",
-				currentPrice: a.asset?.currentValue ?? 0,
+				currentPrice,
 				purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
 				quantity: a.quantity ?? 1,
 				currentValue: a.currentValue ?? 0,
 				sector: a.asset?.sector ?? null,
 				exchange: a.asset?.exchange ?? null,
 				dayChange: a.dayChange ?? null,
-				dayChangePercent: a.dayChangePercent ?? null,
+				dayChangePercent,
+				portfolioWeight: 0,
+				dividendYield: extractOptionalMetric(assetRecord, "dividendYield"),
+				peRatio: extractOptionalMetric(assetRecord, "peRatio"),
+				sparklineData: buildSparklineData(currentPrice, dayChangePercent),
 				...bankFields,
 				// Ensure type is set correctly after spread (bankFields may override)
 				type: bankFields.type || assetType,
 			};
 		});
+
+		const totalValue = mappedAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
+
+		return mappedAssets.map((asset) => ({
+			...asset,
+			portfolioWeight:
+				totalValue > 0 ? Number(((asset.currentValue / totalValue) * 100).toFixed(2)) : 0,
+		}));
 	}, [selectedPortfolio]);
 
 	const transactions = useMemo(() => {
@@ -191,9 +248,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		) {
 			const analytics = selectedPortfolio.analytics;
 			const gain = (analytics.totalValue ?? 0) - (analytics.totalCost ?? 0);
-			const gainPercent = analytics.totalCost
-				? (gain / analytics.totalCost) * 100
-				: 0;
+			const gainPercent = analytics.totalCost ? (gain / analytics.totalCost) * 100 : 0;
 			return {
 				gain,
 				gainPercent,
@@ -201,10 +256,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				totalPurchase: analytics.totalCost ?? 0,
 			};
 		}
-		const totalCurrent = assets.reduce(
-			(sum, a) => sum + (a.currentValue || 0),
-			0,
-		);
+		const totalCurrent = assets.reduce((sum, a) => sum + (a.currentValue || 0), 0);
 		const totalPurchase = assets.reduce(
 			(sum, a) => sum + (a.purchasePrice || 0) * (a.quantity || 1),
 			0,
@@ -376,12 +428,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			user,
 			addingAsset,
 			refetch,
+			addTransaction,
+			updateAsset,
+			removeFromWatchlist,
+			addToWatchlist,
 		],
 	);
 
-	return (
-		<PortfolioContext.Provider value={value}>
-			{children}
-		</PortfolioContext.Provider>
-	);
+	return <PortfolioContext.Provider value={value}>{children}</PortfolioContext.Provider>;
 }

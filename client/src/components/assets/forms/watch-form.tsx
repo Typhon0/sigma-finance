@@ -1,16 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Gem, Watch } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, Gem, Watch } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -20,6 +16,7 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -28,6 +25,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 
 const watchSchema = z.object({
 	name: z.string().min(1, "Watch name is required"),
@@ -37,7 +35,7 @@ const watchSchema = z.object({
 	condition: z.string().min(1, "Condition is required"),
 	purchasePrice: z.number().min(0, "Purchase price must be positive"),
 	currentValue: z.number().min(0, "Current value must be positive"),
-	purchaseDate: z.string().optional(),
+	purchaseDate: z.date().optional(),
 	yearManufactured: z.number().optional(),
 	material: z.string().optional(),
 	movement: z.string().optional(),
@@ -96,22 +94,9 @@ const MATERIALS = [
 	"Other",
 ];
 
-const MOVEMENTS = [
-	"Automatic",
-	"Manual",
-	"Quartz",
-	"Solar",
-	"Kinetic",
-	"Spring Drive",
-	"Other",
-];
+const MOVEMENTS = ["Automatic", "Manual", "Quartz", "Solar", "Kinetic", "Spring Drive", "Other"];
 
-export function WatchForm({
-	onSubmit,
-	onCancel,
-	isLoading,
-	initialData,
-}: WatchFormProps) {
+export function WatchForm({ onSubmit, onCancel, isLoading, initialData }: WatchFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const form = useForm<WatchFormData>({
@@ -124,7 +109,7 @@ export function WatchForm({
 			condition: initialData?.condition || "",
 			purchasePrice: initialData?.purchasePrice || 0,
 			currentValue: initialData?.currentValue || 0,
-			purchaseDate: initialData?.purchaseDate || "",
+			purchaseDate: initialData?.purchaseDate ? new Date(initialData.purchaseDate) : undefined,
 			yearManufactured: initialData?.yearManufactured || undefined,
 			material: initialData?.material || "",
 			movement: initialData?.movement || "",
@@ -136,8 +121,7 @@ export function WatchForm({
 		setIsSubmitting(true);
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Error submitting watch:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -150,18 +134,13 @@ export function WatchForm({
 					<Watch className="h-5 w-5 text-indigo-600" />
 					<div>
 						<CardTitle className="text-lg">Luxury Watch</CardTitle>
-						<CardDescription>
-							Add luxury watches and timepieces to your collection
-						</CardDescription>
+						<CardDescription>Add luxury watches and timepieces to your collection</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-					<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 						<FormField
 							control={form.control}
 							name="name"
@@ -183,10 +162,7 @@ export function WatchForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Brand</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select brand" />
@@ -212,10 +188,7 @@ export function WatchForm({
 									<FormItem>
 										<FormLabel>Model</FormLabel>
 										<FormControl>
-											<Input
-												placeholder="Submariner Date 116610LN"
-												{...field}
-											/>
+											<Input placeholder="Submariner Date 116610LN" {...field} />
 										</FormControl>
 										<FormMessage />
 									</FormItem>
@@ -244,10 +217,7 @@ export function WatchForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Condition</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select condition" />
@@ -255,10 +225,7 @@ export function WatchForm({
 											</FormControl>
 											<SelectContent>
 												{CONDITIONS.map((condition) => (
-													<SelectItem
-														key={condition.value}
-														value={condition.value}
-													>
+													<SelectItem key={condition.value} value={condition.value}>
 														{condition.label}
 													</SelectItem>
 												))}
@@ -283,9 +250,7 @@ export function WatchForm({
 												step="0.01"
 												placeholder="8500.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -305,9 +270,7 @@ export function WatchForm({
 												step="0.01"
 												placeholder="9200.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -321,11 +284,33 @@ export function WatchForm({
 								control={form.control}
 								name="purchaseDate"
 								render={({ field }) => (
-									<FormItem>
+									<FormItem className="flex flex-col">
 										<FormLabel>Purchase Date (Optional)</FormLabel>
-										<FormControl>
-											<Input type="date" {...field} />
-										</FormControl>
+										<Popover>
+											<PopoverTrigger asChild>
+												<FormControl>
+													<Button
+														variant="outline"
+														className={cn(
+															"w-full pl-3 text-left font-normal",
+															!field.value && "text-muted-foreground",
+														)}
+													>
+														<CalendarIcon className="mr-2 h-4 w-4" />
+														{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+													</Button>
+												</FormControl>
+											</PopoverTrigger>
+											<PopoverContent className="w-auto p-0" align="start">
+												<Calendar
+													mode="single"
+													selected={field.value}
+													onSelect={field.onChange}
+													disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+													autoFocus
+												/>
+											</PopoverContent>
+										</Popover>
 										<FormMessage />
 									</FormItem>
 								)}
@@ -344,11 +329,7 @@ export function WatchForm({
 												max={new Date().getFullYear()}
 												placeholder="2020"
 												{...field}
-												onChange={(e) =>
-													field.onChange(
-														parseInt(e.target.value, 10) || undefined,
-													)
-												}
+												onChange={(e) => field.onChange(parseInt(e.target.value, 10) || undefined)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -364,10 +345,7 @@ export function WatchForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Material (Optional)</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select material" />
@@ -392,10 +370,7 @@ export function WatchForm({
 								render={({ field }) => (
 									<FormItem>
 										<FormLabel>Movement (Optional)</FormLabel>
-										<Select
-											onValueChange={field.onChange}
-											defaultValue={field.value}
-										>
+										<Select onValueChange={field.onChange} defaultValue={field.value}>
 											<FormControl>
 												<SelectTrigger>
 													<SelectValue placeholder="Select movement" />
@@ -442,11 +417,7 @@ export function WatchForm({
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isLoading}
-								className="gap-2"
-							>
+							<Button type="submit" disabled={isSubmitting || isLoading} className="gap-2">
 								<Gem className="h-4 w-4" />
 								{isSubmitting ? "Adding..." : "Add Watch"}
 							</Button>

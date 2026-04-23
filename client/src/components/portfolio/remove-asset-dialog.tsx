@@ -45,9 +45,7 @@ export function RemoveAssetDialog({
 		setIsRemoving(true);
 		try {
 			await removeAssetFromPortfolio(portfolioID, asset.asset.id);
-			toast.success(
-				`${asset.asset.symbol || asset.asset.name} removed from ${portfolioName}`,
-			);
+			toast.success(`${asset.asset.symbol || asset.asset.name} removed from ${portfolioName}`);
 			onSuccess?.();
 			onOpenChange(false);
 		} catch {
@@ -86,11 +84,7 @@ export function RemoveAssetDialog({
 					<Button onClick={handleClose} variant="outline" disabled={isRemoving}>
 						Cancel
 					</Button>
-					<Button
-						onClick={handleRemoveAsset}
-						variant="destructive"
-						disabled={isRemoving || !asset}
-					>
+					<Button onClick={handleRemoveAsset} variant="destructive" disabled={isRemoving || !asset}>
 						{isRemoving ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />

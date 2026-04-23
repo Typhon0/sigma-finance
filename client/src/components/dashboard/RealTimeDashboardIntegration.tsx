@@ -39,10 +39,7 @@ export function RealTimeDashboardIntegration({
 	const assetIds = assets.map((a) => a.id);
 
 	return (
-		<RealTimeDashboardProvider
-			trackedAssets={assetIds}
-			trackedPortfolios={portfolioIds}
-		>
+		<RealTimeDashboardProvider trackedAssets={assetIds} trackedPortfolios={portfolioIds}>
 			<div className="min-h-screen bg-gray-50">
 				{/* Enhanced Header with Real-Time Status */}
 				<RealTimeHeader />
@@ -66,9 +63,7 @@ function RealTimeHeader() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-2xl font-bold">Portfolio Tracker</h1>
-					<p className="text-sm text-gray-600">
-						Real-time portfolio management
-					</p>
+					<p className="text-sm text-gray-600">Real-time portfolio management</p>
 				</div>
 
 				<div className="flex items-center gap-4">
@@ -132,9 +127,7 @@ export function RealTimeDashboardOverview({
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-					<p className="text-muted-foreground">
-						Monitor your portfolios with real-time updates
-					</p>
+					<p className="text-muted-foreground">Monitor your portfolios with real-time updates</p>
 				</div>
 				<ConnectionStatus variant="full" />
 			</div>
@@ -157,12 +150,7 @@ export function RealTimeDashboardOverview({
 					<CardContent>
 						<div className="space-y-4">
 							{/* Sample real-time charts for major assets */}
-							<RealTimeChart
-								assetId="sample-asset-1"
-								symbol="AAPL"
-								chartType="line"
-								height={200}
-							/>
+							<RealTimeChart assetId="sample-asset-1" symbol="AAPL" chartType="line" height={200} />
 						</div>
 					</CardContent>
 				</Card>
@@ -222,10 +210,7 @@ export function DashboardWithRealTimeExample() {
 	};
 
 	return (
-		<RealTimeDashboardIntegration
-			portfolios={mockPortfolios}
-			assets={mockAssets}
-		>
+		<RealTimeDashboardIntegration portfolios={mockPortfolios} assets={mockAssets}>
 			{viewState.viewMode === "overview" && (
 				<RealTimeDashboardOverview
 					portfolios={mockPortfolios}
@@ -233,13 +218,12 @@ export function DashboardWithRealTimeExample() {
 				/>
 			)}
 
-			{viewState.viewMode === "portfolio-detail" &&
-				viewState.selectedPortfolio && (
-					<InlinePortfolioDetail
-						portfolio={viewState.selectedPortfolio}
-						onBack={handleBackToOverview}
-					/>
-				)}
+			{viewState.viewMode === "portfolio-detail" && viewState.selectedPortfolio && (
+				<InlinePortfolioDetail
+					portfolio={viewState.selectedPortfolio}
+					onBack={handleBackToOverview}
+				/>
+			)}
 		</RealTimeDashboardIntegration>
 	);
 }
@@ -247,17 +231,11 @@ export function DashboardWithRealTimeExample() {
 /**
  * Hook for easy integration of real-time features into existing components
  */
-export function useRealTimeIntegration(
-	portfolioIds: string[],
-	assetIds: string[],
-) {
+export function useRealTimeIntegration(portfolioIds: string[], assetIds: string[]) {
 	return {
 		// Wrap your component with this provider
 		RealTimeProvider: ({ children }: { children: React.ReactNode }) => (
-			<RealTimeDashboardProvider
-				trackedAssets={assetIds}
-				trackedPortfolios={portfolioIds}
-			>
+			<RealTimeDashboardProvider trackedAssets={assetIds} trackedPortfolios={portfolioIds}>
 				{children}
 			</RealTimeDashboardProvider>
 		),

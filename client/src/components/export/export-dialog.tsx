@@ -1,3 +1,4 @@
+import { format as formatDate } from "date-fns";
 import { CalendarIcon, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,11 +12,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -24,7 +21,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { ExportService } from "@/lib/export/export-service";
-import type { ExportFormat, ExportType } from "@/lib/export/types";
+import type { ExportFormat, ExportResult, ExportType } from "@/lib/export/types";
 import { cn } from "@/lib/utils";
 
 interface ExportDialogProps {
@@ -80,12 +77,7 @@ export function ExportDialog({
 		{
 			value: "csv",
 			label: "CSV",
-			supportedTypes: [
-				"portfolio-data",
-				"transaction-history",
-				"tax-report",
-				"audit-trail",
-			],
+			supportedTypes: ["portfolio-data", "transaction-history", "tax-report", "audit-trail"],
 		},
 		{
 			value: "pdf",
@@ -110,13 +102,10 @@ export function ExportDialog({
 		f.supportedTypes.includes(exportType as any),
 	);
 
-	const requiresDateRange = [
-		"transaction-history",
-		"audit-trail",
-		"tax-report",
-	].includes(exportType);
-	const requiresPortfolio =
-		selectedTypeConfig?.requiresPortfolio && !portfolioId;
+	const requiresDateRange = ["transaction-history", "audit-trail", "tax-report"].includes(
+		exportType,
+	);
+	const requiresPortfolio = selectedTypeConfig?.requiresPortfolio && !portfolioId;
 
 	const handleExport = async () => {
 		if (requiresPortfolio) {
@@ -128,14 +117,11 @@ export function ExportDialog({
 		setExportResult(null);
 
 		try {
-			let result;
+			let result: ExportResult;
 
 			switch (exportType) {
 				case "portfolio-data":
-					result = await ExportService.exportPortfolioData(
-						portfolioId!,
-						format,
-					);
+					result = await ExportService.exportPortfolioData(portfolioId!, format);
 					break;
 				case "transaction-history":
 					result = await ExportService.exportTransactionHistory(
@@ -148,11 +134,7 @@ export function ExportDialog({
 					break;
 				case "tax-report": {
 					const taxYear = new Date().getFullYear() - 1; // Previous year by default
-					result = await ExportService.exportTaxReport(
-						"current-user",
-						taxYear,
-						format,
-					);
+					result = await ExportService.exportTaxReport("current-user", taxYear, format);
 					break;
 				}
 				case "audit-trail":
@@ -180,9 +162,7 @@ export function ExportDialog({
 				setExportResult(`Export failed: ${result.error}`);
 			}
 		} catch (error) {
-			setExportResult(
-				`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`,
-			);
+			setExportResult(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
 		} finally {
 			setIsExporting(false);
 		}
@@ -207,9 +187,7 @@ export function ExportDialog({
 				<DialogHeader>
 					<DialogTitle>Export Data</DialogTitle>
 					<DialogDescription>
-						{portfolioName
-							? `Export data from ${portfolioName}`
-							: "Export your portfolio data"}
+						{portfolioName ? `Export data from ${portfolioName}` : "Export your portfolio data"}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -240,9 +218,7 @@ export function ExportDialog({
 										disabled={type.requiresPortfolio && !portfolioId}
 									>
 										{type.label}
-										{type.requiresPortfolio &&
-											!portfolioId &&
-											" (requires portfolio)"}
+										{type.requiresPortfolio && !portfolioId && " (requires portfolio)"}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -251,10 +227,7 @@ export function ExportDialog({
 
 					<div className="grid gap-2">
 						<Label htmlFor="format">Format</Label>
-						<Select
-							value={format}
-							onValueChange={(value) => setFormat(value as ExportFormat)}
-						>
+						<Select value={format} onValueChange={(value) => setFormat(value as ExportFormat)}>
 							<SelectTrigger>
 								<SelectValue placeholder="Select format" />
 							</SelectTrigger>
@@ -282,19 +255,19 @@ export function ExportDialog({
 											)}
 										>
 											<CalendarIcon className="mr-2 h-4 w-4" />
-											{dateRange.start
-												? format(dateRange.start, "PPP")
-												: "Start date"}
+											{dateRange.start ? formatDate(dateRange.start, "PPP") : "Start date"}
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-auto p-0">
 										<Calendar
 											mode="single"
 											selected={dateRange.start}
-											onSelect={(date) =>
-												setDateRange((prev) => ({ ...prev, start: date }))
-											}
-											initialFocus
+											onSelect={(date) => {
+												if (date instanceof Date) {
+													setDateRange((prev) => ({ ...prev, start: date }));
+												}
+											}}
+											autoFocus
 										/>
 									</PopoverContent>
 								</Popover>
@@ -309,19 +282,19 @@ export function ExportDialog({
 											)}
 										>
 											<CalendarIcon className="mr-2 h-4 w-4" />
-											{dateRange.end
-												? format(dateRange.end, "PPP")
-												: "End date"}
+											{dateRange.end ? formatDate(dateRange.end, "PPP") : "End date"}
 										</Button>
 									</PopoverTrigger>
 									<PopoverContent className="w-auto p-0">
 										<Calendar
 											mode="single"
 											selected={dateRange.end}
-											onSelect={(date) =>
-												setDateRange((prev) => ({ ...prev, end: date }))
-											}
-											initialFocus
+											onSelect={(date) => {
+												if (date instanceof Date) {
+													setDateRange((prev) => ({ ...prev, end: date }));
+												}
+											}}
+											autoFocus
 										/>
 									</PopoverContent>
 								</Popover>
@@ -347,10 +320,7 @@ export function ExportDialog({
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
 						Cancel
 					</Button>
-					<Button
-						onClick={handleExport}
-						disabled={isExporting || requiresPortfolio}
-					>
+					<Button onClick={handleExport} disabled={isExporting || requiresPortfolio}>
 						{isExporting ? (
 							<>
 								<Loader2 className="mr-2 h-4 w-4 animate-spin" />

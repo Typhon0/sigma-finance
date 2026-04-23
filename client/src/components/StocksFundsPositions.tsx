@@ -4,7 +4,6 @@ import {
 	Layers,
 	MoreHorizontal,
 	PieChart,
-	Search,
 	SlidersHorizontal,
 	Trash2,
 	TrendingDown,
@@ -14,13 +13,10 @@ import {
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
-import {
-	Accordion,
-	AccordionContent,
-	AccordionItem,
-	AccordionTrigger,
-} from "./ui/accordion";
+import { cn } from "@/lib/utils";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "./ui/accordion";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -43,16 +39,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
-import { cn } from "./ui/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 type GroupByMode = "account" | "asset" | "sector" | "none";
 
@@ -173,30 +160,24 @@ export function StocksFundsPositions({
 			{/* Toolbar */}
 			<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-b border-border/40 bg-muted/5">
 				<div className="flex items-center gap-2 w-full sm:w-auto">
-					<div className="relative w-full sm:w-64">
-						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input
-							placeholder="Filter positions..."
-							className="pl-8 h-8 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
+					<SearchInput
+						placeholder="Filter positions..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+						size="sm"
+						containerClassName="w-full sm:w-64"
+						className="h-8 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+					/>
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button
-								variant="outline"
-								size="sm"
-								className="h-8 w-8 p-0 border-border/50"
-							>
+							<Button variant="outline" size="sm" className="h-8 w-8 p-0 border-border/50">
 								<SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="start" className="w-48">
-							<DropdownMenuLabel className="text-xs">
-								Sort Order
-							</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-xs">Sort Order</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							<DropdownMenuCheckboxItem
 								checked={sortBy === "value-desc"}
@@ -237,9 +218,7 @@ export function StocksFundsPositions({
 										: "text-muted-foreground hover:text-foreground",
 								)}
 							>
-								{mode === "none"
-									? "None"
-									: mode.charAt(0).toUpperCase() + mode.slice(1)}
+								{mode === "none" ? "None" : mode.charAt(0).toUpperCase() + mode.slice(1)}
 							</button>
 						))}
 					</div>
@@ -266,117 +245,103 @@ export function StocksFundsPositions({
 					/>
 				) : (
 					<div className="divide-y divide-border/40">
-						{Object.entries(groupedData || {}).map(
-							([groupName, groupPositions]) => {
-								const groupValue = groupPositions.reduce(
-									(sum, p) => sum + p.value,
-									0,
-								);
-								const groupPL = groupPositions.reduce(
-									(sum, p) => sum + p.pl,
-									0,
-								);
+						{Object.entries(groupedData || {}).map(([groupName, groupPositions]) => {
+							const groupValue = groupPositions.reduce((sum, p) => sum + p.value, 0);
+							const groupPl = groupPositions.reduce((sum, p) => sum + p.pl, 0);
 
-								// Determine Icon
-								const GroupIcon =
-									groupBy === "account"
-										? Wallet
-										: groupBy === "asset"
-											? Layers
-											: PieChart;
+							// Determine Icon
+							const GroupIcon =
+								groupBy === "account" ? Wallet : groupBy === "asset" ? Layers : PieChart;
 
-								const isAccountGroup = groupBy === "account";
-								const isDefaultAccount = groupName === "Manual Entry";
-								const isClickableAccount = isAccountGroup && !isDefaultAccount;
+							const isAccountGroup = groupBy === "account";
+							const isDefaultAccount = groupName === "Manual Entry";
+							const isClickableAccount = isAccountGroup && !isDefaultAccount;
 
-								return (
-									<Accordion
-										type="single"
-										collapsible
-										key={groupName}
-										defaultValue={groupName}
-										className="w-full"
-									>
-										<AccordionItem value={groupName} className="border-none">
-											<AccordionTrigger className="px-4 py-2 hover:bg-muted/5 hover:no-underline border-b border-border/40 data-[state=closed]:border-none">
-												<div className="flex items-center justify-between w-full pr-4">
-													<div className="flex items-center gap-3 group">
-														<div className="h-6 w-6 rounded bg-secondary flex items-center justify-center">
-															<GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
-														</div>
-														<div
-															className={cn(
-																"text-sm font-medium",
-																isClickableAccount &&
-																	"group-hover:text-primary group-hover:underline cursor-pointer",
-															)}
-															onClick={(e) => {
-																if (isClickableAccount && onSelectAccount) {
-																	e.stopPropagation();
-																	onSelectAccount(groupName);
-																}
-															}}
-														>
-															{groupName}
-														</div>
-														<Badge
-															variant="outline"
-															className="text-[10px] h-5 font-normal text-muted-foreground"
-														>
-															{groupPositions.length}
-														</Badge>
-														{isClickableAccount && (
-															<ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-50" />
-														)}
+							return (
+								<Accordion
+									type="single"
+									collapsible
+									key={groupName}
+									defaultValue={groupName}
+									className="w-full"
+								>
+									<AccordionItem value={groupName} className="border-none">
+										<AccordionTrigger className="px-4 py-2 hover:bg-muted/5 hover:no-underline border-b border-border/40 data-[state=closed]:border-none">
+											<div className="flex items-center justify-between w-full pr-4">
+												<div className="flex items-center gap-3 group">
+													<div className="h-6 w-6 rounded bg-secondary flex items-center justify-center">
+														<GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
 													</div>
-													<div className="flex items-center gap-6 text-sm">
-														<div className="text-right">
-															<span className="font-mono font-medium text-xs text-muted-foreground mr-2">
-																Value
-															</span>
-															<span className="font-mono font-medium">
-																{formatCurrency(groupValue)}
-															</span>
-														</div>
-														<div className="text-right w-24">
-															<span
-																className={cn(
-																	"font-mono font-medium",
-																	groupPL >= 0
-																		? "text-emerald-500"
-																		: "text-rose-500",
-																)}
-															>
-																{groupPL >= 0 ? "+" : ""}
-																{formatCurrency(groupPL)}
-															</span>
-														</div>
+													<div
+														className={cn(
+															"text-sm font-medium",
+															isClickableAccount &&
+																"group-hover:text-primary group-hover:underline cursor-pointer",
+														)}
+														onClick={(e) => {
+															if (isClickableAccount && onSelectAccount) {
+																e.stopPropagation();
+																onSelectAccount(groupName);
+															}
+														}}
+													>
+														{groupName}
+													</div>
+													<Badge
+														variant="outline"
+														className="text-[10px] h-5 font-normal text-muted-foreground"
+													>
+														{groupPositions.length}
+													</Badge>
+													{isClickableAccount && (
+														<ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-50" />
+													)}
+												</div>
+												<div className="flex items-center gap-6 text-sm">
+													<div className="text-right">
+														<span className="font-mono font-medium text-xs text-muted-foreground mr-2">
+															Value
+														</span>
+														<span className="font-mono font-medium">
+															{formatCurrency(groupValue)}
+														</span>
+													</div>
+													<div className="text-right w-24">
+														<span
+															className={cn(
+																"font-mono font-medium",
+																groupPl >= 0 ? "text-emerald-500" : "text-rose-500",
+															)}
+														>
+															{groupPl >= 0 ? "+" : ""}
+															{formatCurrency(groupPl)}
+														</span>
 													</div>
 												</div>
-											</AccordionTrigger>
-											<AccordionContent className="p-0 border-b border-border/40">
-												<PositionsTable
-													positions={groupPositions}
-													formatCurrency={formatCurrency}
-													formatNumber={formatNumber}
-													hideHeader
-													onSelectAsset={onSelectAsset}
-													onSelectAccount={onSelectAccount}
-													onDeletePosition={(pos) =>
-														setDeleteTarget({
-															id: pos.id,
-															portfolioId: pos.portfolioId,
-															symbol: pos.symbol,
-															name: pos.name,
-														})
-													}
-												/>
-											</AccordionContent>
-										</AccordionItem>
-									</Accordion>
-								);
-							},
-						)}
+											</div>
+										</AccordionTrigger>
+										<AccordionContent className="p-0 border-b border-border/40">
+											<PositionsTable
+												positions={groupPositions}
+												formatCurrency={formatCurrency}
+												formatNumber={formatNumber}
+												hideHeader
+												onSelectAsset={onSelectAsset}
+												onSelectAccount={onSelectAccount}
+												onDeletePosition={(pos) =>
+													setDeleteTarget({
+														id: pos.id,
+														portfolioId: pos.portfolioId,
+														symbol: pos.symbol,
+														name: pos.name,
+													})
+												}
+											/>
+										</AccordionContent>
+									</AccordionItem>
+								</Accordion>
+							);
+						})}
 					</div>
 				)}
 			</div>
@@ -384,34 +349,23 @@ export function StocksFundsPositions({
 			{/* Footer / Pagination Mock */}
 			<div className="border-t border-border/40 p-2 flex items-center justify-between bg-muted/5 text-[10px] text-muted-foreground">
 				<span>
-					Showing {filteredPositions.length} of {finalPositions.length}{" "}
-					positions
+					Showing {filteredPositions.length} of {finalPositions.length} positions
 				</span>
 				<div className="flex gap-1">
-					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">
-						Prev
-					</span>
-					<span className="px-2 py-0.5 rounded bg-secondary text-foreground font-medium">
-						1
-					</span>
-					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">
-						Next
-					</span>
+					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">Prev</span>
+					<span className="px-2 py-0.5 rounded bg-secondary text-foreground font-medium">1</span>
+					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">Next</span>
 				</div>
 			</div>
 
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog
-				open={!!deleteTarget}
-				onOpenChange={(open) => !open && setDeleteTarget(null)}
-			>
+			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Remove from Portfolio</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to remove{" "}
-							<strong>{deleteTarget?.symbol}</strong> ({deleteTarget?.name}){" "}
-							from your portfolio? This action cannot be undone.
+							Are you sure you want to remove <strong>{deleteTarget?.symbol}</strong> (
+							{deleteTarget?.name}) from your portfolio? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -422,13 +376,8 @@ export function StocksFundsPositions({
 								e.preventDefault();
 								if (deleteTarget) {
 									try {
-										await deleteAsset(
-											deleteTarget.id,
-											deleteTarget.portfolioId,
-										);
-										toast.success(
-											`${deleteTarget.symbol} removed from portfolio`,
-										);
+										await deleteAsset(deleteTarget.id, deleteTarget.portfolioId);
+										toast.success(`${deleteTarget.symbol} removed from portfolio`);
 									} catch {
 										toast.error("Failed to remove asset from portfolio");
 									}
@@ -451,7 +400,7 @@ function PositionsTable({
 	formatNumber,
 	hideHeader = false,
 	onSelectAsset,
-	_onSelectAccount,
+	onSelectAccount: _onSelectAccount,
 	onDeletePosition,
 }: {
 	positions: any[];
@@ -513,9 +462,7 @@ function PositionsTable({
 									className="flex items-center gap-2 cursor-pointer hover:underline"
 									onClick={() => onSelectAsset?.(pos.symbol)}
 								>
-									<span className="font-bold text-sm tracking-tight">
-										{pos.symbol}
-									</span>
+									<span className="font-bold text-sm tracking-tight">{pos.symbol}</span>
 									{pos.sector !== "Other" && (
 										<Badge
 											variant="outline"
@@ -574,9 +521,7 @@ function PositionsTable({
 								<span
 									className={cn(
 										"text-[10px] font-mono",
-										pos.plPercent >= 0
-											? "text-emerald-600/80"
-											: "text-rose-600/80",
+										pos.plPercent >= 0 ? "text-emerald-600/80" : "text-rose-600/80",
 									)}
 								>
 									{pos.plPercent.toFixed(2)}%

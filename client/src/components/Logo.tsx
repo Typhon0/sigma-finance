@@ -2,13 +2,10 @@ interface LogoProps {
 	size?: "sm" | "md" | "lg" | "xl";
 	showText?: boolean;
 	className?: string;
+	compact?: boolean;
 }
 
-export function Logo({
-	size = "md",
-	showText = true,
-	className = "",
-}: LogoProps) {
+export function Logo({ size = "md", showText = true, className = "" }: LogoProps) {
 	const sizeClasses = {
 		sm: {
 			container: "h-8 w-8",
@@ -62,14 +59,10 @@ export function Logo({
 			{/* Text */}
 			{showText && (
 				<div className="flex flex-col">
-					<h1
-						className={`${sizes.title} font-semibold tracking-tight leading-tight`}
-					>
+					<h1 className={`${sizes.title} font-semibold tracking-tight leading-tight`}>
 						Sigma Finance
 					</h1>
-					<p
-						className={`${sizes.subtitle} text-muted-foreground leading-tight`}
-					>
+					<p className={`${sizes.subtitle} text-muted-foreground leading-tight`}>
 						Portfolio Management
 					</p>
 				</div>
@@ -84,9 +77,7 @@ export function LogoCompact({ className = "" }: { className?: string }) {
 		<div
 			className={`h-10 w-10 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-md group hover:shadow-lg transition-all hover:scale-105 ${className}`}
 		>
-			<div className="text-xl font-bold text-primary-foreground tracking-tighter">
-				ΣF
-			</div>
+			<div className="text-xl font-bold text-primary-foreground tracking-tighter">ΣF</div>
 		</div>
 	);
 }
@@ -111,9 +102,7 @@ export function LogoIcon({
 		<div
 			className={`${sizeClass} bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-lg hover:shadow-xl transition-all hover:scale-105 ${className}`}
 		>
-			<div className="font-bold text-primary-foreground tracking-tighter">
-				ΣF
-			</div>
+			<div className="font-bold text-primary-foreground tracking-tighter">ΣF</div>
 		</div>
 	);
 }

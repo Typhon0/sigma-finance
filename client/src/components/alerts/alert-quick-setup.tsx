@@ -41,12 +41,7 @@ const quickSetupSchema = z
 	.object({
 		assetId: z.string().optional(),
 		portfolioId: z.string().optional(),
-		alertType: z.enum([
-			"PRICE",
-			"PERCENTAGE_CHANGE",
-			"PORTFOLIO_VALUE",
-			"ALLOCATION",
-		]),
+		alertType: z.enum(["PRICE", "PERCENTAGE_CHANGE", "PORTFOLIO_VALUE", "ALLOCATION"]),
 		thresholdValue: z.number().positive().optional(),
 		thresholdPercentage: z.number().min(0).max(100).optional(),
 		notificationMethods: z
@@ -56,16 +51,10 @@ const quickSetupSchema = z
 	.refine(
 		(data) => {
 			// Require asset or portfolio based on alert type
-			if (
-				data.alertType === "PRICE" ||
-				data.alertType === "PERCENTAGE_CHANGE"
-			) {
+			if (data.alertType === "PRICE" || data.alertType === "PERCENTAGE_CHANGE") {
 				return data.assetId !== undefined;
 			}
-			if (
-				data.alertType === "PORTFOLIO_VALUE" ||
-				data.alertType === "ALLOCATION"
-			) {
+			if (data.alertType === "PORTFOLIO_VALUE" || data.alertType === "ALLOCATION") {
 				return data.portfolioId !== undefined;
 			}
 			return true;
@@ -82,14 +71,8 @@ const quickSetupSchema = z
 			if (data.alertType === "PRICE" || data.alertType === "PORTFOLIO_VALUE") {
 				return data.thresholdValue !== undefined && data.thresholdValue > 0;
 			}
-			if (
-				data.alertType === "PERCENTAGE_CHANGE" ||
-				data.alertType === "ALLOCATION"
-			) {
-				return (
-					data.thresholdPercentage !== undefined &&
-					data.thresholdPercentage >= 0
-				);
+			if (data.alertType === "PERCENTAGE_CHANGE" || data.alertType === "ALLOCATION") {
+				return data.thresholdPercentage !== undefined && data.thresholdPercentage >= 0;
 			}
 			return true;
 		},
@@ -150,8 +133,7 @@ export function AlertQuickSetup({
 			icon: <TrendingUp className="h-5 w-5" />,
 			alertType: "PRICE" as const,
 			requiresAsset: true,
-			suggestedThreshold: (asset: Asset) =>
-				asset.currentPrice ? asset.currentPrice * 1.1 : 100,
+			suggestedThreshold: (asset: Asset) => (asset.currentPrice ? asset.currentPrice * 1.1 : 100),
 		},
 		{
 			id: "price-below",
@@ -160,8 +142,7 @@ export function AlertQuickSetup({
 			icon: <TrendingDown className="h-5 w-5" />,
 			alertType: "PRICE" as const,
 			requiresAsset: true,
-			suggestedThreshold: (asset: Asset) =>
-				asset.currentPrice ? asset.currentPrice * 0.9 : 50,
+			suggestedThreshold: (asset: Asset) => (asset.currentPrice ? asset.currentPrice * 0.9 : 50),
 		},
 		{
 			id: "percentage-gain",
@@ -217,9 +198,7 @@ export function AlertQuickSetup({
 			setIsOpen(false);
 			reset();
 			setSelectedTemplate(null);
-		} catch (error) {
-			console.error("Failed to create quick alert:", error);
-		}
+		} catch (_error) {}
 	};
 
 	const toggleNotificationMethod = (method: "EMAIL" | "PUSH" | "SMS") => {
@@ -230,20 +209,15 @@ export function AlertQuickSetup({
 		setValue("notificationMethods", updated);
 	};
 
-	const requiresAsset =
-		watchedAlertType === "PRICE" || watchedAlertType === "PERCENTAGE_CHANGE";
+	const requiresAsset = watchedAlertType === "PRICE" || watchedAlertType === "PERCENTAGE_CHANGE";
 	const requiresPortfolio =
 		watchedAlertType === "PORTFOLIO_VALUE" || watchedAlertType === "ALLOCATION";
-	const requiresValue =
-		watchedAlertType === "PRICE" || watchedAlertType === "PORTFOLIO_VALUE";
+	const requiresValue = watchedAlertType === "PRICE" || watchedAlertType === "PORTFOLIO_VALUE";
 	const requiresPercentage =
-		watchedAlertType === "PERCENTAGE_CHANGE" ||
-		watchedAlertType === "ALLOCATION";
+		watchedAlertType === "PERCENTAGE_CHANGE" || watchedAlertType === "ALLOCATION";
 
 	const selectedAsset = assets.find((a) => a.id === watchedAssetId);
-	const _selectedPortfolio = portfolios.find(
-		(p) => p.id === watchedPortfolioId,
-	);
+	const _selectedPortfolio = portfolios.find((p) => p.id === watchedPortfolioId);
 
 	return (
 		<div className={className}>
@@ -261,8 +235,7 @@ export function AlertQuickSetup({
 							Quick Alert Setup
 						</DialogTitle>
 						<DialogDescription>
-							Create an alert quickly using predefined templates or custom
-							settings.
+							Create an alert quickly using predefined templates or custom settings.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -283,14 +256,10 @@ export function AlertQuickSetup({
 									>
 										<CardContent className="p-4">
 											<div className="flex items-start gap-3">
-												<div className="p-2 rounded-lg bg-primary/10">
-													{template.icon}
-												</div>
+												<div className="p-2 rounded-lg bg-primary/10">{template.icon}</div>
 												<div className="flex-1 min-w-0">
 													<h4 className="font-medium">{template.name}</h4>
-													<p className="text-sm text-muted-foreground">
-														{template.description}
-													</p>
+													<p className="text-sm text-muted-foreground">{template.description}</p>
 												</div>
 											</div>
 										</CardContent>
@@ -337,9 +306,7 @@ export function AlertQuickSetup({
 											</SelectContent>
 										</Select>
 										{errors.assetId && (
-											<p className="text-sm text-destructive">
-												{errors.assetId.message}
-											</p>
+											<p className="text-sm text-destructive">{errors.assetId.message}</p>
 										)}
 									</div>
 								)}
@@ -363,9 +330,7 @@ export function AlertQuickSetup({
 											</SelectContent>
 										</Select>
 										{errors.portfolioId && (
-											<p className="text-sm text-destructive">
-												{errors.portfolioId.message}
-											</p>
+											<p className="text-sm text-destructive">{errors.portfolioId.message}</p>
 										)}
 									</div>
 								)}
@@ -393,32 +358,28 @@ export function AlertQuickSetup({
 									<div className="space-y-2">
 										<Label htmlFor="thresholdValue">Threshold Value *</Label>
 										<div className="relative">
-											<DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											<DollarSign className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 											<Input
 												id="thresholdValue"
 												type="number"
 												step="0.01"
 												min="0"
 												placeholder="0.00"
-												className="pl-10"
+												style={{ paddingLeft: "2.5rem" }}
 												{...register("thresholdValue", { valueAsNumber: true })}
 											/>
 										</div>
 										{errors.thresholdValue && (
-											<p className="text-sm text-destructive">
-												{errors.thresholdValue.message}
-											</p>
+											<p className="text-sm text-destructive">{errors.thresholdValue.message}</p>
 										)}
 									</div>
 								)}
 
 								{requiresPercentage && (
 									<div className="space-y-2">
-										<Label htmlFor="thresholdPercentage">
-											Threshold Percentage *
-										</Label>
+										<Label htmlFor="thresholdPercentage">Threshold Percentage *</Label>
 										<div className="relative">
-											<Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											<Percent className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 											<Input
 												id="thresholdPercentage"
 												type="number"
@@ -426,7 +387,7 @@ export function AlertQuickSetup({
 												min="0"
 												max="100"
 												placeholder="0.0"
-												className="pl-10"
+												style={{ paddingLeft: "2.5rem" }}
 												{...register("thresholdPercentage", {
 													valueAsNumber: true,
 												})}
@@ -451,9 +412,7 @@ export function AlertQuickSetup({
 									onClick={() => toggleNotificationMethod("EMAIL")}
 								>
 									<Checkbox
-										checked={
-											watchedNotificationMethods?.includes("EMAIL") || false
-										}
+										checked={watchedNotificationMethods?.includes("EMAIL") || false}
 										onChange={() => toggleNotificationMethod("EMAIL")}
 									/>
 									<Mail className="h-4 w-4" />
@@ -465,9 +424,7 @@ export function AlertQuickSetup({
 									onClick={() => toggleNotificationMethod("PUSH")}
 								>
 									<Checkbox
-										checked={
-											watchedNotificationMethods?.includes("PUSH") || false
-										}
+										checked={watchedNotificationMethods?.includes("PUSH") || false}
 										onChange={() => toggleNotificationMethod("PUSH")}
 									/>
 									<Bell className="h-4 w-4" />
@@ -479,9 +436,7 @@ export function AlertQuickSetup({
 									onClick={() => toggleNotificationMethod("SMS")}
 								>
 									<Checkbox
-										checked={
-											watchedNotificationMethods?.includes("SMS") || false
-										}
+										checked={watchedNotificationMethods?.includes("SMS") || false}
 										onChange={() => toggleNotificationMethod("SMS")}
 									/>
 									<MessageSquare className="h-4 w-4" />
@@ -489,9 +444,7 @@ export function AlertQuickSetup({
 								</div>
 							</div>
 							{errors.notificationMethods && (
-								<p className="text-sm text-destructive">
-									{errors.notificationMethods.message}
-								</p>
+								<p className="text-sm text-destructive">{errors.notificationMethods.message}</p>
 							)}
 						</div>
 

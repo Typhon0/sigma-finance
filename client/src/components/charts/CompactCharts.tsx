@@ -1,9 +1,7 @@
 import React from "react";
 import { cn } from "@/lib/utils";
 import AllocationChart, { type AllocationChartProps } from "./AllocationChart";
-import PerformanceChart, {
-	type PerformanceChartProps,
-} from "./PerformanceChart";
+import PerformanceChart, { type PerformanceChartProps } from "./PerformanceChart";
 import PortfolioComparisonChart, {
 	type PortfolioComparisonChartProps,
 } from "./PortfolioComparisonChart";
@@ -18,26 +16,25 @@ interface CompactChartWrapperProps {
 	children: React.ReactNode;
 }
 
-const CompactChartWrapper: React.FC<CompactChartWrapperProps> = ({
-	className,
-	children,
-}) => <div className={cn("w-full", className)}>{children}</div>;
+const CompactChartWrapper: React.FC<CompactChartWrapperProps> = ({ className, children }) => (
+	<div className={cn("w-full", className)}>{children}</div>
+);
 
 /**
  * Compact Performance Chart - optimized for dashboard inline views
  */
 export interface CompactPerformanceChartProps
-	extends Omit<
-		PerformanceChartProps,
-		"height" | "compact" | "showHeader" | "showFullscreen"
-	> {
+	extends Omit<PerformanceChartProps, "height" | "compact" | "showHeader" | "showFullscreen"> {
 	height?: number;
 	showTitle?: boolean;
 }
 
-export const CompactPerformanceChart: React.FC<
-	CompactPerformanceChartProps
-> = ({ height = 200, showTitle = false, className, ...props }) => (
+export const CompactPerformanceChart: React.FC<CompactPerformanceChartProps> = ({
+	height = 200,
+	showTitle = false,
+	className,
+	...props
+}) => (
 	<CompactChartWrapper className={className}>
 		<PerformanceChart
 			{...props}
@@ -54,10 +51,7 @@ export const CompactPerformanceChart: React.FC<
  * Compact Allocation Chart - optimized for dashboard inline views
  */
 export interface CompactAllocationChartProps
-	extends Omit<
-		AllocationChartProps,
-		"height" | "compact" | "showHeader" | "showFullscreen"
-	> {
+	extends Omit<AllocationChartProps, "height" | "compact" | "showHeader" | "showFullscreen"> {
 	height?: number;
 	showTitle?: boolean;
 }
@@ -92,9 +86,12 @@ export interface CompactPortfolioComparisonChartProps
 	showTitle?: boolean;
 }
 
-export const CompactPortfolioComparisonChart: React.FC<
-	CompactPortfolioComparisonChartProps
-> = ({ height = 200, showTitle = false, className, ...props }) => (
+export const CompactPortfolioComparisonChart: React.FC<CompactPortfolioComparisonChartProps> = ({
+	height = 200,
+	showTitle = false,
+	className,
+	...props
+}) => (
 	<CompactChartWrapper className={className}>
 		<PortfolioComparisonChart
 			{...props}
@@ -119,9 +116,7 @@ export interface MiniPerformanceSparklineProps {
 	showChange?: boolean;
 }
 
-export const MiniPerformanceSparkline: React.FC<
-	MiniPerformanceSparklineProps
-> = ({
+export const MiniPerformanceSparkline: React.FC<MiniPerformanceSparklineProps> = ({
 	data,
 	className,
 	color = "#22c55e",
@@ -149,12 +144,7 @@ export const MiniPerformanceSparkline: React.FC<
 				/>
 			</div>
 			{showChange && (
-				<div
-					className={cn(
-						"text-xs font-medium",
-						isPositive ? "text-green-600" : "text-red-600",
-					)}
-				>
+				<div className={cn("text-xs font-medium", isPositive ? "text-green-600" : "text-red-600")}>
 					{isPositive ? "+" : ""}
 					{change.toFixed(2)}%
 				</div>
@@ -199,18 +189,12 @@ export const MiniAllocationDonut: React.FC<MiniAllocationDonutProps> = ({
 						/>
 						<span className="truncate flex-1">{item.name}</span>
 						<span className="text-muted-foreground">
-							{(
-								(item.value / data.reduce((sum, d) => sum + d.value, 0)) *
-								100
-							).toFixed(0)}
-							%
+							{((item.value / data.reduce((sum, d) => sum + d.value, 0)) * 100).toFixed(0)}%
 						</span>
 					</div>
 				))}
 				{data.length > 3 && (
-					<div className="text-xs text-muted-foreground">
-						+{data.length - 3} more
-					</div>
+					<div className="text-xs text-muted-foreground">+{data.length - 3} more</div>
 				)}
 			</div>
 		)}
@@ -246,11 +230,7 @@ export const DashboardChartGrid: React.FC<DashboardChartGridProps> = ({
 		lg: "gap-6",
 	};
 
-	return (
-		<div className={cn("grid", gridCols[columns], gapSize[gap], className)}>
-			{children}
-		</div>
-	);
+	return <div className={cn("grid", gridCols[columns], gapSize[gap], className)}>{children}</div>;
 };
 
 /**
@@ -275,14 +255,8 @@ export const ChartCard: React.FC<ChartCardProps> = ({
 		{(title || subtitle || actions) && (
 			<div className="flex items-start justify-between mb-4">
 				<div>
-					{title && (
-						<h3 className="font-semibold text-sm text-card-foreground">
-							{title}
-						</h3>
-					)}
-					{subtitle && (
-						<p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-					)}
+					{title && <h3 className="font-semibold text-sm text-card-foreground">{title}</h3>}
+					{subtitle && <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>}
 				</div>
 				{actions && <div className="flex items-center gap-1">{actions}</div>}
 			</div>
@@ -302,9 +276,7 @@ export interface ResponsiveChartContainerProps {
 	className?: string;
 }
 
-export const ResponsiveChartContainer: React.FC<
-	ResponsiveChartContainerProps
-> = ({
+export const ResponsiveChartContainer: React.FC<ResponsiveChartContainerProps> = ({
 	children,
 	minHeight = 200,
 	maxHeight = 400,
@@ -318,10 +290,7 @@ export const ResponsiveChartContainer: React.FC<
 		const updateDimensions = () => {
 			if (containerRef.current) {
 				const { width } = containerRef.current.getBoundingClientRect();
-				const calculatedHeight = Math.max(
-					minHeight,
-					Math.min(maxHeight, width / aspectRatio),
-				);
+				const calculatedHeight = Math.max(minHeight, Math.min(maxHeight, width / aspectRatio));
 				setDimensions({ width, height: calculatedHeight });
 			}
 		};

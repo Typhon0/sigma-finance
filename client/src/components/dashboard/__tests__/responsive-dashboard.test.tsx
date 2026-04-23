@@ -1,10 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { BreadcrumbItem } from "@/hooks/use-dashboard-state";
-import {
-	useResponsiveDashboard,
-	useTouchGestures,
-} from "@/hooks/use-responsive-dashboard";
+import { useResponsiveDashboard, useTouchGestures } from "@/hooks/use-responsive-dashboard";
 import { DashboardBreadcrumb } from "../dashboard-breadcrumb";
 import { ResponsiveAssetList } from "../responsive-asset-list";
 
@@ -34,27 +31,15 @@ function TestResponsiveDashboard() {
 			<div data-testid="is-mobile">{state.isMobile.toString()}</div>
 			<div data-testid="is-tablet">{state.isTablet.toString()}</div>
 			<div data-testid="is-desktop">{state.isDesktop.toString()}</div>
-			<div data-testid="sidebar-collapsed">
-				{state.sidebarCollapsed.toString()}
-			</div>
-			<div data-testid="show-mobile-menu">
-				{state.showMobileMenu.toString()}
-			</div>
+			<div data-testid="sidebar-collapsed">{state.sidebarCollapsed.toString()}</div>
+			<div data-testid="show-mobile-menu">{state.showMobileMenu.toString()}</div>
 			<div data-testid="screen-size">{state.screenSize}</div>
 			<div data-testid="orientation">{state.orientation}</div>
 
-			<button
-				type="button"
-				onClick={actions.toggleSidebar}
-				data-testid="toggle-sidebar"
-			>
+			<button type="button" onClick={actions.toggleSidebar} data-testid="toggle-sidebar">
 				Toggle Sidebar
 			</button>
-			<button
-				type="button"
-				onClick={actions.toggleMobileMenu}
-				data-testid="toggle-mobile-menu"
-			>
+			<button type="button" onClick={actions.toggleMobileMenu} data-testid="toggle-mobile-menu">
 				Toggle Mobile Menu
 			</button>
 			<button
@@ -249,10 +234,7 @@ describe("useResponsiveDashboard", () => {
 		fireEvent.click(toggleButton);
 
 		// Should save to localStorage
-		expect(mockLocalStorage.setItem).toHaveBeenCalledWith(
-			"dashboard-sidebar-collapsed",
-			"true",
-		);
+		expect(mockLocalStorage.setItem).toHaveBeenCalledWith("dashboard-sidebar-collapsed", "true");
 	});
 });
 
@@ -350,9 +332,7 @@ describe("ResponsiveAssetList", () => {
 
 		const onAssetClick = vi.fn();
 
-		render(
-			<ResponsiveAssetList assets={mockAssets} onAssetClick={onAssetClick} />,
-		);
+		render(<ResponsiveAssetList assets={mockAssets} onAssetClick={onAssetClick} />);
 
 		// Should show asset names
 		expect(screen.getByText("Apple Inc.")).toBeInTheDocument();
@@ -419,9 +399,7 @@ describe("ResponsiveAssetList", () => {
 
 		render(<ResponsiveAssetList assets={[]} />);
 
-		expect(
-			screen.getByText("No assets in this portfolio yet."),
-		).toBeInTheDocument();
+		expect(screen.getByText("No assets in this portfolio yet.")).toBeInTheDocument();
 		expect(screen.getByText("Add Your First Asset")).toBeInTheDocument();
 	});
 });

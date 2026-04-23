@@ -26,10 +26,10 @@ interface IBasicDataFeed {
 		symbolInfo: LibrarySymbolInfo,
 		resolution: ResolutionString,
 		onRealtimeCallback: SubscribeBarsCallback,
-		subscriberUID: string,
+		subscriberUid: string,
 		onResetCacheNeededCallback?: () => void,
 	): void;
-	unsubscribeBars(subscriberUID: string): void;
+	unsubscribeBars(subscriberUid: string): void;
 }
 
 interface LibrarySymbolInfo {
@@ -86,16 +86,7 @@ interface DatafeedConfiguration {
 	futures_regex: RegExp | null;
 }
 
-type ResolutionString =
-	| "1"
-	| "5"
-	| "15"
-	| "30"
-	| "60"
-	| "240"
-	| "1D"
-	| "1W"
-	| "1M";
+type ResolutionString = "1" | "5" | "15" | "30" | "60" | "240" | "1D" | "1W" | "1M";
 type OnReadyCallback = (configuration: DatafeedConfiguration) => void;
 type SearchSymbolsCallback = (symbols: SearchSymbolResultItem[]) => void;
 type ResolveCallback = (symbolInfo: LibrarySymbolInfo) => void;
@@ -123,15 +114,7 @@ class MarketDataFeed implements IBasicDataFeed {
 
 	constructor(apiUrl: string = "/graphql") {
 		this.apiUrl = apiUrl;
-		this.supportedResolutions = [
-			"1",
-			"5",
-			"15",
-			"30",
-			"60",
-			"240",
-			"1D",
-		] as ResolutionString[];
+		this.supportedResolutions = ["1", "5", "15", "30", "60", "240", "1D"] as ResolutionString[];
 	}
 
 	onReady(callback: OnReadyCallback): void {
@@ -241,7 +224,6 @@ class MarketDataFeed implements IBasicDataFeed {
 				onHistoryCallback(bars, { noData: false });
 			})
 			.catch((error) => {
-				console.error("Error fetching candles:", error);
 				onErrorCallback(error.message);
 			});
 	}
@@ -250,17 +232,17 @@ class MarketDataFeed implements IBasicDataFeed {
 		symbolInfo: LibrarySymbolInfo,
 		_resolution: ResolutionString,
 		onRealtimeCallback: SubscribeBarsCallback,
-		subscriberUID: string,
+		subscriberUid: string,
 		_onResetCacheNeededCallback?: () => void,
 	): void {
-		this.subscribers.set(subscriberUID, onRealtimeCallback);
+		this.subscribers.set(subscriberUid, onRealtimeCallback);
 
 		// Start real-time updates
 		this.startRealtimeUpdates(symbolInfo, _resolution, onRealtimeCallback);
 	}
 
-	unsubscribeBars(subscriberUID: string): void {
-		this.subscribers.delete(subscriberUID);
+	unsubscribeBars(subscriberUid: string): void {
+		this.subscribers.delete(subscriberUid);
 	}
 
 	private async fetchCandles(
@@ -317,10 +299,7 @@ class MarketDataFeed implements IBasicDataFeed {
 		return result.data.candles;
 	}
 
-	private async fetchRealTimePrice(
-		symbol: string,
-		assetType: string,
-	): Promise<CandleData | null> {
+	private async fetchRealTimePrice(symbol: string, assetType: string): Promise<CandleData | null> {
 		const query = `
       query GetRealTimePrice($symbol: String!, $assetType: String!) {
         realTimePrice(symbol: $symbol, assetType: $assetType) {
@@ -353,13 +332,11 @@ class MarketDataFeed implements IBasicDataFeed {
 			const result = await response.json();
 
 			if (result.errors) {
-				console.error("Real-time price error:", result.errors[0].message);
 				return null;
 			}
 
 			return result.data.realTimePrice;
-		} catch (error) {
-			console.error("Real-time price fetch error:", error);
+		} catch (_error) {
 			return null;
 		}
 	}
@@ -372,10 +349,7 @@ class MarketDataFeed implements IBasicDataFeed {
 		// Poll for real-time updates every 5 seconds
 		const interval = setInterval(async () => {
 			try {
-				const candle = await this.fetchRealTimePrice(
-					symbolInfo.name,
-					symbolInfo.exchange,
-				);
+				const candle = await this.fetchRealTimePrice(symbolInfo.name, symbolInfo.exchange);
 				if (candle) {
 					const bar = {
 						time: new Date(candle.timestamp).getTime(),
@@ -387,9 +361,7 @@ class MarketDataFeed implements IBasicDataFeed {
 					};
 					callback(bar);
 				}
-			} catch (error) {
-				console.error("Real-time update error:", error);
-			}
+			} catch (_error) {}
 		}, 5000);
 
 		// Store interval for cleanup

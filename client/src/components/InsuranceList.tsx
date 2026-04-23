@@ -6,41 +6,21 @@ import {
 	List,
 	Percent,
 	Plus,
-	Search,
 	Shield,
 	SortAsc,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { AddInsuranceForm } from "./AddInsuranceForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 interface InsuranceListProps {
 	onSelectInsurance: (insuranceId: string) => void;
@@ -49,8 +29,7 @@ interface InsuranceListProps {
 type ViewMode = "grid" | "list";
 
 export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
-	const { assets, addLifeInsurance, currentPortfolio, refetch } =
-		usePortfolio();
+	const { assets, addLifeInsurance, currentPortfolio, refetch } = usePortfolio();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState("value");
 	const [filterCategory, setFilterCategory] = useState("all");
@@ -64,8 +43,7 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 			const matchesSearch =
 				insurance.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				insurance.category?.toLowerCase().includes(searchTerm.toLowerCase());
-			const matchesCategory =
-				filterCategory === "all" || insurance.category === filterCategory;
+			const matchesCategory = filterCategory === "all" || insurance.category === filterCategory;
 			return matchesSearch && matchesCategory;
 		})
 		.sort((a, b) => {
@@ -87,10 +65,7 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 		});
 
 	const getTotalValue = () => {
-		return insuranceAssets.reduce(
-			(sum, asset) => sum + (asset.currentValue || 0),
-			0,
-		);
+		return insuranceAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
 	};
 
 	const getTotalGain = () => {
@@ -102,17 +77,13 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 
 	const getAverageReturn = () => {
 		if (insuranceAssets.length === 0) return 0;
-		const totalReturn = insuranceAssets.reduce(
-			(sum, asset) => sum + (asset.annualReturn || 0),
-			0,
-		);
+		const totalReturn = insuranceAssets.reduce((sum, asset) => sum + (asset.annualReturn || 0), 0);
 		return totalReturn / insuranceAssets.length;
 	};
 
 	const totalValue = getTotalValue();
 	const totalGain = getTotalGain();
-	const gainPercent =
-		totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
+	const gainPercent = totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
 	const averageReturn = getAverageReturn();
 
 	const formatCurrency = (value: number) => {
@@ -125,14 +96,12 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 	};
 
 	const getCategoryBadge = (category: string) => {
-		const badges: Record<
-			string,
-			{ label: string; variant: "default" | "secondary" | "outline" }
-		> = {
-			life_insurance: { label: "Assurance Vie", variant: "default" },
-			retirement: { label: "PER", variant: "secondary" },
-			savings: { label: "Épargne", variant: "outline" },
-		};
+		const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> =
+			{
+				life_insurance: { label: "Assurance Vie", variant: "default" },
+				retirement: { label: "PER", variant: "secondary" },
+				savings: { label: "Épargne", variant: "outline" },
+			};
 		return badges[category] || { label: category, variant: "outline" };
 	};
 
@@ -172,7 +141,6 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 				throw new Error("createLifeInsuranceAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding insurance:", error);
 			toast.error("Failed to add insurance policy. Please try again.");
 			throw error;
 		}
@@ -199,8 +167,8 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 						<Shield className="h-16 w-16 text-muted-foreground mb-4" />
 						<h3 className="mb-2">No Insurance Policies</h3>
 						<p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
-							Start tracking your insurance policies, life insurance contracts,
-							and retirement plans.
+							Start tracking your insurance policies, life insurance contracts, and retirement
+							plans.
 						</p>
 						<Button onClick={() => setIsAddFormOpen(true)}>
 							<Plus className="h-4 w-4 mr-2" />
@@ -231,8 +199,7 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 				<div>
 					<h2 className="mb-1">Insurance & Retirement</h2>
 					<p className="text-sm text-muted-foreground">
-						{insuranceAssets.length} active{" "}
-						{insuranceAssets.length === 1 ? "policy" : "policies"}
+						{insuranceAssets.length} active {insuranceAssets.length === 1 ? "policy" : "policies"}
 					</p>
 				</div>
 				<Button onClick={() => setIsAddFormOpen(true)}>
@@ -302,15 +269,13 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 			<Card className="mb-6">
 				<CardContent className="pt-6">
 					<div className="flex flex-col md:flex-row gap-4">
-						<div className="flex-1 relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search policies..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="pl-9"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search policies..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							onClear={() => setSearchTerm("")}
+							containerClassName="flex-1"
+						/>
 
 						<Select value={filterCategory} onValueChange={setFilterCategory}>
 							<SelectTrigger className="w-full md:w-[200px]">
@@ -362,12 +327,9 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 			{viewMode === "grid" && (
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 					{filteredInsurances.map((insurance) => {
-						const gain =
-							(insurance.currentValue || 0) - (insurance.purchasePrice || 0);
+						const gain = (insurance.currentValue || 0) - (insurance.purchasePrice || 0);
 						const gainPercent =
-							insurance.purchasePrice > 0
-								? (gain / insurance.purchasePrice) * 100
-								: 0;
+							insurance.purchasePrice > 0 ? (gain / insurance.purchasePrice) * 100 : 0;
 						const categoryBadge = getCategoryBadge(insurance.category);
 
 						return (
@@ -379,13 +341,9 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 								<CardHeader>
 									<div className="flex items-start justify-between mb-2">
 										<Shield className="h-10 w-10 text-primary" />
-										<Badge variant={categoryBadge.variant}>
-											{categoryBadge.label}
-										</Badge>
+										<Badge variant={categoryBadge.variant}>{categoryBadge.label}</Badge>
 									</div>
-									<CardTitle className="line-clamp-1">
-										{insurance.name}
-									</CardTitle>
+									<CardTitle className="line-clamp-1">{insurance.name}</CardTitle>
 									<CardDescription className="text-xs">
 										Policy {insurance.policyNumber}
 									</CardDescription>
@@ -393,18 +351,12 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 								<CardContent>
 									<div className="space-y-3">
 										<div>
-											<p className="text-xs text-muted-foreground mb-1">
-												Current Value
-											</p>
-											<p className="font-mono">
-												{formatCurrency(insurance.currentValue || 0)}
-											</p>
+											<p className="text-xs text-muted-foreground mb-1">Current Value</p>
+											<p className="font-mono">{formatCurrency(insurance.currentValue || 0)}</p>
 										</div>
 
 										<div>
-											<p className="text-xs text-muted-foreground mb-1">
-												Gain/Loss
-											</p>
+											<p className="text-xs text-muted-foreground mb-1">Gain/Loss</p>
 											<div
 												className={`flex items-center gap-1.5 font-mono text-sm ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
 											>
@@ -414,29 +366,20 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 													<TrendArrowDown className="flex-shrink-0" />
 												)}
 												<span>
-													{formatCurrency(Math.abs(gain))} (
-													{gainPercent.toFixed(2)}%)
+													{formatCurrency(Math.abs(gain))} ({gainPercent.toFixed(2)}%)
 												</span>
 											</div>
 										</div>
 
 										{insurance.annualReturn && (
 											<div>
-												<p className="text-xs text-muted-foreground mb-1">
-													Annual Return
-												</p>
-												<p className="font-mono text-sm">
-													{insurance.annualReturn.toFixed(2)}%
-												</p>
+												<p className="text-xs text-muted-foreground mb-1">Annual Return</p>
+												<p className="font-mono text-sm">{insurance.annualReturn.toFixed(2)}%</p>
 											</div>
 										)}
 
 										<div className="pt-2 border-t">
-											<Button
-												variant="ghost"
-												size="sm"
-												className="w-full justify-between"
-											>
+											<Button variant="ghost" size="sm" className="w-full justify-between">
 												View Details
 												<ArrowRight className="h-4 w-4" />
 											</Button>
@@ -466,13 +409,9 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 						</TableHeader>
 						<TableBody>
 							{filteredInsurances.map((insurance) => {
-								const gain =
-									(insurance.currentValue || 0) -
-									(insurance.purchasePrice || 0);
+								const gain = (insurance.currentValue || 0) - (insurance.purchasePrice || 0);
 								const gainPercent =
-									insurance.purchasePrice > 0
-										? (gain / insurance.purchasePrice) * 100
-										: 0;
+									insurance.purchasePrice > 0 ? (gain / insurance.purchasePrice) * 100 : 0;
 								const categoryBadge = getCategoryBadge(insurance.category);
 
 								return (
@@ -484,15 +423,11 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 										<TableCell>
 											<div>
 												<p className="font-medium">{insurance.name}</p>
-												<p className="text-xs text-muted-foreground">
-													{insurance.policyNumber}
-												</p>
+												<p className="text-xs text-muted-foreground">{insurance.policyNumber}</p>
 											</div>
 										</TableCell>
 										<TableCell>
-											<Badge variant={categoryBadge.variant}>
-												{categoryBadge.label}
-											</Badge>
+											<Badge variant={categoryBadge.variant}>{categoryBadge.label}</Badge>
 										</TableCell>
 										<TableCell className="text-right font-mono">
 											{formatCurrency(insurance.currentValue || 0)}
@@ -507,21 +442,15 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 													<TrendArrowDown className="flex-shrink-0" />
 												)}
 												<span>{formatCurrency(Math.abs(gain))}</span>
-												<span className="text-xs">
-													({gainPercent.toFixed(2)}%)
-												</span>
+												<span className="text-xs">({gainPercent.toFixed(2)}%)</span>
 											</div>
 										</TableCell>
 										<TableCell className="text-right font-mono">
-											{insurance.annualReturn
-												? `${insurance.annualReturn.toFixed(2)}%`
-												: "-"}
+											{insurance.annualReturn ? `${insurance.annualReturn.toFixed(2)}%` : "-"}
 										</TableCell>
 										<TableCell className="text-sm text-muted-foreground">
 											{insurance.openingDate
-												? new Date(insurance.openingDate).toLocaleDateString(
-														"fr-FR",
-													)
+												? new Date(insurance.openingDate).toLocaleDateString("fr-FR")
 												: "-"}
 										</TableCell>
 										<TableCell className="text-right">

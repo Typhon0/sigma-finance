@@ -53,9 +53,7 @@ interface TestResult {
 }
 
 export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
-	const [testResults, setTestResults] = useState<Record<string, TestResult>>(
-		{},
-	);
+	const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
 	const [isRunningTest, setIsRunningTest] = useState<string | null>(null);
 
 	const {
@@ -63,7 +61,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 		handleSubmit,
 		watch,
 		setValue,
-		_reset,
+		reset: _reset,
 		formState: { errors, isSubmitting },
 	} = useForm<AlertTestData>({
 		resolver: zodResolver(testSchema),
@@ -109,8 +107,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 				[data.alertId]: {
 					success: false,
 					message: "Test failed",
-					details:
-						error instanceof Error ? error.message : "Unknown error occurred",
+					details: error instanceof Error ? error.message : "Unknown error occurred",
 					timestamp: new Date(),
 				},
 			}));
@@ -119,10 +116,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 		}
 	};
 
-	const runQuickTest = async (
-		alert: AlertType,
-		testType: "CONDITION" | "NOTIFICATION",
-	) => {
+	const runQuickTest = async (alert: AlertType, testType: "CONDITION" | "NOTIFICATION") => {
 		if (!onTest) return;
 
 		const testData: AlertTestData = {
@@ -132,20 +126,10 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 
 		// Set mock values based on alert type
 		if (testType === "CONDITION") {
-			if (
-				alert.alertType === "PRICE" ||
-				alert.alertType === "PORTFOLIO_VALUE"
-			) {
-				testData.mockValue = alert.thresholdValue
-					? alert.thresholdValue * 1.1
-					: 100;
-			} else if (
-				alert.alertType === "PERCENTAGE_CHANGE" ||
-				alert.alertType === "ALLOCATION"
-			) {
-				testData.mockPercentage = alert.thresholdPercentage
-					? alert.thresholdPercentage + 5
-					: 10;
+			if (alert.alertType === "PRICE" || alert.alertType === "PORTFOLIO_VALUE") {
+				testData.mockValue = alert.thresholdValue ? alert.thresholdValue * 1.1 : 100;
+			} else if (alert.alertType === "PERCENTAGE_CHANGE" || alert.alertType === "ALLOCATION") {
+				testData.mockPercentage = alert.thresholdPercentage ? alert.thresholdPercentage + 5 : 10;
 			}
 		}
 
@@ -206,9 +190,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 		return (
 			<div className={`text-center py-8 ${className}`}>
 				<TestTube className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-				<h3 className="text-lg font-medium text-muted-foreground mb-2">
-					No Active Alerts
-				</h3>
+				<h3 className="text-lg font-medium text-muted-foreground mb-2">No Active Alerts</h3>
 				<p className="text-sm text-muted-foreground">
 					Create some alerts first to test their functionality.
 				</p>
@@ -222,9 +204,8 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 			<Alert>
 				<AlertTriangle className="h-4 w-4" />
 				<AlertDescription>
-					Use this testing interface to validate your alert configurations and
-					notification delivery. Tests will simulate alert conditions without
-					affecting your actual alerts.
+					Use this testing interface to validate your alert configurations and notification
+					delivery. Tests will simulate alert conditions without affecting your actual alerts.
 				</AlertDescription>
 			</Alert>
 
@@ -263,9 +244,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 									</SelectContent>
 								</Select>
 								{errors.alertId && (
-									<p className="text-sm text-destructive">
-										{errors.alertId.message}
-									</p>
+									<p className="text-sm text-destructive">{errors.alertId.message}</p>
 								)}
 							</div>
 
@@ -301,9 +280,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 							<div className="p-4 bg-muted/50 rounded-lg space-y-2">
 								<div className="flex items-center gap-3">
 									{getAlertTypeIcon(selectedAlert.alertType)}
-									<Badge variant="outline">
-										{getAlertTypeLabel(selectedAlert.alertType)}
-									</Badge>
+									<Badge variant="outline">{getAlertTypeLabel(selectedAlert.alertType)}</Badge>
 									<span className="font-medium">{selectedAlert.name}</span>
 								</div>
 								<div className="text-sm text-muted-foreground">
@@ -328,16 +305,14 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 									<div className="space-y-2">
 										<Label htmlFor="mockValue">Mock Value</Label>
 										<div className="relative">
-											<DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											<DollarSign className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 											<Input
 												id="mockValue"
 												type="number"
 												step="0.01"
 												min="0"
-												placeholder={
-													selectedAlert.thresholdValue?.toString() || "0.00"
-												}
-												className="pl-10"
+												placeholder={selectedAlert.thresholdValue?.toString() || "0.00"}
+												style={{ paddingLeft: "2.5rem" }}
 												{...register("mockValue", { valueAsNumber: true })}
 											/>
 										</div>
@@ -352,23 +327,20 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 									<div className="space-y-2">
 										<Label htmlFor="mockPercentage">Mock Percentage</Label>
 										<div className="relative">
-											<Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+											<Percent className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 											<Input
 												id="mockPercentage"
 												type="number"
 												step="0.1"
 												min="0"
 												max="100"
-												placeholder={
-													selectedAlert.thresholdPercentage?.toString() || "0.0"
-												}
-												className="pl-10"
+												placeholder={selectedAlert.thresholdPercentage?.toString() || "0.0"}
+												style={{ paddingLeft: "2.5rem" }}
 												{...register("mockPercentage", { valueAsNumber: true })}
 											/>
 										</div>
 										<p className="text-xs text-muted-foreground">
-											Leave empty to use a percentage that would trigger the
-											alert
+											Leave empty to use a percentage that would trigger the alert
 										</p>
 									</div>
 								)}
@@ -415,9 +387,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 								<div className="flex-1 min-w-0">
 									<div className="flex items-center gap-3 mb-2">
 										{getAlertTypeIcon(alert.alertType)}
-										<Badge variant="outline">
-											{getAlertTypeLabel(alert.alertType)}
-										</Badge>
+										<Badge variant="outline">{getAlertTypeLabel(alert.alertType)}</Badge>
 										<span className="font-medium truncate">{alert.name}</span>
 									</div>
 									<div className="text-sm text-muted-foreground">
@@ -471,19 +441,13 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 					<CardContent>
 						<div className="space-y-3">
 							{Object.entries(testResults)
-								.sort(
-									([, a], [, b]) =>
-										b.timestamp.getTime() - a.timestamp.getTime(),
-								)
+								.sort(([, a], [, b]) => b.timestamp.getTime() - a.timestamp.getTime())
 								.map(([alertId, result]) => {
 									const alert = alerts.find((a) => a.id === alertId);
 									if (!alert) return null;
 
 									return (
-										<div
-											key={alertId}
-											className="flex items-start gap-3 p-3 border rounded-lg"
-										>
+										<div key={alertId} className="flex items-start gap-3 p-3 border rounded-lg">
 											<div className="mt-1">
 												{result.success ? (
 													<CheckCircle className="h-5 w-5 text-green-500" />
@@ -495,21 +459,15 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 											<div className="flex-1 min-w-0">
 												<div className="flex items-center gap-2 mb-1">
 													<span className="font-medium">{alert.name}</span>
-													<Badge
-														variant={result.success ? "default" : "destructive"}
-													>
+													<Badge variant={result.success ? "default" : "destructive"}>
 														{result.success ? "Passed" : "Failed"}
 													</Badge>
 												</div>
 
-												<p className="text-sm text-muted-foreground mb-1">
-													{result.message}
-												</p>
+												<p className="text-sm text-muted-foreground mb-1">{result.message}</p>
 
 												{result.details && (
-													<p className="text-xs text-muted-foreground">
-														{result.details}
-													</p>
+													<p className="text-xs text-muted-foreground">{result.details}</p>
 												)}
 
 												<p className="text-xs text-muted-foreground mt-2">

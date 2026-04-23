@@ -13,29 +13,10 @@ import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface RealEstateAnalyticsProps {
@@ -58,18 +39,14 @@ const COLORS = [
 	"#84cc16",
 ];
 
-export function RealEstateAnalytics({
-	onSelectProperty,
-}: RealEstateAnalyticsProps) {
+export function RealEstateAnalytics({ onSelectProperty }: RealEstateAnalyticsProps) {
 	const { assets } = usePortfolio();
 	const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 	const [chartType, setChartType] = useState<ChartType>("simple");
 	const [allocationView, setAllocationView] = useState<AllocationView>("pie");
 	const [allocationBy, setAllocationBy] = useState<AllocationBy>("type");
 
-	const realEstateAssets = assets.filter(
-		(asset) => asset.type === "real_estate",
-	);
+	const realEstateAssets = assets.filter((asset) => asset.type === "real_estate");
 
 	// Generate mock historical data for value over time
 	const generateHistoricalData = () => {
@@ -82,7 +59,7 @@ export function RealEstateAnalytics({
 			months = new Date().getMonth() + 1; // Months since start of year
 		else months = 24; // ALL
 
-		const data = [];
+		const data: { date: string; total: number; [key: string]: any }[] = [];
 
 		for (let i = months; i >= 0; i--) {
 			const date = new Date();
@@ -112,10 +89,7 @@ export function RealEstateAnalytics({
 		return data;
 	};
 
-	const historicalData = useMemo(
-		() => generateHistoricalData(),
-		[timeRange, realEstateAssets.length],
-	);
+	const historicalData = useMemo(() => generateHistoricalData(), [generateHistoricalData]);
 
 	// Calculate performance metrics
 	const performanceData = useMemo(() => {
@@ -124,18 +98,15 @@ export function RealEstateAnalytics({
 				const currentValue = property.currentValue || 0;
 				const purchasePrice = property.purchasePrice || 0;
 				const gain = currentValue - purchasePrice;
-				const gainPercent =
-					purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
+				const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
 
 				// Calculate annualized return
 				const purchaseDate = new Date(property.purchaseDate || Date.now());
 				const yearsHeld = Math.max(
 					0.1,
-					(Date.now() - purchaseDate.getTime()) /
-						(365.25 * 24 * 60 * 60 * 1000),
+					(Date.now() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000),
 				);
-				const annualizedReturn =
-					((currentValue / purchasePrice) ** (1 / yearsHeld) - 1) * 100;
+				const annualizedReturn = ((currentValue / purchasePrice) ** (1 / yearsHeld) - 1) * 100;
 
 				return {
 					id: property.id,
@@ -177,24 +148,15 @@ export function RealEstateAnalytics({
 			name,
 			value,
 			percentage:
-				(value /
-					realEstateAssets.reduce((sum, p) => sum + (p.currentValue || 0), 0)) *
-				100,
+				(value / realEstateAssets.reduce((sum, p) => sum + (p.currentValue || 0), 0)) * 100,
 		}));
 	}, [realEstateAssets, allocationBy]);
 
 	// Portfolio totals
-	const totalValue = realEstateAssets.reduce(
-		(sum, p) => sum + (p.currentValue || 0),
-		0,
-	);
-	const totalInvested = realEstateAssets.reduce(
-		(sum, p) => sum + (p.purchasePrice || 0),
-		0,
-	);
+	const totalValue = realEstateAssets.reduce((sum, p) => sum + (p.currentValue || 0), 0);
+	const totalInvested = realEstateAssets.reduce((sum, p) => sum + (p.purchasePrice || 0), 0);
 	const totalGain = totalValue - totalInvested;
-	const _totalGainPercent =
-		totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
+	const _totalGainPercent = totalInvested > 0 ? (totalGain / totalInvested) * 100 : 0;
 
 	const topPerformer = performanceData[0];
 	const worstPerformer = performanceData[performanceData.length - 1];
@@ -594,16 +556,10 @@ export function RealEstateAnalytics({
 	// Diversification metrics
 	const uniqueTypes = new Set(realEstateAssets.map((p) => p.propertyType)).size;
 	const uniqueLocations = new Set(realEstateAssets.map((p) => p.city)).size;
-	const avgPropertyValue =
-		realEstateAssets.length > 0 ? totalValue / realEstateAssets.length : 0;
+	const avgPropertyValue = realEstateAssets.length > 0 ? totalValue / realEstateAssets.length : 0;
 	const geoScore =
-		realEstateAssets.length > 0
-			? (uniqueLocations / realEstateAssets.length) * 100
-			: 0;
-	const typeScore =
-		realEstateAssets.length > 0
-			? (uniqueTypes / realEstateAssets.length) * 100
-			: 0;
+		realEstateAssets.length > 0 ? (uniqueLocations / realEstateAssets.length) * 100 : 0;
+	const typeScore = realEstateAssets.length > 0 ? (uniqueTypes / realEstateAssets.length) * 100 : 0;
 
 	if (realEstateAssets.length === 0) {
 		return (
@@ -635,11 +591,8 @@ export function RealEstateAnalytics({
 							{realEstateAssets.length} properties
 						</p>
 						<div className="mt-2">
-							<div
-								className={`text-sm ${totalGain >= 0 ? "text-green-600" : "text-red-600"}`}
-							>
-								{totalGain >= 0 ? "+" : ""}€
-								{Math.abs(totalGain).toLocaleString()}
+							<div className={`text-sm ${totalGain >= 0 ? "text-green-600" : "text-red-600"}`}>
+								{totalGain >= 0 ? "+" : ""}€{Math.abs(totalGain).toLocaleString()}
 							</div>
 						</div>
 					</CardContent>
@@ -664,9 +617,7 @@ export function RealEstateAnalytics({
 					<CardHeader className="pb-3">
 						<div className="flex items-center gap-2">
 							<Award className="h-4 w-4 text-green-600" />
-							<CardTitle className="text-sm font-medium">
-								Best Performer
-							</CardTitle>
+							<CardTitle className="text-sm font-medium">Best Performer</CardTitle>
 						</div>
 					</CardHeader>
 					<CardContent>
@@ -675,9 +626,7 @@ export function RealEstateAnalytics({
 								<div className="font-mono text-green-600">
 									+{topPerformer.annualizedReturn.toFixed(1)}%
 								</div>
-								<p className="text-xs text-muted-foreground mt-1 truncate">
-									{topPerformer.name}
-								</p>
+								<p className="text-xs text-muted-foreground mt-1 truncate">{topPerformer.name}</p>
 								<p className="text-xs text-muted-foreground">Annual return</p>
 							</>
 						) : (
@@ -690,9 +639,7 @@ export function RealEstateAnalytics({
 					<CardHeader className="pb-3">
 						<div className="flex items-center gap-2">
 							<AlertTriangle className="h-4 w-4 text-red-600" />
-							<CardTitle className="text-sm font-medium">
-								Worst Performer
-							</CardTitle>
+							<CardTitle className="text-sm font-medium">Worst Performer</CardTitle>
 						</div>
 					</CardHeader>
 					<CardContent>
@@ -704,9 +651,7 @@ export function RealEstateAnalytics({
 									{worstPerformer.gainPercent >= 0 ? "+" : ""}
 									{worstPerformer.gainPercent.toFixed(1)}%
 								</div>
-								<p className="text-xs text-muted-foreground mt-1 truncate">
-									{worstPerformer.name}
-								</p>
+								<p className="text-xs text-muted-foreground mt-1 truncate">{worstPerformer.name}</p>
 								<p className="text-xs text-muted-foreground">Total return</p>
 							</>
 						) : (
@@ -740,16 +685,12 @@ export function RealEstateAnalytics({
 							<div className="flex items-center justify-between">
 								<div>
 									<CardTitle>Portfolio Value Over Time</CardTitle>
-									<CardDescription>
-										Track your real estate portfolio growth
-									</CardDescription>
+									<CardDescription>Track your real estate portfolio growth</CardDescription>
 								</div>
 								<div className="flex items-center gap-4">
 									{/* Time Range Selector */}
 									<div className="flex gap-1 border rounded-lg p-1">
-										{(
-											["1M", "3M", "6M", "1Y", "YTD", "ALL"] as TimeRange[]
-										).map((range) => (
+										{(["1M", "3M", "6M", "1Y", "YTD", "ALL"] as TimeRange[]).map((range) => (
 											<Button
 												key={range}
 												variant={timeRange === range ? "default" : "ghost"}
@@ -800,9 +741,7 @@ export function RealEstateAnalytics({
 					<Card>
 						<CardHeader>
 							<CardTitle>Property Performance</CardTitle>
-							<CardDescription>
-								Detailed performance metrics for each property
-							</CardDescription>
+							<CardDescription>Detailed performance metrics for each property</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<Table>
@@ -841,20 +780,13 @@ export function RealEstateAnalytics({
 												<div
 													className={`font-mono ${property.gain >= 0 ? "text-green-600" : "text-red-600"}`}
 												>
-													{property.gain >= 0 ? "+" : ""}€
-													{Math.abs(property.gain).toLocaleString()}
+													{property.gain >= 0 ? "+" : ""}€{Math.abs(property.gain).toLocaleString()}
 												</div>
 											</TableCell>
 											<TableCell className="text-right">
 												<Badge
-													variant={
-														property.gainPercent >= 0
-															? "default"
-															: "destructive"
-													}
-													className={
-														property.gainPercent >= 0 ? "bg-green-600" : ""
-													}
+													variant={property.gainPercent >= 0 ? "default" : "destructive"}
+													className={property.gainPercent >= 0 ? "bg-green-600" : ""}
 												>
 													{property.gainPercent >= 0 ? "+" : ""}
 													{property.gainPercent.toFixed(1)}%
@@ -877,9 +809,7 @@ export function RealEstateAnalytics({
 					<Card>
 						<CardHeader>
 							<CardTitle>Return Distribution</CardTitle>
-							<CardDescription>
-								Performance comparison across properties
-							</CardDescription>
+							<CardDescription>Performance comparison across properties</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<ReactECharts
@@ -899,9 +829,7 @@ export function RealEstateAnalytics({
 							<div className="flex items-center justify-between">
 								<div>
 									<CardTitle>Portfolio Allocation</CardTitle>
-									<CardDescription>
-										Visualize your portfolio distribution
-									</CardDescription>
+									<CardDescription>Visualize your portfolio distribution</CardDescription>
 								</div>
 								<div className="flex items-center gap-4">
 									{/* Allocation By Selector */}
@@ -931,9 +859,7 @@ export function RealEstateAnalytics({
 											Pie
 										</Button>
 										<Button
-											variant={
-												allocationView === "treemap" ? "default" : "ghost"
-											}
+											variant={allocationView === "treemap" ? "default" : "ghost"}
 											size="sm"
 											onClick={() => setAllocationView("treemap")}
 											className="h-7 px-3"
@@ -947,11 +873,7 @@ export function RealEstateAnalytics({
 						</CardHeader>
 						<CardContent>
 							<ReactECharts
-								option={
-									allocationView === "pie"
-										? getPieChartOption()
-										: getTreemapOption()
-								}
+								option={allocationView === "pie" ? getPieChartOption() : getTreemapOption()}
 								style={{ height: "400px", width: "100%" }}
 								notMerge={true}
 								lazyUpdate={true}
@@ -963,9 +885,7 @@ export function RealEstateAnalytics({
 					<Card>
 						<CardHeader>
 							<CardTitle>Allocation Breakdown</CardTitle>
-							<CardDescription>
-								Detailed distribution by {allocationBy}
-							</CardDescription>
+							<CardDescription>Detailed distribution by {allocationBy}</CardDescription>
 						</CardHeader>
 						<CardContent>
 							<div className="space-y-4">
@@ -982,9 +902,7 @@ export function RealEstateAnalytics({
 												<span className="font-medium">{item.name}</span>
 											</div>
 											<div className="text-right">
-												<div className="font-mono">
-													€{item.value.toLocaleString()}
-												</div>
+												<div className="font-mono">€{item.value.toLocaleString()}</div>
 												<div className="text-xs text-muted-foreground">
 													{item.percentage.toFixed(1)}%
 												</div>
@@ -1024,23 +942,18 @@ export function RealEstateAnalytics({
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
 										<span className="text-sm">Geographic Diversification</span>
-										<span className="text-sm font-medium">
-											{geoScore.toFixed(0)}%
-										</span>
+										<span className="text-sm font-medium">{geoScore.toFixed(0)}%</span>
 									</div>
 									<Progress value={Math.min(geoScore, 100)} className="h-2" />
 									<p className="text-xs text-muted-foreground">
-										{uniqueLocations} unique locations across{" "}
-										{realEstateAssets.length} properties
+										{uniqueLocations} unique locations across {realEstateAssets.length} properties
 									</p>
 								</div>
 
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
 										<span className="text-sm">Type Diversification</span>
-										<span className="text-sm font-medium">
-											{typeScore.toFixed(0)}%
-										</span>
+										<span className="text-sm font-medium">{typeScore.toFixed(0)}%</span>
 									</div>
 									<Progress value={Math.min(typeScore, 100)} className="h-2" />
 									<p className="text-xs text-muted-foreground">

@@ -20,8 +20,7 @@ export function ErrorTestComponent() {
 			</CardHeader>
 			<CardContent>
 				<p className="text-sm text-muted-foreground mb-4">
-					This component can be used to test error boundary functionality in
-					dashboard sections.
+					This component can be used to test error boundary functionality in dashboard sections.
 				</p>
 				<Button variant="destructive" onClick={() => setShouldThrow(true)}>
 					Trigger Error

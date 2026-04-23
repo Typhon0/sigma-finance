@@ -8,6 +8,16 @@ export const ME_QUERY = gql`
       name
       emailVerified
       displayCurrency
+      themePreference
+      themeBaseColor
+      themeAccentColor
+      themeFontPreference
+      themeHeadingFont
+      themeMenuAccent
+      themeMenuColor
+      themeStyle
+      themeRadius
+      themeRTL
     }
   }
 `;

@@ -15,23 +15,10 @@ import { usePortfolio } from "@/components/PortfolioProvider";
 import { CURRENCY_SYMBOLS } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface TransactionRowData {
@@ -51,9 +38,7 @@ function TransactionTable({
 	transactions: TransactionRowData[];
 	formatCurrency: (amount: number) => string;
 }) {
-	const getBadgeVariant = (
-		type: string,
-	): "default" | "outline" | "secondary" => {
+	const getBadgeVariant = (type: string): "default" | "outline" | "secondary" => {
 		if (type === "buy" || type === "deposit") return "default";
 		if (type === "sell" || type === "withdrawal") return "outline";
 		return "secondary";
@@ -77,26 +62,19 @@ function TransactionTable({
 							</Badge>
 						</TableCell>
 						<TableCell
-							className={`text-right font-mono ${
-								tx.total > 0 ? "text-green-600" : "text-red-600"
-							}`}
+							className={`text-right font-mono ${tx.total > 0 ? "text-green-600" : "text-red-600"}`}
 						>
 							{tx.total > 0 ? "+" : ""}
 							{formatCurrency(tx.total)}
 						</TableCell>
 						<TableCell className="text-right font-mono text-muted-foreground">
-							{tx.quantity
-								? `${tx.quantity} @ ${formatCurrency(tx.pricePerUnit ?? 0)}`
-								: "--"}
+							{tx.quantity ? `${tx.quantity} @ ${formatCurrency(tx.pricePerUnit ?? 0)}` : "--"}
 						</TableCell>
 					</TableRow>
 				))
 			) : (
 				<TableRow>
-					<TableCell
-						colSpan={4}
-						className="text-center py-8 text-muted-foreground"
-					>
+					<TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
 						<PiggyBank className="h-8 w-8 mx-auto mb-2" />
 						<p>No transactions yet for this account</p>
 					</TableCell>
@@ -145,24 +123,17 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 	const assetTransactions = useMemo(() => {
 		return transactions
 			.filter((t: any) => t.assetId === savingId)
-			.sort(
-				(a: any, b: any) =>
-					new Date(b.date).getTime() - new Date(a.date).getTime(),
-			);
+			.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
 	}, [transactions, savingId]);
 
 	// Calculate monthsOpen from earliest transaction, or 0 if no transactions
 	const monthsOpen = useMemo(() => {
 		if (!saving) return 0;
 		if (assetTransactions.length > 0) {
-			const earliest = new Date(
-				assetTransactions[assetTransactions.length - 1].date,
-			);
+			const earliest = new Date(assetTransactions[assetTransactions.length - 1].date);
 			return Math.max(
 				1,
-				Math.floor(
-					(Date.now() - earliest.getTime()) / (1000 * 60 * 60 * 24 * 30),
-				),
+				Math.floor((Date.now() - earliest.getTime()) / (1000 * 60 * 60 * 24 * 30)),
 			);
 		}
 		if (saving.initialDeposit > 0) return 1;
@@ -184,25 +155,20 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 			const startOfYear = new Date(now.getFullYear(), 0, 1);
 			months = Math.max(
 				1,
-				Math.floor(
-					(now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 30),
-				),
+				Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 30)),
 			);
 		} else months = Math.min(monthsOpen || 12, 60); // ALL
 
 		const startBalance = saving.initialDeposit;
 		const currentBalance = saving.balance;
-		const monthlyGrowth =
-			months > 0 ? (currentBalance - startBalance) / months : 0;
+		const monthlyGrowth = months > 0 ? (currentBalance - startBalance) / months : 0;
 
 		for (let i = 0; i <= months; i++) {
 			const date = new Date();
 			date.setMonth(date.getMonth() - (months - i));
 			// Deterministic sinusoidal variation instead of Math.random()
 			const variation =
-				months > 0
-					? Math.sin((i / months) * Math.PI * 2) * (currentBalance * 0.01)
-					: 0;
+				months > 0 ? Math.sin((i / months) * Math.PI * 2) * (currentBalance * 0.01) : 0;
 			const balance = startBalance + monthlyGrowth * i + variation;
 
 			data.push({
@@ -258,8 +224,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 	const nativeCurrency = saving.currency || "USD";
 	const nativeCurrencySymbol = CURRENCY_SYMBOLS[nativeCurrency] ?? "$";
 	const formatCurrency = (amount: number) => {
-		const validAmount =
-			typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
+		const validAmount = typeof amount === "number" && !Number.isNaN(amount) ? amount : 0;
 		return new Intl.NumberFormat("en-US", {
 			style: "currency",
 			currency: nativeCurrency,
@@ -343,8 +308,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) =>
-					`${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
+				formatter: (value: number) => `${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		toolbox: {
@@ -398,8 +362,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 		yAxis: {
 			type: "value",
 			axisLabel: {
-				formatter: (value: number) =>
-					`${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
+				formatter: (value: number) => `${nativeCurrencySymbol}${(value / 1000).toFixed(0)}K`,
 			},
 		},
 		series: [
@@ -432,20 +395,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 		grid: { left: 60, right: 20, top: 20, bottom: 40 },
 		xAxis: {
 			type: "category",
-			data: [
-				"Jan",
-				"Feb",
-				"Mar",
-				"Apr",
-				"May",
-				"Jun",
-				"Jul",
-				"Aug",
-				"Sep",
-				"Oct",
-				"Nov",
-				"Dec",
-			],
+			data: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
 		},
 		yAxis: {
 			type: "value",
@@ -460,9 +410,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 				data: Array(12)
 					.fill(0)
 					.map(
-						(_v, i) =>
-							monthlyInterest +
-							Math.sin((i / 12) * Math.PI * 2) * (monthlyInterest * 0.1),
+						(_v, i) => monthlyInterest + Math.sin((i / 12) * Math.PI * 2) * (monthlyInterest * 0.1),
 					),
 				itemStyle: {
 					color: {
@@ -533,9 +481,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-mono text-green-600">
-								{formatCurrency(totalGrowth)}
-							</div>
+							<div className="text-2xl font-mono text-green-600">{formatCurrency(totalGrowth)}</div>
 							<p className="text-xs text-muted-foreground mt-1">
 								+{growthPercentage.toFixed(1)}% since opening
 							</p>
@@ -550,9 +496,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-mono">
-								{(saving.interestRate || 0).toFixed(2)}%
-							</div>
+							<div className="text-2xl font-mono">{(saving.interestRate || 0).toFixed(2)}%</div>
 							<p className="text-xs text-muted-foreground mt-1">Annual rate</p>
 						</CardContent>
 					</Card>
@@ -627,8 +571,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 										Growth Projection
 									</CardTitle>
 									<CardDescription>
-										Projected balance at {(saving.interestRate || 0).toFixed(2)}
-										% interest
+										Projected balance at {(saving.interestRate || 0).toFixed(2)}% interest
 									</CardDescription>
 								</CardHeader>
 								<CardContent>
@@ -661,37 +604,25 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 							<Card>
 								<CardHeader>
-									<CardTitle className="text-sm">
-										Average Monthly Growth
-									</CardTitle>
+									<CardTitle className="text-sm">Average Monthly Growth</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<div className="text-xl font-mono text-green-600">
-										{formatCurrency(
-											monthsOpen > 0 ? totalGrowth / monthsOpen : totalGrowth,
-										)}
+										{formatCurrency(monthsOpen > 0 ? totalGrowth / monthsOpen : totalGrowth)}
 									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										Per month average
-									</p>
+									<p className="text-xs text-muted-foreground mt-1">Per month average</p>
 								</CardContent>
 							</Card>
 
 							<Card>
 								<CardHeader>
-									<CardTitle className="text-sm">
-										Projected 1Y Balance
-									</CardTitle>
+									<CardTitle className="text-sm">Projected 1Y Balance</CardTitle>
 								</CardHeader>
 								<CardContent>
 									<div className="text-xl font-mono">
-										{formatCurrency(
-											saving.balance * (1 + (saving.interestRate || 0) / 100),
-										)}
+										{formatCurrency(saving.balance * (1 + (saving.interestRate || 0) / 100))}
 									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										In 12 months
-									</p>
+									<p className="text-xs text-muted-foreground mt-1">In 12 months</p>
 								</CardContent>
 							</Card>
 						</div>
@@ -755,9 +686,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 										<AlertCircle className="h-5 w-5" />
 										Key Insights
 									</CardTitle>
-									<CardDescription>
-										Smart recommendations for your account
-									</CardDescription>
+									<CardDescription>Smart recommendations for your account</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-4">
@@ -771,9 +700,8 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 														Healthy Growth
 													</p>
 													<p className="text-sm text-green-700 dark:text-green-300 mt-1">
-														Your account has grown by{" "}
-														{growthPercentage.toFixed(1)}% since opening. Great
-														progress!
+														Your account has grown by {growthPercentage.toFixed(1)}% since opening.
+														Great progress!
 													</p>
 												</div>
 											</div>
@@ -789,8 +717,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 														Annual Interest
 													</p>
 													<p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-														You'll earn approximately{" "}
-														{formatCurrency(annualInterest)} this year in
+														You'll earn approximately {formatCurrency(annualInterest)} this year in
 														interest
 													</p>
 												</div>
@@ -808,8 +735,8 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 															Great Rate!
 														</p>
 														<p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-															Your {(saving.interestRate || 0).toFixed(2)}% rate
-															is above average. Well done!
+															Your {(saving.interestRate || 0).toFixed(2)}% rate is above average.
+															Well done!
 														</p>
 													</div>
 												</div>
@@ -854,9 +781,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 										<span className="font-medium">{saving.accountName}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Account Number
-										</span>
+										<span className="text-muted-foreground">Account Number</span>
 										<span className="font-mono">{saving.accountNumber}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
@@ -874,9 +799,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 										<span className="font-medium">{saving.currency}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Current Balance
-										</span>
+										<span className="text-muted-foreground">Current Balance</span>
 										<span className="font-mono text-green-600">
 											{formatCurrency(saving.balance)}
 										</span>
@@ -886,12 +809,8 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 										{getOwnershipBadge()}
 									</div>
 									<div className="flex justify-between py-2">
-										<span className="text-muted-foreground">
-											Ownership Details
-										</span>
-										<span className="font-medium text-right">
-											{getOwnershipDetails()}
-										</span>
+										<span className="text-muted-foreground">Ownership Details</span>
+										<span className="font-medium text-right">{getOwnershipDetails()}</span>
 									</div>
 								</CardContent>
 							</Card>
@@ -904,22 +823,16 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 								<CardContent className="space-y-4">
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Interest Rate</span>
-										<span className="font-mono">
-											{(saving.interestRate || 0).toFixed(2)}%
-										</span>
+										<span className="font-mono">{(saving.interestRate || 0).toFixed(2)}%</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Annual Interest
-										</span>
+										<span className="text-muted-foreground">Annual Interest</span>
 										<span className="font-mono text-green-600">
 											{formatCurrency(annualInterest)}
 										</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Monthly Interest
-										</span>
+										<span className="text-muted-foreground">Monthly Interest</span>
 										<span className="font-mono text-green-600">
 											{formatCurrency(monthlyInterest)}
 										</span>
@@ -929,26 +842,15 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 									{assetTransactions.length > 0 && (
 										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">
-												First Transaction
-											</span>
+											<span className="text-muted-foreground">First Transaction</span>
 											<span className="font-medium">
-												{formatDate(
-													new Date(
-														assetTransactions[assetTransactions.length - 1]
-															.date,
-													),
-												)}
+												{formatDate(new Date(assetTransactions[assetTransactions.length - 1].date))}
 											</span>
 										</div>
 									)}
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Initial Deposit
-										</span>
-										<span className="font-mono">
-											{formatCurrency(saving.initialDeposit)}
-										</span>
+										<span className="text-muted-foreground">Initial Deposit</span>
+										<span className="font-mono">{formatCurrency(saving.initialDeposit)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Account Age</span>

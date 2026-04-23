@@ -219,10 +219,7 @@ function AppSidebar() {
 		const fullPath = `${currentPath}${currentSearch}`;
 		for (const group of NAV_ITEMS) {
 			for (const item of group.items) {
-				if (
-					item.url === fullPath ||
-					fullPath.startsWith(item.url.split("?")[0])
-				) {
+				if (item.url === fullPath || fullPath.startsWith(item.url.split("?")[0])) {
 					return item.id;
 				}
 			}
@@ -244,9 +241,7 @@ function AppSidebar() {
 				style={{ justifyContent: isExpanded ? "space-between" : "center" }}
 			>
 				{isExpanded && <Logo size="sm" showText={true} />}
-				{!isExpanded && (
-					<span className="font-bold text-xl tracking-tighter">SF</span>
-				)}
+				{!isExpanded && <span className="font-bold text-xl tracking-tighter">SF</span>}
 				{isExpanded && (
 					<Button
 						variant="ghost"
@@ -254,21 +249,14 @@ function AppSidebar() {
 						className="h-6 w-6 text-muted-foreground"
 						onClick={() => setIsCollapsed(!isCollapsed)}
 					>
-						{isCollapsed ? (
-							<ChevronRight size={14} />
-						) : (
-							<ChevronLeft size={14} />
-						)}
+						{isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
 					</Button>
 				)}
 			</div>
 
 			{isExpanded && (
 				<div className="border-b py-2">
-					<PortfolioSwitcher
-						isCollapsed={false}
-						onInteractingChange={setIsInteracting}
-					/>
+					<PortfolioSwitcher isCollapsed={false} onInteractingChange={setIsInteracting} />
 				</div>
 			)}
 
@@ -287,9 +275,7 @@ function AppSidebar() {
 										key={item.id}
 										variant={activeItem === item.id ? "secondary" : "ghost"}
 										className={`w-full justify-start transition-all duration-200 h-9 ${!isExpanded ? "px-0 justify-center" : "px-3"} ${activeItem === item.id ? "bg-secondary/80 font-medium text-foreground shadow-sm ring-1 ring-border" : ""}`}
-										onClick={() =>
-											navigate({ to: item.url, search: item.search })
-										}
+										onClick={() => navigate({ to: item.url, search: item.search })}
 										title={!isExpanded ? item.label : undefined}
 									>
 										<item.icon
@@ -327,12 +313,8 @@ function AppSidebar() {
 							</Avatar>
 							{isExpanded && (
 								<div className="ml-3 flex flex-col items-start truncate text-xs animate-in fade-in duration-300">
-									<span className="font-semibold text-foreground">
-										{user?.name}
-									</span>
-									<span className="text-muted-foreground text-[10px]">
-										{user?.email}
-									</span>
+									<span className="font-semibold text-foreground">{user?.name}</span>
+									<span className="text-muted-foreground text-[10px]">{user?.email}</span>
 								</div>
 							)}
 						</Button>
@@ -353,10 +335,7 @@ function AppSidebar() {
 							<Settings className="mr-2 h-4 w-4" /> Settings
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							onClick={logout}
-							className="text-red-500 focus:text-red-500"
-						>
+						<DropdownMenuItem onClick={logout} className="text-red-500 focus:text-red-500">
 							<LogOut className="mr-2 h-4 w-4" /> Logout
 						</DropdownMenuItem>
 					</DropdownMenuContent>

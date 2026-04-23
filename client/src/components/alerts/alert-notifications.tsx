@@ -39,9 +39,7 @@ export function AlertNotifications({
 	onAcknowledge,
 	className,
 }: AlertNotificationsProps) {
-	const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(
-		new Set(),
-	);
+	const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
 
 	const handleAcknowledge = async (id: string) => {
 		if (onAcknowledge) {
@@ -114,9 +112,7 @@ export function AlertNotifications({
 
 	const formatTimeAgo = (date: Date) => {
 		const now = new Date();
-		const diffInMinutes = Math.floor(
-			(now.getTime() - date.getTime()) / (1000 * 60),
-		);
+		const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
 
 		if (diffInMinutes < 1) return "Just now";
 		if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
@@ -140,18 +136,14 @@ export function AlertNotifications({
 		return formatCurrency(value);
 	};
 
-	const unacknowledgedNotifications = notifications.filter(
-		(n) => !n.acknowledged,
-	);
+	const unacknowledgedNotifications = notifications.filter((n) => !n.acknowledged);
 	const acknowledgedNotifications = notifications.filter((n) => n.acknowledged);
 
 	if (notifications.length === 0) {
 		return (
 			<div className={`text-center py-8 ${className}`}>
 				<Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-				<h3 className="text-lg font-medium text-muted-foreground mb-2">
-					No Notifications
-				</h3>
+				<h3 className="text-lg font-medium text-muted-foreground mb-2">No Notifications</h3>
 				<p className="text-sm text-muted-foreground">
 					You'll see alert notifications here when they're triggered.
 				</p>
@@ -182,12 +174,10 @@ export function AlertNotifications({
 							</AlertDialogTrigger>
 							<AlertDialogContent>
 								<AlertDialogHeader>
-									<AlertDialogTitle>
-										Acknowledge All Notifications
-									</AlertDialogTitle>
+									<AlertDialogTitle>Acknowledge All Notifications</AlertDialogTitle>
 									<AlertDialogDescription>
-										This will mark all {unacknowledgedNotifications.length}{" "}
-										unacknowledged notifications as read.
+										This will mark all {unacknowledgedNotifications.length} unacknowledged
+										notifications as read.
 									</AlertDialogDescription>
 								</AlertDialogHeader>
 								<AlertDialogFooter>
@@ -220,9 +210,7 @@ export function AlertNotifications({
 									<div className="flex-1 min-w-0">
 										<div className="flex items-center gap-3 mb-2">
 											{getAlertTypeIcon(notification.alertType)}
-											<Badge variant="outline">
-												{getAlertTypeLabel(notification.alertType)}
-											</Badge>
+											<Badge variant="outline">{getAlertTypeLabel(notification.alertType)}</Badge>
 											<div className="flex items-center gap-1 text-sm text-muted-foreground">
 												<Clock className="h-3 w-3" />
 												{formatTimeAgo(notification.triggeredAt)}
@@ -233,9 +221,7 @@ export function AlertNotifications({
 											<p className="font-medium">{notification.message}</p>
 
 											<div className="flex items-center gap-4 text-sm text-muted-foreground">
-												{notification.assetName && (
-													<span>Asset: {notification.assetName}</span>
-												)}
+												{notification.assetName && <span>Asset: {notification.assetName}</span>}
 												{notification.portfolioName && (
 													<span>Portfolio: {notification.portfolioName}</span>
 												)}
@@ -248,10 +234,7 @@ export function AlertNotifications({
 														<span>
 															Current:{" "}
 															<span className="font-medium">
-																{formatValue(
-																	notification.currentValue,
-																	notification.alertType,
-																)}
+																{formatValue(notification.currentValue, notification.alertType)}
 															</span>
 														</span>
 													)}
@@ -259,10 +242,7 @@ export function AlertNotifications({
 														<span>
 															Threshold:{" "}
 															<span className="font-medium">
-																{formatValue(
-																	notification.thresholdValue,
-																	notification.alertType,
-																)}
+																{formatValue(notification.thresholdValue, notification.alertType)}
 															</span>
 														</span>
 													)}
@@ -300,8 +280,9 @@ export function AlertNotifications({
 			)}
 
 			{/* Separator */}
-			{unacknowledgedNotifications.length > 0 &&
-				acknowledgedNotifications.length > 0 && <Separator />}
+			{unacknowledgedNotifications.length > 0 && acknowledgedNotifications.length > 0 && (
+				<Separator />
+			)}
 
 			{/* Acknowledged Notifications */}
 			{acknowledgedNotifications.length > 0 && (
@@ -318,9 +299,7 @@ export function AlertNotifications({
 									<div className="flex-1 min-w-0">
 										<div className="flex items-center gap-3 mb-2">
 											{getAlertTypeIcon(notification.alertType)}
-											<Badge variant="outline">
-												{getAlertTypeLabel(notification.alertType)}
-											</Badge>
+											<Badge variant="outline">{getAlertTypeLabel(notification.alertType)}</Badge>
 											<div className="flex items-center gap-1 text-sm text-muted-foreground">
 												<Clock className="h-3 w-3" />
 												{formatTimeAgo(notification.triggeredAt)}
@@ -335,9 +314,7 @@ export function AlertNotifications({
 											<p className="font-medium">{notification.message}</p>
 
 											<div className="flex items-center gap-4 text-sm text-muted-foreground">
-												{notification.assetName && (
-													<span>Asset: {notification.assetName}</span>
-												)}
+												{notification.assetName && <span>Asset: {notification.assetName}</span>}
 												{notification.portfolioName && (
 													<span>Portfolio: {notification.portfolioName}</span>
 												)}
@@ -350,10 +327,7 @@ export function AlertNotifications({
 														<span>
 															Current:{" "}
 															<span className="font-medium">
-																{formatValue(
-																	notification.currentValue,
-																	notification.alertType,
-																)}
+																{formatValue(notification.currentValue, notification.alertType)}
 															</span>
 														</span>
 													)}
@@ -361,10 +335,7 @@ export function AlertNotifications({
 														<span>
 															Threshold:{" "}
 															<span className="font-medium">
-																{formatValue(
-																	notification.thresholdValue,
-																	notification.alertType,
-																)}
+																{formatValue(notification.thresholdValue, notification.alertType)}
 															</span>
 														</span>
 													)}

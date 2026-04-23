@@ -31,12 +31,7 @@ import type { AlertFormData, Asset, Portfolio } from "./types";
 
 const alertFormSchema = z
 	.object({
-		alertType: z.enum([
-			"PRICE",
-			"PERCENTAGE_CHANGE",
-			"PORTFOLIO_VALUE",
-			"ALLOCATION",
-		]),
+		alertType: z.enum(["PRICE", "PERCENTAGE_CHANGE", "PORTFOLIO_VALUE", "ALLOCATION"]),
 		conditionType: z.enum(["ABOVE", "BELOW", "INCREASE_BY", "DECREASE_BY"]),
 		assetId: z.string().optional(),
 		portfolioId: z.string().optional(),
@@ -52,16 +47,10 @@ const alertFormSchema = z
 	.refine(
 		(data) => {
 			// Require asset or portfolio based on alert type
-			if (
-				data.alertType === "PRICE" ||
-				data.alertType === "PERCENTAGE_CHANGE"
-			) {
+			if (data.alertType === "PRICE" || data.alertType === "PERCENTAGE_CHANGE") {
 				return data.assetId !== undefined;
 			}
-			if (
-				data.alertType === "PORTFOLIO_VALUE" ||
-				data.alertType === "ALLOCATION"
-			) {
+			if (data.alertType === "PORTFOLIO_VALUE" || data.alertType === "ALLOCATION") {
 				return data.portfolioId !== undefined;
 			}
 			return true;
@@ -78,14 +67,8 @@ const alertFormSchema = z
 			if (data.alertType === "PRICE" || data.alertType === "PORTFOLIO_VALUE") {
 				return data.thresholdValue !== undefined && data.thresholdValue > 0;
 			}
-			if (
-				data.alertType === "PERCENTAGE_CHANGE" ||
-				data.alertType === "ALLOCATION"
-			) {
-				return (
-					data.thresholdPercentage !== undefined &&
-					data.thresholdPercentage >= 0
-				);
+			if (data.alertType === "PERCENTAGE_CHANGE" || data.alertType === "ALLOCATION") {
+				return data.thresholdPercentage !== undefined && data.thresholdPercentage >= 0;
 			}
 			return true;
 		},
@@ -112,9 +95,7 @@ export function AlertConfigurationForm({
 	onCancel,
 	isLoading = false,
 }: AlertConfigurationFormProps) {
-	const [_selectedAlertType, setSelectedAlertType] = useState<string>(
-		initialData?.alertType || "",
-	);
+	const [_selectedAlertType, setSelectedAlertType] = useState<string>(initialData?.alertType || "");
 	const [_selectedConditionType, setSelectedConditionType] = useState<string>(
 		initialData?.conditionType || "",
 	);
@@ -126,7 +107,7 @@ export function AlertConfigurationForm({
 		setValue,
 		formState: { errors, isSubmitting },
 	} = useForm<AlertFormData>({
-		resolver: zodResolver(alertFormSchema),
+		resolver: zodResolver(alertFormSchema) as any,
 		defaultValues: {
 			alertType: initialData?.alertType || "PRICE",
 			conditionType: initialData?.conditionType || "ABOVE",
@@ -147,9 +128,7 @@ export function AlertConfigurationForm({
 	const handleFormSubmit = async (data: AlertFormData) => {
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Failed to submit alert:", error);
-		}
+		} catch (_error) {}
 	};
 
 	const toggleNotificationMethod = (method: "EMAIL" | "PUSH" | "SMS") => {
@@ -188,15 +167,12 @@ export function AlertConfigurationForm({
 		}
 	};
 
-	const requiresAsset =
-		watchedAlertType === "PRICE" || watchedAlertType === "PERCENTAGE_CHANGE";
+	const requiresAsset = watchedAlertType === "PRICE" || watchedAlertType === "PERCENTAGE_CHANGE";
 	const requiresPortfolio =
 		watchedAlertType === "PORTFOLIO_VALUE" || watchedAlertType === "ALLOCATION";
-	const requiresValue =
-		watchedAlertType === "PRICE" || watchedAlertType === "PORTFOLIO_VALUE";
+	const requiresValue = watchedAlertType === "PRICE" || watchedAlertType === "PORTFOLIO_VALUE";
 	const requiresPercentage =
-		watchedAlertType === "PERCENTAGE_CHANGE" ||
-		watchedAlertType === "ALLOCATION";
+		watchedAlertType === "PERCENTAGE_CHANGE" || watchedAlertType === "ALLOCATION";
 
 	return (
 		<form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
@@ -204,14 +180,8 @@ export function AlertConfigurationForm({
 			<div className="grid gap-4 grid-cols-1 md:grid-cols-2">
 				<div className="space-y-2">
 					<Label htmlFor="name">Alert Name *</Label>
-					<Input
-						id="name"
-						placeholder="e.g., AAPL Price Alert"
-						{...register("name")}
-					/>
-					{errors.name && (
-						<p className="text-sm text-destructive">{errors.name.message}</p>
-					)}
+					<Input id="name" placeholder="e.g., AAPL Price Alert" {...register("name")} />
+					{errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
 				</div>
 
 				<div className="space-y-2">
@@ -237,9 +207,7 @@ export function AlertConfigurationForm({
 					{...register("description")}
 				/>
 				{errors.description && (
-					<p className="text-sm text-destructive">
-						{errors.description.message}
-					</p>
+					<p className="text-sm text-destructive">{errors.description.message}</p>
 				)}
 			</div>
 
@@ -290,9 +258,7 @@ export function AlertConfigurationForm({
 							</SelectContent>
 						</Select>
 						{errors.alertType && (
-							<p className="text-sm text-destructive">
-								{errors.alertType.message}
-							</p>
+							<p className="text-sm text-destructive">{errors.alertType.message}</p>
 						)}
 					</div>
 
@@ -309,8 +275,7 @@ export function AlertConfigurationForm({
 								<SelectValue placeholder="Select condition" />
 							</SelectTrigger>
 							<SelectContent>
-								{(watchedAlertType === "PRICE" ||
-									watchedAlertType === "PORTFOLIO_VALUE") && (
+								{(watchedAlertType === "PRICE" || watchedAlertType === "PORTFOLIO_VALUE") && (
 									<>
 										<SelectItem value="ABOVE">
 											<div className="flex items-center gap-2">
@@ -346,9 +311,7 @@ export function AlertConfigurationForm({
 							</SelectContent>
 						</Select>
 						{errors.conditionType && (
-							<p className="text-sm text-destructive">
-								{errors.conditionType.message}
-							</p>
+							<p className="text-sm text-destructive">{errors.conditionType.message}</p>
 						)}
 					</div>
 				</div>
@@ -381,9 +344,7 @@ export function AlertConfigurationForm({
 								</SelectContent>
 							</Select>
 							{errors.assetId && (
-								<p className="text-sm text-destructive">
-									{errors.assetId.message}
-								</p>
+								<p className="text-sm text-destructive">{errors.assetId.message}</p>
 							)}
 						</div>
 					)}
@@ -407,9 +368,7 @@ export function AlertConfigurationForm({
 								</SelectContent>
 							</Select>
 							{errors.portfolioId && (
-								<p className="text-sm text-destructive">
-									{errors.portfolioId.message}
-								</p>
+								<p className="text-sm text-destructive">{errors.portfolioId.message}</p>
 							)}
 						</div>
 					)}
@@ -421,32 +380,28 @@ export function AlertConfigurationForm({
 						<div className="space-y-2">
 							<Label htmlFor="thresholdValue">Threshold Value *</Label>
 							<div className="relative">
-								<DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<DollarSign className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
 									id="thresholdValue"
 									type="number"
 									step="0.01"
 									min="0"
 									placeholder="0.00"
-									className="pl-10"
+									style={{ paddingLeft: "2.5rem" }}
 									{...register("thresholdValue", { valueAsNumber: true })}
 								/>
 							</div>
 							{errors.thresholdValue && (
-								<p className="text-sm text-destructive">
-									{errors.thresholdValue.message}
-								</p>
+								<p className="text-sm text-destructive">{errors.thresholdValue.message}</p>
 							)}
 						</div>
 					)}
 
 					{requiresPercentage && (
 						<div className="space-y-2">
-							<Label htmlFor="thresholdPercentage">
-								Threshold Percentage *
-							</Label>
+							<Label htmlFor="thresholdPercentage">Threshold Percentage *</Label>
 							<div className="relative">
-								<Percent className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+								<Percent className="pointer-events-none absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
 								<Input
 									id="thresholdPercentage"
 									type="number"
@@ -454,14 +409,12 @@ export function AlertConfigurationForm({
 									min="0"
 									max="100"
 									placeholder="0.0"
-									className="pl-10"
+									style={{ paddingLeft: "2.5rem" }}
 									{...register("thresholdPercentage", { valueAsNumber: true })}
 								/>
 							</div>
 							{errors.thresholdPercentage && (
-								<p className="text-sm text-destructive">
-									{errors.thresholdPercentage.message}
-								</p>
+								<p className="text-sm text-destructive">{errors.thresholdPercentage.message}</p>
 							)}
 						</div>
 					)}
@@ -474,56 +427,39 @@ export function AlertConfigurationForm({
 			<div className="space-y-4">
 				<h3 className="text-lg font-medium">Notification Methods</h3>
 				<div className="grid gap-4 grid-cols-1 md:grid-cols-3">
-					<Card
-						className="cursor-pointer"
-						onClick={() => toggleNotificationMethod("EMAIL")}
-					>
+					<Card className="cursor-pointer" onClick={() => toggleNotificationMethod("EMAIL")}>
 						<CardContent className="p-4">
 							<div className="flex items-center space-x-3">
 								<Checkbox
-									checked={
-										watchedNotificationMethods?.includes("EMAIL") || false
-									}
+									checked={watchedNotificationMethods?.includes("EMAIL") || false}
 									onChange={() => toggleNotificationMethod("EMAIL")}
 								/>
 								<Mail className="h-5 w-5" />
 								<div>
 									<p className="font-medium">Email</p>
-									<p className="text-sm text-muted-foreground">
-										Send email notifications
-									</p>
+									<p className="text-sm text-muted-foreground">Send email notifications</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card
-						className="cursor-pointer"
-						onClick={() => toggleNotificationMethod("PUSH")}
-					>
+					<Card className="cursor-pointer" onClick={() => toggleNotificationMethod("PUSH")}>
 						<CardContent className="p-4">
 							<div className="flex items-center space-x-3">
 								<Checkbox
-									checked={
-										watchedNotificationMethods?.includes("PUSH") || false
-									}
+									checked={watchedNotificationMethods?.includes("PUSH") || false}
 									onChange={() => toggleNotificationMethod("PUSH")}
 								/>
 								<Bell className="h-5 w-5" />
 								<div>
 									<p className="font-medium">Push Notification</p>
-									<p className="text-sm text-muted-foreground">
-										Browser/app notifications
-									</p>
+									<p className="text-sm text-muted-foreground">Browser/app notifications</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 
-					<Card
-						className="cursor-pointer"
-						onClick={() => toggleNotificationMethod("SMS")}
-					>
+					<Card className="cursor-pointer" onClick={() => toggleNotificationMethod("SMS")}>
 						<CardContent className="p-4">
 							<div className="flex items-center space-x-3">
 								<Checkbox
@@ -533,18 +469,14 @@ export function AlertConfigurationForm({
 								<MessageSquare className="h-5 w-5" />
 								<div>
 									<p className="font-medium">SMS</p>
-									<p className="text-sm text-muted-foreground">
-										Text message alerts
-									</p>
+									<p className="text-sm text-muted-foreground">Text message alerts</p>
 								</div>
 							</div>
 						</CardContent>
 					</Card>
 				</div>
 				{errors.notificationMethods && (
-					<p className="text-sm text-destructive">
-						{errors.notificationMethods.message}
-					</p>
+					<p className="text-sm text-destructive">{errors.notificationMethods.message}</p>
 				)}
 			</div>
 

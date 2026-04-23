@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,17 +18,14 @@ import {
 
 // Demo component that can throw errors
 function ErrorProneComponent({ shouldError }: { shouldError: boolean }) {
-	const { handleErrorWithRetry } = useComponentErrorHandler(
-		"ErrorProneComponent",
-		"component",
-	);
+	const { handleErrorWithRetry } = useComponentErrorHandler("ErrorProneComponent", "component");
 
 	const handleAction = async () => {
 		await handleErrorWithRetry(async () => {
 			if (shouldError) {
 				throw new Error("Demo error from component");
 			}
-			alert("Action completed successfully!");
+			toast.success("Action completed successfully!");
 		});
 	};
 
@@ -41,9 +39,7 @@ function ErrorProneComponent({ shouldError }: { shouldError: boolean }) {
 				<CardTitle>Error Prone Component</CardTitle>
 			</CardHeader>
 			<CardContent>
-				<p className="mb-4">
-					This component can throw errors for demonstration.
-				</p>
+				<p className="mb-4">This component can throw errors for demonstration.</p>
 				<Button onClick={handleAction}>Trigger Action</Button>
 			</CardContent>
 		</Card>
@@ -59,7 +55,7 @@ function RetryDemo() {
 		if (attemptCount < 2) {
 			throw new Error(`Retry attempt ${attemptCount + 1} failed`);
 		}
-		alert("Retry succeeded!");
+		toast.success("Retry succeeded!");
 		setAttemptCount(0);
 	};
 
@@ -105,9 +101,7 @@ function OfflineDemo() {
 					<p>Online: {offlineState.isOnline ? "Yes" : "No"}</p>
 					<p>Was Offline: {offlineState.wasOffline ? "Yes" : "No"}</p>
 					{offlineState.offlineSince && (
-						<p>
-							Offline Since: {offlineState.offlineSince.toLocaleTimeString()}
-						</p>
+						<p>Offline Since: {offlineState.offlineSince.toLocaleTimeString()}</p>
 					)}
 					<p className="text-sm text-muted-foreground">
 						Try disconnecting your internet to see the offline state.
@@ -182,9 +176,7 @@ function LoadingStatesDemo() {
 					<InlineChartSkeleton height={200} title="Demo Chart" />
 				) : (
 					<div className="h-48 border-2 border-dashed border-muted-foreground/25 rounded-lg flex items-center justify-center">
-						<p className="text-muted-foreground">
-							Chart content would appear here
-						</p>
+						<p className="text-muted-foreground">Chart content would appear here</p>
 					</div>
 				)}
 			</CardContent>
@@ -197,11 +189,7 @@ function ErrorManagerDemo() {
 	const { actions, errorState } = useDashboardErrorManager();
 
 	const triggerError = () => {
-		actions.reportError(
-			new Error("Manual error from demo"),
-			"component",
-			"ErrorManagerDemo",
-		);
+		actions.reportError(new Error("Manual error from demo"), "component", "ErrorManagerDemo");
 	};
 
 	return (
@@ -218,9 +206,7 @@ function ErrorManagerDemo() {
 				</div>
 
 				<div className="space-y-2">
-					<p>
-						Active Errors: {errorState.errors.filter((e) => !e.resolved).length}
-					</p>
+					<p>Active Errors: {errorState.errors.filter((e) => !e.resolved).length}</p>
 					<p>Total Errors: {errorState.errors.length}</p>
 					<p>Has Critical Error: {errorState.criticalError ? "Yes" : "No"}</p>
 					<p>Is Recovering: {errorState.isRecovering ? "Yes" : "No"}</p>
@@ -237,9 +223,7 @@ function ErrorManagerDemo() {
 									</Badge>
 									<span>{error.componentName}</span>
 								</div>
-								<p className="text-muted-foreground mt-1">
-									{error.error.message}
-								</p>
+								<p className="text-muted-foreground mt-1">{error.error.message}</p>
 							</div>
 						))}
 					</div>
@@ -318,8 +302,7 @@ export function ErrorHandlingDemo() {
 							<div className="p-4 border rounded-lg">
 								<p>This content is wrapped with auto-retry functionality.</p>
 								<p className="text-sm text-muted-foreground mt-2">
-									The wrapper will automatically retry failed operations with
-									exponential backoff.
+									The wrapper will automatically retry failed operations with exponential backoff.
 								</p>
 							</div>
 						</AutoRetryWrapper>

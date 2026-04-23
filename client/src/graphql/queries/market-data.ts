@@ -5,8 +5,27 @@ export const GET_MARKET_DATA_CREDENTIALS = gql`
     marketDataCredentials {
       id
       provider
+      isEnabled
+      priority
+      lastValidatedAt
       createdAt
       updatedAt
+    }
+  }
+`;
+
+export const GET_AVAILABLE_PROVIDERS = gql`
+  query GetAvailableProviders($instrumentId: ID!, $dataType: String!) {
+    availableProviders(instrumentId: $instrumentId, dataType: $dataType) {
+      provider
+      capability
+      requiresApiKey
+      hasCredential
+      credentialValid
+      credentialEnabled
+      priority
+      mappingStatus
+      effectiveEnabled
     }
   }
 `;
@@ -64,6 +83,9 @@ export const GET_MARKET_DATA_SETTINGS = gql`
     marketDataCredentials {
       id
       provider
+      isEnabled
+      priority
+      lastValidatedAt
       createdAt
       updatedAt
     }

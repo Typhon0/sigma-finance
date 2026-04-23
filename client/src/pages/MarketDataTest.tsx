@@ -2,13 +2,7 @@ import { CheckCircle, RefreshCw, XCircle } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -91,10 +85,7 @@ export default function MarketDataTest() {
 	const [healthLoaded, setHealthLoaded] = useState(false);
 	const [candlesLoaded, setCandlesLoaded] = useState(false);
 
-	const fetchWithAuth = async (
-		query: string,
-		variables: Record<string, unknown>,
-	) => {
+	const fetchWithAuth = async (query: string, variables: Record<string, unknown>) => {
 		const token = localStorage.getItem("auth_token");
 		const response = await fetch("/graphql", {
 			method: "POST",
@@ -164,9 +155,7 @@ export default function MarketDataTest() {
 			setHealth(data.providerHealth);
 			setHealthLoaded(true);
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to load health status",
-			);
+			setError(err instanceof Error ? err.message : "Failed to load health status");
 		} finally {
 			setLoading(false);
 		}
@@ -208,9 +197,7 @@ export default function MarketDataTest() {
 			setCandles(data.candles);
 			setCandlesLoaded(true);
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to load candle data",
-			);
+			setError(err instanceof Error ? err.message : "Failed to load candle data");
 		} finally {
 			setLoading(false);
 		}
@@ -235,9 +222,7 @@ export default function MarketDataTest() {
 			);
 			setRealtimePrice(data.realTimePrice);
 		} catch (err) {
-			setError(
-				err instanceof Error ? err.message : "Failed to load realtime price",
-			);
+			setError(err instanceof Error ? err.message : "Failed to load realtime price");
 		} finally {
 			setLoading(false);
 		}
@@ -252,17 +237,13 @@ export default function MarketDataTest() {
 		<div className="container mx-auto p-6 space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">
-						Market Data Debug
-					</h1>
+					<h1 className="text-3xl font-bold tracking-tight">Market Data Debug</h1>
 					<p className="text-muted-foreground">
 						Test market data providers and see which source is being used
 					</p>
 				</div>
 				<Button onClick={loadAll} disabled={loading} variant="outline">
-					<RefreshCw
-						className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
-					/>
+					<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 					Refresh All
 				</Button>
 			</div>
@@ -290,9 +271,7 @@ export default function MarketDataTest() {
 					<Card>
 						<CardHeader>
 							<CardTitle>Historical Data</CardTitle>
-							<CardDescription>
-								Test candle data and see which provider was used
-							</CardDescription>
+							<CardDescription>Test candle data and see which provider was used</CardDescription>
 						</CardHeader>
 						<CardContent className="space-y-4">
 							<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -335,20 +314,14 @@ export default function MarketDataTest() {
 									</Select>
 								</div>
 								<div className="flex items-end">
-									<Button
-										onClick={loadCandles}
-										disabled={loading}
-										className="w-full"
-									>
+									<Button onClick={loadCandles} disabled={loading} className="w-full">
 										{loading ? "Loading..." : "Fetch Candles"}
 									</Button>
 								</div>
 							</div>
 
 							<div className="flex flex-wrap gap-2">
-								<span className="text-sm text-muted-foreground">
-									Quick pick:
-								</span>
+								<span className="text-sm text-muted-foreground">Quick pick:</span>
 								{TEST_SYMBOLS[assetType]?.map((s) => (
 									<Badge
 										key={s}
@@ -367,9 +340,7 @@ export default function MarketDataTest() {
 										<Badge variant="outline" className="bg-green-50">
 											Source: {candles[0]?.source}
 										</Badge>
-										<span className="text-muted-foreground">
-											{candles.length} candles returned
-										</span>
+										<span className="text-muted-foreground">{candles.length} candles returned</span>
 									</div>
 									<div className="border rounded-lg overflow-hidden">
 										<table className="w-full text-sm">
@@ -386,18 +357,10 @@ export default function MarketDataTest() {
 											<tbody>
 												{candles.slice(0, 5).map((c, i) => (
 													<tr key={i} className="border-t">
-														<td className="px-3 py-2">
-															{new Date(c.timestamp).toLocaleString()}
-														</td>
-														<td className="px-3 py-2 text-right">
-															${c.open.toFixed(2)}
-														</td>
-														<td className="px-3 py-2 text-right">
-															${c.high.toFixed(2)}
-														</td>
-														<td className="px-3 py-2 text-right">
-															${c.low.toFixed(2)}
-														</td>
+														<td className="px-3 py-2">{new Date(c.timestamp).toLocaleString()}</td>
+														<td className="px-3 py-2 text-right">${c.open.toFixed(2)}</td>
+														<td className="px-3 py-2 text-right">${c.high.toFixed(2)}</td>
+														<td className="px-3 py-2 text-right">${c.low.toFixed(2)}</td>
 														<td className="px-3 py-2 text-right font-medium">
 															${c.close.toFixed(2)}
 														</td>
@@ -455,11 +418,7 @@ export default function MarketDataTest() {
 									/>
 								</div>
 								<div className="flex items-end">
-									<Button
-										onClick={loadRealtimePrice}
-										disabled={loading}
-										className="w-full"
-									>
+									<Button onClick={loadRealtimePrice} disabled={loading} className="w-full">
 										{loading ? "Loading..." : "Get Price"}
 									</Button>
 								</div>
@@ -469,9 +428,7 @@ export default function MarketDataTest() {
 								<div className="border rounded-lg p-4">
 									<div className="flex items-center justify-between">
 										<div>
-											<div className="text-2xl font-bold">
-												{realtimePrice.symbol}
-											</div>
+											<div className="text-2xl font-bold">{realtimePrice.symbol}</div>
 											<div className="text-3xl font-bold text-green-600">
 												${realtimePrice.close.toFixed(2)}
 											</div>
@@ -481,8 +438,7 @@ export default function MarketDataTest() {
 												Source: {realtimePrice.source}
 											</Badge>
 											<div className="text-sm text-muted-foreground mt-1">
-												Updated:{" "}
-												{new Date(realtimePrice.timestamp).toLocaleTimeString()}
+												Updated: {new Date(realtimePrice.timestamp).toLocaleTimeString()}
 											</div>
 										</div>
 									</div>
@@ -498,18 +454,10 @@ export default function MarketDataTest() {
 							<div className="flex items-center justify-between">
 								<div>
 									<CardTitle>Supported Providers</CardTitle>
-									<CardDescription>
-										Providers available for each asset type
-									</CardDescription>
+									<CardDescription>Providers available for each asset type</CardDescription>
 								</div>
-								<Button
-									onClick={loadProviders}
-									disabled={loading}
-									variant="outline"
-								>
-									<RefreshCw
-										className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
-									/>
+								<Button onClick={loadProviders} disabled={loading} variant="outline">
+									<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 									Refresh
 								</Button>
 							</div>
@@ -537,17 +485,13 @@ export default function MarketDataTest() {
 										<div key={p.id} className="border rounded-lg p-4">
 											<div className="flex items-center justify-between mb-2">
 												<div className="font-semibold">{p.name}</div>
-												<Badge
-													variant={p.requiresKey ? "default" : "secondary"}
-												>
+												<Badge variant={p.requiresKey ? "default" : "secondary"}>
 													{p.requiresKey ? "Requires API Key" : "Free"}
 												</Badge>
 											</div>
 											<div className="text-sm text-muted-foreground space-y-1">
 												<div>ID: {p.id}</div>
-												<div>
-													Rate Limit: {p.rateLimit.requestsPerMinute} req/min
-												</div>
+												<div>Rate Limit: {p.rateLimit.requestsPerMinute} req/min</div>
 												<div>
 													Intervals: {p.intervals.slice(0, 4).join(", ")}
 													{p.intervals.length > 4 && "..."}
@@ -581,18 +525,10 @@ export default function MarketDataTest() {
 							<div className="flex items-center justify-between">
 								<div>
 									<CardTitle>Provider Health</CardTitle>
-									<CardDescription>
-										Status of all market data providers
-									</CardDescription>
+									<CardDescription>Status of all market data providers</CardDescription>
 								</div>
-								<Button
-									onClick={loadHealth}
-									disabled={loading}
-									variant="outline"
-								>
-									<RefreshCw
-										className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
-									/>
+								<Button onClick={loadHealth} disabled={loading} variant="outline">
+									<RefreshCw className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 									Refresh
 								</Button>
 							</div>
@@ -623,8 +559,7 @@ export default function MarketDataTest() {
 												{h.apiKeyValid === false && (
 													<Badge variant="destructive">Key Invalid</Badge>
 												)}
-												{h.apiKeyValid === null ||
-												h.apiKeyValid === undefined ? (
+												{h.apiKeyValid === null || h.apiKeyValid === undefined ? (
 													<Badge variant="secondary">No Key</Badge>
 												) : null}
 											</div>
@@ -651,13 +586,10 @@ export default function MarketDataTest() {
 				<CardContent>
 					<div className="grid gap-6 md:grid-cols-3">
 						<div className="border rounded-lg p-4">
-							<div className="font-semibold mb-2 text-blue-600">
-								US Stocks & ETFs
-							</div>
+							<div className="font-semibold mb-2 text-blue-600">US Stocks & ETFs</div>
 							<ol className="text-sm space-y-1 text-muted-foreground">
 								<li>
-									1. <strong>Tiingo</strong> - Primary (500 req/hr,
-									CRSP-adjusted)
+									1. <strong>Tiingo</strong> - Primary (500 req/hr, CRSP-adjusted)
 								</li>
 								<li>
 									2. <strong>Alpha Vantage</strong> - Fallback
@@ -671,9 +603,7 @@ export default function MarketDataTest() {
 							</ol>
 						</div>
 						<div className="border rounded-lg p-4">
-							<div className="font-semibold mb-2 text-orange-600">
-								Cryptocurrency
-							</div>
+							<div className="font-semibold mb-2 text-orange-600">Cryptocurrency</div>
 							<ol className="text-sm space-y-1 text-muted-foreground">
 								<li>
 									1. <strong>Binance</strong> - Primary

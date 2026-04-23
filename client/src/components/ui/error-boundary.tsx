@@ -26,9 +26,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 		error: null,
 	};
 
-	static getDerivedStateFromError(
-		error: Error | ApolloError,
-	): ErrorBoundaryState {
+	static getDerivedStateFromError(error: Error | ApolloError): ErrorBoundaryState {
 		return { error };
 	}
 
@@ -58,10 +56,7 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
 	}
 }
 
-export const DefaultErrorFallback = ({
-	error,
-	resetErrorBoundary,
-}: FallbackProps) => {
+export const DefaultErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => {
 	const isApolloError = error instanceof ApolloError;
 	const isNetwork = isApolloError && isNetworkError(error as ApolloError);
 	const message = getErrorMessage(error);
@@ -78,12 +73,7 @@ export const DefaultErrorFallback = ({
 					{isNetwork ? "Connection Error" : "Something went wrong"}
 				</h3>
 				<p className="text-sm text-muted-foreground mb-4 max-w-sm">{message}</p>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={resetErrorBoundary}
-					className="gap-2"
-				>
+				<Button variant="outline" size="sm" onClick={resetErrorBoundary} className="gap-2">
 					<RefreshCw className="h-4 w-4" />
 					Try again
 				</Button>

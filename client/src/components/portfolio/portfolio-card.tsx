@@ -66,8 +66,7 @@ export function PortfolioCard({
 	const { toast } = useToast();
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-	const { deletePortfolio, duplicatePortfolio, isLoading } =
-		usePortfolioOperations(portfolio.id);
+	const { deletePortfolio, duplicatePortfolio, isLoading } = usePortfolioOperations(portfolio.id);
 
 	const handleDelete = async () => {
 		if (onAction) {
@@ -82,10 +81,7 @@ export function PortfolioCard({
 				setShowDeleteDialog(false);
 			} catch (error) {
 				toast.error("Error Deleting Portfolio", {
-					description:
-						error instanceof Error
-							? error.message
-							: "Failed to delete portfolio",
+					description: error instanceof Error ? error.message : "Failed to delete portfolio",
 				});
 			}
 		}
@@ -103,10 +99,7 @@ export function PortfolioCard({
 				});
 			} catch (error) {
 				toast.error("Error Duplicating Portfolio", {
-					description:
-						error instanceof Error
-							? error.message
-							: "Failed to duplicate portfolio",
+					description: error instanceof Error ? error.message : "Failed to duplicate portfolio",
 				});
 			}
 		}
@@ -189,18 +182,14 @@ export function PortfolioCard({
 							<div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm">
 								<div className="grid grid-cols-3 gap-4 sm:contents">
 									<div className="text-center sm:text-left">
-										<p className="text-muted-foreground text-xs sm:text-sm">
-											Total Value
-										</p>
+										<p className="text-muted-foreground text-xs sm:text-sm">Total Value</p>
 										<p className="font-semibold text-sm sm:text-base">
 											{formatCurrency(totalValue)}
 										</p>
 									</div>
 
 									<div className="text-center sm:text-left">
-										<p className="text-muted-foreground text-xs sm:text-sm">
-											Gain/Loss
-										</p>
+										<p className="text-muted-foreground text-xs sm:text-sm">Gain/Loss</p>
 										<div
 											className={`flex items-center justify-center sm:justify-start gap-1 ${gainLossDisplay.color}`}
 										>
@@ -209,31 +198,21 @@ export function PortfolioCard({
 												{formatCurrency(totalGainLoss)}
 											</span>
 										</div>
-										<div
-											className={`text-xs ${gainLossDisplay.color} sm:hidden`}
-										>
+										<div className={`text-xs ${gainLossDisplay.color} sm:hidden`}>
 											{formatPercentage(totalGainLossPercent)}
 										</div>
 									</div>
 
 									<div className="text-center sm:text-left">
-										<p className="text-muted-foreground text-xs sm:text-sm">
-											Assets
-										</p>
-										<p className="font-semibold text-sm sm:text-base">
-											{assetCount}
-										</p>
+										<p className="text-muted-foreground text-xs sm:text-sm">Assets</p>
+										<p className="font-semibold text-sm sm:text-base">{assetCount}</p>
 									</div>
 								</div>
 
 								{/* Desktop: Show percentage inline */}
 								<div className="hidden sm:block text-center">
-									<p className="text-muted-foreground text-xs sm:text-sm">
-										Performance
-									</p>
-									<div
-										className={`font-semibold text-sm ${gainLossDisplay.color}`}
-									>
+									<p className="text-muted-foreground text-xs sm:text-sm">Performance</p>
+									<div className={`font-semibold text-sm ${gainLossDisplay.color}`}>
 										{formatPercentage(totalGainLossPercent)}
 									</div>
 								</div>
@@ -317,9 +296,7 @@ export function PortfolioCard({
 								<DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />
 								<span>Total Value</span>
 							</div>
-							<span className="font-semibold text-sm sm:text-lg">
-								{formatCurrency(totalValue)}
-							</span>
+							<span className="font-semibold text-sm sm:text-lg">{formatCurrency(totalValue)}</span>
 						</div>
 
 						{/* Gain/Loss */}
@@ -328,9 +305,7 @@ export function PortfolioCard({
 								<TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
 								<span>Gain/Loss</span>
 							</div>
-							<div
-								className={`flex items-center gap-1 ${gainLossDisplay.color}`}
-							>
+							<div className={`flex items-center gap-1 ${gainLossDisplay.color}`}>
 								<GainLossIcon className="h-3 w-3" />
 								<span className="font-semibold text-xs sm:text-sm">
 									{formatCurrency(totalGainLoss)}
@@ -470,9 +445,7 @@ function DeleteConfirmationDialog({
 							</p>
 
 							<div className="rounded-lg border border-muted bg-muted/30 p-3">
-								<div className="text-sm font-medium mb-2">
-									This will permanently delete:
-								</div>
+								<div className="text-sm font-medium mb-2">This will permanently delete:</div>
 								<ul className="text-sm space-y-1 text-muted-foreground">
 									<li>• Portfolio "{portfolioName}"</li>
 									<li>• All asset positions</li>
@@ -481,9 +454,7 @@ function DeleteConfirmationDialog({
 								</ul>
 							</div>
 
-							<p className="text-sm font-medium text-destructive">
-								This action cannot be undone.
-							</p>
+							<p className="text-sm font-medium text-destructive">This action cannot be undone.</p>
 						</div>
 					</AlertDialogDescription>
 				</AlertDialogHeader>

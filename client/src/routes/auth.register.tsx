@@ -14,12 +14,18 @@ function RegisterPage() {
 	// Redirect to dashboard if already authenticated
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate({ to: "/dashboard", search: { portfolioId: undefined } });
+			navigate({
+				to: "/dashboard",
+				search: { portfolioId: undefined, view: undefined },
+			});
 		}
 	}, [isAuthenticated, navigate]);
 
 	const handleSuccess = () => {
-		navigate({ to: "/dashboard", search: { portfolioId: undefined } });
+		navigate({
+			to: "/dashboard",
+			search: { portfolioId: undefined, view: undefined },
+		});
 	};
 
 	return <AuthPage initialMode="register" onSuccess={handleSuccess} />;

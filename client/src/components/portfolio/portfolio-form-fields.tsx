@@ -79,16 +79,8 @@ export function PortfolioFormFields({
 		) {
 			return [];
 		}
-		return portfolioValidationHelpers.generateNameSuggestions(
-			watchedName,
-			existingPortfolioNames,
-		);
-	}, [
-		watchedName,
-		nameValidationError,
-		existingPortfolioNames,
-		showNameSuggestions,
-	]);
+		return portfolioValidationHelpers.generateNameSuggestions(watchedName, existingPortfolioNames);
+	}, [watchedName, nameValidationError, existingPortfolioNames, showNameSuggestions]);
 
 	return (
 		<>
@@ -113,17 +105,15 @@ export function PortfolioFormFields({
 							/>
 						</FormControl>
 						<FormDescription>
-							Choose a unique name for your portfolio. Use letters, numbers,
-							spaces, hyphens, underscores, and periods only.
+							Choose a unique name for your portfolio. Use letters, numbers, spaces, hyphens,
+							underscores, and periods only.
 						</FormDescription>
 						<FormMessage />
 
 						{/* Name Suggestions */}
 						{nameSuggestions.length > 0 && (
 							<div className="mt-2">
-								<p className="text-sm text-muted-foreground mb-2">
-									Suggestions:
-								</p>
+								<p className="text-sm text-muted-foreground mb-2">Suggestions:</p>
 								<div className="flex flex-wrap gap-2">
 									{nameSuggestions.map((suggestion, index) => (
 										<Button
@@ -168,8 +158,8 @@ export function PortfolioFormFields({
 							/>
 						</FormControl>
 						<FormDescription>
-							Add a description to help you remember this portfolio's purpose
-							(max {portfolioFormConfig.description.maxLength} characters).
+							Add a description to help you remember this portfolio's purpose (max{" "}
+							{portfolioFormConfig.description.maxLength} characters).
 						</FormDescription>
 						<FormMessage />
 					</FormItem>
@@ -230,16 +220,8 @@ export function PortfolioNameField({
 		) {
 			return [];
 		}
-		return portfolioValidationHelpers.generateNameSuggestions(
-			watchedName,
-			existingPortfolioNames,
-		);
-	}, [
-		watchedName,
-		nameValidationError,
-		existingPortfolioNames,
-		showSuggestions,
-	]);
+		return portfolioValidationHelpers.generateNameSuggestions(watchedName, existingPortfolioNames);
+	}, [watchedName, nameValidationError, existingPortfolioNames, showSuggestions]);
 
 	return (
 		<FormField
@@ -261,9 +243,7 @@ export function PortfolioNameField({
 							className={nameValidationError ? "border-destructive" : ""}
 						/>
 					</FormControl>
-					<FormDescription>
-						Choose a unique name for your portfolio.
-					</FormDescription>
+					<FormDescription>Choose a unique name for your portfolio.</FormDescription>
 					<FormMessage />
 
 					{nameSuggestions.length > 0 && (
@@ -301,9 +281,7 @@ export interface PortfolioDescriptionFieldProps {
 	disabled?: boolean;
 }
 
-export function PortfolioDescriptionField({
-	disabled = false,
-}: PortfolioDescriptionFieldProps) {
+export function PortfolioDescriptionField({ disabled = false }: PortfolioDescriptionFieldProps) {
 	const form = useFormContext<PortfolioFormData>();
 
 	return (

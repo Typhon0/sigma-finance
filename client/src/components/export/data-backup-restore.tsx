@@ -127,8 +127,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 
 			setResult({
 				type: "success",
-				message:
-					"Data restored successfully. Please refresh the page to see changes.",
+				message: "Data restored successfully. Please refresh the page to see changes.",
 			});
 
 			setTimeout(() => setRestoreDialogOpen(false), 3000);
@@ -166,11 +165,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 					Create Backup
 				</Button>
 
-				<Button
-					variant="outline"
-					onClick={() => setRestoreDialogOpen(true)}
-					className="gap-2"
-				>
+				<Button variant="outline" onClick={() => setRestoreDialogOpen(true)} className="gap-2">
 					<Upload className="h-4 w-4" />
 					Restore Data
 				</Button>
@@ -191,8 +186,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 							Create Data Backup
 						</DialogTitle>
 						<DialogDescription>
-							Create a complete backup of all your portfolio data, transactions,
-							and settings.
+							Create a complete backup of all your portfolio data, transactions, and settings.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -201,8 +195,8 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 							<AlertTriangle className="h-4 w-4" />
 							<AlertTitle>Important</AlertTitle>
 							<AlertDescription>
-								The backup will include all your sensitive financial data. Store
-								it securely and never share it with others.
+								The backup will include all your sensitive financial data. Store it securely and
+								never share it with others.
 							</AlertDescription>
 						</Alert>
 
@@ -217,9 +211,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 						)}
 
 						{result && (
-							<Alert
-								variant={result.type === "error" ? "destructive" : "default"}
-							>
+							<Alert variant={result.type === "error" ? "destructive" : "default"}>
 								{result.type === "success" ? (
 									<CheckCircle className="h-4 w-4" />
 								) : (
@@ -231,10 +223,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 					</div>
 
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setBackupDialogOpen(false)}
-						>
+						<Button variant="outline" onClick={() => setBackupDialogOpen(false)}>
 							Cancel
 						</Button>
 						<Button onClick={handleCreateBackup} disabled={isProcessing}>
@@ -269,8 +258,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 							Restore Data
 						</DialogTitle>
 						<DialogDescription>
-							Restore your portfolio data from a backup file. This will
-							overwrite your current data.
+							Restore your portfolio data from a backup file. This will overwrite your current data.
 						</DialogDescription>
 					</DialogHeader>
 
@@ -279,8 +267,8 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 							<AlertTriangle className="h-4 w-4" />
 							<AlertTitle>Warning</AlertTitle>
 							<AlertDescription>
-								This will replace all your current data with the backup data.
-								This action cannot be undone.
+								This will replace all your current data with the backup data. This action cannot be
+								undone.
 							</AlertDescription>
 						</Alert>
 
@@ -317,9 +305,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 						)}
 
 						{result && (
-							<Alert
-								variant={result.type === "error" ? "destructive" : "default"}
-							>
+							<Alert variant={result.type === "error" ? "destructive" : "default"}>
 								{result.type === "success" ? (
 									<CheckCircle className="h-4 w-4" />
 								) : (
@@ -331,10 +317,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 					</div>
 
 					<DialogFooter>
-						<Button
-							variant="outline"
-							onClick={() => setRestoreDialogOpen(false)}
-						>
+						<Button variant="outline" onClick={() => setRestoreDialogOpen(false)}>
 							Cancel
 						</Button>
 						<Button

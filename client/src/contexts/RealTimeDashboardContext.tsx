@@ -1,10 +1,4 @@
-import {
-	createContext,
-	type ReactNode,
-	useContext,
-	useEffect,
-	useReducer,
-} from "react";
+import { createContext, type ReactNode, useContext, useEffect, useReducer } from "react";
 import {
 	useAlertNotifications,
 	usePortfolioUpdates,
@@ -53,13 +47,37 @@ export interface DashboardState {
 	connectionError: string | null;
 
 	// UI state
-	optimisticUpdates: Map<string, any>;
+	optimisticUpdates: Map<string, Record<string, unknown>>;
+}
+
+export interface PriceData {
+	price: number;
+	change: number;
+	changePercent: number;
+	timestamp: number;
+}
+
+export interface PortfolioData {
+	totalValue: number;
+	totalCost: number;
+	gainLoss: number;
+	gainLossPercent: number;
+	timestamp: number;
+}
+
+export interface AlertData {
+	id: string;
+	type: string;
+	title: string;
+	message: string;
+	timestamp: number;
+	acknowledged: boolean;
 }
 
 type DashboardAction =
-	| { type: "UPDATE_PRICE"; payload: { assetId: string; data: any } }
-	| { type: "UPDATE_PORTFOLIO"; payload: { portfolioId: string; data: any } }
-	| { type: "ADD_ALERT"; payload: any }
+	| { type: "UPDATE_PRICE"; payload: { assetId: string; data: PriceData } }
+	| { type: "UPDATE_PORTFOLIO"; payload: { portfolioId: string; data: PortfolioData } }
+	| { type: "ADD_ALERT"; payload: AlertData }
 	| { type: "ACKNOWLEDGE_ALERT"; payload: { alertId: string } }
 	| {
 			type: "SET_CONNECTION_STATE";
@@ -69,7 +87,7 @@ type DashboardAction =
 				error: string | null;
 			};
 	  }
-	| { type: "ADD_OPTIMISTIC_UPDATE"; payload: { key: string; data: any } }
+	| { type: "ADD_OPTIMISTIC_UPDATE"; payload: { key: string; data: Record<string, unknown> } }
 	| { type: "REMOVE_OPTIMISTIC_UPDATE"; payload: { key: string } }
 	| { type: "CLEAR_OPTIMISTIC_UPDATES" };
 
@@ -84,27 +102,19 @@ const initialState: DashboardState = {
 	optimisticUpdates: new Map(),
 };
 
-function dashboardReducer(
-	state: DashboardState,
-	action: DashboardAction,
-): DashboardState {
+function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
 	switch (action.type) {
 		case "UPDATE_PRICE":
 			return {
 				...state,
-				assetPrices: new Map(
-					state.assetPrices.set(action.payload.assetId, action.payload.data),
-				),
+				assetPrices: new Map(state.assetPrices.set(action.payload.assetId, action.payload.data)),
 			};
 
 		case "UPDATE_PORTFOLIO":
 			return {
 				...state,
 				portfolioValues: new Map(
-					state.portfolioValues.set(
-						action.payload.portfolioId,
-						action.payload.data,
-					),
+					state.portfolioValues.set(action.payload.portfolioId, action.payload.data),
 				),
 			};
 
@@ -121,9 +131,7 @@ function dashboardReducer(
 			return {
 				...state,
 				alerts: state.alerts.map((alert) =>
-					alert.id === action.payload.alertId
-						? { ...alert, acknowledged: true }
-						: alert,
+					alert.id === action.payload.alertId ? { ...alert, acknowledged: true } : alert,
 				),
 				unreadAlertCount: Math.max(0, state.unreadAlertCount - 1),
 			};
@@ -168,16 +176,15 @@ interface RealTimeDashboardContextType {
 	state: DashboardState;
 	actions: {
 		acknowledgeAlert: (alertId: string) => void;
-		addOptimisticUpdate: (key: string, data: any) => void;
+		addOptimisticUpdate: (key: string, data: Record<string, unknown>) => void;
 		removeOptimisticUpdate: (key: string) => void;
 		clearOptimisticUpdates: () => void;
-		getAssetPrice: (assetId: string) => any;
-		getPortfolioValue: (portfolioId: string) => any;
+		getAssetPrice: (assetId: string) => PriceData | undefined;
+		getPortfolioValue: (portfolioId: string) => PortfolioData | undefined;
 	};
 }
 
-const RealTimeDashboardContext =
-	createContext<RealTimeDashboardContextType | null>(null);
+const RealTimeDashboardContext = createContext<RealTimeDashboardContextType | null>(null);
 
 interface RealTimeDashboardProviderProps {
 	children: ReactNode;
@@ -197,10 +204,8 @@ export function RealTimeDashboardProvider({
 
 	// Real-time data subscriptions
 	const { prices, getPriceForAsset } = usePriceUpdates(trackedAssets);
-	const { portfolios, getPortfolioUpdate } =
-		usePortfolioUpdates(trackedPortfolios);
-	const { alerts, acknowledgeAlert: wsAcknowledgeAlert } =
-		useAlertNotifications();
+	const { portfolios, getPortfolioUpdate } = usePortfolioUpdates(trackedPortfolios);
+	const { alerts, acknowledgeAlert: wsAcknowledgeAlert } = useAlertNotifications();
 
 	// Update connection state
 	useEffect(() => {
@@ -280,10 +285,7 @@ export function RealTimeDashboardProvider({
 		},
 
 		getPortfolioValue: (portfolioId: string) => {
-			return (
-				state.portfolioValues.get(portfolioId) ||
-				getPortfolioUpdate(portfolioId)
-			);
+			return state.portfolioValues.get(portfolioId) || getPortfolioUpdate(portfolioId);
 		},
 	};
 
@@ -297,9 +299,7 @@ export function RealTimeDashboardProvider({
 export function useRealTimeDashboard() {
 	const context = useContext(RealTimeDashboardContext);
 	if (!context) {
-		throw new Error(
-			"useRealTimeDashboard must be used within a RealTimeDashboardProvider",
-		);
+		throw new Error("useRealTimeDashboard must be used within a RealTimeDashboardProvider");
 	}
 	return context;
 }

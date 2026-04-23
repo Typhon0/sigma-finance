@@ -1,16 +1,14 @@
-import { DollarSign, FileText, Shield } from "lucide-react";
+import { format } from "date-fns";
+import { CalendarIcon, DollarSign, FileText, Shield } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
+import { Calendar } from "./ui/calendar";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
 interface InsuranceFormData {
@@ -36,11 +34,7 @@ interface AddInsuranceFormProps {
 	initialData?: Partial<InsuranceFormData>;
 }
 
-export function AddInsuranceForm({
-	onSubmit,
-	onCancel,
-	initialData,
-}: AddInsuranceFormProps) {
+export function AddInsuranceForm({ onSubmit, onCancel, initialData }: AddInsuranceFormProps) {
 	const [formData, setFormData] = useState({
 		name: initialData?.name || "",
 		category: initialData?.category || "life_insurance",
@@ -167,9 +161,7 @@ export function AddInsuranceForm({
 							onChange={(e) => handleChange("purchasePrice", e.target.value)}
 							required
 						/>
-						<p className="text-xs text-muted-foreground">
-							Total amount invested/contributed
-						</p>
+						<p className="text-xs text-muted-foreground">Total amount invested/contributed</p>
 					</div>
 				</div>
 
@@ -184,9 +176,7 @@ export function AddInsuranceForm({
 							value={formData.coverageAmount}
 							onChange={(e) => handleChange("coverageAmount", e.target.value)}
 						/>
-						<p className="text-xs text-muted-foreground">
-							Death benefit / coverage amount
-						</p>
+						<p className="text-xs text-muted-foreground">Death benefit / coverage amount</p>
 					</div>
 
 					<div className="space-y-2">
@@ -199,9 +189,7 @@ export function AddInsuranceForm({
 							value={formData.premiumAmount}
 							onChange={(e) => handleChange("premiumAmount", e.target.value)}
 						/>
-						<p className="text-xs text-muted-foreground">
-							Amount paid per premium period
-						</p>
+						<p className="text-xs text-muted-foreground">Amount paid per premium period</p>
 					</div>
 
 					<div className="space-y-2">
@@ -235,19 +223,38 @@ export function AddInsuranceForm({
 							value={formData.annualReturn}
 							onChange={(e) => handleChange("annualReturn", e.target.value)}
 						/>
-						<p className="text-xs text-muted-foreground">
-							Average annual return rate
-						</p>
+						<p className="text-xs text-muted-foreground">Average annual return rate</p>
 					</div>
 
 					<div className="space-y-2">
 						<Label htmlFor="openingDate">Opening Date</Label>
-						<Input
-							id="openingDate"
-							type="date"
-							value={formData.openingDate}
-							onChange={(e) => handleChange("openingDate", e.target.value)}
-						/>
+						<Popover>
+							<PopoverTrigger asChild>
+								<Button
+									variant="outline"
+									className={cn(
+										"w-full pl-3 text-left font-normal",
+										!formData.openingDate && "text-muted-foreground",
+									)}
+								>
+									<CalendarIcon className="mr-2 h-4 w-4" />
+									{formData.openingDate ? (
+										format(new Date(formData.openingDate), "PPP")
+									) : (
+										<span>Pick a date</span>
+									)}
+								</Button>
+							</PopoverTrigger>
+							<PopoverContent className="w-auto p-0" align="start">
+								<Calendar
+									mode="single"
+									selected={formData.openingDate ? new Date(formData.openingDate) : undefined}
+									onSelect={(date) => handleChange("openingDate", date ? date.toISOString() : "")}
+									disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+									autoFocus
+								/>
+							</PopoverContent>
+						</Popover>
 					</div>
 				</div>
 			</div>
@@ -304,12 +311,7 @@ export function AddInsuranceForm({
 
 			{/* Actions */}
 			<div className="flex gap-3 pt-4 border-t">
-				<Button
-					type="button"
-					variant="outline"
-					onClick={onCancel}
-					className="flex-1"
-				>
+				<Button type="button" variant="outline" onClick={onCancel} className="flex-1">
 					Cancel
 				</Button>
 				<Button type="submit" className="flex-1">

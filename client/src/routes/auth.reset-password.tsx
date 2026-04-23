@@ -14,7 +14,10 @@ function ResetPasswordPage() {
 	// Redirect to dashboard if already authenticated
 	useEffect(() => {
 		if (isAuthenticated) {
-			navigate({ to: "/dashboard", search: { portfolioId: undefined } });
+			navigate({
+				to: "/dashboard",
+				search: { portfolioId: undefined, view: undefined },
+			});
 		}
 	}, [isAuthenticated, navigate]);
 

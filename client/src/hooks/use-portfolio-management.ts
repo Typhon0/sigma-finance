@@ -32,12 +32,7 @@ const _optimisticResponseGenerators = {
 			assets: [],
 			analytics: null,
 			sortOrder: 0,
-			tags: [],
-			transactions: [],
-			user: {
-				__typename: "User" as const,
-				id: input.userID,
-			},
+			/* tags, transactions, user omitted – partial optimistic response */
 		},
 	}),
 	updatePortfolio: (id: string, input: UpdatePortfolioInput) => {
@@ -59,12 +54,7 @@ const _optimisticResponseGenerators = {
 				assets: [],
 				analytics: null,
 				sortOrder: 0,
-				tags: [],
-				transactions: [],
-				user: {
-					__typename: "User" as const,
-					id: "temp-user-id", // This should be the actual user ID
-				},
+				/* tags, transactions, user omitted */
 			},
 		};
 	},
@@ -149,11 +139,8 @@ const cacheUpdateUtils = {
 };
 
 const cacheInvalidationHelpers = {
-	invalidateDashboardData: (
-		cache: import("@apollo/client").ApolloCache<unknown>,
-	) => {
-		cache.evict({ id: "ROOT_QUERY", field: "portfolios" });
-		cache.evict({ id: "ROOT_QUERY", field: "watchlists" });
+	invalidateDashboardData: (cache: import("@apollo/client").ApolloCache<unknown>) => {
+		cache.evict({ id: "ROOT_QUERY" });
 		cache.gc();
 	},
 	invalidatePortfolio: (
@@ -168,16 +155,10 @@ const cacheInvalidationHelpers = {
 // Enhanced Portfolio Management Hook with improved error handling and loading states
 export function usePortfolioManagement() {
 	const { user } = useAuth();
-	const effectiveUserID = user?.id;
+	const effectiveUserId = user?.id;
 
 	// Performance monitoring
-	const {
-		_startQuery,
-		_endQuery,
-		_startMutation,
-		_endMutation,
-		_getQueryStats,
-	} = usePerformanceMonitoring();
+	const _perfMonitor = usePerformanceMonitoring();
 
 	// Loading states for individual operations
 	const [operationLoading, setOperationLoading] = useState({
@@ -193,16 +174,18 @@ export function usePortfolioManagement() {
 		retryDelay: 1000,
 	});
 
-	const { data, loading, error, refetch } =
-		useQuery<GetPortfoliosWithAnalyticsQuery>(GET_PORTFOLIOS_WITH_ANALYTICS, {
+	const { data, loading, error, refetch } = useQuery<GetPortfoliosWithAnalyticsQuery>(
+		GET_PORTFOLIOS_WITH_ANALYTICS,
+		{
 			client: apolloClient,
-			variables: { userID: effectiveUserID },
+			variables: { userID: effectiveUserId },
 			errorPolicy: "all",
 			fetchPolicy: "cache-first",
 			notifyOnNetworkStatusChange: false,
-			skip: !effectiveUserID,
+			skip: !effectiveUserId,
 			pollInterval: 0,
-		});
+		},
+	);
 
 	// Create portfolio mutation with enhanced optimistic updates
 	const [createPortfolioMutation] = useMutation(CREATE_PORTFOLIO, {
@@ -217,15 +200,7 @@ export function usePortfolioManagement() {
 				sortOrder: (data?.portfolios?.length || 0) + 1,
 				assets: [],
 				analytics: null,
-				tags: [],
-				transactions: [],
-				user: {
-					__typename: "User" as const,
-					id: variables.input.userID,
-					name: user?.name || "",
-					email: user?.email || "",
-					emailVerified: true,
-				},
+				/* tags, transactions, user omitted */
 			};
 			return {
 				createPortfolio: optimisticPortfolio,
@@ -233,10 +208,7 @@ export function usePortfolioManagement() {
 		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.createPortfolio) {
-				cacheUpdateUtils.addPortfolioToCache(
-					cache,
-					mutationData.createPortfolio as Portfolio,
-				);
+				cacheUpdateUtils.addPortfolioToCache(cache, mutationData.createPortfolio as Portfolio);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
@@ -252,13 +224,10 @@ export function usePortfolioManagement() {
 
 	// Update portfolio mutation with enhanced optimistic updates
 	const [updatePortfolioMutation] = useMutation(UPDATE_PORTFOLIO, {
-		optimisticResponse: (variables: {
-			id: string;
-			input: UpdatePortfolioInput;
-		}) => {
-			const currentPortfolio = data?.portfolios?.find(
-				(p) => p.id === variables.id,
-			) as Portfolio | undefined;
+		optimisticResponse: (variables: { id: string; input: UpdatePortfolioInput }) => {
+			const currentPortfolio = data?.portfolios?.find((p) => p.id === variables.id) as
+				| Portfolio
+				| undefined;
 
 			if (!currentPortfolio) {
 				return null;
@@ -274,15 +243,12 @@ export function usePortfolioManagement() {
 							: currentPortfolio.description,
 					sortOrder: variables.input.sortOrder ?? currentPortfolio.sortOrder,
 					updatedAt: new Date().toISOString(),
-				},
-			};
+				} as any,
+			} as any;
 		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.updatePortfolio) {
-				cacheUpdateUtils.updatePortfolioInCache(
-					cache,
-					mutationData.updatePortfolio as Portfolio,
-				);
+				cacheUpdateUtils.updatePortfolioInCache(cache, mutationData.updatePortfolio as Portfolio);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
@@ -332,33 +298,19 @@ export function usePortfolioManagement() {
 					__typename: "Portfolio" as const,
 					id: `temp-duplicate-${Date.now()}`,
 					name: variables.input.newName,
-					description:
-						variables.input.description || sourcePortfolio?.description || null,
+					description: variables.input.description || sourcePortfolio?.description || null,
 					createdAt: new Date().toISOString(),
 					updatedAt: new Date().toISOString(),
 					sortOrder: (data?.portfolios?.length || 0) + 1,
-					assets: variables.input.copyAssets
-						? sourcePortfolio?.assets || []
-						: [],
+					assets: variables.input.copyAssets ? sourcePortfolio?.assets || [] : [],
 					analytics: null,
-					tags: sourcePortfolio?.tags || [],
-					transactions: [],
-					user: sourcePortfolio?.user || {
-						__typename: "User" as const,
-						id: user?.id || "",
-						name: user?.name || "",
-						email: user?.email || "",
-						emailVerified: true,
-					},
+					/* tags, user omitted */
 				},
 			};
 		},
 		update: (cache, { data: mutationData }) => {
 			if (mutationData?.duplicatePortfolio) {
-				cacheUpdateUtils.addPortfolioToCache(
-					cache,
-					mutationData.duplicatePortfolio as Portfolio,
-				);
+				cacheUpdateUtils.addPortfolioToCache(cache, mutationData.duplicatePortfolio as Portfolio);
 				cacheInvalidationHelpers.invalidateDashboardData(cache);
 			}
 		},
@@ -375,7 +327,7 @@ export function usePortfolioManagement() {
 	// Enhanced wrapper functions for mutations with proper loading states and error handling
 	const createPortfolio = useCallback(
 		async (input: CreatePortfolioInput) => {
-			if (!effectiveUserID) {
+			if (!effectiveUserId) {
 				throw new Error("User must be authenticated to create a portfolio");
 			}
 
@@ -387,15 +339,13 @@ export function usePortfolioManagement() {
 					variables: {
 						input: {
 							...input,
-							userID: effectiveUserID,
+							userID: effectiveUserId,
 						},
 					},
 				});
 
 				if (result.errors) {
-					throw new Error(
-						result.errors[0]?.message || "Failed to create portfolio",
-					);
+					throw new Error(result.errors[0]?.message || "Failed to create portfolio");
 				}
 
 				return result.data?.createPortfolio;
@@ -404,12 +354,12 @@ export function usePortfolioManagement() {
 				throw new Error(errorMessage);
 			}
 		},
-		[createPortfolioMutation, effectiveUserID, errorHandling],
+		[createPortfolioMutation, effectiveUserId, errorHandling],
 	);
 
 	const updatePortfolio = useCallback(
 		async (id: string, input: UpdatePortfolioInput) => {
-			if (!effectiveUserID) {
+			if (!effectiveUserId) {
 				throw new Error("User must be authenticated to update a portfolio");
 			}
 
@@ -422,9 +372,7 @@ export function usePortfolioManagement() {
 				});
 
 				if (result.errors) {
-					throw new Error(
-						result.errors[0]?.message || "Failed to update portfolio",
-					);
+					throw new Error(result.errors[0]?.message || "Failed to update portfolio");
 				}
 
 				return result.data?.updatePortfolio;
@@ -433,12 +381,12 @@ export function usePortfolioManagement() {
 				throw new Error(errorMessage);
 			}
 		},
-		[updatePortfolioMutation, effectiveUserID, errorHandling],
+		[updatePortfolioMutation, effectiveUserId, errorHandling],
 	);
 
 	const deletePortfolio = useCallback(
 		async (id: string) => {
-			if (!effectiveUserID) {
+			if (!effectiveUserId) {
 				throw new Error("User must be authenticated to delete a portfolio");
 			}
 
@@ -452,28 +400,17 @@ export function usePortfolioManagement() {
 
 				if (result.errors) {
 					// Enhanced error handling for specific deletion scenarios
-					const errorMessage =
-						result.errors[0]?.message || "Failed to delete portfolio";
+					const errorMessage = result.errors[0]?.message || "Failed to delete portfolio";
 
 					// Check for specific error types
-					if (
-						errorMessage.includes("positions") ||
-						errorMessage.includes("assets")
-					) {
+					if (errorMessage.includes("positions") || errorMessage.includes("assets")) {
 						throw new Error(
 							"Cannot delete portfolio that contains positions. Please remove all assets first.",
 						);
-					} else if (
-						errorMessage.includes("unauthorized") ||
-						errorMessage.includes("permission")
-					) {
-						throw new Error(
-							"You don't have permission to delete this portfolio.",
-						);
+					} else if (errorMessage.includes("unauthorized") || errorMessage.includes("permission")) {
+						throw new Error("You don't have permission to delete this portfolio.");
 					} else if (errorMessage.includes("not found")) {
-						throw new Error(
-							"Portfolio not found. It may have already been deleted.",
-						);
+						throw new Error("Portfolio not found. It may have already been deleted.");
 					} else {
 						throw new Error(errorMessage);
 					}
@@ -485,12 +422,12 @@ export function usePortfolioManagement() {
 				throw new Error(errorMessage);
 			}
 		},
-		[deletePortfolioMutation, effectiveUserID, errorHandling],
+		[deletePortfolioMutation, effectiveUserId, errorHandling],
 	);
 
 	const duplicatePortfolio = useCallback(
 		async (input: DuplicatePortfolioInput) => {
-			if (!effectiveUserID) {
+			if (!effectiveUserId) {
 				throw new Error("User must be authenticated to duplicate a portfolio");
 			}
 
@@ -503,9 +440,7 @@ export function usePortfolioManagement() {
 				});
 
 				if (result.errors) {
-					throw new Error(
-						result.errors[0]?.message || "Failed to duplicate portfolio",
-					);
+					throw new Error(result.errors[0]?.message || "Failed to duplicate portfolio");
 				}
 
 				return result.data?.duplicatePortfolio;
@@ -514,13 +449,15 @@ export function usePortfolioManagement() {
 				throw new Error(errorMessage);
 			}
 		},
-		[duplicatePortfolioMutation, effectiveUserID, errorHandling],
+		[duplicatePortfolioMutation, effectiveUserId, errorHandling],
 	);
 
 	// Retry function for failed operations
 	const retryLastOperation = useCallback(async () => {
 		if (errorHandling.canRetry) {
-			await errorHandling.retry(refetch);
+			await errorHandling.retry(async () => {
+				await refetch();
+			});
 		}
 	}, [errorHandling, refetch]);
 
@@ -590,7 +527,8 @@ export function usePortfolioOperations(portfolioId?: string) {
 	const portfolio = useMemo(() => {
 		if (!portfolioId || !portfolioManagement.portfolios) return null;
 		return (
-			portfolioManagement.portfolios.find((p) => p.id === portfolioId) || null
+			(portfolioManagement.portfolios?.find((p) => p.id === portfolioId) as Portfolio | null) ??
+			null
 		);
 	}, [portfolioId, portfolioManagement.portfolios]);
 
@@ -660,9 +598,7 @@ export function usePortfolioOperations(portfolioId?: string) {
  */
 export function usePortfolioCreation() {
 	const portfolioManagement = usePortfolioManagement();
-	const [createdPortfolio, setCreatedPortfolio] = useState<Portfolio | null>(
-		null,
-	);
+	const [createdPortfolio, setCreatedPortfolio] = useState<Portfolio | null>(null);
 
 	const createPortfolio = useCallback(
 		async (data: { name: string; description?: string }) => {
@@ -673,7 +609,7 @@ export function usePortfolioCreation() {
 			});
 
 			if (result) {
-				setCreatedPortfolio(result);
+				setCreatedPortfolio(result as Portfolio);
 			}
 
 			return result;
@@ -700,12 +636,10 @@ export function usePortfolioCreation() {
 export function usePortfolioExport() {
 	// This would be implemented when export functionality is added
 	const exportToFormat = async (
-		portfolioId: string,
-		format: "CSV" | "PDF" | "EXCEL",
+		_portfolioId: string,
+		_format: "CSV" | "PDF" | "EXCEL",
 		_options: unknown = {},
 	) => {
-		// Mock implementation
-		console.log(`Exporting portfolio ${portfolioId} to ${format}`);
 		return { success: true };
 	};
 

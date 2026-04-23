@@ -4,11 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
  * Custom hook for debounced search functionality
  * Optimizes search performance by delaying API calls until user stops typing
  */
-export function useDebouncedSearch<T>(
-	items: T[],
-	searchFields: (keyof T)[],
-	delay = 300,
-) {
+export function useDebouncedSearch<T>(items: T[], searchFields: (keyof T)[], delay = 300) {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
 	const [isSearching, setIsSearching] = useState(false);
@@ -90,9 +86,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
 	callback: T,
 	delay: number,
 ): T {
-	const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(
-		null,
-	);
+	const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
 
 	const debouncedCallback = useCallback(
 		(...args: Parameters<T>) => {
@@ -142,11 +136,7 @@ export function useAdvancedSearch<T>(
 		exactMatch?: boolean;
 	} = {},
 ) {
-	const {
-		debounceDelay = 300,
-		caseSensitive = false,
-		exactMatch = false,
-	} = options;
+	const { debounceDelay = 300, caseSensitive = false, exactMatch = false } = options;
 
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filters, setFilters] = useState<SearchFilters>({});
@@ -159,18 +149,14 @@ export function useAdvancedSearch<T>(
 
 		// Apply search filter
 		if (debouncedSearchTerm.trim()) {
-			const searchValue = caseSensitive
-				? debouncedSearchTerm
-				: debouncedSearchTerm.toLowerCase();
+			const searchValue = caseSensitive ? debouncedSearchTerm : debouncedSearchTerm.toLowerCase();
 
 			result = result.filter((item) =>
 				searchFields.some((field) => {
 					const value = item[field];
 					if (typeof value === "string") {
 						const fieldValue = caseSensitive ? value : value.toLowerCase();
-						return exactMatch
-							? fieldValue === searchValue
-							: fieldValue.includes(searchValue);
+						return exactMatch ? fieldValue === searchValue : fieldValue.includes(searchValue);
 					}
 					if (typeof value === "number") {
 						return value.toString().includes(searchValue);
@@ -182,11 +168,7 @@ export function useAdvancedSearch<T>(
 
 		// Apply additional filters
 		Object.entries(filters).forEach(([key, filterValue]) => {
-			if (
-				filterValue !== undefined &&
-				filterValue !== null &&
-				filterValue !== ""
-			) {
+			if (filterValue !== undefined && filterValue !== null && filterValue !== "") {
 				result = result.filter((item) => {
 					const itemValue = (item as any)[key];
 					if (Array.isArray(filterValue)) {
@@ -221,15 +203,7 @@ export function useAdvancedSearch<T>(
 		}
 
 		return result;
-	}, [
-		items,
-		debouncedSearchTerm,
-		filters,
-		sortConfig,
-		searchFields,
-		caseSensitive,
-		exactMatch,
-	]);
+	}, [items, debouncedSearchTerm, filters, sortConfig, searchFields, caseSensitive, exactMatch]);
 
 	const updateFilter = useCallback((key: string, value: any) => {
 		setFilters((prev) => ({
@@ -289,8 +263,6 @@ export function useAdvancedSearch<T>(
 
 		// Utility
 		hasActiveFilters:
-			Object.keys(filters).length > 0 ||
-			searchTerm.trim() !== "" ||
-			sortConfig !== null,
+			Object.keys(filters).length > 0 || searchTerm.trim() !== "" || sortConfig !== null,
 	};
 }

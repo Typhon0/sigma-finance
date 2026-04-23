@@ -6,19 +6,25 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatCurrency(amount: number, currency: string = "USD"): string {
+	const normalizedAmount = Number.isFinite(amount) ? amount : 0;
+
 	return new Intl.NumberFormat("en-US", {
 		style: "currency",
 		currency,
-	}).format(amount);
+		minimumFractionDigits: 2,
+		maximumFractionDigits: 2,
+	}).format(normalizedAmount);
 }
 
-export function formatPercentage(percent: number): string {
-	return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`;
+export function formatPercentage(percent: number, decimals = 2): string {
+	const normalizedPercent = Number.isFinite(percent) ? percent : 0;
+	const clampedDecimals = Math.max(0, Math.min(6, decimals));
+	const signPrefix = normalizedPercent >= 0 ? "+" : "";
+
+	return `${signPrefix}${normalizedPercent.toFixed(clampedDecimals)}%`;
 }
 
-export function getPerformanceVariant(
-	percent: number,
-): "default" | "destructive" | "secondary" {
+export function getPerformanceVariant(percent: number): "default" | "destructive" | "secondary" {
 	if (percent > 0) return "default";
 	if (percent < 0) return "destructive";
 	return "secondary";

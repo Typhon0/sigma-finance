@@ -1,12 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	Coins,
-	DollarSign,
-	FileText,
-	Trash2,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, Coins, DollarSign, FileText, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -23,23 +16,14 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface PreciousMetalsDetailProps {
 	metalId: string;
 	onBack: () => void;
 }
 
-export function PreciousMetalsDetail({
-	metalId,
-	onBack,
-}: PreciousMetalsDetailProps) {
+export function PreciousMetalsDetail({ metalId, onBack }: PreciousMetalsDetailProps) {
 	const { assets, _updateAsset, deleteAsset } = usePortfolio();
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -75,8 +59,7 @@ export function PreciousMetalsDetail({
 	};
 
 	const gain = (metal.currentValue || 0) - (metal.purchasePrice || 0);
-	const gainPercent =
-		metal.purchasePrice > 0 ? (gain / metal.purchasePrice) * 100 : 0;
+	const gainPercent = metal.purchasePrice > 0 ? (gain / metal.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -174,10 +157,7 @@ export function PreciousMetalsDetail({
 					</Button>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -195,15 +175,9 @@ export function PreciousMetalsDetail({
 							<div>
 								<CardTitle className="mb-2">{metal.name}</CardTitle>
 								<div className="flex flex-wrap gap-2 mb-3">
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
-									{metal.brand && (
-										<Badge variant="outline">{metal.brand}</Badge>
-									)}
-									{metal.model && (
-										<Badge variant="secondary">{metal.model}</Badge>
-									)}
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
+									{metal.brand && <Badge variant="outline">{metal.brand}</Badge>}
+									{metal.model && <Badge variant="secondary">{metal.model}</Badge>}
 								</div>
 								<CardDescription className="max-w-2xl">
 									{metal.description || "No description available"}
@@ -215,20 +189,12 @@ export function PreciousMetalsDetail({
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(metal.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(metal.currentValue || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(metal.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(metal.purchasePrice || 0)}</p>
 						</div>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Gain/Loss</p>
@@ -261,34 +227,26 @@ export function PreciousMetalsDetail({
 					<CardContent className="space-y-4">
 						{metal.brand && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Mint/Refiner
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Mint/Refiner</p>
 								<p>{metal.brand}</p>
 							</div>
 						)}
 						{metal.model && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Type/Weight
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Type/Weight</p>
 								<p>{metal.model}</p>
 							</div>
 						)}
 						{metal.serialNumber && (
 							<div>
-								<p className="text-sm text-muted-foreground mb-1">
-									Serial Number
-								</p>
+								<p className="text-sm text-muted-foreground mb-1">Serial Number</p>
 								<p className="font-mono text-sm">{metal.serialNumber}</p>
 							</div>
 						)}
 						{metal.condition && (
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Condition</p>
-								<Badge variant={conditionBadge.variant}>
-									{conditionBadge.label}
-								</Badge>
+								<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 							</div>
 						)}
 					</CardContent>
@@ -304,9 +262,7 @@ export function PreciousMetalsDetail({
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Date
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Date</p>
 							<p>
 								{metal.purchaseDate
 									? new Date(metal.purchaseDate).toLocaleDateString("fr-FR")
@@ -314,20 +270,12 @@ export function PreciousMetalsDetail({
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(metal.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(metal.purchasePrice || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(metal.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(metal.currentValue || 0)}</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -340,9 +288,7 @@ export function PreciousMetalsDetail({
 						<TrendingUp className="h-5 w-5" />
 						Value Appreciation
 					</CardTitle>
-					<CardDescription>
-						Historical value trend since purchase
-					</CardDescription>
+					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
@@ -350,16 +296,12 @@ export function PreciousMetalsDetail({
 			</Card>
 
 			{/* Delete Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Precious Metal</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{metal.name}"? This action cannot
-							be undone.
+							Are you sure you want to delete "{metal.name}"? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

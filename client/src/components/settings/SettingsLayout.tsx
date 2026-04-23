@@ -1,12 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import {
-	CloudDownload,
-	Database,
-	Key,
-	NotebookPen,
-	Palette,
-	User,
-} from "lucide-react";
+import { CloudDownload, Database, Key, NotebookPen, Palette, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -50,7 +43,7 @@ const sections: {
 	},
 	{
 		id: "finance-database",
-		label: "Finance Database",
+		label: "Catalog Source",
 		icon: CloudDownload,
 		href: "/settings/finance-database",
 	},
@@ -68,18 +61,13 @@ const sections: {
 	},
 ];
 
-export function SettingsLayout({
-	children,
-	activeSection,
-}: SettingsLayoutProps) {
+export function SettingsLayout({ children, activeSection }: SettingsLayoutProps) {
 	return (
 		<div className="flex h-full">
 			<aside className="w-64 border-r bg-card/50 flex flex-col shrink-0">
 				<div className="p-4">
 					<h2 className="text-lg font-semibold">Settings</h2>
-					<p className="text-sm text-muted-foreground">
-						Manage your preferences
-					</p>
+					<p className="text-sm text-muted-foreground">Manage your preferences</p>
 				</div>
 				<Separator />
 				<ScrollArea className="flex-1">

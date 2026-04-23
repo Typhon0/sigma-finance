@@ -4,11 +4,11 @@ import { FinanceDatabaseSettings } from "@/components/settings/FinanceDatabaseSe
 import { SettingsLayout } from "@/components/settings/SettingsLayout";
 
 export const Route = createFileRoute("/_app/settings/finance-database")({
-  component: () => (
-    <ProtectedRoute>
-      <SettingsLayout activeSection="finance-database">
-        <FinanceDatabaseSettings />
-      </SettingsLayout>
-    </ProtectedRoute>
-  ),
+	component: () => (
+		<ProtectedRoute>
+			<SettingsLayout activeSection="finance-database">
+				<FinanceDatabaseSettings />
+			</SettingsLayout>
+		</ProtectedRoute>
+	),
 });

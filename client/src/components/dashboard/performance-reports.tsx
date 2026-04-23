@@ -190,7 +190,7 @@ const ReportPreview: React.FC<{
 	reportData: ReportData;
 	sections: string[];
 	compact?: boolean;
-}> = ({ reportData, sections, _compact = false }) => {
+}> = ({ reportData, sections, compact: _compact = false }) => {
 	return (
 		<div className="space-y-4 max-h-96 overflow-y-auto">
 			{sections.includes("summary") && (
@@ -206,9 +206,7 @@ const ReportPreview: React.FC<{
 						<div>
 							<span className="text-muted-foreground">Total Change:</span>
 							<span className="ml-2 font-medium">
-								{formatPercentage(
-									reportData.portfolioSummary.totalChangePercent,
-								)}
+								{formatPercentage(reportData.portfolioSummary.totalChangePercent)}
 							</span>
 						</div>
 					</div>
@@ -220,9 +218,7 @@ const ReportPreview: React.FC<{
 					<h4 className="font-semibold mb-2">Performance Metrics</h4>
 					<div className="grid grid-cols-2 gap-4 text-sm">
 						<div>
-							<span className="text-muted-foreground">
-								Time-Weighted Return:
-							</span>
+							<span className="text-muted-foreground">Time-Weighted Return:</span>
 							<span className="ml-2 font-medium">
 								{formatPercentage(reportData.performance.timeWeightedReturn)}
 							</span>
@@ -272,9 +268,7 @@ const ReportGenerator: React.FC<{
 	const [customNotes, setCustomNotes] = useState("");
 	const [isGenerating, setIsGenerating] = useState(false);
 
-	const selectedTemplateData = reportTemplates.find(
-		(t) => t.id === selectedTemplate,
-	);
+	const selectedTemplateData = reportTemplates.find((t) => t.id === selectedTemplate);
 
 	const handleTemplateChange = (templateId: string) => {
 		setSelectedTemplate(templateId);
@@ -290,9 +284,7 @@ const ReportGenerator: React.FC<{
 		if (section?.required) return; // Can't toggle required sections
 
 		setSelectedSections((prev) =>
-			prev.includes(sectionId)
-				? prev.filter((id) => id !== sectionId)
-				: [...prev, sectionId],
+			prev.includes(sectionId) ? prev.filter((id) => id !== sectionId) : [...prev, sectionId],
 		);
 	};
 
@@ -330,18 +322,14 @@ const ReportGenerator: React.FC<{
 							<SelectItem key={template.id} value={template.id}>
 								<div>
 									<div className="font-medium">{template.name}</div>
-									<div className="text-xs text-muted-foreground">
-										{template.description}
-									</div>
+									<div className="text-xs text-muted-foreground">{template.description}</div>
 								</div>
 							</SelectItem>
 						))}
 					</SelectContent>
 				</Select>
 				{selectedTemplateData && (
-					<p className="text-xs text-muted-foreground mt-1">
-						{selectedTemplateData.description}
-					</p>
+					<p className="text-xs text-muted-foreground mt-1">{selectedTemplateData.description}</p>
 				)}
 			</div>
 
@@ -424,9 +412,7 @@ const ReportGenerator: React.FC<{
 					<Checkbox
 						id="includeBenchmarks"
 						checked={includeBenchmarks}
-						onCheckedChange={(checked) =>
-							setIncludeBenchmarks(checked as boolean)
-						}
+						onCheckedChange={(checked) => setIncludeBenchmarks(checked as boolean)}
 					/>
 					<Label htmlFor="includeBenchmarks" className="text-sm">
 						Include benchmark comparisons
@@ -467,11 +453,7 @@ const ReportGenerator: React.FC<{
 			<div>
 				<Label className="text-sm font-medium">Preview</Label>
 				<div className="mt-2 border rounded-lg">
-					<ReportPreview
-						reportData={reportData}
-						sections={selectedSections}
-						compact={true}
-					/>
+					<ReportPreview reportData={reportData} sections={selectedSections} compact={true} />
 				</div>
 			</div>
 
@@ -503,7 +485,7 @@ export const PerformanceReports: React.FC<PerformanceReportsProps> = ({
 	className,
 	compact = false,
 	onGenerateReport,
-	_onScheduleReport,
+	onScheduleReport: _onScheduleReport,
 	onExportData,
 }) => {
 	const [isGeneratorOpen, setIsGeneratorOpen] = useState(false);
@@ -551,10 +533,7 @@ export const PerformanceReports: React.FC<PerformanceReportsProps> = ({
 							<DialogHeader>
 								<DialogTitle>Generate Performance Report</DialogTitle>
 							</DialogHeader>
-							<ReportGenerator
-								reportData={reportData}
-								onGenerate={onGenerateReport}
-							/>
+							<ReportGenerator reportData={reportData} onGenerate={onGenerateReport} />
 						</DialogContent>
 					</Dialog>
 
@@ -598,9 +577,7 @@ export const PerformanceReports: React.FC<PerformanceReportsProps> = ({
 							>
 								<div>
 									<p className="font-medium text-sm">{template.name}</p>
-									<p className="text-xs text-muted-foreground">
-										{template.description}
-									</p>
+									<p className="text-xs text-muted-foreground">{template.description}</p>
 								</div>
 								<Button
 									size="sm"

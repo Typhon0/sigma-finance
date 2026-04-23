@@ -1,11 +1,4 @@
-import {
-	AlertCircle,
-	BarChart3,
-	Lightbulb,
-	PieChart,
-	Target,
-	TrendingUp,
-} from "lucide-react";
+import { AlertCircle, BarChart3, Lightbulb, PieChart, Target, TrendingUp } from "lucide-react";
 import type React from "react";
 import { useMemo } from "react";
 import AllocationChart from "@/components/charts/AllocationChart";
@@ -93,7 +86,7 @@ const AllocationBreakdown: React.FC<{
 	totalValue: number;
 	compact?: boolean;
 	onAssetTypeClick?: (assetType: string) => void;
-}> = ({ allocations, _totalValue, compact = false, onAssetTypeClick }) => {
+}> = ({ allocations, totalValue: _totalValue, compact = false, onAssetTypeClick }) => {
 	const sortedAllocations = useMemo(() => {
 		return [...allocations].sort((a, b) => b.value - a.value);
 	}, [allocations]);
@@ -102,9 +95,7 @@ const AllocationBreakdown: React.FC<{
 		<div className="space-y-3">
 			{sortedAllocations.map((allocation) => {
 				const hasTarget = allocation.targetPercentage !== undefined;
-				const deviation = hasTarget
-					? allocation.percentage - allocation.targetPercentage!
-					: 0;
+				const deviation = hasTarget ? allocation.percentage - allocation.targetPercentage! : 0;
 				const isOverweight = deviation > 5; // More than 5% over target
 				const isUnderweight = deviation < -5; // More than 5% under target
 
@@ -122,15 +113,12 @@ const AllocationBreakdown: React.FC<{
 							<div
 								className="w-3 h-3 rounded-full flex-shrink-0"
 								style={{
-									backgroundColor:
-										allocation.color || getAssetTypeColor(allocation.assetType),
+									backgroundColor: allocation.color || getAssetTypeColor(allocation.assetType),
 								}}
 							/>
 							<div className="flex-1 min-w-0">
 								<div className="flex items-center gap-2">
-									<p
-										className={cn("font-medium truncate", compact && "text-sm")}
-									>
+									<p className={cn("font-medium truncate", compact && "text-sm")}>
 										{formatAssetTypeName(allocation.assetType)}
 									</p>
 									<Badge variant="outline" className="text-xs">
@@ -154,8 +142,7 @@ const AllocationBreakdown: React.FC<{
 										style={
 											{
 												"--progress-background":
-													allocation.color ||
-													getAssetTypeColor(allocation.assetType),
+													allocation.color || getAssetTypeColor(allocation.assetType),
 											} as React.CSSProperties
 										}
 									/>
@@ -172,12 +159,7 @@ const AllocationBreakdown: React.FC<{
 							<p className={cn("font-semibold", compact && "text-sm")}>
 								{formatCurrency(allocation.value)}
 							</p>
-							<p
-								className={cn(
-									"text-sm text-muted-foreground",
-									compact && "text-xs",
-								)}
-							>
+							<p className={cn("text-sm text-muted-foreground", compact && "text-xs")}>
 								{allocation.percentage.toFixed(1)}%
 							</p>
 						</div>
@@ -236,37 +218,22 @@ const RecommendationsList: React.FC<{
 										<h4 className={cn("font-semibold", compact && "text-sm")}>
 											{formatAssetTypeName(recommendation.assetType)}
 										</h4>
-										<Badge
-											variant={getPriorityColor(recommendation.priority)}
-											className="text-xs"
-										>
+										<Badge variant={getPriorityColor(recommendation.priority)} className="text-xs">
 											{recommendation.priority}
 										</Badge>
 									</div>
-									<p
-										className={cn(
-											"text-sm text-muted-foreground mb-2",
-											compact && "text-xs",
-										)}
-									>
+									<p className={cn("text-sm text-muted-foreground mb-2", compact && "text-xs")}>
 										{recommendation.suggestedAction}
 									</p>
 									<div className="flex items-center gap-4 text-xs">
 										<span>
-											Current:{" "}
-											<strong>
-												{recommendation.currentPercentage.toFixed(1)}%
-											</strong>
+											Current: <strong>{recommendation.currentPercentage.toFixed(1)}%</strong>
 										</span>
 										<span>
-											Target:{" "}
-											<strong>
-												{recommendation.targetPercentage.toFixed(1)}%
-											</strong>
+											Target: <strong>{recommendation.targetPercentage.toFixed(1)}%</strong>
 										</span>
 										<span className="text-green-600">
-											Impact:{" "}
-											<strong>+{recommendation.impact.toFixed(1)}%</strong>
+											Impact: <strong>+{recommendation.impact.toFixed(1)}%</strong>
 										</span>
 									</div>
 								</div>

@@ -10,32 +10,22 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { InstrumentAssetType } from "@/gql/graphql";
 import {
 	TradeableInstrumentSearch,
 	type TradeableInstrumentSelection,
 } from "@/components/assets/tradeable-instrument-search";
+import { InstrumentAssetType } from "@/gql/graphql";
+import { cn } from "@/lib/utils";
 import { Logo } from "./Logo";
 import { usePortfolio } from "./PortfolioProvider";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Calendar } from "./ui/calendar";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogTitle,
-} from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface AddStockFormProps {
 	open: boolean;
@@ -119,16 +109,11 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		InstrumentAssetType.Fund,
 	];
 
-	const handleInputChange = <K extends keyof FormData>(
-		field: K,
-		value: FormData[K],
-	) => {
+	const handleInputChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
 	};
 
-	const mapInstrumentAssetTypeToStockType = (
-		assetType: InstrumentAssetType,
-	): StockItem["type"] => {
+	const mapInstrumentAssetTypeToStockType = (assetType: InstrumentAssetType): StockItem["type"] => {
 		switch (assetType) {
 			case InstrumentAssetType.Etf:
 				return "etf";
@@ -204,7 +189,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 	};
 
 	const getCurrencySymbol = (currencyCode: string): string => {
-		const currency = CURRENCIES.find(c => c.value === currencyCode);
+		const currency = CURRENCIES.find((c) => c.value === currencyCode);
 		return currency?.symbol || "$";
 	};
 
@@ -219,10 +204,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 				toast.error("Please enter a valid quantity");
 				return;
 			}
-			if (
-				!formData.averageBuyPrice ||
-				parseFloat(formData.averageBuyPrice) <= 0
-			) {
+			if (!formData.averageBuyPrice || parseFloat(formData.averageBuyPrice) <= 0) {
 				toast.error("Please enter a valid purchase price");
 				return;
 			}
@@ -243,9 +225,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 				quantity: parseFloat(formData.quantity),
 				averageBuyPrice: parseFloat(formData.averageBuyPrice),
 				purchasePrice: parseFloat(formData.averageBuyPrice),
-				currentPrice:
-					parseFloat(formData.currentPrice) ||
-					parseFloat(formData.averageBuyPrice),
+				currentPrice: parseFloat(formData.currentPrice) || parseFloat(formData.averageBuyPrice),
 				purchaseDate: formData.purchaseDate?.toISOString(),
 				quoteCurrency: formData.quoteCurrency,
 				unitPriceCurrency: formData.unitPriceCurrency,
@@ -301,10 +281,18 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 			<div className="flex-1 overflow-y-auto p-6">
 				<div className="grid gap-4">
 					{/* Broker Sync */}
-					<button
+					<div
+						role="button"
+						tabIndex={0}
+						aria-disabled={isSubmitting}
 						onClick={() => setAddType("sync")}
-						disabled={isSubmitting}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") setAddType("sync");
+						}}
+						className={cn(
+							"group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+							isSubmitting && "opacity-50 pointer-events-none",
+						)}
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
@@ -313,8 +301,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 							<div className="flex-1">
 								<h3 className="font-medium mb-1">Broker Sync</h3>
 								<p className="text-sm text-muted-foreground mb-3">
-									Connect your brokerage account to automatically sync your
-									positions
+									Connect your brokerage account to automatically sync your positions
 								</p>
 								<div className="flex flex-wrap gap-2">
 									<Badge variant="secondary" className="font-normal text-xs">
@@ -333,13 +320,21 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 							</div>
 							<ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
 						</div>
-					</button>
+					</div>
 
 					{/* Manual Entry */}
-					<button
+					<div
+						role="button"
+						tabIndex={0}
+						aria-disabled={isSubmitting}
 						onClick={() => setAddType("manual")}
-						disabled={isSubmitting}
-						className="group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 disabled:opacity-50 disabled:cursor-not-allowed"
+						onKeyDown={(e) => {
+							if (e.key === "Enter" || e.key === " ") setAddType("manual");
+						}}
+						className={cn(
+							"group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+							isSubmitting && "opacity-50 pointer-events-none",
+						)}
 					>
 						<div className="flex items-start gap-4">
 							<div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -351,23 +346,15 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 									Manually add a single stock or fund holding
 								</p>
 								<div className="flex flex-wrap gap-2">
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Stocks
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										ETFs
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Funds
-									</span>
-									<span className="text-xs px-2 py-1 rounded bg-muted">
-										Full Control
-									</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Stocks</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">ETFs</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Funds</span>
+									<span className="text-xs px-2 py-1 rounded bg-muted">Full Control</span>
 								</div>
 							</div>
 							<ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
 						</div>
-					</button>
+					</div>
 				</div>
 			</div>
 		</>
@@ -375,7 +362,10 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0">
+			<DialogContent
+				showCloseButton={false}
+				className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0 gap-0"
+			>
 				<DialogTitle className="sr-only">Add Position</DialogTitle>
 				<DialogDescription className="sr-only">
 					Add a new stock or fund to your portfolio
@@ -407,9 +397,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 								<div className="h-4 w-px bg-border" />
 								<div>
 									<h2 className="text-xl font-semibold">Manual Entry</h2>
-									<p className="text-xs text-muted-foreground">
-										Add a position to your portfolio
-									</p>
+									<p className="text-xs text-muted-foreground">Add a position to your portfolio</p>
 								</div>
 							</div>
 						</div>
@@ -427,9 +415,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 										<TradeableInstrumentSearch
 											assetTypes={instrumentSearchTypes}
 											value={null}
-											onChange={(selection) =>
-												handleInstrumentChange(selection)
-											}
+											onChange={(selection) => handleInstrumentChange(selection)}
 											placeholder="Search stock, ETF, or fund..."
 										/>
 									) : (
@@ -441,30 +427,19 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 												<div>
 													<h4 className="font-bold flex items-center gap-2">
 														{selectedStock.symbol}
-														<Badge
-															variant="secondary"
-															className="text-[10px] font-normal h-5"
-														>
+														<Badge variant="secondary" className="text-[10px] font-normal h-5">
 															{selectedStock.type}
 														</Badge>
 													</h4>
-													<p className="text-xs text-muted-foreground">
-														{selectedStock.name}
-													</p>
+													<p className="text-xs text-muted-foreground">{selectedStock.name}</p>
 													<div className="mt-1 flex items-center gap-2">
 														{selectedStock.exchange ? (
-															<Badge
-																variant="outline"
-																className="text-[10px] h-5 font-normal"
-															>
+															<Badge variant="outline" className="text-[10px] h-5 font-normal">
 																{selectedStock.exchange}
 															</Badge>
 														) : null}
 														{SUPPORTED_CURRENCY_CODES.has(selectedInstrumentCurrency) ? (
-															<Badge
-																variant="secondary"
-																className="text-[10px] h-5 font-normal"
-															>
+															<Badge variant="secondary" className="text-[10px] h-5 font-normal">
 																Quote: {selectedInstrumentCurrency}
 															</Badge>
 														) : null}
@@ -494,9 +469,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 													type="number"
 													step="0.0001"
 													value={formData.quantity}
-													onChange={(e) =>
-														handleInputChange("quantity", e.target.value)
-													}
+													onChange={(e) => handleInputChange("quantity", e.target.value)}
 													className="font-mono"
 													placeholder="0"
 													disabled={isSubmitting}
@@ -513,12 +486,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 														type="number"
 														step="0.01"
 														value={formData.averageBuyPrice}
-														onChange={(e) =>
-															handleInputChange(
-																"averageBuyPrice",
-																e.target.value,
-															)
-														}
+														onChange={(e) => handleInputChange("averageBuyPrice", e.target.value)}
 														className="font-mono pl-6"
 														placeholder="0.00"
 														disabled={isSubmitting}
@@ -540,17 +508,15 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 												</SelectTrigger>
 												<SelectContent>
 													{CURRENCIES.map((currency) => (
-														<SelectItem
-															key={currency.value}
-															value={currency.value}
-														>
+														<SelectItem key={currency.value} value={currency.value}>
 															{currency.label}
 														</SelectItem>
 													))}
 												</SelectContent>
 											</Select>
 											<p className="text-xs text-muted-foreground">
-												Quote currency is derived from the selected instrument and is used for live valuation.
+												Quote currency is derived from the selected instrument and is used for live
+												valuation.
 											</p>
 										</div>
 
@@ -567,10 +533,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 												</SelectTrigger>
 												<SelectContent>
 													{CURRENCIES.map((currency) => (
-														<SelectItem
-															key={currency.value}
-															value={currency.value}
-														>
+														<SelectItem key={currency.value} value={currency.value}>
 															{currency.label}
 														</SelectItem>
 													))}
@@ -600,19 +563,15 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 														disabled={isSubmitting}
 													>
 														<CalendarIcon className="mr-2 h-4 w-4" />
-														{formData.purchaseDate
-															? format(formData.purchaseDate, "PPP")
-															: "Today"}
+														{formData.purchaseDate ? format(formData.purchaseDate, "PPP") : "Today"}
 													</Button>
 												</PopoverTrigger>
 												<PopoverContent className="w-auto p-0">
 													<Calendar
 														mode="single"
 														selected={formData.purchaseDate}
-														onSelect={(date) =>
-															handleInputChange("purchaseDate", date)
-														}
-														initialFocus
+														onSelect={(date) => handleInputChange("purchaseDate", date)}
+														autoFocus
 													/>
 												</PopoverContent>
 											</Popover>
@@ -626,9 +585,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 												</h4>
 												<div className="space-y-2 text-sm">
 													<div className="flex justify-between">
-														<span className="text-muted-foreground">
-															Total Cost
-														</span>
+														<span className="text-muted-foreground">Total Cost</span>
 														<span className="font-mono font-medium">
 															{currencySymbol}
 															{calculateTotalCost().toLocaleString(undefined, {
@@ -637,9 +594,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 														</span>
 													</div>
 													<div className="flex justify-between">
-														<span className="text-muted-foreground">
-															Current Value
-														</span>
+														<span className="text-muted-foreground">Current Value</span>
 														<span className="font-mono font-medium">
 															{currencySymbol}
 															{calculateTotalValue().toLocaleString(undefined, {
@@ -648,9 +603,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 														</span>
 													</div>
 													<div className="flex justify-between pt-2 border-t border-border/10">
-														<span className="text-muted-foreground">
-															Unrealized P&L
-														</span>
+														<span className="text-muted-foreground">Unrealized P&L</span>
 														<span
 															className={`font-mono font-medium ${profitLoss.amount >= 0 ? "text-emerald-500" : "text-rose-500"}`}
 														>
@@ -676,10 +629,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 							<Button
 								onClick={handleSubmit}
 								disabled={
-									isSubmitting ||
-									!selectedStock ||
-									!formData.quantity ||
-									!formData.averageBuyPrice
+									isSubmitting || !selectedStock || !formData.quantity || !formData.averageBuyPrice
 								}
 							>
 								{isSubmitting ? "Adding..." : "Add Position"}
@@ -717,8 +667,8 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 							</div>
 							<h3 className="text-lg font-medium">Coming Soon</h3>
 							<p className="text-muted-foreground max-w-xs">
-								Direct broker integration is coming in the next update. Please
-								use Manual Entry for now.
+								Direct broker integration is coming in the next update. Please use Manual Entry for
+								now.
 							</p>
 							<Button onClick={() => setAddType("manual")} disabled={isSubmitting}>
 								Switch to Manual Entry

@@ -7,21 +7,8 @@ import { PieChartWithCenter } from "./PieChartWithCenter";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 const assetTypeMap = {
@@ -105,13 +92,9 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 
 	// Group assets by category for breakdown table
 	const assetsByCategory = {
-		"Stocks & Funds": filteredAssets.filter(
-			(a) => a.type === "stock" || a.type === "fund",
-		),
+		"Stocks & Funds": filteredAssets.filter((a) => a.type === "stock" || a.type === "fund"),
 		Cryptocurrency: filteredAssets.filter((a) => a.type === "crypto"),
-		"Savings & Cash": filteredAssets.filter(
-			(a) => a.type === "bank" || a.type === "savings",
-		),
+		"Savings & Cash": filteredAssets.filter((a) => a.type === "bank" || a.type === "savings"),
 		"Real Estate": filteredAssets.filter((a) => a.type === "real_estate"),
 		Loans: filteredAssets.filter((a) => a.type === "loan"),
 		Other: filteredAssets.filter(
@@ -121,17 +104,11 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 
 	const categoryBreakdown = Object.entries(assetsByCategory)
 		.map(([category, categoryAssets]) => {
-			const totalValue = categoryAssets.reduce(
-				(sum, asset) => sum + (asset.currentValue || 0),
-				0,
-			);
+			const totalValue = categoryAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
 
 			const totalCost = categoryAssets.reduce((sum, asset) => {
 				return (
-					sum +
-					(asset.purchasePrice
-						? (asset.quantity || 1) * asset.purchasePrice
-						: totalValue)
+					sum + (asset.purchasePrice ? (asset.quantity || 1) * asset.purchasePrice : totalValue)
 				);
 			}, 0);
 
@@ -145,8 +122,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 				cost: totalCost,
 				pl,
 				plPercent,
-				allocation:
-					portfolioValue > 0 ? (totalValue / portfolioValue) * 100 : 0,
+				allocation: portfolioValue > 0 ? (totalValue / portfolioValue) * 100 : 0,
 			};
 		})
 		.filter((cat) => cat.count > 0)
@@ -154,8 +130,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 
 	// Use real performance history from selectedPortfolio
 	const { selectedPortfolio } = usePortfolio();
-	const performanceHistory =
-		selectedPortfolio?.analytics?.performanceHistory ?? [];
+	const performanceHistory = selectedPortfolio?.analytics?.performanceHistory ?? [];
 
 	const historicalData =
 		performanceHistory.length > 0
@@ -172,9 +147,9 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 
 	// Prepare data for pie chart
 	const pieChartData = Object.entries(assetAllocation)
-		.map(([type, value]) => ({
+		.map(([type, value]: [string, unknown]) => ({
 			name: getAssetTypeLabel(type),
-			value,
+			value: value as number,
 		}))
 		.filter((item) => item.value > 0);
 
@@ -254,17 +229,11 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 						colorStops: [
 							{
 								offset: 0,
-								color:
-									gain >= 0
-										? "rgba(16, 185, 129, 0.3)"
-										: "rgba(239, 68, 68, 0.3)",
+								color: gain >= 0 ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
 							},
 							{
 								offset: 1,
-								color:
-									gain >= 0
-										? "rgba(16, 185, 129, 0.05)"
-										: "rgba(239, 68, 68, 0.05)",
+								color: gain >= 0 ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
 							},
 						],
 					},
@@ -348,9 +317,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 			{/* Clean Header */}
 			<div className="flex items-center justify-between mb-6">
 				<div>
-					<p className="text-sm text-muted-foreground mb-2">
-						Value of Portfolio
-					</p>
+					<p className="text-sm text-muted-foreground mb-2">Value of Portfolio</p>
 					<h1 className="text-5xl font-mono font-semibold mb-2">
 						{formatCurrency(portfolioValue)}
 					</h1>
@@ -399,11 +366,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between mb-2">
 							<p className="text-sm text-muted-foreground">Total Return</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-6 w-6 p-0 rounded-full"
-							>
+							<Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full">
 								{" "}
 								<svg
 									className="h-4 w-4 text-muted-foreground"
@@ -428,9 +391,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 						>
 							{formatCurrency(gain)}
 						</p>
-						<p
-							className={`text-sm mt-1 ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
-						>
+						<p className={`text-sm mt-1 ${gain >= 0 ? "text-green-600" : "text-red-600"}`}>
 							{gain >= 0 ? "+" : ""}
 							{gainPercent.toFixed(2)}%
 						</p>
@@ -441,11 +402,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between mb-2">
 							<p className="text-sm text-muted-foreground">Total Cost</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-6 w-6 p-0 rounded-full"
-							>
+							<Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full">
 								<svg
 									className="h-4 w-4 text-muted-foreground"
 									fill="none"
@@ -464,9 +421,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 								</svg>
 							</Button>
 						</div>
-						<p className="text-2xl font-mono font-semibold">
-							{formatCurrency(totalPurchase)}
-						</p>
+						<p className="text-2xl font-mono font-semibold">{formatCurrency(totalPurchase)}</p>
 					</CardContent>
 				</Card>
 
@@ -474,11 +429,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between mb-2">
 							<p className="text-sm text-muted-foreground">Available Assets</p>
-							<Button
-								variant="ghost"
-								size="sm"
-								className="h-6 w-6 p-0 rounded-full"
-							>
+							<Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full">
 								<svg
 									className="h-4 w-4 text-muted-foreground"
 									fill="none"
@@ -510,9 +461,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 					<div className="flex items-center justify-between">
 						<div>
 							<CardTitle>Additional Analytics</CardTitle>
-							<CardDescription>
-								Allocation and performance breakdown
-							</CardDescription>
+							<CardDescription>Allocation and performance breakdown</CardDescription>
 						</div>
 					</div>
 				</CardHeader>
@@ -555,9 +504,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 				<Card className="lg:col-span-2">
 					<CardHeader className="px-4 pt-3 pb-2">
 						<CardTitle>Asset Breakdown</CardTitle>
-						<CardDescription>
-							Portfolio distribution by category
-						</CardDescription>
+						<CardDescription>Portfolio distribution by category</CardDescription>
 					</CardHeader>
 					<CardContent className="px-4 pb-3">
 						<Table>
@@ -573,9 +520,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 							<TableBody>
 								{categoryBreakdown.map((cat) => (
 									<TableRow key={cat.category}>
-										<TableCell className="font-medium">
-											{cat.category}
-										</TableCell>
+										<TableCell className="font-medium">{cat.category}</TableCell>
 										<TableCell className="text-right">
 											<Badge variant="secondary">{cat.count}</Badge>
 										</TableCell>
@@ -583,9 +528,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 											{formatCurrency(cat.value)}
 										</TableCell>
 										<TableCell className="text-right">
-											<Badge variant="outline">
-												{cat.allocation.toFixed(1)}%
-											</Badge>
+											<Badge variant="outline">{cat.allocation.toFixed(1)}%</Badge>
 										</TableCell>
 										<TableCell
 											className={`text-right font-mono ${cat.pl >= 0 ? "text-green-600" : "text-red-600"}`}
@@ -601,10 +544,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 								))}
 								{categoryBreakdown.length === 0 && (
 									<TableRow>
-										<TableCell
-											colSpan={5}
-											className="text-center text-muted-foreground py-8"
-										>
+										<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
 											No assets found
 										</TableCell>
 									</TableRow>
@@ -624,9 +564,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 						<div className="space-y-3">
 							{recentTransactions.length > 0 ? (
 								recentTransactions.map((transaction) => {
-									const asset = filteredAssets.find(
-										(a) => a.id === transaction.assetId,
-									);
+									const asset = filteredAssets.find((a) => a.id === transaction.assetId);
 									return (
 										<div
 											key={transaction.id}

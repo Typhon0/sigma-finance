@@ -109,10 +109,7 @@ export function DashboardSkeleton() {
 						<CardContent>
 							<div className="space-y-4">
 								{assetPerformanceSkeletons.map((item) => (
-									<div
-										key={item.id}
-										className="flex items-center justify-between"
-									>
+									<div key={item.id} className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
 											<Skeleton className="h-8 w-8 rounded-md" />
 											<div className="space-y-1">
@@ -135,10 +132,7 @@ export function DashboardSkeleton() {
 						<CardContent>
 							<div className="space-y-4">
 								{recentTransactionSkeletons.map((item) => (
-									<div
-										key={item.id}
-										className="flex items-center justify-between"
-									>
+									<div key={item.id} className="flex items-center justify-between">
 										<div className="flex items-center gap-3">
 											<Skeleton className="h-8 w-8 rounded-full" />
 											<div className="space-y-1">
@@ -169,10 +163,7 @@ export function DashboardSkeleton() {
 							<Skeleton className="h-48 w-full md:w-1/2" />
 							<div className="w-full md:w-1/2 space-y-2">
 								{assetAllocationSkeletons.map((item) => (
-									<div
-										key={item.id}
-										className="flex items-center justify-between"
-									>
+									<div key={item.id} className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Skeleton className="h-4 w-4 rounded-full" />
 											<Skeleton className="h-4 w-24" />
@@ -193,10 +184,7 @@ export function DashboardSkeleton() {
 					<CardContent>
 						<div className="space-y-3">
 							{alertSkeletons.map((item) => (
-								<div
-									key={item.id}
-									className="flex items-start gap-3 p-3 rounded-lg border"
-								>
+								<div key={item.id} className="flex items-start gap-3 p-3 rounded-lg border">
 									<Skeleton className="h-6 w-6 rounded-full" />
 									<div className="flex-1 space-y-2">
 										<Skeleton className="h-4 w-3/4" />

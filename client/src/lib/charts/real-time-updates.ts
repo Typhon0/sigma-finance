@@ -37,11 +37,7 @@ export interface CandlestickUpdate {
 /**
  * WebSocket connection states
  */
-export type ConnectionState =
-	| "connecting"
-	| "connected"
-	| "disconnected"
-	| "error";
+export type ConnectionState = "connecting" | "connected" | "disconnected" | "error";
 
 /**
  * Real-time update configuration
@@ -75,13 +71,7 @@ const DEFAULT_CONFIG: Required<RealTimeConfig> = {
  * WebSocket message types
  */
 export interface WSMessage {
-	type:
-		| "subscribe"
-		| "unsubscribe"
-		| "price_update"
-		| "candlestick_update"
-		| "heartbeat"
-		| "error";
+	type: "subscribe" | "unsubscribe" | "price_update" | "candlestick_update" | "heartbeat" | "error";
 	payload?: any;
 }
 
@@ -93,10 +83,7 @@ export class RealTimePriceManager {
 	private config: Required<RealTimeConfig>;
 	private subscriptions = new Set<string>();
 	private listeners = new Map<string, Set<(update: PriceUpdate) => void>>();
-	private candlestickListeners = new Map<
-		string,
-		Set<(update: CandlestickUpdate) => void>
-	>();
+	private candlestickListeners = new Map<string, Set<(update: CandlestickUpdate) => void>>();
 	private connectionState: ConnectionState = "disconnected";
 	private reconnectAttempts = 0;
 	private heartbeatTimer: NodeJS.Timeout | null = null;
@@ -149,7 +136,6 @@ export class RealTimePriceManager {
 
 			this.ws.onerror = (error) => {
 				this.connectionState = "error";
-				console.error("WebSocket error:", error);
 				reject(error);
 			};
 		});
@@ -171,10 +157,7 @@ export class RealTimePriceManager {
 	/**
 	 * Subscribe to price updates for an asset
 	 */
-	subscribe(
-		assetId: string,
-		callback: (update: PriceUpdate) => void,
-	): () => void {
+	subscribe(assetId: string, callback: (update: PriceUpdate) => void): () => void {
 		// Add to subscriptions
 		this.subscriptions.add(assetId);
 
@@ -201,10 +184,7 @@ export class RealTimePriceManager {
 	/**
 	 * Subscribe to candlestick updates for an asset
 	 */
-	subscribeCandlestick(
-		assetId: string,
-		callback: (update: CandlestickUpdate) => void,
-	): () => void {
+	subscribeCandlestick(assetId: string, callback: (update: CandlestickUpdate) => void): () => void {
 		if (!this.candlestickListeners.has(assetId)) {
 			this.candlestickListeners.set(assetId, new Set());
 		}
@@ -221,10 +201,7 @@ export class RealTimePriceManager {
 	/**
 	 * Unsubscribe from price updates
 	 */
-	private unsubscribe(
-		assetId: string,
-		callback: (update: PriceUpdate) => void,
-	): void {
+	private unsubscribe(assetId: string, callback: (update: PriceUpdate) => void): void {
 		this.listeners.get(assetId)?.delete(callback);
 
 		if (this.listeners.get(assetId)?.size === 0) {
@@ -265,12 +242,9 @@ export class RealTimePriceManager {
 					// Heartbeat received, connection is alive
 					break;
 				case "error":
-					console.error("WebSocket error message:", message.payload);
 					break;
 			}
-		} catch (error) {
-			console.error("Error parsing WebSocket message:", error);
-		}
+		} catch (_error) {}
 	}
 
 	/**
@@ -349,9 +323,7 @@ export class RealTimePriceManager {
 			listeners.forEach((callback) => {
 				try {
 					callback(update);
-				} catch (error) {
-					console.error("Error in price update callback:", error);
-				}
+				} catch (_error) {}
 			});
 		}
 	}
@@ -389,19 +361,13 @@ export class RealTimePriceManager {
 	 */
 	private handleReconnect(): void {
 		if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-			console.error("Max reconnection attempts reached");
 			return;
 		}
 
 		this.reconnectAttempts++;
 
 		setTimeout(() => {
-			console.log(
-				`Attempting to reconnect (${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`,
-			);
-			this.connect().catch((error) => {
-				console.error("Reconnection failed:", error);
-			});
+			this.connect().catch((_error) => {});
 		}, this.config.reconnectInterval);
 	}
 
@@ -424,9 +390,7 @@ let globalManager: RealTimePriceManager | null = null;
 /**
  * Get or create global real-time manager
  */
-export function getRealTimeManager(
-	config?: Partial<RealTimeConfig>,
-): RealTimePriceManager {
+export function getRealTimeManager(config?: Partial<RealTimeConfig>): RealTimePriceManager {
 	if (!globalManager) {
 		globalManager = new RealTimePriceManager(config);
 	}
@@ -446,8 +410,7 @@ export function useRealTimePrices(
 	unsubscribe: (assetId: string) => void;
 } {
 	const [updates, setUpdates] = useState<Map<string, PriceUpdate>>(new Map());
-	const [connectionState, setConnectionState] =
-		useState<ConnectionState>("disconnected");
+	const [connectionState, setConnectionState] = useState<ConnectionState>("disconnected");
 	const managerRef = useRef<RealTimePriceManager | null>(null);
 	const unsubscribeFnsRef = useRef<Map<string, () => void>>(new Map());
 
@@ -456,9 +419,7 @@ export function useRealTimePrices(
 		managerRef.current = getRealTimeManager(config);
 
 		// Connect to WebSocket
-		managerRef.current.connect().catch((error) => {
-			console.error("Failed to connect to real-time updates:", error);
-		});
+		managerRef.current.connect().catch((_error) => {});
 
 		// Monitor connection state
 		const checkConnectionState = () => {
@@ -475,7 +436,7 @@ export function useRealTimePrices(
 				managerRef.current.disconnect();
 			}
 		};
-	}, []);
+	}, [config]);
 
 	// Subscribe to asset updates
 	const subscribe = useCallback((assetId: string) => {
@@ -566,9 +527,7 @@ export function useChartRealTimeUpdates(
 			}
 
 			setLastUpdate(update);
-		} catch (error) {
-			console.error("Error updating chart with real-time data:", error);
-		}
+		} catch (_error) {}
 	}, [updates, assetId, series, chartType]);
 
 	return {

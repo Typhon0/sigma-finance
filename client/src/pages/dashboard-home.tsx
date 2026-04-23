@@ -12,11 +12,7 @@ export default function DashboardHomePage() {
 	const { user } = useAuth();
 
 	if (!user) {
-		return (
-			<div className="flex h-screen items-center justify-center">
-				Loading...
-			</div>
-		);
+		return <div className="flex h-screen items-center justify-center">Loading...</div>;
 	}
 
 	return (
@@ -69,10 +65,7 @@ export default function DashboardHomePage() {
 				{/* Page Content */}
 				<main className="flex-1 overflow-y-auto p-4 md:p-6 bg-secondary/5 scrollbar-hide">
 					<div className="mx-auto max-w-[1800px] space-y-6">
-						<DashboardErrorBoundary
-							context="overview"
-							componentName="DashboardHomePage"
-						>
+						<DashboardErrorBoundary context="overview" componentName="DashboardHomePage">
 							<DashboardTransition viewMode="overview">
 								<DensityDashboard />
 							</DashboardTransition>

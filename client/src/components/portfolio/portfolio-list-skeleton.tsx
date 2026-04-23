@@ -42,10 +42,7 @@ export function PortfolioListSkeleton({
 				)}
 			>
 				{Array.from({ length: count }).map((_, i) => (
-					<PortfolioCardSkeleton
-						key={`portfolio-skeleton-${i}`}
-						viewMode={viewMode}
-					/>
+					<PortfolioCardSkeleton key={`portfolio-skeleton-${i}`} viewMode={viewMode} />
 				))}
 			</div>
 		</div>
@@ -140,11 +137,7 @@ export function EmptyPortfolioSkeleton() {
 	);
 }
 
-export function PortfolioOperationSkeleton({
-	operation,
-}: {
-	operation: string;
-}) {
+export function PortfolioOperationSkeleton({ operation }: { operation: string }) {
 	return (
 		<div className="flex items-center justify-center py-4">
 			<div className="flex items-center gap-2 text-muted-foreground">

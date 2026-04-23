@@ -94,9 +94,7 @@ export function CreatePortfolioDialog({
 	const handleSubmit = useCallback(
 		async (data: PortfolioFormData) => {
 			if (!user?.id) {
-				const error = new Error(
-					"User not authenticated. Please log in and try again.",
-				);
+				const error = new Error("User not authenticated. Please log in and try again.");
 				setErrorMessage(error.message);
 				if (showErrorToast) {
 					toast.error(error.message);
@@ -144,22 +142,17 @@ export function CreatePortfolioDialog({
 				} else {
 					throw new Error("Failed to create portfolio. Please try again.");
 				}
-			} catch (error: any) {
-				console.error("Error creating portfolio:", error);
-
+			} catch (error: unknown) {
 				// Handle specific error types
 				let errorMsg = "Failed to create portfolio. Please try again.";
 
-				if (
-					error.message?.includes("duplicate") ||
-					error.message?.includes("already exists")
-				) {
-					errorMsg =
-						"A portfolio with this name already exists. Please choose a different name.";
-				} else if (error.message?.includes("validation")) {
+				const message = error instanceof Error ? error.message : "";
+				if (message.includes("duplicate") || message.includes("already exists")) {
+					errorMsg = "A portfolio with this name already exists. Please choose a different name.";
+				} else if (message.includes("validation")) {
 					errorMsg = "Please check your input and try again.";
-				} else if (error.message) {
-					errorMsg = error.message;
+				} else if (message) {
+					errorMsg = message;
 				}
 
 				setErrorMessage(errorMsg);
@@ -227,10 +220,7 @@ export function CreatePortfolioDialog({
 
 				{/* Success Message */}
 				{successState.show && (
-					<Alert
-						variant="default"
-						className="border-green-200 bg-green-50 text-green-800"
-					>
+					<Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
 						<CheckCircle className="h-4 w-4 text-green-600" />
 						<AlertDescription>{successMessage}</AlertDescription>
 					</Alert>

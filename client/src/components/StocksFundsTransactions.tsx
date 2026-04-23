@@ -4,12 +4,13 @@ import {
 	Download,
 	Filter,
 	MoreHorizontal,
-	Search,
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
+import { cn } from "@/lib/utils";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
@@ -22,29 +23,16 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
-import { cn } from "./ui/utils";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 interface StocksFundsTransactionsProps {
 	onNavigateToFullView?: () => void;
 }
 
 export function StocksFundsTransactions({
-	_onNavigateToFullView,
+	onNavigateToFullView: _onNavigateToFullView,
 }: StocksFundsTransactionsProps) {
-	const [filterType, setFilterType] = useState<string[]>([
-		"buy",
-		"sell",
-		"dividend",
-	]);
+	const [filterType, setFilterType] = useState<string[]>(["buy", "sell", "dividend"]);
 	const [searchQuery, setSearchQuery] = useState("");
 
 	const { formatCurrency } = useCurrency();
@@ -179,9 +167,7 @@ export function StocksFundsTransactions({
 		if (!filterType.includes(tx.type)) return false;
 		if (searchQuery) {
 			const q = searchQuery.toLowerCase();
-			return (
-				tx.symbol.toLowerCase().includes(q) || tx.name.toLowerCase().includes(q)
-			);
+			return tx.symbol.toLowerCase().includes(q) || tx.name.toLowerCase().includes(q);
 		}
 		return true;
 	});
@@ -191,31 +177,25 @@ export function StocksFundsTransactions({
 			{/* Toolbar */}
 			<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-b border-border/40 bg-muted/5">
 				<div className="flex items-center gap-2 w-full sm:w-auto">
-					<div className="relative w-full sm:w-64">
-						<Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-						<Input
-							placeholder="Search ledger..."
-							className="pl-8 h-8 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-						/>
-					</div>
+					<SearchInput
+						placeholder="Filter transactions..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+						size="sm"
+						containerClassName="w-full sm:w-64"
+						className="h-8 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+					/>
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button
-								variant="outline"
-								size="sm"
-								className="h-8 border-border/50 text-xs gap-2"
-							>
+							<Button variant="outline" size="sm" className="h-8 border-border/50 text-xs gap-2">
 								<Filter className="h-3.5 w-3.5 text-muted-foreground" />
 								<span>Type</span>
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="start" className="w-48">
-							<DropdownMenuLabel className="text-xs">
-								Transaction Type
-							</DropdownMenuLabel>
+							<DropdownMenuLabel className="text-xs">Transaction Type</DropdownMenuLabel>
 							<DropdownMenuSeparator />
 							{["buy", "sell", "dividend"].map((t) => (
 								<DropdownMenuCheckboxItem
@@ -235,11 +215,7 @@ export function StocksFundsTransactions({
 				</div>
 
 				<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-					<Button
-						variant="outline"
-						size="sm"
-						className="h-8 text-xs border-border/50"
-					>
+					<Button variant="outline" size="sm" className="h-8 text-xs border-border/50">
 						<Download className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
 						Export CSV
 					</Button>
@@ -302,17 +278,13 @@ export function StocksFundsTransactions({
 								</TableCell>
 								<TableCell className="py-2">
 									<div className="flex items-center gap-2">
-										<span className="font-bold text-sm text-foreground">
-											{tx.symbol}
-										</span>
+										<span className="font-bold text-sm text-foreground">{tx.symbol}</span>
 										<span className="text-xs text-muted-foreground hidden sm:inline">
 											{tx.name}
 										</span>
 									</div>
 								</TableCell>
-								<TableCell className="text-right py-2 font-mono text-sm">
-									{tx.quantity}
-								</TableCell>
+								<TableCell className="text-right py-2 font-mono text-sm">{tx.quantity}</TableCell>
 								<TableCell className="text-right py-2 font-mono text-sm text-muted-foreground">
 									{formatCurrency(tx.price)}
 								</TableCell>
@@ -347,9 +319,7 @@ export function StocksFundsTransactions({
 											<DropdownMenuItem>View Details</DropdownMenuItem>
 											<DropdownMenuItem>Edit Transaction</DropdownMenuItem>
 											<DropdownMenuSeparator />
-											<DropdownMenuItem className="text-rose-500">
-												Delete
-											</DropdownMenuItem>
+											<DropdownMenuItem className="text-rose-500">Delete</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>
 								</TableCell>

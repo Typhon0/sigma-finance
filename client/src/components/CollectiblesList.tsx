@@ -8,7 +8,6 @@ import {
 	Package,
 	Palette,
 	Plus,
-	Search,
 	SortAsc,
 	Watch,
 	Wine,
@@ -17,27 +16,15 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
 import { AddWatchForm } from "./AddWatchForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface CollectiblesListProps {
@@ -55,9 +42,7 @@ type CollectibleType =
 	| "precious_metals"
 	| "other";
 
-export function CollectiblesList({
-	onSelectCollectible,
-}: CollectiblesListProps) {
+export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps) {
 	const { assets, addWatch, currentPortfolio, refetch } = usePortfolio();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState("value");
@@ -67,17 +52,8 @@ export function CollectiblesList({
 	const [addFormType, setAddFormType] = useState<string>("watch");
 
 	// Get all collectible types
-	const collectibleTypes = [
-		"watch",
-		"art",
-		"vehicle",
-		"jewelry",
-		"wine",
-		"precious_metals",
-	];
-	const collectibleAssets = assets.filter((asset) =>
-		collectibleTypes.includes(asset.type),
-	);
+	const collectibleTypes = ["watch", "art", "vehicle", "jewelry", "wine", "precious_metals"];
+	const collectibleAssets = assets.filter((asset) => collectibleTypes.includes(asset.type));
 
 	const filteredCollectibles = collectibleAssets
 		.filter((item) => {
@@ -105,10 +81,7 @@ export function CollectiblesList({
 		});
 
 	const getTotalValue = () => {
-		return collectibleAssets.reduce(
-			(sum, asset) => sum + (asset.currentValue || 0),
-			0,
-		);
+		return collectibleAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
 	};
 
 	const getTotalGain = () => {
@@ -124,8 +97,7 @@ export function CollectiblesList({
 
 	const totalValue = getTotalValue();
 	const totalGain = getTotalGain();
-	const gainPercent =
-		totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
+	const gainPercent = totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
 
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
@@ -142,17 +114,15 @@ export function CollectiblesList({
 	};
 
 	const getTypeBadge = (type: string) => {
-		const badges: Record<
-			string,
-			{ label: string; variant: "default" | "secondary" | "outline" }
-		> = {
-			watch: { label: "Watch", variant: "default" },
-			art: { label: "Art", variant: "secondary" },
-			vehicle: { label: "Vehicle", variant: "outline" },
-			jewelry: { label: "Jewelry", variant: "default" },
-			wine: { label: "Wine", variant: "secondary" },
-			precious_metals: { label: "Precious Metals", variant: "outline" },
-		};
+		const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> =
+			{
+				watch: { label: "Watch", variant: "default" },
+				art: { label: "Art", variant: "secondary" },
+				vehicle: { label: "Vehicle", variant: "outline" },
+				jewelry: { label: "Jewelry", variant: "default" },
+				wine: { label: "Wine", variant: "secondary" },
+				precious_metals: { label: "Precious Metals", variant: "outline" },
+			};
 		return badges[type] || { label: type, variant: "outline" };
 	};
 
@@ -175,18 +145,14 @@ export function CollectiblesList({
 		}
 		try {
 			const result = await addWatch({
-				name:
-					formData.name ||
-					`${formData.brand || "Watch"} ${formData.model || ""}`.trim(),
+				name: formData.name || `${formData.brand || "Watch"} ${formData.model || ""}`.trim(),
 				assetTypeID: "6", // Watch asset type ID from server
 				brand: formData.brand || "Unknown",
 				model: formData.model || "Unknown",
 				serialNumber: formData.serialNumber || undefined,
 				referenceNumber: formData.reference || undefined,
 				condition: formData.condition || "Good",
-				yearMade: formData.yearManufactured
-					? parseInt(formData.yearManufactured)
-					: undefined,
+				yearMade: formData.yearManufactured ? parseInt(formData.yearManufactured, 10) : undefined,
 				material: formData.material || "stainless_steel",
 				movement: formData.movement || "automatic",
 				caseSize: undefined,
@@ -204,7 +170,6 @@ export function CollectiblesList({
 				throw new Error("createWatchAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding watch:", error);
 			toast.error("Failed to add watch. Please try again.");
 			throw error;
 		}
@@ -231,18 +196,15 @@ export function CollectiblesList({
 						<Package className="h-16 w-16 text-muted-foreground mb-4" />
 						<h3 className="mb-2">No Collectibles</h3>
 						<p className="text-sm text-muted-foreground text-center mb-6 max-w-md">
-							Start tracking your valuable items: luxury watches, art pieces,
-							vehicles, jewelry, and more.
+							Start tracking your valuable items: luxury watches, art pieces, vehicles, jewelry, and
+							more.
 						</p>
 						<div className="flex gap-2">
 							<Button onClick={() => handleOpenAddForm("watch")}>
 								<Watch className="h-4 w-4 mr-2" />
 								Add Watch
 							</Button>
-							<Button
-								variant="outline"
-								onClick={() => handleOpenAddForm("art")}
-							>
+							<Button variant="outline" onClick={() => handleOpenAddForm("art")}>
 								<Palette className="h-4 w-4 mr-2" />
 								Add Art
 							</Button>
@@ -253,9 +215,7 @@ export function CollectiblesList({
 				<Dialog open={isAddFormOpen} onOpenChange={setIsAddFormOpen}>
 					<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 						<DialogHeader>
-							<DialogTitle>
-								Add {addFormType === "watch" ? "Watch" : "Collectible"}
-							</DialogTitle>
+							<DialogTitle>Add {addFormType === "watch" ? "Watch" : "Collectible"}</DialogTitle>
 						</DialogHeader>
 						{addFormType === "watch" && (
 							<AddWatchForm
@@ -265,13 +225,8 @@ export function CollectiblesList({
 						)}
 						{addFormType !== "watch" && (
 							<div className="p-6 text-center">
-								<p className="text-sm text-muted-foreground">
-									Form for {addFormType} coming soon!
-								</p>
-								<Button
-									onClick={() => setIsAddFormOpen(false)}
-									className="mt-4"
-								>
+								<p className="text-sm text-muted-foreground">Form for {addFormType} coming soon!</p>
+								<Button onClick={() => setIsAddFormOpen(false)} className="mt-4">
 									Close
 								</Button>
 							</div>
@@ -289,8 +244,7 @@ export function CollectiblesList({
 				<div>
 					<h2 className="mb-1">Collectibles & Valuables</h2>
 					<p className="text-sm text-muted-foreground">
-						{collectibleAssets.length}{" "}
-						{collectibleAssets.length === 1 ? "item" : "items"}
+						{collectibleAssets.length} {collectibleAssets.length === 1 ? "item" : "items"}
 					</p>
 				</div>
 				<Button onClick={() => handleOpenAddForm("watch")}>
@@ -309,12 +263,10 @@ export function CollectiblesList({
 								Portfolio Demo Incomplet
 							</p>
 							<p className="text-sm text-blue-700 dark:text-blue-300">
-								Votre portfolio devrait contenir 15 collectibles (montres, art,
-								véhicules, bijoux, vins, métaux précieux). Allez dans{" "}
-								<strong>
-									Paramètres → Préférences → Reset to Default Data
-								</strong>{" "}
-								pour charger le portfolio complet avec tous les exemples.
+								Votre portfolio devrait contenir 15 collectibles (montres, art, véhicules, bijoux,
+								vins, métaux précieux). Allez dans{" "}
+								<strong>Paramètres → Préférences → Reset to Default Data</strong> pour charger le
+								portfolio complet avec tous les exemples.
 							</p>
 						</div>
 					</div>
@@ -373,9 +325,7 @@ export function CollectiblesList({
 				className="mb-6"
 			>
 				<TabsList className="w-full justify-start overflow-x-auto">
-					<TabsTrigger value="all">
-						All ({collectibleAssets.length})
-					</TabsTrigger>
+					<TabsTrigger value="all">All ({collectibleAssets.length})</TabsTrigger>
 					<TabsTrigger value="watch">
 						<Watch className="h-4 w-4 mr-2" />
 						Watches ({getCountByType("watch")})
@@ -407,15 +357,13 @@ export function CollectiblesList({
 			<Card className="mb-6">
 				<CardContent className="pt-6">
 					<div className="flex flex-col md:flex-row gap-4">
-						<div className="flex-1 relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search collectibles..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								className="pl-9"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search collectibles..."
+							value={searchTerm}
+							onChange={(e) => setSearchTerm(e.target.value)}
+							onClear={() => setSearchTerm("")}
+							containerClassName="flex-1"
+						/>
 
 						<Select value={sortBy} onValueChange={setSortBy}>
 							<SelectTrigger className="w-full md:w-[200px]">
@@ -453,8 +401,7 @@ export function CollectiblesList({
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 				{filteredCollectibles.map((item) => {
 					const gain = (item.currentValue || 0) - (item.purchasePrice || 0);
-					const gainPercent =
-						item.purchasePrice > 0 ? (gain / item.purchasePrice) * 100 : 0;
+					const gainPercent = item.purchasePrice > 0 ? (gain / item.purchasePrice) * 100 : 0;
 					const typeBadge = getTypeBadge(item.type);
 					const TypeIcon = getTypeIcon(item.type);
 
@@ -479,18 +426,12 @@ export function CollectiblesList({
 							<CardContent>
 								<div className="space-y-3">
 									<div>
-										<p className="text-xs text-muted-foreground mb-1">
-											Current Value
-										</p>
-										<p className="font-mono">
-											{formatCurrency(item.currentValue || 0)}
-										</p>
+										<p className="text-xs text-muted-foreground mb-1">Current Value</p>
+										<p className="font-mono">{formatCurrency(item.currentValue || 0)}</p>
 									</div>
 
 									<div>
-										<p className="text-xs text-muted-foreground mb-1">
-											Gain/Loss
-										</p>
+										<p className="text-xs text-muted-foreground mb-1">Gain/Loss</p>
 										<div
 											className={`flex items-center gap-1.5 font-mono text-sm ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
@@ -500,27 +441,20 @@ export function CollectiblesList({
 												<TrendArrowDown className="flex-shrink-0" />
 											)}
 											<span>
-												{formatCurrency(Math.abs(gain))} (
-												{gainPercent.toFixed(2)}%)
+												{formatCurrency(Math.abs(gain))} ({gainPercent.toFixed(2)}%)
 											</span>
 										</div>
 									</div>
 
 									{item.condition && (
 										<div>
-											<p className="text-xs text-muted-foreground mb-1">
-												Condition
-											</p>
+											<p className="text-xs text-muted-foreground mb-1">Condition</p>
 											<p className="text-sm">{item.condition}</p>
 										</div>
 									)}
 
 									<div className="pt-2 border-t">
-										<Button
-											variant="ghost"
-											size="sm"
-											className="w-full justify-between"
-										>
+										<Button variant="ghost" size="sm" className="w-full justify-between">
 											View Details
 											<ArrowRight className="h-4 w-4" />
 										</Button>
@@ -545,9 +479,7 @@ export function CollectiblesList({
 			<Dialog open={isAddFormOpen} onOpenChange={setIsAddFormOpen}>
 				<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
 					<DialogHeader>
-						<DialogTitle>
-							Add {addFormType === "watch" ? "Watch" : "Collectible"}
-						</DialogTitle>
+						<DialogTitle>Add {addFormType === "watch" ? "Watch" : "Collectible"}</DialogTitle>
 					</DialogHeader>
 					{addFormType === "watch" && (
 						<AddWatchForm
@@ -557,9 +489,7 @@ export function CollectiblesList({
 					)}
 					{addFormType !== "watch" && (
 						<div className="p-6 text-center">
-							<p className="text-sm text-muted-foreground">
-								Form for {addFormType} coming soon!
-							</p>
+							<p className="text-sm text-muted-foreground">Form for {addFormType} coming soon!</p>
 							<Button onClick={() => setIsAddFormOpen(false)} className="mt-4">
 								Close
 							</Button>

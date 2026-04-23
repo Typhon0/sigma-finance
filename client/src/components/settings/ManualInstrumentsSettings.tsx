@@ -1,13 +1,7 @@
 "use client";
 
-import {
-	Archive,
-	EllipsisVertical,
-	RotateCcw,
-	Search,
-	SlidersHorizontal,
-	Tag,
-} from "lucide-react";
+import { useMutation, useQuery } from "@apollo/client";
+import { Archive, EllipsisVertical, RotateCcw, SlidersHorizontal, Tag } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -43,7 +38,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { useDebounce } from "@/hooks/use-debounce";
 import {
 	type ArchiveManualInstrumentMutation,
 	type ArchiveManualInstrumentMutationVariables,
@@ -56,13 +50,13 @@ import {
 	type UpdateManualInstrumentMutation,
 	type UpdateManualInstrumentMutationVariables,
 } from "@/gql/graphql";
-import { useMutation, useQuery } from "@apollo/client";
 import {
 	ARCHIVE_MANUAL_INSTRUMENT,
 	RESTORE_MANUAL_INSTRUMENT,
 	UPDATE_MANUAL_INSTRUMENT,
 } from "@/graphql/mutations/instruments";
 import { MANUAL_INSTRUMENTS } from "@/graphql/queries/instruments";
+import { useDebounce } from "@/hooks/use-debounce";
 
 type ManualInstrumentItem = ManualInstrumentsQuery["manualInstruments"]["items"][number];
 
@@ -216,7 +210,7 @@ export function ManualInstrumentsSettings() {
 
 	useEffect(() => {
 		setPage(0);
-	}, [debouncedQuery, assetTypeFilter, showArchived]);
+	}, []);
 
 	const { data, loading, error, refetch } = useQuery<
 		ManualInstrumentsQuery,
@@ -295,16 +289,17 @@ export function ManualInstrumentsSettings() {
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							value={query}
-							onChange={(event) => setQuery(event.target.value)}
-							placeholder="Search symbol, name, or exchange"
-							className="pl-9 w-[min(100vw-2rem,18rem)]"
-						/>
-					</div>
-					<Select value={assetTypeFilter} onValueChange={(value) => setAssetTypeFilter(value as "all" | InstrumentAssetType)}>
+					<SearchInput
+						placeholder="Search instruments..."
+						value={query}
+						onChange={(e) => setQuery(e.target.value)}
+						onClear={() => setQuery("")}
+						containerClassName="flex-1"
+					/>
+					<Select
+						value={assetTypeFilter}
+						onValueChange={(value) => setAssetTypeFilter(value as "all" | InstrumentAssetType)}
+					>
 						<SelectTrigger className="w-[10rem]">
 							<SelectValue placeholder="Asset type" />
 						</SelectTrigger>
@@ -372,20 +367,22 @@ export function ManualInstrumentsSettings() {
 									<TableCell>
 										<div className="flex items-center gap-2">
 											<Badge variant={statusTone(item.status)}>{verificationLabel(item)}</Badge>
-											{item.syncState?.stale ? (
-												<Badge variant="outline">Stale</Badge>
-											) : null}
+											{item.syncState?.stale ? <Badge variant="outline">Stale</Badge> : null}
 										</div>
 									</TableCell>
 									<TableCell className="text-muted-foreground">
 										{formatTimestamp(item.updatedAt)}
 									</TableCell>
 									<TableCell className="text-right">
-												<DropdownMenu>
+										<DropdownMenu>
 											<DropdownMenuTrigger asChild>
-													<Button variant="ghost" size="icon" disabled={saving || archiving || restoring}>
-														<EllipsisVertical className="h-4 w-4" />
-													</Button>
+												<Button
+													variant="ghost"
+													size="icon"
+													disabled={saving || archiving || restoring}
+												>
+													<EllipsisVertical className="h-4 w-4" />
+												</Button>
 											</DropdownMenuTrigger>
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem onSelect={() => openEditDialog(item)}>
@@ -420,10 +417,18 @@ export function ManualInstrumentsSettings() {
 					{items.length} item{items.length === 1 ? "" : "s"} on this page
 				</p>
 				<div className="flex items-center gap-2">
-					<Button variant="outline" onClick={() => setPage((value) => Math.max(0, value - 1))} disabled={page === 0 || loading}>
+					<Button
+						variant="outline"
+						onClick={() => setPage((value) => Math.max(0, value - 1))}
+						disabled={page === 0 || loading}
+					>
 						Previous
 					</Button>
-					<Button variant="outline" onClick={() => setPage((value) => value + 1)} disabled={!hasMore || loading}>
+					<Button
+						variant="outline"
+						onClick={() => setPage((value) => value + 1)}
+						disabled={!hasMore || loading}
+					>
 						Next
 					</Button>
 				</div>
@@ -467,7 +472,12 @@ export function ManualInstrumentsSettings() {
 								<Label htmlFor="assetType">Asset Type</Label>
 								<Select
 									value={formState.assetType}
-									onValueChange={(value) => setFormState({ ...formState, assetType: value as InstrumentAssetType })}
+									onValueChange={(value) =>
+										setFormState({
+											...formState,
+											assetType: value as InstrumentAssetType,
+										})
+									}
 								>
 									<SelectTrigger id="assetType">
 										<SelectValue />
@@ -486,7 +496,12 @@ export function ManualInstrumentsSettings() {
 								<Input
 									id="exchangeCode"
 									value={formState.exchangeCode}
-									onChange={(event) => setFormState({ ...formState, exchangeCode: event.target.value })}
+									onChange={(event) =>
+										setFormState({
+											...formState,
+											exchangeCode: event.target.value,
+										})
+									}
 								/>
 							</div>
 							<div className="space-y-2">
@@ -502,7 +517,12 @@ export function ManualInstrumentsSettings() {
 								<Input
 									id="baseCurrency"
 									value={formState.baseCurrency}
-									onChange={(event) => setFormState({ ...formState, baseCurrency: event.target.value })}
+									onChange={(event) =>
+										setFormState({
+											...formState,
+											baseCurrency: event.target.value,
+										})
+									}
 								/>
 							</div>
 							<div className="space-y-2">
@@ -510,7 +530,12 @@ export function ManualInstrumentsSettings() {
 								<Input
 									id="quoteCurrency"
 									value={formState.quoteCurrency}
-									onChange={(event) => setFormState({ ...formState, quoteCurrency: event.target.value })}
+									onChange={(event) =>
+										setFormState({
+											...formState,
+											quoteCurrency: event.target.value,
+										})
+									}
 								/>
 							</div>
 							<div className="space-y-2">
@@ -518,7 +543,12 @@ export function ManualInstrumentsSettings() {
 								<Input
 									id="underlyingSymbol"
 									value={formState.underlyingSymbol}
-									onChange={(event) => setFormState({ ...formState, underlyingSymbol: event.target.value })}
+									onChange={(event) =>
+										setFormState({
+											...formState,
+											underlyingSymbol: event.target.value,
+										})
+									}
 								/>
 							</div>
 							<div className="space-y-2 md:col-span-2">

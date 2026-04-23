@@ -1,14 +1,10 @@
 "use client";
 
-import { Search, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import {
-	type AssetSyncType,
-	useFinanceDatabasePreview,
-} from "@/hooks/use-sync-management";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Table,
 	TableBody,
@@ -17,6 +13,7 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import { type AssetSyncType, useFinanceDatabasePreview } from "@/hooks/use-sync-management";
 
 interface Asset {
 	symbol: string;
@@ -38,12 +35,7 @@ const ITEMS_PER_PAGE = 20;
 const toAssetSyncType = (assetType: string): AssetSyncType =>
 	assetType.toUpperCase() as AssetSyncType;
 
-export function DataPreviewTable({
-	assetType,
-	isOpen,
-	onClose,
-	onImport,
-}: DataPreviewTableProps) {
+export function DataPreviewTable({ assetType, isOpen, onClose, onImport }: DataPreviewTableProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
 	const [selectedSymbols, setSelectedSymbols] = useState<Set<string>>(new Set());
@@ -57,16 +49,9 @@ export function DataPreviewTable({
 		return () => window.clearTimeout(timeout);
 	}, [searchQuery]);
 
-	const previewAssetType = useMemo(
-		() => toAssetSyncType(assetType),
-		[assetType],
-	);
+	const previewAssetType = useMemo(() => toAssetSyncType(assetType), [assetType]);
 
-	const {
-		preview,
-		loading,
-		error,
-	} = useFinanceDatabasePreview(
+	const { preview, loading, error } = useFinanceDatabasePreview(
 		previewAssetType,
 		debouncedSearchQuery || undefined,
 		200,
@@ -76,13 +61,18 @@ export function DataPreviewTable({
 
 	const assets = useMemo<Asset[]>(
 		() =>
-			preview.map((item) => ({
-				symbol: item.symbol,
-				name: item.name,
-				exchange: item.exchange,
-				sector: item.sector,
-				country: item.country,
-			})),
+			preview.map(
+				(item) =>
+					({
+						id: item.symbol,
+						symbol: item.symbol,
+						name: item.name,
+						exchange: item.exchange ?? undefined,
+						sector: item.sector ?? undefined,
+						country: item.country ?? undefined,
+						type: "STOCK",
+					}) as Asset,
+			),
 		[preview],
 	);
 
@@ -102,7 +92,9 @@ export function DataPreviewTable({
 		const pageSymbols = new Set(paginatedAssets.map((a) => a.symbol));
 		setSelectedSymbols((prev) => {
 			const next = new Set(prev);
-			pageSymbols.forEach((symbol) => next.delete(symbol));
+			pageSymbols.forEach((symbol) => {
+				next.delete(symbol);
+			});
 			return next;
 		});
 	};
@@ -143,15 +135,12 @@ export function DataPreviewTable({
 				</div>
 
 				<div className="border-b p-4">
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-						<Input
-							placeholder="Search by symbol, name, exchange, sector, or country..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+					/>
 				</div>
 
 				<div className="flex-1 overflow-auto p-4">
@@ -171,9 +160,7 @@ export function DataPreviewTable({
 										<Checkbox
 											checked={
 												paginatedAssets.length > 0 &&
-												paginatedAssets.every((asset) =>
-													selectedSymbols.has(asset.symbol),
-												)
+												paginatedAssets.every((asset) => selectedSymbols.has(asset.symbol))
 											}
 											onCheckedChange={handleSelectAll}
 										/>
@@ -196,12 +183,8 @@ export function DataPreviewTable({
 												}
 											/>
 										</TableCell>
-										<TableCell className="font-mono font-medium">
-											{asset.symbol}
-										</TableCell>
-										<TableCell className="max-w-[200px] truncate">
-											{asset.name}
-										</TableCell>
+										<TableCell className="font-mono font-medium">{asset.symbol}</TableCell>
+										<TableCell className="max-w-[200px] truncate">{asset.name}</TableCell>
 										<TableCell>{asset.exchange}</TableCell>
 										<TableCell>{asset.sector ?? "—"}</TableCell>
 										<TableCell>{asset.country ?? "—"}</TableCell>
@@ -233,9 +216,7 @@ export function DataPreviewTable({
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() =>
-										setCurrentPage((p) => Math.min(totalPages, p + 1))
-									}
+									onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
 									disabled={currentPage === totalPages}
 								>
 									Next

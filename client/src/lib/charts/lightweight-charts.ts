@@ -103,9 +103,7 @@ export function getChartTheme(isDark: boolean = false): ChartTheme {
 /**
  * Default chart options
  */
-export function getDefaultChartOptions(
-	theme: ChartTheme,
-): DeepPartial<ChartOptions> {
+export function getDefaultChartOptions(theme: ChartTheme): DeepPartial<ChartOptions> {
 	return {
 		layout: {
 			background: {
@@ -223,9 +221,7 @@ export function getDefaultAreaOptions(
 /**
  * Default volume histogram options
  */
-export function getDefaultVolumeOptions(
-	theme: ChartTheme,
-): DeepPartial<HistogramSeriesOptions> {
+export function getDefaultVolumeOptions(theme: ChartTheme): DeepPartial<HistogramSeriesOptions> {
 	return {
 		color: theme.textColor,
 		priceFormat: {

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { EmailVerification } from "../components/auth/email-verification";
 import { useAuth } from "../lib/auth-context";
 
-interface VerifyEmailSearch {
+export interface VerifyEmailSearch {
 	token?: string;
 }
 
@@ -21,16 +21,15 @@ function VerifyEmailPage() {
 	const { token } = Route.useSearch();
 
 	const handleSuccess = () => {
-		navigate({ to: "/dashboard" });
+		navigate({
+			to: "/dashboard",
+			search: { portfolioId: undefined, view: undefined },
+		});
 	};
 
 	return (
 		<div className="min-h-screen flex items-center justify-center bg-background p-4">
-			<EmailVerification
-				token={token}
-				email={user?.email}
-				onSuccess={handleSuccess}
-			/>
+			<EmailVerification token={token} email={user?.email} onSuccess={handleSuccess} />
 		</div>
 	);
 }

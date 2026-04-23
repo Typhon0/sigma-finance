@@ -1,12 +1,5 @@
 import type React from "react";
-import {
-	createContext,
-	useCallback,
-	useContext,
-	useEffect,
-	useRef,
-	useState,
-} from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	useConfirmPasswordResetMutation,
@@ -32,17 +25,20 @@ const TOKEN_EXPIRY_KEY = "token_expiry";
 const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 const getStoredTokenExpiry = () => localStorage.getItem(TOKEN_EXPIRY_KEY);
+const hasRefreshTokenChanged = (attemptedRefreshToken: string): boolean => {
+	const currentRefreshToken = getStoredRefreshToken();
+	return (
+		typeof currentRefreshToken === "string" &&
+		currentRefreshToken.length > 0 &&
+		currentRefreshToken !== attemptedRefreshToken
+	);
+};
 const getStoredUser = (): AuthUser | null => {
 	const stored = localStorage.getItem(USER_KEY);
 	return stored ? JSON.parse(stored) : null;
 };
 
-const setStoredAuth = (
-	token: string,
-	refreshToken: string,
-	user: AuthUser,
-	expiresAt: string,
-) => {
+const setStoredAuth = (token: string, refreshToken: string, user: AuthUser, expiresAt: string) => {
 	localStorage.setItem(TOKEN_KEY, token);
 	localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 	localStorage.setItem(USER_KEY, JSON.stringify(user));
@@ -106,9 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			AuthErrorHandler.showErrors(errors);
 
 			// Check if any error requires logout
-			const requiresLogout = errors.some((error) =>
-				AuthErrorHandler.requiresLogout(error),
-			);
+			const requiresLogout = errors.some((error) => AuthErrorHandler.requiresLogout(error));
 			if (requiresLogout) {
 				clearStoredAuth();
 				setUser(null);
@@ -136,8 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			refreshTimeoutRef.current = setTimeout(async () => {
 				try {
 					await refreshTokenActionRef.current?.();
-				} catch (error) {
-					console.error("Automatic token refresh failed:", error);
+				} catch (_error) {
 					// Don't logout automatically on refresh failure, let user continue until token actually expires
 				}
 			}, timeUntilRefresh);
@@ -155,9 +148,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				if (isTokenExpired(storedExpiry)) {
 					// Token is expired, try to refresh
 					try {
-						await refreshToken();
-					} catch (error) {
-						console.error("Token refresh failed on init:", error);
+						await refreshTokenActionRef.current?.();
+					} catch (_error) {
 						clearStoredAuth();
 						setUser(null);
 					}
@@ -197,12 +189,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				);
 
 				if (data?.login.success && data.login.data) {
-					const {
-						token,
-						refreshToken,
-						user: authUser,
-						expiresAt,
-					} = data.login.data;
+					const { token, refreshToken, user: authUser, expiresAt } = data.login.data;
 					setStoredAuth(token, refreshToken, authUser, expiresAt);
 					setUser(authUser);
 					setupTokenRefresh(expiresAt);
@@ -211,7 +198,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.login.errors);
 				}
 			} catch (error: unknown) {
-				console.error("Login error:", error);
 				const authErrors =
 					error && typeof error === "object" && "authErrors" in error
 						? (error as { authErrors?: AuthError[] }).authErrors
@@ -219,13 +205,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 				if (!authErrors) {
 					const errorMessage =
-						error instanceof Error
-						? error.message
-						: "Login failed. Please try again.";
+						error instanceof Error ? error.message : "Login failed. Please try again.";
 					toast.error(
 						errorMessage.includes("timed out")
-						? "Login request timed out. Please check your connection."
-						: errorMessage,
+							? "Login request timed out. Please check your connection."
+							: errorMessage,
 					);
 				}
 				throw error;
@@ -233,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setIsLoading(false);
 			}
 		},
-		[loginMutation],
+		[loginMutation, handleAuthError, setupTokenRefresh],
 	);
 
 	const register = useCallback(
@@ -247,12 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				});
 
 				if (data?.register.success && data.register.data) {
-					const {
-						token,
-						refreshToken,
-						user: authUser,
-						expiresAt,
-					} = data.register.data;
+					const { token, refreshToken, user: authUser, expiresAt } = data.register.data;
 					setStoredAuth(token, refreshToken, authUser, expiresAt);
 					setUser(authUser);
 					setupTokenRefresh(expiresAt);
@@ -261,14 +240,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.register.errors);
 				}
 			} catch (error) {
-				console.error("Registration error:", error);
 				toast.error("Registration failed. Please try again.");
 				throw error;
 			} finally {
 				setIsLoading(false);
 			}
 		},
-		[registerMutation],
+		[registerMutation, setupTokenRefresh, handleAuthError],
 	);
 
 	const logout = useCallback(async () => {
@@ -292,8 +270,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 							input: { token },
 						},
 					});
-				} catch (error) {
-					console.error("Logout error:", error);
+				} catch (_error) {
 					// Continue with logout even if server call fails
 				}
 			}
@@ -321,12 +298,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.resetPassword.errors);
 				}
 			} catch (error) {
-				console.error("Reset password error:", error);
 				toast.error("Failed to send reset email. Please try again.");
 				throw error;
 			}
 		},
-		[resetPasswordMutation],
+		[resetPasswordMutation, handleAuthError],
 	);
 
 	const confirmPasswordReset = useCallback(
@@ -344,12 +320,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.confirmPasswordReset.errors);
 				}
 			} catch (error) {
-				console.error("Confirm password reset error:", error);
 				toast.error("Failed to reset password. Please try again.");
 				throw error;
 			}
 		},
-		[confirmPasswordResetMutation],
+		[confirmPasswordResetMutation, handleAuthError],
 	);
 
 	const verifyEmail = useCallback(
@@ -373,12 +348,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.verifyEmail.errors);
 				}
 			} catch (error) {
-				console.error("Email verification error:", error);
 				toast.error("Failed to verify email. Please try again.");
 				throw error;
 			}
 		},
-		[verifyEmailMutation, user],
+		[verifyEmailMutation, user, handleAuthError],
 	);
 
 	const resendVerification = useCallback(
@@ -396,12 +370,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					handleAuthError(data?.resendVerification.errors);
 				}
 			} catch (error) {
-				console.error("Resend verification error:", error);
 				toast.error("Failed to send verification email. Please try again.");
 				throw error;
 			}
 		},
-		[resendVerificationMutation],
+		[resendVerificationMutation, handleAuthError],
 	);
 
 	const refreshToken = useCallback(async () => {
@@ -428,18 +401,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setUser(authUser);
 				setupTokenRefresh(expiresAt);
 			} else {
+				if (hasRefreshTokenChanged(storedRefreshToken)) {
+					return;
+				}
 				handleAuthError(data?.refreshToken.errors);
-				clearStoredAuth();
-				setUser(null);
 				throw new Error("Token refresh failed");
 			}
 		} catch (error) {
-			console.error("Token refresh error:", error);
+			if (hasRefreshTokenChanged(storedRefreshToken)) {
+				return;
+			}
 			clearStoredAuth();
 			setUser(null);
 			throw error;
 		}
-	}, [refreshTokenMutation, setupTokenRefresh]);
+	}, [refreshTokenMutation, setupTokenRefresh, handleAuthError]);
 
 	useEffect(() => {
 		refreshTokenActionRef.current = refreshToken;

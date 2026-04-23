@@ -18,13 +18,7 @@ import exampleImage from "@/assets/placeholder.svg";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -39,16 +33,11 @@ interface RealEstateDetailProps {
 	onBack: () => void;
 }
 
-export function RealEstateDetail({
-	propertyId,
-	onBack,
-}: RealEstateDetailProps) {
+export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) {
 	const { assets } = usePortfolio();
 	const [timePeriod, setTimePeriod] = useState("ALL");
 
-	const property = assets.find(
-		(a) => a.id === propertyId && a.type === "real_estate",
-	);
+	const property = assets.find((a) => a.id === propertyId && a.type === "real_estate");
 
 	if (!property) {
 		return (
@@ -66,7 +55,7 @@ export function RealEstateDetail({
 
 	// Generate historical price data
 	const generatePriceHistory = () => {
-		const data = [];
+		const data: { date: string; price: number }[] = [];
 		let days: number;
 
 		if (timePeriod === "7D") days = 7;
@@ -76,9 +65,7 @@ export function RealEstateDetail({
 			// Calculate days since start of current year
 			const now = new Date();
 			const startOfYear = new Date(now.getFullYear(), 0, 1);
-			days = Math.floor(
-				(now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24),
-			);
+			days = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
 		} else if (timePeriod === "1Y") days = 365;
 		else days = 1825; // ALL (5 years)
 
@@ -89,8 +76,7 @@ export function RealEstateDetail({
 		for (let i = 0; i <= days; i++) {
 			const date = new Date();
 			date.setDate(date.getDate() - (days - i));
-			const price =
-				startPrice + priceIncrement * i + (Math.random() * 5000 - 2500);
+			const price = startPrice + priceIncrement * i + (Math.random() * 5000 - 2500);
 
 			data.push({
 				date: date.toLocaleDateString("en-US", {
@@ -135,9 +121,7 @@ export function RealEstateDetail({
 						<div>
 							<div className="flex items-center space-x-2">
 								<MapPin className="h-4 w-4 text-muted-foreground" />
-								<h1 className="text-2xl">
-									{property.address || property.name}
-								</h1>
+								<h1 className="text-2xl">{property.address || property.name}</h1>
 							</div>
 							<p className="text-sm text-muted-foreground mt-1">
 								{property.city || "Nivange"}, {property.country || "France"}
@@ -180,16 +164,11 @@ export function RealEstateDetail({
 							<CardHeader>
 								<div className="flex items-center justify-between">
 									<div>
-										<div className="text-4xl font-mono mb-2">
-											€{currentPrice.toLocaleString()}
-										</div>
+										<div className="text-4xl font-mono mb-2">€{currentPrice.toLocaleString()}</div>
 										<div className="flex items-center space-x-2">
 											{pnl >= 0 ? <TrendArrowUp /> : <TrendArrowDown />}
-											<span
-												className={pnl >= 0 ? "text-green-600" : "text-red-600"}
-											>
-												{pnl >= 0 ? "+" : ""}€{pnl.toLocaleString()} (
-												{pnl >= 0 ? "+" : ""}
+											<span className={pnl >= 0 ? "text-green-600" : "text-red-600"}>
+												{pnl >= 0 ? "+" : ""}€{pnl.toLocaleString()} ({pnl >= 0 ? "+" : ""}
 												{pnlPercentage}%)
 											</span>
 										</div>
@@ -231,8 +210,7 @@ export function RealEstateDetail({
 										yAxis: {
 											type: "value",
 											axisLabel: {
-												formatter: (value: number) =>
-													`€${(value / 1000).toFixed(0)}K`,
+												formatter: (value: number) => `€${(value / 1000).toFixed(0)}K`,
 											},
 										},
 										toolbox: {
@@ -259,16 +237,12 @@ export function RealEstateDetail({
 															{
 																offset: 0,
 																color:
-																	pnl >= 0
-																		? "rgba(16, 185, 129, 0.3)"
-																		: "rgba(239, 68, 68, 0.3)",
+																	pnl >= 0 ? "rgba(16, 185, 129, 0.3)" : "rgba(239, 68, 68, 0.3)",
 															},
 															{
 																offset: 1,
 																color:
-																	pnl >= 0
-																		? "rgba(16, 185, 129, 0.05)"
-																		: "rgba(239, 68, 68, 0.05)",
+																	pnl >= 0 ? "rgba(16, 185, 129, 0.05)" : "rgba(239, 68, 68, 0.05)",
 															},
 														],
 													},
@@ -295,31 +269,21 @@ export function RealEstateDetail({
 							</CardHeader>
 							<CardContent className="space-y-4">
 								<div>
-									<div className="text-2xl font-mono">
-										€{pricePerM2.toLocaleString()}
-									</div>
-									<p className="text-sm text-muted-foreground mt-1">
-										Current price per m²
-									</p>
+									<div className="text-2xl font-mono">€{pricePerM2.toLocaleString()}</div>
+									<p className="text-sm text-muted-foreground mt-1">Current price per m²</p>
 								</div>
 
 								<Separator />
 
 								<div className="space-y-2">
 									<div className="flex items-center justify-between text-sm">
-										<span className="text-muted-foreground">
-											Market average
-										</span>
+										<span className="text-muted-foreground">Market average</span>
 										<span>€{marketPricePerM2.toLocaleString()}</span>
 									</div>
 									<div className="flex items-center justify-between text-sm">
 										<span className="text-muted-foreground">Difference</span>
 										<span
-											className={
-												pricePerM2 > marketPricePerM2
-													? "text-red-600"
-													: "text-green-600"
-											}
+											className={pricePerM2 > marketPricePerM2 ? "text-red-600" : "text-green-600"}
 										>
 											{pricePerM2 > marketPricePerM2 ? "+" : ""}€
 											{(pricePerM2 - marketPricePerM2).toLocaleString()}
@@ -328,9 +292,8 @@ export function RealEstateDetail({
 								</div>
 
 								<div className="text-xs text-muted-foreground">
-									We are unable to display the comparison for your property at
-									this time. This may be due to a lack of recent sales data or
-									insufficient information for your region.
+									We are unable to display the comparison for your property at this time. This may
+									be due to a lack of recent sales data or insufficient information for your region.
 								</div>
 							</CardContent>
 						</Card>
@@ -348,18 +311,15 @@ export function RealEstateDetail({
 									{pnl >= 0 ? "+" : ""}€{Math.abs(pnl).toLocaleString()}
 								</div>
 								<div className="text-sm text-muted-foreground">
-									<span
-										className={pnl >= 0 ? "text-green-600" : "text-red-600"}
-									>
+									<span className={pnl >= 0 ? "text-green-600" : "text-red-600"}>
 										{pnl >= 0 ? "+" : ""}
 										{pnlPercentage}%
 									</span>{" "}
 									since purchase
 								</div>
 								<p className="text-xs text-muted-foreground mt-2">
-									The price of this property is estimated at €
-									{currentPrice.toLocaleString()} based on the analysis of
-									similar properties.
+									The price of this property is estimated at €{currentPrice.toLocaleString()} based
+									on the analysis of similar properties.
 								</p>
 							</CardContent>
 						</Card>
@@ -370,12 +330,8 @@ export function RealEstateDetail({
 								<CardTitle className="text-sm">NET OWNERSHIP</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-mono mb-1">
-									{ownershipPercentage}%
-								</div>
-								<div className="text-sm text-muted-foreground">
-									Ownership percentage
-								</div>
+								<div className="text-2xl font-mono mb-1">{ownershipPercentage}%</div>
+								<div className="text-sm text-muted-foreground">Ownership percentage</div>
 							</CardContent>
 						</Card>
 
@@ -385,12 +341,8 @@ export function RealEstateDetail({
 								<CardTitle className="text-sm">OWNED SHARE</CardTitle>
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-mono mb-1">
-									€{ownedShare.toLocaleString()}
-								</div>
-								<div className="text-sm text-muted-foreground">
-									Current value of your share
-								</div>
+								<div className="text-2xl font-mono mb-1">€{ownedShare.toLocaleString()}</div>
+								<div className="text-sm text-muted-foreground">Current value of your share</div>
 							</CardContent>
 						</Card>
 					</div>
@@ -408,28 +360,20 @@ export function RealEstateDetail({
 										<p className="text-sm text-muted-foreground mb-1">Type</p>
 										<div className="flex items-center space-x-2">
 											<Home className="h-4 w-4 text-muted-foreground" />
-											<p className="font-medium">
-												{property.propertyType || "House"}
-											</p>
+											<p className="font-medium">{property.propertyType || "House"}</p>
 										</div>
 									</div>
 
 									<div>
-										<p className="text-sm text-muted-foreground mb-1">
-											Category
-										</p>
+										<p className="text-sm text-muted-foreground mb-1">Category</p>
 										<div className="flex items-center space-x-2">
 											<Building2 className="h-4 w-4 text-muted-foreground" />
-											<p className="font-medium">
-												{property.category || "Residence"}
-											</p>
+											<p className="font-medium">{property.category || "Residence"}</p>
 										</div>
 									</div>
 
 									<div>
-										<p className="text-sm text-muted-foreground mb-1">
-											Surface area
-										</p>
+										<p className="text-sm text-muted-foreground mb-1">Surface area</p>
 										<div className="flex items-center space-x-2">
 											<Maximize className="h-4 w-4 text-muted-foreground" />
 											<p className="font-medium">{surfaceArea} m²</p>
@@ -442,16 +386,12 @@ export function RealEstateDetail({
 										</p>
 										<div className="flex items-center space-x-2">
 											<DollarSign className="h-4 w-4 text-muted-foreground" />
-											<p className="font-medium">
-												€{property.purchasePricePerM2 || "1,500"} / m²
-											</p>
+											<p className="font-medium">€{property.purchasePricePerM2 || "1,500"} / m²</p>
 										</div>
 									</div>
 
 									<div>
-										<p className="text-sm text-muted-foreground mb-1">
-											Date of purchase
-										</p>
+										<p className="text-sm text-muted-foreground mb-1">Date of purchase</p>
 										<div className="flex items-center space-x-2">
 											<Calendar className="h-4 w-4 text-muted-foreground" />
 											<p className="font-medium">
@@ -463,26 +403,18 @@ export function RealEstateDetail({
 									</div>
 
 									<div>
-										<p className="text-sm text-muted-foreground mb-1">
-											Construction date
-										</p>
+										<p className="text-sm text-muted-foreground mb-1">Construction date</p>
 										<div className="flex items-center space-x-2">
 											<Calendar className="h-4 w-4 text-muted-foreground" />
-											<p className="font-medium">
-												{property.constructionDate || "1947"}
-											</p>
+											<p className="font-medium">{property.constructionDate || "1947"}</p>
 										</div>
 									</div>
 
 									<div className="col-span-2">
-										<p className="text-sm text-muted-foreground mb-1">
-											Purchase price
-										</p>
+										<p className="text-sm text-muted-foreground mb-1">Purchase price</p>
 										<div className="flex items-center space-x-2">
 											<DollarSign className="h-4 w-4 text-muted-foreground" />
-											<p className="font-medium text-lg">
-												€{purchasePrice.toLocaleString()}
-											</p>
+											<p className="font-medium text-lg">€{purchasePrice.toLocaleString()}</p>
 										</div>
 									</div>
 								</div>
@@ -497,9 +429,7 @@ export function RealEstateDetail({
 							<CardContent className="space-y-4">
 								<div className="space-y-3">
 									<div className="flex items-center justify-between">
-										<span className="text-sm text-muted-foreground">
-											Agency fees
-										</span>
+										<span className="text-sm text-muted-foreground">Agency fees</span>
 										<span className="font-medium">
 											€{property.agencyFees?.toLocaleString() || "14,300"}
 										</span>
@@ -508,9 +438,7 @@ export function RealEstateDetail({
 									<Separator />
 
 									<div className="flex items-center justify-between">
-										<span className="text-sm text-muted-foreground">
-											Other initial fees
-										</span>
+										<span className="text-sm text-muted-foreground">Other initial fees</span>
 										<span className="font-medium">
 											€{property.otherFees?.toLocaleString() || "30,000"}
 										</span>
@@ -519,9 +447,7 @@ export function RealEstateDetail({
 									<Separator />
 
 									<div className="flex items-center justify-between">
-										<span className="text-sm text-muted-foreground">
-											Financing costs
-										</span>
+										<span className="text-sm text-muted-foreground">Financing costs</span>
 										<span className="font-medium">-</span>
 									</div>
 
@@ -532,8 +458,7 @@ export function RealEstateDetail({
 										<span className="font-mono text-lg">
 											€
 											{(
-												(property.agencyFees || 14300) +
-												(property.otherFees || 30000)
+												(property.agencyFees || 14300) + (property.otherFees || 30000)
 											).toLocaleString()}
 										</span>
 									</div>
@@ -541,8 +466,8 @@ export function RealEstateDetail({
 
 								<div className="mt-4 p-3 bg-muted rounded-lg">
 									<p className="text-xs text-muted-foreground">
-										💡 Tip: Keep track of all fees to accurately calculate your
-										return on investment.
+										💡 Tip: Keep track of all fees to accurately calculate your return on
+										investment.
 									</p>
 								</div>
 							</CardContent>
@@ -592,9 +517,7 @@ export function RealEstateDetail({
 
 							{property.description && (
 								<div className="mt-4">
-									<p className="text-sm text-muted-foreground mb-2">
-										Description
-									</p>
+									<p className="text-sm text-muted-foreground mb-2">Description</p>
 									<p className="text-sm">{property.description}</p>
 								</div>
 							)}

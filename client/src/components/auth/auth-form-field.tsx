@@ -93,19 +93,12 @@ export const AuthFormField = forwardRef<HTMLInputElement, AuthFormFieldProps>(
 						onBlur={handleBlur}
 						className={cn(
 							"pr-10",
-							hasError &&
-								"border-red-500 focus:border-red-500 focus:ring-red-500",
+							hasError && "border-red-500 focus:border-red-500 focus:ring-red-500",
 							isValid && "border-green-500",
 							(isPassword || hasError || isValid) && "pr-10",
 						)}
 						aria-invalid={hasError}
-						aria-describedby={
-							error
-								? `${id}-error`
-								: description
-									? `${id}-description`
-									: undefined
-						}
+						aria-describedby={error ? `${id}-error` : description ? `${id}-description` : undefined}
 						{...props}
 					/>
 
@@ -114,18 +107,8 @@ export const AuthFormField = forwardRef<HTMLInputElement, AuthFormFieldProps>(
 						{/* Validation status icon */}
 						{!isPassword && !isFocused && (
 							<>
-								{hasError && (
-									<AlertCircle
-										className="h-4 w-4 text-red-500"
-										aria-hidden="true"
-									/>
-								)}
-								{isValid && (
-									<CheckCircle
-										className="h-4 w-4 text-green-500"
-										aria-hidden="true"
-									/>
-								)}
+								{hasError && <AlertCircle className="h-4 w-4 text-red-500" aria-hidden="true" />}
+								{isValid && <CheckCircle className="h-4 w-4 text-green-500" aria-hidden="true" />}
 							</>
 						)}
 

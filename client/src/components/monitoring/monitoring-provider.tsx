@@ -1,36 +1,7 @@
-import React, {
-	createContext,
-	type ReactNode,
-	useContext,
-	useEffect,
-} from "react";
+import React, { createContext, type ReactNode, useContext, useEffect } from "react";
 import { usePerformanceMonitoring } from "@/hooks/use-performance-monitoring";
 
-interface MonitoringContextType {
-	sessionId: string;
-	userId: string | null;
-	recordDashboardEvent: (event: any) => void;
-	recordErrorEvent: (errorData: any) => void;
-	trackStateTransition: (fromState: string, toState: string) => void;
-	trackDataLoad: (
-		dataType: string,
-		startTime: number,
-		success: boolean,
-		error?: Error,
-	) => void;
-	trackUserInteraction: (
-		action: string,
-		component: string,
-		additionalData?: any,
-	) => void;
-	trackMarketDataUpdate: (
-		source: string,
-		assetCount: number,
-		duration: number,
-		success: boolean,
-	) => void;
-	setUserIdForTracking: (id: string) => void;
-}
+type MonitoringContextType = ReturnType<typeof usePerformanceMonitoring>;
 
 const MonitoringContext = createContext<MonitoringContextType | null>(null);
 
@@ -90,7 +61,7 @@ export function MonitoringProvider({ children }: MonitoringProviderProps) {
 							},
 						});
 					} else if (entry.entryType === "layout-shift") {
-						const clsEntry = entry as any;
+						const clsEntry = entry as PerformanceEntry & { hadRecentInput: boolean; value: number };
 						if (!clsEntry.hadRecentInput) {
 							monitoring.recordDashboardEvent({
 								type: "performance_metric",
@@ -112,22 +83,21 @@ export function MonitoringProvider({ children }: MonitoringProviderProps) {
 			return () => {
 				observer.disconnect();
 				window.removeEventListener("error", handleUnhandledError);
-				window.removeEventListener(
-					"unhandledrejection",
-					handleUnhandledRejection,
-				);
+				window.removeEventListener("unhandledrejection", handleUnhandledRejection);
 			};
 		}
 
-		window.addEventListener("error", handleUnhandledError);
-		window.addEventListener("unhandledrejection", handleUnhandledRejection);
+		const win = window as Window | undefined;
+		if (win) {
+			win.addEventListener("error", handleUnhandledError);
+			win.addEventListener("unhandledrejection", handleUnhandledRejection);
+		}
 
 		return () => {
-			window.removeEventListener("error", handleUnhandledError);
-			window.removeEventListener(
-				"unhandledrejection",
-				handleUnhandledRejection,
-			);
+			if (win) {
+				win.removeEventListener("error", handleUnhandledError);
+				win.removeEventListener("unhandledrejection", handleUnhandledRejection);
+			}
 		};
 	}, [monitoring]);
 
@@ -145,8 +115,7 @@ export function MonitoringProvider({ children }: MonitoringProviderProps) {
 		};
 
 		document.addEventListener("visibilitychange", handleVisibilityChange);
-		return () =>
-			document.removeEventListener("visibilitychange", handleVisibilityChange);
+		return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
 	}, [monitoring]);
 
 	// Track network status changes
@@ -182,11 +151,7 @@ export function MonitoringProvider({ children }: MonitoringProviderProps) {
 		};
 	}, [monitoring]);
 
-	return (
-		<MonitoringContext.Provider value={monitoring}>
-			{children}
-		</MonitoringContext.Provider>
-	);
+	return <MonitoringContext.Provider value={monitoring}>{children}</MonitoringContext.Provider>;
 }
 
 export function useMonitoring() {
@@ -222,7 +187,7 @@ export function withMonitoring<P extends object>(
 		// Error boundary for the component
 		const ErrorBoundary = ({ children }: { children: ReactNode }) => {
 			useEffect(() => {
-				const _handleError = (error: Error, errorInfo: any) => {
+				const _handleError = (error: Error, errorInfo: { componentStack?: string }) => {
 					recordErrorEvent({
 						error_type: "component_error",
 						component: componentName,
@@ -253,7 +218,7 @@ export function withMonitoring<P extends object>(
 export function useActionTracking() {
 	const { trackUserInteraction } = useMonitoring();
 
-	const trackClick = (elementId: string, additionalData?: any) => {
+	const trackClick = (elementId: string, additionalData?: Record<string, unknown>) => {
 		trackUserInteraction("click", elementId, {
 			timestamp: Date.now(),
 			...additionalData,
@@ -263,7 +228,7 @@ export function useActionTracking() {
 	const trackFormSubmit = (
 		formName: string,
 		success: boolean,
-		additionalData?: any,
+		additionalData?: Record<string, unknown>,
 	) => {
 		trackUserInteraction("form_submit", formName, {
 			success,
@@ -272,11 +237,7 @@ export function useActionTracking() {
 		});
 	};
 
-	const trackNavigation = (
-		from: string,
-		to: string,
-		method: string = "click",
-	) => {
+	const trackNavigation = (from: string, to: string, method: string = "click") => {
 		trackUserInteraction("navigation", "router", {
 			from,
 			to,
@@ -285,11 +246,7 @@ export function useActionTracking() {
 		});
 	};
 
-	const trackSearch = (
-		query: string,
-		resultsCount: number,
-		component: string,
-	) => {
+	const trackSearch = (query: string, resultsCount: number, component: string) => {
 		trackUserInteraction("search", component, {
 			query: query.length > 50 ? `${query.substring(0, 50)}...` : query, // Truncate long queries
 			results_count: resultsCount,
@@ -297,11 +254,7 @@ export function useActionTracking() {
 		});
 	};
 
-	const trackFilter = (
-		filterType: string,
-		filterValue: string,
-		component: string,
-	) => {
+	const trackFilter = (filterType: string, filterValue: string, component: string) => {
 		trackUserInteraction("filter", component, {
 			filter_type: filterType,
 			filter_value: filterValue,
@@ -325,7 +278,7 @@ export function useDataLoadTracking() {
 	const trackAsyncOperation = async <T,>(
 		operation: () => Promise<T>,
 		operationType: string,
-		_additionalData?: any,
+		_additionalData?: Record<string, unknown>,
 	): Promise<T> => {
 		const startTime = Date.now();
 		try {

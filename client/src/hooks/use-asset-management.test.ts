@@ -121,10 +121,7 @@ describe("useAssetManagement cache behavior", () => {
 	});
 	it("invalidates cache on addAssetToPortfolio", async () => {
 		// Set spies before hook execution
-		const spyPortfolioQueries = vi.spyOn(
-			assetHelpers,
-			"invalidatePortfolioQueries",
-		);
+		const spyPortfolioQueries = vi.spyOn(assetHelpers, "invalidatePortfolioQueries");
 		const spyDashboardData = vi.spyOn(assetHelpers, "invalidateDashboardData");
 		const spyPortfolio = vi.spyOn(assetHelpers, "invalidatePortfolio");
 
@@ -141,35 +138,23 @@ describe("useAssetManagement cache behavior", () => {
 
 		expect(spyPortfolioQueries).toHaveBeenCalled();
 		expect(spyDashboardData).toHaveBeenCalled();
-		expect(spyPortfolio).toHaveBeenCalledWith(
-			expect.anything(),
-			"test-portfolio",
-		);
+		expect(spyPortfolio).toHaveBeenCalledWith(expect.anything(), "test-portfolio");
 	});
 
 	it("invalidates cache on removeAssetFromPortfolio", async () => {
 		// Set spies before hook execution
-		const spyPortfolioQueries = vi.spyOn(
-			assetHelpers,
-			"invalidatePortfolioQueries",
-		);
+		const spyPortfolioQueries = vi.spyOn(assetHelpers, "invalidatePortfolioQueries");
 		const spyDashboardData = vi.spyOn(assetHelpers, "invalidateDashboardData");
 		const spyPortfolio = vi.spyOn(assetHelpers, "invalidatePortfolio");
 
 		// Now render hook and trigger mutation
 		const { result } = renderHook(() => useAssetManagement(undefined));
 		await act(async () => {
-			await result.current.removeAssetFromPortfolio(
-				"test-portfolio",
-				"test-asset",
-			);
+			await result.current.removeAssetFromPortfolio("test-portfolio", "test-asset");
 		});
 
 		expect(spyPortfolioQueries).toHaveBeenCalled();
 		expect(spyDashboardData).toHaveBeenCalled();
-		expect(spyPortfolio).toHaveBeenCalledWith(
-			expect.anything(),
-			"test-portfolio",
-		);
+		expect(spyPortfolio).toHaveBeenCalledWith(expect.anything(), "test-portfolio");
 	});
 });

@@ -110,16 +110,8 @@ export function SmallAssetPriceChart({
 
 		return {
 			icon: isPositive ? TrendingUp : isNegative ? TrendingDown : Minus,
-			color: isPositive
-				? "text-green-600"
-				: isNegative
-					? "text-red-600"
-					: "text-gray-500",
-			bgColor: isPositive
-				? "bg-green-50"
-				: isNegative
-					? "bg-red-50"
-					: "bg-gray-50",
+			color: isPositive ? "text-green-600" : isNegative ? "text-red-600" : "text-gray-500",
+			bgColor: isPositive ? "bg-green-50" : isNegative ? "bg-red-50" : "bg-gray-50",
 			text: `${isPositive ? "+" : ""}${currentPrice.changePercent.toFixed(2)}%`,
 		};
 	}, [currentPrice, showChange]);
@@ -151,27 +143,19 @@ export function SmallAssetPriceChart({
 							<h4 className="text-sm font-medium truncate">
 								{name || symbol || `Asset ${assetId}`}
 							</h4>
-							{symbol && name && (
-								<p className="text-xs text-muted-foreground">{symbol}</p>
-							)}
+							{symbol && name && <p className="text-xs text-muted-foreground">{symbol}</p>}
 						</div>
 
 						{showPrice && currentPrice && (
 							<div className="text-right ml-2">
 								<div className="flex items-center justify-end gap-1">
-									<span className="text-sm font-semibold">
-										${currentPrice.current.toFixed(2)}
-									</span>
+									<span className="text-sm font-semibold">${currentPrice.current.toFixed(2)}</span>
 									<CompactStaleIndicator lastUpdated={priceTimestamp} />
 								</div>
 								{priceChangeInfo && (
 									<Badge
 										variant="secondary"
-										className={cn(
-											"text-xs h-5",
-											priceChangeInfo.bgColor,
-											priceChangeInfo.color,
-										)}
+										className={cn("text-xs h-5", priceChangeInfo.bgColor, priceChangeInfo.color)}
 									>
 										<priceChangeInfo.icon className="h-2.5 w-2.5 mr-1" />
 										{priceChangeInfo.text}
@@ -274,20 +258,17 @@ export function AssetPriceSparkline({
 		return `M ${points.join(" L ")}`;
 	}, [data, width, height]);
 
-	const isPositive = currentPrice && currentPrice.change > 0;
+	const isPositive = currentPrice && (currentPrice.change ?? 0) > 0;
 	const strokeColor = isPositive
 		? "#22c55e"
-		: currentPrice?.change < 0
+		: (currentPrice?.change ?? 0) < 0
 			? "#ef4444"
 			: "#6b7280";
 
 	if (!data || data.length < 2) {
 		return (
 			<div
-				className={cn(
-					"flex items-center justify-center bg-gray-100 rounded",
-					className,
-				)}
+				className={cn("flex items-center justify-center bg-gray-100 rounded", className)}
 				style={{ width, height }}
 			>
 				<Minus className="h-3 w-3 text-gray-400" />
@@ -319,10 +300,9 @@ export function AssetPriceSparkline({
 					cx={width}
 					cy={
 						height -
-						((data[data.length - 1].close -
-							Math.min(...data.map((d) => d.close))) /
-							(Math.max(...data.map((d) => d.close)) -
-								Math.min(...data.map((d) => d.close)) || 1)) *
+						((data[data.length - 1].close - Math.min(...data.map((d) => d.close))) /
+							(Math.max(...data.map((d) => d.close)) - Math.min(...data.map((d) => d.close)) ||
+								1)) *
 							height
 					}
 					r="2"
@@ -338,7 +318,7 @@ export function AssetPriceSparkline({
  */
 export function CompactMultiAssetChart({
 	assets,
-	_height = 200,
+	height: _height = 200,
 	className,
 }: {
 	assets: Array<{
@@ -358,12 +338,8 @@ export function CompactMultiAssetChart({
 			<CardContent className="p-4">
 				<div className="flex items-center justify-center h-48 text-center">
 					<div>
-						<p className="text-sm text-muted-foreground mb-2">
-							Multi-asset comparison
-						</p>
-						<p className="text-xs text-muted-foreground">
-							{assets.length} assets
-						</p>
+						<p className="text-sm text-muted-foreground mb-2">Multi-asset comparison</p>
+						<p className="text-xs text-muted-foreground">{assets.length} assets</p>
 					</div>
 				</div>
 			</CardContent>
@@ -392,8 +368,7 @@ export function AssetPriceGrid({
 	columns?: number;
 	className?: string;
 }) {
-	const ChartComponent =
-		variant === "mini" ? MiniAssetPriceChart : SmallAssetPriceChart;
+	const ChartComponent = variant === "mini" ? MiniAssetPriceChart : SmallAssetPriceChart;
 
 	return (
 		<div

@@ -5,9 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AssetAllocation from "./asset-allocation";
 import PerformanceComparison from "./performance-comparison";
-import PerformanceDashboard, {
-	type PerformanceDashboardData,
-} from "./performance-dashboard";
+import PerformanceDashboard, { type PerformanceDashboardData } from "./performance-dashboard";
 import PerformanceMetrics from "./performance-metrics";
 
 // Mock data for demonstration
@@ -123,8 +121,7 @@ const mockPerformanceData: PerformanceDashboardData = {
 			assetType: "STOCK",
 			currentPercentage: 60.0,
 			targetPercentage: 65.0,
-			suggestedAction:
-				"Increase stock allocation by 5% to optimize portfolio balance",
+			suggestedAction: "Increase stock allocation by 5% to optimize portfolio balance",
 			priority: "low",
 			impact: 0.8,
 		},
@@ -251,30 +248,20 @@ const mockAssets = [
 
 export const PerformanceDashboardExample: React.FC = () => {
 	const [timeRange, setTimeRange] = useState("1M");
-	const [selectedView, setSelectedView] = useState<
-		"full" | "compact" | "individual"
-	>("full");
+	const [selectedView, setSelectedView] = useState<"full" | "compact" | "individual">("full");
 
-	const handleMetricClick = (metric: any) => {
-		console.log("Metric clicked:", metric);
-	};
+	const handleMetricClick = (_metric: any) => {};
 
-	const handleAssetTypeClick = (assetType: string) => {
-		console.log("Asset type clicked:", assetType);
-	};
+	const handleAssetTypeClick = (_assetType: string) => {};
 
-	const handleRecommendationAction = (recommendation: any) => {
-		console.log("Recommendation action:", recommendation);
-	};
+	const handleRecommendationAction = (_recommendation: any) => {};
 
-	const handleGenerateReport = async (config: any) => {
-		console.log("Generate report:", config);
+	const handleGenerateReport = async (_config: any) => {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	};
 
-	const handleCreateAlert = async (alert: any) => {
-		console.log("Create alert:", alert);
+	const handleCreateAlert = async (_alert: any) => {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 1000));
 	};
@@ -285,8 +272,7 @@ export const PerformanceDashboardExample: React.FC = () => {
 				<div>
 					<h1 className="text-3xl font-bold">Performance Dashboard Example</h1>
 					<p className="text-muted-foreground">
-						Comprehensive performance analytics and metrics for portfolio
-						management
+						Comprehensive performance analytics and metrics for portfolio management
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -416,8 +402,7 @@ export const PerformanceDashboardExample: React.FC = () => {
 							<CardContent>
 								{/* Reports component would go here */}
 								<div className="text-center py-8 text-muted-foreground">
-									Performance Reports component - see full dashboard for
-									implementation
+									Performance Reports component - see full dashboard for implementation
 								</div>
 							</CardContent>
 						</Card>
@@ -431,8 +416,7 @@ export const PerformanceDashboardExample: React.FC = () => {
 							<CardContent>
 								{/* Alerts component would go here */}
 								<div className="text-center py-8 text-muted-foreground">
-									Performance Alerts component - see full dashboard for
-									implementation
+									Performance Alerts component - see full dashboard for implementation
 								</div>
 							</CardContent>
 						</Card>

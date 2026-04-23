@@ -151,43 +151,34 @@ describe("Portfolio Form Validation", () => {
 
 		describe("sanitizeName", () => {
 			it("trims whitespace", () => {
-				const result =
-					portfolioValidationHelpers.sanitizeName("  Test Portfolio  ");
+				const result = portfolioValidationHelpers.sanitizeName("  Test Portfolio  ");
 				expect(result).toBe("Test Portfolio");
 			});
 
 			it("replaces multiple spaces with single space", () => {
-				const result =
-					portfolioValidationHelpers.sanitizeName("Test    Portfolio");
+				const result = portfolioValidationHelpers.sanitizeName("Test    Portfolio");
 				expect(result).toBe("Test Portfolio");
 			});
 
 			it("removes invalid characters", () => {
-				const result =
-					portfolioValidationHelpers.sanitizeName("Test@Portfolio#");
+				const result = portfolioValidationHelpers.sanitizeName("Test@Portfolio#");
 				expect(result).toBe("TestPortfolio");
 			});
 
 			it("preserves valid characters", () => {
-				const result = portfolioValidationHelpers.sanitizeName(
-					"Test-Portfolio_123.v2",
-				);
+				const result = portfolioValidationHelpers.sanitizeName("Test-Portfolio_123.v2");
 				expect(result).toBe("Test-Portfolio_123.v2");
 			});
 		});
 
 		describe("sanitizeDescription", () => {
 			it("trims whitespace", () => {
-				const result = portfolioValidationHelpers.sanitizeDescription(
-					"  Test Description  ",
-				);
+				const result = portfolioValidationHelpers.sanitizeDescription("  Test Description  ");
 				expect(result).toBe("Test Description");
 			});
 
 			it("replaces multiple spaces with single space", () => {
-				const result = portfolioValidationHelpers.sanitizeDescription(
-					"Test    Description",
-				);
+				const result = portfolioValidationHelpers.sanitizeDescription("Test    Description");
 				expect(result).toBe("Test Description");
 			});
 		});
@@ -206,10 +197,7 @@ describe("Portfolio Form Validation", () => {
 			});
 
 			it("returns empty array for empty base name", () => {
-				const suggestions = portfolioValidationHelpers.generateNameSuggestions(
-					"",
-					[],
-				);
+				const suggestions = portfolioValidationHelpers.generateNameSuggestions("", []);
 				expect(suggestions).toEqual([]);
 			});
 
@@ -259,12 +247,8 @@ describe("Portfolio Form Validation", () => {
 
 	describe("Error Messages", () => {
 		it("provides consistent error messages", () => {
-			expect(portfolioErrorMessages.nameRequired).toBe(
-				"Portfolio name is required",
-			);
-			expect(portfolioErrorMessages.nameExists).toBe(
-				"A portfolio with this name already exists",
-			);
+			expect(portfolioErrorMessages.nameRequired).toBe("Portfolio name is required");
+			expect(portfolioErrorMessages.nameExists).toBe("A portfolio with this name already exists");
 			expect(portfolioErrorMessages.nameTooShort).toBe(
 				"Portfolio name must be at least 3 characters",
 			);

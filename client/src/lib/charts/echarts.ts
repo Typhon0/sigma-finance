@@ -3,15 +3,11 @@
  * Provides TypeScript definitions and configuration for analytics charts
  */
 
-import type { ECharts, EChartsOption } from "echarts";
-import {
-	getAssetTypeColor,
-	getChartColors,
-	getChartThemeColors,
-} from "../chart-colors";
+import type { ECharts, EChartsCoreOption } from "echarts";
+import { getAssetTypeColor, getChartColors, getChartThemeColors } from "../chart-colors";
 
 // Re-export types for easier imports
-export type { ECharts, EChartsOption };
+export type { ECharts, EChartsCoreOption as EChartsOption };
 
 /**
  * Chart theme configuration for ECharts
@@ -48,9 +44,7 @@ export function getEChartsTheme(_isDark: boolean = false): EChartsTheme {
 /**
  * Default chart configuration
  */
-export function getDefaultEChartsConfig(
-	theme: EChartsTheme,
-): Partial<EChartsOption> {
+export function getDefaultEChartsConfig(theme: EChartsTheme): Partial<EChartsCoreOption> {
 	return {
 		backgroundColor: theme.backgroundColor,
 		textStyle: {
@@ -131,7 +125,7 @@ export function createPerformanceLineChart(
 		color?: string;
 		smooth?: boolean;
 	} = {},
-): EChartsOption {
+): EChartsCoreOption {
 	const theme = getEChartsTheme();
 	const chartColors = getChartColors();
 	const color = options.color || chartColors[0];
@@ -169,8 +163,7 @@ export function createPerformanceLineChart(
 			},
 			axisLabel: {
 				color: theme.textColor,
-				formatter:
-					options.yAxisFormatter || ((value: number) => value.toString()),
+				formatter: options.yAxisFormatter || ((value: number) => value.toString()),
 			},
 			splitLine: {
 				lineStyle: {
@@ -224,7 +217,7 @@ export function createAllocationPieChart(
 		showPercentage?: boolean;
 		innerRadius?: string;
 	} = {},
-): EChartsOption {
+): EChartsCoreOption {
 	const theme = getEChartsTheme();
 	const chartColors = getChartColors();
 
@@ -259,9 +252,7 @@ export function createAllocationPieChart(
 			},
 			trigger: "item",
 			formatter:
-				options.showPercentage !== false
-					? "{a} <br/>{b}: {c} ({d}%)"
-					: "{a} <br/>{b}: {c}",
+				options.showPercentage !== false ? "{a} <br/>{b}: {c} ({d}%)" : "{a} <br/>{b}: {c}",
 		},
 		legend: {
 			orient: "vertical",
@@ -304,7 +295,7 @@ export function createPortfolioComparisonChart(
 		title?: string;
 		yAxisFormatter?: (value: number) => string;
 	} = {},
-): EChartsOption {
+): EChartsCoreOption {
 	const theme = getEChartsTheme();
 	const chartColors = getChartColors();
 
@@ -343,8 +334,7 @@ export function createPortfolioComparisonChart(
 			},
 			axisLabel: {
 				color: theme.textColor,
-				formatter:
-					options.yAxisFormatter || ((value: number) => value.toString()),
+				formatter: options.yAxisFormatter || ((value: number) => value.toString()),
 			},
 			splitLine: {
 				lineStyle: {
@@ -378,7 +368,7 @@ export function createMetricsBarChart(
 		yAxisFormatter?: (value: number) => string;
 		horizontal?: boolean;
 	} = {},
-): EChartsOption {
+): EChartsCoreOption {
 	const theme = getEChartsTheme();
 	const chartColors = getChartColors();
 
@@ -390,7 +380,7 @@ export function createMetricsBarChart(
 		},
 	}));
 
-	const config: EChartsOption = {
+	const config: EChartsCoreOption = {
 		...getDefaultEChartsConfig(theme),
 		title: options.title
 			? {
@@ -421,8 +411,7 @@ export function createMetricsBarChart(
 			},
 			axisLabel: {
 				color: theme.textColor,
-				formatter:
-					options.yAxisFormatter || ((value: number) => value.toString()),
+				formatter: options.yAxisFormatter || ((value: number) => value.toString()),
 			},
 			splitLine: {
 				lineStyle: {
@@ -464,8 +453,7 @@ export function createMetricsBarChart(
 			},
 			axisLabel: {
 				color: theme.textColor,
-				formatter:
-					options.yAxisFormatter || ((value: number) => value.toString()),
+				formatter: options.yAxisFormatter || ((value: number) => value.toString()),
 			},
 			splitLine: {
 				lineStyle: {
@@ -490,7 +478,7 @@ export function createTreemapChart(
 	options: {
 		title?: string;
 	} = {},
-): EChartsOption {
+): EChartsCoreOption {
 	const theme = getEChartsTheme();
 	const _chartColors = getChartColors();
 
@@ -575,7 +563,7 @@ export class EChartsPerformanceManager {
 	/**
 	 * Get performance optimized options
 	 */
-	static getPerformanceOptions(): Partial<EChartsOption> {
+	static getPerformanceOptions(): Partial<EChartsCoreOption> {
 		return {
 			animation: false, // Disable animations for large datasets
 			progressive: 400, // Progressive rendering threshold
@@ -626,10 +614,7 @@ export class EChartsDataFormatter {
 	/**
 	 * Format date for chart axes
 	 */
-	static formatDate(
-		date: string | Date,
-		format: "short" | "medium" | "long" = "short",
-	): string {
+	static formatDate(date: string | Date, format: "short" | "medium" | "long" = "short"): string {
 		const d = new Date(date);
 
 		switch (format) {

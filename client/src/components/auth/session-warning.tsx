@@ -43,8 +43,7 @@ export function SessionWarning({ className }: SessionWarningProps) {
 		try {
 			await refreshToken();
 			setShowWarning(false);
-		} catch (error) {
-			console.error("Failed to refresh session:", error);
+		} catch (_error) {
 		} finally {
 			setIsRefreshing(false);
 		}
@@ -60,9 +59,7 @@ export function SessionWarning({ className }: SessionWarningProps) {
 		<Alert className={`border-amber-200 bg-amber-50 ${className}`}>
 			<AlertTriangle className="h-4 w-4 text-amber-600" />
 			<AlertDescription className="flex items-center justify-between">
-				<span className="text-amber-800">
-					Your session will expire in {formattedTime}.
-				</span>
+				<span className="text-amber-800">Your session will expire in {formattedTime}.</span>
 				<Button
 					variant="outline"
 					size="sm"

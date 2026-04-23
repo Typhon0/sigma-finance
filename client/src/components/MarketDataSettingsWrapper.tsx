@@ -17,6 +17,9 @@ import { MarketDataSettings } from "./MarketDataSettings";
 interface MarketDataCredential {
 	id: string;
 	provider: string;
+	isEnabled: boolean;
+	priority: number;
+	lastValidatedAt?: string | null;
 	createdAt: string;
 	updatedAt: string;
 }
@@ -82,9 +85,7 @@ interface MarketDataSettingsWrapperProps {
 	showHeader?: boolean;
 }
 
-export function MarketDataSettingsWrapper(
-	props?: MarketDataSettingsWrapperProps,
-) {
+export function MarketDataSettingsWrapper(props?: MarketDataSettingsWrapperProps) {
 	const showHeader = props?.showHeader ?? true;
 	// Fetch all market data settings (no assetType filter = all providers)
 	const { data, loading, error, refetch } = useQuery<MarketDataSettingsData>(
@@ -100,12 +101,9 @@ export function MarketDataSettingsWrapper(
 	const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
 	// Mutations
-	const [upsertCredential, { loading: saving }] = useMutation(
-		UPSERT_MARKET_DATA_CREDENTIAL,
-		{
-			onCompleted: () => refetch(),
-		},
-	);
+	const [upsertCredential, { loading: saving }] = useMutation(UPSERT_MARKET_DATA_CREDENTIAL, {
+		onCompleted: () => refetch(),
+	});
 
 	const [deleteCredential] = useMutation(DELETE_MARKET_DATA_CREDENTIAL, {
 		onCompleted: () => refetch(),
@@ -113,19 +111,22 @@ export function MarketDataSettingsWrapper(
 
 	const [validateCredentials] = useMutation(VALIDATE_PROVIDER_CREDENTIALS);
 
-	const [updateRoutingPreferences] = useMutation(
-		UPDATE_PROVIDER_ROUTING_PREFERENCES,
-		{
-			onCompleted: () => refetch(),
-		},
-	);
+	const [updateRoutingPreferences] = useMutation(UPDATE_PROVIDER_ROUTING_PREFERENCES, {
+		onCompleted: () => refetch(),
+	});
 
 	// Transform credentials to match component props
 	const credentials =
 		data?.marketDataCredentials.map((cred) => ({
 			provider: cred.provider,
 			configured: true,
-			lastValidated: cred.updatedAt ? new Date(cred.updatedAt) : undefined,
+			isEnabled: cred.isEnabled,
+			priority: cred.priority,
+			lastValidated: cred.lastValidatedAt
+				? new Date(cred.lastValidatedAt)
+				: cred.updatedAt
+					? new Date(cred.updatedAt)
+					: undefined,
 		})) || [];
 
 	// Transform supported providers to match component props
@@ -146,19 +147,24 @@ export function MarketDataSettingsWrapper(
 	const handleSaveCredential = async (
 		provider: string,
 		apiKey: string,
+		options?: { isEnabled: boolean; priority: number },
 	): Promise<void> => {
 		setErrorMessage(null);
 		setSaveMessage(null);
 		try {
 			await upsertCredential({
-				variables: { provider, apiKey },
+				variables: {
+					provider,
+					apiKey,
+					isEnabled: options?.isEnabled ?? true,
+					priority: options?.priority ?? 100,
+				},
 			});
 			setSaveMessage(`API key for ${provider} saved successfully`);
 			// Clear message after 3 seconds
 			setTimeout(() => setSaveMessage(null), 3000);
 		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : "Failed to save API key";
+			const message = err instanceof Error ? err.message : "Failed to save API key";
 			setErrorMessage(message);
 		}
 	};
@@ -170,16 +176,12 @@ export function MarketDataSettingsWrapper(
 				variables: { provider },
 			});
 		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : "Failed to delete API key";
+			const message = err instanceof Error ? err.message : "Failed to delete API key";
 			setErrorMessage(message);
 		}
 	};
 
-	const handleValidateCredential = async (
-		provider: string,
-		apiKey: string,
-	): Promise<boolean> => {
+	const handleValidateCredential = async (provider: string, apiKey: string): Promise<boolean> => {
 		setErrorMessage(null);
 		try {
 			const { data: validateData } = await validateCredentials({
@@ -187,8 +189,7 @@ export function MarketDataSettingsWrapper(
 			});
 			return validateData?.validateProviderCredentials?.valid ?? false;
 		} catch (err) {
-			const message =
-				err instanceof Error ? err.message : "Failed to validate API key";
+			const message = err instanceof Error ? err.message : "Failed to validate API key";
 			setErrorMessage(message);
 			return false;
 		}
@@ -250,21 +251,16 @@ export function MarketDataSettingsWrapper(
 			<div className="space-y-6">
 				<div className="flex items-center justify-between">
 					<div>
-						<h1 className="text-3xl font-bold tracking-tight">
-							Market Data Settings
-						</h1>
+						<h1 className="text-3xl font-bold tracking-tight">Market Data Settings</h1>
 						<p className="text-muted-foreground">
-							Configure API keys and routing preferences for market data
-							providers
+							Configure API keys and routing preferences for market data providers
 						</p>
 					</div>
 				</div>
 
 				<Alert variant="destructive">
 					<AlertCircle className="h-4 w-4" />
-					<AlertDescription>
-						Failed to load market data settings: {error.message}
-					</AlertDescription>
+					<AlertDescription>Failed to load market data settings: {error.message}</AlertDescription>
 				</Alert>
 			</div>
 		);

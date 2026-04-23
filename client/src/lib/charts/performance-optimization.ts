@@ -41,7 +41,7 @@ export type SamplingStrategy = "uniform" | "adaptive" | "importance" | "lttb";
 /**
  * Uniform sampling - evenly spaced data points
  */
-export function uniformSample<T extends { time: any }>(
+export function uniformSample<T extends { time: number | string }>(
 	data: T[],
 	maxPoints: number,
 ): T[] {
@@ -65,17 +65,18 @@ export function uniformSample<T extends { time: any }>(
 /**
  * Adaptive sampling - more points in areas of high volatility
  */
-export function adaptiveSample<
-	T extends { time: any; close?: number; value?: number },
->(data: T[], maxPoints: number): T[] {
+export function adaptiveSample<T extends { time: number | string; close?: number; value?: number }>(
+	data: T[],
+	maxPoints: number,
+): T[] {
 	if (data.length <= maxPoints) return data;
 
 	// Calculate volatility for each point
 	const volatilities: number[] = [];
 	for (let i = 1; i < data.length - 1; i++) {
-		const prev = (data[i - 1] as any).close || (data[i - 1] as any).value || 0;
-		const curr = (data[i] as any).close || (data[i] as any).value || 0;
-		const next = (data[i + 1] as any).close || (data[i + 1] as any).value || 0;
+		const prev = data[i - 1].close || data[i - 1].value || 0;
+		const curr = data[i].close || data[i].value || 0;
+		const next = data[i + 1].close || data[i + 1].value || 0;
 
 		const volatility = Math.abs(curr - prev) + Math.abs(next - curr);
 		volatilities.push(volatility);
@@ -90,15 +91,9 @@ export function adaptiveSample<
 		.sort((a, b) => a - b);
 
 	// Always include first and last points
-	const sampled = [
-		data[0],
-		...indices.map((i) => data[i]),
-		data[data.length - 1],
-	];
+	const sampled = [data[0], ...indices.map((i) => data[i]), data[data.length - 1]];
 
-	return sampled.filter(
-		(item, index, arr) => index === 0 || item !== arr[index - 1],
-	);
+	return sampled.filter((item, index, arr) => index === 0 || item !== arr[index - 1]);
 }
 
 /**
@@ -106,11 +101,12 @@ export function adaptiveSample<
  */
 export function importanceSample<
 	T extends {
-		time: any;
+		time: number | string;
 		high?: number;
 		low?: number;
 		close?: number;
 		value?: number;
+		volume?: number;
 	},
 >(data: T[], maxPoints: number): T[] {
 	if (data.length <= maxPoints) return data;
@@ -120,7 +116,7 @@ export function importanceSample<
 
 	for (let i = 0; i < data.length; i++) {
 		let score = 0;
-		const point = data[i] as any;
+		const point = data[i];
 
 		// Higher score for extreme values
 		if (point.high !== undefined && point.low !== undefined) {
@@ -135,8 +131,7 @@ export function importanceSample<
 
 		// Higher score for price changes
 		if (i > 0) {
-			const prevPrice =
-				(data[i - 1] as any).close || (data[i - 1] as any).value || 0;
+			const prevPrice = data[i - 1].close || data[i - 1].value || 0;
 			const currPrice = point.close || point.value || 0;
 			score += Math.abs(currPrice - prevPrice) * 100;
 		}
@@ -158,9 +153,10 @@ export function importanceSample<
  * Largest Triangle Three Buckets (LTTB) algorithm
  * Excellent for preserving visual characteristics of time series data
  */
-export function lttbSample<
-	T extends { time: any; close?: number; value?: number },
->(data: T[], maxPoints: number): T[] {
+export function lttbSample<T extends { time: number | string; close?: number; value?: number }>(
+	data: T[],
+	maxPoints: number,
+): T[] {
 	if (data.length <= maxPoints) return data;
 	if (maxPoints < 3) return [data[0], data[data.length - 1]];
 
@@ -180,14 +176,10 @@ export function lttbSample<
 		let avgCount = 0;
 
 		const nextBucketStart = Math.floor(bucketEnd);
-		const nextBucketEnd = Math.min(
-			Math.floor(nextBucketStart + bucketSize),
-			data.length,
-		);
+		const nextBucketEnd = Math.min(Math.floor(nextBucketStart + bucketSize), data.length);
 
 		for (let j = nextBucketStart; j < nextBucketEnd; j++) {
-			const point = data[j] as any;
-			const value = point.close || point.value || 0;
+			const value = data[j].close || data[j].value || 0;
 			avgX += j;
 			avgY += value;
 			avgCount++;
@@ -202,18 +194,16 @@ export function lttbSample<
 		let maxArea = -1;
 		let maxAreaIndex = bucketStart;
 
-		const prevPoint = sampled[sampled.length - 1] as any;
+		const prevPoint = sampled[sampled.length - 1];
 		const prevValue = prevPoint.close || prevPoint.value || 0;
 
 		for (let j = bucketStart; j < bucketEnd && j < data.length; j++) {
-			const point = data[j] as any;
-			const value = point.close || point.value || 0;
+			const value = data[j].close || data[j].value || 0;
 
 			// Calculate triangle area
 			const area =
 				Math.abs(
-					(bucketStart - avgX) * (value - prevValue) -
-						(bucketStart - j) * (avgY - prevValue),
+					(bucketStart - avgX) * (value - prevValue) - (bucketStart - j) * (avgY - prevValue),
 				) * 0.5;
 
 			if (area > maxArea) {
@@ -247,7 +237,7 @@ export class DataSampler {
 	 */
 	sample<
 		T extends {
-			time: any;
+			time: number | string;
 			close?: number;
 			value?: number;
 			high?: number;
@@ -282,7 +272,7 @@ export class DataSampler {
 	 */
 	private selectOptimalStrategy<
 		T extends {
-			time: any;
+			time: number | string;
 			close?: number;
 			value?: number;
 			high?: number;
@@ -295,21 +285,17 @@ export class DataSampler {
 		// Calculate volatility
 		let volatility = 0;
 		for (let i = 1; i < sample.length; i++) {
-			const prev =
-				(sample[i - 1] as any).close || (sample[i - 1] as any).value || 0;
-			const curr = (sample[i] as any).close || (sample[i] as any).value || 0;
+			const prev = sample[i - 1].close || sample[i - 1].value || 0;
+			const curr = sample[i].close || sample[i].value || 0;
 			volatility += Math.abs(curr - prev);
 		}
 		volatility /= sample.length;
 
 		// Check if data has OHLC (candlestick data)
-		const hasOHLC = sample.some(
-			(point) =>
-				(point as any).high !== undefined && (point as any).low !== undefined,
-		);
+		const hasOhlc = sample.some((point) => point.high !== undefined && point.low !== undefined);
 
 		// Decision logic
-		if (hasOHLC && volatility > 1) {
+		if (hasOhlc && volatility > 1) {
 			return "importance"; // Good for volatile candlestick data
 		} else if (volatility > 0.5) {
 			return "adaptive"; // Good for volatile line data
@@ -324,15 +310,21 @@ export class DataSampler {
 /**
  * Chart data virtualization for handling very large datasets
  */
-export class ChartVirtualizer<T extends { time: any }> {
+export class ChartVirtualizer<T extends { time: number | string }> {
 	private data: T[] = [];
 	private viewportStart = 0;
 	private viewportEnd = 0;
 	private buffer = 200; // Extra data points to load outside viewport
 
+	private _viewportSize = 1000;
+
 	constructor(data: T[], viewportSize = 1000) {
 		this.data = data;
-		this.viewportSize = viewportSize;
+		this._viewportSize = viewportSize;
+	}
+
+	get viewportSize() {
+		return this._viewportSize;
 	}
 
 	/**
@@ -427,10 +419,7 @@ export class ChartMemoryManager {
 	 * Get total memory usage
 	 */
 	getTotalMemoryUsage(): number {
-		return Array.from(this.memoryUsage.values()).reduce(
-			(sum, size) => sum + size,
-			0,
-		);
+		return Array.from(this.memoryUsage.values()).reduce((sum, size) => sum + size, 0);
 	}
 
 	/**
@@ -470,8 +459,9 @@ export class ChartMemoryManager {
 	 */
 	private performGarbageCollection(): void {
 		// Trigger browser garbage collection if available
-		if ("gc" in window && typeof (window as any).gc === "function") {
-			(window as any).gc();
+		const gcFn = (window as unknown as { gc?: () => void }).gc;
+		if ("gc" in window && typeof gcFn === "function") {
+			gcFn();
 		}
 
 		// Emit event for charts to optimize themselves
@@ -487,7 +477,7 @@ export class ChartMemoryManager {
  * Performance monitoring utilities
  */
 export class ChartPerformanceMonitor {
-	private metrics = new Map<string, any>();
+	private metrics = new Map<string, { startTime: number; startMemory: number }>();
 
 	/**
 	 * Start performance measurement
@@ -495,21 +485,23 @@ export class ChartPerformanceMonitor {
 	startMeasurement(name: string): void {
 		this.metrics.set(name, {
 			startTime: performance.now(),
-			startMemory: (performance as any).memory?.usedJSHeapSize || 0,
+			startMemory:
+				(performance as unknown as { memory?: { usedJSHeapSize?: number } }).memory
+					?.usedJSHeapSize || 0,
 		});
 	}
 
 	/**
 	 * End performance measurement
 	 */
-	endMeasurement(
-		name: string,
-	): { duration: number; memoryDelta: number } | null {
+	endMeasurement(name: string): { duration: number; memoryDelta: number } | null {
 		const metric = this.metrics.get(name);
 		if (!metric) return null;
 
 		const endTime = performance.now();
-		const endMemory = (performance as any).memory?.usedJSHeapSize || 0;
+		const endMemory =
+			(performance as unknown as { memory?: { usedJSHeapSize?: number } }).memory?.usedJSHeapSize ||
+			0;
 
 		const result = {
 			duration: endTime - metric.startTime,
@@ -523,32 +515,24 @@ export class ChartPerformanceMonitor {
 	/**
 	 * Log performance metrics
 	 */
-	logMetrics(
-		name: string,
-		metrics: { duration: number; memoryDelta: number },
-	): void {
-		console.log(`Chart Performance [${name}]:`, {
-			duration: `${metrics.duration.toFixed(2)}ms`,
-			memoryDelta: `${(metrics.memoryDelta / 1024 / 1024).toFixed(2)}MB`,
-		});
-	}
+	logMetrics(_name: string, _metrics: { duration: number; memoryDelta: number }): void {}
 }
 
 /**
  * Debounced and throttled update utilities
  */
-export function createDebouncedUpdate<T extends any[]>(
+export function createDebouncedUpdate<T extends unknown[]>(
 	fn: (...args: T) => void,
 	delay: number = DEFAULT_PERFORMANCE_CONFIG.debounceMs,
-) {
-	return debounce(fn, delay);
+): ((...args: T) => void) & { cancel: () => void } {
+	return debounce(fn, delay) as ((...args: T) => void) & { cancel: () => void };
 }
 
-export function createThrottledUpdate<T extends any[]>(
+export function createThrottledUpdate<T extends unknown[]>(
 	fn: (...args: T) => void,
 	delay: number = DEFAULT_PERFORMANCE_CONFIG.throttleMs,
-) {
-	return throttle(fn, delay);
+): ((...args: T) => void) & { cancel: () => void } {
+	return throttle(fn, delay) as ((...args: T) => void) & { cancel: () => void };
 }
 
 /**
@@ -562,7 +546,7 @@ export const ChartPerformanceUtils = {
 	// Convenience methods
 	sampleData: <
 		T extends {
-			time: any;
+			time: number | string;
 			close?: number;
 			value?: number;
 			high?: number;
@@ -574,10 +558,8 @@ export const ChartPerformanceUtils = {
 		strategy?: SamplingStrategy,
 	) => ChartPerformanceUtils.sampler.sample(data, maxPoints, strategy),
 
-	createVirtualizer: <T extends { time: any }>(
-		data: T[],
-		viewportSize?: number,
-	) => new ChartVirtualizer(data, viewportSize),
+	createVirtualizer: <T extends { time: number | string }>(data: T[], viewportSize?: number) =>
+		new ChartVirtualizer(data, viewportSize),
 
 	debouncedUpdate: createDebouncedUpdate,
 	throttledUpdate: createThrottledUpdate,

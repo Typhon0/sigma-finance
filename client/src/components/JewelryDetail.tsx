@@ -1,12 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	DollarSign,
-	FileText,
-	Gem,
-	Trash2,
-	TrendingUp,
-} from "lucide-react";
+import { ArrowLeft, DollarSign, FileText, Gem, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -24,13 +17,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface JewelryDetailProps {
 	jewelryId: string;
@@ -73,8 +60,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 	};
 
 	const gain = (jewelry.currentValue || 0) - (jewelry.purchasePrice || 0);
-	const gainPercent =
-		jewelry.purchasePrice > 0 ? (gain / jewelry.purchasePrice) * 100 : 0;
+	const gainPercent = jewelry.purchasePrice > 0 ? (gain / jewelry.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -115,14 +101,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 		xAxis: {
 			type: "category",
 			boundaryGap: false,
-			data: [
-				"Purchase",
-				"6 Months",
-				"1 Year",
-				"18 Months",
-				"2 Years",
-				"Current",
-			],
+			data: ["Purchase", "6 Months", "1 Year", "18 Months", "2 Years", "Current"],
 			axisLine: { lineStyle: { color: "#666" } },
 		},
 		yAxis: {
@@ -179,10 +158,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 					</Button>
 				</div>
 				<div className="flex gap-2">
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -200,12 +176,8 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 							<div>
 								<CardTitle className="mb-2">{jewelry.name}</CardTitle>
 								<div className="flex flex-wrap gap-2 mb-3">
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
-									{jewelry.brand && (
-										<Badge variant="outline">{jewelry.brand}</Badge>
-									)}
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
+									{jewelry.brand && <Badge variant="outline">{jewelry.brand}</Badge>}
 								</div>
 								<CardDescription className="max-w-2xl">
 									{jewelry.description || "No description available"}
@@ -217,20 +189,12 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(jewelry.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(jewelry.currentValue || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(jewelry.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(jewelry.purchasePrice || 0)}</p>
 						</div>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Gain/Loss</p>
@@ -276,9 +240,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 						{jewelry.condition && (
 							<div>
 								<p className="text-sm text-muted-foreground mb-1">Condition</p>
-								<Badge variant={conditionBadge.variant}>
-									{conditionBadge.label}
-								</Badge>
+								<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 							</div>
 						)}
 					</CardContent>
@@ -294,9 +256,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Date
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Date</p>
 							<p>
 								{jewelry.purchaseDate
 									? new Date(jewelry.purchaseDate).toLocaleDateString("fr-FR")
@@ -304,20 +264,12 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
-							<p className="font-mono">
-								{formatCurrency(jewelry.purchasePrice || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
+							<p className="font-mono">{formatCurrency(jewelry.purchasePrice || 0)}</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
-							<p className="font-mono">
-								{formatCurrency(jewelry.currentValue || 0)}
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
+							<p className="font-mono">{formatCurrency(jewelry.currentValue || 0)}</p>
 						</div>
 					</CardContent>
 				</Card>
@@ -330,9 +282,7 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 						<TrendingUp className="h-5 w-5" />
 						Value Appreciation
 					</CardTitle>
-					<CardDescription>
-						Historical value trend since purchase
-					</CardDescription>
+					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
 					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
@@ -340,16 +290,12 @@ export function JewelryDetail({ jewelryId, onBack }: JewelryDetailProps) {
 			</Card>
 
 			{/* Delete Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Delete Jewelry</AlertDialogTitle>
 						<AlertDialogDescription>
-							Are you sure you want to delete "{jewelry.name}"? This action
-							cannot be undone.
+							Are you sure you want to delete "{jewelry.name}"? This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

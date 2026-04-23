@@ -4,11 +4,7 @@
  */
 
 export interface WebSocketMessage {
-	type:
-		| "PRICE_UPDATE"
-		| "PORTFOLIO_UPDATE"
-		| "ALERT_NOTIFICATION"
-		| "CONNECTION_STATUS";
+	type: "PRICE_UPDATE" | "PORTFOLIO_UPDATE" | "ALERT_NOTIFICATION" | "CONNECTION_STATUS";
 	payload: any;
 	timestamp: number;
 }
@@ -78,7 +74,6 @@ export class WebSocketManager {
 				this.ws = new WebSocket(this.url);
 
 				this.ws.onopen = () => {
-					console.log("WebSocket connected");
 					this.isConnecting = false;
 					this.reconnectAttempts = 0;
 					this.startHeartbeat();
@@ -90,27 +85,20 @@ export class WebSocketManager {
 					try {
 						const message: WebSocketMessage = JSON.parse(event.data);
 						this.handleMessage(message);
-					} catch (error) {
-						console.error("Failed to parse WebSocket message:", error);
-					}
+					} catch (_error) {}
 				};
 
-				this.ws.onclose = (event) => {
-					console.log("WebSocket disconnected:", event.code, event.reason);
+				this.ws.onclose = (_event) => {
 					this.isConnecting = false;
 					this.stopHeartbeat();
 					this.emit("CONNECTION_STATUS", { connected: false });
 
-					if (
-						this.shouldReconnect &&
-						this.reconnectAttempts < this.maxReconnectAttempts
-					) {
+					if (this.shouldReconnect && this.reconnectAttempts < this.maxReconnectAttempts) {
 						this.scheduleReconnect();
 					}
 				};
 
 				this.ws.onerror = (error) => {
-					console.error("WebSocket error:", error);
 					this.isConnecting = false;
 					reject(error);
 				};
@@ -154,7 +142,6 @@ export class WebSocketManager {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			this.ws.send(JSON.stringify(message));
 		} else {
-			console.warn("WebSocket not connected, message not sent:", message);
 		}
 	}
 
@@ -168,9 +155,7 @@ export class WebSocketManager {
 			handlers.forEach((handler) => {
 				try {
 					handler(message);
-				} catch (error) {
-					console.error("Error in WebSocket event handler:", error);
-				}
+				} catch (_error) {}
 			});
 		}
 	}
@@ -185,20 +170,12 @@ export class WebSocketManager {
 	}
 
 	private scheduleReconnect(): void {
-		const delay = Math.min(
-			this.reconnectDelay * 2 ** this.reconnectAttempts,
-			30000,
-		);
+		const delay = Math.min(this.reconnectDelay * 2 ** this.reconnectAttempts, 30000);
 
 		setTimeout(() => {
 			if (this.shouldReconnect) {
 				this.reconnectAttempts++;
-				console.log(
-					`Attempting to reconnect (${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
-				);
-				this.connect().catch((error) => {
-					console.error("Reconnection failed:", error);
-				});
+				this.connect().catch((_error) => {});
 			}
 		}, delay);
 	}

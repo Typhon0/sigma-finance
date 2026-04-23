@@ -17,6 +17,7 @@ const ThrowError = ({ shouldThrow }: { shouldThrow: boolean }) => {
 
 describe("Portfolio Error Boundaries", () => {
 	// Suppress console.error for these tests
+	// biome-ignore lint/suspicious/noConsole: test setup needs console
 	const originalError = console.error;
 	beforeAll(() => {
 		console.error = vi.fn();
@@ -95,9 +96,7 @@ describe("Portfolio Error Boundaries", () => {
 					<ThrowError shouldThrow={true} />
 				</PortfolioDetailErrorBoundary>,
 			);
-			expect(
-				screen.getByText("Error Loading Portfolio Details"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Error Loading Portfolio Details")).toBeInTheDocument();
 		});
 	});
 
@@ -119,7 +118,7 @@ describe("Portfolio Error Boundaries", () => {
 		});
 
 		it("handles GraphQL errors", () => {
-			const GraphQLErrorComponent = () => {
+			const GraphQlErrorComponent = () => {
 				throw new ApolloError({
 					graphQLErrors: [
 						{
@@ -132,7 +131,7 @@ describe("Portfolio Error Boundaries", () => {
 
 			render(
 				<PortfolioErrorBoundary>
-					<GraphQLErrorComponent />
+					<GraphQlErrorComponent />
 				</PortfolioErrorBoundary>,
 			);
 

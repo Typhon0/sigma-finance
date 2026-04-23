@@ -13,30 +13,21 @@ import {
 	MoreVertical,
 	Percent,
 	Plus,
-	Search,
 	SortAsc,
 	TrendingUp,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
-import {
-	type AddLoanInput,
-	useAssetMutations,
-} from "@/hooks/use-asset-mutations";
+import { SearchInput } from "@/components/ui/search-input";
+import { type AddLoanInput, useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { formatCurrency as formatCurrencyForCurrency } from "@/lib/utils";
 import { AddLoanForm } from "./AddLoanForm";
 import { LoansAnalytics } from "./LoansAnalytics";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -44,22 +35,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface LoansListProps {
@@ -67,12 +44,7 @@ interface LoansListProps {
 }
 
 type ViewMode = "grid" | "list";
-type LoanType =
-	| "step"
-	| "amortizing"
-	| "in-fine"
-	| "deferred-interest"
-	| "deferred-total";
+type LoanType = "step" | "amortizing" | "in-fine" | "deferred-interest" | "deferred-total";
 
 interface Loan {
 	id: string;
@@ -107,8 +79,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	const itemsPerPage = viewMode === "grid" ? 9 : 15;
 
 	// Currency hook — must be called before useMemo that uses displayCurrency
-	const { formatCurrencyCompact: formatCurrency, currency: displayCurrency } =
-		useCurrency();
+	const { formatCurrencyCompact: formatCurrency, currency: displayCurrency } = useCurrency();
 
 	// Derive loans from assets with type 'loan'
 	const loans = useMemo(() => {
@@ -137,8 +108,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 				loan.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
 				loan.bank?.toLowerCase().includes(searchTerm.toLowerCase());
 			const matchesType = filterType === "all" || loan.type === filterType;
-			const matchesStatus =
-				filterStatus === "all" || loan.status === filterStatus;
+			const matchesStatus = filterStatus === "all" || loan.status === filterStatus;
 			return matchesSearch && matchesType && matchesStatus;
 		})
 		.sort((a, b) => {
@@ -165,10 +135,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	};
 
 	const getTotalPrincipalPaid = () => {
-		return loans.reduce(
-			(sum, loan) => sum + (loan.loanAmount - loan.remainingBalance),
-			0,
-		);
+		return loans.reduce((sum, loan) => sum + (loan.loanAmount - loan.remainingBalance), 0);
 	};
 
 	const getAverageInterestRate = () => {
@@ -217,45 +184,28 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 			loanType: formData.type,
 			loanAmount: parseFloat(formData.loanAmount) || 0,
 			remainingBalance:
-				parseFloat(formData.remainingBalance) ||
-				parseFloat(formData.loanAmount) ||
-				0,
+				parseFloat(formData.remainingBalance) || parseFloat(formData.loanAmount) || 0,
 			interestRate: parseFloat(formData.interestRate) || 0,
-			durationMonths: parseInt(formData.duration) || 0,
+			durationMonths: parseInt(formData.duration, 10) || 0,
 			monthlyPayment: parseFloat(formData.monthlyPayment) || 0,
 			startDate: formData.startDate
 				? formData.startDate.toISOString().split("T")[0]
 				: new Date().toISOString().split("T")[0],
-			endDate: formData.endDate
-				? formData.endDate.toISOString().split("T")[0]
-				: undefined,
+			endDate: formData.endDate ? formData.endDate.toISOString().split("T")[0] : undefined,
 			lender: formData.bank || "Unknown",
 			loanNumber: formData.loanNumber || undefined,
 			currency: formData.currency || "EUR",
-			downPayment: formData.downPayment
-				? parseFloat(formData.downPayment)
-				: undefined,
+			downPayment: formData.downPayment ? parseFloat(formData.downPayment) : undefined,
 			status: "active",
 			ownershipMode: formData.ownershipMode || undefined,
-			applicationFee: formData.applicationFee
-				? parseFloat(formData.applicationFee)
-				: undefined,
-			brokerFee: formData.brokerFee
-				? parseFloat(formData.brokerFee)
-				: undefined,
-			insuranceFee: formData.insuranceFee
-				? parseFloat(formData.insuranceFee)
-				: undefined,
-			otherFees: formData.otherFees
-				? parseFloat(formData.otherFees)
-				: undefined,
+			applicationFee: formData.applicationFee ? parseFloat(formData.applicationFee) : undefined,
+			brokerFee: formData.brokerFee ? parseFloat(formData.brokerFee) : undefined,
+			insuranceFee: formData.insuranceFee ? parseFloat(formData.insuranceFee) : undefined,
+			otherFees: formData.otherFees ? parseFloat(formData.otherFees) : undefined,
 			earlyRepaymentFee: formData.earlyRepaymentFee
 				? parseFloat(formData.earlyRepaymentFee)
 				: undefined,
-			currentValue:
-				parseFloat(formData.remainingBalance) ||
-				parseFloat(formData.loanAmount) ||
-				0,
+			currentValue: parseFloat(formData.remainingBalance) || parseFloat(formData.loanAmount) || 0,
 			purchasePrice: parseFloat(formData.loanAmount) || 0,
 			purchaseDate: formData.startDate
 				? formData.startDate.toISOString()
@@ -272,7 +222,6 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 				throw new Error("createLoanAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding loan:", error);
 			toast.error("Failed to add loan. Please try again.");
 			throw error; // Re-throw so AddLoanForm keeps dialog open
 		}
@@ -287,7 +236,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	// Reset to page 1 when filters change
 	React.useEffect(() => {
 		setCurrentPage(1);
-	}, [searchTerm, filterType, filterStatus, sortBy, viewMode]);
+	}, []);
 
 	const getLoanTypeLabel = (type: LoanType) => {
 		switch (type) {
@@ -371,9 +320,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl">Loans & Debt</h1>
-					<p className="text-muted-foreground">
-						Manage your loans and track payments
-					</p>
+					<p className="text-muted-foreground">Manage your loans and track payments</p>
 				</div>
 				<Button onClick={() => setIsAddFormOpen(true)}>
 					<Plus className="h-4 w-4 mr-2" />
@@ -400,15 +347,11 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Total Debt
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Total Debt</CardTitle>
 								<Banknote className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
-									{formatCurrency(totalBalance)}
-								</div>
+								<div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
 								<p className="text-xs text-muted-foreground">
 									{loans.length} active {loans.length === 1 ? "loan" : "loans"}
 								</p>
@@ -417,52 +360,36 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Monthly Payments
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Monthly Payments</CardTitle>
 								<Calendar className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
-									{formatCurrency(totalMonthlyPayment)}
-								</div>
-								<p className="text-xs text-muted-foreground">
-									Total monthly obligation
-								</p>
+								<div className="text-2xl font-bold">{formatCurrency(totalMonthlyPayment)}</div>
+								<p className="text-xs text-muted-foreground">Total monthly obligation</p>
 							</CardContent>
 						</Card>
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Principal Paid
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Principal Paid</CardTitle>
 								<TrendingUp className="h-4 w-4 text-green-600" />
 							</CardHeader>
 							<CardContent>
 								<div className="text-2xl font-bold text-green-600">
 									{formatCurrency(totalPrincipalPaid)}
 								</div>
-								<p className="text-xs text-muted-foreground">
-									Total debt reduction
-								</p>
+								<p className="text-xs text-muted-foreground">Total debt reduction</p>
 							</CardContent>
 						</Card>
 
 						<Card>
 							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">
-									Avg Interest Rate
-								</CardTitle>
+								<CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
 								<Percent className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-bold">
-									{avgInterestRate.toFixed(2)}%
-								</div>
-								<p className="text-xs text-muted-foreground">
-									Across all loans
-								</p>
+								<div className="text-2xl font-bold">{avgInterestRate.toFixed(2)}%</div>
+								<p className="text-xs text-muted-foreground">Across all loans</p>
 							</CardContent>
 						</Card>
 					</div>
@@ -470,15 +397,14 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 					{/* Filters and Search */}
 					<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
 						<div className="flex flex-1 gap-2">
-							<div className="relative flex-1 max-w-sm">
-								<Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-								<Input
-									placeholder="Search loans..."
-									className="pl-8"
-									value={searchTerm}
-									onChange={(e) => setSearchTerm(e.target.value)}
-								/>
-							</div>
+							<SearchInput
+								placeholder="Search loans..."
+								value={searchTerm}
+								onChange={(e) => setSearchTerm(e.target.value)}
+								onClear={() => setSearchTerm("")}
+								size="sm"
+								containerClassName="flex-1 max-w-sm"
+							/>
 
 							<Select value={filterType} onValueChange={setFilterType}>
 								<SelectTrigger className="w-[180px]">
@@ -489,9 +415,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 									<SelectItem value="all">All Types</SelectItem>
 									<SelectItem value="amortizing">Amortizing</SelectItem>
 									<SelectItem value="in-fine">In Fine</SelectItem>
-									<SelectItem value="deferred-interest">
-										Deferred Interest
-									</SelectItem>
+									<SelectItem value="deferred-interest">Deferred Interest</SelectItem>
 									<SelectItem value="deferred-total">Deferred Total</SelectItem>
 									<SelectItem value="step">Step</SelectItem>
 								</SelectContent>
@@ -554,13 +478,9 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 										<TableHead>Loan Name</TableHead>
 										<TableHead>Type</TableHead>
 										<TableHead>Bank</TableHead>
-										<TableHead className="text-right">
-											Original Amount
-										</TableHead>
+										<TableHead className="text-right">Original Amount</TableHead>
 										<TableHead className="text-right">Remaining</TableHead>
-										<TableHead className="text-right">
-											Monthly Payment
-										</TableHead>
+										<TableHead className="text-right">Monthly Payment</TableHead>
 										<TableHead className="text-center">Rate</TableHead>
 										<TableHead className="text-center">Progress</TableHead>
 										<TableHead className="text-center">Status</TableHead>
@@ -573,9 +493,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 											<TableCell colSpan={10} className="text-center py-12">
 												<div className="flex flex-col items-center gap-2">
 													<FileText className="h-12 w-12 text-muted-foreground/50" />
-													<p className="text-muted-foreground">
-														No loans found
-													</p>
+													<p className="text-muted-foreground">No loans found</p>
 													<Button
 														variant="outline"
 														size="sm"
@@ -605,9 +523,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 																<p className="font-medium">{loan.name}</p>
 																<p className="text-xs text-muted-foreground">
 																	{formatDate(loan.startDate)} -{" "}
-																	{loan.endDate
-																		? formatDate(loan.endDate)
-																		: "Ongoing"}
+																	{loan.endDate ? formatDate(loan.endDate) : "Ongoing"}
 																</p>
 															</div>
 														</div>
@@ -620,33 +536,22 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 													<TableCell>
 														<div className="flex items-center gap-2">
 															<Building2 className="h-3 w-3 text-muted-foreground" />
-															<span className="text-sm">
-																{loan.bank || "N/A"}
-															</span>
+															<span className="text-sm">{loan.bank || "N/A"}</span>
 														</div>
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="text-sm text-muted-foreground">
-															{formatLoanCurrency(
-																loan.loanAmount,
-																loan.currency,
-															)}
+															{formatLoanCurrency(loan.loanAmount, loan.currency)}
 														</span>
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="font-medium">
-															{formatLoanCurrency(
-																loan.remainingBalance,
-																loan.currency,
-															)}
+															{formatLoanCurrency(loan.remainingBalance, loan.currency)}
 														</span>
 													</TableCell>
 													<TableCell className="text-right">
 														<span className="font-medium">
-															{formatLoanCurrency(
-																loan.monthlyPayment,
-																loan.currency,
-															)}
+															{formatLoanCurrency(loan.monthlyPayment, loan.currency)}
 														</span>
 													</TableCell>
 													<TableCell className="text-center">
@@ -683,15 +588,11 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 																</Button>
 															</DropdownMenuTrigger>
 															<DropdownMenuContent align="end">
-																<DropdownMenuItem
-																	onClick={() => onSelectLoan?.(loan.id)}
-																>
+																<DropdownMenuItem onClick={() => onSelectLoan?.(loan.id)}>
 																	View Details
 																</DropdownMenuItem>
 																<DropdownMenuItem>Edit Loan</DropdownMenuItem>
-																<DropdownMenuItem>
-																	Payment History
-																</DropdownMenuItem>
+																<DropdownMenuItem>Payment History</DropdownMenuItem>
 																<DropdownMenuSeparator />
 																<DropdownMenuItem className="text-destructive">
 																	Delete Loan
@@ -723,9 +624,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 														<CreditCard className="h-5 w-5 text-primary" />
 													</div>
 													<div>
-														<CardTitle className="text-lg">
-															{loan.name}
-														</CardTitle>
+														<CardTitle className="text-lg">{loan.name}</CardTitle>
 														<CardDescription className="flex items-center gap-1 mt-1">
 															<Building2 className="h-3 w-3" />
 															{loan.bank || "N/A"}
@@ -744,9 +643,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 														</Button>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end">
-														<DropdownMenuItem
-															onClick={() => onSelectLoan?.(loan.id)}
-														>
+														<DropdownMenuItem onClick={() => onSelectLoan?.(loan.id)}>
 															View Details
 														</DropdownMenuItem>
 														<DropdownMenuItem>Edit Loan</DropdownMenuItem>
@@ -769,31 +666,19 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 
 											<div className="space-y-2">
 												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">
-														Remaining Balance
-													</span>
+													<span className="text-muted-foreground">Remaining Balance</span>
 													<span className="font-bold">
-														{formatLoanCurrency(
-															loan.remainingBalance,
-															loan.currency,
-														)}
+														{formatLoanCurrency(loan.remainingBalance, loan.currency)}
 													</span>
 												</div>
 												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">
-														Monthly Payment
-													</span>
+													<span className="text-muted-foreground">Monthly Payment</span>
 													<span className="font-medium">
-														{formatLoanCurrency(
-															loan.monthlyPayment,
-															loan.currency,
-														)}
+														{formatLoanCurrency(loan.monthlyPayment, loan.currency)}
 													</span>
 												</div>
 												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">
-														Interest Rate
-													</span>
+													<span className="text-muted-foreground">Interest Rate</span>
 													<Badge variant="outline" className="font-mono">
 														{loan.interestRate.toFixed(2)}%
 													</Badge>
@@ -816,11 +701,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 											<div className="pt-2 border-t">
 												<div className="flex justify-between text-xs text-muted-foreground">
 													<span>{formatDate(loan.startDate)}</span>
-													<span>
-														{loan.endDate
-															? formatDate(loan.endDate)
-															: "Ongoing"}
-													</span>
+													<span>{loan.endDate ? formatDate(loan.endDate) : "Ongoing"}</span>
 												</div>
 											</div>
 										</CardContent>
@@ -834,8 +715,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 					{totalPages > 1 && (
 						<div className="flex items-center justify-between">
 							<p className="text-sm text-muted-foreground">
-								Showing {startIndex + 1} to{" "}
-								{Math.min(endIndex, filteredLoans.length)} of{" "}
+								Showing {startIndex + 1} to {Math.min(endIndex, filteredLoans.length)} of{" "}
 								{filteredLoans.length} loans
 							</p>
 							<div className="flex items-center gap-2">
@@ -849,26 +729,22 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 									Previous
 								</Button>
 								<div className="flex items-center gap-1">
-									{Array.from({ length: totalPages }, (_, i) => i + 1).map(
-										(page) => (
-											<Button
-												key={page}
-												variant={currentPage === page ? "default" : "outline"}
-												size="sm"
-												onClick={() => setCurrentPage(page)}
-												className="w-8 h-8 p-0"
-											>
-												{page}
-											</Button>
-										),
-									)}
+									{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+										<Button
+											key={page}
+											variant={currentPage === page ? "default" : "outline"}
+											size="sm"
+											onClick={() => setCurrentPage(page)}
+											className="w-8 h-8 p-0"
+										>
+											{page}
+										</Button>
+									))}
 								</div>
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() =>
-										setCurrentPage(Math.min(totalPages, currentPage + 1))
-									}
+									onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
 									disabled={currentPage === totalPages}
 								>
 									Next

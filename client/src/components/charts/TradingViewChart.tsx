@@ -2,22 +2,9 @@ import type React from "react";
 import LightweightChart from "./LightweightChart";
 import SimpleChart from "./SimpleChart";
 
-type ResolutionString =
-	| "1"
-	| "5"
-	| "15"
-	| "30"
-	| "60"
-	| "240"
-	| "1D"
-	| "1W"
-	| "1M";
+type ResolutionString = "1" | "5" | "15" | "30" | "60" | "240" | "1D" | "1W" | "1M";
 type _LanguageCode = "en" | "es" | "fr" | "de" | "ja" | "ko" | "zh" | "ru";
-type _Timezone =
-	| "Etc/UTC"
-	| "America/New_York"
-	| "Europe/London"
-	| "Asia/Tokyo";
+type _Timezone = "Etc/UTC" | "America/New_York" | "Europe/London" | "Asia/Tokyo";
 
 interface TradingViewChartProps {
 	symbol?: string;
@@ -35,7 +22,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 	assetType = "CRYPTO",
 	interval = "1D" as ResolutionString,
 	theme = "light",
-	_onChartReady,
+	onChartReady: _onChartReady,
 	fallbackToSimpleChart = true,
 	height = 400,
 	useLightweightCharts = true,
@@ -96,9 +83,7 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 				<h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
 					Chart Not Available
 				</h3>
-				<p className="text-sm text-gray-600 dark:text-gray-400">
-					No chart implementation selected
-				</p>
+				<p className="text-sm text-gray-600 dark:text-gray-400">No chart implementation selected</p>
 			</div>
 		</div>
 	);

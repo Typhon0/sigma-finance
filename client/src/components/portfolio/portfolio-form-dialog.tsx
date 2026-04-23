@@ -9,10 +9,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@/components/ui/dialog";
-import type {
-	PortfolioFormData,
-	PortfolioFormMode,
-} from "@/lib/validations/portfolio.schemas";
+import type { PortfolioFormData, PortfolioFormMode } from "@/lib/validations/portfolio.schemas";
 import { CompactPortfolioForm } from "./compact-portfolio-form";
 
 export interface PortfolioFormDialogProps {
@@ -98,9 +95,7 @@ export function PortfolioFormDialog({
 			}, 1500);
 		} catch (error) {
 			const errorMsg =
-				error instanceof Error
-					? error.message
-					: "An error occurred while saving the portfolio.";
+				error instanceof Error ? error.message : "An error occurred while saving the portfolio.";
 			setErrorMessage(errorMsg);
 
 			// Call error callback
@@ -146,10 +141,7 @@ export function PortfolioFormDialog({
 
 				{/* Success Message */}
 				{successMessage && (
-					<Alert
-						variant="default"
-						className="border-green-200 bg-green-50 text-green-800"
-					>
+					<Alert variant="default" className="border-green-200 bg-green-50 text-green-800">
 						<CheckCircle className="h-4 w-4 text-green-600" />
 						<AlertDescription>{successMessage}</AlertDescription>
 					</Alert>

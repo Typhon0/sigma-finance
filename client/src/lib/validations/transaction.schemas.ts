@@ -19,23 +19,17 @@ export const transactionFormSchema = z
 				"ADJUSTMENT",
 			],
 			{
-				required_error: "Transaction type is required",
+				message: "Transaction type is required",
 			},
 		),
 		quantity: z.number().min(0, "Quantity must be positive").optional(),
-		pricePerUnit: z
-			.number()
-			.min(0, "Price per unit must be positive")
-			.optional(),
+		pricePerUnit: z.number().min(0, "Price per unit must be positive").optional(),
 		amount: z.number().min(0.01, "Amount must be greater than 0"),
 		fee: z.number().min(0, "Fee must be positive").optional().default(0),
 		transactionDate: z.date({
-			required_error: "Transaction date is required",
+			message: "Transaction date is required",
 		}),
-		notes: z
-			.string()
-			.max(500, "Notes must be less than 500 characters")
-			.optional(),
+		notes: z.string().max(500, "Notes must be less than 500 characters").optional(),
 	})
 	.refine(
 		(data) => {
@@ -46,8 +40,7 @@ export const transactionFormSchema = z
 			return true;
 		},
 		{
-			message:
-				"Buy/Sell transactions require asset, quantity, and price per unit",
+			message: "Buy/Sell transactions require asset, quantity, and price per unit",
 			path: ["assetId"],
 		},
 	)
@@ -120,10 +113,7 @@ export const transactionValidationHelpers = {
 	/**
 	 * Validates cost basis calculation for sell transactions
 	 */
-	validateSellTransaction: (
-		quantity: number,
-		availableQuantity: number,
-	): boolean => {
+	validateSellTransaction: (quantity: number, availableQuantity: number): boolean => {
 		return quantity <= availableQuantity;
 	},
 

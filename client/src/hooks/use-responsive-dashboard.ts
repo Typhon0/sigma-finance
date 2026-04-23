@@ -19,10 +19,7 @@ export interface ResponsiveDashboardActions {
 	handleSwipeGesture: (direction: "left" | "right") => void;
 }
 
-export function useResponsiveDashboard(): [
-	ResponsiveDashboardState,
-	ResponsiveDashboardActions,
-] {
+export function useResponsiveDashboard(): [ResponsiveDashboardState, ResponsiveDashboardActions] {
 	// Media queries for different breakpoints
 	const isMobile = useMediaQuery("(max-width: 767px)");
 	const isTablet = useMediaQuery("(min-width: 768px) and (max-width: 1023px)");
@@ -77,10 +74,7 @@ export function useResponsiveDashboard(): [
 	// Save sidebar state to localStorage for desktop
 	useEffect(() => {
 		if (isDesktop) {
-			localStorage.setItem(
-				"dashboard-sidebar-collapsed",
-				JSON.stringify(sidebarCollapsed),
-			);
+			localStorage.setItem("dashboard-sidebar-collapsed", JSON.stringify(sidebarCollapsed));
 		}
 	}, [sidebarCollapsed, isDesktop]);
 
@@ -140,9 +134,7 @@ export function useResponsiveDashboard(): [
 }
 
 // Hook for touch gesture detection
-export function useTouchGestures(
-	onSwipe: (direction: "left" | "right") => void,
-) {
+export function useTouchGestures(onSwipe: (direction: "left" | "right") => void) {
 	useEffect(() => {
 		let startX = 0;
 		let startY = 0;
@@ -166,10 +158,7 @@ export function useTouchGestures(
 			const maxVerticalDistance = 100;
 
 			// Check if it's a horizontal swipe
-			if (
-				Math.abs(deltaX) > minSwipeDistance &&
-				Math.abs(deltaY) < maxVerticalDistance
-			) {
+			if (Math.abs(deltaX) > minSwipeDistance && Math.abs(deltaY) < maxVerticalDistance) {
 				if (deltaX > 0) {
 					onSwipe("right");
 				} else {

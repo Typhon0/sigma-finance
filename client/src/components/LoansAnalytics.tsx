@@ -10,13 +10,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useCurrency } from "@/hooks/use-currency";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 
 interface Loan {
 	id: string;
@@ -43,14 +37,9 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 	const totalDebt = loans.reduce((sum, loan) => sum + loan.remainingBalance, 0);
 	const totalOriginal = loans.reduce((sum, loan) => sum + loan.loanAmount, 0);
 	const totalPaid = totalOriginal - totalDebt;
-	const totalMonthlyPayment = loans.reduce(
-		(sum, loan) => sum + loan.monthlyPayment,
-		0,
-	);
+	const totalMonthlyPayment = loans.reduce((sum, loan) => sum + loan.monthlyPayment, 0);
 	const avgInterestRate =
-		loans.length > 0
-			? loans.reduce((sum, loan) => sum + loan.interestRate, 0) / loans.length
-			: 0;
+		loans.length > 0 ? loans.reduce((sum, loan) => sum + loan.interestRate, 0) / loans.length : 0;
 
 	// Estimate total interest to be paid (simplified calculation)
 	const estimateTotalInterest = () => {
@@ -311,7 +300,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 	// 5. Debt vs Principal Timeline (Projection)
 	const getPaydownProjection = () => {
 		const months = 60; // 5 years projection
-		const data = [];
+		const data: { month: number; remaining: number; paid: number }[] = [];
 
 		for (let month = 0; month <= months; month += 6) {
 			let totalRemaining = 0;
@@ -557,9 +546,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<DollarSign className="h-4 w-4 text-red-600" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-red-600">
-							{formatCurrency(totalDebt)}
-						</div>
+						<div className="text-2xl font-bold text-red-600">{formatCurrency(totalDebt)}</div>
 						<p className="text-xs text-muted-foreground">
 							{((totalPaid / totalOriginal) * 100).toFixed(1)}% paid off
 						</p>
@@ -568,32 +555,22 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Principal Paid
-						</CardTitle>
+						<CardTitle className="text-sm font-medium">Principal Paid</CardTitle>
 						<TrendingUp className="h-4 w-4 text-green-600" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold text-green-600">
-							{formatCurrency(totalPaid)}
-						</div>
-						<p className="text-xs text-muted-foreground">
-							Out of {formatCurrency(totalOriginal)}
-						</p>
+						<div className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</div>
+						<p className="text-xs text-muted-foreground">Out of {formatCurrency(totalOriginal)}</p>
 					</CardContent>
 				</Card>
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Avg Interest Rate
-						</CardTitle>
+						<CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
 						<Percent className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
-							{avgInterestRate.toFixed(2)}%
-						</div>
+						<div className="text-2xl font-bold">{avgInterestRate.toFixed(2)}%</div>
 						<p className="text-xs text-muted-foreground">
 							Estimated interest: {formatCurrency(totalInterestEstimate)}
 						</p>
@@ -602,18 +579,12 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 
 				<Card>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-						<CardTitle className="text-sm font-medium">
-							Monthly Obligation
-						</CardTitle>
+						<CardTitle className="text-sm font-medium">Monthly Obligation</CardTitle>
 						<Calendar className="h-4 w-4 text-muted-foreground" />
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-bold">
-							{formatCurrency(totalMonthlyPayment)}
-						</div>
-						<p className="text-xs text-muted-foreground">
-							{loans.length} active loans
-						</p>
+						<div className="text-2xl font-bold">{formatCurrency(totalMonthlyPayment)}</div>
+						<p className="text-xs text-muted-foreground">{loans.length} active loans</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -627,9 +598,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<PieChart className="h-5 w-5" />
 							Debt Distribution by Type
 						</CardTitle>
-						<CardDescription>
-							Breakdown of remaining balance by loan type
-						</CardDescription>
+						<CardDescription>Breakdown of remaining balance by loan type</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -661,11 +630,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<div className="flex justify-between">
 								<span className="text-muted-foreground">Score Range:</span>
 								<span className="font-medium">
-									{healthScore < 30
-										? "Poor"
-										: healthScore < 70
-											? "Fair"
-											: "Excellent"}
+									{healthScore < 30 ? "Poor" : healthScore < 70 ? "Fair" : "Excellent"}
 								</span>
 							</div>
 						</div>
@@ -679,9 +644,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<BarChart3 className="h-5 w-5" />
 							Paydown Progress
 						</CardTitle>
-						<CardDescription>
-							Amount paid vs remaining for each loan
-						</CardDescription>
+						<CardDescription>Amount paid vs remaining for each loan</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -717,9 +680,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<Percent className="h-5 w-5" />
 							Interest Rate Comparison
 						</CardTitle>
-						<CardDescription>
-							Interest rates across all loans (color-coded by rate)
-						</CardDescription>
+						<CardDescription>Interest rates across all loans (color-coded by rate)</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -751,9 +712,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<LineChart className="h-5 w-5" />
 							5-Year Debt Projection
 						</CardTitle>
-						<CardDescription>
-							Projected paydown timeline (next 60 months)
-						</CardDescription>
+						<CardDescription>Projected paydown timeline (next 60 months)</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<ReactECharts
@@ -783,17 +742,11 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<p className="text-2xl font-bold">
 								{loans.length > 0
 									? new Date(
-											Math.max(
-												...loans.map((l) =>
-													l.endDate ? l.endDate.getTime() : Date.now(),
-												),
-											),
+											Math.max(...loans.map((l) => (l.endDate ? l.endDate.getTime() : Date.now()))),
 										).getFullYear()
 									: "N/A"}
 							</p>
-							<p className="text-xs text-muted-foreground">
-								Based on current payment schedule
-							</p>
+							<p className="text-xs text-muted-foreground">Based on current payment schedule</p>
 						</div>
 
 						<div className="space-y-2">
@@ -804,9 +757,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 							<p className="text-2xl font-bold text-orange-600">
 								{formatCurrency(totalInterestEstimate)}
 							</p>
-							<p className="text-xs text-muted-foreground">
-								Estimated over lifetime
-							</p>
+							<p className="text-xs text-muted-foreground">Estimated over lifetime</p>
 						</div>
 
 						<div className="space-y-2">
@@ -815,9 +766,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 								Debt-to-Asset Ratio
 							</h4>
 							<p className="text-2xl font-bold">N/A</p>
-							<p className="text-xs text-muted-foreground">
-								Link assets to calculate
-							</p>
+							<p className="text-xs text-muted-foreground">Link assets to calculate</p>
 						</div>
 					</div>
 				</CardContent>

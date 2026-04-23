@@ -1,7 +1,7 @@
 import { type ApolloClient, useMutation, useQuery } from "@apollo/client";
-import { graphql } from "@/gql";
-import { AssetSyncType, SyncStatus } from "@/graphql/queries/sync";
 import { useEffect } from "react";
+import { graphql } from "@/gql";
+import { type AssetSyncType, SyncStatus } from "@/graphql/queries/sync";
 import { apolloClient } from "@/lib/apollo/apollo-client";
 
 // Re-export enum values so callers can use them at runtime and in types.
@@ -154,7 +154,7 @@ const IMPORT_ASSETS_DOC = graphql(/* GraphQL */ `
 `);
 
 // Hooks
-export function useFinanceDatabaseSyncStatus(client?: ApolloClient<unknown>) {
+export function useFinanceDatabaseSyncStatus(client?: ApolloClient<object>) {
 	const { data, loading, error, refetch, startPolling, stopPolling } =
 		useQuery<FinanceDatabaseSyncStatusResult>(GET_SYNC_STATUS_DOC, {
 			client: client ?? apolloClient,
@@ -182,16 +182,15 @@ export function useFinanceDatabaseSyncStatus(client?: ApolloClient<unknown>) {
 	};
 }
 
-export function useFinanceDatabaseSyncHistory(
-	limit?: number,
-	client?: ApolloClient<unknown>,
-) {
-	const { data, loading, error, refetch } =
-		useQuery<FinanceDatabaseSyncHistoryResult>(GET_SYNC_HISTORY_DOC, {
+export function useFinanceDatabaseSyncHistory(limit?: number, client?: ApolloClient<object>) {
+	const { data, loading, error, refetch } = useQuery<FinanceDatabaseSyncHistoryResult>(
+		GET_SYNC_HISTORY_DOC,
+		{
 			variables: { limit },
 			client: client ?? apolloClient,
 			fetchPolicy: "cache-and-network",
-		});
+		},
+	);
 
 	return {
 		history: data?.financeDatabaseSyncHistory ?? [],
@@ -205,16 +204,18 @@ export function useFinanceDatabasePreview(
 	assetType: AssetSyncType,
 	search?: string,
 	limit?: number,
-	client?: ApolloClient<unknown>,
+	client?: ApolloClient<object>,
 	enabled = true,
 ) {
-	const { data, loading, error, refetch } =
-		useQuery<FinanceDatabasePreviewResult>(GET_SYNC_PREVIEW_DOC, {
+	const { data, loading, error, refetch } = useQuery<FinanceDatabasePreviewResult>(
+		GET_SYNC_PREVIEW_DOC,
+		{
 			variables: { assetType, search, limit },
 			client: client ?? apolloClient,
 			fetchPolicy: "cache-and-network",
 			skip: !enabled,
-		});
+		},
+	);
 
 	return {
 		preview: data?.financeDatabasePreview ?? [],
@@ -224,23 +225,20 @@ export function useFinanceDatabasePreview(
 	};
 }
 
-export function useTriggerFinanceDatabaseSync(client?: ApolloClient<unknown>) {
-	const [triggerSyncMutation, { loading, error }] =
-		useMutation<TriggerSyncResult>(TRIGGER_SYNC_DOC, {
+export function useTriggerFinanceDatabaseSync(client?: ApolloClient<object>) {
+	const [triggerSyncMutation, { loading, error }] = useMutation<TriggerSyncResult>(
+		TRIGGER_SYNC_DOC,
+		{
 			client: client ?? apolloClient,
 			refetchQueries: ["GetFinanceDatabaseSyncStatusHook"],
-		});
+		},
+	);
 
 	const triggerSync = async (assetType: AssetSyncType) => {
-		try {
-			const result = await triggerSyncMutation({
-				variables: { assetType },
-			});
-			return result;
-		} catch (err) {
-			console.error("Error triggering finance database sync:", err);
-			throw err;
-		}
+		const result = await triggerSyncMutation({
+			variables: { assetType },
+		});
+		return result;
 	};
 
 	return {
@@ -250,25 +248,20 @@ export function useTriggerFinanceDatabaseSync(client?: ApolloClient<unknown>) {
 	};
 }
 
-export function useUpdateFinanceDatabaseSyncEnabled(
-	client?: ApolloClient<unknown>,
-) {
-	const [updateEnabledMutation, { loading, error }] =
-		useMutation<UpdateSyncEnabledResult>(UPDATE_SYNC_ENABLED_DOC, {
+export function useUpdateFinanceDatabaseSyncEnabled(client?: ApolloClient<object>) {
+	const [updateEnabledMutation, { loading, error }] = useMutation<UpdateSyncEnabledResult>(
+		UPDATE_SYNC_ENABLED_DOC,
+		{
 			client: client ?? apolloClient,
 			refetchQueries: ["GetFinanceDatabaseSyncStatusHook"],
-		});
+		},
+	);
 
 	const updateEnabled = async (assetType: AssetSyncType, enabled: boolean) => {
-		try {
-			const result = await updateEnabledMutation({
-				variables: { assetType, enabled },
-			});
-			return result;
-		} catch (err) {
-			console.error("Error updating finance database sync enabled:", err);
-			throw err;
-		}
+		const result = await updateEnabledMutation({
+			variables: { assetType, enabled },
+		});
+		return result;
 	};
 
 	return {
@@ -278,26 +271,20 @@ export function useUpdateFinanceDatabaseSyncEnabled(
 	};
 }
 
-export function useImportFinanceDatabaseAssets(client?: ApolloClient<unknown>) {
-	const [importAssetsMutation, { loading, error }] =
-		useMutation<ImportAssetsResult>(IMPORT_ASSETS_DOC, {
+export function useImportFinanceDatabaseAssets(client?: ApolloClient<object>) {
+	const [importAssetsMutation, { loading, error }] = useMutation<ImportAssetsResult>(
+		IMPORT_ASSETS_DOC,
+		{
 			client: client ?? apolloClient,
-			refetchQueries: [
-				"GetFinanceDatabaseSyncStatusHook",
-				"GetFinanceDatabaseSyncHistoryHook",
-			],
-		});
+			refetchQueries: ["GetFinanceDatabaseSyncStatusHook", "GetFinanceDatabaseSyncHistoryHook"],
+		},
+	);
 
 	const importAssets = async (assetType: AssetSyncType, symbols: string[]) => {
-		try {
-			const result = await importAssetsMutation({
-				variables: { assetType, symbols },
-			});
-			return result;
-		} catch (err) {
-			console.error("Error importing finance database assets:", err);
-			throw err;
-		}
+		const result = await importAssetsMutation({
+			variables: { assetType, symbols },
+		});
+		return result;
 	};
 
 	return {

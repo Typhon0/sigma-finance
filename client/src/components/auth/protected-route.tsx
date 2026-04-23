@@ -3,13 +3,7 @@ import { Loader2, Shield } from "lucide-react";
 import type React from "react";
 import { useAuth } from "../../lib/auth-context";
 import { Button } from "../ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 interface ProtectedRouteProps {
 	children: React.ReactNode;
@@ -39,9 +33,7 @@ export function ProtectedRoute({
 
 	// Redirect to login if not authenticated
 	if (!isAuthenticated) {
-		return (
-			<Navigate to={fallbackPath} search={{ redirect: location.pathname }} />
-		);
+		return <Navigate to={fallbackPath} search={{ redirect: location.pathname } as any} />;
 	}
 
 	// Check email verification requirement
@@ -55,14 +47,13 @@ export function ProtectedRoute({
 						</div>
 						<CardTitle>Email Verification Required</CardTitle>
 						<CardDescription>
-							Please verify your email address to access this feature. Check
-							your inbox for a verification link.
+							Please verify your email address to access this feature. Check your inbox for a
+							verification link.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<p className="text-sm text-muted-foreground text-center">
-							Didn't receive the email? Check your spam folder or request a new
-							one.
+							Didn't receive the email? Check your spam folder or request a new one.
 						</p>
 						<Button
 							onClick={() => resendVerification(user.email)}

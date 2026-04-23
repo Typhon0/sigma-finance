@@ -1,10 +1,23 @@
 import { gql } from "@apollo/client";
 
 export const UPSERT_MARKET_DATA_CREDENTIAL = gql`
-  mutation UpsertMarketDataCredential($provider: String!, $apiKey: String!) {
-    upsertMarketDataCredential(provider: $provider, apiKey: $apiKey) {
+  mutation UpsertMarketDataCredential(
+    $provider: String!
+    $apiKey: String!
+    $isEnabled: Boolean
+    $priority: Int
+  ) {
+    upsertMarketDataCredential(
+      provider: $provider
+      apiKey: $apiKey
+      isEnabled: $isEnabled
+      priority: $priority
+    ) {
       id
       provider
+      isEnabled
+      priority
+      lastValidatedAt
       createdAt
       updatedAt
     }

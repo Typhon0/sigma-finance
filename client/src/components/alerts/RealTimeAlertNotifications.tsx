@@ -23,6 +23,43 @@ interface RealTimeAlertNotificationsProps {
 	showInline?: boolean;
 }
 
+// Extracted helper functions so they can be used by both components
+const getAlertIcon = (type: string) => {
+	switch (type) {
+		case "PRICE":
+			return <DollarSign className="h-4 w-4" />;
+		case "PERCENTAGE_CHANGE":
+			return <TrendingUp className="h-4 w-4" />;
+		case "PORTFOLIO_VALUE":
+			return <TrendingDown className="h-4 w-4" />;
+		default:
+			return <AlertTriangle className="h-4 w-4" />;
+	}
+};
+
+const getAlertColor = (type: string) => {
+	switch (type) {
+		case "PRICE":
+			return "text-blue-600 bg-blue-50 border-blue-200";
+		case "PERCENTAGE_CHANGE":
+			return "text-green-600 bg-green-50 border-green-200";
+		case "PORTFOLIO_VALUE":
+			return "text-purple-600 bg-purple-50 border-purple-200";
+		default:
+			return "text-orange-600 bg-orange-50 border-orange-200";
+	}
+};
+
+const formatTimestamp = (timestamp: number) => {
+	const now = Date.now();
+	const diff = now - timestamp;
+
+	if (diff < 60000) return "Just now";
+	if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+	if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+	return new Date(timestamp).toLocaleDateString();
+};
+
 export function RealTimeAlertNotifications({
 	className = "",
 	maxVisible = 5,
@@ -46,45 +83,7 @@ export function RealTimeAlertNotifications({
 		}
 	}, [state.unreadAlertCount, newAlertCount]);
 
-	const getAlertIcon = (type: string) => {
-		switch (type) {
-			case "PRICE":
-				return <DollarSign className="h-4 w-4" />;
-			case "PERCENTAGE_CHANGE":
-				return <TrendingUp className="h-4 w-4" />;
-			case "PORTFOLIO_VALUE":
-				return <TrendingDown className="h-4 w-4" />;
-			default:
-				return <AlertTriangle className="h-4 w-4" />;
-		}
-	};
-
-	const getAlertColor = (type: string) => {
-		switch (type) {
-			case "PRICE":
-				return "text-blue-600 bg-blue-50 border-blue-200";
-			case "PERCENTAGE_CHANGE":
-				return "text-green-600 bg-green-50 border-green-200";
-			case "PORTFOLIO_VALUE":
-				return "text-purple-600 bg-purple-50 border-purple-200";
-			default:
-				return "text-orange-600 bg-orange-50 border-orange-200";
-		}
-	};
-
-	const formatTimestamp = (timestamp: number) => {
-		const now = Date.now();
-		const diff = now - timestamp;
-
-		if (diff < 60000) return "Just now";
-		if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-		if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-		return new Date(timestamp).toLocaleDateString();
-	};
-
-	const visibleAlerts = isExpanded
-		? state.alerts
-		: state.alerts.slice(0, maxVisible);
+	const visibleAlerts = isExpanded ? state.alerts : state.alerts.slice(0, maxVisible);
 
 	if (showInline) {
 		return (
@@ -100,17 +99,13 @@ export function RealTimeAlertNotifications({
 					>
 						<CardContent className="p-3">
 							<div className="flex items-start gap-3">
-								<div
-									className={cn("p-2 rounded-full", getAlertColor(alert.type))}
-								>
+								<div className={cn("p-2 rounded-full", getAlertColor(alert.type))}>
 									{getAlertIcon(alert.type)}
 								</div>
 
 								<div className="flex-1 min-w-0">
 									<div className="flex items-center gap-2 mb-1">
-										<h4 className="font-medium text-sm truncate">
-											{alert.title}
-										</h4>
+										<h4 className="font-medium text-sm truncate">{alert.title}</h4>
 										{!alert.acknowledged && (
 											<Badge variant="destructive" className="text-xs">
 												New
@@ -151,9 +146,7 @@ export function RealTimeAlertNotifications({
 						onClick={() => setIsExpanded(!isExpanded)}
 						className="w-full"
 					>
-						{isExpanded
-							? "Show Less"
-							: `Show ${state.alerts.length - maxVisible} More`}
+						{isExpanded ? "Show Less" : `Show ${state.alerts.length - maxVisible} More`}
 					</Button>
 				)}
 			</div>
@@ -167,10 +160,7 @@ export function RealTimeAlertNotifications({
 					<CardTitle className="text-lg flex items-center gap-2">
 						{state.unreadAlertCount > 0 ? (
 							<BellRing
-								className={cn(
-									"h-5 w-5 text-blue-600",
-									newAlertCount > 0 && "animate-bounce",
-								)}
+								className={cn("h-5 w-5 text-blue-600", newAlertCount > 0 && "animate-bounce")}
 							/>
 						) : (
 							<Bell className="h-5 w-5 text-gray-500" />
@@ -225,17 +215,13 @@ export function RealTimeAlertNotifications({
 										alert.acknowledged
 											? "bg-gray-50 border-gray-200"
 											: "bg-white border-blue-200 shadow-sm",
-										index === 0 &&
-											newAlertCount > 0 &&
-											"ring-2 ring-blue-300 scale-105",
+										index === 0 && newAlertCount > 0 && "ring-2 ring-blue-300 scale-105",
 									)}
 								>
 									<div
 										className={cn(
 											"p-2 rounded-full flex-shrink-0",
-											alert.acknowledged
-												? "bg-gray-100 text-gray-500"
-												: getAlertColor(alert.type),
+											alert.acknowledged ? "bg-gray-100 text-gray-500" : getAlertColor(alert.type),
 										)}
 									>
 										{getAlertIcon(alert.type)}
@@ -246,9 +232,7 @@ export function RealTimeAlertNotifications({
 											<h4
 												className={cn(
 													"font-medium text-sm truncate",
-													alert.acknowledged
-														? "text-gray-600"
-														: "text-gray-900",
+													alert.acknowledged ? "text-gray-600" : "text-gray-900",
 												)}
 											>
 												{alert.title}
@@ -302,19 +286,14 @@ export function RealTimeAlertNotifications({
  * Floating alert notification component for immediate alerts
  */
 export function FloatingAlertNotification() {
-	const { state } = useRealTimeDashboard();
+	const { state, actions } = useRealTimeDashboard();
 	const [visibleAlert, setVisibleAlert] = useState<any>(null);
 	const [isVisible, setIsVisible] = useState(false);
 
 	useEffect(() => {
-		const latestUnacknowledgedAlert = state.alerts.find(
-			(alert) => !alert.acknowledged,
-		);
+		const latestUnacknowledgedAlert = state.alerts.find((alert) => !alert.acknowledged);
 
-		if (
-			latestUnacknowledgedAlert &&
-			latestUnacknowledgedAlert !== visibleAlert
-		) {
+		if (latestUnacknowledgedAlert && latestUnacknowledgedAlert !== visibleAlert) {
 			setVisibleAlert(latestUnacknowledgedAlert);
 			setIsVisible(true);
 
@@ -334,12 +313,7 @@ export function FloatingAlertNotification() {
 			<Card className="w-80 shadow-lg border-l-4 border-l-blue-500">
 				<CardContent className="p-4">
 					<div className="flex items-start gap-3">
-						<div
-							className={cn(
-								"p-2 rounded-full flex-shrink-0",
-								getAlertColor(visibleAlert.type),
-							)}
-						>
+						<div className={cn("p-2 rounded-full flex-shrink-0", getAlertColor(visibleAlert.type))}>
 							{getAlertIcon(visibleAlert.type)}
 						</div>
 
@@ -356,9 +330,7 @@ export function FloatingAlertNotification() {
 								</Button>
 							</div>
 
-							<p className="text-sm text-gray-600 mb-2">
-								{visibleAlert.message}
-							</p>
+							<p className="text-sm text-gray-600 mb-2">{visibleAlert.message}</p>
 
 							<div className="flex items-center gap-2">
 								<Button

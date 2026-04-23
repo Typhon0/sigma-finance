@@ -1,8 +1,4 @@
-import type {
-	AuditTrailData,
-	PortfolioExportData,
-	TaxReportData,
-} from "./types";
+import type { AuditTrailData, PortfolioExportData, TaxReportData } from "./types";
 
 export class CSVExporter {
 	private static escapeCSVField(field: any): string {
@@ -106,19 +102,8 @@ export class CSVExporter {
 		return sections.join("\n");
 	}
 
-	static exportTransactionHistory(
-		transactions: PortfolioExportData["transactions"],
-	): string {
-		const headers = [
-			"Date",
-			"Type",
-			"Asset Name",
-			"Quantity",
-			"Amount",
-			"Price",
-			"Fee",
-			"Notes",
-		];
+	static exportTransactionHistory(transactions: PortfolioExportData["transactions"]): string {
+		const headers = ["Date", "Type", "Asset Name", "Quantity", "Amount", "Price", "Fee", "Notes"];
 		const rows = transactions.map((tx) => [
 			tx.date,
 			tx.type,

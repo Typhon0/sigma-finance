@@ -2,12 +2,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useAuth } from "../../lib/auth-context";
-import { useAuthErrorHandler } from "../../lib/auth-error-handler";
 import type { AuthError } from "../../lib/types/auth.types";
-import {
-	type RegisterFormData,
-	registerSchema,
-} from "../../lib/validations/auth.schemas";
+import { type RegisterFormData, registerSchema } from "../../lib/validations/auth.schemas";
 import { Button } from "../ui/button";
 import { AuthButton } from "./auth-button";
 import { AuthFormField } from "./auth-form-field";
@@ -22,7 +18,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 	const [showSuccess, setShowSuccess] = useState(false);
 	const [registeredEmail, setRegisteredEmail] = useState("");
 	const { register: registerUser, isLoading, resendVerification } = useAuth();
-	const { _handleAuthResponse } = useAuthErrorHandler();
 
 	const {
 		register,
@@ -43,10 +38,13 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 			setRegisteredEmail(data.email);
 			setShowSuccess(true);
 			reset(); // Clear form on successful registration
-		} catch (error: any) {
+		} catch (error: unknown) {
 			// Extract errors from the error object if available
-			if (error?.graphQLErrors?.[0]?.extensions?.errors) {
-				setAuthErrors(error.graphQLErrors[0].extensions.errors);
+			const gqlErr = error as {
+				graphQLErrors?: Array<{ extensions?: { errors?: AuthError[] } }>;
+			} | null;
+			if (gqlErr?.graphQLErrors?.[0]?.extensions?.errors) {
+				setAuthErrors(gqlErr.graphQLErrors[0].extensions.errors);
 			} else {
 				setAuthErrors([
 					{
@@ -67,9 +65,7 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 		if (registeredEmail) {
 			try {
 				await resendVerification(registeredEmail);
-			} catch (error) {
-				console.error("Failed to resend verification:", error);
-			}
+			} catch (_error) {}
 		}
 	};
 
@@ -92,7 +88,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 			<form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 				<AuthFormField
 					id="name"
-					name="name"
 					type="text"
 					label="Full Name"
 					placeholder="Enter your full name"
@@ -106,7 +101,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
 				<AuthFormField
 					id="email"
-					name="email"
 					type="email"
 					label="Email"
 					placeholder="Enter your email"
@@ -120,7 +114,6 @@ export function RegisterForm({ onSwitchToLogin }: RegisterFormProps) {
 
 				<AuthFormField
 					id="password"
-					name="password"
 					type="password"
 					label="Password"
 					placeholder="Create a strong password"

@@ -1,4 +1,4 @@
-import type { EChartsOption } from "echarts";
+import type { EChartsCoreOption } from "echarts";
 import ReactECharts from "echarts-for-react";
 import { Download, Eye, EyeOff, Maximize2, Minimize2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
@@ -86,7 +86,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 	}, [portfolios, visiblePortfolios, chartColors]);
 
 	// Create chart configuration
-	const chartOption = useMemo((): EChartsOption => {
+	const chartOption = useMemo((): EChartsCoreOption => {
 		if (!processedPortfolios || processedPortfolios.length === 0) {
 			return {};
 		}
@@ -110,23 +110,33 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 		});
 
 		// Add performance optimizations for large datasets
-		const totalDataPoints = processedPortfolios.reduce(
-			(sum, p) => sum + p.data.length,
-			0,
-		);
+		const totalDataPoints = processedPortfolios.reduce((sum, p) => sum + p.data.length, 0);
 		if (totalDataPoints > 1000) {
-			Object.assign(
-				baseConfig,
-				EChartsPerformanceManager.getPerformanceOptions(),
-			);
+			Object.assign(baseConfig, EChartsPerformanceManager.getPerformanceOptions());
 		}
 
 		// Compact mode adjustments
 		if (compact) {
+			const grid =
+				typeof baseConfig.grid === "object" && baseConfig.grid
+					? (baseConfig.grid as Record<string, unknown>)
+					: {};
+			const legend =
+				typeof baseConfig.legend === "object" && baseConfig.legend
+					? (baseConfig.legend as Record<string, unknown>)
+					: {};
+			const xAxis =
+				typeof baseConfig.xAxis === "object" && baseConfig.xAxis && !Array.isArray(baseConfig.xAxis)
+					? (baseConfig.xAxis as Record<string, unknown>)
+					: {};
+			const yAxis =
+				typeof baseConfig.yAxis === "object" && baseConfig.yAxis && !Array.isArray(baseConfig.yAxis)
+					? (baseConfig.yAxis as Record<string, unknown>)
+					: {};
 			return {
 				...baseConfig,
 				grid: {
-					...baseConfig.grid,
+					...grid,
 					left: "5%",
 					right: "5%",
 					top: showLegend ? "15%" : "10%",
@@ -134,7 +144,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 				},
 				legend: showLegend
 					? {
-							...baseConfig.legend,
+							...legend,
 							top: 0,
 							textStyle: {
 								fontSize: 10,
@@ -142,26 +152,26 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 						}
 					: undefined,
 				xAxis: {
-					...baseConfig.xAxis,
+					...xAxis,
 					axisLabel: {
-						...baseConfig.xAxis?.axisLabel,
+						...((xAxis.axisLabel as Record<string, unknown>) || {}),
 						fontSize: 10,
 					},
 				},
 				yAxis: {
-					...baseConfig.yAxis,
+					...yAxis,
 					axisLabel: {
-						...baseConfig.yAxis?.axisLabel,
+						...((yAxis.axisLabel as Record<string, unknown>) || {}),
 						fontSize: 10,
 					},
 				},
-			};
+			} as EChartsCoreOption;
 		}
 
 		// Add legend if not compact
 		if (showLegend && !compact) {
 			baseConfig.legend = {
-				...baseConfig.legend,
+				...((baseConfig.legend as object) || {}),
 				show: true,
 				top: "top",
 				left: "center",
@@ -169,15 +179,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 		}
 
 		return baseConfig;
-	}, [
-		processedPortfolios,
-		title,
-		showHeader,
-		yAxisFormatter,
-		metric,
-		compact,
-		showLegend,
-	]);
+	}, [processedPortfolios, title, showHeader, yAxisFormatter, metric, compact, showLegend]);
 
 	// Handle portfolio visibility toggle
 	const handlePortfolioToggle = (portfolioId: string) => {
@@ -195,7 +197,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 	const handleExport = (format: "png" | "svg") => {
 		if (chartRef.current) {
 			const chartInstance = chartRef.current.getEchartsInstance();
-			const dataURL = chartInstance.getDataURL({
+			const dataUrl = chartInstance.getDataURL({
 				type: format,
 				pixelRatio: 2,
 				backgroundColor: "#fff",
@@ -204,7 +206,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 			// Create download link
 			const link = document.createElement("a");
 			link.download = `${title.toLowerCase().replace(/\s+/g, "-")}-chart.${format}`;
-			link.href = dataURL;
+			link.href = dataUrl;
 			document.body.appendChild(link);
 			link.click();
 			document.body.removeChild(link);
@@ -224,7 +226,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 			const chartInstance = chartRef.current.getEchartsInstance();
 			setTimeout(() => chartInstance.resize(), 100);
 		}
-	}, [isFullscreen]);
+	}, []);
 
 	// Update visible portfolios when portfolios prop changes
 	useEffect(() => {
@@ -247,9 +249,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 					>
 						<div className="text-center">
 							<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2" />
-							<p className="text-sm text-muted-foreground">
-								Loading comparison data...
-							</p>
+							<p className="text-sm text-muted-foreground">Loading comparison data...</p>
 						</div>
 					</div>
 				</CardContent>
@@ -297,9 +297,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 					>
 						<div className="text-center text-muted-foreground">
 							<p className="font-medium">No portfolios to compare</p>
-							<p className="text-sm">
-								Add multiple portfolios to see comparison charts
-							</p>
+							<p className="text-sm">Add multiple portfolios to see comparison charts</p>
 						</div>
 					</div>
 				</CardContent>
@@ -317,7 +315,6 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 			}}
 			opts={{
 				renderer: "canvas",
-				useDirtyRect: true,
 			}}
 		/>
 	);
@@ -327,13 +324,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 	}
 
 	return (
-		<Card
-			className={cn(
-				"w-full",
-				isFullscreen && "fixed inset-4 z-50 bg-background",
-				className,
-			)}
-		>
+		<Card className={cn("w-full", isFullscreen && "fixed inset-4 z-50 bg-background", className)}>
 			<CardHeader className="pb-3">
 				<div className="flex items-center justify-between">
 					<CardTitle className="text-lg font-semibold">{title}</CardTitle>
@@ -402,9 +393,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 									<div
 										className="w-3 h-3 rounded-full"
 										style={{
-											backgroundColor:
-												portfolio.color ||
-												chartColors[index % chartColors.length],
+											backgroundColor: portfolio.color || chartColors[index % chartColors.length],
 										}}
 									/>
 									<label
@@ -429,9 +418,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 							<div className="text-center text-muted-foreground">
 								<EyeOff className="h-8 w-8 mx-auto mb-2" />
 								<p className="font-medium">No portfolios visible</p>
-								<p className="text-sm">
-									Select portfolios to display in the chart
-								</p>
+								<p className="text-sm">Select portfolios to display in the chart</p>
 							</div>
 						</div>
 					)}
@@ -445,9 +432,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 								<div
 									className="w-2 h-2 rounded-full flex-shrink-0"
 									style={{
-										backgroundColor:
-											portfolio.color ||
-											chartColors[index % chartColors.length],
+										backgroundColor: portfolio.color || chartColors[index % chartColors.length],
 									}}
 								/>
 								<span className="truncate">{portfolio.name}</span>

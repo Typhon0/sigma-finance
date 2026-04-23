@@ -53,15 +53,11 @@ vi.mock("@/components/PortfolioProvider", () => ({
 
 // Mock child components
 vi.mock("@/components/StocksFundsPositions", () => ({
-	StocksFundsPositions: () => (
-		<div data-testid="stocks-positions">Positions</div>
-	),
+	StocksFundsPositions: () => <div data-testid="stocks-positions">Positions</div>,
 }));
 
 vi.mock("@/components/StocksFundsTransactions", () => ({
-	StocksFundsTransactions: () => (
-		<div data-testid="stocks-transactions">Transactions</div>
-	),
+	StocksFundsTransactions: () => <div data-testid="stocks-transactions">Transactions</div>,
 }));
 
 vi.mock("@/components/PieChartWithCenter", () => ({
@@ -82,9 +78,7 @@ vi.mock("lucide-react", () => ({
 }));
 
 vi.mock("@/components/ui/button", () => ({
-	Button: ({ children }: { children: ReactNode }) => (
-		<button>{children}</button>
-	),
+	Button: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
 }));
 
 vi.mock("@/components/ui/card", () => ({
@@ -100,13 +94,11 @@ vi.mock("@/components/ui/tabs", () => ({
 }));
 
 // Mock AddStockForm to capture the onSubmit handler
-let capturedHandleAddPosition:
-	| ((formData: Record<string, unknown>) => Promise<void>)
-	| null = null;
+let capturedHandleAddPosition: ((formData: Record<string, unknown>) => Promise<void>) | null = null;
 vi.mock("@/components/AddStockForm", () => ({
 	AddStockForm: ({
 		open,
-		onClose,
+		_onClose,
 		onSubmit,
 	}: {
 		open: boolean;
@@ -114,9 +106,7 @@ vi.mock("@/components/AddStockForm", () => ({
 		onSubmit: (data: unknown) => void;
 	}) => {
 		if (open) {
-			capturedHandleAddPosition = onSubmit as (
-				formData: Record<string, unknown>,
-			) => Promise<void>;
+			capturedHandleAddPosition = onSubmit as (formData: Record<string, unknown>) => Promise<void>;
 		}
 		return open ? <div data-testid="add-stock-form">Add Stock Form</div> : null;
 	},

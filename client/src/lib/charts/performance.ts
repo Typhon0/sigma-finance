@@ -31,21 +31,29 @@ export interface ChartPerformanceMetrics {
  * Lazy loading utilities
  */
 export class ChartLazyLoader {
-	private static loadedComponents = new Map<string, LazyExoticComponent<any>>();
+	private static loadedComponents = new Map<
+		string,
+		LazyExoticComponent<ComponentType<Record<string, unknown>>>
+	>();
 
 	/**
 	 * Create lazy-loaded chart component
 	 */
-	static createLazyChart<T = any>(
+	static createLazyChart<T = Record<string, unknown>>(
 		importFn: () => Promise<{ default: ComponentType<T> }>,
 		componentName: string,
 	): LazyExoticComponent<ComponentType<T>> {
 		if (ChartLazyLoader.loadedComponents.has(componentName)) {
-			return ChartLazyLoader.loadedComponents.get(componentName)!;
+			return ChartLazyLoader.loadedComponents.get(componentName) as LazyExoticComponent<
+				ComponentType<T>
+			>;
 		}
 
 		const LazyComponent = lazy(importFn);
-		ChartLazyLoader.loadedComponents.set(componentName, LazyComponent);
+		ChartLazyLoader.loadedComponents.set(
+			componentName,
+			LazyComponent as LazyExoticComponent<ComponentType<Record<string, unknown>>>,
+		);
 
 		return LazyComponent;
 	}
@@ -54,7 +62,7 @@ export class ChartLazyLoader {
 	 * Preload chart component
 	 */
 	static async preloadChart(
-		importFn: () => Promise<{ default: ComponentType<any> }>,
+		importFn: () => Promise<{ default: ComponentType<unknown> }>,
 		componentName: string,
 	): Promise<void> {
 		if (ChartLazyLoader.loadedComponents.has(componentName)) {
@@ -64,13 +72,11 @@ export class ChartLazyLoader {
 		try {
 			const module = await importFn();
 			const LazyComponent = lazy(() => Promise.resolve(module));
-			ChartLazyLoader.loadedComponents.set(componentName, LazyComponent);
-		} catch (error) {
-			console.error(
-				`Failed to preload chart component ${componentName}:`,
-				error,
+			ChartLazyLoader.loadedComponents.set(
+				componentName,
+				LazyComponent as LazyExoticComponent<ComponentType<Record<string, unknown>>>,
 			);
-		}
+		} catch (_error) {}
 	}
 
 	/**
@@ -120,18 +126,12 @@ export class ChartVirtualizer {
 		visibleTimeRange: { start: Date; end: Date },
 		dataTimeRange: { start: Date; end: Date },
 	): { start: number; end: number } {
-		const totalTimeSpan =
-			dataTimeRange.end.getTime() - dataTimeRange.start.getTime();
-		const visibleTimeSpan =
-			visibleTimeRange.end.getTime() - visibleTimeRange.start.getTime();
-		const visibleStartOffset =
-			visibleTimeRange.start.getTime() - dataTimeRange.start.getTime();
+		const totalTimeSpan = dataTimeRange.end.getTime() - dataTimeRange.start.getTime();
+		const visibleTimeSpan = visibleTimeRange.end.getTime() - visibleTimeRange.start.getTime();
+		const visibleStartOffset = visibleTimeRange.start.getTime() - dataTimeRange.start.getTime();
 
 		const startRatio = Math.max(0, visibleStartOffset / totalTimeSpan);
-		const endRatio = Math.min(
-			1,
-			(visibleStartOffset + visibleTimeSpan) / totalTimeSpan,
-		);
+		const endRatio = Math.min(1, (visibleStartOffset + visibleTimeSpan) / totalTimeSpan);
 
 		return {
 			start: Math.floor(startRatio * totalDataPoints),
@@ -160,9 +160,12 @@ export class DataSampler {
 			case "uniform":
 				return DataSampler.uniformSampling(data, targetSize);
 			case "adaptive":
-				return DataSampler.adaptiveSampling(data, targetSize);
+				return DataSampler.adaptiveSampling(data as Array<{ value?: number }>, targetSize) as T[];
 			case "lttb":
-				return DataSampler.lttbSampling(data, targetSize);
+				return DataSampler.lttbSampling(
+					data as Array<{ value?: number; time?: number }>,
+					targetSize,
+				) as T[];
 			default:
 				return DataSampler.uniformSampling(data, targetSize);
 		}
@@ -201,15 +204,13 @@ export class DataSampler {
 
 		// Calculate variance for each segment
 		const segmentSize = Math.ceil(data.length / targetSize);
-		const segments: Array<{ data: T[]; variance: number; startIndex: number }> =
-			[];
+		const segments: Array<{ data: T[]; variance: number; startIndex: number }> = [];
 
 		for (let i = 0; i < data.length; i += segmentSize) {
 			const segment = data.slice(i, i + segmentSize);
 			const values = segment.map((item) => item.value || 0);
 			const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-			const variance =
-				values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
+			const variance = values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
 
 			segments.push({ data: segment, variance, startIndex: i });
 		}
@@ -223,10 +224,7 @@ export class DataSampler {
 				1,
 				Math.floor((segment.variance / totalVariance) * targetSize),
 			);
-			const segmentSampled = DataSampler.uniformSampling(
-				segment.data,
-				pointsForSegment,
-			);
+			const segmentSampled = DataSampler.uniformSampling(segment.data, pointsForSegment);
 			sampled.push(...segmentSampled);
 		});
 
@@ -274,8 +272,8 @@ export class DataSampler {
 			const rangeTo = Math.floor((i + 1) * bucketSize) + 1;
 
 			// Point a
-			const pointAX = a;
-			const pointAY = data[a].value || 0;
+			const pointAx = a;
+			const pointAy = data[a].value || 0;
 
 			let maxArea = -1;
 			let maxAreaPoint = rangeOffs;
@@ -284,8 +282,7 @@ export class DataSampler {
 				// Calculate triangle area over three buckets
 				const area =
 					Math.abs(
-						(pointAX - avgX) * ((data[j].value || 0) - pointAY) -
-							(pointAX - j) * (avgY - pointAY),
+						(pointAx - avgX) * ((data[j].value || 0) - pointAy) - (pointAx - j) * (avgY - pointAy),
 					) * 0.5;
 
 				if (area > maxArea) {
@@ -316,16 +313,20 @@ export class ChartPerformanceMonitor {
 	 */
 	static startMeasurement(chartId: string): () => ChartPerformanceMetrics {
 		const startTime = performance.now();
-		const startMemory = (performance as any).memory?.usedJSHeapSize;
+		const startMemory =
+			(performance as unknown as { memory?: { usedJSHeapSize?: number } }).memory?.usedJSHeapSize ??
+			0;
 
 		return () => {
 			const endTime = performance.now();
-			const endMemory = (performance as any).memory?.usedJSHeapSize;
+			const endMemory =
+				(performance as unknown as { memory?: { usedJSHeapSize?: number } }).memory
+					?.usedJSHeapSize ?? 0;
 
 			const metrics: ChartPerformanceMetrics = {
 				renderTime: endTime - startTime,
 				dataProcessingTime: 0, // To be set separately
-				memoryUsage: endMemory ? endMemory - startMemory : undefined,
+				memoryUsage: endMemory - startMemory || undefined,
 				dataPoints: 0, // To be set separately
 			};
 
@@ -382,10 +383,7 @@ export class ChartPerformanceMonitor {
 
 		const warnings: string[] = [];
 
-		if (
-			thresholds.maxRenderTime &&
-			metrics.renderTime > thresholds.maxRenderTime
-		) {
+		if (thresholds.maxRenderTime && metrics.renderTime > thresholds.maxRenderTime) {
 			warnings.push(
 				`Render time (${metrics.renderTime.toFixed(2)}ms) exceeded threshold (${thresholds.maxRenderTime}ms)`,
 			);
@@ -411,7 +409,6 @@ export class ChartPerformanceMonitor {
 		}
 
 		if (warnings.length > 0) {
-			console.warn(`Chart performance warnings for ${chartId}:`, warnings);
 		}
 	}
 }
@@ -420,19 +417,13 @@ export class ChartPerformanceMonitor {
  * Debounced and throttled update utilities
  */
 export class ChartUpdateManager {
-	private static debouncedUpdates = new Map<
-		string,
-		ReturnType<typeof debounce>
-	>();
-	private static throttledUpdates = new Map<
-		string,
-		ReturnType<typeof throttle>
-	>();
+	private static debouncedUpdates = new Map<string, ReturnType<typeof debounce>>();
+	private static throttledUpdates = new Map<string, ReturnType<typeof throttle>>();
 
 	/**
 	 * Create debounced update function
 	 */
-	static createDebouncedUpdate<T extends any[]>(
+	static createDebouncedUpdate<T extends unknown[]>(
 		key: string,
 		updateFn: (...args: T) => void,
 		delay: number = 300,
@@ -449,7 +440,7 @@ export class ChartUpdateManager {
 	/**
 	 * Create throttled update function
 	 */
-	static createThrottledUpdate<T extends any[]>(
+	static createThrottledUpdate<T extends unknown[]>(
 		key: string,
 		updateFn: (...args: T) => void,
 		delay: number = 100,
@@ -497,7 +488,10 @@ export class ChartUpdateManager {
  * Memory management utilities
  */
 export class ChartMemoryManager {
-	private static chartInstances = new Map<string, any>();
+	private static chartInstances = new Map<
+		string,
+		{ dispose?: () => void } & Record<string, unknown>
+	>();
 	private static cleanupCallbacks = new Map<string, () => void>();
 
 	/**
@@ -505,7 +499,7 @@ export class ChartMemoryManager {
 	 */
 	static registerChart(
 		chartId: string,
-		instance: any,
+		instance: { dispose?: () => void } & Record<string, unknown>,
 		cleanupFn?: () => void,
 	): void {
 		// Clean up existing instance if any
@@ -558,15 +552,17 @@ export class ChartMemoryManager {
 	 * Get memory usage estimate
 	 */
 	static getMemoryUsage(): number | undefined {
-		return (performance as any).memory?.usedJSHeapSize;
+		return (performance as unknown as { memory?: { usedJSHeapSize?: number } }).memory
+			?.usedJSHeapSize;
 	}
 
 	/**
 	 * Force garbage collection (if available)
 	 */
 	static forceGarbageCollection(): void {
-		if ((window as any).gc) {
-			(window as any).gc();
+		const gcFn = (window as unknown as { gc?: () => void }).gc;
+		if (typeof gcFn === "function") {
+			gcFn();
 		}
 	}
 }
@@ -645,20 +641,18 @@ export class ChartOptimizationRecommendations {
 	 * Analyze data and provide optimization recommendations
 	 */
 	static analyzeAndRecommend(
-		data: any[],
+		data: unknown[],
 		chartType: string,
 	): {
 		recommendations: string[];
-		optimizedSettings: any;
+		optimizedSettings: Record<string, unknown>;
 	} {
 		const recommendations: string[] = [];
-		const optimizedSettings: any = {};
+		const optimizedSettings: Record<string, unknown> = {};
 
 		// Data size analysis
 		if (data.length > 10000) {
-			recommendations.push(
-				"Consider data sampling or virtualization for large datasets",
-			);
+			recommendations.push("Consider data sampling or virtualization for large datasets");
 			optimizedSettings.enableSampling = true;
 			optimizedSettings.maxDataPoints = 5000;
 		}
@@ -670,9 +664,7 @@ export class ChartOptimizationRecommendations {
 
 		// Chart type specific recommendations
 		if (chartType === "candlestick" && data.length > 5000) {
-			recommendations.push(
-				"Disable animations for candlestick charts with large datasets",
-			);
+			recommendations.push("Disable animations for candlestick charts with large datasets");
 			optimizedSettings.animation = false;
 		}
 
@@ -685,9 +677,7 @@ export class ChartOptimizationRecommendations {
 		const memoryUsage = ChartMemoryManager.getMemoryUsage();
 		if (memoryUsage && memoryUsage > 100 * 1024 * 1024) {
 			// 100MB
-			recommendations.push(
-				"High memory usage detected, consider reducing data precision",
-			);
+			recommendations.push("High memory usage detected, consider reducing data precision");
 			optimizedSettings.reducePrecision = true;
 		}
 

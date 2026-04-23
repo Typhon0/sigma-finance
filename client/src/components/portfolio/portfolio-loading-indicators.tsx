@@ -37,10 +37,7 @@ export function LoadingIndicator({
 					{[0, 1, 2].map((i) => (
 						<div
 							key={i}
-							className={cn(
-								"rounded-full bg-current animate-pulse",
-								sizeClasses[size],
-							)}
+							className={cn("rounded-full bg-current animate-pulse", sizeClasses[size])}
 							style={{
 								animationDelay: `${i * 0.2}s`,
 								animationDuration: "1s",
@@ -48,9 +45,7 @@ export function LoadingIndicator({
 						/>
 					))}
 				</div>
-				<span className={cn("text-muted-foreground", textSizeClasses[size])}>
-					{message}
-				</span>
+				<span className={cn("text-muted-foreground", textSizeClasses[size])}>{message}</span>
 			</div>
 		);
 	}
@@ -58,15 +53,8 @@ export function LoadingIndicator({
 	if (variant === "pulse") {
 		return (
 			<div className={cn("flex items-center gap-2", className)}>
-				<div
-					className={cn(
-						"rounded-full bg-current animate-pulse",
-						sizeClasses[size],
-					)}
-				/>
-				<span className={cn("text-muted-foreground", textSizeClasses[size])}>
-					{message}
-				</span>
+				<div className={cn("rounded-full bg-current animate-pulse", sizeClasses[size])} />
+				<span className={cn("text-muted-foreground", textSizeClasses[size])}>{message}</span>
 			</div>
 		);
 	}
@@ -74,9 +62,7 @@ export function LoadingIndicator({
 	return (
 		<div className={cn("flex items-center gap-2", className)}>
 			<Loader2 className={cn("animate-spin", sizeClasses[size])} />
-			<span className={cn("text-muted-foreground", textSizeClasses[size])}>
-				{message}
-			</span>
+			<span className={cn("text-muted-foreground", textSizeClasses[size])}>{message}</span>
 		</div>
 	);
 }
@@ -108,9 +94,7 @@ export function AsyncOperationIndicator({
 		return (
 			<Alert className={cn("border-green-200 bg-green-50", className)}>
 				<CheckCircle className="h-4 w-4 text-green-600" />
-				<AlertDescription className="text-green-800">
-					{successMessage}
-				</AlertDescription>
+				<AlertDescription className="text-green-800">{successMessage}</AlertDescription>
 			</Alert>
 		);
 	}
@@ -154,10 +138,7 @@ interface PortfolioOperationStatusProps {
 	className?: string;
 }
 
-export function PortfolioOperationStatus({
-	operations,
-	className,
-}: PortfolioOperationStatusProps) {
+export function PortfolioOperationStatus({ operations, className }: PortfolioOperationStatusProps) {
 	const getOperationMessage = () => {
 		if (operations.create) return "Creating portfolio...";
 		if (operations.update) return "Updating portfolio...";
@@ -188,10 +169,7 @@ interface ProgressiveLoadingProps {
 	className?: string;
 }
 
-export function ProgressiveLoading({
-	steps,
-	className,
-}: ProgressiveLoadingProps) {
+export function ProgressiveLoading({ steps, className }: ProgressiveLoadingProps) {
 	const completedSteps = steps.filter((step) => step.completed).length;
 	const progress = (completedSteps / steps.length) * 100;
 
@@ -267,11 +245,7 @@ interface ButtonLoadingProps {
 	loadingText?: string;
 }
 
-export function ButtonLoading({
-	isLoading,
-	children,
-	loadingText,
-}: ButtonLoadingProps) {
+export function ButtonLoading({ isLoading, children, loadingText }: ButtonLoadingProps) {
 	if (isLoading) {
 		return (
 			<>

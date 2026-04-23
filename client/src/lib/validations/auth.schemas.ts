@@ -2,10 +2,7 @@ import { z } from "zod";
 
 // Registration schema
 export const registerSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Please enter a valid email address"),
+	email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
 	password: z
 		.string()
 		.min(8, "Password must be at least 8 characters long")
@@ -22,19 +19,13 @@ export const registerSchema = z.object({
 
 // Login schema
 export const loginSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Please enter a valid email address"),
+	email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
 	password: z.string().min(1, "Password is required"),
 });
 
 // Password reset request schema
 export const passwordResetSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Please enter a valid email address"),
+	email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
 });
 
 // Password reset confirmation schema
@@ -62,20 +53,13 @@ export const emailVerificationSchema = z.object({
 
 // Resend verification schema
 export const resendVerificationSchema = z.object({
-	email: z
-		.string()
-		.min(1, "Email is required")
-		.email("Please enter a valid email address"),
+	email: z.string().min(1, "Email is required").email("Please enter a valid email address"),
 });
 
 // Type exports for form data
 export type RegisterFormData = z.infer<typeof registerSchema>;
 export type LoginFormData = z.infer<typeof loginSchema>;
 export type PasswordResetFormData = z.infer<typeof passwordResetSchema>;
-export type PasswordResetConfirmFormData = z.infer<
-	typeof passwordResetConfirmSchema
->;
+export type PasswordResetConfirmFormData = z.infer<typeof passwordResetConfirmSchema>;
 export type EmailVerificationFormData = z.infer<typeof emailVerificationSchema>;
-export type ResendVerificationFormData = z.infer<
-	typeof resendVerificationSchema
->;
+export type ResendVerificationFormData = z.infer<typeof resendVerificationSchema>;

@@ -8,24 +8,17 @@ import {
 	Clock,
 	Filter,
 	Globe,
-	Search,
 	Star,
 	TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { SearchInput } from "@/components/ui/search-input";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent } from "./ui/card";
-import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface MarketCalendarProps {
@@ -293,29 +286,17 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					<div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
 						{/* Date Navigation */}
 						<div className="flex items-center gap-2">
-							<Button
-								variant="outline"
-								size="icon"
-								onClick={() => navigateDate("prev")}
-							>
+							<Button variant="outline" size="icon" onClick={() => navigateDate("prev")}>
 								<ChevronLeft className="h-4 w-4" />
 							</Button>
 							<div className="flex items-center gap-2 min-w-[200px] justify-center">
 								<CalendarIcon className="h-4 w-4 text-muted-foreground" />
 								<span className="font-mono">{formatDate(currentDate)}</span>
 							</div>
-							<Button
-								variant="outline"
-								size="icon"
-								onClick={() => navigateDate("next")}
-							>
+							<Button variant="outline" size="icon" onClick={() => navigateDate("next")}>
 								<ChevronRight className="h-4 w-4" />
 							</Button>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => setCurrentDate(new Date())}
-							>
+							<Button variant="ghost" size="sm" onClick={() => setCurrentDate(new Date())}>
 								Today
 							</Button>
 						</div>
@@ -347,10 +328,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 
 						{/* Filters */}
 						<div className="flex items-center gap-2">
-							<Select
-								value={selectedCountry}
-								onValueChange={setSelectedCountry}
-							>
+							<Select value={selectedCountry} onValueChange={setSelectedCountry}>
 								<SelectTrigger className="w-36">
 									<SelectValue />
 								</SelectTrigger>
@@ -363,10 +341,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 									<SelectItem value="DE">🇩🇪 Germany</SelectItem>
 								</SelectContent>
 							</Select>
-							<Select
-								value={selectedImportance}
-								onValueChange={setSelectedImportance}
-							>
+							<Select value={selectedImportance} onValueChange={setSelectedImportance}>
 								<SelectTrigger className="w-36">
 									<SelectValue />
 								</SelectTrigger>
@@ -381,15 +356,13 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					</div>
 
 					{/* Search */}
-					<div className="relative mt-4">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search events by name or ticker..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search economic events..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+						containerClassName="flex-1"
+					/>
 				</CardContent>
 			</Card>
 
@@ -419,17 +392,12 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					<ScrollArea className="h-[600px]">
 						<div className="space-y-3 pr-4">
 							{economicEvents.map((event) => (
-								<Card
-									key={event.id}
-									className="cursor-pointer hover:shadow-md transition-shadow"
-								>
+								<Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow">
 									<CardContent className="pt-6">
 										<div className="flex items-start justify-between">
 											<div className="flex-1">
 												<div className="flex items-center gap-2 mb-2">
-													<span className="text-2xl">
-														{getCountryFlag(event.country)}
-													</span>
+													<span className="text-2xl">{getCountryFlag(event.country)}</span>
 													<Badge variant={getImportanceColor(event.importance)}>
 														{event.importance.toUpperCase()}
 													</Badge>
@@ -441,21 +409,15 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 												<h3 className="font-medium mb-3">{event.title}</h3>
 												<div className="grid grid-cols-3 gap-4">
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Forecast
-														</p>
+														<p className="text-xs text-muted-foreground">Forecast</p>
 														<p className="font-mono">{event.forecast}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Previous
-														</p>
+														<p className="text-xs text-muted-foreground">Previous</p>
 														<p className="font-mono">{event.previous}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Actual
-														</p>
+														<p className="text-xs text-muted-foreground">Actual</p>
 														<p className="font-mono">{event.actual || "-"}</p>
 													</div>
 												</div>
@@ -487,10 +449,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					<ScrollArea className="h-[600px]">
 						<div className="space-y-3 pr-4">
 							{earningsEvents.map((event) => (
-								<Card
-									key={event.id}
-									className="cursor-pointer hover:shadow-md transition-shadow"
-								>
+								<Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow">
 									<CardContent className="pt-6">
 										<div className="flex items-start justify-between">
 											<div className="flex-1">
@@ -503,34 +462,24 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 															<span className="font-mono">{event.symbol}</span>
 															<Badge variant="outline">{event.time}</Badge>
 														</div>
-														<p className="text-sm text-muted-foreground">
-															{event.company}
-														</p>
+														<p className="text-sm text-muted-foreground">{event.company}</p>
 													</div>
 												</div>
 												<div className="grid grid-cols-4 gap-4 mt-4">
 													<div>
-														<p className="text-xs text-muted-foreground">
-															EPS Estimate
-														</p>
+														<p className="text-xs text-muted-foreground">EPS Estimate</p>
 														<p className="font-mono">${event.epsEstimate}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Previous EPS
-														</p>
+														<p className="text-xs text-muted-foreground">Previous EPS</p>
 														<p className="font-mono">${event.epsPrevious}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Revenue Est.
-														</p>
+														<p className="text-xs text-muted-foreground">Revenue Est.</p>
 														<p className="font-mono">{event.revenueEstimate}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Market Cap
-														</p>
+														<p className="text-xs text-muted-foreground">Market Cap</p>
 														<p className="font-mono">${event.marketCap}</p>
 													</div>
 												</div>
@@ -542,9 +491,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 												<Button
 													variant="ghost"
 													size="icon"
-													onClick={() =>
-														toast.info(`Viewing ${event.symbol} details`)
-													}
+													onClick={() => toast.info(`Viewing ${event.symbol} details`)}
 												>
 													<AlertCircle className="h-4 w-4" />
 												</Button>
@@ -562,10 +509,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					<ScrollArea className="h-[600px]">
 						<div className="space-y-3 pr-4">
 							{ipoEvents.map((event) => (
-								<Card
-									key={event.id}
-									className="cursor-pointer hover:shadow-md transition-shadow"
-								>
+								<Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow">
 									<CardContent className="pt-6">
 										<div className="flex items-start justify-between">
 											<div className="flex-1">
@@ -578,37 +522,25 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 															<span className="font-mono">{event.symbol}</span>
 															<Badge variant="outline">{event.exchange}</Badge>
 														</div>
-														<p className="text-sm text-muted-foreground">
-															{event.company}
-														</p>
+														<p className="text-sm text-muted-foreground">{event.company}</p>
 													</div>
 												</div>
 												<div className="grid grid-cols-4 gap-4 mt-4">
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Price Range
-														</p>
+														<p className="text-xs text-muted-foreground">Price Range</p>
 														<p className="font-mono">{event.priceRange}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Shares
-														</p>
+														<p className="text-xs text-muted-foreground">Shares</p>
 														<p className="font-mono">{event.shares}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Valuation
-														</p>
+														<p className="text-xs text-muted-foreground">Valuation</p>
 														<p className="font-mono">{event.valuation}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Date
-														</p>
-														<p className="font-mono">
-															{formatDate(event.date)}
-														</p>
+														<p className="text-xs text-muted-foreground">Date</p>
+														<p className="font-mono">{formatDate(event.date)}</p>
 													</div>
 												</div>
 											</div>
@@ -628,10 +560,7 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 					<ScrollArea className="h-[600px]">
 						<div className="space-y-3 pr-4">
 							{splitEvents.map((event) => (
-								<Card
-									key={event.id}
-									className="cursor-pointer hover:shadow-md transition-shadow"
-								>
+								<Card key={event.id} className="cursor-pointer hover:shadow-md transition-shadow">
 									<CardContent className="pt-6">
 										<div className="flex items-start justify-between">
 											<div className="flex-1">
@@ -644,30 +573,20 @@ export function MarketCalendar({ onFilterStock }: MarketCalendarProps) {
 															<span className="font-mono">{event.symbol}</span>
 															<Badge variant="default">{event.type}</Badge>
 														</div>
-														<p className="text-sm text-muted-foreground">
-															{event.company}
-														</p>
+														<p className="text-sm text-muted-foreground">{event.company}</p>
 													</div>
 												</div>
 												<div className="grid grid-cols-3 gap-4 mt-4">
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Split Ratio
-														</p>
+														<p className="text-xs text-muted-foreground">Split Ratio</p>
 														<p className="font-mono text-lg">{event.ratio}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Effective Date
-														</p>
-														<p className="font-mono">
-															{formatDate(event.date)}
-														</p>
+														<p className="text-xs text-muted-foreground">Effective Date</p>
+														<p className="font-mono">{formatDate(event.date)}</p>
 													</div>
 													<div>
-														<p className="text-xs text-muted-foreground">
-															Type
-														</p>
+														<p className="text-xs text-muted-foreground">Type</p>
 														<p>{event.type}</p>
 													</div>
 												</div>

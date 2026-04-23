@@ -1,5 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Building2, TrendingUp } from "lucide-react";
+import { format } from "date-fns";
+import { Building2, CalendarIcon, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -7,15 +8,9 @@ import {
 	TradeableInstrumentSearch,
 	type TradeableInstrumentSelection,
 } from "@/components/assets/tradeable-instrument-search";
-import { InstrumentAssetType } from "@/gql/graphql";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Form,
 	FormControl,
@@ -25,19 +20,16 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { InstrumentAssetType } from "@/gql/graphql";
+import { cn } from "@/lib/utils";
 
 const stockAssetSchema = z.object({
 	name: z.string().min(1, "Asset name is required"),
-	ticker: z
-		.string()
-		.min(1, "Ticker symbol is required")
-		.max(10, "Ticker too long"),
+	ticker: z.string().min(1, "Ticker symbol is required").max(10, "Ticker too long"),
 	quantity: z.number().min(0.001, "Quantity must be greater than 0"),
-	purchasePrice: z
-		.number()
-		.min(0, "Purchase price must be positive")
-		.optional(),
-	purchaseDate: z.string().optional(),
+	purchasePrice: z.number().min(0, "Purchase price must be positive").optional(),
+	purchaseDate: z.date().optional(),
 });
 
 export type StockAssetFormData = z.infer<typeof stockAssetSchema>;
@@ -56,8 +48,9 @@ export function StockAssetForm({
 	initialData,
 }: StockAssetFormProps) {
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [selectedInstrument, setSelectedInstrument] =
-		useState<TradeableInstrumentSelection | null>(null);
+	const [selectedInstrument, setSelectedInstrument] = useState<TradeableInstrumentSelection | null>(
+		null,
+	);
 	const instrumentTypes = [
 		InstrumentAssetType.Stock,
 		InstrumentAssetType.Etf,
@@ -71,7 +64,7 @@ export function StockAssetForm({
 			ticker: initialData?.ticker || "",
 			quantity: initialData?.quantity || 0,
 			purchasePrice: initialData?.purchasePrice || undefined,
-			purchaseDate: initialData?.purchaseDate || "",
+			purchaseDate: initialData?.purchaseDate ? new Date(initialData.purchaseDate) : undefined,
 		},
 	});
 
@@ -79,8 +72,7 @@ export function StockAssetForm({
 		setIsSubmitting(true);
 		try {
 			await onSubmit(data);
-		} catch (error) {
-			console.error("Error submitting stock asset:", error);
+		} catch (_error) {
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -93,18 +85,13 @@ export function StockAssetForm({
 					<Building2 className="h-5 w-5 text-green-600" />
 					<div>
 						<CardTitle className="text-lg">Stock Asset</CardTitle>
-						<CardDescription>
-							Add publicly traded stocks, ETFs, or mutual funds
-						</CardDescription>
+						<CardDescription>Add publicly traded stocks, ETFs, or mutual funds</CardDescription>
 					</div>
 				</div>
 			</CardHeader>
 			<CardContent>
 				<Form {...form}>
-			<form
-						onSubmit={form.handleSubmit(handleSubmit)}
-						className="space-y-4"
-					>
+					<form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
 						<TradeableInstrumentSearch
 							assetTypes={instrumentTypes}
 							value={selectedInstrument}
@@ -128,9 +115,7 @@ export function StockAssetForm({
 												placeholder="AAPL"
 												{...field}
 												className="uppercase"
-												onChange={(e) =>
-													field.onChange(e.target.value.toUpperCase())
-												}
+												onChange={(e) => field.onChange(e.target.value.toUpperCase())}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -166,9 +151,7 @@ export function StockAssetForm({
 												step="0.001"
 												placeholder="100"
 												{...field}
-												onChange={(e) =>
-													field.onChange(parseFloat(e.target.value) || 0)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -188,11 +171,7 @@ export function StockAssetForm({
 												step="0.01"
 												placeholder="150.00"
 												{...field}
-												onChange={(e) =>
-													field.onChange(
-														parseFloat(e.target.value) || undefined,
-													)
-												}
+												onChange={(e) => field.onChange(parseFloat(e.target.value) || undefined)}
 											/>
 										</FormControl>
 										<FormMessage />
@@ -205,11 +184,33 @@ export function StockAssetForm({
 							control={form.control}
 							name="purchaseDate"
 							render={({ field }) => (
-								<FormItem>
+								<FormItem className="flex flex-col">
 									<FormLabel>Purchase Date (Optional)</FormLabel>
-									<FormControl>
-										<Input type="date" {...field} />
-									</FormControl>
+									<Popover>
+										<PopoverTrigger asChild>
+											<FormControl>
+												<Button
+													variant="outline"
+													className={cn(
+														"w-full pl-3 text-left font-normal",
+														!field.value && "text-muted-foreground",
+													)}
+												>
+													<CalendarIcon className="mr-2 h-4 w-4" />
+													{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+												</Button>
+											</FormControl>
+										</PopoverTrigger>
+										<PopoverContent className="w-auto p-0" align="start">
+											<Calendar
+												mode="single"
+												selected={field.value}
+												onSelect={field.onChange}
+												disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+												autoFocus
+											/>
+										</PopoverContent>
+									</Popover>
 									<FormMessage />
 								</FormItem>
 							)}
@@ -224,11 +225,7 @@ export function StockAssetForm({
 							>
 								Cancel
 							</Button>
-							<Button
-								type="submit"
-								disabled={isSubmitting || isLoading}
-								className="gap-2"
-							>
+							<Button type="submit" disabled={isSubmitting || isLoading} className="gap-2">
 								<TrendingUp className="h-4 w-4" />
 								{isSubmitting ? "Adding..." : "Add Stock"}
 							</Button>

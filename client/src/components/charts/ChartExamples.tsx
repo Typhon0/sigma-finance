@@ -1,12 +1,9 @@
 import { RefreshCw } from "lucide-react";
 import React from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import type {
-	AllocationDataPoint,
-	PerformanceDataPoint,
-	PortfolioComparisonData,
-} from "./index";
+import type { AllocationDataPoint, PerformanceDataPoint, PortfolioComparisonData } from "./index";
 import {
 	AllocationChart,
 	ChartCard,
@@ -87,15 +84,9 @@ const generatePortfolioComparison = (): PortfolioComparisonData[] => [
 ];
 
 const ChartExamples: React.FC = () => {
-	const [performanceData, setPerformanceData] = React.useState(
-		generatePerformanceData,
-	);
-	const [allocationData, setAllocationData] = React.useState(
-		generateAllocationData,
-	);
-	const [comparisonData, setComparisonData] = React.useState(
-		generatePortfolioComparison,
-	);
+	const [performanceData, setPerformanceData] = React.useState(generatePerformanceData);
+	const [allocationData, setAllocationData] = React.useState(generateAllocationData);
+	const [comparisonData, setComparisonData] = React.useState(generatePortfolioComparison);
 	const [timeRange, setTimeRange] = React.useState("1M");
 
 	const refreshData = () => {
@@ -138,7 +129,7 @@ const ChartExamples: React.FC = () => {
 						title="Asset Allocation"
 						chartType="donut"
 						height={350}
-						onSegmentClick={(data) => console.log("Clicked:", data)}
+						onSegmentClick={(_data) => {}}
 					/>
 				</DashboardChartGrid>
 
@@ -158,19 +149,11 @@ const ChartExamples: React.FC = () => {
 
 				<DashboardChartGrid columns={3} gap="md">
 					<ChartCard title="Performance" subtitle="Last 30 days">
-						<CompactPerformanceChart
-							data={performanceData}
-							chartType="area"
-							height={180}
-						/>
+						<CompactPerformanceChart data={performanceData} chartType="area" height={180} />
 					</ChartCard>
 
 					<ChartCard title="Allocation" subtitle="Current distribution">
-						<CompactAllocationChart
-							data={allocationData}
-							chartType="donut"
-							height={180}
-						/>
+						<CompactAllocationChart data={allocationData} chartType="donut" height={180} />
 					</ChartCard>
 
 					<ChartCard title="Comparison" subtitle="vs other portfolios">
@@ -208,9 +191,7 @@ const ChartExamples: React.FC = () => {
 						</CardHeader>
 						<CardContent>
 							<MiniPerformanceSparkline
-								data={performanceData
-									.slice(-7)
-									.map((d) => ({ ...d, value: d.value * 0.8 }))}
+								data={performanceData.slice(-7).map((d) => ({ ...d, value: d.value * 0.8 }))}
 								height={40}
 								color="#3b82f6"
 							/>
@@ -222,11 +203,7 @@ const ChartExamples: React.FC = () => {
 							<CardTitle className="text-sm">Asset Distribution</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<MiniAllocationDonut
-								data={allocationData.slice(0, 3)}
-								size={60}
-								showLegend={false}
-							/>
+							<MiniAllocationDonut data={allocationData.slice(0, 3)} size={60} showLegend={false} />
 						</CardContent>
 					</Card>
 
@@ -326,9 +303,7 @@ const ChartExamples: React.FC = () => {
 					<Card>
 						<CardHeader>
 							<CardTitle>Zoomable Performance Chart</CardTitle>
-							<p className="text-sm text-muted-foreground">
-								Use mouse wheel to zoom, drag to pan
-							</p>
+							<p className="text-sm text-muted-foreground">Use mouse wheel to zoom, drag to pan</p>
 						</CardHeader>
 						<CardContent>
 							<PerformanceChart
@@ -344,9 +319,7 @@ const ChartExamples: React.FC = () => {
 					<Card>
 						<CardHeader>
 							<CardTitle>Clickable Allocation Chart</CardTitle>
-							<p className="text-sm text-muted-foreground">
-								Click on segments to see details
-							</p>
+							<p className="text-sm text-muted-foreground">Click on segments to see details</p>
 						</CardHeader>
 						<CardContent>
 							<AllocationChart
@@ -354,9 +327,7 @@ const ChartExamples: React.FC = () => {
 								height={300}
 								showHeader={false}
 								onSegmentClick={(data) => {
-									alert(
-										`Clicked on ${data.name}: $${data.value.toLocaleString()}`,
-									);
+									toast.info(`Clicked on ${data.name}: $${data.value.toLocaleString()}`);
 								}}
 							/>
 						</CardContent>
@@ -369,12 +340,7 @@ const ChartExamples: React.FC = () => {
 				<h2 className="text-2xl font-semibold">Loading & Error States</h2>
 
 				<DashboardChartGrid columns={3} gap="md">
-					<PerformanceChart
-						data={[]}
-						title="Loading State"
-						loading={true}
-						height={200}
-					/>
+					<PerformanceChart data={[]} title="Loading State" loading={true} height={200} />
 
 					<PerformanceChart
 						data={[]}

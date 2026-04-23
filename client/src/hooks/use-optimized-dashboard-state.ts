@@ -18,7 +18,16 @@ export interface Asset {
 	name: string;
 	symbol?: string;
 	value: number;
+	portfolioWeight: number;
+	dividendYield?: number;
+	peRatio?: number;
+	sparklineData: number[];
 	// ... other asset properties
+}
+
+export interface TargetAllocation {
+	sector: string;
+	targetPercentage: number;
 }
 
 export interface BreadcrumbItem {
@@ -56,14 +65,9 @@ export type DashboardAction =
 	| { type: "UPDATE_ASSET"; payload: Asset };
 
 // Memoized breadcrumb generators
-const createOverviewBreadcrumb = (): BreadcrumbItem[] => [
-	{ title: "Dashboard" },
-];
+const createOverviewBreadcrumb = (): BreadcrumbItem[] => [{ title: "Dashboard" }];
 
-const createPortfolioBreadcrumb = (
-	portfolio: Portfolio,
-	onBack: () => void,
-): BreadcrumbItem[] => [
+const createPortfolioBreadcrumb = (portfolio: Portfolio, onBack: () => void): BreadcrumbItem[] => [
 	{ title: "Dashboard", onClick: onBack },
 	{ title: portfolio.name },
 ];
@@ -80,10 +84,7 @@ const createAssetBreadcrumb = (
 ];
 
 // Optimized reducer with memoization
-function dashboardReducer(
-	state: DashboardState,
-	action: DashboardAction,
-): DashboardState {
+function dashboardReducer(state: DashboardState, action: DashboardAction): DashboardState {
 	const now = Date.now();
 
 	// Prevent unnecessary updates if state hasn't changed
@@ -191,9 +192,7 @@ function dashboardReducer(
 				return {
 					...state,
 					selectedAsset:
-						state.selectedAsset?.id === updatedAsset.id
-							? updatedAsset
-							: state.selectedAsset,
+						state.selectedAsset?.id === updatedAsset.id ? updatedAsset : state.selectedAsset,
 					lastUpdate: now,
 				};
 			}
@@ -205,9 +204,7 @@ function dashboardReducer(
 
 	// Add to history for undo/redo functionality
 	if (newState !== state) {
-		const newHistory = [...state.stateHistory, state].slice(
-			-state.maxHistorySize,
-		);
+		const newHistory = [...state.stateHistory, state].slice(-state.maxHistorySize);
 		return {
 			...newState,
 			stateHistory: newHistory,
@@ -236,11 +233,7 @@ function createInitialState(): DashboardState {
  * Optimized dashboard state hook with performance enhancements
  */
 export function useOptimizedDashboardState() {
-	const [state, dispatch] = useReducer(
-		dashboardReducer,
-		null,
-		createInitialState,
-	);
+	const [state, dispatch] = useReducer(dashboardReducer, null, createInitialState);
 
 	// Refs for stable callbacks
 	const stateRef = useRef(state);
@@ -339,8 +332,7 @@ export function useOptimizedDashboardState() {
 
 			goBack: () => {
 				if (state.stateHistory.length > 0) {
-					const _previousState =
-						state.stateHistory[state.stateHistory.length - 1];
+					const _previousState = state.stateHistory[state.stateHistory.length - 1];
 					// Restore previous state (simplified - would need more complex logic)
 					throttledDispatch({ type: "BACK_TO_OVERVIEW" });
 				}
@@ -357,10 +349,7 @@ export function useOptimizedDashboardState() {
 
 			case "portfolio-detail":
 				return state.selectedPortfolio
-					? createPortfolioBreadcrumb(
-							state.selectedPortfolio,
-							actions.backToOverview,
-						)
+					? createPortfolioBreadcrumb(state.selectedPortfolio, actions.backToOverview)
 					: createOverviewBreadcrumb();
 
 			case "asset-detail":
@@ -431,9 +420,7 @@ export function useDashboardPerformanceMonitor() {
 	const getPerformanceStats = useCallback(() => {
 		const times = renderTimes.current;
 		const avgRenderTime =
-			times.length > 0
-				? times.reduce((sum, time) => sum + time, 0) / times.length
-				: 0;
+			times.length > 0 ? times.reduce((sum, time) => sum + time, 0) / times.length : 0;
 
 		const maxRenderTime = times.length > 0 ? Math.max(...times) : 0;
 		const minRenderTime = times.length > 0 ? Math.min(...times) : 0;
@@ -461,35 +448,27 @@ export function useContextSwitchingOptimizer() {
 	const lastSwitchTime = useRef(Date.now());
 	const switchTimes = useRef<number[]>([]);
 
-	const recordContextSwitch = useCallback(
-		(fromContext: string, toContext: string) => {
-			switchCount.current++;
-			const now = Date.now();
-			const switchTime = now - lastSwitchTime.current;
+	const recordContextSwitch = useCallback((_fromContext: string, _toContext: string) => {
+		switchCount.current++;
+		const now = Date.now();
+		const switchTime = now - lastSwitchTime.current;
 
-			switchTimes.current.push(switchTime);
-			if (switchTimes.current.length > 50) {
-				switchTimes.current = switchTimes.current.slice(-25);
-			}
+		switchTimes.current.push(switchTime);
+		if (switchTimes.current.length > 50) {
+			switchTimes.current = switchTimes.current.slice(-25);
+		}
 
-			lastSwitchTime.current = now;
+		lastSwitchTime.current = now;
 
-			// Log slow context switches
-			if (switchTime > 100) {
-				console.warn(
-					`Slow context switch from ${fromContext} to ${toContext}: ${switchTime}ms`,
-				);
-			}
-		},
-		[],
-	);
+		// Log slow context switches
+		if (switchTime > 100) {
+		}
+	}, []);
 
 	const getContextSwitchStats = useCallback(() => {
 		const times = switchTimes.current;
 		const avgSwitchTime =
-			times.length > 0
-				? times.reduce((sum, time) => sum + time, 0) / times.length
-				: 0;
+			times.length > 0 ? times.reduce((sum, time) => sum + time, 0) / times.length : 0;
 
 		return {
 			switchCount: switchCount.current,

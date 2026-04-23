@@ -29,7 +29,7 @@ export function CompactPriceChart({
 	currentPrice,
 	previousClose,
 	height = 120,
-	_showVolume = false,
+	showVolume: _showVolume = false,
 	className,
 }: CompactPriceChartProps) {
 	// Calculate price change metrics
@@ -122,10 +122,7 @@ export function CompactPriceChart({
 						{symbol ? `${symbol} Price` : "Price Chart"}
 					</CardTitle>
 					{priceMetrics && (
-						<Badge
-							variant="outline"
-							className={`gap-1 ${performanceColor} border-current`}
-						>
+						<Badge variant="outline" className={`gap-1 ${performanceColor} border-current`}>
 							<PerformanceIcon className="h-3 w-3" />
 							{formatPercentage(priceMetrics.changePercent)}
 						</Badge>
@@ -136,9 +133,7 @@ export function CompactPriceChart({
 				<div className="space-y-2">
 					{currentPrice && (
 						<div className="flex items-center justify-between">
-							<span className="text-lg font-semibold">
-								{formatCurrency(currentPrice)}
-							</span>
+							<span className="text-lg font-semibold">{formatCurrency(currentPrice)}</span>
 							{priceMetrics && (
 								<span className={`text-sm ${performanceColor}`}>
 									{priceMetrics.change >= 0 ? "+" : ""}
@@ -149,10 +144,7 @@ export function CompactPriceChart({
 					)}
 
 					{/* Simplified Candlestick Chart */}
-					<div
-						className="relative w-full bg-gray-50 rounded"
-						style={{ height: `${height}px` }}
-					>
+					<div className="relative w-full bg-gray-50 rounded" style={{ height: `${height}px` }}>
 						<svg width="100%" height="100%" className="overflow-visible">
 							<title>Chart</title>
 							{candlesticks.map((stick) => (
@@ -191,9 +183,7 @@ export function CompactPriceChart({
 					{/* Summary Stats */}
 					<div className="flex justify-between text-xs text-muted-foreground">
 						<span>{data.length} periods</span>
-						{priceRange && (
-							<span>Range: {formatCurrency(priceRange.range)}</span>
-						)}
+						{priceRange && <span>Range: {formatCurrency(priceRange.range)}</span>}
 					</div>
 				</div>
 			</CardContent>

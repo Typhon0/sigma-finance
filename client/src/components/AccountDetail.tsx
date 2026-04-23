@@ -24,22 +24,9 @@ import type {
 } from "./types/echarts";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Progress } from "./ui/progress";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 interface AccountDetailProps {
 	accountId: string;
@@ -47,16 +34,10 @@ interface AccountDetailProps {
 	onSelectAsset?: (assetId: string) => void;
 }
 
-export function AccountDetail({
-	accountId,
-	onBack,
-	onSelectAsset,
-}: AccountDetailProps) {
+export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetailProps) {
 	const { assets } = usePortfolio();
 	const [timePeriod, setTimePeriod] = useState("1Y");
-	const [distributionChartType, setDistributionChartType] = useState<
-		"pie" | "treemap"
-	>("pie");
+	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 
 	// Find the account in assets
 	const account = useMemo(() => {
@@ -118,8 +99,7 @@ export function AccountDetail({
 			? holdings.reduce((sum, h) => sum + h.cost, 0)
 			: account.purchasePrice || totalValue; // Fallback
 	const totalProfitLoss = totalValue - totalCost;
-	const totalProfitLossPercent =
-		totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+	const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
@@ -133,7 +113,7 @@ export function AccountDetail({
 	// TODO: Replace with real historical price data from market data service
 	// Generate performance history (placeholder based on current values)
 	const generatePerformanceHistory = () => {
-		const _data = [];
+		const _data: { date: string; value: number }[] = [];
 		let days = 365;
 		switch (timePeriod) {
 			case "1M":
@@ -158,7 +138,7 @@ export function AccountDetail({
 
 		// Generate simple random walk ending at current value
 		// This is just visual filler
-		const points = [];
+		const points: { date: string; value: number }[] = [];
 		let current = totalValue;
 		for (let i = 0; i <= days; i++) {
 			points.unshift({
@@ -229,8 +209,7 @@ export function AccountDetail({
 		],
 	};
 
-	const [hoveredAssetData, setHoveredAssetData] =
-		React.useState<HoveredChartData | null>(null);
+	const [hoveredAssetData, setHoveredAssetData] = React.useState<HoveredChartData | null>(null);
 
 	const distributionChartOption =
 		distributionChartType === "pie"
@@ -248,13 +227,9 @@ export function AccountDetail({
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredAssetData
-										? hoveredAssetData.name
-										: formatCurrency(totalValue),
+									text: hoveredAssetData ? hoveredAssetData.name : formatCurrency(totalValue),
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#fafafa"
-										: "#0a0a0a",
+									fill: document.documentElement.classList.contains("dark") ? "#fafafa" : "#0a0a0a",
 									fontSize: hoveredAssetData ? 18 : 24,
 									fontWeight: "600",
 									lineHeight: 1.2,
@@ -266,13 +241,9 @@ export function AccountDetail({
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredAssetData
-										? formatCurrency(hoveredAssetData.value)
-										: "Total Value",
+									text: hoveredAssetData ? formatCurrency(hoveredAssetData.value) : "Total Value",
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#a3a3a3"
-										: "#737373",
+									fill: document.documentElement.classList.contains("dark") ? "#a3a3a3" : "#737373",
 									fontSize: hoveredAssetData ? 14 : 12,
 									fontWeight: hoveredAssetData ? "500" : "400",
 									y: hoveredAssetData ? 24 : 32,
@@ -323,8 +294,7 @@ export function AccountDetail({
 		if (type === "securities" || type === "stock" || type === "fund")
 			return <Building2 className="h-6 w-6" />;
 		if (type === "crypto") return <HardDrive className="h-6 w-6" />;
-		if (type === "bank" || type === "savings")
-			return <Wallet className="h-6 w-6" />;
+		if (type === "bank" || type === "savings") return <Wallet className="h-6 w-6" />;
 		return <Coins className="h-6 w-6" />;
 	};
 
@@ -390,9 +360,7 @@ export function AccountDetail({
 				<Card>
 					<CardHeader className="pb-3">
 						<CardDescription>Total Value</CardDescription>
-						<CardTitle className="text-2xl font-mono">
-							{formatCurrency(totalValue)}
-						</CardTitle>
+						<CardTitle className="text-2xl font-mono">{formatCurrency(totalValue)}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div
@@ -405,8 +373,7 @@ export function AccountDetail({
 							)}
 							<span className="font-mono">
 								{totalProfitLoss >= 0 ? "+" : ""}
-								{formatCurrency(totalProfitLoss)} (
-								{totalProfitLossPercent.toFixed(2)}%)
+								{formatCurrency(totalProfitLoss)} ({totalProfitLossPercent.toFixed(2)}%)
 							</span>
 						</div>
 					</CardContent>
@@ -415,14 +382,10 @@ export function AccountDetail({
 				<Card>
 					<CardHeader className="pb-3">
 						<CardDescription>Total Cost</CardDescription>
-						<CardTitle className="text-2xl font-mono">
-							{formatCurrency(totalCost)}
-						</CardTitle>
+						<CardTitle className="text-2xl font-mono">{formatCurrency(totalCost)}</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground">
-							{holdings.length} assets
-						</p>
+						<p className="text-sm text-muted-foreground">{holdings.length} assets</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -467,9 +430,7 @@ export function AccountDetail({
 							<CardTitle>Allocation</CardTitle>
 							<div className="flex bg-muted rounded p-0.5">
 								<Button
-									variant={
-										distributionChartType === "pie" ? "secondary" : "ghost"
-									}
+									variant={distributionChartType === "pie" ? "secondary" : "ghost"}
 									size="icon"
 									className="h-6 w-6"
 									onClick={() => setDistributionChartType("pie")}
@@ -477,9 +438,7 @@ export function AccountDetail({
 									<PieChart className="h-3 w-3" />
 								</Button>
 								<Button
-									variant={
-										distributionChartType === "treemap" ? "secondary" : "ghost"
-									}
+									variant={distributionChartType === "treemap" ? "secondary" : "ghost"}
 									size="icon"
 									className="h-6 w-6"
 									onClick={() => setDistributionChartType("treemap")}
@@ -496,10 +455,7 @@ export function AccountDetail({
 							opts={{ renderer: "svg" }}
 							onEvents={{
 								mouseover: (params: EChartsMouseEventParam) => {
-									if (
-										params.componentType === "series" &&
-										params.seriesType === "pie"
-									) {
+									if (params.componentType === "series" && params.seriesType === "pie") {
 										setHoveredAssetData({
 											name: params.name,
 											value: params.value,
@@ -537,30 +493,21 @@ export function AccountDetail({
 							</TableHeader>
 							<TableBody>
 								{holdings.map((holding) => {
-									const allocation =
-										totalValue > 0 ? (holding.value / totalValue) * 100 : 0;
+									const allocation = totalValue > 0 ? (holding.value / totalValue) * 100 : 0;
 									return (
 										<TableRow
 											key={holding.id}
 											className="cursor-pointer hover:bg-muted/50"
-											onClick={() =>
-												onSelectAsset?.(holding.symbol || holding.name)
-											}
+											onClick={() => onSelectAsset?.(holding.symbol || holding.name)}
 										>
 											<TableCell>
 												<div className="flex items-center gap-3">
 													<div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center font-bold text-xs">
-														{holding.symbol
-															? holding.symbol.substring(0, 1)
-															: "A"}
+														{holding.symbol ? holding.symbol.substring(0, 1) : "A"}
 													</div>
 													<div>
-														<p className="font-medium text-sm">
-															{holding.name}
-														</p>
-														<p className="text-xs text-muted-foreground">
-															{holding.symbol}
-														</p>
+														<p className="font-medium text-sm">{holding.name}</p>
+														<p className="text-xs text-muted-foreground">{holding.symbol}</p>
 													</div>
 												</div>
 											</TableCell>

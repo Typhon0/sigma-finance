@@ -7,7 +7,6 @@ import {
 	Percent,
 	Power,
 	PowerOff,
-	Search,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -34,7 +33,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -91,8 +90,7 @@ export function AlertList({
 		if (onFilter) {
 			onFilter({
 				alertType: filterType !== "all" ? (filterType as any) : undefined,
-				isActive:
-					filterStatus !== "all" ? filterStatus === "active" : undefined,
+				isActive: filterStatus !== "all" ? filterStatus === "active" : undefined,
 			});
 		}
 	};
@@ -207,9 +205,7 @@ export function AlertList({
 		return (
 			<div className={`text-center py-8 ${className}`}>
 				<Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-				<h3 className="text-lg font-medium text-muted-foreground mb-2">
-					No Alerts Found
-				</h3>
+				<h3 className="text-lg font-medium text-muted-foreground mb-2">No Alerts Found</h3>
 				<p className="text-sm text-muted-foreground">
 					Create your first alert to get notified about important changes.
 				</p>
@@ -222,15 +218,13 @@ export function AlertList({
 			{/* Filters */}
 			{showFilters && (
 				<div className="flex flex-col sm:flex-row gap-4">
-					<div className="relative flex-1">
-						<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search alerts..."
-							value={searchTerm}
-							onChange={(e) => handleSearch(e.target.value)}
-							className="pl-10"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search alerts..."
+						value={searchTerm}
+						onChange={(e) => handleSearch(e.target.value)}
+						onClear={() => handleSearch("")}
+						containerClassName="flex-1"
+					/>
 
 					<div className="flex gap-2">
 						<Select
@@ -285,8 +279,7 @@ export function AlertList({
 										</div>
 
 										<div className="flex items-center gap-1 text-sm text-muted-foreground">
-											{alert.conditionType === "ABOVE" ||
-											alert.conditionType === "INCREASE_BY" ? (
+											{alert.conditionType === "ABOVE" || alert.conditionType === "INCREASE_BY" ? (
 												<TrendingUp className="h-3 w-3" />
 											) : (
 												<TrendingDown className="h-3 w-3" />
@@ -295,18 +288,12 @@ export function AlertList({
 										</div>
 
 										{alert.isActive ? (
-											<Badge
-												variant="outline"
-												className="text-green-600 border-green-600"
-											>
+											<Badge variant="outline" className="text-green-600 border-green-600">
 												<Power className="h-3 w-3 mr-1" />
 												Active
 											</Badge>
 										) : (
-											<Badge
-												variant="outline"
-												className="text-gray-500 border-gray-500"
-											>
+											<Badge variant="outline" className="text-gray-500 border-gray-500">
 												<PowerOff className="h-3 w-3 mr-1" />
 												Inactive
 											</Badge>
@@ -318,14 +305,10 @@ export function AlertList({
 										<div className="flex items-center gap-4 text-sm text-muted-foreground">
 											<span>Target: {getTargetName(alert)}</span>
 											<span>Threshold: {formatThreshold(alert)}</span>
-											{alert.triggerCount > 0 && (
-												<span>Triggered: {alert.triggerCount} times</span>
-											)}
+											{alert.triggerCount > 0 && <span>Triggered: {alert.triggerCount} times</span>}
 										</div>
 										{alert.description && (
-											<p className="text-sm text-muted-foreground truncate">
-												{alert.description}
-											</p>
+											<p className="text-sm text-muted-foreground truncate">{alert.description}</p>
 										)}
 									</div>
 
@@ -354,9 +337,7 @@ export function AlertList({
 											)}
 
 											{onToggleActive && (
-												<DropdownMenuItem
-													onClick={() => handleToggleActive(alert)}
-												>
+												<DropdownMenuItem onClick={() => handleToggleActive(alert)}>
 													{alert.isActive ? (
 														<>
 															<PowerOff className="h-4 w-4 mr-2" />
@@ -386,9 +367,7 @@ export function AlertList({
 														</AlertDialogTrigger>
 														<AlertDialogContent>
 															<AlertDialogHeader>
-																<AlertDialogTitle>
-																	Delete Alert
-																</AlertDialogTitle>
+																<AlertDialogTitle>Delete Alert</AlertDialogTitle>
 																<AlertDialogDescription>
 																	Are you sure you want to delete "{alert.name}
 																	"? This action cannot be undone.
@@ -401,9 +380,7 @@ export function AlertList({
 																	disabled={deletingId === alert.id}
 																	className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 																>
-																	{deletingId === alert.id
-																		? "Deleting..."
-																		: "Delete"}
+																	{deletingId === alert.id ? "Deleting..." : "Delete"}
 																</AlertDialogAction>
 															</AlertDialogFooter>
 														</AlertDialogContent>
@@ -422,9 +399,7 @@ export function AlertList({
 			{filteredAlerts.length === 0 && alerts.length > 0 && (
 				<div className="text-center py-8">
 					<Filter className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-					<h3 className="text-lg font-medium text-muted-foreground mb-2">
-						No Matching Alerts
-					</h3>
+					<h3 className="text-lg font-medium text-muted-foreground mb-2">No Matching Alerts</h3>
 					<p className="text-sm text-muted-foreground">
 						Try adjusting your search or filter criteria.
 					</p>

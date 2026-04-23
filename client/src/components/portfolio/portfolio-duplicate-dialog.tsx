@@ -1,12 +1,5 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import {
-	AlertCircle,
-	CheckCircle,
-	Copy,
-	FileText,
-	Loader2,
-	Package,
-} from "lucide-react";
+import { AlertCircle, CheckCircle, Copy, FileText, Loader2, Package } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -39,9 +32,7 @@ const duplicatePortfolioSchema = z.object({
 	copyAssets: z.boolean(),
 });
 
-export type DuplicatePortfolioFormData = z.infer<
-	typeof duplicatePortfolioSchema
->;
+export type DuplicatePortfolioFormData = z.infer<typeof duplicatePortfolioSchema>;
 
 export interface DuplicatePortfolioInput {
 	sourcePortfolioID: string;
@@ -118,8 +109,7 @@ export function PortfolioDuplicateDialog({
 			setTimeout(() => {
 				onOpenChange(false);
 			}, 1500);
-		} catch (error) {
-			console.error("Portfolio duplication error:", error);
+		} catch (_error) {
 			setIsSubmitSuccessful(false);
 		}
 	};
@@ -155,11 +145,9 @@ export function PortfolioDuplicateDialog({
 		>
 			<div className="space-y-6">
 				{isSubmitSuccessful && (
-					<Alert variant="success">
+					<Alert variant="default">
 						<CheckCircle className="h-4 w-4" />
-						<AlertDescription>
-							Portfolio duplicated successfully! Redirecting...
-						</AlertDescription>
+						<AlertDescription>Portfolio duplicated successfully! Redirecting...</AlertDescription>
 					</Alert>
 				)}
 
@@ -177,9 +165,7 @@ export function PortfolioDuplicateDialog({
 					</div>
 					<p className="text-sm text-muted-foreground mb-2">{portfolio.name}</p>
 					{portfolio.description && (
-						<p className="text-xs text-muted-foreground line-clamp-2">
-							{portfolio.description}
-						</p>
+						<p className="text-xs text-muted-foreground line-clamp-2">{portfolio.description}</p>
 					)}
 				</div>
 
@@ -195,8 +181,7 @@ export function PortfolioDuplicateDialog({
 							render={({ field }) => (
 								<FormItem>
 									<FormLabel>
-										New Portfolio Name{" "}
-										<span className="text-destructive">*</span>
+										New Portfolio Name <span className="text-destructive">*</span>
 									</FormLabel>
 									<FormControl>
 										<Input
@@ -231,13 +216,12 @@ export function PortfolioDuplicateDialog({
 											Copy Assets
 										</FormLabel>
 										<FormDescription>
-											Include all assets and positions from the original
-											portfolio.
+											Include all assets and positions from the original portfolio.
 											{assetCount > 0 && (
 												<span className="block mt-1 text-xs">
 													This will copy {assetCount} asset
-													{assetCount !== 1 ? "s" : ""} with their current
-													quantities and purchase prices.
+													{assetCount !== 1 ? "s" : ""} with their current quantities and purchase
+													prices.
 												</span>
 											)}
 										</FormDescription>
@@ -267,9 +251,7 @@ export function PortfolioDuplicateDialog({
 									{watchedValues.copyAssets ? (
 										<CheckCircle className="h-4 w-4 text-green-600" />
 									) : (
-										<span className="text-xs text-muted-foreground">
-											Skipped
-										</span>
+										<span className="text-xs text-muted-foreground">Skipped</span>
 									)}
 								</div>
 							</div>
@@ -277,8 +259,8 @@ export function PortfolioDuplicateDialog({
 							<Alert>
 								<AlertCircle className="h-4 w-4" />
 								<AlertDescription className="text-xs">
-									<strong>Note:</strong> Transaction history will not be copied.
-									The new portfolio will start with a clean transaction record.
+									<strong>Note:</strong> Transaction history will not be copied. The new portfolio
+									will start with a clean transaction record.
 								</AlertDescription>
 							</Alert>
 						</div>

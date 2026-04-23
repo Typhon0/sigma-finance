@@ -29,9 +29,7 @@ export function PortfolioManagementExample() {
 		isDuplicating,
 	} = usePortfolioManagement();
 
-	const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(
-		null,
-	);
+	const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
 
 	if (loading) {
 		return (
@@ -48,21 +46,11 @@ export function PortfolioManagementExample() {
 				<AlertDescription>
 					{error?.message || "An error occurred while loading portfolios."}
 					{canRetry && (
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={retry}
-							className="ml-2"
-						>
+						<Button variant="outline" size="sm" onClick={retry} className="ml-2">
 							Retry
 						</Button>
 					)}
-					<Button
-						variant="ghost"
-						size="sm"
-						onClick={clearError}
-						className="ml-2"
-					>
+					<Button variant="ghost" size="sm" onClick={clearError} className="ml-2">
 						Dismiss
 					</Button>
 				</AlertDescription>
@@ -149,8 +137,6 @@ function PortfolioCreationForm() {
 
 	React.useEffect(() => {
 		if (createdPortfolio) {
-			// Portfolio was created successfully
-			console.log("Portfolio created:", createdPortfolio);
 			resetCreatedPortfolio();
 		}
 	}, [createdPortfolio, resetCreatedPortfolio]);
@@ -175,12 +161,7 @@ function PortfolioCreationForm() {
 						<Alert variant="destructive">
 							<AlertDescription>
 								{error?.message || "Failed to create portfolio"}
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={clearError}
-									className="ml-2"
-								>
+								<Button variant="ghost" size="sm" onClick={clearError} className="ml-2">
 									Dismiss
 								</Button>
 							</AlertDescription>
@@ -253,9 +234,7 @@ function PortfolioCard({
 
 	const [isEditing, setIsEditing] = useState(false);
 	const [editName, setEditName] = useState(portfolio.name);
-	const [editDescription, setEditDescription] = useState(
-		portfolio.description || "",
-	);
+	const [editDescription, setEditDescription] = useState(portfolio.description || "");
 
 	const handleUpdate = async () => {
 		try {
@@ -270,11 +249,7 @@ function PortfolioCard({
 	};
 
 	const handleDelete = async () => {
-		if (
-			confirm(
-				"Are you sure you want to delete this portfolio? This action cannot be undone.",
-			)
-		) {
+		if (confirm("Are you sure you want to delete this portfolio? This action cannot be undone.")) {
 			try {
 				await deletePortfolio();
 			} catch (_error) {
@@ -284,10 +259,7 @@ function PortfolioCard({
 	};
 
 	const handleDuplicate = async () => {
-		const newName = prompt(
-			"Enter name for the duplicated portfolio:",
-			`${portfolio.name} (Copy)`,
-		);
+		const newName = prompt("Enter name for the duplicated portfolio:", `${portfolio.name} (Copy)`);
 		if (newName) {
 			try {
 				await duplicatePortfolio(newName, { copyAssets: true });
@@ -298,9 +270,7 @@ function PortfolioCard({
 	};
 
 	return (
-		<Card
-			className={`cursor-pointer transition-colors ${isSelected ? "ring-2 ring-primary" : ""}`}
-		>
+		<Card className={`cursor-pointer transition-colors ${isSelected ? "ring-2 ring-primary" : ""}`}>
 			<CardHeader onClick={onSelect}>
 				<CardTitle className="flex items-center justify-between">
 					{isEditing ? (
@@ -355,12 +325,7 @@ function PortfolioCard({
 					<Alert variant="destructive" className="mb-4">
 						<AlertDescription>
 							{error?.message || "An error occurred"}
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={clearError}
-								className="ml-2"
-							>
+							<Button variant="ghost" size="sm" onClick={clearError} className="ml-2">
 								Dismiss
 							</Button>
 						</AlertDescription>
@@ -397,9 +362,7 @@ function PortfolioCard({
 						<p className="text-xs text-muted-foreground">
 							Created: {new Date(portfolio.createdAt).toLocaleDateString()}
 						</p>
-						<p className="text-xs text-muted-foreground">
-							Assets: {portfolio.assets?.length || 0}
-						</p>
+						<p className="text-xs text-muted-foreground">Assets: {portfolio.assets?.length || 0}</p>
 					</div>
 				)}
 

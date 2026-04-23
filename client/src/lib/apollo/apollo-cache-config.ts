@@ -21,9 +21,9 @@ export const apolloCacheConfig = new InMemoryCache({
 						// For pagination, append new items
 						return [...existing, ...incoming];
 					},
-					read(existing, { _args, canRead }) {
+					read(existing, { args: _args, canRead }) {
 						// Return cached data if available and fresh
-						if (existing && canRead) {
+						if (existing && canRead()) {
 							return existing;
 						}
 						return existing;
@@ -156,10 +156,7 @@ export const apolloCacheConfig = new InMemoryCache({
 			keyFields: ["id"],
 			fields: {
 				metadata: {
-					merge(
-						existing: Record<string, unknown> = {},
-						incoming: Record<string, unknown>,
-					) {
+					merge(existing: Record<string, unknown> = {}, incoming: Record<string, unknown>) {
 						return { ...existing, ...incoming };
 					},
 				},

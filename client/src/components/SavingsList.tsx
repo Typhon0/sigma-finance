@@ -11,7 +11,6 @@ import {
 	PieChart,
 	PiggyBank,
 	Plus,
-	Search,
 	Trash2,
 	TrendingUp,
 	Wallet,
@@ -19,18 +18,13 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
-import { useCurrency } from "@/hooks/use-currency";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
+import { useCurrency } from "@/hooks/use-currency";
 import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -38,22 +32,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface SavingsListProps {
@@ -71,9 +51,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 	const [ownershipFilter, setOwnershipFilter] = useState("all");
 	const [bankFilter, setBankFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("balance-desc");
-	const [distributionChartType, setDistributionChartType] = useState<
-		"pie" | "treemap"
-	>("pie");
+	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [timePeriod, setTimePeriod] = useState("1Y");
 
 	// Derive savings from assets with type 'bank' or 'savings'
@@ -102,8 +80,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 	// Calculate metrics
 	const totalBalance = savings.reduce((sum, s) => sum + s.balance, 0);
 	const numberOfAccounts = savings.length;
-	const averageBalance =
-		numberOfAccounts > 0 ? totalBalance / numberOfAccounts : 0;
+	const averageBalance = numberOfAccounts > 0 ? totalBalance / numberOfAccounts : 0;
 	const totalAnnualInterest = savings.reduce(
 		(sum, s) => sum + (s.balance * (s.interestRate || 0)) / 100,
 		0,
@@ -112,8 +89,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 	// Filter and sort (useMemo to avoid in-place mutation and re-computation)
 	const filteredSavings = useMemo(() => {
 		const filtered = savings.filter((s) => {
-			if (ownershipFilter !== "all" && s.ownership !== ownershipFilter)
-				return false;
+			if (ownershipFilter !== "all" && s.ownership !== ownershipFilter) return false;
 			if (bankFilter !== "all" && s.bankName !== bankFilter) return false;
 			if (searchQuery) {
 				const query = searchQuery.toLowerCase();
@@ -129,8 +105,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 		// Sort (on a copy to avoid mutating the source array)
 		const sorted = [...filtered];
 		if (sortBy === "balance-desc") sorted.sort((a, b) => b.balance - a.balance);
-		else if (sortBy === "balance-asc")
-			sorted.sort((a, b) => a.balance - b.balance);
+		else if (sortBy === "balance-asc") sorted.sort((a, b) => a.balance - b.balance);
 		else if (sortBy === "rate-desc")
 			sorted.sort((a, b) => (b.interestRate || 0) - (a.interestRate || 0));
 		else if (sortBy === "rate-asc")
@@ -190,9 +165,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			case "YTD": {
 				const now = new Date();
 				const startOfYear = new Date(now.getFullYear(), 0, 1);
-				months = Math.floor(
-					(now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 30),
-				);
+				months = Math.floor((now.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24 * 30));
 				break;
 			}
 			case "ALL":
@@ -201,15 +174,11 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 		}
 
 		// Calculate average initial deposit (assume 80% of current as starting point)
-		const avgInitialDeposit = savings.reduce(
-			(sum, s) => sum + s.balance * 0.8,
-			0,
-		);
+		const avgInitialDeposit = savings.reduce((sum, s) => sum + s.balance * 0.8, 0);
 		const currentValue = totalBalance;
-		const monthlyGrowth =
-			months > 0 ? (currentValue - avgInitialDeposit) / months : 0;
+		const monthlyGrowth = months > 0 ? (currentValue - avgInitialDeposit) / months : 0;
 
-		const data = [];
+		const data: { date: string; value: number }[] = [];
 		for (let i = 0; i <= months; i++) {
 			const date = new Date();
 			date.setMonth(date.getMonth() - (months - i));
@@ -217,9 +186,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			// Deterministic sinusoidal variation instead of Math.random()
 			const baseValue = avgInitialDeposit + monthlyGrowth * i;
 			const variation =
-				months > 0
-					? Math.sin((i / months) * Math.PI * 2) * (currentValue * 0.01)
-					: 0;
+				months > 0 ? Math.sin((i / months) * Math.PI * 2) * (currentValue * 0.01) : 0;
 			const value = Math.max(baseValue + variation, avgInitialDeposit);
 
 			data.push({
@@ -459,7 +426,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 	// Growth Projection (useMemo for stability)
 	const projectionData = useMemo(() => {
 		const months = 12;
-		const data = [];
+		const data: { month: string; balance: number }[] = [];
 		for (let i = 0; i <= months; i++) {
 			const date = new Date();
 			date.setMonth(date.getMonth() + i);
@@ -542,9 +509,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 				accountNumber: data.accountNumber,
 				currency: data.currency || "USD",
 				currentValue: parseFloat(data.balance) || 0,
-				interestRate: data.interestRate
-					? parseFloat(data.interestRate)
-					: undefined,
+				interestRate: data.interestRate ? parseFloat(data.interestRate) : undefined,
 			});
 
 			if (result.asset) {
@@ -554,7 +519,6 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 				throw new Error("createBankAccountAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding savings account:", error);
 			toast.error("Failed to add savings account. Please try again.");
 			throw error; // Re-throw so AddSavingForm keeps dialog open
 		}
@@ -566,9 +530,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl">Savings Accounts</h1>
-					<p className="text-muted-foreground mt-1">
-						Manage and track your savings accounts
-					</p>
+					<p className="text-muted-foreground mt-1">Manage and track your savings accounts</p>
 				</div>
 				<Button onClick={() => setShowAddForm(true)} className="gap-2">
 					<Plus className="h-4 w-4" />
@@ -586,12 +548,8 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono text-green-600">
-							{formatCurrency(totalBalance)}
-						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Across all accounts
-						</p>
+						<div className="text-2xl font-mono text-green-600">{formatCurrency(totalBalance)}</div>
+						<p className="text-xs text-muted-foreground mt-1">Across all accounts</p>
 					</CardContent>
 				</Card>
 
@@ -604,9 +562,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-mono">{numberOfAccounts}</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Active savings accounts
-						</p>
+						<p className="text-xs text-muted-foreground mt-1">Active savings accounts</p>
 					</CardContent>
 				</Card>
 
@@ -618,9 +574,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono">
-							{formatCurrency(averageBalance)}
-						</div>
+						<div className="text-2xl font-mono">{formatCurrency(averageBalance)}</div>
 						<p className="text-xs text-muted-foreground mt-1">Per account</p>
 					</CardContent>
 				</Card>
@@ -636,9 +590,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 						<div className="text-2xl font-mono text-green-600">
 							{formatCurrency(totalAnnualInterest)}
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Projected yearly
-						</p>
+						<p className="text-xs text-muted-foreground mt-1">Projected yearly</p>
 					</CardContent>
 				</Card>
 			</div>
@@ -654,15 +606,13 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 				<TabsContent value="accounts" className="space-y-4">
 					{/* Filters and Search */}
 					<div className="flex flex-col sm:flex-row gap-4">
-						<div className="flex-1 relative">
-							<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-							<Input
-								placeholder="Search accounts, banks..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-9"
-							/>
-						</div>
+						<SearchInput
+							placeholder="Search accounts, banks..."
+							value={searchQuery}
+							onChange={(e) => setSearchQuery(e.target.value)}
+							onClear={() => setSearchQuery("")}
+							containerClassName="flex-1"
+						/>
 
 						<Select value={ownershipFilter} onValueChange={setOwnershipFilter}>
 							<SelectTrigger className="w-[180px]">
@@ -685,8 +635,8 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 							<SelectContent>
 								<SelectItem value="all">All Banks</SelectItem>
 								{uniqueBanks.map((bank) => (
-									<SelectItem key={bank} value={bank}>
-										{bank}
+									<SelectItem key={String(bank)} value={String(bank)}>
+										{String(bank)}
 									</SelectItem>
 								))}
 							</SelectContent>
@@ -698,12 +648,8 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="balance-desc">
-									Balance (High to Low)
-								</SelectItem>
-								<SelectItem value="balance-asc">
-									Balance (Low to High)
-								</SelectItem>
+								<SelectItem value="balance-desc">Balance (High to Low)</SelectItem>
+								<SelectItem value="balance-asc">Balance (Low to High)</SelectItem>
 								<SelectItem value="rate-desc">Rate (High to Low)</SelectItem>
 								<SelectItem value="rate-asc">Rate (Low to High)</SelectItem>
 								<SelectItem value="name-asc">Name (A to Z)</SelectItem>
@@ -738,9 +684,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 											<TableHead>Account Name</TableHead>
 											<TableHead>Bank</TableHead>
 											<TableHead className="text-right">Balance</TableHead>
-											<TableHead className="text-right">
-												Interest Rate
-											</TableHead>
+											<TableHead className="text-right">Interest Rate</TableHead>
 											<TableHead>Ownership</TableHead>
 											<TableHead className="text-right">Actions</TableHead>
 										</TableRow>
@@ -754,9 +698,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 											>
 												<TableCell>
 													<div className="flex flex-col">
-														<span className="font-medium">
-															{saving.accountName}
-														</span>
+														<span className="font-medium">{saving.accountName}</span>
 														<span className="text-xs text-muted-foreground">
 															{saving.accountNumber}
 														</span>
@@ -774,15 +716,10 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 												<TableCell className="text-right font-mono">
 													{(saving.interestRate || 0).toFixed(2)}%
 												</TableCell>
-												<TableCell>
-													{getOwnershipBadge(saving.ownership)}
-												</TableCell>
+												<TableCell>{getOwnershipBadge(saving.ownership)}</TableCell>
 												<TableCell className="text-right">
 													<DropdownMenu>
-														<DropdownMenuTrigger
-															asChild
-															onClick={(e) => e.stopPropagation()}
-														>
+														<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 															<Button variant="ghost" size="icon">
 																<MoreVertical className="h-4 w-4" />
 															</Button>
@@ -819,24 +756,18 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 								{filteredSavings.length === 0 && (
 									<div className="p-12 text-center">
 										<PiggyBank className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-										<h3 className="text-lg font-medium mb-2">
-											No savings accounts found
-										</h3>
+										<h3 className="text-lg font-medium mb-2">No savings accounts found</h3>
 										<p className="text-muted-foreground mb-4">
-											{searchQuery ||
-											ownershipFilter !== "all" ||
-											bankFilter !== "all"
+											{searchQuery || ownershipFilter !== "all" || bankFilter !== "all"
 												? "Try adjusting your search or filters"
 												: "Add your first savings account to get started"}
 										</p>
-										{!searchQuery &&
-											ownershipFilter === "all" &&
-											bankFilter === "all" && (
-												<Button onClick={() => setShowAddForm(true)}>
-													<Plus className="h-4 w-4 mr-2" />
-													Add Account
-												</Button>
-											)}
+										{!searchQuery && ownershipFilter === "all" && bankFilter === "all" && (
+											<Button onClick={() => setShowAddForm(true)}>
+												<Plus className="h-4 w-4 mr-2" />
+												Add Account
+											</Button>
+										)}
 									</div>
 								)}
 							</CardContent>
@@ -855,19 +786,14 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 									<CardHeader>
 										<div className="flex items-start justify-between">
 											<div className="flex-1">
-												<CardTitle className="text-lg">
-													{saving.accountName}
-												</CardTitle>
+												<CardTitle className="text-lg">{saving.accountName}</CardTitle>
 												<CardDescription className="flex items-center gap-2 mt-1">
 													<Building2 className="h-3 w-3" />
 													{saving.bankName}
 												</CardDescription>
 											</div>
 											<DropdownMenu>
-												<DropdownMenuTrigger
-													asChild
-													onClick={(e) => e.stopPropagation()}
-												>
+												<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 													<Button variant="ghost" size="icon">
 														<MoreVertical className="h-4 w-4" />
 													</Button>
@@ -900,33 +826,21 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 									<CardContent className="space-y-4">
 										<div className="space-y-2">
 											<div className="flex items-center justify-between">
-												<span className="text-sm text-muted-foreground">
-													Balance
-												</span>
+												<span className="text-sm text-muted-foreground">Balance</span>
 												<span className="text-lg font-mono text-green-600">
 													{formatCurrency(saving.balance)}
 												</span>
 											</div>
 											<div className="flex items-center justify-between">
-												<span className="text-sm text-muted-foreground">
-													Interest Rate
-												</span>
-												<span className="font-mono">
-													{(saving.interestRate || 0).toFixed(2)}%
-												</span>
+												<span className="text-sm text-muted-foreground">Interest Rate</span>
+												<span className="font-mono">{(saving.interestRate || 0).toFixed(2)}%</span>
 											</div>
 											<div className="flex items-center justify-between">
-												<span className="text-sm text-muted-foreground">
-													Account No.
-												</span>
-												<span className="text-sm font-mono">
-													{saving.accountNumber}
-												</span>
+												<span className="text-sm text-muted-foreground">Account No.</span>
+												<span className="text-sm font-mono">{saving.accountNumber}</span>
 											</div>
 										</div>
-										<div className="pt-2 border-t">
-											{getOwnershipBadge(saving.ownership)}
-										</div>
+										<div className="pt-2 border-t">{getOwnershipBadge(saving.ownership)}</div>
 									</CardContent>
 								</Card>
 							))}
@@ -934,24 +848,18 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 							{filteredSavings.length === 0 && (
 								<div className="col-span-full p-12 text-center">
 									<PiggyBank className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-									<h3 className="text-lg font-medium mb-2">
-										No savings accounts found
-									</h3>
+									<h3 className="text-lg font-medium mb-2">No savings accounts found</h3>
 									<p className="text-muted-foreground mb-4">
-										{searchQuery ||
-										ownershipFilter !== "all" ||
-										bankFilter !== "all"
+										{searchQuery || ownershipFilter !== "all" || bankFilter !== "all"
 											? "Try adjusting your search or filters"
 											: "Add your first savings account to get started"}
 									</p>
-									{!searchQuery &&
-										ownershipFilter === "all" &&
-										bankFilter === "all" && (
-											<Button onClick={() => setShowAddForm(true)}>
-												<Plus className="h-4 w-4 mr-2" />
-												Add Account
-											</Button>
-										)}
+									{!searchQuery && ownershipFilter === "all" && bankFilter === "all" && (
+										<Button onClick={() => setShowAddForm(true)}>
+											<Plus className="h-4 w-4 mr-2" />
+											Add Account
+										</Button>
+									)}
 								</div>
 							)}
 						</div>
@@ -969,9 +877,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 										<TrendingUp className="h-5 w-5" />
 										Total Balance Over Time
 									</CardTitle>
-									<CardDescription>
-										Track your savings growth over time
-									</CardDescription>
+									<CardDescription>Track your savings growth over time</CardDescription>
 								</div>
 								<div className="flex gap-2">
 									{["1M", "3M", "6M", "1Y", "YTD", "ALL"].map((period) => (
@@ -1006,15 +912,11 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 											<Building2 className="h-5 w-5" />
 											Distribution by Bank
 										</CardTitle>
-										<CardDescription>
-											Balance distribution across banks
-										</CardDescription>
+										<CardDescription>Balance distribution across banks</CardDescription>
 									</div>
 									<div className="flex items-center gap-2">
 										<Button
-											variant={
-												distributionChartType === "pie" ? "default" : "outline"
-											}
+											variant={distributionChartType === "pie" ? "default" : "outline"}
 											size="sm"
 											onClick={() => setDistributionChartType("pie")}
 											className="h-8 px-3"
@@ -1023,11 +925,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 											Pie
 										</Button>
 										<Button
-											variant={
-												distributionChartType === "treemap"
-													? "default"
-													: "outline"
-											}
+											variant={distributionChartType === "treemap" ? "default" : "outline"}
 											size="sm"
 											onClick={() => setDistributionChartType("treemap")}
 											className="h-8 px-3"
@@ -1040,11 +938,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 							</CardHeader>
 							<CardContent>
 								<ReactECharts
-									option={
-										distributionChartType === "pie"
-											? bankPieOption
-											: bankTreemapOption
-									}
+									option={distributionChartType === "pie" ? bankPieOption : bankTreemapOption}
 									style={{ height: "350px" }}
 									opts={{ renderer: "svg" }}
 								/>
@@ -1076,9 +970,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 									<PiggyBank className="h-5 w-5" />
 									Growth Projection (12 Months)
 								</CardTitle>
-								<CardDescription>
-									Projected total balance with compound interest
-								</CardDescription>
+								<CardDescription>Projected total balance with compound interest</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<ReactECharts

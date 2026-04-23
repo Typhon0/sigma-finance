@@ -30,13 +30,7 @@ interface AssetMetricProps {
 	trend?: "up" | "down" | "neutral";
 }
 
-function AssetMetric({
-	label,
-	value,
-	subValue,
-	icon,
-	trend,
-}: AssetMetricProps) {
+function AssetMetric({ label, value, subValue, icon, trend }: AssetMetricProps) {
 	const getTrendColor = () => {
 		switch (trend) {
 			case "up":
@@ -48,8 +42,7 @@ function AssetMetric({
 		}
 	};
 
-	const TrendIcon =
-		trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : null;
+	const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : null;
 
 	return (
 		<div className="flex items-center justify-between p-4 border rounded-lg">
@@ -74,7 +67,7 @@ interface TransactionHistoryProps {
 	assetId: string;
 }
 
-function TransactionHistory({ _assetId }: TransactionHistoryProps) {
+function TransactionHistory({ assetId: _assetId }: TransactionHistoryProps) {
 	// Mock transaction data - in real app this would come from GraphQL
 	const transactions = [
 		{
@@ -103,18 +96,12 @@ function TransactionHistory({ _assetId }: TransactionHistoryProps) {
 					className="flex items-center justify-between p-3 border rounded-lg"
 				>
 					<div className="flex items-center gap-3">
-						<Badge
-							variant={transaction.type === "BUY" ? "default" : "destructive"}
-						>
+						<Badge variant={transaction.type === "BUY" ? "default" : "destructive"}>
 							{transaction.type}
 						</Badge>
 						<div>
-							<p className="font-medium">
-								{transaction.quantity.toLocaleString()} shares
-							</p>
-							<p className="text-sm text-muted-foreground">
-								@ {formatCurrency(transaction.price)}
-							</p>
+							<p className="font-medium">{transaction.quantity.toLocaleString()} shares</p>
+							<p className="text-sm text-muted-foreground">@ {formatCurrency(transaction.price)}</p>
 						</div>
 					</div>
 					<div className="text-right">
@@ -129,11 +116,7 @@ function TransactionHistory({ _assetId }: TransactionHistoryProps) {
 	);
 }
 
-export function InlineAssetDetail({
-	asset,
-	portfolio,
-	onBack,
-}: InlineAssetDetailProps) {
+export function InlineAssetDetail({ asset, portfolio, onBack }: InlineAssetDetailProps) {
 	// Mock asset data - in real app this would come from GraphQL
 	const assetData = {
 		currentPrice: 155.5,
@@ -175,9 +158,7 @@ export function InlineAssetDetail({
 					</div>
 					<div className="flex items-center gap-4 text-muted-foreground">
 						<span className="text-sm">Type: {asset.type}</span>
-						{portfolio && (
-							<span className="text-sm">Portfolio: {portfolio.name}</span>
-						)}
+						{portfolio && <span className="text-sm">Portfolio: {portfolio.name}</span>}
 					</div>
 				</div>
 
@@ -202,9 +183,7 @@ export function InlineAssetDetail({
 								<p className="text-sm text-muted-foreground">Current Price</p>
 								<CompactStaleIndicator lastUpdated={assetData.lastUpdated} />
 							</div>
-							<p className="text-4xl font-bold">
-								{formatCurrency(assetData.currentPrice)}
-							</p>
+							<p className="text-4xl font-bold">{formatCurrency(assetData.currentPrice)}</p>
 						</div>
 						<div className="text-right">
 							<div

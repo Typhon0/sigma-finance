@@ -6,12 +6,12 @@
 
 import {
 	type CandlestickData,
-	type CandlestickSeriesOptions,
+	CandlestickSeries,
 	createChart,
 	type IChartApi,
 	type ISeriesApi,
 	type LineData,
-	type LineSeriesOptions,
+	LineSeries,
 } from "lightweight-charts";
 import {
 	AlertCircle,
@@ -109,7 +109,7 @@ export function AssetPriceChart({
 	height = 300,
 	compact = false,
 	showControls = true,
-	_showVolume = false,
+	showVolume: _showVolume = false,
 	showCurrentPrice = true,
 	showTimeRangeSelector = true,
 	className,
@@ -182,20 +182,13 @@ export function AssetPriceChart({
 
 		// Create series based on chart type
 		if (chartType === "candlestick") {
-			seriesRef.current = chartRef.current.addCandlestickSeries(
-				seriesOptions as CandlestickSeriesOptions,
-			);
+			seriesRef.current = chartRef.current.addSeries(CandlestickSeries, seriesOptions);
 		} else {
-			seriesRef.current = chartRef.current.addLineSeries(
-				seriesOptions as LineSeriesOptions,
-			);
+			seriesRef.current = chartRef.current.addSeries(LineSeries, seriesOptions);
 		}
 
 		// Set up resize observer
-		resizeObserverRef.current = new ChartResizeObserver(
-			chartRef.current,
-			container,
-		);
+		resizeObserverRef.current = new ChartResizeObserver(chartRef.current, container);
 
 		// Cleanup function
 		return () => {
@@ -221,9 +214,7 @@ export function AssetPriceChart({
 			}
 
 			setLastUpdate(new Date());
-		} catch (error) {
-			console.error("Error updating chart data:", error);
-		}
+		} catch (_error) {}
 	}, [processedData]);
 
 	// Handle real-time price updates
@@ -256,9 +247,7 @@ export function AssetPriceChart({
 				}
 
 				setLastUpdate(new Date());
-			} catch (error) {
-				console.error("Error updating real-time price:", error);
-			}
+			} catch (_error) {}
 		},
 		[assetId, chartType],
 	);
@@ -282,28 +271,17 @@ export function AssetPriceChart({
 	}, [onRefresh]);
 
 	// Format price change
-	const formatPriceChange = useCallback(
-		(change: number, changePercent: number) => {
-			const isPositive = change > 0;
-			const isNegative = change < 0;
+	const formatPriceChange = useCallback((change: number, changePercent: number) => {
+		const isPositive = change > 0;
+		const isNegative = change < 0;
 
-			return {
-				icon: isPositive ? TrendingUp : isNegative ? TrendingDown : Minus,
-				color: isPositive
-					? "text-green-600"
-					: isNegative
-						? "text-red-600"
-						: "text-gray-500",
-				bgColor: isPositive
-					? "bg-green-50"
-					: isNegative
-						? "bg-red-50"
-						: "bg-gray-50",
-				text: `${isPositive ? "+" : ""}${change.toFixed(2)} (${isPositive ? "+" : ""}${changePercent.toFixed(2)}%)`,
-			};
-		},
-		[],
-	);
+		return {
+			icon: isPositive ? TrendingUp : isNegative ? TrendingDown : Minus,
+			color: isPositive ? "text-green-600" : isNegative ? "text-red-600" : "text-gray-500",
+			bgColor: isPositive ? "bg-green-50" : isNegative ? "bg-red-50" : "bg-gray-50",
+			text: `${isPositive ? "+" : ""}${change.toFixed(2)} (${isPositive ? "+" : ""}${changePercent.toFixed(2)}%)`,
+		};
+	}, []);
 
 	// Render loading state
 	if (isLoading) {
@@ -362,31 +340,22 @@ export function AssetPriceChart({
 							<CardTitle className="text-lg font-semibold">
 								{name || symbol || `Asset ${assetId}`}
 							</CardTitle>
-							{symbol && name && (
-								<p className="text-sm text-gray-600">{symbol}</p>
-							)}
+							{symbol && name && <p className="text-sm text-gray-600">{symbol}</p>}
 						</div>
 
 						{showCurrentPrice && currentPrice && (
 							<div className="text-right">
-								<div className="text-lg font-semibold">
-									${currentPrice.current.toFixed(2)}
-								</div>
+								<div className="text-lg font-semibold">${currentPrice.current.toFixed(2)}</div>
 								{priceChangeInfo && (
 									<Badge
 										variant="secondary"
-										className={cn(
-											priceChangeInfo.bgColor,
-											priceChangeInfo.color,
-										)}
+										className={cn(priceChangeInfo.bgColor, priceChangeInfo.color)}
 									>
 										<priceChangeInfo.icon className="h-3 w-3 mr-1" />
 										{priceChangeInfo.text}
 									</Badge>
 								)}
-								{currentPrice.isStale && (
-									<p className="text-xs text-amber-600 mt-1">Stale data</p>
-								)}
+								{currentPrice.isStale && <p className="text-xs text-amber-600 mt-1">Stale data</p>}
 							</div>
 						)}
 					</div>
@@ -415,12 +384,7 @@ export function AssetPriceChart({
 
 						<div className="flex items-center gap-2">
 							{onRefresh && (
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 w-7 p-0"
-									onClick={handleRefresh}
-								>
+								<Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={handleRefresh}>
 									<RefreshCw className="h-3 w-3" />
 								</Button>
 							)}
@@ -431,11 +395,7 @@ export function AssetPriceChart({
 								className="h-7 w-7 p-0"
 								onClick={handleToggleExpand}
 							>
-								{isExpanded ? (
-									<Minimize2 className="h-3 w-3" />
-								) : (
-									<Maximize2 className="h-3 w-3" />
-								)}
+								{isExpanded ? <Minimize2 className="h-3 w-3" /> : <Maximize2 className="h-3 w-3" />}
 							</Button>
 						</div>
 					</div>
@@ -457,13 +417,9 @@ export function AssetPriceChart({
 				{!compact && (
 					<div className="flex items-center justify-between mt-2 text-xs text-gray-500">
 						<div>
-							{processedData.length > 0 && (
-								<span>{processedData.length} data points</span>
-							)}
+							{processedData.length > 0 && <span>{processedData.length} data points</span>}
 							{ChartPerformanceManager.shouldSampleData(data.length) && (
-								<span className="ml-2 text-amber-600">
-									(Sampled for performance)
-								</span>
+								<span className="ml-2 text-amber-600">(Sampled for performance)</span>
 							)}
 						</div>
 						<div>Last updated: {lastUpdate.toLocaleTimeString()}</div>
@@ -522,4 +478,3 @@ export function useRealTimePriceUpdates(
 /**
  * Export types for external use
  */
-export type { AssetPrice, PricePoint, PriceUpdate };

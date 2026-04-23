@@ -7,7 +7,6 @@ import {
 	Filter,
 	Percent,
 	Save,
-	Search,
 	Settings2,
 	Star,
 	TrendingDown,
@@ -16,6 +15,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { SearchInput } from "@/components/ui/search-input";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -25,22 +25,9 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { ScrollArea } from "./ui/scroll-area";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface StockScreenerProps {
@@ -67,12 +54,20 @@ interface Stock {
 	country: string;
 }
 
-export function StockScreener({
-	initialPreset,
-	onSelectStock,
-}: StockScreenerProps) {
+export function StockScreener({ initialPreset, onSelectStock }: StockScreenerProps) {
 	const [searchQuery, setSearchQuery] = useState("");
-	const [activeFilters, setActiveFilters] = useState<Record<string, any>>({});
+	interface StockFilters {
+		sector?: string;
+		peMin?: number;
+		peMax?: number;
+		dividendMin?: number;
+		changePercentMin?: number;
+		changePercentMax?: number;
+		volumeMin?: number;
+		marketCapMin?: number;
+		marketCapMax?: number;
+	}
+	const [activeFilters, setActiveFilters] = useState<StockFilters>({});
 	const [selectedPreset, setSelectedPreset] = useState(initialPreset || "all");
 	const [visibleColumns, setVisibleColumns] = useState<string[]>([
 		"symbol",
@@ -403,14 +398,7 @@ export function StockScreener({
 	// Column groups
 	const _columnGroups = {
 		overview: ["symbol", "name", "price", "change", "changePercent", "volume"],
-		performance: [
-			"symbol",
-			"change",
-			"changePercent",
-			"week52High",
-			"week52Low",
-			"beta",
-		],
+		performance: ["symbol", "change", "changePercent", "week52High", "week52Low", "beta"],
 		valuation: ["symbol", "price", "marketCap", "pe", "eps"],
 		dividends: ["symbol", "price", "dividend", "changePercent"],
 		profitability: ["symbol", "eps", "pe", "marketCap"],
@@ -441,41 +429,21 @@ export function StockScreener({
 			}
 
 			// Active filters
-			if (activeFilters.sector && stock.sector !== activeFilters.sector)
-				return false;
+			if (activeFilters.sector && stock.sector !== activeFilters.sector) return false;
 			if (activeFilters.peMin && stock.pe < activeFilters.peMin) return false;
 			if (activeFilters.peMax && stock.pe > activeFilters.peMax) return false;
-			if (
-				activeFilters.dividendMin &&
-				stock.dividend < activeFilters.dividendMin
-			)
+			if (activeFilters.dividendMin && stock.dividend < activeFilters.dividendMin) return false;
+			if (activeFilters.changePercentMin && stock.changePercent < activeFilters.changePercentMin)
 				return false;
-			if (
-				activeFilters.changePercentMin &&
-				stock.changePercent < activeFilters.changePercentMin
-			)
+			if (activeFilters.changePercentMax && stock.changePercent > activeFilters.changePercentMax)
 				return false;
-			if (
-				activeFilters.changePercentMax &&
-				stock.changePercent > activeFilters.changePercentMax
-			)
-				return false;
-			if (activeFilters.volumeMin && stock.volume < activeFilters.volumeMin)
-				return false;
-			if (
-				activeFilters.marketCapMin &&
-				stock.marketCap < activeFilters.marketCapMin
-			)
-				return false;
-			if (
-				activeFilters.marketCapMax &&
-				stock.marketCap < activeFilters.marketCapMax
-			)
-				return false;
+			if (activeFilters.volumeMin && stock.volume < activeFilters.volumeMin) return false;
+			if (activeFilters.marketCapMin && stock.marketCap < activeFilters.marketCapMin) return false;
+			if (activeFilters.marketCapMax && stock.marketCap < activeFilters.marketCapMax) return false;
 
 			return true;
 		});
-	}, [searchQuery, activeFilters]);
+	}, [searchQuery, activeFilters, mockStocks.filter]);
 
 	const { formatCurrency, currencySymbol } = useCurrency();
 
@@ -498,7 +466,7 @@ export function StockScreener({
 		toast.success("All filters cleared");
 	};
 
-	const exportToCSV = () => {
+	const exportToCsv = () => {
 		toast.success("Exporting to CSV...");
 	};
 
@@ -507,7 +475,7 @@ export function StockScreener({
 	};
 
 	const renderFilterChips = () => {
-		const chips = [];
+		const chips: React.ReactNode[] = [];
 		Object.entries(activeFilters).forEach(([key, value]) => {
 			let label = "";
 			if (key === "sector") label = `Sector: ${value}`;
@@ -516,19 +484,14 @@ export function StockScreener({
 			else if (key === "dividendMin") label = `Div ≥ ${value}%`;
 			else if (key === "changePercentMin") label = `Change ≥ ${value}%`;
 			else if (key === "changePercentMax") label = `Change ≤ ${value}%`;
-			else if (key === "volumeMin")
-				label = `Vol ≥ ${(value / 1e6).toFixed(0)}M`;
-			else if (key === "marketCapMin")
-				label = `MCap ≥ ${formatLargeNumber(value)}`;
+			else if (key === "volumeMin") label = `Vol ≥ ${(value / 1e6).toFixed(0)}M`;
+			else if (key === "marketCapMin") label = `MCap ≥ ${formatLargeNumber(value)}`;
 
 			if (label) {
 				chips.push(
 					<Badge key={key} variant="secondary" className="gap-2">
 						{label}
-						<X
-							className="h-3 w-3 cursor-pointer"
-							onClick={() => removeFilter(key)}
-						/>
+						<X className="h-3 w-3 cursor-pointer" onClick={() => removeFilter(key)} />
 					</Badge>,
 				);
 			}
@@ -551,7 +514,7 @@ export function StockScreener({
 						<Save className="h-4 w-4 mr-2" />
 						Save View
 					</Button>
-					<Button variant="outline" size="sm" onClick={exportToCSV}>
+					<Button variant="outline" size="sm" onClick={exportToCsv}>
 						<Download className="h-4 w-4 mr-2" />
 						Export CSV
 					</Button>
@@ -591,15 +554,13 @@ export function StockScreener({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{/* Search */}
-					<div className="relative">
-						<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-						<Input
-							placeholder="Search by symbol or name..."
-							value={searchQuery}
-							onChange={(e) => setSearchQuery(e.target.value)}
-							className="pl-9"
-						/>
-					</div>
+					<SearchInput
+						placeholder="Search stocks..."
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+						onClear={() => setSearchQuery("")}
+						containerClassName="flex-1"
+					/>
 
 					{/* Active Filters Chips */}
 					{renderFilterChips().length > 0 && (
@@ -628,15 +589,9 @@ export function StockScreener({
 									<SelectItem value="all">All Sectors</SelectItem>
 									<SelectItem value="Technology">Technology</SelectItem>
 									<SelectItem value="Healthcare">Healthcare</SelectItem>
-									<SelectItem value="Financial Services">
-										Financial Services
-									</SelectItem>
-									<SelectItem value="Consumer Cyclical">
-										Consumer Cyclical
-									</SelectItem>
-									<SelectItem value="Consumer Defensive">
-										Consumer Defensive
-									</SelectItem>
+									<SelectItem value="Financial Services">Financial Services</SelectItem>
+									<SelectItem value="Consumer Cyclical">Consumer Cyclical</SelectItem>
+									<SelectItem value="Consumer Defensive">Consumer Defensive</SelectItem>
 									<SelectItem value="Communication">Communication</SelectItem>
 								</SelectContent>
 							</Select>
@@ -701,12 +656,8 @@ export function StockScreener({
 									<SelectItem value="all">All</SelectItem>
 									<SelectItem value="2000000000">Small Cap ($2B+)</SelectItem>
 									<SelectItem value="10000000000">Mid Cap ($10B+)</SelectItem>
-									<SelectItem value="100000000000">
-										Large Cap ($100B+)
-									</SelectItem>
-									<SelectItem value="200000000000">
-										Mega Cap ($200B+)
-									</SelectItem>
+									<SelectItem value="100000000000">Large Cap ($100B+)</SelectItem>
+									<SelectItem value="200000000000">Mega Cap ($200B+)</SelectItem>
 								</SelectContent>
 							</Select>
 						</div>
@@ -714,9 +665,7 @@ export function StockScreener({
 
 					{/* Results Counter */}
 					<div className="pt-2">
-						<Badge variant="outline">
-							{filteredStocks.length} stocks found
-						</Badge>
+						<Badge variant="outline">{filteredStocks.length} stocks found</Badge>
 					</div>
 				</CardContent>
 			</Card>
@@ -756,9 +705,7 @@ export function StockScreener({
 													if (checked) {
 														setVisibleColumns([...visibleColumns, col]);
 													} else {
-														setVisibleColumns(
-															visibleColumns.filter((c) => c !== col),
-														);
+														setVisibleColumns(visibleColumns.filter((c) => c !== col));
 													}
 												}}
 											/>
@@ -793,9 +740,7 @@ export function StockScreener({
 													<TableHead className="text-right">Price</TableHead>
 													<TableHead className="text-right">Change</TableHead>
 													<TableHead className="text-right">Volume</TableHead>
-													<TableHead className="text-right">
-														Market Cap
-													</TableHead>
+													<TableHead className="text-right">Market Cap</TableHead>
 													<TableHead className="text-right">Actions</TableHead>
 												</>
 											)}
@@ -813,9 +758,7 @@ export function StockScreener({
 												<>
 													<TableHead>Symbol</TableHead>
 													<TableHead className="text-right">Price</TableHead>
-													<TableHead className="text-right">
-														Market Cap
-													</TableHead>
+													<TableHead className="text-right">Market Cap</TableHead>
 													<TableHead className="text-right">P/E</TableHead>
 													<TableHead className="text-right">EPS</TableHead>
 													<TableHead className="text-right">Actions</TableHead>
@@ -841,9 +784,7 @@ export function StockScreener({
 											>
 												{currentTab === "overview" && (
 													<>
-														<TableCell className="font-mono">
-															{stock.symbol}
-														</TableCell>
+														<TableCell className="font-mono">{stock.symbol}</TableCell>
 														<TableCell>{stock.name}</TableCell>
 														<TableCell className="text-right font-mono">
 															{formatCurrency(stock.price)}
@@ -865,9 +806,7 @@ export function StockScreener({
 																<Button
 																	variant="ghost"
 																	size="icon"
-																	onClick={() =>
-																		toast.info(`Viewing ${stock.symbol}`)
-																	}
+																	onClick={() => toast.info(`Viewing ${stock.symbol}`)}
 																>
 																	<Eye className="h-4 w-4" />
 																</Button>
@@ -875,9 +814,7 @@ export function StockScreener({
 																	variant="ghost"
 																	size="icon"
 																	onClick={() =>
-																		toast.success(
-																			`Added ${stock.symbol} to watchlist`,
-																		)
+																		toast.success(`Added ${stock.symbol} to watchlist`)
 																	}
 																>
 																	<Star className="h-4 w-4" />
@@ -888,9 +825,7 @@ export function StockScreener({
 												)}
 												{currentTab === "performance" && (
 													<>
-														<TableCell className="font-mono">
-															{stock.symbol}
-														</TableCell>
+														<TableCell className="font-mono">{stock.symbol}</TableCell>
 														<TableCell
 															className={`text-right font-mono ${stock.changePercent >= 0 ? "text-green-600" : "text-red-600"}`}
 														>
@@ -920,9 +855,7 @@ export function StockScreener({
 												)}
 												{currentTab === "valuation" && (
 													<>
-														<TableCell className="font-mono">
-															{stock.symbol}
-														</TableCell>
+														<TableCell className="font-mono">{stock.symbol}</TableCell>
 														<TableCell className="text-right font-mono">
 															{formatCurrency(stock.price)}
 														</TableCell>
@@ -949,9 +882,7 @@ export function StockScreener({
 												)}
 												{currentTab === "dividends" && (
 													<>
-														<TableCell className="font-mono">
-															{stock.symbol}
-														</TableCell>
+														<TableCell className="font-mono">{stock.symbol}</TableCell>
 														<TableCell className="text-right font-mono">
 															{formatCurrency(stock.price)}
 														</TableCell>
@@ -959,10 +890,7 @@ export function StockScreener({
 															{formatCurrency(stock.dividend)}
 														</TableCell>
 														<TableCell className="text-right font-mono text-green-600">
-															{((stock.dividend / stock.price) * 100).toFixed(
-																2,
-															)}
-															%
+															{((stock.dividend / stock.price) * 100).toFixed(2)}%
 														</TableCell>
 														<TableCell className="text-right">
 															<div className="flex items-center justify-end gap-1">

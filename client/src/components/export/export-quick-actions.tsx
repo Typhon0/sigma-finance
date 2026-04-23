@@ -36,8 +36,7 @@ export function ExportQuickActions({
 	showLabel = true,
 }: ExportQuickActionsProps) {
 	const [exportDialogOpen, setExportDialogOpen] = useState(false);
-	const [selectedExportType, setSelectedExportType] =
-		useState<ExportType>("portfolio-data");
+	const [selectedExportType, setSelectedExportType] = useState<ExportType>("portfolio-data");
 
 	const quickActions = [
 		{
@@ -115,9 +114,7 @@ export function ExportQuickActions({
 									<span className="font-medium">{action.label}</span>
 								</div>
 								<span className="text-xs text-muted-foreground">
-									{isDisabled
-										? "Requires portfolio selection"
-										: action.description}
+									{isDisabled ? "Requires portfolio selection" : action.description}
 								</span>
 							</DropdownMenuItem>
 						);

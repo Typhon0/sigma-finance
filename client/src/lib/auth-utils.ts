@@ -33,12 +33,7 @@ export class TokenManager {
 		return stored ? JSON.parse(stored) : null;
 	}
 
-	static setAuth(
-		token: string,
-		refreshToken: string,
-		user: AuthUser,
-		expiresAt: string,
-	): void {
+	static setAuth(token: string, refreshToken: string, user: AuthUser, expiresAt: string): void {
 		localStorage.setItem(AUTH_STORAGE_KEYS.TOKEN, token);
 		localStorage.setItem(AUTH_STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
 		localStorage.setItem(AUTH_STORAGE_KEYS.USER, JSON.stringify(user));
@@ -151,8 +146,7 @@ export class AuthRedirect {
 	}
 
 	static redirectToLogin(returnTo?: string): void {
-		const currentPath =
-			returnTo || window.location.pathname + window.location.search;
+		const currentPath = returnTo || window.location.pathname + window.location.search;
 		window.location.href = AuthRedirect.getLoginUrl(currentPath);
 	}
 
@@ -186,9 +180,7 @@ export class PasswordValidator {
 		const errors: string[] = [];
 
 		if (password.length < PasswordValidator.MIN_LENGTH) {
-			errors.push(
-				`Password must be at least ${PasswordValidator.MIN_LENGTH} characters long`,
-			);
+			errors.push(`Password must be at least ${PasswordValidator.MIN_LENGTH} characters long`);
 		}
 
 		if (!PasswordValidator.PATTERNS.lowercase.test(password)) {
@@ -254,10 +246,7 @@ export class SessionManager {
 		if (!expiry) return false;
 
 		const timeUntilExpiry = TokenManager.getTimeUntilExpiry(expiry);
-		return (
-			timeUntilExpiry > 0 &&
-			timeUntilExpiry <= SessionManager.SESSION_WARNING_TIME
-		);
+		return timeUntilExpiry > 0 && timeUntilExpiry <= SessionManager.SESSION_WARNING_TIME;
 	}
 
 	static getSessionTimeRemaining(): number {

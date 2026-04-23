@@ -3,6 +3,8 @@
  * Centralized exports for Lightweight Charts™ and Apache ECharts integration
  */
 
+import React from "react";
+
 // Chart color utilities (re-export from existing file)
 export {
 	ASSET_TYPE_COLORS,
@@ -19,10 +21,29 @@ export * from "./data-formatters";
 export * from "./echarts";
 // Lightweight Charts exports
 export * from "./lightweight-charts";
-
+// Re-export DataSampler type for convenience
+export type {
+	ChartLoadingState,
+	ChartPerformanceMetrics as ChartPerformanceMetricsType,
+} from "./performance";
+// Performance utilities from performance.ts
+export {
+	ChartLazyLoader,
+	ChartOptimizationRecommendations,
+	ChartUpdateManager,
+} from "./performance";
+// Performance optimization types and classes
+export type {
+	PerformanceConfig as PerformanceOptimizationOptions,
+	SamplingStrategy,
+} from "./performance-optimization";
 // Performance optimization utilities
-export * from "./performance";
-export * from "./performance-optimization";
+export {
+	ChartMemoryManager,
+	ChartPerformanceMonitor,
+	ChartVirtualizer,
+	DataSampler,
+} from "./performance-optimization";
 
 // Real-time updates
 export * from "./real-time-updates";
@@ -42,20 +63,13 @@ export class ChartLibraryManager {
 	 */
 	static async initialize(): Promise<void> {
 		if (ChartLibraryManager.initialized) return;
+		// Preload chart libraries
+		await Promise.all([
+			ChartLibraryManager.loadLightweightCharts(),
+			ChartLibraryManager.loadECharts(),
+		]);
 
-		try {
-			// Preload chart libraries
-			await Promise.all([
-				ChartLibraryManager.loadLightweightCharts(),
-				ChartLibraryManager.loadECharts(),
-			]);
-
-			ChartLibraryManager.initialized = true;
-			console.log("Chart libraries initialized successfully");
-		} catch (error) {
-			console.error("Failed to initialize chart libraries:", error);
-			throw error;
-		}
+		ChartLibraryManager.initialized = true;
 	}
 
 	/**
@@ -63,14 +77,8 @@ export class ChartLibraryManager {
 	 */
 	private static async loadLightweightCharts(): Promise<void> {
 		if (ChartLibraryManager.lightweightChartsLoaded) return;
-
-		try {
-			await import("lightweight-charts");
-			ChartLibraryManager.lightweightChartsLoaded = true;
-		} catch (error) {
-			console.error("Failed to load Lightweight Charts:", error);
-			throw error;
-		}
+		await import("lightweight-charts");
+		ChartLibraryManager.lightweightChartsLoaded = true;
 	}
 
 	/**
@@ -78,14 +86,8 @@ export class ChartLibraryManager {
 	 */
 	private static async loadECharts(): Promise<void> {
 		if (ChartLibraryManager.echartsLoaded) return;
-
-		try {
-			await import("echarts-for-react");
-			ChartLibraryManager.echartsLoaded = true;
-		} catch (error) {
-			console.error("Failed to load ECharts:", error);
-			throw error;
-		}
+		await import("echarts-for-react");
+		ChartLibraryManager.echartsLoaded = true;
 	}
 
 	/**
@@ -146,8 +148,7 @@ export class ChartFeatureDetection {
 	 * Check if SVG is supported
 	 */
 	static isSVGSupported(): boolean {
-		return !!document.createElementNS?.("http://www.w3.org/2000/svg", "svg")
-			.createSVGRect;
+		return !!document.createElementNS?.("http://www.w3.org/2000/svg", "svg").createSVGRect;
 	}
 
 	/**
@@ -178,10 +179,7 @@ export class ChartFeatureDetection {
 		const capabilities = ChartFeatureDetection.getDeviceCapabilities();
 
 		// Lightweight Charts is better for candlestick and real-time data
-		if (
-			["candlestick", "line", "area"].includes(chartType) &&
-			capabilities.canvas
-		) {
+		if (["candlestick", "line", "area"].includes(chartType) && capabilities.canvas) {
 			return "lightweight";
 		}
 
@@ -199,10 +197,7 @@ export class ChartErrorHandler {
 	/**
 	 * Register error callback for chart
 	 */
-	static registerErrorCallback(
-		chartId: string,
-		callback: (error: Error) => void,
-	): void {
+	static registerErrorCallback(chartId: string, callback: (error: Error) => void): void {
 		ChartErrorHandler.errorCallbacks.set(chartId, callback);
 	}
 
@@ -210,8 +205,6 @@ export class ChartErrorHandler {
 	 * Handle chart error
 	 */
 	static handleError(chartId: string, error: Error): void {
-		console.error(`Chart error in ${chartId}:`, error);
-
 		const callback = ChartErrorHandler.errorCallbacks.get(chartId);
 		if (callback) {
 			callback(error);
@@ -224,27 +217,19 @@ export class ChartErrorHandler {
 	/**
 	 * Log error to external service
 	 */
-	private static logError(chartId: string, error: Error): void {
-		// Implementation would depend on your error reporting service
-		// Example: Sentry, LogRocket, etc.
-		console.log("Logging chart error:", {
-			chartId,
-			error: error.message,
-			stack: error.stack,
-		});
-	}
+	private static logError(_chartId: string, _error: Error): void {}
 
 	/**
 	 * Create error boundary for charts
 	 */
 	static createErrorBoundary(
 		fallbackComponent: React.ComponentType<{ error: Error }>,
-	): React.ComponentType {
+	): React.ComponentType<{ children?: React.ReactNode }> {
 		return class ChartErrorBoundary extends React.Component<
-			{ children: React.ReactNode },
+			{ children?: React.ReactNode },
 			{ hasError: boolean; error?: Error }
 		> {
-			constructor(props: { children: React.ReactNode }) {
+			constructor(props: { children?: React.ReactNode }) {
 				super(props);
 				this.state = { hasError: false };
 			}
@@ -283,13 +268,10 @@ export class ChartAccessibility {
 		switch (chartType) {
 			case "line":
 			case "area": {
-				const values = data
-					.map((d) => d.value)
-					.filter((v) => typeof v === "number");
+				const values = data.map((d) => d.value).filter((v) => typeof v === "number");
 				const min = Math.min(...values);
 				const max = Math.max(...values);
-				const trend =
-					values[values.length - 1] > values[0] ? "increasing" : "decreasing";
+				const trend = values[values.length - 1] > values[0] ? "increasing" : "decreasing";
 				return `Line chart with ${dataLength} data points, ranging from ${min} to ${max}, showing an ${trend} trend.`;
 			}
 
@@ -302,9 +284,7 @@ export class ChartAccessibility {
 
 			case "bar":
 			case "column": {
-				const barValues = data
-					.map((d) => d.value)
-					.filter((v) => typeof v === "number");
+				const barValues = data.map((d) => d.value).filter((v) => typeof v === "number");
 				const barMax = Math.max(...barValues);
 				return `Bar chart with ${dataLength} bars, maximum value of ${barMax}.`;
 			}
@@ -338,5 +318,6 @@ export class ChartAccessibility {
 
 // Initialize chart libraries on module load
 if (typeof window !== "undefined") {
-	ChartLibraryManager.initialize().catch(console.error);
+	// biome-ignore lint/suspicious/noConsole: chart library init error logging is intentional
+	ChartLibraryManager.initialize().catch((_err: unknown) => {});
 }

@@ -3,35 +3,24 @@ import { AlertCircle, ArrowLeft } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AppSidebar } from "@/components/app-sidebar";
-import {
-	EnhancedPortfolioForm,
-	type PortfolioFormData,
-} from "@/components/portfolio";
+import { EnhancedPortfolioForm, type PortfolioFormData } from "@/components/portfolio";
 import {
 	PortfolioBreadcrumb,
 	portfolioBreadcrumbs,
 } from "@/components/portfolio/portfolio-breadcrumb";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import {
-	SidebarInset,
-	SidebarProvider,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { usePortfolioDetail } from "@/hooks/use-portfolio-detail";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { useAuth } from "@/lib/auth-context";
 
 export default function PortfolioEditPage() {
-	const { portfolioId } = useParams({ from: "/portfolios/$portfolioId/edit" });
+	const { portfolioId } = useParams({
+		from: "/_app/portfolios/$portfolioId/edit",
+	});
 	const _navigate = useNavigate();
 
 	return (
@@ -42,9 +31,7 @@ export default function PortfolioEditPage() {
 					<div className="flex items-center gap-2 px-4">
 						<SidebarTrigger className="-ml-1" />
 						<Separator orientation="vertical" className="mr-2 h-4" />
-						<PortfolioBreadcrumb
-							items={portfolioBreadcrumbs.portfolioEdit("Portfolio")}
-						/>
+						<PortfolioBreadcrumb items={portfolioBreadcrumbs.portfolioEdit("Portfolio")} />
 					</div>
 				</header>
 				<PortfolioEditContent portfolioId={portfolioId} />
@@ -124,30 +111,19 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 			setShowSuccess(true);
 		} catch (error) {
 			if (error instanceof Error) {
-				console.error("Error updating portfolio:", error);
-
 				// Handle specific error cases
-				if (
-					error.message.includes("unique") ||
-					error.message.includes("exists")
-				) {
+				if (error.message.includes("unique") || error.message.includes("exists")) {
 					setErrorMessage(
 						"A portfolio with this name already exists. Please choose a different name.",
 					);
-				} else if (
-					error.message.includes("unauthorized") ||
-					error.message.includes("permission")
-				) {
+				} else if (error.message.includes("unauthorized") || error.message.includes("permission")) {
 					setErrorMessage("You do not have permission to edit this portfolio.");
 				} else if (error.message.includes("not found")) {
 					setErrorMessage("Portfolio not found. It may have been deleted.");
 				} else {
-					setErrorMessage(
-						error.message || "Failed to update portfolio. Please try again.",
-					);
+					setErrorMessage(error.message || "Failed to update portfolio. Please try again.");
 				}
 			} else {
-				console.error("An unknown error occurred:", error);
 				setErrorMessage("An unknown error occurred while updating portfolio.");
 			}
 		} finally {
@@ -204,9 +180,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<Button onClick={() => navigate({ to: "/portfolios" })}>
-							Back to Portfolios
-						</Button>
+						<Button onClick={() => navigate({ to: "/portfolios" })}>Back to Portfolios</Button>
 					</CardContent>
 				</Card>
 			</div>
@@ -217,12 +191,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 		<div className="flex flex-1 flex-col gap-4 p-4 pt-0">
 			{/* Header Section */}
 			<div className="flex items-center gap-4">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={handleCancel}
-					className="gap-2"
-				>
+				<Button variant="ghost" size="sm" onClick={handleCancel} className="gap-2">
 					<ArrowLeft className="h-4 w-4" />
 					Back to Portfolio
 				</Button>
@@ -231,9 +200,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 			<div className="max-w-2xl">
 				<div className="mb-6">
 					<h1 className="text-3xl font-bold tracking-tight">Edit Portfolio</h1>
-					<p className="text-muted-foreground">
-						Update the details for "{portfolio.name}".
-					</p>
+					<p className="text-muted-foreground">Update the details for "{portfolio.name}".</p>
 				</div>
 
 				{/* Portfolio not found error */}
@@ -247,9 +214,7 @@ function PortfolioEditContent({ portfolioId }: { portfolioId: string }) {
 				<Card>
 					<CardHeader>
 						<CardTitle>Portfolio Details</CardTitle>
-						<CardDescription>
-							Update the basic information for your portfolio.
-						</CardDescription>
+						<CardDescription>Update the basic information for your portfolio.</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<EnhancedPortfolioForm

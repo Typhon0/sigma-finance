@@ -1,4 +1,5 @@
 import type * as echarts from "echarts";
+import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	AlertTriangle,
@@ -8,11 +9,10 @@ import {
 	TrendingDown,
 	TrendingUp,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Chart } from "@/components/ui/chart";
 import {
 	Select,
 	SelectContent,
@@ -99,14 +99,14 @@ type TimePeriod = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "ALL";
 // Helper function to format relative time
 function formatRelativeTime(dateString: string | null | undefined): string {
 	if (!dateString) return "Unknown";
-	
+
 	const date = new Date(dateString);
 	const now = new Date();
 	const diffMs = now.getTime() - date.getTime();
 	const diffMins = Math.floor(diffMs / 60000);
 	const diffHours = Math.floor(diffMins / 60);
 	const diffDays = Math.floor(diffHours / 24);
-	
+
 	if (diffMins < 1) return "Just now";
 	if (diffMins < 60) return `${diffMins} min ago`;
 	if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
@@ -117,10 +117,14 @@ function formatRelativeTime(dateString: string | null | undefined): string {
 // Helper function to get currency symbol
 function getCurrencySymbol(currency: string | null | undefined): string {
 	switch (currency?.toUpperCase()) {
-		case "USD": return "$";
-		case "EUR": return "€";
-		case "GBP": return "£";
-		default: return "$";
+		case "USD":
+			return "$";
+		case "EUR":
+			return "€";
+		case "GBP":
+			return "£";
+		default:
+			return "$";
 	}
 }
 
@@ -130,9 +134,15 @@ export function PortfolioAnalytics({
 	error = null,
 	className,
 }: PortfolioAnalyticsProps) {
-	const [selectedTimePeriod, setSelectedTimePeriod] =
-		useState<TimePeriod>("1M");
+	const [selectedTimePeriod, setSelectedTimePeriod] = useState<TimePeriod>("1M");
 	const [activeTab, setActiveTab] = useState("overview");
+
+	// Bind formatCurrency to the display currency (must be declared before useMemo hooks that reference it)
+	const displayCurrency = analytics?.displayCurrency || "USD";
+	const formatCurrency = useCallback(
+		(value: number) => formatCurrencyUtil(value, displayCurrency),
+		[displayCurrency],
+	);
 
 	// Filter performance history based on selected time period
 	const filteredPerformanceHistory = useMemo(() => {
@@ -164,13 +174,11 @@ export function PortfolioAnalytics({
 				return analytics.performanceHistory;
 		}
 
-		return analytics.performanceHistory.filter(
-			(point) => new Date(point.date) >= startDate,
-		);
+		return analytics.performanceHistory.filter((point) => new Date(point.date) >= startDate);
 	}, [analytics?.performanceHistory, selectedTimePeriod]);
 
 	// Asset allocation chart configuration
-	const assetAllocationOption: echarts.EChartsOption = useMemo(() => {
+	const assetAllocationOption = useMemo((): echarts.EChartsCoreOption => {
 		if (!analytics?.assetAllocation) return {};
 
 		const data = analytics.assetAllocation.map((allocation) => ({
@@ -188,14 +196,8 @@ export function PortfolioAnalytics({
 		return {
 			tooltip: {
 				trigger: "item",
-				formatter: (
-					params: echarts.EChartsOption.Tooltip.FormatterCallback<echarts.EChartsOption.SeriesPie.DataObject>,
-				) => {
-					if (
-						typeof params === "object" &&
-						params !== null &&
-						"data" in params
-					) {
+				formatter: (params: any) => {
+					if (typeof params === "object" && params !== null && "data" in params) {
 						const data = params.data as {
 							name: string;
 							value: number;
@@ -250,10 +252,10 @@ export function PortfolioAnalytics({
 				},
 			],
 		};
-	}, [analytics?.assetAllocation]);
+	}, [analytics?.assetAllocation, formatCurrency]);
 
 	// Performance history chart configuration
-	const performanceHistoryOption: echarts.EChartsOption = useMemo(() => {
+	const performanceHistoryOption = useMemo((): echarts.EChartsCoreOption => {
 		if (!filteredPerformanceHistory.length) return {};
 
 		const dates = filteredPerformanceHistory.map((point) => point.date);
@@ -262,9 +264,7 @@ export function PortfolioAnalytics({
 		return {
 			tooltip: {
 				trigger: "axis",
-				formatter: (
-					params: echarts.EChartsOption.Tooltip.FormatterCallback<echarts.EChartsOption.SeriesLine.DataObject>,
-				) => {
+				formatter: (params: any) => {
 					if (
 						Array.isArray(params) &&
 						params.length > 0 &&
@@ -309,21 +309,19 @@ export function PortfolioAnalytics({
 					smooth: true,
 					lineStyle: {
 						width: 3,
-						color:
-							analytics && analytics.totalGainLoss >= 0 ? "#22c55e" : "#ef4444",
+						color: analytics && analytics.totalGainLoss >= 0 ? "#22c55e" : "#ef4444",
 					},
 					areaStyle: {
 						opacity: 0.1,
-						color:
-							analytics && analytics.totalGainLoss >= 0 ? "#22c55e" : "#ef4444",
+						color: analytics && analytics.totalGainLoss >= 0 ? "#22c55e" : "#ef4444",
 					},
 				},
 			],
 		};
-	}, [filteredPerformanceHistory, analytics]);
+	}, [filteredPerformanceHistory, analytics, formatCurrency]);
 
 	// Risk metrics visualization
-	const riskMetricsOption: echarts.EChartsOption = useMemo(() => {
+	const riskMetricsOption = useMemo((): echarts.EChartsCoreOption => {
 		if (!analytics?.riskMetrics) return {};
 
 		const metrics = [
@@ -419,10 +417,7 @@ export function PortfolioAnalytics({
 							<div className="text-sm text-muted-foreground mb-4">
 								{error.message || "Unable to calculate portfolio analytics"}
 							</div>
-							<Button
-								variant="outline"
-								onClick={() => window.location.reload()}
-							>
+							<Button variant="outline" onClick={() => window.location.reload()}>
 								Retry
 							</Button>
 						</div>
@@ -443,9 +438,7 @@ export function PortfolioAnalytics({
 					<CardContent>
 						<div className="flex flex-col items-center justify-center h-[400px] text-center">
 							<PieChart className="h-12 w-12 text-muted-foreground mb-4" />
-							<div className="text-lg font-medium mb-2">
-								No Analytics Available
-							</div>
+							<div className="text-lg font-medium mb-2">No Analytics Available</div>
 							<div className="text-sm text-muted-foreground">
 								Add some assets to your portfolio to see analytics
 							</div>
@@ -457,14 +450,12 @@ export function PortfolioAnalytics({
 	}
 
 	// Check if we have multi-currency data
-	const hasMultiCurrency = analytics.totalNativeValue != null && analytics.totalDisplayValue != null;
-	const displayCurrency = analytics.displayCurrency || "USD";
+	const hasMultiCurrency =
+		analytics.totalNativeValue != null && analytics.totalDisplayValue != null;
 	const quoteCurrency = analytics.quoteCurrency || "USD";
 	const displaySymbol = getCurrencySymbol(displayCurrency);
 	const nativeSymbol = getCurrencySymbol(quoteCurrency);
 
-	// Bind formatCurrency to the display currency
-	const formatCurrency = (value: number) => formatCurrencyUtil(value, displayCurrency);
 	const isStale = analytics.isStale || false;
 	const fxAsOf = analytics.fxAsOf;
 	const fxSource = analytics.fxSource || "UNKNOWN";
@@ -482,9 +473,7 @@ export function PortfolioAnalytics({
 						<div className="flex items-center gap-2">
 							<Select
 								value={selectedTimePeriod}
-								onValueChange={(value: TimePeriod) =>
-									setSelectedTimePeriod(value)
-								}
+								onValueChange={(value: TimePeriod) => setSelectedTimePeriod(value)}
 							>
 								<SelectTrigger className="w-20">
 									<SelectValue />
@@ -513,18 +502,25 @@ export function PortfolioAnalytics({
 										{hasMultiCurrency ? (
 											<div className="space-y-1">
 												<p className="text-2xl font-bold">
-													{displaySymbol}{analytics.totalDisplayValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+													{displaySymbol}
+													{analytics.totalDisplayValue?.toLocaleString(undefined, {
+														minimumFractionDigits: 2,
+														maximumFractionDigits: 2,
+													})}
 												</p>
 												{displayCurrency !== quoteCurrency && (
 													<p className="text-sm text-muted-foreground">
-														({nativeSymbol}{analytics.totalNativeValue?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} {quoteCurrency})
+														({nativeSymbol}
+														{analytics.totalNativeValue?.toLocaleString(undefined, {
+															minimumFractionDigits: 2,
+															maximumFractionDigits: 2,
+														})}{" "}
+														{quoteCurrency})
 													</p>
 												)}
 											</div>
 										) : (
-											<p className="text-2xl font-bold">
-												{formatCurrency(analytics.totalValue)}
-											</p>
+											<p className="text-2xl font-bold">{formatCurrency(analytics.totalValue)}</p>
 										)}
 									</div>
 									<TrendingUp className="h-8 w-8 text-muted-foreground" />
@@ -552,9 +548,7 @@ export function PortfolioAnalytics({
 										</div>
 										<div>
 											State: {fxState}
-											{excludedPositionCount > 0
-												? ` • Excluded: ${excludedPositionCount}`
-												: ""}
+											{excludedPositionCount > 0 ? ` • Excluded: ${excludedPositionCount}` : ""}
 											{` • Coverage: ${(coveredValueRatio * 100).toFixed(1)}%`}
 										</div>
 									</div>
@@ -566,9 +560,7 @@ export function PortfolioAnalytics({
 							<CardContent className="p-4">
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Total Gain/Loss
-										</p>
+										<p className="text-sm text-muted-foreground">Total Gain/Loss</p>
 										<p
 											className={`text-2xl font-bold ${analytics.totalGainLoss >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
@@ -595,13 +587,7 @@ export function PortfolioAnalytics({
 											{formatPercentage(analytics.totalGainLossPercent)}
 										</p>
 									</div>
-									<Badge
-										variant={
-											analytics.totalGainLossPercent >= 0
-												? "default"
-												: "destructive"
-										}
-									>
+									<Badge variant={analytics.totalGainLossPercent >= 0 ? "default" : "destructive"}>
 										{analytics.totalGainLossPercent >= 0 ? "Gain" : "Loss"}
 									</Badge>
 								</div>
@@ -612,9 +598,7 @@ export function PortfolioAnalytics({
 							<CardContent className="p-4">
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Diversification
-										</p>
+										<p className="text-sm text-muted-foreground">Diversification</p>
 										<p className="text-2xl font-bold">
 											{analytics.riskMetrics.diversification.toFixed(0)}%
 										</p>
@@ -632,10 +616,7 @@ export function PortfolioAnalytics({
 								<PieChart className="h-4 w-4" />
 								Allocation
 							</TabsTrigger>
-							<TabsTrigger
-								value="performance"
-								className="flex items-center gap-2"
-							>
+							<TabsTrigger value="performance" className="flex items-center gap-2">
 								<LineChart className="h-4 w-4" />
 								Performance
 							</TabsTrigger>
@@ -648,7 +629,7 @@ export function PortfolioAnalytics({
 						<TabsContent value="overview" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Asset Allocation</h3>
-								<Chart option={assetAllocationOption} className="h-[400px]" />
+								<ReactECharts option={assetAllocationOption} style={{ height: "400px" }} />
 
 								{/* Asset allocation breakdown */}
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t">
@@ -661,9 +642,7 @@ export function PortfolioAnalytics({
 												<div
 													className="w-3 h-3 rounded-full"
 													style={{
-														backgroundColor: getAssetTypeColor(
-															allocation.assetType,
-														),
+														backgroundColor: getAssetTypeColor(allocation.assetType),
 													}}
 												/>
 												<div>
@@ -696,17 +675,14 @@ export function PortfolioAnalytics({
 						<TabsContent value="performance" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Performance History</h3>
-								<Chart
-									option={performanceHistoryOption}
-									className="h-[400px]"
-								/>
+								<ReactECharts option={performanceHistoryOption} style={{ height: "400px" }} />
 							</div>
 						</TabsContent>
 
 						<TabsContent value="risk" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Risk Analysis</h3>
-								<Chart option={riskMetricsOption} className="h-[400px]" />
+								<ReactECharts option={riskMetricsOption} style={{ height: "400px" }} />
 
 								{/* Risk metrics explanation */}
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">
@@ -732,9 +708,7 @@ export function PortfolioAnalytics({
 											</span>
 										</div>
 										<div className="flex justify-between items-center">
-											<span className="text-sm font-medium">
-												Diversification Score
-											</span>
+											<span className="text-sm font-medium">Diversification Score</span>
 											<span className="text-sm">
 												{analytics.riskMetrics.diversification.toFixed(0)}%
 											</span>

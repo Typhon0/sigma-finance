@@ -21,13 +21,7 @@ import { usePortfolio } from "@/components/PortfolioProvider";
 import { useCurrency } from "@/hooks/use-currency";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -36,14 +30,7 @@ import {
 } from "./ui/dropdown-menu";
 import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface LoanDetailProps {
@@ -81,10 +68,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 	}
 
 	// Derive loan assets from real portfolio data
-	const loanAssets = useMemo(
-		() => assets.filter((a) => a.type === "loan"),
-		[assets],
-	);
+	const loanAssets = useMemo(() => assets.filter((a) => a.type === "loan"), [assets]);
 
 	// TODO: Replace with loan-specific fields once backend supports them
 	// Currently we map PortfolioAssetItem fields to LoanData as best we can
@@ -167,8 +151,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 	const paymentProgress = (paidAmount / loan.loanAmount) * 100;
 	const totalInterestPaid = paidAmount * (loan.interestRate / 100);
 	const totalCost =
-		loan.loanAmount +
-		((loan.loanAmount * loan.interestRate) / 100) * (loan.duration / 12);
+		loan.loanAmount + ((loan.loanAmount * loan.interestRate) / 100) * (loan.duration / 12);
 	const monthsElapsed = Math.floor(
 		(Date.now() - loan.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30),
 	);
@@ -211,7 +194,14 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 
 	// Generate amortization schedule
 	const generateAmortizationSchedule = () => {
-		const schedule = [];
+		const schedule: {
+			month: number;
+			date: string;
+			payment: number;
+			principal: number;
+			interest: number;
+			balance: number;
+		}[] = [];
 		let balance = loan.loanAmount;
 		const monthlyRate = loan.interestRate / 100 / 12;
 
@@ -401,9 +391,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 								<Badge variant={getLoanTypeBadgeVariant(loan.type)}>
 									{getLoanTypeLabel(loan.type)}
 								</Badge>
-								<Badge
-									variant={loan.status === "active" ? "default" : "secondary"}
-								>
+								<Badge variant={loan.status === "active" ? "default" : "secondary"}>
 									{loan.status}
 								</Badge>
 							</div>
@@ -420,21 +408,15 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end">
-							<DropdownMenuItem
-								onClick={() => toast.info("Edit feature coming soon")}
-							>
+							<DropdownMenuItem onClick={() => toast.info("Edit feature coming soon")}>
 								<Edit className="h-4 w-4 mr-2" />
 								Edit Loan
 							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => toast.success("Downloading statement...")}
-							>
+							<DropdownMenuItem onClick={() => toast.success("Downloading statement...")}>
 								<FileText className="h-4 w-4 mr-2" />
 								Download Statement
 							</DropdownMenuItem>
-							<DropdownMenuItem
-								onClick={() => toast.info("Export feature coming soon")}
-							>
+							<DropdownMenuItem onClick={() => toast.info("Export feature coming soon")}>
 								<FileText className="h-4 w-4 mr-2" />
 								Export Data
 							</DropdownMenuItem>
@@ -469,9 +451,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-mono">
-								{formatCurrency(loan.monthlyPayment)}
-							</div>
+							<div className="text-2xl font-mono">{formatCurrency(loan.monthlyPayment)}</div>
 							<p className="text-xs text-muted-foreground mt-1">
 								{monthsRemaining} payments remaining
 							</p>
@@ -486,9 +466,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-mono">
-								{loan.interestRate.toFixed(2)}%
-							</div>
+							<div className="text-2xl font-mono">{loan.interestRate.toFixed(2)}%</div>
 							<p className="text-xs text-muted-foreground mt-1">Fixed rate</p>
 						</CardContent>
 					</Card>
@@ -501,9 +479,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 							</CardTitle>
 						</CardHeader>
 						<CardContent>
-							<div className="text-2xl font-mono text-green-600">
-								{paymentProgress.toFixed(1)}%
-							</div>
+							<div className="text-2xl font-mono text-green-600">{paymentProgress.toFixed(1)}%</div>
 							<div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
 								<div
 									className="h-full bg-green-600 transition-all"
@@ -551,9 +527,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 										<BarChart3 className="h-5 w-5" />
 										Payment Breakdown
 									</CardTitle>
-									<CardDescription>
-										Principal vs Interest (24 months)
-									</CardDescription>
+									<CardDescription>Principal vs Interest (24 months)</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<ReactECharts
@@ -589,9 +563,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 									<div className="text-xl font-mono text-orange-600">
 										{formatCurrency(totalInterestPaid)}
 									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										Estimated so far
-									</p>
+									<p className="text-xs text-muted-foreground mt-1">Estimated so far</p>
 								</CardContent>
 							</Card>
 
@@ -600,12 +572,8 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 									<CardTitle className="text-sm">Total Cost</CardTitle>
 								</CardHeader>
 								<CardContent>
-									<div className="text-xl font-mono">
-										{formatCurrency(totalCost)}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										Principal + Interest
-									</p>
+									<div className="text-xl font-mono">{formatCurrency(totalCost)}</div>
+									<p className="text-xs text-muted-foreground mt-1">Principal + Interest</p>
 								</CardContent>
 							</Card>
 						</div>
@@ -618,9 +586,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 										<Building2 className="h-5 w-5" />
 										Linked Assets
 									</CardTitle>
-									<CardDescription>
-										Assets financed by this loan
-									</CardDescription>
+									<CardDescription>Assets financed by this loan</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-3">
@@ -635,22 +601,14 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 													</div>
 													<div>
 														<p className="font-medium">{asset.name}</p>
-														<p className="text-sm text-muted-foreground capitalize">
-															{asset.type}
-														</p>
+														<p className="text-sm text-muted-foreground capitalize">{asset.type}</p>
 													</div>
 												</div>
 												<div className="text-right">
-													<p className="font-mono">
-														{formatCurrency(asset.currentValue)}
-													</p>
+													<p className="font-mono">{formatCurrency(asset.currentValue)}</p>
 													{asset.currentValue && loan.remainingBalance && (
 														<p className="text-xs text-muted-foreground">
-															LTV:{" "}
-															{(
-																(loan.remainingBalance / asset.currentValue) *
-																100
-															).toFixed(1)}
+															LTV: {((loan.remainingBalance / asset.currentValue) * 100).toFixed(1)}
 															%
 														</p>
 													)}
@@ -669,8 +627,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 							<CardHeader>
 								<CardTitle>Amortization Schedule</CardTitle>
 								<CardDescription>
-									Detailed payment breakdown for each month (showing first 60
-									payments)
+									Detailed payment breakdown for each month (showing first 60 payments)
 								</CardDescription>
 							</CardHeader>
 							<CardContent>
@@ -689,9 +646,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 										<TableBody>
 											{amortizationSchedule.map((row) => (
 												<TableRow key={row.month}>
-													<TableCell className="font-medium">
-														{row.month}
-													</TableCell>
+													<TableCell className="font-medium">{row.month}</TableCell>
 													<TableCell>{row.date}</TableCell>
 													<TableCell className="text-right font-mono">
 														{formatCurrency(row.payment)}
@@ -742,9 +697,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 										<AlertCircle className="h-5 w-5" />
 										Key Insights
 									</CardTitle>
-									<CardDescription>
-										Important metrics and recommendations
-									</CardDescription>
+									<CardDescription>Important metrics and recommendations</CardDescription>
 								</CardHeader>
 								<CardContent>
 									<div className="space-y-4">
@@ -754,12 +707,10 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 													<Target className="h-4 w-4 text-white" />
 												</div>
 												<div>
-													<p className="font-medium text-green-900 dark:text-green-100">
-														On Track
-													</p>
+													<p className="font-medium text-green-900 dark:text-green-100">On Track</p>
 													<p className="text-sm text-green-700 dark:text-green-300 mt-1">
-														You've paid {paymentProgress.toFixed(1)}% of your
-														loan. Keep up the good work!
+														You've paid {paymentProgress.toFixed(1)}% of your loan. Keep up the good
+														work!
 													</p>
 												</div>
 											</div>
@@ -775,9 +726,8 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 														Time Remaining
 													</p>
 													<p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-														{monthsRemaining} months (
-														{(monthsRemaining / 12).toFixed(1)} years) until
-														loan payoff
+														{monthsRemaining} months ({(monthsRemaining / 12).toFixed(1)} years)
+														until loan payoff
 													</p>
 												</div>
 											</div>
@@ -793,8 +743,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 														Interest Impact
 													</p>
 													<p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-														Interest represents{" "}
-														{((totalInterestPaid / totalCost) * 100).toFixed(1)}
+														Interest represents {((totalInterestPaid / totalCost) * 100).toFixed(1)}
 														% of total cost
 													</p>
 												</div>
@@ -812,8 +761,8 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 															Refinancing Opportunity
 														</p>
 														<p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-															Your rate ({loan.interestRate}%) is higher than
-															average. Consider refinancing.
+															Your rate ({loan.interestRate}%) is higher than average. Consider
+															refinancing.
 														</p>
 													</div>
 												</div>
@@ -836,26 +785,18 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 								<CardContent className="space-y-4">
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Loan Type</span>
-										<span className="font-medium">
-											{getLoanTypeLabel(loan.type)}
-										</span>
+										<span className="font-medium">{getLoanTypeLabel(loan.type)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Bank</span>
 										<span className="font-medium">{loan.bank}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Original Amount
-										</span>
-										<span className="font-mono">
-											{formatCurrency(loan.loanAmount)}
-										</span>
+										<span className="text-muted-foreground">Original Amount</span>
+										<span className="font-mono">{formatCurrency(loan.loanAmount)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Remaining Balance
-										</span>
+										<span className="text-muted-foreground">Remaining Balance</span>
 										<span className="font-mono text-red-600">
 											{formatCurrency(loan.remainingBalance)}
 										</span>
@@ -867,17 +808,12 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Duration</span>
 										<span className="font-medium">
-											{loan.duration} months ({(loan.duration / 12).toFixed(1)}{" "}
-											years)
+											{loan.duration} months ({(loan.duration / 12).toFixed(1)} years)
 										</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Monthly Payment
-										</span>
-										<span className="font-mono">
-											{formatCurrency(loan.monthlyPayment)}
-										</span>
+										<span className="text-muted-foreground">Monthly Payment</span>
+										<span className="font-mono">{formatCurrency(loan.monthlyPayment)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Currency</span>
@@ -885,11 +821,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 									</div>
 									<div className="flex justify-between py-2">
 										<span className="text-muted-foreground">Status</span>
-										<Badge
-											variant={
-												loan.status === "active" ? "default" : "secondary"
-											}
-										>
+										<Badge variant={loan.status === "active" ? "default" : "secondary"}>
 											{loan.status}
 										</Badge>
 									</div>
@@ -904,69 +836,45 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 								<CardContent className="space-y-4">
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">Start Date</span>
-										<span className="font-medium">
-											{formatDate(loan.startDate)}
-										</span>
+										<span className="font-medium">{formatDate(loan.startDate)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
 										<span className="text-muted-foreground">End Date</span>
-										<span className="font-medium">
-											{formatDate(loan.endDate)}
-										</span>
+										<span className="font-medium">{formatDate(loan.endDate)}</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Months Elapsed
-										</span>
+										<span className="text-muted-foreground">Months Elapsed</span>
 										<span className="font-medium">{monthsElapsed} months</span>
 									</div>
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Months Remaining
-										</span>
-										<span className="font-medium">
-											{monthsRemaining} months
-										</span>
+										<span className="text-muted-foreground">Months Remaining</span>
+										<span className="font-medium">{monthsRemaining} months</span>
 									</div>
 
 									<Separator className="my-4" />
 
 									{loan.applicationFee && (
 										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">
-												Application Fee
-											</span>
-											<span className="font-mono">
-												{formatCurrency(loan.applicationFee)}
-											</span>
+											<span className="text-muted-foreground">Application Fee</span>
+											<span className="font-mono">{formatCurrency(loan.applicationFee)}</span>
 										</div>
 									)}
 									{loan.brokerFee && (
 										<div className="flex justify-between py-2 border-b">
 											<span className="text-muted-foreground">Broker Fee</span>
-											<span className="font-mono">
-												{formatCurrency(loan.brokerFee)}
-											</span>
+											<span className="font-mono">{formatCurrency(loan.brokerFee)}</span>
 										</div>
 									)}
 									{loan.insuranceFee && (
 										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">
-												Insurance (monthly)
-											</span>
-											<span className="font-mono">
-												{formatCurrency(loan.insuranceFee)}
-											</span>
+											<span className="text-muted-foreground">Insurance (monthly)</span>
+											<span className="font-mono">{formatCurrency(loan.insuranceFee)}</span>
 										</div>
 									)}
 									{loan.earlyRepaymentFee && (
 										<div className="flex justify-between py-2">
-											<span className="text-muted-foreground">
-												Early Repayment Fee
-											</span>
-											<span className="font-mono">
-												{loan.earlyRepaymentFee}%
-											</span>
+											<span className="text-muted-foreground">Early Repayment Fee</span>
+											<span className="font-mono">{loan.earlyRepaymentFee}%</span>
 										</div>
 									)}
 								</CardContent>
@@ -979,28 +887,15 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 								</CardHeader>
 								<CardContent className="space-y-4">
 									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">
-											Ownership Mode
-										</span>
-										<Badge
-											variant={
-												loan.ownershipMode === "personal"
-													? "default"
-													: "secondary"
-											}
-										>
-											{loan.ownershipMode === "personal"
-												? "Personal"
-												: "Company"}
+										<span className="text-muted-foreground">Ownership Mode</span>
+										<Badge variant={loan.ownershipMode === "personal" ? "default" : "secondary"}>
+											{loan.ownershipMode === "personal" ? "Personal" : "Company"}
 										</Badge>
 									</div>
 									<div className="p-4 bg-muted rounded-lg">
 										<p className="text-sm text-muted-foreground">
 											This loan is held under{" "}
-											{loan.ownershipMode === "personal"
-												? "personal"
-												: "company"}{" "}
-											ownership.
+											{loan.ownershipMode === "personal" ? "personal" : "company"} ownership.
 										</p>
 									</div>
 								</CardContent>

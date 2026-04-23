@@ -11,13 +11,7 @@ import {
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import type { Portfolio } from "@/gql/graphql";
 import { DataBackupRestore } from "./data-backup-restore";
 import { ExportDialog } from "./export-dialog";
@@ -39,12 +33,9 @@ export function DashboardExportIntegration({
 	return (
 		<div className="space-y-6">
 			<div>
-				<h2 className="text-2xl font-bold tracking-tight">
-					Data Export & Reporting
-				</h2>
+				<h2 className="text-2xl font-bold tracking-tight">Data Export & Reporting</h2>
 				<p className="text-muted-foreground">
-					Export your portfolio data, generate reports, and manage backups from
-					your dashboard.
+					Export your portfolio data, generate reports, and manage backups from your dashboard.
 				</p>
 			</div>
 
@@ -71,9 +62,7 @@ export function DashboardExportIntegration({
 								</div>
 								<div>
 									<h4 className="font-medium">Portfolio Data</h4>
-									<p className="text-sm text-muted-foreground">
-										Positions & summary
-									</p>
+									<p className="text-sm text-muted-foreground">Positions & summary</p>
 								</div>
 							</div>
 							<QuickExportButton
@@ -93,9 +82,7 @@ export function DashboardExportIntegration({
 								</div>
 								<div>
 									<h4 className="font-medium">Transactions</h4>
-									<p className="text-sm text-muted-foreground">
-										Complete history
-									</p>
+									<p className="text-sm text-muted-foreground">Complete history</p>
 								</div>
 							</div>
 							<QuickExportButton
@@ -115,9 +102,7 @@ export function DashboardExportIntegration({
 								</div>
 								<div>
 									<h4 className="font-medium">Performance</h4>
-									<p className="text-sm text-muted-foreground">
-										Analytics & charts
-									</p>
+									<p className="text-sm text-muted-foreground">Analytics & charts</p>
 								</div>
 							</div>
 							<QuickExportButton
@@ -137,9 +122,7 @@ export function DashboardExportIntegration({
 								</div>
 								<div>
 									<h4 className="font-medium">Tax Report</h4>
-									<p className="text-sm text-muted-foreground">
-										Gains & losses
-									</p>
+									<p className="text-sm text-muted-foreground">Gains & losses</p>
 								</div>
 							</div>
 							<QuickExportButton type="tax-report" variant="ghost" size="sm" />
@@ -167,16 +150,10 @@ export function DashboardExportIntegration({
 								</div>
 								<div>
 									<h4 className="font-medium">Custom Export</h4>
-									<p className="text-sm text-muted-foreground">
-										Advanced options
-									</p>
+									<p className="text-sm text-muted-foreground">Advanced options</p>
 								</div>
 							</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => setExportDialogOpen(true)}
-							>
+							<Button variant="ghost" size="sm" onClick={() => setExportDialogOpen(true)}>
 								Configure
 							</Button>
 						</div>
@@ -189,9 +166,7 @@ export function DashboardExportIntegration({
 				<Card>
 					<CardHeader>
 						<CardTitle>Portfolio Export Summary</CardTitle>
-						<CardDescription>
-							Export data from any of your portfolios
-						</CardDescription>
+						<CardDescription>Export data from any of your portfolios</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<div className="space-y-3">
@@ -205,9 +180,7 @@ export function DashboardExportIntegration({
 											<h4 className="font-medium">{portfolio.name}</h4>
 											<div className="flex items-center gap-2 text-sm text-muted-foreground">
 												<DollarSign className="h-3 w-3" />
-												<span>
-													Portfolio value and metrics would be shown here
-												</span>
+												<span>Portfolio value and metrics would be shown here</span>
 											</div>
 										</div>
 										{selectedPortfolio?.id === portfolio.id && (

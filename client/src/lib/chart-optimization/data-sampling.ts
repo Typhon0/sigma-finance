@@ -30,10 +30,7 @@ export interface VirtualizationConfig {
  * Largest Triangle Three Buckets (LTTB) algorithm for downsampling time series data
  * Preserves the visual characteristics of the data while reducing points
  */
-export function lttbSampling(
-	data: DataPoint[],
-	targetPoints: number,
-): DataPoint[] {
+export function lttbSampling(data: DataPoint[], targetPoints: number): DataPoint[] {
 	if (data.length <= targetPoints) {
 		return data;
 	}
@@ -60,11 +57,7 @@ export function lttbSampling(
 		let avgValue = 0;
 		let avgCount = 0;
 
-		for (
-			let j = nextBucketStart;
-			j < Math.min(nextBucketEnd, data.length);
-			j++
-		) {
+		for (let j = nextBucketStart; j < Math.min(nextBucketEnd, data.length); j++) {
 			avgTimestamp += data[j].timestamp;
 			avgValue += data[j].value;
 			avgCount++;
@@ -84,10 +77,8 @@ export function lttbSampling(
 		for (let j = bucketStart; j < Math.min(bucketEnd, data.length); j++) {
 			const area =
 				Math.abs(
-					(prevPoint.timestamp - avgTimestamp) *
-						(data[j].value - prevPoint.value) -
-						(prevPoint.timestamp - data[j].timestamp) *
-							(avgValue - prevPoint.value),
+					(prevPoint.timestamp - avgTimestamp) * (data[j].value - prevPoint.value) -
+						(prevPoint.timestamp - data[j].timestamp) * (avgValue - prevPoint.value),
 				) * 0.5;
 
 			if (area > maxArea) {
@@ -109,10 +100,7 @@ export function lttbSampling(
 /**
  * Average-based sampling - groups data points and takes averages
  */
-export function averageSampling(
-	data: DataPoint[],
-	targetPoints: number,
-): DataPoint[] {
+export function averageSampling(data: DataPoint[], targetPoints: number): DataPoint[] {
 	if (data.length <= targetPoints) {
 		return data;
 	}
@@ -134,11 +122,12 @@ export function averageSampling(
 		for (let j = start; j < Math.min(end, data.length); j++) {
 			sumTimestamp += data[j].timestamp;
 			sumValue += data[j].value;
-			if (data[j].volume !== undefined) {
-				sumVolume += data[j].volume;
+			const point = data[j]!;
+			if (point.volume !== undefined) {
+				sumVolume += point.volume;
 			}
-			minValue = Math.min(minValue, data[j].value);
-			maxValue = Math.max(maxValue, data[j].value);
+			minValue = Math.min(minValue, point.value);
+			maxValue = Math.max(maxValue, point.value);
 			count++;
 		}
 
@@ -170,10 +159,7 @@ export function averageSampling(
 /**
  * Min-Max sampling - preserves extremes in each bucket
  */
-export function minMaxSampling(
-	data: DataPoint[],
-	targetPoints: number,
-): DataPoint[] {
+export function minMaxSampling(data: DataPoint[], targetPoints: number): DataPoint[] {
 	if (data.length <= targetPoints) {
 		return data;
 	}
@@ -217,10 +203,7 @@ export function minMaxSampling(
 /**
  * Uniform sampling - takes every nth point
  */
-export function uniformSampling(
-	data: DataPoint[],
-	targetPoints: number,
-): DataPoint[] {
+export function uniformSampling(data: DataPoint[], targetPoints: number): DataPoint[] {
 	if (data.length <= targetPoints) {
 		return data;
 	}
@@ -239,10 +222,7 @@ export function uniformSampling(
 /**
  * Smart sampling that chooses the best algorithm based on data characteristics
  */
-export function smartSampling(
-	data: DataPoint[],
-	options: SamplingOptions,
-): DataPoint[] {
+export function smartSampling(data: DataPoint[], options: SamplingOptions): DataPoint[] {
 	if (data.length <= options.maxPoints) {
 		return data;
 	}
@@ -277,8 +257,7 @@ function calculateVolatility(data: DataPoint[]): number {
 
 	const values = data.map((d) => d.value);
 	const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-	const variance =
-		values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
+	const variance = values.reduce((sum, val) => sum + (val - mean) ** 2, 0) / values.length;
 	const stdDev = Math.sqrt(variance);
 
 	return mean !== 0 ? stdDev / Math.abs(mean) : 0;
@@ -293,9 +272,9 @@ function calculateTrendStrength(data: DataPoint[]): number {
 	const n = data.length;
 	let sumX = 0,
 		sumY = 0,
-		sumXY = 0,
-		sumXX = 0,
-		sumYY = 0;
+		sumXy = 0,
+		sumXx = 0,
+		sumYy = 0;
 
 	for (let i = 0; i < n; i++) {
 		const x = i; // Use index as x for simplicity
@@ -303,15 +282,13 @@ function calculateTrendStrength(data: DataPoint[]): number {
 
 		sumX += x;
 		sumY += y;
-		sumXY += x * y;
-		sumXX += x * x;
-		sumYY += y * y;
+		sumXy += x * y;
+		sumXx += x * x;
+		sumYy += y * y;
 	}
 
-	const numerator = n * sumXY - sumX * sumY;
-	const denominator = Math.sqrt(
-		(n * sumXX - sumX * sumX) * (n * sumYY - sumY * sumY),
-	);
+	const numerator = n * sumXy - sumX * sumY;
+	const denominator = Math.sqrt((n * sumXx - sumX * sumX) * (n * sumYy - sumY * sumY));
 
 	if (denominator === 0) return 0;
 
@@ -322,10 +299,7 @@ function calculateTrendStrength(data: DataPoint[]): number {
 /**
  * Compress data points using simple run-length encoding for repeated values
  */
-export function compressData(
-	data: DataPoint[],
-	threshold: number = 0.001,
-): DataPoint[] {
+export function compressData(data: DataPoint[], threshold: number = 0.001): DataPoint[] {
 	if (data.length < 2) return data;
 
 	const compressed: DataPoint[] = [data[0]];
@@ -399,13 +373,13 @@ export class DataSampler {
 
 		const first = data[0];
 		const last = data[data.length - 1];
-		return `${data.length}-${first.timestamp}-${first.value}-${last.timestamp}-${last.value}`;
+		return `${data.length}-${first?.timestamp}-${first?.value}-${last?.timestamp}-${last?.value}`;
 	}
 
 	private cacheResult(key: string, data: DataPoint[]): void {
 		// Implement LRU cache eviction
 		if (this.cache.size >= this.maxCacheSize) {
-			const firstKey = this.cache.keys().next().value;
+			const firstKey = this.cache.keys().next().value!;
 			this.cache.delete(firstKey);
 		}
 

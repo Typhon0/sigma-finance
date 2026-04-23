@@ -10,46 +10,46 @@ import {
 import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 
 // Hook for critical dashboard data (loads first)
-export const useCriticalDashboardData = (userID: string) => {
+export const useCriticalDashboardData = (userId: string) => {
 	return useQuery(GET_DASHBOARD_CRITICAL, {
-		variables: { userID },
+		variables: { userID: userId },
 		fetchPolicy: "cache-first",
 		errorPolicy: "all",
 		notifyOnNetworkStatusChange: true,
 		// Skip if no userID or userID is empty string
-		skip: !userID || userID.trim() === "",
+		skip: !userId || userId.trim() === "",
 	});
 };
 
 // Hook for secondary dashboard data (loads after critical)
-export const useSecondaryDashboardData = (userID: string, enabled = true) => {
+export const useSecondaryDashboardData = (userId: string, enabled = true) => {
 	return useQuery(GET_DASHBOARD_SECONDARY, {
-		variables: { userID },
+		variables: { userID: userId },
 		fetchPolicy: "cache-first",
 		errorPolicy: "all",
 		// Only fetch when enabled and userID exists and is not empty
-		skip: !userID || userID.trim() === "" || !enabled,
+		skip: !userId || userId.trim() === "" || !enabled,
 	});
 };
 
 // Hook for portfolio cards with optimized caching
-export const usePortfolioCards = (userID: string) => {
+export const usePortfolioCards = (userId: string) => {
 	return useQuery(GET_PORTFOLIO_CARDS, {
-		variables: { userID },
+		variables: { userID: userId },
 		fetchPolicy: "cache-first",
 		errorPolicy: "all",
 		// Poll every 5 minutes for portfolio updates
 		pollInterval: 5 * 60 * 1000,
-		skip: !userID || userID.trim() === "",
+		skip: !userId || userId.trim() === "",
 	});
 };
 
 // Hook for recent transactions with lazy loading
-export const useRecentTransactions = (userID: string, limit = 5) => {
+export const useRecentTransactions = (userId: string, limit = 5) => {
 	const [loadTransactions, { data, loading, error }] = useLazyQuery(
 		GET_RECENT_TRANSACTIONS_MINIMAL,
 		{
-			variables: { userID, limit },
+			variables: { userID: userId, limit },
 			fetchPolicy: "cache-first",
 			errorPolicy: "all",
 		},
@@ -57,10 +57,10 @@ export const useRecentTransactions = (userID: string, limit = 5) => {
 
 	// Load transactions when component becomes visible
 	const loadWhenVisible = useCallback(() => {
-		if (userID && userID.trim() !== "") {
+		if (userId && userId.trim() !== "") {
 			loadTransactions();
 		}
-	}, [userID, loadTransactions]);
+	}, [userId, loadTransactions]);
 
 	return {
 		data,
@@ -71,37 +71,33 @@ export const useRecentTransactions = (userID: string, limit = 5) => {
 };
 
 // Hook for asset performance with pagination
-export const useAssetPerformance = (userID: string, limit = 10) => {
+export const useAssetPerformance = (userId: string, limit = 10) => {
 	return useQuery(GET_ASSET_PERFORMANCE_OPTIMIZED, {
-		variables: { userID, limit },
+		variables: { userID: userId, limit },
 		fetchPolicy: "cache-first",
 		errorPolicy: "all",
 		// Poll every 10 minutes for performance updates
 		pollInterval: 10 * 60 * 1000,
-		skip: !userID || userID.trim() === "",
+		skip: !userId || userId.trim() === "",
 	});
 };
 
 // Hook for real-time dashboard updates
-export const useDashboardSubscription = (userID: string, enabled = true) => {
-	const { data: subscriptionData } = useSubscription(
-		PORTFOLIO_UPDATE_SUBSCRIPTION,
-		{
-			variables: { userID },
-			skip: !userID || userID.trim() === "" || !enabled,
-			onSubscriptionData: ({ subscriptionData }) => {
-				if (subscriptionData.data) {
-					console.log("Dashboard update received:", subscriptionData.data);
-				}
-			},
+export const useDashboardSubscription = (userId: string, enabled = true) => {
+	const { data: subscriptionData } = useSubscription(PORTFOLIO_UPDATE_SUBSCRIPTION, {
+		variables: { userID: userId },
+		skip: !userId || userId.trim() === "" || !enabled,
+		onSubscriptionData: ({ subscriptionData }) => {
+			if (subscriptionData.data) {
+			}
 		},
-	);
+	});
 
 	return subscriptionData;
 };
 
 // Optimized dashboard data hook with progressive loading
-export const useOptimizedDashboardData = (userID: string) => {
+export const useOptimizedDashboardData = (userId: string) => {
 	const [secondaryEnabled, setSecondaryEnabled] = useState(false);
 
 	// Load critical data first
@@ -110,7 +106,7 @@ export const useOptimizedDashboardData = (userID: string) => {
 		loading: criticalLoading,
 		error: criticalError,
 		refetch: refetchCritical,
-	} = useCriticalDashboardData(userID);
+	} = useCriticalDashboardData(userId);
 
 	// Load secondary data after critical data is loaded
 	const {
@@ -118,7 +114,7 @@ export const useOptimizedDashboardData = (userID: string) => {
 		loading: secondaryLoading,
 		error: secondaryError,
 		refetch: refetchSecondary,
-	} = useSecondaryDashboardData(userID, secondaryEnabled);
+	} = useSecondaryDashboardData(userId, secondaryEnabled);
 
 	// Enable secondary data loading when critical data is loaded
 	useEffect(() => {
@@ -210,24 +206,19 @@ export const useDashboardPerformance = () => {
 		return performance.now();
 	}, []);
 
-	const endTiming = useCallback(
-		(startTime: number, type: "render" | "query") => {
-			const endTime = performance.now();
-			const duration = endTime - startTime;
+	const endTiming = useCallback((startTime: number, type: "render" | "query") => {
+		const endTime = performance.now();
+		const duration = endTime - startTime;
 
-			setMetrics((prev) => ({
-				...prev,
-				[type === "render" ? "renderTime" : "queryTime"]: duration,
-			}));
+		setMetrics((prev) => ({
+			...prev,
+			[type === "render" ? "renderTime" : "queryTime"]: duration,
+		}));
 
-			return duration;
-		},
-		[],
-	);
+		return duration;
+	}, []);
 
-	const logPerformance = useCallback(() => {
-		console.log("Dashboard Performance Metrics:", metrics);
-	}, [metrics]);
+	const logPerformance = useCallback(() => {}, []);
 
 	return {
 		metrics,
@@ -239,15 +230,9 @@ export const useDashboardPerformance = () => {
 
 // Hook for cache management
 export const useCacheManagement = () => {
-	const clearUserCache = useCallback((userID: string) => {
-		// Implementation would depend on Apollo Client instance
-		console.log(`Clearing cache for user: ${userID}`);
-	}, []);
+	const clearUserCache = useCallback((_userId: string) => {}, []);
 
-	const preloadData = useCallback(async (userID: string) => {
-		// Preload critical data
-		console.log(`Preloading data for user: ${userID}`);
-	}, []);
+	const preloadData = useCallback(async (_userId: string) => {}, []);
 
 	const getCacheStats = useCallback(() => {
 		// Return cache statistics

@@ -116,9 +116,7 @@ describe("Inline Components Integration Tests", () => {
 			);
 
 			expect(screen.getByText("Test Portfolio")).toBeInTheDocument();
-			expect(
-				screen.getByText("A comprehensive test portfolio"),
-			).toBeInTheDocument();
+			expect(screen.getByText("A comprehensive test portfolio")).toBeInTheDocument();
 			expect(screen.getByText("Back to Dashboard")).toBeInTheDocument();
 		});
 
@@ -251,12 +249,8 @@ describe("Inline Components Integration Tests", () => {
 				/>,
 			);
 
-			expect(
-				screen.getByText("No assets in this portfolio"),
-			).toBeInTheDocument();
-			expect(
-				screen.getByText("Add your first asset to get started"),
-			).toBeInTheDocument();
+			expect(screen.getByText("No assets in this portfolio")).toBeInTheDocument();
+			expect(screen.getByText("Add your first asset to get started")).toBeInTheDocument();
 		});
 
 		it("should display correct gain/loss indicators", () => {
@@ -395,11 +389,7 @@ describe("Inline Components Integration Tests", () => {
 			const mockOnBack = vi.fn();
 
 			render(
-				<InlineAssetDetail
-					asset={cryptoAsset}
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-				/>,
+				<InlineAssetDetail asset={cryptoAsset} portfolio={mockPortfolio} onBack={mockOnBack} />,
 			);
 
 			expect(screen.getByText("Bitcoin")).toBeInTheDocument();
@@ -412,11 +402,7 @@ describe("Inline Components Integration Tests", () => {
 			const mockOnBack = vi.fn();
 
 			render(
-				<InlineAssetDetail
-					asset={mockAssetWithMetrics}
-					portfolio={null}
-					onBack={mockOnBack}
-				/>,
+				<InlineAssetDetail asset={mockAssetWithMetrics} portfolio={null} onBack={mockOnBack} />,
 			);
 
 			expect(screen.getByText("Apple Inc.")).toBeInTheDocument();
@@ -578,9 +564,7 @@ describe("Inline Components Integration Tests", () => {
 				/>,
 			);
 
-			expect(
-				screen.getByRole("button", { name: /back to dashboard/i }),
-			).toBeInTheDocument();
+			expect(screen.getByRole("button", { name: /back to dashboard/i })).toBeInTheDocument();
 			expect(screen.getByRole("list")).toBeInTheDocument(); // Asset list
 			expect(screen.getAllByRole("listitem")).toHaveLength(3); // Three assets
 		});
@@ -620,9 +604,7 @@ describe("Inline Components Integration Tests", () => {
 			);
 
 			expect(screen.getByRole("status")).toBeInTheDocument();
-			expect(
-				screen.getByText(/viewing apple inc\. details/i),
-			).toBeInTheDocument();
+			expect(screen.getByText(/viewing apple inc\. details/i)).toBeInTheDocument();
 		});
 	});
 });

@@ -66,9 +66,10 @@ const mockTopHoldings: AllocationDataPoint[] = [
 	{ name: "MSFT", value: 7500 },
 ];
 
-const DashboardIntegrationExample: React.FC<
-	DashboardIntegrationExampleProps
-> = ({ _portfolioId = "portfolio-1", portfolioName = "Growth Portfolio" }) => {
+const DashboardIntegrationExample: React.FC<DashboardIntegrationExampleProps> = ({
+	portfolioId: _portfolioId = "portfolio-1",
+	portfolioName = "Growth Portfolio",
+}) => {
 	const [timeRange, setTimeRange] = React.useState("1W");
 
 	return (
@@ -77,9 +78,7 @@ const DashboardIntegrationExample: React.FC<
 			<div className="flex items-center justify-between">
 				<div>
 					<h2 className="text-2xl font-bold">{portfolioName}</h2>
-					<p className="text-muted-foreground">
-						Portfolio performance and allocation
-					</p>
+					<p className="text-muted-foreground">Portfolio performance and allocation</p>
 				</div>
 				<div className="text-right">
 					<div className="text-2xl font-bold text-green-600">$105,200</div>
@@ -106,9 +105,7 @@ const DashboardIntegrationExample: React.FC<
 
 				<Card>
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium">
-							Today's Change
-						</CardTitle>
+						<CardTitle className="text-sm font-medium">Today's Change</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="text-2xl font-bold text-green-600">+$1,400</div>
@@ -128,17 +125,11 @@ const DashboardIntegrationExample: React.FC<
 
 				<Card>
 					<CardHeader className="pb-2">
-						<CardTitle className="text-sm font-medium">
-							Top Allocation
-						</CardTitle>
+						<CardTitle className="text-sm font-medium">Top Allocation</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div className="flex items-center gap-2">
-							<MiniAllocationDonut
-								data={mockAllocation.slice(0, 3)}
-								size={40}
-								showLegend={false}
-							/>
+							<MiniAllocationDonut data={mockAllocation.slice(0, 3)} size={40} showLegend={false} />
 							<div>
 								<div className="text-sm font-medium">Technology</div>
 								<div className="text-xs text-muted-foreground">42.9%</div>
@@ -180,17 +171,12 @@ const DashboardIntegrationExample: React.FC<
 					/>
 				</ChartCard>
 
-				<ChartCard
-					title="Asset Allocation"
-					subtitle="Current portfolio distribution"
-				>
+				<ChartCard title="Asset Allocation" subtitle="Current portfolio distribution">
 					<CompactAllocationChart
 						data={mockAllocation}
 						chartType="donut"
 						height={250}
-						onSegmentClick={(data) => {
-							console.log("Navigate to asset type:", data.assetType);
-						}}
+						onSegmentClick={(_data) => {}}
 					/>
 				</ChartCard>
 			</DashboardChartGrid>
@@ -200,10 +186,7 @@ const DashboardIntegrationExample: React.FC<
 				<ChartCard title="Top Holdings" subtitle="By value">
 					<div className="space-y-3">
 						{mockTopHoldings.slice(0, 5).map((holding, index) => (
-							<div
-								key={holding.name}
-								className="flex items-center justify-between"
-							>
+							<div key={holding.name} className="flex items-center justify-between">
 								<div className="flex items-center gap-3">
 									<div className="w-8 h-8 bg-muted rounded-full flex items-center justify-center text-xs font-medium">
 										{index + 1}
@@ -216,9 +199,7 @@ const DashboardIntegrationExample: React.FC<
 									</div>
 								</div>
 								<div className="text-right">
-									<div className="font-medium text-sm">
-										${holding.value.toLocaleString()}
-									</div>
+									<div className="font-medium text-sm">${holding.value.toLocaleString()}</div>
 								</div>
 							</div>
 						))}
@@ -255,46 +236,31 @@ const DashboardIntegrationExample: React.FC<
 					<div className="space-y-4">
 						<div>
 							<div className="flex justify-between items-center mb-1">
-								<span className="text-sm text-muted-foreground">
-									Sharpe Ratio
-								</span>
+								<span className="text-sm text-muted-foreground">Sharpe Ratio</span>
 								<span className="text-sm font-medium">1.24</span>
 							</div>
 							<div className="w-full bg-muted rounded-full h-2">
-								<div
-									className="bg-green-500 h-2 rounded-full"
-									style={{ width: "62%" }}
-								/>
+								<div className="bg-green-500 h-2 rounded-full" style={{ width: "62%" }} />
 							</div>
 						</div>
 
 						<div>
 							<div className="flex justify-between items-center mb-1">
-								<span className="text-sm text-muted-foreground">
-									Volatility
-								</span>
+								<span className="text-sm text-muted-foreground">Volatility</span>
 								<span className="text-sm font-medium">18.5%</span>
 							</div>
 							<div className="w-full bg-muted rounded-full h-2">
-								<div
-									className="bg-yellow-500 h-2 rounded-full"
-									style={{ width: "37%" }}
-								/>
+								<div className="bg-yellow-500 h-2 rounded-full" style={{ width: "37%" }} />
 							</div>
 						</div>
 
 						<div>
 							<div className="flex justify-between items-center mb-1">
-								<span className="text-sm text-muted-foreground">
-									Max Drawdown
-								</span>
+								<span className="text-sm text-muted-foreground">Max Drawdown</span>
 								<span className="text-sm font-medium">-8.2%</span>
 							</div>
 							<div className="w-full bg-muted rounded-full h-2">
-								<div
-									className="bg-red-500 h-2 rounded-full"
-									style={{ width: "18%" }}
-								/>
+								<div className="bg-red-500 h-2 rounded-full" style={{ width: "18%" }} />
 							</div>
 						</div>
 					</div>
@@ -309,22 +275,13 @@ const DashboardIntegrationExample: React.FC<
 				>
 					Add Asset
 				</button>
-				<button
-					type="button"
-					className="px-4 py-2 border border-border rounded-md hover:bg-muted"
-				>
+				<button type="button" className="px-4 py-2 border border-border rounded-md hover:bg-muted">
 					Record Transaction
 				</button>
-				<button
-					type="button"
-					className="px-4 py-2 border border-border rounded-md hover:bg-muted"
-				>
+				<button type="button" className="px-4 py-2 border border-border rounded-md hover:bg-muted">
 					Export Data
 				</button>
-				<button
-					type="button"
-					className="px-4 py-2 border border-border rounded-md hover:bg-muted"
-				>
+				<button type="button" className="px-4 py-2 border border-border rounded-md hover:bg-muted">
 					Portfolio Settings
 				</button>
 			</div>

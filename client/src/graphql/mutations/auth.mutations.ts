@@ -14,6 +14,16 @@ export const REGISTER_MUTATION = gql`
           name
           emailVerified
           displayCurrency
+          themePreference
+          themeBaseColor
+          themeAccentColor
+          themeFontPreference
+          themeHeadingFont
+          themeMenuAccent
+          themeMenuColor
+          themeStyle
+          themeRadius
+          themeRTL
         }
       }
       errors {
@@ -39,6 +49,16 @@ export const LOGIN_MUTATION = gql`
           name
           emailVerified
           displayCurrency
+          themePreference
+          themeBaseColor
+          themeAccentColor
+          themeFontPreference
+          themeHeadingFont
+          themeMenuAccent
+          themeMenuColor
+          themeStyle
+          themeRadius
+          themeRTL
         }
       }
       errors {
@@ -129,6 +149,16 @@ export const REFRESH_TOKEN_MUTATION = gql`
           name
           emailVerified
           displayCurrency
+          themePreference
+          themeBaseColor
+          themeAccentColor
+          themeFontPreference
+          themeHeadingFont
+          themeMenuAccent
+          themeMenuColor
+          themeStyle
+          themeRadius
+          themeRTL
         }
       }
       errors {

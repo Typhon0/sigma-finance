@@ -6,7 +6,7 @@ export const Route = createFileRoute("/_app/portfolios/$portfolioId")({
 		// The dashboard can then automatically open the portfolio detail view
 		throw redirect({
 			to: "/dashboard",
-			search: { portfolioId: params.portfolioId },
+			search: { portfolioId: params.portfolioId, view: undefined },
 		});
 	},
 });

@@ -13,13 +13,7 @@ import {
 } from "../ui/dialog";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "../ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Skeleton } from "../ui/skeleton";
 import { Textarea } from "../ui/textarea";
 
@@ -88,16 +82,10 @@ export function PortfolioSwitcher({
 				</SelectTrigger>
 				<SelectContent>
 					{portfolios.length === 0 ? (
-						<div className="px-2 py-1.5 text-xs text-muted-foreground">
-							No portfolios yet
-						</div>
+						<div className="px-2 py-1.5 text-xs text-muted-foreground">No portfolios yet</div>
 					) : (
 						portfolios.map((portfolio) => (
-							<SelectItem
-								key={portfolio.id}
-								value={portfolio.id}
-								className="text-xs"
-							>
+							<SelectItem key={portfolio.id} value={portfolio.id} className="text-xs">
 								{portfolio.name}
 							</SelectItem>
 						))
@@ -125,9 +113,7 @@ export function PortfolioSwitcher({
 				<DialogContent className="sm:max-w-[425px]">
 					<DialogHeader>
 						<DialogTitle>Create New Portfolio</DialogTitle>
-						<DialogDescription>
-							Add a new portfolio to organize your investments.
-						</DialogDescription>
+						<DialogDescription>Add a new portfolio to organize your investments.</DialogDescription>
 					</DialogHeader>
 					<div className="grid gap-4 py-4">
 						<div className="grid grid-cols-4 items-center gap-4">
@@ -137,9 +123,7 @@ export function PortfolioSwitcher({
 							<Input
 								id="name"
 								value={newPortfolio.name}
-								onChange={(e) =>
-									setNewPortfolio({ ...newPortfolio, name: e.target.value })
-								}
+								onChange={(e) => setNewPortfolio({ ...newPortfolio, name: e.target.value })}
 								className="col-span-3"
 								placeholder="e.g., Retirement Fund"
 							/>

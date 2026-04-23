@@ -6,10 +6,7 @@ import {
 } from "@/components/monitoring/monitoring-provider";
 
 // Dashboard view states
-export type DashboardViewMode =
-	| "overview"
-	| "portfolio-detail"
-	| "asset-detail";
+export type DashboardViewMode = "overview" | "portfolio-detail" | "asset-detail";
 
 interface DashboardState {
 	viewMode: DashboardViewMode;
@@ -97,11 +94,7 @@ export function useDashboardMonitoring() {
 
 	// Track asset selection
 	const trackAssetSelection = useCallback(
-		(
-			assetId: string,
-			portfolioId: string,
-			method: "click" | "navigation" = "click",
-		) => {
+		(assetId: string, portfolioId: string, method: "click" | "navigation" = "click") => {
 			interactionStartTime.current = Date.now();
 
 			trackClick("asset-card", {
@@ -141,7 +134,7 @@ export function useDashboardMonitoring() {
 		async <T>(
 			operation: () => Promise<T>,
 			dataType: string,
-			context?: Record<string, any>,
+			context?: Record<string, unknown>,
 		): Promise<T> => {
 			const startTime = Date.now();
 
@@ -196,8 +189,7 @@ export function useDashboardMonitoring() {
 	// Track component render performance
 	const trackComponentRender = useCallback(
 		(componentName: string, renderTime?: number) => {
-			const actualRenderTime =
-				renderTime || Date.now() - renderStartTime.current;
+			const actualRenderTime = renderTime || Date.now() - renderStartTime.current;
 
 			performanceMetrics.current.renderTime = actualRenderTime;
 
@@ -218,11 +210,7 @@ export function useDashboardMonitoring() {
 
 	// Track user interactions with timing
 	const trackInteraction = useCallback(
-		(
-			action: string,
-			component: string,
-			additionalData?: Record<string, any>,
-		) => {
+		(action: string, component: string, additionalData?: Record<string, unknown>) => {
 			const interactionTime = Date.now() - interactionStartTime.current;
 
 			performanceMetrics.current.interactionLatency = interactionTime;
@@ -242,11 +230,7 @@ export function useDashboardMonitoring() {
 
 	// Track chart interactions
 	const trackChartInteraction = useCallback(
-		(
-			chartType: string,
-			action: string,
-			additionalData?: Record<string, any>,
-		) => {
+		(chartType: string, action: string, additionalData?: Record<string, unknown>) => {
 			trackInteraction(`chart_${action}`, `${chartType}_chart`, {
 				chart_type: chartType,
 				...additionalData,
@@ -261,7 +245,7 @@ export function useDashboardMonitoring() {
 			formName: string,
 			action: string,
 			success?: boolean,
-			additionalData?: Record<string, any>,
+			additionalData?: Record<string, unknown>,
 		) => {
 			trackInteraction(`form_${action}`, formName, {
 				success,
@@ -273,12 +257,7 @@ export function useDashboardMonitoring() {
 
 	// Track search and filter operations
 	const trackSearchFilter = useCallback(
-		(
-			type: "search" | "filter",
-			query: string,
-			resultsCount?: number,
-			component?: string,
-		) => {
+		(type: "search" | "filter", query: string, resultsCount?: number, component?: string) => {
 			trackInteraction(type, component || "dashboard", {
 				query: query.length > 100 ? `${query.substring(0, 100)}...` : query,
 				results_count: resultsCount,
@@ -290,7 +269,7 @@ export function useDashboardMonitoring() {
 
 	// Track error occurrences
 	const trackError = useCallback(
-		(error: Error, component: string, context?: Record<string, any>) => {
+		(error: Error, component: string, context?: Record<string, unknown>) => {
 			monitoring.recordErrorEvent({
 				error_type: "dashboard_error",
 				component,
@@ -312,7 +291,7 @@ export function useDashboardMonitoring() {
 			bottleneckType: string,
 			duration: number,
 			component: string,
-			details?: Record<string, any>,
+			details?: Record<string, unknown>,
 		) => {
 			monitoring.recordDashboardEvent({
 				type: "performance_bottleneck",
@@ -331,20 +310,25 @@ export function useDashboardMonitoring() {
 	// Track memory usage (if available)
 	const trackMemoryUsage = useCallback(() => {
 		if ("memory" in performance) {
-			const memInfo = (performance as any).memory;
+			const memInfo = (
+				performance as unknown as {
+					memory?: { usedJSHeapSize?: number; totalJSHeapSize?: number; jsHeapSizeLimit?: number };
+				}
+			).memory;
+			if (!memInfo) return;
 			const memoryUsage = {
-				used: memInfo.usedJSHeapSize,
-				total: memInfo.totalJSHeapSize,
-				limit: memInfo.jsHeapSizeLimit,
+				used: memInfo.usedJSHeapSize ?? 0,
+				total: memInfo.totalJSHeapSize ?? 0,
+				limit: memInfo.jsHeapSizeLimit ?? 0,
 			};
 
-			performanceMetrics.current.memoryUsage = memInfo.usedJSHeapSize;
+			performanceMetrics.current.memoryUsage = memInfo.usedJSHeapSize ?? 0;
 
 			monitoring.recordDashboardEvent({
 				type: "performance_metric",
 				data: {
 					metric_name: "memory_usage",
-					value: memInfo.usedJSHeapSize,
+					value: memInfo.usedJSHeapSize ?? 0,
 					component: "dashboard",
 					memory_info: memoryUsage,
 					view_mode: currentState.current.viewMode,
@@ -424,8 +408,7 @@ export function useDashboardMonitoring() {
 
 // Hook for monitoring specific dashboard components
 export function useComponentMonitoring(componentName: string) {
-	const { trackComponentRender, trackError, trackInteraction } =
-		useDashboardMonitoring();
+	const { trackComponentRender, trackError, trackInteraction } = useDashboardMonitoring();
 	const mountTime = useRef(Date.now());
 	const renderCount = useRef(0);
 
@@ -445,7 +428,7 @@ export function useComponentMonitoring(componentName: string) {
 	});
 
 	const trackComponentError = useCallback(
-		(error: Error, context?: Record<string, any>) => {
+		(error: Error, context?: Record<string, unknown>) => {
 			trackError(error, componentName, {
 				render_count: renderCount.current,
 				component_lifetime: Date.now() - mountTime.current,
@@ -456,7 +439,7 @@ export function useComponentMonitoring(componentName: string) {
 	);
 
 	const trackComponentInteraction = useCallback(
-		(action: string, additionalData?: Record<string, any>) => {
+		(action: string, additionalData?: Record<string, unknown>) => {
 			trackInteraction(action, componentName, additionalData);
 		},
 		[trackInteraction, componentName],
@@ -491,21 +474,16 @@ export function useChartMonitoring(chartType: string) {
 			// Track performance bottleneck if render time is too high
 			if (renderTime > 1000) {
 				// More than 1 second
-				trackPerformanceBottleneck(
-					"slow_chart_render",
-					renderTime,
-					`${chartType}_chart`,
-					{
-						data_points: dataPointCount,
-					},
-				);
+				trackPerformanceBottleneck("slow_chart_render", renderTime, `${chartType}_chart`, {
+					data_points: dataPointCount,
+				});
 			}
 		},
 		[trackChartInteraction, trackPerformanceBottleneck, chartType],
 	);
 
 	const trackChartError = useCallback(
-		(error: Error, context?: Record<string, any>) => {
+		(error: Error, context?: Record<string, unknown>) => {
 			trackError(error, `${chartType}_chart`, {
 				data_points: dataPoints.current,
 				last_render_time: chartRenderTime.current,

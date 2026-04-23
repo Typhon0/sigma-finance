@@ -49,10 +49,7 @@ export function usePortfolioDetail({
 		navigate({ to: "/portfolios" });
 	}, [navigate]);
 
-	const navigateToDuplicate = useCallback(() => {
-		// TODO: Implement duplicate navigation when duplicate page is created
-		console.log("Navigate to duplicate portfolio:", portfolioId);
-	}, [portfolioId]);
+	const navigateToDuplicate = useCallback(() => {}, []);
 
 	// Delete handlers
 	const handleDeleteClick = useCallback(() => {
@@ -87,8 +84,6 @@ export function usePortfolioDetail({
 				}, 500);
 			}
 		} catch (error) {
-			console.error("Failed to delete portfolio:", error);
-
 			// Enhanced error handling with specific error messages
 			let errorMessage = "Failed to delete portfolio. Please try again.";
 			let errorDescription = "";
@@ -96,12 +91,10 @@ export function usePortfolioDetail({
 			if (error instanceof Error) {
 				if (error.message.includes("positions")) {
 					errorMessage = "Cannot delete portfolio with positions";
-					errorDescription =
-						"Please remove all assets from this portfolio before deleting it.";
+					errorDescription = "Please remove all assets from this portfolio before deleting it.";
 				} else if (error.message.includes("unauthorized")) {
 					errorMessage = "Not authorized to delete this portfolio";
-					errorDescription =
-						"You don't have permission to delete this portfolio.";
+					errorDescription = "You don't have permission to delete this portfolio.";
 				} else if (error.message.includes("not found")) {
 					errorMessage = "Portfolio not found";
 					errorDescription = "This portfolio may have already been deleted.";
@@ -116,13 +109,7 @@ export function usePortfolioDetail({
 		} finally {
 			setIsDeleting(false);
 		}
-	}, [
-		portfolio,
-		portfolioId,
-		deletePortfolio,
-		onDeleteSuccess,
-		navigateToList,
-	]);
+	}, [portfolio, portfolioId, deletePortfolio, onDeleteSuccess, navigateToList]);
 
 	// Update handlers
 	const handleUpdate = useCallback(
@@ -140,7 +127,6 @@ export function usePortfolioDetail({
 				// Refetch to get updated data
 				await refetch();
 			} catch (error) {
-				console.error("Failed to update portfolio:", error);
 				toast.error("Failed to update portfolio. Please try again.");
 				throw error;
 			}
@@ -154,7 +140,6 @@ export function usePortfolioDetail({
 
 		// TODO: Implement actual export functionality
 		toast.info("Export functionality coming soon");
-		console.log("Export portfolio:", portfolio.name);
 	}, [portfolio]);
 
 	// Duplicate handler (placeholder)
@@ -163,15 +148,13 @@ export function usePortfolioDetail({
 
 		// TODO: Implement actual duplicate functionality
 		toast.info("Duplicate functionality coming soon");
-		console.log("Duplicate portfolio:", portfolio.name);
 	}, [portfolio]);
 
 	// Retry handler for failed requests
 	const retry = useCallback(async () => {
 		try {
 			await refetch();
-		} catch (error) {
-			console.error("Failed to retry:", error);
+		} catch (_error) {
 			toast.error("Failed to reload portfolio. Please try again.");
 		}
 	}, [refetch]);

@@ -4,11 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { ChevronRight, type LucideIcon } from "lucide-react";
 import { useCallback } from "react";
 
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
 	SidebarGroup,
 	SidebarGroupLabel,
@@ -64,11 +60,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 						const { pathname, search } = parseUrlWithSearch(item.url);
 						return (
 							<SidebarMenuItem key={item.title}>
-								<SidebarMenuButton
-									asChild
-									tooltip={item.title}
-									isActive={item.isActive}
-								>
+								<SidebarMenuButton asChild tooltip={item.title} isActive={item.isActive}>
 									<Link to={pathname} search={search}>
 										{item.icon && <item.icon />}
 										<span>{item.title}</span>
@@ -98,10 +90,7 @@ export function NavMain({ items }: { items: NavItem[] }) {
 									<SidebarMenuSub>
 										{item.items?.map((subItem) => (
 											<SidebarMenuSubItem key={subItem.title}>
-												<SidebarMenuSubButton
-													asChild
-													onClick={() => handleClick(subItem.url)}
-												>
+												<SidebarMenuSubButton asChild onClick={() => handleClick(subItem.url)}>
 													<span className="flex cursor-pointer items-center">
 														{subItem.icon && <subItem.icon />}
 														<span>{subItem.title}</span>

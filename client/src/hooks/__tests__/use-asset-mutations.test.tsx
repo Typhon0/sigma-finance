@@ -2,10 +2,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import {
-	ADD_ASSET_TO_PORTFOLIO,
-	CREATE_STOCK_ASSET,
-} from "@/graphql/mutations/asset";
+import { ADD_ASSET_TO_PORTFOLIO, CREATE_STOCK_ASSET } from "@/graphql/mutations/asset";
 import { useAssetMutations } from "../use-asset-mutations";
 
 // Mock date to have consistent timestamps
@@ -14,9 +11,7 @@ const fixedDate = new Date(FIXED_DATE);
 
 vi.spyOn(global, "Date").mockImplementation(() => fixedDate);
 
-const createStockAssetSuccessMock = (
-	inputOverride?: Record<string, unknown>,
-) => ({
+const createStockAssetSuccessMock = (inputOverride?: Record<string, unknown>) => ({
 	request: {
 		query: CREATE_STOCK_ASSET,
 		variables: {
@@ -53,9 +48,7 @@ const createStockAssetSuccessMock = (
 	},
 });
 
-const createStockAssetErrorMock = (
-	inputOverride?: Record<string, unknown>,
-) => ({
+const createStockAssetErrorMock = (inputOverride?: Record<string, unknown>) => ({
 	request: {
 		query: CREATE_STOCK_ASSET,
 		variables: {
@@ -74,9 +67,7 @@ const createStockAssetErrorMock = (
 	error: new Error("Failed to create stock asset"),
 });
 
-const addAssetToPortfolioSuccessMock = (
-	inputOverride?: Record<string, unknown>,
-) => ({
+const addAssetToPortfolioSuccessMock = (inputOverride?: Record<string, unknown>) => ({
 	request: {
 		query: ADD_ASSET_TO_PORTFOLIO,
 		variables: {
@@ -117,9 +108,7 @@ const addAssetToPortfolioSuccessMock = (
 	},
 });
 
-const addAssetToPortfolioErrorMock = (
-	inputOverride?: Record<string, unknown>,
-) => ({
+const addAssetToPortfolioErrorMock = (inputOverride?: Record<string, unknown>) => ({
 	request: {
 		query: ADD_ASSET_TO_PORTFOLIO,
 		variables: {
@@ -307,10 +296,7 @@ describe("useAssetMutations", () => {
 		});
 
 		it("rejects when addAssetToPortfolio fails after successful createStockAsset", async () => {
-			const mocks = [
-				createStockAssetSuccessMock(),
-				addAssetToPortfolioErrorMock(),
-			];
+			const mocks = [createStockAssetSuccessMock(), addAssetToPortfolioErrorMock()];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
 				<MockedProvider mocks={mocks} addTypename={false}>
@@ -338,9 +324,7 @@ describe("useAssetMutations", () => {
 			}
 
 			expect(caughtError).toBeTruthy();
-			expect(caughtError?.message).toContain(
-				"Failed to add asset to portfolio",
-			);
+			expect(caughtError?.message).toContain("Failed to add asset to portfolio");
 		});
 
 		it("rejects when createStockAsset returns null id", async () => {

@@ -1,14 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { PasswordResetConfirmForm } from "../components/auth/password-reset-confirm-form";
 
-interface ResetPasswordConfirmSearch {
+export interface ResetPasswordConfirmSearch {
 	token?: string;
 }
 
 export const Route = createFileRoute("/auth/reset-password/confirm")({
-	validateSearch: (
-		search: Record<string, unknown>,
-	): ResetPasswordConfirmSearch => {
+	validateSearch: (search: Record<string, unknown>): ResetPasswordConfirmSearch => {
 		return {
 			token: typeof search.token === "string" ? search.token : undefined,
 		};

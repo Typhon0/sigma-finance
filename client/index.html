@@ -5,6 +5,18 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ΣFinance</title>
+    <script>
+      (() => {
+        var style, valid;
+        try {
+          style = localStorage.getItem("sigma-finance-design-system");
+          valid = ["vega","nova","maia","lyra","mira","luma","sera"];
+          if (style && valid.indexOf(style) !== -1) {
+            document.documentElement.dataset.style = style;
+          }
+        } catch (_e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

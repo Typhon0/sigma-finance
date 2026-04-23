@@ -1,0 +1,432 @@
+/**
+ * components.css — Base styles for all UI primitives.
+ *
+ * These are the "Vega" (default shadcn/ui) styles. Per-style files override
+ * specific components where their visual identity differs.
+ */
+
+/* ── Scrollbar hide utility ───────────────────────────────── */
+.no-scrollbar {
+	scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+	display: none;
+}
+
+/* MARK: Label */
+.ui-label {
+	@apply flex items-center gap-2 text-sm leading-none font-medium select-none;
+}
+
+/* MARK: Checkbox */
+.ui-checkbox {
+	@apply size-4 shrink-0 rounded-[4px] border border-input shadow-xs transition-shadow outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground dark:bg-input/30 dark:aria-invalid:ring-destructive/40 dark:data-[state=checked]:bg-primary;
+}
+
+/* MARK: Switch */
+.ui-switch {
+	@apply inline-flex shrink-0 items-center rounded-full border border-transparent shadow-xs transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:bg-primary data-[state=unchecked]:bg-input dark:data-[state=unchecked]:bg-input/80;
+}
+.ui-switch[data-size="default"] {
+	@apply h-[1.15rem] w-8;
+}
+.ui-switch[data-size="sm"] {
+	@apply h-3.5 w-6;
+}
+.ui-switch-thumb {
+	@apply pointer-events-none block rounded-full bg-background ring-0 transition-transform data-[state=checked]:translate-x-[calc(100%-2px)] data-[state=unchecked]:translate-x-0 dark:data-[state=checked]:bg-primary-foreground dark:data-[state=unchecked]:bg-foreground;
+}
+
+/* MARK: RadioGroup */
+.ui-radio-group {
+	@apply grid gap-3;
+}
+.ui-radio-group-item {
+	@apply aspect-square size-4 shrink-0 rounded-full border border-input text-primary shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:bg-input/30 dark:aria-invalid:ring-destructive/40;
+}
+
+/* MARK: Toggle */
+.ui-toggle {
+	@apply inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-[color,box-shadow] outline-none hover:bg-muted hover:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 data-[state=on]:bg-accent data-[state=on]:text-accent-foreground dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-toggle[data-size="default"] {
+	@apply h-9 min-w-9 px-2;
+}
+.ui-toggle[data-size="sm"] {
+	@apply h-8 min-w-8 px-1.5;
+}
+.ui-toggle[data-size="lg"] {
+	@apply h-10 min-w-10 px-2.5;
+}
+
+/* MARK: ToggleGroup */
+.ui-toggle-group {
+	@apply flex w-fit items-center gap-[--spacing(var(--gap))] rounded-md data-[spacing=default]:data-[variant=outline]:shadow-xs;
+}
+.ui-toggle-group-item {
+	@apply w-auto min-w-0 shrink-0 px-3 focus:z-10 focus-visible:z-10 data-[spacing=0]:rounded-none data-[spacing=0]:shadow-none data-[spacing=0]:first:rounded-l-md data-[spacing=0]:last:rounded-r-md data-[spacing=0]:data-[variant=outline]:border-l-0 data-[spacing=0]:data-[variant=outline]:first:border-l;
+}
+
+/* MARK: Slider */
+.ui-slider {
+	@apply relative flex w-full touch-none items-center select-none data-[disabled]:opacity-50 data-[orientation=vertical]:h-full data-[orientation=vertical]:min-h-44 data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col;
+}
+.ui-slider-track {
+	@apply relative grow overflow-hidden rounded-full bg-muted data-[orientation=horizontal]:h-1.5 data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1.5;
+}
+.ui-slider-range {
+	@apply absolute bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full;
+}
+.ui-slider-thumb {
+	@apply block size-4 shrink-0 rounded-full border border-primary bg-white shadow-sm ring-ring/50 transition-[color,box-shadow] hover:ring-4 focus-visible:ring-4 focus-visible:outline-hidden disabled:pointer-events-none disabled:opacity-50;
+}
+
+/* MARK: InputOTP */
+.ui-input-otp {
+	@apply flex items-center gap-2 has-disabled:opacity-50;
+}
+.ui-input-otp-group {
+	@apply flex items-center;
+}
+.ui-input-otp-slot {
+	@apply relative flex h-9 w-9 items-center justify-center border-y border-r border-input text-sm shadow-xs transition-all outline-none first:rounded-l-md first:border-l last:rounded-r-md aria-invalid:border-destructive data-[active=true]:z-10 data-[active=true]:border-ring data-[active=true]:ring-[3px] data-[active=true]:ring-ring/50 data-[active=true]:aria-invalid:border-destructive data-[active=true]:aria-invalid:ring-destructive/20 dark:bg-input/30 dark:data-[active=true]:aria-invalid:ring-destructive/40;
+}
+
+/* MARK: Tabs */
+.ui-tabs {
+	@apply flex gap-2 data-[orientation=horizontal]:flex-col;
+}
+.ui-tabs-list {
+	@apply inline-flex w-fit items-center justify-center rounded-lg p-[3px] text-muted-foreground data-[variant=line]:rounded-none;
+}
+.ui-tabs-list[data-variant="default"] {
+	@apply bg-muted;
+}
+.ui-tabs-list[data-variant="line"] {
+	@apply gap-1 bg-transparent;
+}
+.ui-tabs-trigger {
+	@apply relative inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-md border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap text-foreground/60 transition-all hover:text-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 focus-visible:outline-ring disabled:pointer-events-none disabled:opacity-50 dark:text-muted-foreground dark:hover:text-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+	@apply data-[state=active]:bg-background data-[state=active]:text-foreground dark:data-[state=active]:border-input dark:data-[state=active]:bg-input/30 dark:data-[state=active]:text-foreground;
+}
+.ui-tabs-content {
+	@apply flex-1 outline-none;
+}
+
+/* MARK: Accordion */
+.ui-accordion {
+	@apply flex w-full flex-col;
+}
+.ui-accordion-item {
+	@apply border-b last:border-b-0;
+}
+.ui-accordion-trigger {
+	@apply flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left text-sm font-medium transition-all outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-180;
+}
+.ui-accordion-content {
+	@apply overflow-hidden text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down;
+}
+.ui-accordion-content-inner {
+	@apply pt-0 pb-4;
+}
+
+/* MARK: DropdownMenu */
+.ui-dropdown-menu-content {
+	@apply z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+.ui-dropdown-menu-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!;
+}
+.ui-dropdown-menu-checkbox-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-dropdown-menu-radio-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-dropdown-menu-label {
+	@apply px-2 py-1.5 text-sm font-medium data-[inset]:pl-8;
+}
+.ui-dropdown-menu-separator {
+	@apply -mx-1 my-1 h-px bg-border;
+}
+.ui-dropdown-menu-shortcut {
+	@apply ml-auto text-xs tracking-widest text-muted-foreground;
+}
+.ui-dropdown-menu-sub-trigger {
+	@apply flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[inset]:pl-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground;
+}
+.ui-dropdown-menu-sub-content {
+	@apply z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+
+/* MARK: ContextMenu */
+.ui-context-menu-content {
+	@apply z-50 max-h-(--radix-context-menu-content-available-height) min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+.ui-context-menu-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!;
+}
+.ui-context-menu-checkbox-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-context-menu-radio-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-context-menu-label {
+	@apply px-2 py-1.5 text-sm font-medium text-foreground data-[inset]:pl-8;
+}
+.ui-context-menu-separator {
+	@apply -mx-1 my-1 h-px bg-border;
+}
+.ui-context-menu-shortcut {
+	@apply ml-auto text-xs tracking-widest text-muted-foreground;
+}
+.ui-context-menu-sub-trigger {
+	@apply flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[inset]:pl-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground;
+}
+.ui-context-menu-sub-content {
+	@apply z-50 min-w-[8rem] origin-(--radix-context-menu-content-transform-origin) overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+
+/* MARK: Menubar */
+.ui-menubar {
+	@apply flex h-9 items-center gap-1 rounded-md border bg-background p-1 shadow-xs;
+}
+.ui-menubar-trigger {
+	@apply flex items-center rounded-sm px-2 py-1 text-sm font-medium outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[state=open]:bg-accent data-[state=open]:text-accent-foreground;
+}
+.ui-menubar-content {
+	@apply z-50 min-w-[12rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+.ui-menubar-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[inset]:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:bg-destructive/10 data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:focus:bg-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-destructive!;
+}
+.ui-menubar-checkbox-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-xs py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-menubar-radio-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-xs py-1.5 pr-2 pl-8 text-sm outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4;
+}
+.ui-menubar-label {
+	@apply px-2 py-1.5 text-sm font-medium data-[inset]:pl-8;
+}
+.ui-menubar-separator {
+	@apply -mx-1 my-1 h-px bg-border;
+}
+.ui-menubar-shortcut {
+	@apply ml-auto text-xs tracking-widest text-muted-foreground;
+}
+.ui-menubar-sub-trigger {
+	@apply flex cursor-default items-center rounded-sm px-2 py-1.5 text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[inset]:pl-8 data-[state=open]:bg-accent data-[state=open]:text-accent-foreground;
+}
+.ui-menubar-sub-content {
+	@apply z-50 min-w-[8rem] origin-(--radix-menubar-content-transform-origin) overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-lg data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+
+/* MARK: NavigationMenu */
+.ui-navigation-menu {
+	@apply relative flex max-w-max flex-1 items-center justify-center;
+}
+.ui-navigation-menu-list {
+	@apply flex flex-1 list-none items-center justify-center gap-1;
+}
+.ui-navigation-menu-item {
+	@apply relative;
+}
+.ui-navigation-menu-trigger {
+	@apply inline-flex h-9 w-max items-center justify-center rounded-md bg-background px-4 py-2 text-sm font-medium transition-[color,box-shadow] outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 data-[state=open]:bg-accent/50 data-[state=open]:text-accent-foreground data-[state=open]:hover:bg-accent data-[state=open]:focus:bg-accent;
+}
+.ui-navigation-menu-content {
+	@apply top-0 left-0 w-full p-2 pr-2.5 data-[motion=from-end]:slide-in-from-right-52 data-[motion=from-start]:slide-in-from-left-52 data-[motion=to-end]:slide-out-to-right-52 data-[motion=to-start]:slide-out-to-left-52 data-[motion^=from-]:animate-in data-[motion^=from-]:fade-in data-[motion^=to-]:animate-out data-[motion^=to-]:fade-out md:absolute md:w-auto;
+}
+.ui-navigation-menu-viewport {
+	@apply relative mt-1.5 h-[var(--radix-navigation-menu-viewport-height)] w-full overflow-hidden rounded-md border bg-popover text-popover-foreground shadow data-[state=closed]:animate-out data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:zoom-in-90 md:w-[var(--radix-navigation-menu-viewport-width)];
+}
+.ui-navigation-menu-link {
+	@apply flex flex-col gap-1 rounded-sm p-2 text-sm transition-all outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1 data-[active=true]:bg-accent/50 data-[active=true]:text-accent-foreground data-[active=true]:hover:bg-accent data-[active=true]:focus:bg-accent [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground;
+}
+.ui-navigation-menu-indicator {
+	@apply top-full z-[1] flex h-1.5 items-end justify-center overflow-hidden data-[state=hidden]:animate-out data-[state=hidden]:fade-out data-[state=visible]:animate-in data-[state=visible]:fade-in;
+}
+
+/* MARK: Pagination */
+.ui-pagination {
+	@apply mx-auto flex w-full justify-center;
+}
+.ui-pagination-content {
+	@apply flex flex-row items-center gap-1;
+}
+.ui-pagination-ellipsis {
+	@apply flex size-9 items-center justify-center;
+}
+
+/* MARK: Tooltip */
+.ui-tooltip-content {
+	@apply z-50 w-fit origin-(--radix-tooltip-content-transform-origin) animate-in rounded-md bg-foreground px-3 py-1.5 text-xs text-balance text-background fade-in-0 zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95;
+}
+
+/* MARK: Progress */
+.ui-progress {
+	@apply relative h-2 w-full overflow-hidden rounded-full bg-primary/20;
+}
+
+/* MARK: Skeleton */
+.ui-skeleton {
+	@apply animate-pulse rounded-md bg-accent;
+}
+
+/* MARK: Separator */
+.ui-separator {
+	@apply shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px;
+}
+
+/* MARK: Drawer */
+.ui-drawer-overlay {
+	@apply fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0;
+}
+.ui-drawer-content {
+	@apply fixed z-50 flex h-auto flex-col bg-background;
+	@apply data-[vaul-drawer-direction=top]:inset-x-0 data-[vaul-drawer-direction=top]:top-0 data-[vaul-drawer-direction=top]:mb-24 data-[vaul-drawer-direction=top]:max-h-[80vh] data-[vaul-drawer-direction=top]:rounded-b-lg data-[vaul-drawer-direction=top]:border-b;
+	@apply data-[vaul-drawer-direction=bottom]:inset-x-0 data-[vaul-drawer-direction=bottom]:bottom-0 data-[vaul-drawer-direction=bottom]:mt-24 data-[vaul-drawer-direction=bottom]:max-h-[80vh] data-[vaul-drawer-direction=bottom]:rounded-t-lg data-[vaul-drawer-direction=bottom]:border-t;
+	@apply data-[vaul-drawer-direction=right]:inset-y-0 data-[vaul-drawer-direction=right]:right-0 data-[vaul-drawer-direction=right]:w-3/4 data-[vaul-drawer-direction=right]:border-l data-[vaul-drawer-direction=right]:sm:max-w-sm;
+	@apply data-[vaul-drawer-direction=left]:inset-y-0 data-[vaul-drawer-direction=left]:left-0 data-[vaul-drawer-direction=left]:w-3/4 data-[vaul-drawer-direction=left]:border-r data-[vaul-drawer-direction=left]:sm:max-w-sm;
+}
+.ui-drawer-header {
+	@apply flex flex-col gap-0.5 p-4 md:gap-1.5 md:text-left;
+}
+.ui-drawer-footer {
+	@apply mt-auto flex flex-col gap-2 p-4;
+}
+.ui-drawer-title {
+	@apply font-semibold text-foreground;
+}
+.ui-drawer-description {
+	@apply text-sm text-muted-foreground;
+}
+
+/* MARK: HoverCard */
+.ui-hover-card-content {
+	@apply z-50 w-64 origin-(--radix-hover-card-content-transform-origin) rounded-md border bg-popover p-4 text-popover-foreground shadow-md outline-hidden data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95;
+}
+
+/* MARK: Command */
+.ui-command {
+	@apply flex h-full w-full flex-col overflow-hidden rounded-md bg-popover text-popover-foreground;
+}
+.ui-command-dialog {
+	@apply **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5;
+}
+.ui-command-input-wrapper {
+	@apply flex h-9 items-center gap-2 border-b px-3;
+}
+.ui-command-input {
+	@apply flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-hidden placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50;
+}
+.ui-command-list {
+	@apply max-h-[300px] scroll-py-1 overflow-x-hidden overflow-y-auto;
+}
+.ui-command-empty {
+	@apply py-6 text-center text-sm;
+}
+.ui-command-group {
+	@apply overflow-hidden p-1 text-foreground [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground;
+}
+.ui-command-separator {
+	@apply -mx-1 h-px bg-border;
+}
+.ui-command-item {
+	@apply relative flex cursor-default items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-hidden select-none data-[disabled=true]:pointer-events-none data-[disabled=true]:opacity-50 data-[selected=true]:bg-accent data-[selected=true]:text-accent-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 [&_svg:not([class*='text-'])]:text-muted-foreground;
+}
+.ui-command-shortcut {
+	@apply ml-auto text-xs tracking-widest text-muted-foreground;
+}
+
+/* MARK: Calendar */
+.ui-calendar {
+	@apply bg-background p-3 [--cell-size:--spacing(8)] [[data-slot=card-content]_&]:bg-transparent [[data-slot=popover-content]_&]:bg-transparent;
+}
+
+/* MARK: Carousel */
+.ui-carousel {
+	@apply relative;
+}
+.ui-carousel-content {
+	@apply flex;
+}
+.ui-carousel-item {
+	@apply min-w-0 shrink-0 grow-0 basis-full;
+}
+
+/* MARK: Resizable */
+.ui-resizable-panel-group {
+	@apply flex h-full w-full aria-[orientation=vertical]:flex-col;
+}
+.ui-resizable-handle {
+	@apply relative flex w-px items-center justify-center bg-border after:absolute after:inset-y-0 after:left-1/2 after:w-1 after:-translate-x-1/2 focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:outline-hidden aria-[orientation=horizontal]:h-px aria-[orientation=horizontal]:w-full aria-[orientation=horizontal]:after:left-0 aria-[orientation=horizontal]:after:h-1 aria-[orientation=horizontal]:after:w-full aria-[orientation=horizontal]:after:translate-x-0 aria-[orientation=horizontal]:after:-translate-y-1/2 [&[aria-orientation=horizontal]>div]:rotate-90;
+}
+
+/* MARK: ScrollArea */
+.ui-scroll-area {
+	@apply relative;
+}
+.ui-scroll-area-viewport {
+	@apply size-full rounded-[inherit] transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-1;
+}
+.ui-scroll-area-scrollbar {
+	@apply flex touch-none p-px transition-colors select-none;
+}
+.ui-scroll-area-scrollbar[data-orientation="vertical"] {
+	@apply h-full w-2.5 border-l border-l-transparent;
+}
+.ui-scroll-area-scrollbar[data-orientation="horizontal"] {
+	@apply h-2.5 flex-col border-t border-t-transparent;
+}
+.ui-scroll-area-thumb {
+	@apply relative flex-1 rounded-full bg-border;
+}
+
+/* MARK: Avatar */
+.ui-avatar {
+	@apply relative flex size-8 shrink-0 overflow-hidden rounded-full select-none;
+}
+.ui-avatar[data-size="lg"] {
+	@apply size-10;
+}
+.ui-avatar[data-size="sm"] {
+	@apply size-6;
+}
+.ui-avatar-image {
+	@apply aspect-square size-full;
+}
+.ui-avatar-fallback {
+	@apply flex size-full items-center justify-center rounded-full bg-muted text-sm text-muted-foreground;
+}
+.ui-avatar-badge {
+	@apply absolute right-0 bottom-0 z-10 inline-flex items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-background select-none;
+}
+.ui-avatar-group {
+	@apply flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background;
+}
+.ui-avatar-group-count {
+	@apply relative flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm text-muted-foreground ring-2 ring-background [&>svg]:size-4;
+}
+
+/* MARK: Breadcrumb */
+.ui-breadcrumb-list {
+	@apply flex flex-wrap items-center gap-1.5 text-sm break-words text-muted-foreground sm:gap-2.5;
+}
+.ui-breadcrumb-item {
+	@apply inline-flex items-center gap-1.5;
+}
+.ui-breadcrumb-link {
+	@apply transition-colors hover:text-foreground;
+}
+.ui-breadcrumb-page {
+	@apply font-normal text-foreground;
+}
+.ui-breadcrumb-separator {
+	@apply [&>svg]:size-3.5;
+}
+.ui-breadcrumb-ellipsis {
+	@apply flex size-9 items-center justify-center;
+}

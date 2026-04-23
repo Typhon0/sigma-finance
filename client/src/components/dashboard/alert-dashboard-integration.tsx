@@ -1,4 +1,13 @@
-import { AlertTriangle, Bell, CheckCircle, Settings, Zap } from "lucide-react";
+import {
+	AlertTriangle,
+	Bell,
+	CheckCircle,
+	DollarSign,
+	Percent,
+	Settings,
+	TrendingUp,
+	Zap,
+} from "lucide-react";
 import { useState } from "react";
 import {
 	type Alert,
@@ -46,7 +55,6 @@ const mockAlerts: Alert[] = [
 			name: "Apple Inc.",
 			symbol: "AAPL",
 			type: "STOCK",
-			currentPrice: 145.5,
 		},
 	},
 	{
@@ -68,7 +76,6 @@ const mockAlerts: Alert[] = [
 			name: "Bitcoin",
 			symbol: "BTC",
 			type: "CRYPTO",
-			currentPrice: 42000,
 		},
 	},
 	{
@@ -151,15 +158,12 @@ export function AlertDashboardIntegration({
 	className,
 }: AlertDashboardIntegrationProps) {
 	const [alerts, setAlerts] = useState<Alert[]>(mockAlerts);
-	const [notifications, setNotifications] =
-		useState<AlertNotificationData[]>(mockNotifications);
+	const [notifications, setNotifications] = useState<AlertNotificationData[]>(mockNotifications);
 	const [history, _setHistory] = useState<AlertHistoryData[]>(mockHistory);
 	const [showAlertManagement, setShowAlertManagement] = useState(false);
 
 	const activeAlerts = alerts.filter((alert) => alert.isActive);
-	const unacknowledgedNotifications = notifications.filter(
-		(n) => !n.acknowledged,
-	);
+	const unacknowledgedNotifications = notifications.filter((n) => !n.acknowledged);
 
 	const handleCreateAlert = async (data: AlertFormData) => {
 		// Simulate API call
@@ -178,12 +182,8 @@ export function AlertDashboardIntegration({
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			triggerCount: 0,
-			asset: data.assetId
-				? assets.find((a) => a.id === data.assetId)
-				: undefined,
-			portfolio: data.portfolioId
-				? portfolios.find((p) => p.id === data.portfolioId)
-				: undefined,
+			asset: data.assetId ? assets.find((a) => a.id === data.assetId) : undefined,
+			portfolio: data.portfolioId ? portfolios.find((p) => p.id === data.portfolioId) : undefined,
 		};
 
 		setAlerts((prev) => [...prev, newAlert]);
@@ -197,9 +197,7 @@ export function AlertDashboardIntegration({
 							...alert,
 							...data,
 							updatedAt: new Date(),
-							asset: data.assetId
-								? assets.find((a) => a.id === data.assetId)
-								: undefined,
+							asset: data.assetId ? assets.find((a) => a.id === data.assetId) : undefined,
 							portfolio: data.portfolioId
 								? portfolios.find((p) => p.id === data.portfolioId)
 								: undefined,
@@ -215,9 +213,7 @@ export function AlertDashboardIntegration({
 
 	const handleAcknowledgeAlert = async (id: string) => {
 		setNotifications((prev) =>
-			prev.map((notif) =>
-				notif.id === id ? { ...notif, acknowledged: true } : notif,
-			),
+			prev.map((notif) => (notif.id === id ? { ...notif, acknowledged: true } : notif)),
 		);
 	};
 
@@ -240,15 +236,9 @@ export function AlertDashboardIntegration({
 		await handleCreateAlert(alertData);
 	};
 
-	const handleTestAlert = async (data: AlertTestData) => {
-		// Simulate test execution
-		console.log("Testing alert:", data);
-	};
+	const handleTestAlert = async (_data: AlertTestData) => {};
 
-	const handleFilterAlerts = (filters: AlertFilterData) => {
-		// Apply filters (in real app, this would filter the alerts)
-		console.log("Filtering alerts:", filters);
-	};
+	const handleFilterAlerts = (_filters: AlertFilterData) => {};
 
 	if (showAlertManagement) {
 		return (
@@ -268,10 +258,7 @@ export function AlertDashboardIntegration({
 				/>
 
 				<div className="mt-6 flex justify-center">
-					<Button
-						variant="outline"
-						onClick={() => setShowAlertManagement(false)}
-					>
+					<Button variant="outline" onClick={() => setShowAlertManagement(false)}>
 						Back to Dashboard
 					</Button>
 				</div>
@@ -287,9 +274,7 @@ export function AlertDashboardIntegration({
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Active Alerts
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Active Alerts</p>
 								<div className="text-2xl font-bold">{activeAlerts.length}</div>
 							</div>
 							<Settings className="h-4 w-4 text-muted-foreground" />
@@ -301,12 +286,8 @@ export function AlertDashboardIntegration({
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Notifications
-								</p>
-								<div className="text-2xl font-bold">
-									{unacknowledgedNotifications.length}
-								</div>
+								<p className="text-sm font-medium text-muted-foreground">Notifications</p>
+								<div className="text-2xl font-bold">{unacknowledgedNotifications.length}</div>
 							</div>
 							<Bell className="h-4 w-4 text-muted-foreground" />
 						</div>
@@ -317,17 +298,13 @@ export function AlertDashboardIntegration({
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Triggered Today
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Triggered Today</p>
 								<div className="text-2xl font-bold">
 									{
 										history.filter((h) => {
 											const today = new Date();
 											const triggerDate = new Date(h.triggeredAt);
-											return (
-												triggerDate.toDateString() === today.toDateString()
-											);
+											return triggerDate.toDateString() === today.toDateString();
 										}).length
 									}
 								</div>
@@ -341,9 +318,7 @@ export function AlertDashboardIntegration({
 					<CardContent className="p-6">
 						<div className="flex items-center justify-between">
 							<div>
-								<p className="text-sm font-medium text-muted-foreground">
-									Total Triggers
-								</p>
+								<p className="text-sm font-medium text-muted-foreground">Total Triggers</p>
 								<div className="text-2xl font-bold">
 									{alerts.reduce((sum, alert) => sum + alert.triggerCount, 0)}
 								</div>
@@ -376,10 +351,7 @@ export function AlertDashboardIntegration({
 								preselectedPortfolioId={currentPortfolio?.id}
 								onSubmit={handleQuickSetup}
 							/>
-							<Button
-								onClick={() => setShowAlertManagement(true)}
-								className="gap-2"
-							>
+							<Button onClick={() => setShowAlertManagement(true)} className="gap-2">
 								<Settings className="h-4 w-4" />
 								Manage Alerts
 							</Button>
@@ -401,9 +373,7 @@ export function AlertDashboardIntegration({
 								>
 									<Bell className="h-4 w-4 text-orange-500 mt-0.5" />
 									<div className="flex-1 min-w-0">
-										<p className="text-sm font-medium">
-											{notification.message}
-										</p>
+										<p className="text-sm font-medium">{notification.message}</p>
 										<p className="text-xs text-muted-foreground">
 											{notification.triggeredAt.toLocaleString()}
 										</p>
@@ -427,9 +397,7 @@ export function AlertDashboardIntegration({
 							<div className="text-center py-6 text-muted-foreground">
 								<Bell className="h-8 w-8 mx-auto mb-2 opacity-50" />
 								<p>No active alerts configured</p>
-								<p className="text-sm">
-									Create your first alert to get started
-								</p>
+								<p className="text-sm">Create your first alert to get started</p>
 							</div>
 						) : (
 							<div className="space-y-2">
@@ -441,8 +409,7 @@ export function AlertDashboardIntegration({
 										<div className="flex items-center gap-3">
 											<Badge variant="outline">
 												{alert.alertType === "PRICE" && "Price"}
-												{alert.alertType === "PERCENTAGE_CHANGE" &&
-													"Percentage"}
+												{alert.alertType === "PERCENTAGE_CHANGE" && "Percentage"}
 												{alert.alertType === "PORTFOLIO_VALUE" && "Portfolio"}
 												{alert.alertType === "ALLOCATION" && "Allocation"}
 											</Badge>
@@ -455,11 +422,7 @@ export function AlertDashboardIntegration({
 										</div>
 										<div className="flex items-center gap-2">
 											{alert.notificationMethods.map((method) => (
-												<Badge
-													key={method}
-													variant="outline"
-													className="text-xs"
-												>
+												<Badge key={method} variant="outline" className="text-xs">
 													{method}
 												</Badge>
 											))}
@@ -489,13 +452,9 @@ export function AlertDashboardIntegration({
 							<Zap className="h-5 w-5" />
 							Quick Alert Setup
 							{currentAsset && (
-								<Badge variant="outline">
-									for {currentAsset.symbol || currentAsset.name}
-								</Badge>
+								<Badge variant="outline">for {currentAsset.symbol || currentAsset.name}</Badge>
 							)}
-							{currentPortfolio && (
-								<Badge variant="outline">for {currentPortfolio.name}</Badge>
-							)}
+							{currentPortfolio && <Badge variant="outline">for {currentPortfolio.name}</Badge>}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>

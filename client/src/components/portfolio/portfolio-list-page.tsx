@@ -11,13 +11,7 @@ import {
 } from "@/components/portfolio/portfolio-loading-indicators";
 import { PortfolioSearch } from "@/components/portfolio/portfolio-search";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAdvancedSearch } from "@/hooks/use-debounced-search";
 import { usePortfolioManagement } from "@/hooks/use-portfolio-management";
 import { usePortfolioRetry } from "@/hooks/use-retry-mechanism";
@@ -61,11 +55,11 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 		setSearchTerm,
 		filters,
 		updateFilter,
-		_removeFilter,
+		removeFilter: _removeFilter,
 		clearAllFilters,
 		sortConfig,
 		setSortConfig,
-		_toggleSort,
+		toggleSort: _toggleSort,
 		filteredItems: filteredPortfolios,
 		resultCount,
 		hasResults,
@@ -80,12 +74,8 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 	// Enhanced retry mechanism for portfolio operations
 	const portfolioRetry = usePortfolioRetry({
 		maxRetries: 3,
-		onRetryAttempt: (attempt) => {
-			console.log(`Portfolio retry attempt ${attempt}`);
-		},
-		onMaxRetriesReached: (error) => {
-			console.error("Max retries reached for portfolio operation:", error);
-		},
+		onRetryAttempt: (_attempt) => {},
+		onMaxRetriesReached: (_error) => {},
 	});
 
 	// Show loading skeleton on initial load
@@ -138,9 +128,7 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 			<div className={`container mx-auto p-3 sm:p-4 lg:p-6 ${className || ""}`}>
 				{/* Header */}
 				<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 sm:mb-6">
-					<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
-						Your Portfolios
-					</h1>
+					<h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">Your Portfolios</h1>
 
 					{hasPortfolios && (
 						<div className="flex items-center gap-2 justify-end sm:justify-start">
@@ -185,9 +173,23 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 							searchTerm={searchTerm}
 							onSearchChange={setSearchTerm}
 							onFilterChange={updateFilter}
-							onSortChange={setSortConfig}
+							onSortChange={
+								setSortConfig as (
+									config:
+										| import("@/hooks/use-debounced-search").SortConfig<
+												import("@/gql/graphql").Portfolio
+										  >
+										| null,
+								) => void
+							}
 							filters={filters}
-							sortConfig={sortConfig}
+							sortConfig={
+								sortConfig as
+									| import("@/hooks/use-debounced-search").SortConfig<
+											import("@/gql/graphql").Portfolio
+									  >
+									| null
+							}
 							resultCount={resultCount}
 							totalCount={portfolios.length}
 							isSearching={isSearching}
@@ -246,30 +248,20 @@ export function PortfolioListPage({ className }: PortfolioListPageProps) {
 						}
 					>
 						{filteredPortfolios.map((portfolio) => (
-							<PortfolioCard
-								key={portfolio.id}
-								portfolio={portfolio}
-								viewMode={viewMode}
-							/>
+							<PortfolioCard key={portfolio.id} portfolio={portfolio} viewMode={viewMode} />
 						))}
 					</div>
 				) : hasActiveFilters ? (
 					/* No results with active filters */
 					<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
 						<CardHeader className="px-4 sm:px-6">
-							<CardTitle className="text-lg sm:text-xl">
-								No portfolios found
-							</CardTitle>
+							<CardTitle className="text-lg sm:text-xl">No portfolios found</CardTitle>
 							<CardDescription className="text-sm sm:text-base">
 								No portfolios match your current search and filter criteria.
 							</CardDescription>
 						</CardHeader>
 						<CardContent className="px-4 sm:px-6">
-							<Button
-								variant="outline"
-								onClick={clearAllFilters}
-								className="touch-manipulation"
-							>
+							<Button variant="outline" onClick={clearAllFilters} className="touch-manipulation">
 								Clear all filters
 							</Button>
 						</CardContent>
@@ -286,12 +278,9 @@ function EmptyPortfolioState() {
 	return (
 		<Card className="text-center py-8 sm:py-12 mx-2 sm:mx-0">
 			<CardHeader className="px-4 sm:px-6">
-				<CardTitle className="text-lg sm:text-xl">
-					No portfolios found
-				</CardTitle>
+				<CardTitle className="text-lg sm:text-xl">No portfolios found</CardTitle>
 				<CardDescription className="text-sm sm:text-base">
-					Get started by creating your first portfolio to organize and track
-					your investments.
+					Get started by creating your first portfolio to organize and track your investments.
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="px-4 sm:px-6">
@@ -331,8 +320,7 @@ function ErrorState({
 					Error Loading Portfolios
 				</CardTitle>
 				<CardDescription className="text-sm sm:text-base">
-					{error?.message ||
-						"Something went wrong while loading your portfolios."}
+					{error?.message || "Something went wrong while loading your portfolios."}
 				</CardDescription>
 			</CardHeader>
 			<CardContent className="space-y-4 px-4 sm:px-6">
@@ -350,21 +338,13 @@ function ErrorState({
 
 				<div className="flex flex-col sm:flex-row justify-center gap-2">
 					{canRetry && !isRetrying && (
-						<Button
-							onClick={onRetry}
-							variant="outline"
-							className="touch-manipulation"
-						>
+						<Button onClick={onRetry} variant="outline" className="touch-manipulation">
 							<RefreshCw className="mr-2 h-4 w-4" />
 							Retry
 						</Button>
 					)}
 					{onRefresh && !isRetrying && (
-						<Button
-							onClick={onRefresh}
-							variant="outline"
-							className="touch-manipulation"
-						>
+						<Button onClick={onRefresh} variant="outline" className="touch-manipulation">
 							<RefreshCw className="mr-2 h-4 w-4" />
 							Refresh
 						</Button>

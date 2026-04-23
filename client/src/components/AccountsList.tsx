@@ -10,29 +10,20 @@ import {
 	MoreVertical,
 	PieChart,
 	Plus,
-	Search,
 	Trash2,
 	Wallet,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import {
-	type PortfolioAssetItem,
-	usePortfolio,
-} from "@/components/PortfolioProvider";
-import { useCurrency } from "@/hooks/use-currency";
+import { type PortfolioAssetItem, usePortfolio } from "@/components/PortfolioProvider";
+import { SearchInput } from "@/components/ui/search-input";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
+import { useCurrency } from "@/hooks/use-currency";
 import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -40,23 +31,9 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
-import { Input } from "./ui/input";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Separator } from "./ui/separator";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "./ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
 
 interface AccountsListProps {
 	onSelectAccount: (accountId: string) => void;
@@ -83,9 +60,7 @@ interface AccountData {
 }
 
 /** Map portfolio asset type to account-level type */
-function mapAssetTypeToAccountType(
-	asset: PortfolioAssetItem,
-): AccountData["type"] {
+function mapAssetTypeToAccountType(asset: PortfolioAssetItem): AccountData["type"] {
 	switch (asset.type) {
 		case "bank":
 			return "Bank";
@@ -115,9 +90,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const [searchQuery, setSearchQuery] = useState("");
 	const [filterType, setFilterType] = useState<AccountType>("all");
 	const [sortBy, setSortBy] = useState("value-desc");
-	const [distributionChartType, setDistributionChartType] = useState<
-		"pie" | "treemap"
-	>("pie");
+	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [hoveredAccountData, setHoveredAccountData] = useState<{
 		name: string;
@@ -140,9 +113,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				accountNumber: data.accountNumber,
 				currency: data.currency || "USD",
 				currentValue: parseFloat(data.balance) || 0,
-				interestRate: data.interestRate
-					? parseFloat(data.interestRate)
-					: undefined,
+				interestRate: data.interestRate ? parseFloat(data.interestRate) : undefined,
 			});
 
 			if (result.asset) {
@@ -152,7 +123,6 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				throw new Error("createBankAccountAsset returned no asset");
 			}
 		} catch (error) {
-			console.error("Error adding account:", error);
 			toast.error("Failed to add account. Please try again.");
 			throw error; // Re-throw so AddSavingForm keeps dialog open
 		}
@@ -164,11 +134,9 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 			const type = mapAssetTypeToAccountType(a);
 			const totalCost = a.purchasePrice * a.quantity;
 			const profitLoss = a.currentValue - totalCost;
-			const profitLossPercent =
-				totalCost > 0 ? (profitLoss / totalCost) * 100 : 0;
+			const profitLossPercent = totalCost > 0 ? (profitLoss / totalCost) * 100 : 0;
 
-			const assetClass =
-				type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
+			const assetClass = type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
 
 			return {
 				id: a.id,
@@ -188,14 +156,13 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 		});
 	}, [assets]);
 
-	const { formatCurrencyCompact: formatCurrency, currencySymbol } = useCurrency();
+	const { formatCurrencyCompact: formatCurrency, currencySymbol: _currencySymbol } = useCurrency();
 
 	// Calculate metrics
 	const totalValue = accounts.reduce((sum, acc) => sum + acc.totalValue, 0);
 	const totalCost = accounts.reduce((sum, acc) => sum + acc.totalCost, 0);
 	const totalProfitLoss = totalValue - totalCost;
-	const totalProfitLossPercent =
-		totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
+	const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 	const numberOfAccounts = accounts.length;
 
 	// Filter and sort
@@ -213,16 +180,11 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	});
 
 	// Sort
-	if (sortBy === "value-desc")
-		filteredAccounts.sort((a, b) => b.totalValue - a.totalValue);
-	else if (sortBy === "value-asc")
-		filteredAccounts.sort((a, b) => a.totalValue - b.totalValue);
-	else if (sortBy === "profit-desc")
-		filteredAccounts.sort((a, b) => b.profitLoss - a.profitLoss);
-	else if (sortBy === "profit-asc")
-		filteredAccounts.sort((a, b) => a.profitLoss - b.profitLoss);
-	else if (sortBy === "name-asc")
-		filteredAccounts.sort((a, b) => a.name.localeCompare(b.name));
+	if (sortBy === "value-desc") filteredAccounts.sort((a, b) => b.totalValue - a.totalValue);
+	else if (sortBy === "value-asc") filteredAccounts.sort((a, b) => a.totalValue - b.totalValue);
+	else if (sortBy === "profit-desc") filteredAccounts.sort((a, b) => b.profitLoss - a.profitLoss);
+	else if (sortBy === "profit-asc") filteredAccounts.sort((a, b) => a.profitLoss - b.profitLoss);
+	else if (sortBy === "name-asc") filteredAccounts.sort((a, b) => a.name.localeCompare(b.name));
 
 	// Distribution data
 	const distributionData = filteredAccounts.map((acc) => ({
@@ -251,13 +213,9 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredAccountData
-										? hoveredAccountData.name
-										: formatCurrency(totalValue),
+									text: hoveredAccountData ? hoveredAccountData.name : formatCurrency(totalValue),
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#fafafa"
-										: "#0a0a0a",
+									fill: document.documentElement.classList.contains("dark") ? "#fafafa" : "#0a0a0a",
 									fontSize: hoveredAccountData ? 18 : 28,
 									fontWeight: "600",
 									lineHeight: 1.2,
@@ -269,13 +227,9 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredAccountData
-										? formatCurrency(hoveredAccountData.value)
-										: "Total",
+									text: hoveredAccountData ? formatCurrency(hoveredAccountData.value) : "Total",
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#a3a3a3"
-										: "#737373",
+									fill: document.documentElement.classList.contains("dark") ? "#a3a3a3" : "#737373",
 									fontSize: hoveredAccountData ? 16 : 13,
 									fontWeight: hoveredAccountData ? "500" : "400",
 									y: hoveredAccountData ? 26 : 38,
@@ -287,13 +241,9 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 								left: "center",
 								top: "middle",
 								style: {
-									text: hoveredAccountData
-										? `${hoveredAccountData.percent.toFixed(1)}%`
-										: "",
+									text: hoveredAccountData ? `${hoveredAccountData.percent.toFixed(1)}%` : "",
 									textAlign: "center",
-									fill: document.documentElement.classList.contains("dark")
-										? "#737373"
-										: "#a3a3a3",
+									fill: document.documentElement.classList.contains("dark") ? "#737373" : "#a3a3a3",
 									fontSize: 13,
 									fontWeight: "400",
 									y: 48,
@@ -328,8 +278,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				}
 			: {
 					tooltip: {
-						formatter: (params: any) =>
-							`${params.name}: ${formatCurrency(params.value)}`,
+						formatter: (params: any) => `${params.name}: ${formatCurrency(params.value)}`,
 					},
 					series: [
 						{
@@ -371,9 +320,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				<Card>
 					<CardHeader className="pb-3">
 						<CardDescription>Total Value</CardDescription>
-						<CardTitle className="text-2xl font-mono">
-							{formatCurrency(totalValue)}
-						</CardTitle>
+						<CardTitle className="text-2xl font-mono">{formatCurrency(totalValue)}</CardTitle>
 					</CardHeader>
 					<CardContent>
 						<div
@@ -381,8 +328,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						>
 							{totalProfitLoss >= 0 ? <TrendArrowUp /> : <TrendArrowDown />}
 							<span className="font-mono">
-								{formatCurrency(totalProfitLoss)} (
-								{totalProfitLoss >= 0 ? "+" : ""}
+								{formatCurrency(totalProfitLoss)} ({totalProfitLoss >= 0 ? "+" : ""}
 								{totalProfitLossPercent.toFixed(2)}%)
 							</span>
 						</div>
@@ -406,9 +352,8 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					<CardHeader className="pb-3">
 						<CardDescription>Best Account</CardDescription>
 						<CardTitle className="text-xl text-green-600">
-							{[...accounts].sort(
-								(a, b) => b.profitLossPercent - a.profitLossPercent,
-							)[0]?.name || "—"}
+							{[...accounts].sort((a, b) => b.profitLossPercent - a.profitLossPercent)[0]?.name ||
+								"—"}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -432,8 +377,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					</CardHeader>
 					<CardContent>
 						<p className="text-sm text-muted-foreground">
-							{[...new Set(accounts.map((a) => a.assetClass))].join(", ") ||
-								"—"}
+							{[...new Set(accounts.map((a) => a.assetClass))].join(", ") || "—"}
 						</p>
 					</CardContent>
 				</Card>
@@ -449,9 +393,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						</div>
 						<div className="flex gap-2">
 							<Button
-								variant={
-									distributionChartType === "pie" ? "default" : "outline"
-								}
+								variant={distributionChartType === "pie" ? "default" : "outline"}
 								size="sm"
 								onClick={() => setDistributionChartType("pie")}
 							>
@@ -459,9 +401,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 								Pie Chart
 							</Button>
 							<Button
-								variant={
-									distributionChartType === "treemap" ? "default" : "outline"
-								}
+								variant={distributionChartType === "treemap" ? "default" : "outline"}
 								size="sm"
 								onClick={() => setDistributionChartType("treemap")}
 							>
@@ -478,10 +418,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						opts={{ renderer: "svg" }}
 						onEvents={{
 							mouseover: (params: any) => {
-								if (
-									params.componentType === "series" &&
-									params.seriesType === "pie"
-								) {
+								if (params.componentType === "series" && params.seriesType === "pie") {
 									setHoveredAccountData({
 										name: params.name,
 										value: params.value,
@@ -503,9 +440,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					<div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
 						<div>
 							<CardTitle>Accounts</CardTitle>
-							<CardDescription>
-								Manage all your financial accounts
-							</CardDescription>
+							<CardDescription>Manage all your financial accounts</CardDescription>
 						</div>
 						<div className="flex gap-2">
 							<Button onClick={() => setShowAddForm(true)}>
@@ -523,20 +458,15 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					<div className="space-y-4">
 						{/* Filters & View Mode */}
 						<div className="flex flex-col sm:flex-row gap-3">
-							<div className="relative flex-1">
-								<Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-								<Input
-									placeholder="Search accounts..."
-									value={searchQuery}
-									onChange={(e) => setSearchQuery(e.target.value)}
-									className="pl-10"
-								/>
-							</div>
+							<SearchInput
+								placeholder="Search accounts..."
+								value={searchQuery}
+								onChange={(e) => setSearchQuery(e.target.value)}
+								onClear={() => setSearchQuery("")}
+								containerClassName="flex-1"
+							/>
 
-							<Select
-								value={filterType}
-								onValueChange={(v) => setFilterType(v as AccountType)}
-							>
+							<Select value={filterType} onValueChange={(v) => setFilterType(v as AccountType)}>
 								<SelectTrigger className="w-[150px]">
 									<SelectValue />
 								</SelectTrigger>
@@ -585,9 +515,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						{/* Results count */}
 						<div className="flex items-center justify-between text-sm text-muted-foreground">
 							<span>{filteredAccounts.length} accounts</span>
-							<Badge variant="outline">
-								{formatCurrency(totalValue)} total value
-							</Badge>
+							<Badge variant="outline">{formatCurrency(totalValue)} total value</Badge>
 						</div>
 
 						{filteredAccounts.length > 0 ? (
@@ -611,19 +539,14 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																<AccountIcon type={account.type} />
 															</div>
 															<div>
-																<CardTitle className="text-lg">
-																	{account.name}
-																</CardTitle>
+																<CardTitle className="text-lg">{account.name}</CardTitle>
 																<CardDescription className="text-xs">
 																	{account.type} • {account.assetClass}
 																</CardDescription>
 															</div>
 														</div>
 														<DropdownMenu>
-															<DropdownMenuTrigger
-																asChild
-																onClick={(e) => e.stopPropagation()}
-															>
+															<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 																<Button variant="ghost" size="icon">
 																	<MoreVertical className="h-4 w-4" />
 																</Button>
@@ -652,9 +575,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 												</CardHeader>
 												<CardContent className="space-y-3">
 													<div>
-														<p className="text-xs text-muted-foreground mb-1">
-															Total Value
-														</p>
+														<p className="text-xs text-muted-foreground mb-1">Total Value</p>
 														<p className="text-2xl font-mono">
 															{formatCurrency(account.totalValue)}
 														</p>
@@ -662,9 +583,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 
 													<div className="flex items-center justify-between">
 														<div>
-															<p className="text-xs text-muted-foreground">
-																P&L
-															</p>
+															<p className="text-xs text-muted-foreground">P&L</p>
 															<p
 																className={`font-mono ${account.profitLoss >= 0 ? "text-green-600" : "text-red-600"}`}
 															>
@@ -673,9 +592,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 															</p>
 														</div>
 														<div className="text-right">
-															<p className="text-xs text-muted-foreground">
-																Return
-															</p>
+															<p className="text-xs text-muted-foreground">Return</p>
 															<p
 																className={`font-mono ${account.profitLossPercent >= 0 ? "text-green-600" : "text-red-600"}`}
 															>
@@ -728,9 +645,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 												<TableHead>Type</TableHead>
 												<TableHead>Asset Class</TableHead>
 												<TableHead className="text-right">Symbol</TableHead>
-												<TableHead className="text-right">
-													Total Value
-												</TableHead>
+												<TableHead className="text-right">Total Value</TableHead>
 												<TableHead className="text-right">P&L</TableHead>
 												<TableHead className="text-right">Return</TableHead>
 												<TableHead>Day Change</TableHead>
@@ -764,9 +679,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 														<Badge variant="outline">{account.type}</Badge>
 													</TableCell>
 													<TableCell>{account.assetClass}</TableCell>
-													<TableCell className="text-right">
-														{account.symbol || "—"}
-													</TableCell>
+													<TableCell className="text-right">{account.symbol || "—"}</TableCell>
 													<TableCell className="text-right font-mono">
 														{formatCurrency(account.totalValue)}
 													</TableCell>
@@ -798,17 +711,12 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																</span>
 															</div>
 														) : (
-															<span className="text-xs text-muted-foreground">
-																—
-															</span>
+															<span className="text-xs text-muted-foreground">—</span>
 														)}
 													</TableCell>
 													<TableCell className="text-right">
 														<DropdownMenu>
-															<DropdownMenuTrigger
-																asChild
-																onClick={(e) => e.stopPropagation()}
-															>
+															<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
 																<Button variant="ghost" size="icon">
 																	<MoreVertical className="h-4 w-4" />
 																</Button>

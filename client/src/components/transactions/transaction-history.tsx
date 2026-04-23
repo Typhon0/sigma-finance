@@ -10,19 +10,15 @@ import {
 	FileText,
 	Filter,
 	Hash,
-	Search,
 	Trash2,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
 	SelectContent,
@@ -95,23 +91,17 @@ export function TransactionHistory({
 
 		// Apply type filter
 		if (typeFilter !== "ALL") {
-			filtered = filtered.filter(
-				(transaction) => transaction.transactionType === typeFilter,
-			);
+			filtered = filtered.filter((transaction) => transaction.transactionType === typeFilter);
 		}
 
 		// Apply date filters
 		if (dateFrom) {
 			const fromDate = new Date(dateFrom);
-			filtered = filtered.filter(
-				(transaction) => new Date(transaction.transactionDate) >= fromDate,
-			);
+			filtered = filtered.filter((transaction) => new Date(transaction.executedAt) >= fromDate);
 		}
 		if (dateTo) {
 			const toDate = new Date(dateTo);
-			filtered = filtered.filter(
-				(transaction) => new Date(transaction.transactionDate) <= toDate,
-			);
+			filtered = filtered.filter((transaction) => new Date(transaction.executedAt) <= toDate);
 		}
 
 		// Sort transactions
@@ -121,8 +111,8 @@ export function TransactionHistory({
 
 			switch (sortField) {
 				case "date":
-					aValue = new Date(a.transactionDate);
-					bValue = new Date(b.transactionDate);
+					aValue = new Date(a.executedAt);
+					bValue = new Date(b.executedAt);
 					break;
 				case "type":
 					aValue = a.transactionType;
@@ -133,8 +123,8 @@ export function TransactionHistory({
 					bValue = b.asset.name;
 					break;
 				case "amount":
-					aValue = a.quantity * a.pricePerUnit;
-					bValue = b.quantity * b.pricePerUnit;
+					aValue = a.quantity * (a.unitPriceAmount ?? 0);
+					bValue = b.quantity * (b.unitPriceAmount ?? 0);
 					break;
 				case "quantity":
 					aValue = a.quantity;
@@ -148,15 +138,7 @@ export function TransactionHistory({
 			if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
 			return 0;
 		});
-	}, [
-		transactions,
-		searchQuery,
-		typeFilter,
-		dateFrom,
-		dateTo,
-		sortField,
-		sortDirection,
-	]);
+	}, [transactions, searchQuery, typeFilter, dateFrom, dateTo, sortField, sortDirection]);
 
 	const handleSort = (field: SortField) => {
 		if (sortField === field) {
@@ -254,15 +236,13 @@ export function TransactionHistory({
 							{/* Search */}
 							<div className="space-y-2">
 								<label className="text-sm font-medium">Search</label>
-								<div className="relative">
-									<Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-									<Input
-										placeholder="Search transactions..."
-										value={searchQuery}
-										onChange={(e) => setSearchQuery(e.target.value)}
-										className="pl-10"
-									/>
-								</div>
+								<SearchInput
+									placeholder="Search transactions..."
+									value={searchQuery}
+									onChange={(e) => setSearchQuery(e.target.value)}
+									onClear={() => setSearchQuery("")}
+									iconClassName="top-3"
+								/>
 							</div>
 
 							{/* Transaction Type Filter */}
@@ -270,9 +250,7 @@ export function TransactionHistory({
 								<label className="text-sm font-medium">Type</label>
 								<Select
 									value={typeFilter}
-									onValueChange={(value) =>
-										setTypeFilter(value as TransactionType | "ALL")
-									}
+									onValueChange={(value) => setTypeFilter(value as TransactionType | "ALL")}
 								>
 									<SelectTrigger>
 										<SelectValue />
@@ -296,21 +274,13 @@ export function TransactionHistory({
 							{/* Date From */}
 							<div className="space-y-2">
 								<label className="text-sm font-medium">From Date</label>
-								<Input
-									type="date"
-									value={dateFrom}
-									onChange={(e) => setDateFrom(e.target.value)}
-								/>
+								<Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
 							</div>
 
 							{/* Date To */}
 							<div className="space-y-2">
 								<label className="text-sm font-medium">To Date</label>
-								<Input
-									type="date"
-									value={dateTo}
-									onChange={(e) => setDateTo(e.target.value)}
-								/>
+								<Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
 							</div>
 						</div>
 
@@ -319,8 +289,7 @@ export function TransactionHistory({
 								Clear Filters
 							</Button>
 							<p className="text-sm text-muted-foreground">
-								Showing {filteredAndSortedTransactions.length} of{" "}
-								{transactions.length} transactions
+								Showing {filteredAndSortedTransactions.length} of {transactions.length} transactions
 							</p>
 						</div>
 					</CollapsibleContent>
@@ -437,7 +406,7 @@ function TransactionRow({
 	onEdit,
 	onDelete,
 }: TransactionRowProps) {
-	const amount = transaction.quantity * transaction.pricePerUnit;
+	const amount = transaction.quantity * (transaction.unitPriceAmount ?? 0);
 	const typeColor = transactionValidationHelpers.getTransactionTypeColor(
 		transaction.transactionType,
 	);
@@ -448,15 +417,13 @@ function TransactionRow({
 				<div className="flex items-center gap-2">
 					<Calendar className="h-4 w-4 text-muted-foreground" />
 					<span className="font-mono text-sm">
-						{format(new Date(transaction.transactionDate), "MMM dd, yyyy")}
+						{format(new Date(transaction.executedAt), "MMM dd, yyyy")}
 					</span>
 				</div>
 			</TableCell>
 			<TableCell>
 				<Badge variant="outline" className={typeColor}>
-					{transactionValidationHelpers.formatTransactionType(
-						transaction.transactionType,
-					)}
+					{transactionValidationHelpers.formatTransactionType(transaction.transactionType)}
 				</Badge>
 			</TableCell>
 			{showAssetColumn && (
@@ -479,25 +446,19 @@ function TransactionRow({
 			<TableCell>
 				<div className="flex items-center gap-1">
 					<Hash className="h-3 w-3 text-muted-foreground" />
-					<span className="font-mono">
-						{transaction.quantity.toLocaleString()}
-					</span>
+					<span className="font-mono">{transaction.quantity.toLocaleString()}</span>
 				</div>
 			</TableCell>
 			<TableCell>
 				<div className="flex items-center gap-1">
 					<DollarSign className="h-3 w-3 text-muted-foreground" />
-					<span className="font-mono">
-						{formatCurrency(transaction.pricePerUnit)}
-					</span>
+					<span className="font-mono">{formatCurrency(transaction.unitPriceAmount ?? 0)}</span>
 				</div>
 			</TableCell>
 			<TableCell>
 				<div className="flex items-center gap-1">
 					<DollarSign className="h-3 w-3 text-muted-foreground" />
-					<span className="font-mono font-medium">
-						{formatCurrency(amount)}
-					</span>
+					<span className="font-mono font-medium">{formatCurrency(amount)}</span>
 				</div>
 			</TableCell>
 			<TableCell>
@@ -510,11 +471,7 @@ function TransactionRow({
 			<TableCell>
 				<div className="flex items-center gap-1">
 					{onEdit && (
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => onEdit(transaction)}
-						>
+						<Button variant="ghost" size="sm" onClick={() => onEdit(transaction)}>
 							<Edit className="h-4 w-4" />
 						</Button>
 					)}
@@ -548,7 +505,7 @@ function CompactTransactionList({
 	return (
 		<div className="space-y-3">
 			{transactions.map((transaction) => {
-				const amount = transaction.quantity * transaction.pricePerUnit;
+				const amount = transaction.quantity * (transaction.unitPriceAmount ?? 0);
 				const typeColor = transactionValidationHelpers.getTransactionTypeColor(
 					transaction.transactionType,
 				);
@@ -561,9 +518,7 @@ function CompactTransactionList({
 						<div className="flex-1">
 							<div className="flex items-center gap-3 mb-2">
 								<Badge variant="outline" className={typeColor}>
-									{transactionValidationHelpers.formatTransactionType(
-										transaction.transactionType,
-									)}
+									{transactionValidationHelpers.formatTransactionType(transaction.transactionType)}
 								</Badge>
 								<span className="font-medium">{transaction.asset.name}</span>
 								{transaction.asset.symbol && (
@@ -573,15 +528,10 @@ function CompactTransactionList({
 								)}
 							</div>
 							<div className="flex items-center gap-4 text-sm text-muted-foreground">
-								<span>
-									{format(
-										new Date(transaction.transactionDate),
-										"MMM dd, yyyy",
-									)}
-								</span>
+								<span>{format(new Date(transaction.executedAt), "MMM dd, yyyy")}</span>
 								<span>
 									{transaction.quantity.toLocaleString()} @{" "}
-									{formatCurrency(transaction.pricePerUnit)}
+									{formatCurrency(transaction.unitPriceAmount ?? 0)}
 								</span>
 								<span>{transaction.portfolio.name}</span>
 							</div>
@@ -594,11 +544,7 @@ function CompactTransactionList({
 
 							<div className="flex items-center gap-1">
 								{onTransactionEdit && (
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => onTransactionEdit(transaction)}
-									>
+									<Button variant="ghost" size="sm" onClick={() => onTransactionEdit(transaction)}>
 										<Edit className="h-4 w-4" />
 									</Button>
 								)}
@@ -621,11 +567,7 @@ function CompactTransactionList({
 	);
 }
 
-function TransactionHistorySkeleton({
-	compact = false,
-}: {
-	compact?: boolean;
-}) {
+function TransactionHistorySkeleton({ compact = false }: { compact?: boolean }) {
 	return (
 		<Card>
 			<CardHeader>
@@ -641,10 +583,7 @@ function TransactionHistorySkeleton({
 				{compact ? (
 					<div className="space-y-3">
 						{Array.from({ length: 5 }).map((_, index) => (
-							<div
-								key={index}
-								className="flex items-center justify-between p-4 border rounded-lg"
-							>
+							<div key={index} className="flex items-center justify-between p-4 border rounded-lg">
 								<div className="flex-1 space-y-2">
 									<div className="flex items-center gap-3">
 										<Skeleton className="h-5 w-16" />
@@ -667,10 +606,7 @@ function TransactionHistorySkeleton({
 				) : (
 					<div className="space-y-3">
 						{Array.from({ length: 5 }).map((_, index) => (
-							<div
-								key={index}
-								className="flex items-center gap-4 p-3 border rounded"
-							>
+							<div key={index} className="flex items-center gap-4 p-3 border rounded">
 								<Skeleton className="h-4 w-20" />
 								<Skeleton className="h-4 w-16" />
 								<Skeleton className="h-4 w-32" />

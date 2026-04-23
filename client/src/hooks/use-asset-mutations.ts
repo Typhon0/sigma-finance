@@ -1,5 +1,9 @@
 import { useApolloClient, useMutation } from "@apollo/client";
 import { useCallback } from "react";
+import type {
+	AddInstrumentToPortfolioMutation,
+	AddInstrumentToPortfolioMutationVariables,
+} from "@/gql/graphql";
 import {
 	ADD_ASSET_TO_PORTFOLIO,
 	CREATE_BANK_ACCOUNT_ASSET,
@@ -11,10 +15,6 @@ import {
 	CREATE_WATCH_ASSET,
 } from "@/graphql/mutations/asset";
 import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
-import type {
-	AddInstrumentToPortfolioMutation,
-	AddInstrumentToPortfolioMutationVariables,
-} from "@/gql/graphql";
 
 export type AssetType = "stock" | "fund" | "etf";
 
@@ -149,24 +149,18 @@ export interface AddCryptoInput {
 
 export const useAssetMutations = () => {
 	const apolloClient = useApolloClient();
-	const [createStockAsset, { loading: creatingStock }] =
-		useMutation(CREATE_STOCK_ASSET);
-	const [createCryptoAsset, { loading: creatingCrypto }] =
-		useMutation(CREATE_CRYPTO_ASSET);
-	const [createRealEstateAsset, { loading: creatingRealEstate }] = useMutation(
-		CREATE_REAL_ESTATE_ASSET,
+	const [createStockAsset, { loading: creatingStock }] = useMutation(CREATE_STOCK_ASSET);
+	const [createCryptoAsset, { loading: creatingCrypto }] = useMutation(CREATE_CRYPTO_ASSET);
+	const [createRealEstateAsset, { loading: creatingRealEstate }] =
+		useMutation(CREATE_REAL_ESTATE_ASSET);
+	const [createLifeInsuranceAsset, { loading: creatingLifeInsurance }] = useMutation(
+		CREATE_LIFE_INSURANCE_ASSET,
 	);
-	const [createLifeInsuranceAsset, { loading: creatingLifeInsurance }] =
-		useMutation(CREATE_LIFE_INSURANCE_ASSET);
-	const [createWatchAsset, { loading: creatingWatch }] =
-		useMutation(CREATE_WATCH_ASSET);
+	const [createWatchAsset, { loading: creatingWatch }] = useMutation(CREATE_WATCH_ASSET);
 	const [createBankAccountAsset, { loading: creatingBankAccount }] =
 		useMutation(CREATE_BANK_ACCOUNT_ASSET);
-	const [createLoanAsset, { loading: creatingLoan }] =
-		useMutation(CREATE_LOAN_ASSET);
-	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(
-		ADD_ASSET_TO_PORTFOLIO,
-	);
+	const [createLoanAsset, { loading: creatingLoan }] = useMutation(CREATE_LOAN_ASSET);
+	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(ADD_ASSET_TO_PORTFOLIO);
 
 	const addAsset = useCallback(
 		async (input: AddAssetInput) => {
@@ -193,8 +187,7 @@ export const useAssetMutations = () => {
 				};
 			}
 
-			const assetTypeID =
-				input.type === "stock" ? "1" : input.type === "fund" ? "7" : "1";
+			const assetTypeId = input.type === "stock" ? "1" : input.type === "fund" ? "7" : "1";
 			const quoteCurrency = (input.quoteCurrency || input.currency || "").toUpperCase();
 			if (!quoteCurrency) {
 				throw new Error("quoteCurrency is required for manual stock/fund positions");
@@ -202,7 +195,7 @@ export const useAssetMutations = () => {
 
 			const stockInput = {
 				name: input.name,
-				assetTypeID,
+				assetTypeID: assetTypeId,
 				ticker: input.symbol.toUpperCase(),
 				quantity: input.quantity,
 				purchasePrice: input.purchasePrice,
@@ -311,8 +304,7 @@ export const useAssetMutations = () => {
 				assetTypeID: input.assetTypeID,
 				quantity: input.quantity,
 				purchasePrice: input.purchasePrice,
-				currentValue:
-					input.currentValue ?? input.purchasePrice * input.quantity,
+				currentValue: input.currentValue ?? input.purchasePrice * input.quantity,
 				purchaseDate: input.purchaseDate || new Date().toISOString(),
 				walletAddress: input.walletAddress,
 				blockchainNetwork: input.blockchainNetwork,

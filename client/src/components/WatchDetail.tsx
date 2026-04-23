@@ -1,14 +1,5 @@
 import ReactECharts from "echarts-for-react";
-import {
-	ArrowLeft,
-	Calendar,
-	Clock,
-	Edit,
-	Package,
-	Shield,
-	Trash2,
-	Watch,
-} from "lucide-react";
+import { ArrowLeft, Calendar, Clock, Edit, Package, Shield, Trash2, Watch } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -26,13 +17,7 @@ import {
 } from "./ui/alert-dialog";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 interface WatchDetailProps {
@@ -77,8 +62,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 	};
 
 	const gain = (watch.currentValue || 0) - (watch.purchasePrice || 0);
-	const gainPercent =
-		watch.purchasePrice > 0 ? (gain / watch.purchasePrice) * 100 : 0;
+	const gainPercent = watch.purchasePrice > 0 ? (gain / watch.purchasePrice) * 100 : 0;
 
 	const getConditionBadge = (condition: string) => {
 		const badges: Record<
@@ -119,14 +103,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 		xAxis: {
 			type: "category",
 			boundaryGap: false,
-			data: [
-				"Purchase",
-				"6 Months",
-				"1 Year",
-				"18 Months",
-				"2 Years",
-				"Current",
-			],
+			data: ["Purchase", "6 Months", "1 Year", "18 Months", "2 Years", "Current"],
 			axisLine: { lineStyle: { color: "#666" } },
 		},
 		yAxis: {
@@ -206,10 +183,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 						<Edit className="h-4 w-4 mr-2" />
 						Edit
 					</Button>
-					<Button
-						variant="destructive"
-						onClick={() => setIsDeleteDialogOpen(true)}
-					>
+					<Button variant="destructive" onClick={() => setIsDeleteDialogOpen(true)}>
 						<Trash2 className="h-4 w-4 mr-2" />
 						Delete
 					</Button>
@@ -227,9 +201,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 							<div>
 								<div className="flex items-center gap-2 mb-2">
 									<CardTitle>{watch.name}</CardTitle>
-									<Badge variant={conditionBadge.variant}>
-										{conditionBadge.label}
-									</Badge>
+									<Badge variant={conditionBadge.variant}>{conditionBadge.label}</Badge>
 								</div>
 								<CardDescription>
 									{watch.brand} {watch.model}
@@ -242,17 +214,13 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 				<CardContent>
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Current Value
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
 							<p className="text-2xl font-mono font-semibold">
 								{formatCurrency(watch.currentValue || 0)}
 							</p>
 						</div>
 						<div>
-							<p className="text-sm text-muted-foreground mb-1">
-								Purchase Price
-							</p>
+							<p className="text-sm text-muted-foreground mb-1">Purchase Price</p>
 							<p className="text-2xl font-mono font-semibold">
 								{formatCurrency(watch.purchasePrice || 0)}
 							</p>
@@ -284,10 +252,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 						<CardDescription>Historical value over time</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
-							option={valueChartOption}
-							style={{ height: "250px" }}
-						/>
+						<ReactECharts option={valueChartOption} style={{ height: "250px" }} />
 					</CardContent>
 				</Card>
 
@@ -367,24 +332,18 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 						<CardTitle>Description</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<p className="text-sm text-muted-foreground whitespace-pre-wrap">
-							{watch.description}
-						</p>
+						<p className="text-sm text-muted-foreground whitespace-pre-wrap">{watch.description}</p>
 					</CardContent>
 				</Card>
 			)}
 
 			{/* Delete Confirmation Dialog */}
-			<AlertDialog
-				open={isDeleteDialogOpen}
-				onOpenChange={setIsDeleteDialogOpen}
-			>
+			<AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will permanently delete "{watch.name}". This action cannot be
-							undone.
+							This will permanently delete "{watch.name}". This action cannot be undone.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>

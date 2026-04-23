@@ -1,30 +1,10 @@
 import ReactECharts from "echarts-for-react";
-import {
-	Activity,
-	BarChart3,
-	Bitcoin,
-	DollarSign,
-	Filter,
-	TrendingUp,
-	Zap,
-} from "lucide-react";
+import { Activity, BarChart3, Bitcoin, DollarSign, Filter, TrendingUp, Zap } from "lucide-react";
 import { useState } from "react";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "./ui/card";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./ui/select";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface MarketHeatmapsProps {
@@ -32,10 +12,7 @@ interface MarketHeatmapsProps {
 	onFilterCrypto?: (filters: any) => void;
 }
 
-export function MarketHeatmaps({
-	onFilterStock,
-	onFilterCrypto,
-}: MarketHeatmapsProps) {
+export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmapsProps) {
 	const [timeframe, setTimeframe] = useState("1D");
 	const [groupBy, setGroupBy] = useState("sector");
 	const [cryptoGroupBy, setCryptoGroupBy] = useState("category");
@@ -522,9 +499,7 @@ export function MarketHeatmaps({
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="text-3xl">Market Heatmaps</h1>
-					<p className="text-muted-foreground mt-1">
-						Visual market performance analysis
-					</p>
+					<p className="text-muted-foreground mt-1">Visual market performance analysis</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Badge variant="outline" className="gap-1">
@@ -598,9 +573,7 @@ export function MarketHeatmaps({
 										<div className="h-4 w-4 rounded bg-red-500" />
 										<span>Negative Change</span>
 									</div>
-									<div className="text-muted-foreground">
-										Size = Market Capitalization
-									</div>
+									<div className="text-muted-foreground">Size = Market Capitalization</div>
 								</div>
 
 								{/* Treemap */}
@@ -663,9 +636,7 @@ export function MarketHeatmaps({
 							<CardContent className="pt-6">
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Worst Sector
-										</p>
+										<p className="text-sm text-muted-foreground">Worst Sector</p>
 										<p className="text-xl mt-1">Energy</p>
 										<p className="text-sm text-red-600 font-mono">-0.56%</p>
 									</div>
@@ -712,10 +683,7 @@ export function MarketHeatmaps({
 											<SelectItem value="volume">Volume</SelectItem>
 										</SelectContent>
 									</Select>
-									<Select
-										value={cryptoGroupBy}
-										onValueChange={setCryptoGroupBy}
-									>
+									<Select value={cryptoGroupBy} onValueChange={setCryptoGroupBy}>
 										<SelectTrigger className="w-40">
 											<SelectValue />
 										</SelectTrigger>
@@ -810,9 +778,7 @@ export function MarketHeatmaps({
 							<CardContent className="pt-6">
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Highest Funding
-										</p>
+										<p className="text-sm text-muted-foreground">Highest Funding</p>
 										<p className="text-xl font-mono mt-1">AVAX</p>
 										<p className="text-sm text-green-600 font-mono">+0.0095%</p>
 									</div>
@@ -824,9 +790,7 @@ export function MarketHeatmaps({
 							<CardContent className="pt-6">
 								<div className="flex items-center justify-between">
 									<div>
-										<p className="text-sm text-muted-foreground">
-											Negative Funding
-										</p>
+										<p className="text-sm text-muted-foreground">Negative Funding</p>
 										<p className="text-xl font-mono mt-1">SOL</p>
 										<p className="text-sm text-red-600 font-mono">-0.0125%</p>
 									</div>

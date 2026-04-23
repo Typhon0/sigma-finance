@@ -14,11 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-import {
-	formatCurrency,
-	formatPercentage,
-	getPerformanceColorClass,
-} from "@/lib/utils/formatters";
+import { formatCurrency, formatPercentage, getPerformanceColorClass } from "@/lib/utils/formatters";
 
 export interface BenchmarkData {
 	id: string;
@@ -105,13 +101,7 @@ const PerformanceTable: React.FC<{
 	compact?: boolean;
 	onPortfolioToggle?: (portfolioId: string) => void;
 	onBenchmarkRemove?: (benchmarkId: string) => void;
-}> = ({
-	portfolios,
-	benchmarks,
-	compact = false,
-	onPortfolioToggle,
-	onBenchmarkRemove,
-}) => {
+}> = ({ portfolios, benchmarks, compact = false, onPortfolioToggle, onBenchmarkRemove }) => {
 	const allItems = [
 		...portfolios.map((p) => ({ ...p, type: "portfolio" as const })),
 		...benchmarks.map((b) => ({ ...b, type: "benchmark" as const })),
@@ -146,9 +136,7 @@ const PerformanceTable: React.FC<{
 							style={{ backgroundColor: item.color }}
 						/>
 						<div>
-							<p className={cn("font-medium", compact && "text-sm")}>
-								{item.name}
-							</p>
+							<p className={cn("font-medium", compact && "text-sm")}>{item.name}</p>
 							{item.type === "benchmark" && "symbol" in item && (
 								<p className="text-xs text-muted-foreground">{item.symbol}</p>
 							)}
@@ -256,9 +244,7 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 			});
 		});
 
-		return allData.sort(
-			(a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
-		);
+		return allData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 	}, [portfolioData, benchmarks]);
 
 	const handleAddBenchmark = () => {
@@ -320,10 +306,7 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 				{/* Add Benchmark Controls */}
 				{onBenchmarkAdd && availableToAdd.length > 0 && (
 					<div className="flex items-center gap-2">
-						<Select
-							value={selectedBenchmark}
-							onValueChange={setSelectedBenchmark}
-						>
+						<Select value={selectedBenchmark} onValueChange={setSelectedBenchmark}>
 							<SelectTrigger className="flex-1">
 								<SelectValue placeholder="Add benchmark..." />
 							</SelectTrigger>
@@ -376,11 +359,8 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 							<p className="text-sm text-muted-foreground">Best Performer</p>
 							<p className="font-semibold text-green-600">
 								{(() => {
-									const best = [...portfolioData, ...benchmarks].reduce(
-										(prev, current) =>
-											current.changePercent > prev.changePercent
-												? current
-												: prev,
+									const best = [...portfolioData, ...benchmarks].reduce((prev, current) =>
+										current.changePercent > prev.changePercent ? current : prev,
 									);
 									return `${best.name} (+${best.changePercent.toFixed(2)}%)`;
 								})()}
@@ -390,11 +370,8 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 							<p className="text-sm text-muted-foreground">Worst Performer</p>
 							<p className="font-semibold text-red-600">
 								{(() => {
-									const worst = [...portfolioData, ...benchmarks].reduce(
-										(prev, current) =>
-											current.changePercent < prev.changePercent
-												? current
-												: prev,
+									const worst = [...portfolioData, ...benchmarks].reduce((prev, current) =>
+										current.changePercent < prev.changePercent ? current : prev,
 									);
 									return `${worst.name} (${worst.changePercent.toFixed(2)}%)`;
 								})()}
@@ -419,8 +396,7 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 							<p className="font-semibold text-green-600">
 								{(() => {
 									const benchmarkAvg =
-										benchmarks.reduce((sum, b) => sum + b.changePercent, 0) /
-										benchmarks.length;
+										benchmarks.reduce((sum, b) => sum + b.changePercent, 0) / benchmarks.length;
 									const outperforming = portfolioData.filter(
 										(p) => p.changePercent > benchmarkAvg,
 									).length;

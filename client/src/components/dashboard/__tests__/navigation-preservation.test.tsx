@@ -1,18 +1,8 @@
-import {
-	fireEvent,
-	render,
-	screen,
-	waitFor,
-	within,
-} from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { BrowserRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppSidebar } from "@/components/app-sidebar";
-import {
-	SidebarInset,
-	SidebarProvider,
-	SidebarTrigger,
-} from "@/components/ui/sidebar";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import type { Portfolio } from "@/gql/graphql";
 import type { Asset } from "@/hooks/use-dashboard-state";
 import { useDashboardState } from "@/hooks/use-dashboard-state";
@@ -120,9 +110,7 @@ function TestDashboardLayout() {
 									</button>
 									<button
 										type="button"
-										onClick={() =>
-											actions.viewAsset(mockAsset, viewState.selectedPortfolio!)
-										}
+										onClick={() => actions.viewAsset(mockAsset, viewState.selectedPortfolio!)}
 										data-testid="view-asset-from-portfolio-btn"
 									>
 										View Asset
@@ -195,9 +183,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 			expect(screen.getByTestId("sidebar-trigger")).toBeInTheDocument();
 
 			// Verify portfolio content is displayed
-			expect(
-				screen.getByText("Portfolio Detail: Test Portfolio"),
-			).toBeInTheDocument();
+			expect(screen.getByText("Portfolio Detail: Test Portfolio")).toBeInTheDocument();
 		});
 
 		it("should maintain sidebar visibility in asset detail mode", async () => {
@@ -284,9 +270,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 
 			const breadcrumb = screen.getByRole("navigation");
 			expect(within(breadcrumb).getByText("Dashboard")).toBeInTheDocument();
-			expect(
-				within(breadcrumb).getByText("Test Portfolio"),
-			).toBeInTheDocument();
+			expect(within(breadcrumb).getByText("Test Portfolio")).toBeInTheDocument();
 		});
 
 		it("should show correct breadcrumb in asset detail mode", async () => {
@@ -301,9 +285,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 
 			const breadcrumb = screen.getByRole("navigation");
 			expect(within(breadcrumb).getByText("Dashboard")).toBeInTheDocument();
-			expect(
-				within(breadcrumb).getByText("Test Portfolio"),
-			).toBeInTheDocument();
+			expect(within(breadcrumb).getByText("Test Portfolio")).toBeInTheDocument();
 			expect(within(breadcrumb).getByText("Apple Inc.")).toBeInTheDocument();
 		});
 
@@ -570,9 +552,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 		it("should not cause layout shifts during navigation", async () => {
 			render(<TestDashboardLayout />);
 
-			const initialLayout = screen
-				.getByRole("complementary")
-				.getBoundingClientRect();
+			const initialLayout = screen.getByRole("complementary").getBoundingClientRect();
 
 			// Navigate through all view modes
 			fireEvent.click(screen.getByTestId("view-portfolio-btn"));
@@ -581,9 +561,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 				expect(screen.getByTestId("portfolio-content")).toBeInTheDocument();
 			});
 
-			const portfolioLayout = screen
-				.getByRole("complementary")
-				.getBoundingClientRect();
+			const portfolioLayout = screen.getByRole("complementary").getBoundingClientRect();
 			expect(portfolioLayout).toEqual(initialLayout);
 
 			fireEvent.click(screen.getByTestId("view-asset-from-portfolio-btn"));
@@ -592,9 +570,7 @@ describe("Dashboard Navigation Preservation Tests", () => {
 				expect(screen.getByTestId("asset-content")).toBeInTheDocument();
 			});
 
-			const assetLayout = screen
-				.getByRole("complementary")
-				.getBoundingClientRect();
+			const assetLayout = screen.getByRole("complementary").getBoundingClientRect();
 			expect(assetLayout).toEqual(initialLayout);
 		});
 

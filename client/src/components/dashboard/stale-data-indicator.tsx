@@ -2,10 +2,7 @@ import { Clock, RefreshCw, WifiOff } from "lucide-react";
 import React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	useOfflineStatus,
-	useStaleDataDetection,
-} from "@/hooks/use-offline-status";
+import { useOfflineStatus, useStaleDataDetection } from "@/hooks/use-offline-status";
 
 interface StaleDataIndicatorProps {
 	lastUpdated?: Date | string | null;
@@ -79,9 +76,7 @@ export function StaleDataIndicator({
 					disabled={isRefreshing}
 					className="h-6 px-2 text-xs"
 				>
-					<RefreshCw
-						className={`h-3 w-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`}
-					/>
+					<RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`} />
 					{isRefreshing ? "Refreshing..." : "Refresh"}
 				</Button>
 			)}
@@ -96,10 +91,7 @@ export function CompactStaleIndicator({
 	lastUpdated,
 	onRefresh,
 	isRefreshing = false,
-}: Pick<
-	StaleDataIndicatorProps,
-	"lastUpdated" | "onRefresh" | "isRefreshing"
->) {
+}: Pick<StaleDataIndicatorProps, "lastUpdated" | "onRefresh" | "isRefreshing">) {
 	const { isOffline } = useOfflineStatus();
 	const { isStale } = useStaleDataDetection(lastUpdated);
 
@@ -122,9 +114,7 @@ export function CompactStaleIndicator({
 					disabled={isRefreshing}
 					className="h-5 w-5 p-0"
 				>
-					<RefreshCw
-						className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`}
-					/>
+					<RefreshCw className={`h-3 w-3 ${isRefreshing ? "animate-spin" : ""}`} />
 				</Button>
 			)}
 		</div>
@@ -143,8 +133,7 @@ export function useLastUpdatedText(lastUpdated?: Date | string | null): string {
 			return;
 		}
 
-		const updateTime =
-			typeof lastUpdated === "string" ? new Date(lastUpdated) : lastUpdated;
+		const updateTime = typeof lastUpdated === "string" ? new Date(lastUpdated) : lastUpdated;
 
 		const updateText = () => {
 			const now = new Date();

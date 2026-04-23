@@ -106,13 +106,7 @@ export function useRetryMechanism(options: RetryOptions = {}) {
 
 			throw lastError!;
 		},
-		[
-			maxRetries,
-			retryCondition,
-			onRetryAttempt,
-			onMaxRetriesReached,
-			calculateDelay,
-		],
+		[maxRetries, retryCondition, onRetryAttempt, onMaxRetriesReached, calculateDelay],
 	);
 
 	const manualRetry = useCallback(
@@ -168,16 +162,12 @@ export function useApolloRetry(options: RetryOptions = {}) {
 	const defaultRetryCondition = (error: Error | ApolloError) => {
 		if (error instanceof ApolloError) {
 			// Don't retry on authentication errors
-			if (
-				error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")) {
 				return false;
 			}
 
 			// Don't retry on validation errors
-			if (
-				error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")) {
 				return false;
 			}
 
@@ -187,11 +177,7 @@ export function useApolloRetry(options: RetryOptions = {}) {
 			}
 
 			// Retry on server errors
-			if (
-				error.graphQLErrors.some(
-					(e) => e.extensions?.code === "INTERNAL_SERVER_ERROR",
-				)
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "INTERNAL_SERVER_ERROR")) {
 				return true;
 			}
 		}
@@ -224,16 +210,12 @@ export function usePortfolioRetry(options: RetryOptions = {}) {
 			}
 
 			// Don't retry on permission errors
-			if (
-				error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "UNAUTHORIZED")) {
 				return false;
 			}
 
 			// Don't retry on validation errors (duplicate name, etc.)
-			if (
-				error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")
-			) {
+			if (error.graphQLErrors.some((e) => e.extensions?.code === "BAD_USER_INPUT")) {
 				return false;
 			}
 		}

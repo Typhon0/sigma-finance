@@ -38,13 +38,8 @@ export type CalculatedDashboardData = {
  * @param userID - The ID of the user.
  * @param portfolioId - (Optional) The ID of a specific portfolio to analyze.
  */
-export const usePortfolioAnalytics = (userID: string, portfolioId?: string) => {
-	const {
-		data: dashboardData,
-		loading,
-		error,
-		refetch,
-	} = useOptimizedDashboardData(userID);
+export const usePortfolioAnalytics = (userId: string, portfolioId?: string) => {
+	const { data: dashboardData, loading, error, refetch } = useOptimizedDashboardData(userId);
 
 	const calculatedData = useMemo(() => {
 		if (!dashboardData) {
@@ -62,9 +57,7 @@ export const usePortfolioAnalytics = (userID: string, portfolioId?: string) => {
 		}
 
 		const metrics = calculatePortfolioMetrics(portfolioToAnalyze as any);
-		const assetPerformances = calculateAssetPerformance(
-			portfolioToAnalyze as any,
-		);
+		const assetPerformances = calculateAssetPerformance(portfolioToAnalyze as any);
 		const assetAllocation = calculateAssetAllocation(portfolioToAnalyze as any);
 		const portfolioAllocation = calculatePortfolioAllocation(portfolios as any);
 
