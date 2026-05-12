@@ -1,6 +1,10 @@
 name: Build Market Data Packs
 
 on:
+  push:
+    branches:
+      - pilot
+      - main
   workflow_dispatch:
     inputs:
       mode:
