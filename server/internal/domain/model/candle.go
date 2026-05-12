@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
@@ -40,18 +41,22 @@ func NormalizeInterval(s string) string {
 	}
 }
 
-// Candle represents an OHLCV bar for a symbol at a specific interval.
-// Prices are stored as Money (cents). Volume kept as float64 for now (can change to integer lots later).
+// Candle represents an OHLCV bar for an instrument at a specific interval.
+// Prices and volume use decimals because small crypto prices cannot be represented
+// safely as cents.
 type Candle struct {
 	bun.BaseModel `bun:"table:sigma_finance.candle"`
-	Symbol        string         `bun:"symbol,notnull"`
-	AssetType     string         `bun:"asset_type,notnull"` // STOCK | CRYPTO etc.
-	Interval      CandleInterval `bun:"interval,notnull"`
-	Open          Money          `bun:"open,notnull"`
-	High          Money          `bun:"high,notnull"`
-	Low           Money          `bun:"low,notnull"`
-	Close         Money          `bun:"close,notnull"`
-	Volume        float64        `bun:"volume"`
-	Timestamp     time.Time      `bun:"timestamp,notnull"`
-	Source        string         `bun:"source,notnull"`
+	InstrumentID  *string          `bun:"instrument_id,type:uuid"`
+	Symbol        string           `bun:"symbol,notnull"`
+	AssetType     string           `bun:"asset_type,notnull"` // STOCK | CRYPTO etc.
+	Interval      CandleInterval   `bun:"interval,notnull"`
+	Open          decimal.Decimal  `bun:"open,type:numeric(38,18),notnull"`
+	High          decimal.Decimal  `bun:"high,type:numeric(38,18),notnull"`
+	Low           decimal.Decimal  `bun:"low,type:numeric(38,18),notnull"`
+	Close         decimal.Decimal  `bun:"close,type:numeric(38,18),notnull"`
+	AdjustedClose *decimal.Decimal `bun:"adjusted_close,type:numeric(38,18)"`
+	Volume        decimal.Decimal  `bun:"volume,type:numeric(38,8),notnull,default:0"`
+	QuoteCurrency string           `bun:"quote_currency,notnull,default:'USD'"`
+	Timestamp     time.Time        `bun:"timestamp,notnull"`
+	Source        string           `bun:"source,notnull"`
 }

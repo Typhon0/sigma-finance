@@ -2,16 +2,22 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"sigma_finance/cmd/bun/migrations"
 	"sigma_finance/internal/config"
+	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/handler/graphql"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/infrastructure"
+	"sigma_finance/internal/infrastructure/trustwallet"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
+	catalogservice "sigma_finance/internal/service/catalog"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -75,8 +81,37 @@ func NewApp() (*AppContainer, error) {
 	// Initialize Unit of Work
 	uow := repository.NewUnitOfWork(db)
 
+	catalogSyncService := catalogservice.NewSyncService(
+		trustwallet.NewClient(),
+		uow.Instrument(),
+		uow.InstrumentProviderMapping(),
+		uow.CatalogSyncRun(),
+	)
+
+	if strings.TrimSpace(cfg.Catalog.SnapshotPath) != "" {
+		imported, result, importErr := catalogSyncService.ImportSnapshotIfCatalogEmpty(ctx, cfg.Catalog.SnapshotPath, cfg.Catalog.CatalogVersion)
+		if importErr != nil {
+			return nil, fmt.Errorf("startup catalog snapshot import failed: %w", importErr)
+		}
+		if imported {
+			stats := result.Stats
+			log.Printf("[startup-catalog] snapshot imported from %s (scanned=%d upserted=%d failed=%d)", cfg.Catalog.SnapshotPath, stats.Scanned, stats.Upserted, stats.Failed)
+		}
+	} else {
+		empty, emptyErr := catalogSyncService.IsCryptoCatalogEmpty(ctx)
+		if emptyErr != nil {
+			return nil, fmt.Errorf("startup catalog emptiness check failed: %w", emptyErr)
+		}
+		if empty {
+			return nil, fmt.Errorf("crypto catalog is empty and CATALOG_SNAPSHOT_PATH is not configured")
+		}
+	}
+
 	// Initialize services
 	serviceContainer := service.NewServiceContainer(uow, cfg)
+	if err := bootstrapAdminRoles(ctx, uow.User()); err != nil {
+		return nil, fmt.Errorf("failed to bootstrap admin roles: %w", err)
+	}
 
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{
@@ -89,6 +124,7 @@ func NewApp() (*AppContainer, error) {
 		AuthenticationService: serviceContainer.Authentication,
 		SecurityService:       serviceContainer.Security,
 		MarketDataService:     serviceContainer.MarketData,
+		MarketDataPackService: serviceContainer.MarketDataPacks,
 		InstrumentService:     serviceContainer.Instrument,
 		UOW:                   uow,
 	}
@@ -155,6 +191,7 @@ func NewApp() (*AppContainer, error) {
 							authenticatedUser := &middleware.AuthenticatedUser{
 								ID:            session.UserID,
 								Email:         user.Email,
+								Role:          string(user.Role),
 								Name:          user.Name,
 								EmailVerified: user.EmailVerified,
 							}
@@ -198,4 +235,59 @@ func NewApp() (*AppContainer, error) {
 	return &AppContainer{
 		FiberApp: app,
 	}, nil
+}
+
+func bootstrapAdminRoles(ctx context.Context, userRepo repository.IUserRepository) error {
+	adminEmails := parseAdminEmails(
+		os.Getenv("CATALOG_ADMIN_EMAILS"),
+		os.Getenv("ADMIN_EMAILS"),
+	)
+	if len(adminEmails) == 0 {
+		return nil
+	}
+
+	for _, email := range adminEmails {
+		user, err := userRepo.GetByEmail(ctx, email)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				log.Printf("[auth] skipped admin bootstrap for %s (user not found)", email)
+				continue
+			}
+			return fmt.Errorf("lookup user %s: %w", email, err)
+		}
+
+		if user.IsAdmin() {
+			continue
+		}
+
+		user.Role = model.UserRoleAdmin
+		if err := userRepo.Update(ctx, user); err != nil {
+			return fmt.Errorf("set admin role for %s: %w", email, err)
+		}
+
+		log.Printf("[auth] granted ADMIN role to %s", email)
+	}
+
+	return nil
+}
+
+func parseAdminEmails(rawValues ...string) []string {
+	emails := make(map[string]struct{})
+	for _, rawValue := range rawValues {
+		normalized := strings.NewReplacer(";", ",", "\n", ",", "\t", ",").Replace(rawValue)
+		for _, token := range strings.Split(normalized, ",") {
+			email := strings.ToLower(strings.TrimSpace(token))
+			if email == "" {
+				continue
+			}
+			emails[email] = struct{}{}
+		}
+	}
+
+	result := make([]string, 0, len(emails))
+	for email := range emails {
+		result = append(result, email)
+	}
+	slices.Sort(result)
+	return result
 }

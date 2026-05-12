@@ -23,14 +23,17 @@ func getEncryptionKey() string {
 
 // MarketDataCredential stores a user-provided API key for a market data provider.
 type MarketDataCredential struct {
-	bun.BaseModel `bun:"market_data_credential"`
-	ID            string    `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID        string    `bun:"user_id"`                 // NULL for system-wide credentials
-	IsSystem      bool      `bun:"is_system,default:false"` // True for admin-set system-wide keys
-	Provider      string    `bun:"provider,notnull"`
-	APIKey        string    `bun:"api_key,notnull"` // Encrypted at rest
-	CreatedAt     time.Time `bun:"created_at,default:current_timestamp"`
-	UpdatedAt     time.Time `bun:"updated_at,default:current_timestamp"`
+	bun.BaseModel   `bun:"market_data_credential"`
+	ID              string     `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID          string     `bun:"user_id"`                 // NULL for system-wide credentials
+	IsSystem        bool       `bun:"is_system,default:false"` // True for admin-set system-wide keys
+	Provider        string     `bun:"provider,notnull"`
+	APIKey          string     `bun:"api_key,notnull"` // Encrypted at rest
+	IsEnabled       bool       `bun:"is_enabled,notnull,default:true"`
+	Priority        int        `bun:"priority,notnull,default:100"`
+	LastValidatedAt *time.Time `bun:"last_validated_at"`
+	CreatedAt       time.Time  `bun:"created_at,default:current_timestamp"`
+	UpdatedAt       time.Time  `bun:"updated_at,default:current_timestamp"`
 }
 
 // Implement Entity interface

@@ -32,6 +32,7 @@ function Slider({
 				<SliderPrimitive.Range data-slot="slider-range" className={cn("ui-slider-range")} />
 			</SliderPrimitive.Track>
 			{Array.from({ length: _values.length }, (_, index) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<SliderPrimitive.Thumb data-slot="slider-thumb" key={index} className="ui-slider-thumb" />
 			))}
 		</SliderPrimitive.Root>

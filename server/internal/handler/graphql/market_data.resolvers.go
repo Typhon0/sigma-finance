@@ -12,41 +12,75 @@ import (
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
+	"sigma_finance/internal/service"
 	"time"
 
 	"github.com/google/uuid"
 )
 
 // UpsertMarketDataCredential is the resolver for the upsertMarketDataCredential field.
-func (r *mutationResolver) UpsertMarketDataCredential(ctx context.Context, provider string, apiKey string) (*gqlModel.MarketDataCredential, error) {
+func (r *mutationResolver) UpsertMarketDataCredential(ctx context.Context, provider string, apiKey string, isEnabled *bool, priority *int32) (*gqlModel.MarketDataCredential, error) {
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
 	}
 	uid := user.ID
 	repo := r.Resolver.UOW.MarketDataCredential()
+
 	existing, _ := repo.GetByUserAndProvider(ctx, uid, provider)
 	now := time.Now()
 	storedKey := apiKey
 	if r.Resolver.SecurityService != nil {
-		if enc, e := r.Resolver.SecurityService.EncryptString(apiKey); e == nil {
+		if enc, encErr := r.Resolver.SecurityService.EncryptString(apiKey); encErr == nil {
 			storedKey = enc
 		}
 	}
+
+	enabled := true
+	if isEnabled != nil {
+		enabled = *isEnabled
+	}
+
+	prio := 100
+	if priority != nil {
+		prio = int(*priority)
+	}
+
 	if existing != nil {
-		existing.APIKey = storedKey
+		if apiKey != "" {
+			existing.APIKey = storedKey
+		}
 		existing.UpdatedAt = now
+		existing.IsEnabled = enabled
+		existing.Priority = prio
 		if err := repo.Update(ctx, existing); err != nil {
 			return nil, err
 		}
-		return &gqlModel.MarketDataCredential{ID: existing.ID, Provider: existing.Provider, CreatedAt: existing.CreatedAt, UpdatedAt: existing.UpdatedAt}, nil
+		invalidateRuntimeMarketDataCacheForUser(r.Resolver.MarketDataService, uid, service.RuntimeCacheInvalidationReasonCredential)
+		return mapMarketDataCredentialToGraphQL(existing), nil
 	}
-	cred := &model.MarketDataCredential{UserID: uid, Provider: provider, APIKey: storedKey, CreatedAt: now, UpdatedAt: now}
+
+	if apiKey == "" {
+		return nil, fmt.Errorf("apiKey is required when creating a new credential")
+	}
+
+	cred := &model.MarketDataCredential{
+		UserID:          uid,
+		Provider:        provider,
+		APIKey:          storedKey,
+		IsEnabled:       enabled,
+		Priority:        prio,
+		CreatedAt:       now,
+		UpdatedAt:       now,
+		IsSystem:        false,
+		LastValidatedAt: nil,
+	}
 	created, err := repo.Create(ctx, cred)
 	if err != nil {
 		return nil, err
 	}
-	return &gqlModel.MarketDataCredential{ID: created.ID, Provider: created.Provider, CreatedAt: created.CreatedAt, UpdatedAt: created.UpdatedAt}, nil
+	invalidateRuntimeMarketDataCacheForUser(r.Resolver.MarketDataService, uid, service.RuntimeCacheInvalidationReasonCredential)
+	return mapMarketDataCredentialToGraphQL(created), nil
 }
 
 // DeleteMarketDataCredential is the resolver for the deleteMarketDataCredential field.
@@ -64,6 +98,7 @@ func (r *mutationResolver) DeleteMarketDataCredential(ctx context.Context, provi
 	if err := repo.Delete(ctx, existing.ID); err != nil {
 		return "", err
 	}
+	invalidateRuntimeMarketDataCacheForUser(r.Resolver.MarketDataService, uid, service.RuntimeCacheInvalidationReasonCredential)
 	return provider, nil
 }
 
@@ -73,10 +108,24 @@ func (r *mutationResolver) ValidateProviderCredentials(ctx context.Context, prov
 		return &gqlModel.ValidationResult{Valid: false, Message: stringPtr("API key is required")}, nil
 	}
 
-	err := r.Resolver.MarketDataService.ValidateProviderCredentials(ctx, "", provider, apiKey)
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	err = r.Resolver.MarketDataService.ValidateProviderCredentials(ctx, user.ID, provider, apiKey)
 	if err != nil {
 		return &gqlModel.ValidationResult{Valid: false, Message: stringPtr(err.Error())}, nil
 	}
+
+	if cred, credErr := r.Resolver.UOW.MarketDataCredential().GetByUserAndProvider(ctx, user.ID, provider); credErr == nil && cred != nil {
+		now := time.Now()
+		cred.LastValidatedAt = &now
+		if updateErr := r.Resolver.UOW.MarketDataCredential().Update(ctx, cred); updateErr != nil {
+			// Keep validation success response even if metadata update fails.
+		}
+	}
+	invalidateRuntimeMarketDataCacheForUser(r.Resolver.MarketDataService, user.ID, service.RuntimeCacheInvalidationReasonCredential)
 
 	return &gqlModel.ValidationResult{Valid: true, Message: stringPtr("API key is valid")}, nil
 }
@@ -89,8 +138,8 @@ func (r *mutationResolver) RefreshAssetPrices(ctx context.Context, assetID *stri
 	}
 
 	if assetID != nil && *assetID != "" {
-		uid, err := uuid.Parse(*assetID)
-		if err != nil {
+		uid, parseErr := uuid.Parse(*assetID)
+		if parseErr != nil {
 			return &gqlModel.RefreshAssetPricesResult{Success: false, Message: stringPtr("invalid asset ID format")}, nil
 		}
 		_, err = r.Resolver.MarketDataService.UpdateAssetPrice(ctx, uid)
@@ -197,7 +246,7 @@ func (r *mutationResolver) UpdateProviderRoutingPreferences(ctx context.Context,
 	}, nil
 }
 
-// Candles resolver
+// Candles is the resolver for the candles field.
 func (r *queryResolver) Candles(ctx context.Context, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) ([]*gqlModel.Candle, error) {
 	lim := 500
 	if limit != nil {
@@ -210,16 +259,46 @@ func (r *queryResolver) Candles(ctx context.Context, symbol string, assetType st
 	}
 	candles, err := r.Resolver.MarketDataService.GetCandles(ctx, uid, symbol, assetType, model.CandleInterval(interval), from, to, lim)
 	if err != nil {
-		return nil, err
+		return nil, mapMarketDataCompatibilityError(ctx, err, "candlesByInstrument")
 	}
 	out := make([]*gqlModel.Candle, 0, len(candles))
-	for _, c := range candles {
-		out = append(out, &gqlModel.Candle{Symbol: c.Symbol, AssetType: c.AssetType, Interval: string(c.Interval), Open: c.Open.ToFloat(), High: c.High.ToFloat(), Low: c.Low.ToFloat(), Close: c.Close.ToFloat(), Volume: &c.Volume, Timestamp: c.Timestamp, Source: c.Source})
+	for _, candle := range candles {
+		out = append(out, mapDomainCandleToGraphQL(candle))
 	}
 	return out, nil
 }
 
-// MarketDataCredentials resolver
+// CandlesByInstrument is the resolver for the candlesByInstrument field.
+func (r *queryResolver) CandlesByInstrument(ctx context.Context, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) (*gqlModel.MarketDataCandlesPayload, error) {
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	lim := 500
+	if limit != nil {
+		lim = int(*limit)
+	}
+
+	result, err := r.Resolver.MarketDataService.GetCandlesByInstrument(ctx, user.ID, instrumentID, model.CandleInterval(interval), from, to, lim, preferredProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	items := make([]*gqlModel.Candle, 0, len(result.Candles))
+	for _, candle := range result.Candles {
+		items = append(items, mapDomainCandleToGraphQL(candle))
+	}
+
+	return &gqlModel.MarketDataCandlesPayload{
+		Candles:        items,
+		SourceProvider: result.SourceProvider,
+		FallbackUsed:   result.FallbackUsed,
+		Failures:       mapProviderFailuresToGraphQL(result.Failures),
+	}, nil
+}
+
+// MarketDataCredentials is the resolver for the marketDataCredentials field.
 func (r *queryResolver) MarketDataCredentials(ctx context.Context) ([]*gqlModel.MarketDataCredential, error) {
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
@@ -231,13 +310,14 @@ func (r *queryResolver) MarketDataCredentials(ctx context.Context) ([]*gqlModel.
 		return nil, err
 	}
 	out := make([]*gqlModel.MarketDataCredential, 0, len(creds))
-	for _, c := range creds {
-		out = append(out, &gqlModel.MarketDataCredential{ID: c.ID, Provider: c.Provider, CreatedAt: c.CreatedAt, UpdatedAt: c.UpdatedAt})
+	for _, cred := range creds {
+		credCopy := cred
+		out = append(out, mapMarketDataCredentialToGraphQL(&credCopy))
 	}
 	return out, nil
 }
 
-// SupportedProviders resolver
+// SupportedProviders is the resolver for the supportedProviders field.
 func (r *queryResolver) SupportedProviders(ctx context.Context, assetType *string) ([]*gqlModel.ProviderInfo, error) {
 	_, err := middleware.RequireAuth(ctx)
 	if err != nil {
@@ -249,31 +329,61 @@ func (r *queryResolver) SupportedProviders(ctx context.Context, assetType *strin
 		at = *assetType
 	}
 
-	providers := r.Resolver.MarketDataService.GetSupportedProviders(at)
-	out := make([]*gqlModel.ProviderInfo, 0, len(providers))
+	providerRows := r.Resolver.MarketDataService.GetSupportedProviders(at)
+	out := make([]*gqlModel.ProviderInfo, 0, len(providerRows))
 
-	for _, p := range providers {
+	for _, row := range providerRows {
 		rateLimit := &gqlModel.RateLimit{
-			RequestsPerMinute: int32(p.RateLimit.RequestsPerMinute),
-			RequestsPerDay:    int32(p.RateLimit.RequestsPerDay),
-			BurstLimit:        int32(p.RateLimit.BurstLimit),
+			RequestsPerMinute: int32(row.RateLimit.RequestsPerMinute),
+			RequestsPerDay:    int32(row.RateLimit.RequestsPerDay),
+			BurstLimit:        int32(row.RateLimit.BurstLimit),
 		}
 
 		out = append(out, &gqlModel.ProviderInfo{
-			ID:               p.ID,
-			Name:             p.Name,
-			Type:             p.Type,
-			RequiresKey:      p.RequiresKey,
-			Intervals:        p.Intervals,
+			ID:               row.ID,
+			Name:             row.Name,
+			Type:             row.Type,
+			RequiresKey:      row.RequiresKey,
+			Intervals:        row.Intervals,
 			RateLimit:        rateLimit,
-			SupportsRealtime: p.SupportsRT,
+			SupportsRealtime: row.SupportsRT,
 		})
 	}
 
 	return out, nil
 }
 
-// ProviderHealth resolver
+// AvailableProviders is the resolver for the availableProviders field.
+func (r *queryResolver) AvailableProviders(ctx context.Context, instrumentID string, dataType string) ([]*gqlModel.AvailableProvider, error) {
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := r.Resolver.MarketDataService.GetAvailableProviders(ctx, user.ID, instrumentID, dataType)
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]*gqlModel.AvailableProvider, 0, len(rows))
+	for _, row := range rows {
+		result = append(result, &gqlModel.AvailableProvider{
+			Provider:          row.Provider,
+			Capability:        row.Capability,
+			RequiresAPIKey:    row.RequiresAPIKey,
+			HasCredential:     row.HasCredential,
+			CredentialValid:   row.CredentialValid,
+			CredentialEnabled: row.CredentialEnable,
+			Priority:          int32(row.Priority),
+			MappingStatus:     row.MappingStatus,
+			EffectiveEnabled:  row.EffectiveEnabled,
+		})
+	}
+
+	return result, nil
+}
+
+// ProviderHealth is the resolver for the providerHealth field.
 func (r *queryResolver) ProviderHealth(ctx context.Context) ([]*gqlModel.ProviderHealth, error) {
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
@@ -291,22 +401,18 @@ func (r *queryResolver) ProviderHealth(ctx context.Context) ([]*gqlModel.Provide
 	for _, cred := range creds {
 		apiKey := cred.APIKey
 		if r.Resolver.SecurityService != nil && apiKey != "" {
-			if decrypted, err := r.Resolver.SecurityService.DecryptString(apiKey); err == nil {
+			if decrypted, decryptErr := r.Resolver.SecurityService.DecryptString(apiKey); decryptErr == nil {
 				apiKey = decrypted
 			}
 		}
 		credMap[cred.Provider] = apiKey
 	}
 
-	// Build a map of which providers require API keys (using all providers,
-	// no need to iterate per asset type since RequiresKey is provider-level).
 	providerRequiresKey := make(map[string]bool)
 	for _, p := range r.Resolver.MarketDataService.GetSupportedProviders("") {
 		providerRequiresKey[p.ID] = p.RequiresKey
 	}
 
-	// Validate API keys once per provider (not per asset type) to avoid
-	// redundant validation calls when a provider supports multiple types.
 	apiKeyValidMap := make(map[string]bool)
 	for providerID, apiKey := range credMap {
 		if providerRequiresKey[providerID] && apiKey != "" {
@@ -334,7 +440,7 @@ func (r *queryResolver) ProviderHealth(ctx context.Context) ([]*gqlModel.Provide
 	return out, nil
 }
 
-// RealTimePrice resolver
+// RealTimePrice is the resolver for the realTimePrice field.
 func (r *queryResolver) RealTimePrice(ctx context.Context, symbol string, assetType string) (*gqlModel.Candle, error) {
 	user, _ := middleware.GetUserFromContext(ctx)
 	uid := ""
@@ -344,20 +450,35 @@ func (r *queryResolver) RealTimePrice(ctx context.Context, symbol string, assetT
 
 	candle, err := r.Resolver.MarketDataService.GetRealTimePrice(ctx, uid, symbol, assetType)
 	if err != nil {
+		return nil, mapMarketDataCompatibilityError(ctx, err, "realTimePriceByInstrument")
+	}
+
+	return mapDomainCandleToGraphQL(*candle), nil
+}
+
+// RealTimePriceByInstrument is the resolver for the realTimePriceByInstrument field.
+func (r *queryResolver) RealTimePriceByInstrument(ctx context.Context, instrumentID string, preferredProvider *string) (*gqlModel.MarketDataCandlePayload, error) {
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
 		return nil, err
 	}
 
-	return &gqlModel.Candle{
-		Symbol:    candle.Symbol,
-		AssetType: candle.AssetType,
-		Interval:  string(candle.Interval),
-		Open:      candle.Open.ToFloat(),
-		High:      candle.High.ToFloat(),
-		Low:       candle.Low.ToFloat(),
-		Close:     candle.Close.ToFloat(),
-		Volume:    &candle.Volume,
-		Timestamp: candle.Timestamp,
-		Source:    candle.Source,
+	result, err := r.Resolver.MarketDataService.GetRealTimePriceByInstrument(ctx, user.ID, instrumentID, preferredProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	var candle *gqlModel.Candle
+	if len(result.Candles) > 0 {
+		mapped := mapDomainCandleToGraphQL(result.Candles[0])
+		candle = mapped
+	}
+
+	return &gqlModel.MarketDataCandlePayload{
+		Candle:         candle,
+		SourceProvider: result.SourceProvider,
+		FallbackUsed:   result.FallbackUsed,
+		Failures:       mapProviderFailuresToGraphQL(result.Failures),
 	}, nil
 }
 
@@ -497,36 +618,24 @@ func (r *queryResolver) ProviderRoutingPreferences(ctx context.Context) (*gqlMod
 		return nil, err
 	}
 
-	// Get user's configured providers from stored credentials
 	creds, err := r.Resolver.UOW.MarketDataCredential().ListByUser(ctx, user.ID)
 	if err != nil {
-		// Return defaults if we can't fetch credentials
 		creds = nil
 	}
 
-	// Get supported providers to build default preferences
-	providers := r.Resolver.MarketDataService.GetSupportedProviders("STOCK")
-
-	// Build preferred providers list based on stored credentials and defaults
-	preferredProviders := make([]*gqlModel.ProviderPreference, 0)
-	enabledProviders := make(map[string]bool)
-	for _, cred := range creds {
-		enabledProviders[cred.Provider] = true
-	}
-
-	// Add all configured providers as enabled preferences
-	for _, provider := range providers {
-		if enabledProviders[provider.ID] {
+	preferredProviders := make([]*gqlModel.ProviderPreference, 0, len(creds))
+	if len(creds) > 0 {
+		for _, cred := range creds {
 			preferredProviders = append(preferredProviders, &gqlModel.ProviderPreference{
-				Provider: provider.ID,
-				Priority: int32(len(preferredProviders) + 1),
-				Enabled:  true,
+				Provider: cred.Provider,
+				Priority: int32(cred.Priority),
+				Enabled:  cred.IsEnabled,
 			})
 		}
 	}
 
-	// If no preferences stored, use default priority from provider manager
 	if len(preferredProviders) == 0 {
+		providers := r.Resolver.MarketDataService.GetSupportedProviders("STOCK")
 		for i, provider := range providers {
 			preferredProviders = append(preferredProviders, &gqlModel.ProviderPreference{
 				Provider: provider.ID,
@@ -547,4 +656,60 @@ func (r *queryResolver) ProviderRoutingPreferences(ctx context.Context) (*gqlMod
 		CreatedAt:                 now,
 		UpdatedAt:                 now,
 	}, nil
+}
+
+func mapDomainCandleToGraphQL(candle model.Candle) *gqlModel.Candle {
+	openValue, _ := candle.Open.Float64()
+	highValue, _ := candle.High.Float64()
+	lowValue, _ := candle.Low.Float64()
+	closeValue, _ := candle.Close.Float64()
+	volumeValue, _ := candle.Volume.Float64()
+	return &gqlModel.Candle{
+		Symbol:    candle.Symbol,
+		AssetType: candle.AssetType,
+		Interval:  string(candle.Interval),
+		Open:      openValue,
+		High:      highValue,
+		Low:       lowValue,
+		Close:     closeValue,
+		Volume:    &volumeValue,
+		Timestamp: candle.Timestamp,
+		Source:    candle.Source,
+	}
+}
+
+func mapProviderFailuresToGraphQL(failures []service.ProviderFailure) []*gqlModel.ProviderFailure {
+	result := make([]*gqlModel.ProviderFailure, 0, len(failures))
+	for _, failure := range failures {
+		result = append(result, &gqlModel.ProviderFailure{
+			Provider: failure.Provider,
+			Reason:   failure.Reason,
+		})
+	}
+	return result
+}
+
+func invalidateRuntimeMarketDataCacheForUser(marketDataService service.MarketDataService, userID string, reason string) {
+	invalidator, ok := marketDataService.(service.RuntimeMarketDataCacheInvalidator)
+	if !ok {
+		return
+	}
+
+	invalidator.InvalidateRuntimeMarketDataCacheForUser(userID, reason)
+}
+
+func mapMarketDataCredentialToGraphQL(cred *model.MarketDataCredential) *gqlModel.MarketDataCredential {
+	if cred == nil {
+		return nil
+	}
+
+	return &gqlModel.MarketDataCredential{
+		ID:              cred.ID,
+		Provider:        cred.Provider,
+		IsEnabled:       cred.IsEnabled,
+		Priority:        int32(cred.Priority),
+		LastValidatedAt: cred.LastValidatedAt,
+		CreatedAt:       cred.CreatedAt,
+		UpdatedAt:       cred.UpdatedAt,
+	}
 }

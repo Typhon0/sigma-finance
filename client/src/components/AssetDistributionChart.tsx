@@ -236,7 +236,7 @@ export function AssetDistributionWithLegend({
 
 						return (
 							<Button
-								key={index}
+								key={item.name}
 								variant="ghost"
 								onClick={() => onItemClick?.(item)}
 								disabled={!onItemClick}

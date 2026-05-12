@@ -1,0 +1,14 @@
+provider_id: binance-public-data
+name: Binance Public Data
+source_url: https://data.binance.vision/
+license_name: MIT
+redistribution_allowed: true
+commercial_use_allowed: true
+attribution_required: true
+terms_checked_at: "2026-05-11"
+allowed_distribution_modes:
+  - public
+  - private
+  - local
+notes:
+  - Verify that license covers data archive, not only scripts and docs.

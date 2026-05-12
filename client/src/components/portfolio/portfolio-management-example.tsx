@@ -218,6 +218,7 @@ function PortfolioCard({
 	isSelected,
 	onSelect,
 }: {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	portfolio: any;
 	isSelected: boolean;
 	onSelect: () => void;

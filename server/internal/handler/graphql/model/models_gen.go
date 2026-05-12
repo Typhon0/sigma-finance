@@ -28,11 +28,12 @@ type Asset interface {
 }
 
 type AddInstrumentHoldingInput struct {
-	PortfolioID          string  `json:"portfolioID"`
-	InstrumentID         string  `json:"instrumentID"`
-	Quantity             float64 `json:"quantity"`
-	AveragePurchasePrice float64 `json:"averagePurchasePrice"`
-	UnitPriceCurrency    *string `json:"unitPriceCurrency,omitempty"`
+	PortfolioID          string     `json:"portfolioID"`
+	InstrumentID         string     `json:"instrumentID"`
+	Quantity             float64    `json:"quantity"`
+	AveragePurchasePrice float64    `json:"averagePurchasePrice"`
+	UnitPriceCurrency    *string    `json:"unitPriceCurrency,omitempty"`
+	PurchaseDate         *time.Time `json:"purchaseDate,omitempty"`
 }
 
 type Alert struct {
@@ -229,11 +230,33 @@ type AuthResponse struct {
 }
 
 type AuthUser struct {
-	ID              string `json:"id"`
-	Email           string `json:"email"`
-	Name            string `json:"name"`
-	EmailVerified   bool   `json:"emailVerified"`
-	DisplayCurrency string `json:"displayCurrency"`
+	ID                  string  `json:"id"`
+	Email               string  `json:"email"`
+	Name                string  `json:"name"`
+	EmailVerified       bool    `json:"emailVerified"`
+	DisplayCurrency     string  `json:"displayCurrency"`
+	ThemePreference     string  `json:"themePreference"`
+	ThemeBaseColor      string  `json:"themeBaseColor"`
+	ThemeAccentColor    string  `json:"themeAccentColor"`
+	ThemeFontPreference string  `json:"themeFontPreference"`
+	ThemeHeadingFont    string  `json:"themeHeadingFont"`
+	ThemeMenuAccent     string  `json:"themeMenuAccent"`
+	ThemeMenuColor      string  `json:"themeMenuColor"`
+	ThemeStyle          string  `json:"themeStyle"`
+	ThemeRadius         float64 `json:"themeRadius"`
+	ThemeRtl            bool    `json:"themeRTL"`
+}
+
+type AvailableProvider struct {
+	Provider          string `json:"provider"`
+	Capability        bool   `json:"capability"`
+	RequiresAPIKey    bool   `json:"requiresApiKey"`
+	HasCredential     bool   `json:"hasCredential"`
+	CredentialValid   bool   `json:"credentialValid"`
+	CredentialEnabled bool   `json:"credentialEnabled"`
+	Priority          int32  `json:"priority"`
+	MappingStatus     string `json:"mappingStatus"`
+	EffectiveEnabled  bool   `json:"effectiveEnabled"`
 }
 
 type BankAccount struct {
@@ -351,6 +374,18 @@ type Candle struct {
 	Volume    *float64  `json:"volume,omitempty"`
 	Timestamp time.Time `json:"timestamp"`
 	Source    string    `json:"source"`
+}
+
+type CatalogSyncRun struct {
+	ID         string         `json:"id"`
+	Source     CatalogSource  `json:"source"`
+	Mode       string         `json:"mode"`
+	Status     string         `json:"status"`
+	Cursor     *string        `json:"cursor,omitempty"`
+	StatsJSON  map[string]any `json:"statsJson,omitempty"`
+	ErrorText  *string        `json:"errorText,omitempty"`
+	StartedAt  time.Time      `json:"startedAt"`
+	FinishedAt *time.Time     `json:"finishedAt,omitempty"`
 }
 
 type ChartDataInput struct {
@@ -763,45 +798,64 @@ type ImportFinanceDatabaseAssetsPayload struct {
 	Errors        []string `json:"errors"`
 }
 
+type ImportInstrumentFromSourceInput struct {
+	Source      CatalogSource `json:"source"`
+	ExternalID  string        `json:"externalId"`
+	ForceEnrich *bool         `json:"forceEnrich,omitempty"`
+}
+
+type ImportInstrumentFromSourcePayload struct {
+	Success    bool        `json:"success"`
+	Instrument *Instrument `json:"instrument,omitempty"`
+	Message    string      `json:"message"`
+}
+
 type Instrument struct {
-	ID                 string               `json:"id"`
-	Symbol             string               `json:"symbol"`
-	NormalizedSymbol   string               `json:"normalizedSymbol"`
-	Name               string               `json:"name"`
-	NormalizedName     string               `json:"normalizedName"`
-	Exchange           string               `json:"exchange"`
-	ExchangeCode       *string              `json:"exchangeCode,omitempty"`
-	Country            *string              `json:"country,omitempty"`
-	Currency           *string              `json:"currency,omitempty"`
-	Summary            *string              `json:"summary,omitempty"`
-	Sector             *string              `json:"sector,omitempty"`
-	IndustryGroup      *string              `json:"industryGroup,omitempty"`
-	Industry           *string              `json:"industry,omitempty"`
-	CategoryGroup      *string              `json:"categoryGroup,omitempty"`
-	Category           *string              `json:"category,omitempty"`
-	Family             *string              `json:"family,omitempty"`
-	Website            *string              `json:"website,omitempty"`
-	MarketCap          *string              `json:"marketCap,omitempty"`
-	State              *string              `json:"state,omitempty"`
-	City               *string              `json:"city,omitempty"`
-	Zipcode            *string              `json:"zipcode,omitempty"`
-	BaseCurrency       *string              `json:"baseCurrency,omitempty"`
-	QuoteCurrency      *string              `json:"quoteCurrency,omitempty"`
-	UnderlyingSymbol   *string              `json:"underlyingSymbol,omitempty"`
-	AssetType          InstrumentAssetType  `json:"assetType"`
-	Status             string               `json:"status"`
-	ProviderSource     string               `json:"providerSource"`
-	ProviderExternalID *string              `json:"providerExternalId,omitempty"`
-	Isin               *string              `json:"isin,omitempty"`
-	Figi               *string              `json:"figi,omitempty"`
-	Cusip              *string              `json:"cusip,omitempty"`
-	FirstSeenAt        time.Time            `json:"firstSeenAt"`
-	LastVerifiedAt     *time.Time           `json:"lastVerifiedAt,omitempty"`
-	LastUsedAt         *time.Time           `json:"lastUsedAt,omitempty"`
-	CreatedAt          time.Time            `json:"createdAt"`
-	UpdatedAt          time.Time            `json:"updatedAt"`
-	Aliases            []*InstrumentAlias   `json:"aliases"`
-	SyncState          *InstrumentSyncState `json:"syncState,omitempty"`
+	ID                     string               `json:"id"`
+	Symbol                 string               `json:"symbol"`
+	NormalizedSymbol       string               `json:"normalizedSymbol"`
+	Name                   string               `json:"name"`
+	NormalizedName         string               `json:"normalizedName"`
+	Exchange               string               `json:"exchange"`
+	ExchangeCode           *string              `json:"exchangeCode,omitempty"`
+	Country                *string              `json:"country,omitempty"`
+	Currency               *string              `json:"currency,omitempty"`
+	Summary                *string              `json:"summary,omitempty"`
+	Sector                 *string              `json:"sector,omitempty"`
+	IndustryGroup          *string              `json:"industryGroup,omitempty"`
+	Industry               *string              `json:"industry,omitempty"`
+	CategoryGroup          *string              `json:"categoryGroup,omitempty"`
+	Category               *string              `json:"category,omitempty"`
+	Family                 *string              `json:"family,omitempty"`
+	Website                *string              `json:"website,omitempty"`
+	MarketCap              *string              `json:"marketCap,omitempty"`
+	State                  *string              `json:"state,omitempty"`
+	City                   *string              `json:"city,omitempty"`
+	Zipcode                *string              `json:"zipcode,omitempty"`
+	BaseCurrency           *string              `json:"baseCurrency,omitempty"`
+	QuoteCurrency          *string              `json:"quoteCurrency,omitempty"`
+	UnderlyingSymbol       *string              `json:"underlyingSymbol,omitempty"`
+	AssetType              InstrumentAssetType  `json:"assetType"`
+	Status                 string               `json:"status"`
+	ExternalSource         *string              `json:"externalSource,omitempty"`
+	ExternalID             *string              `json:"externalId,omitempty"`
+	Platforms              []*PlatformAddress   `json:"platforms,omitempty"`
+	PrimaryContractAddress *string              `json:"primaryContractAddress,omitempty"`
+	InstrumentStatus       *string              `json:"instrumentStatus,omitempty"`
+	ImageURL               *string              `json:"imageUrl,omitempty"`
+	MetadataUpdatedAt      *time.Time           `json:"metadataUpdatedAt,omitempty"`
+	ProviderSource         string               `json:"providerSource"`
+	ProviderExternalID     *string              `json:"providerExternalId,omitempty"`
+	Isin                   *string              `json:"isin,omitempty"`
+	Figi                   *string              `json:"figi,omitempty"`
+	Cusip                  *string              `json:"cusip,omitempty"`
+	FirstSeenAt            time.Time            `json:"firstSeenAt"`
+	LastVerifiedAt         *time.Time           `json:"lastVerifiedAt,omitempty"`
+	LastUsedAt             *time.Time           `json:"lastUsedAt,omitempty"`
+	CreatedAt              time.Time            `json:"createdAt"`
+	UpdatedAt              time.Time            `json:"updatedAt"`
+	Aliases                []*InstrumentAlias   `json:"aliases"`
+	SyncState              *InstrumentSyncState `json:"syncState,omitempty"`
 }
 
 type InstrumentAlias struct {
@@ -1015,11 +1069,110 @@ type ManualInstrumentPayload struct {
 	Offset  int32         `json:"offset"`
 }
 
+type MarketDataCandlePayload struct {
+	Candle         *Candle            `json:"candle,omitempty"`
+	SourceProvider string             `json:"sourceProvider"`
+	FallbackUsed   bool               `json:"fallbackUsed"`
+	Failures       []*ProviderFailure `json:"failures"`
+}
+
+type MarketDataCandlesPayload struct {
+	Candles        []*Candle          `json:"candles"`
+	SourceProvider string             `json:"sourceProvider"`
+	FallbackUsed   bool               `json:"fallbackUsed"`
+	Failures       []*ProviderFailure `json:"failures"`
+}
+
 type MarketDataCredential struct {
-	ID        string    `json:"id"`
-	Provider  string    `json:"provider"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	ID              string     `json:"id"`
+	Provider        string     `json:"provider"`
+	IsEnabled       bool       `json:"isEnabled"`
+	Priority        int32      `json:"priority"`
+	LastValidatedAt *time.Time `json:"lastValidatedAt,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+}
+
+type MarketDataPack struct {
+	ID                string     `json:"id"`
+	Version           string     `json:"version"`
+	Name              string     `json:"name"`
+	Description       *string    `json:"description,omitempty"`
+	FormatVersion     int32      `json:"formatVersion"`
+	Status            string     `json:"status"`
+	ParentPackID      *string    `json:"parentPackId,omitempty"`
+	PackPriority      int32      `json:"packPriority"`
+	FilePath          string     `json:"filePath"`
+	Checksum          string     `json:"checksum"`
+	SignatureVerified bool       `json:"signatureVerified"`
+	AssetsCount       int        `json:"assetsCount"`
+	RowsCount         int        `json:"rowsCount"`
+	InstalledAt       *time.Time `json:"installedAt,omitempty"`
+	UpdatedAt         *time.Time `json:"updatedAt,omitempty"`
+	CreatedAt         time.Time  `json:"createdAt"`
+}
+
+type MarketDataPackBuildJob struct {
+	ID               string     `json:"id"`
+	PackID           string     `json:"packId"`
+	SourceProvider   string     `json:"sourceProvider"`
+	Status           string     `json:"status"`
+	ProgressPercent  float64    `json:"progressPercent"`
+	CurrentSymbol    *string    `json:"currentSymbol,omitempty"`
+	TotalSymbols     int32      `json:"totalSymbols"`
+	CompletedSymbols int32      `json:"completedSymbols"`
+	FailedSymbols    int32      `json:"failedSymbols"`
+	ErrorMessage     *string    `json:"errorMessage,omitempty"`
+	CreatedAt        time.Time  `json:"createdAt"`
+	StartedAt        *time.Time `json:"startedAt,omitempty"`
+	FinishedAt       *time.Time `json:"finishedAt,omitempty"`
+}
+
+type MarketDataPackCoverage struct {
+	PackID        string    `json:"packId"`
+	InstrumentID  string    `json:"instrumentId"`
+	Symbol        string    `json:"symbol"`
+	AssetType     string    `json:"assetType"`
+	Interval      string    `json:"interval"`
+	QuoteCurrency string    `json:"quoteCurrency"`
+	FirstDate     time.Time `json:"firstDate"`
+	LastDate      time.Time `json:"lastDate"`
+	RowCount      int       `json:"rowCount"`
+	FilePaths     []string  `json:"filePaths"`
+}
+
+type MarketDataPackJob struct {
+	ID              string     `json:"id"`
+	PackID          string     `json:"packId"`
+	JobType         string     `json:"jobType"`
+	Status          string     `json:"status"`
+	ProgressPercent float64    `json:"progressPercent"`
+	DownloadedBytes int        `json:"downloadedBytes"`
+	TotalBytes      int        `json:"totalBytes"`
+	ImportedRows    int        `json:"importedRows"`
+	ErrorMessage    *string    `json:"errorMessage,omitempty"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	StartedAt       *time.Time `json:"startedAt,omitempty"`
+	FinishedAt      *time.Time `json:"finishedAt,omitempty"`
+}
+
+type MarketDataPackRegistryEntry struct {
+	PackID              string    `json:"packId"`
+	Version             string    `json:"version"`
+	Name                string    `json:"name"`
+	Description         *string   `json:"description,omitempty"`
+	SizeBytes           int       `json:"sizeBytes"`
+	CompressedSizeBytes int       `json:"compressedSizeBytes"`
+	AssetsCount         int       `json:"assetsCount"`
+	RowsCount           int       `json:"rowsCount"`
+	Interval            string    `json:"interval"`
+	AssetTypes          []string  `json:"assetTypes"`
+	QuoteCurrencies     []string  `json:"quoteCurrencies"`
+	DownloadURL         string    `json:"downloadUrl"`
+	Checksum            string    `json:"checksum"`
+	SignatureURL        *string   `json:"signatureUrl,omitempty"`
+	CreatedAt           time.Time `json:"createdAt"`
+	Recommended         bool      `json:"recommended"`
 }
 
 type MethodParameter struct {
@@ -1085,6 +1238,11 @@ type OnlineInstrumentResult struct {
 	Country            *string             `json:"country,omitempty"`
 	Currency           *string             `json:"currency,omitempty"`
 	AssetType          InstrumentAssetType `json:"assetType"`
+	Source             CatalogSource       `json:"source"`
+	ExternalID         *string             `json:"externalId,omitempty"`
+	MarketCapRank      *int32              `json:"marketCapRank,omitempty"`
+	ImageURL           *string             `json:"imageUrl,omitempty"`
+	Platforms          []*PlatformAddress  `json:"platforms,omitempty"`
 	ProviderSource     string              `json:"providerSource"`
 	ProviderExternalID *string             `json:"providerExternalId,omitempty"`
 	Isin               *string             `json:"isin,omitempty"`
@@ -1093,9 +1251,11 @@ type OnlineInstrumentResult struct {
 }
 
 type OnlineInstrumentSearchPayload struct {
-	OnlineResults []*OnlineInstrumentResult `json:"onlineResults"`
-	QueryMetadata *InstrumentQueryMetadata  `json:"queryMetadata"`
-	ProviderUsed  string                    `json:"providerUsed"`
+	OnlineResults  []*OnlineInstrumentResult `json:"onlineResults"`
+	QueryMetadata  *InstrumentQueryMetadata  `json:"queryMetadata"`
+	ProviderUsed   string                    `json:"providerUsed"`
+	CoverageStatus CoverageStatus            `json:"coverageStatus"`
+	ErrorMessage   *string                   `json:"errorMessage,omitempty"`
 }
 
 type Ownership struct {
@@ -1180,6 +1340,11 @@ type PerformanceTimeRangeInput struct {
 
 type PersistDiscoveredInstrumentInput struct {
 	Instrument *OnlineInstrumentInput `json:"instrument"`
+}
+
+type PlatformAddress struct {
+	Platform string `json:"platform"`
+	Address  string `json:"address"`
 }
 
 type Portfolio struct {
@@ -1288,6 +1453,11 @@ type PositionValuation struct {
 	IsStale         bool       `json:"isStale"`
 	QuoteCurrency   string     `json:"quoteCurrency"`
 	DisplayCurrency string     `json:"displayCurrency"`
+}
+
+type ProviderFailure struct {
+	Provider string `json:"provider"`
+	Reason   string `json:"reason"`
 }
 
 type ProviderHealth struct {
@@ -1446,6 +1616,19 @@ type RiskMetrics struct {
 	SharpeRatio     float64 `json:"sharpeRatio"`
 	MaxDrawdown     float64 `json:"maxDrawdown"`
 	Diversification float64 `json:"diversification"`
+}
+
+type StartLocalPackBuildInput struct {
+	PackID                *string    `json:"packId,omitempty"`
+	SourceProvider        string     `json:"sourceProvider"`
+	AssetTypes            []string   `json:"assetTypes"`
+	HistoryStart          *time.Time `json:"historyStart,omitempty"`
+	HistoryEnd            *time.Time `json:"historyEnd,omitempty"`
+	PortfolioFirst        *bool      `json:"portfolioFirst,omitempty"`
+	UniverseInstrumentIds []string   `json:"universeInstrumentIds,omitempty"`
+	RequestsPerMinute     *int32     `json:"requestsPerMinute,omitempty"`
+	RequestsPerDay        *int32     `json:"requestsPerDay,omitempty"`
+	ConcurrentRequests    *int32     `json:"concurrentRequests,omitempty"`
 }
 
 type Stock struct {
@@ -1627,6 +1810,14 @@ type UpdatePortfolioInput struct {
 	SortOrder   *int32  `json:"sortOrder,omitempty"`
 }
 
+type UpdateTransactionInput struct {
+	Quantity        *float64   `json:"quantity,omitempty"`
+	UnitPriceAmount *float64   `json:"unitPriceAmount,omitempty"`
+	FeesAmount      *float64   `json:"feesAmount,omitempty"`
+	ExecutedAt      *time.Time `json:"executedAt,omitempty"`
+	Notes           *string    `json:"notes,omitempty"`
+}
+
 type UpdateUserDisplayCurrencyInput struct {
 	DisplayCurrency string `json:"displayCurrency"`
 }
@@ -1637,15 +1828,38 @@ type UpdateUserInput struct {
 	Password *string `json:"password,omitempty"`
 }
 
+type UpdateUserThemePreferencesInput struct {
+	ThemePreference     string  `json:"themePreference"`
+	ThemeBaseColor      string  `json:"themeBaseColor"`
+	ThemeAccentColor    string  `json:"themeAccentColor"`
+	ThemeFontPreference string  `json:"themeFontPreference"`
+	ThemeHeadingFont    string  `json:"themeHeadingFont"`
+	ThemeMenuAccent     string  `json:"themeMenuAccent"`
+	ThemeMenuColor      string  `json:"themeMenuColor"`
+	ThemeStyle          string  `json:"themeStyle"`
+	ThemeRadius         float64 `json:"themeRadius"`
+	ThemeRtl            bool    `json:"themeRTL"`
+}
+
 type User struct {
-	ID              string       `json:"id"`
-	Username        string       `json:"username"`
-	Email           string       `json:"email"`
-	CreatedAt       time.Time    `json:"createdAt"`
-	UpdatedAt       time.Time    `json:"updatedAt"`
-	Portfolios      []*Portfolio `json:"portfolios"`
-	Watchlists      []*Watchlist `json:"watchlists"`
-	DisplayCurrency string       `json:"displayCurrency"`
+	ID                  string       `json:"id"`
+	Username            string       `json:"username"`
+	Email               string       `json:"email"`
+	CreatedAt           time.Time    `json:"createdAt"`
+	UpdatedAt           time.Time    `json:"updatedAt"`
+	Portfolios          []*Portfolio `json:"portfolios"`
+	Watchlists          []*Watchlist `json:"watchlists"`
+	DisplayCurrency     string       `json:"displayCurrency"`
+	ThemePreference     string       `json:"themePreference"`
+	ThemeBaseColor      string       `json:"themeBaseColor"`
+	ThemeAccentColor    string       `json:"themeAccentColor"`
+	ThemeFontPreference string       `json:"themeFontPreference"`
+	ThemeHeadingFont    string       `json:"themeHeadingFont"`
+	ThemeMenuAccent     string       `json:"themeMenuAccent"`
+	ThemeMenuColor      string       `json:"themeMenuColor"`
+	ThemeStyle          string       `json:"themeStyle"`
+	ThemeRadius         float64      `json:"themeRadius"`
+	ThemeRtl            bool         `json:"themeRTL"`
 }
 
 // User engagement analytics
@@ -2175,6 +2389,59 @@ func (e AssetSyncType) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type CatalogSource string
+
+const (
+	CatalogSourceTrustwallet CatalogSource = "TRUSTWALLET"
+)
+
+var AllCatalogSource = []CatalogSource{
+	CatalogSourceTrustwallet,
+}
+
+func (e CatalogSource) IsValid() bool {
+	switch e {
+	case CatalogSourceTrustwallet:
+		return true
+	}
+	return false
+}
+
+func (e CatalogSource) String() string {
+	return string(e)
+}
+
+func (e *CatalogSource) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CatalogSource(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CatalogSource", str)
+	}
+	return nil
+}
+
+func (e CatalogSource) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CatalogSource) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CatalogSource) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type ConditionType string
 
 const (
@@ -2231,6 +2498,61 @@ func (e *ConditionType) UnmarshalJSON(b []byte) error {
 }
 
 func (e ConditionType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type CoverageStatus string
+
+const (
+	CoverageStatusFull    CoverageStatus = "FULL"
+	CoverageStatusPartial CoverageStatus = "PARTIAL"
+)
+
+var AllCoverageStatus = []CoverageStatus{
+	CoverageStatusFull,
+	CoverageStatusPartial,
+}
+
+func (e CoverageStatus) IsValid() bool {
+	switch e {
+	case CoverageStatusFull, CoverageStatusPartial:
+		return true
+	}
+	return false
+}
+
+func (e CoverageStatus) String() string {
+	return string(e)
+}
+
+func (e *CoverageStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = CoverageStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid CoverageStatus", str)
+	}
+	return nil
+}
+
+func (e CoverageStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *CoverageStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e CoverageStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

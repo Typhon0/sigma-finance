@@ -210,6 +210,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				return `${data.name}<br/>Value: ${currencySymbol}${data.value.toLocaleString("en-US")}`;
@@ -276,6 +277,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				return `${params.name}<br/>${currencySymbol}${params.value.toLocaleString("en-US")}<br/>${params.percent}%`;
 			},
@@ -323,6 +325,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const percent = ((params.value / totalBalance) * 100).toFixed(2);
 				return `${params.name}<br/>${currencySymbol}${params.value.toLocaleString("en-US")}<br/>${percent}%`;
@@ -343,6 +346,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 				},
 				label: {
 					show: true,
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					formatter: (params: any) => {
 						const percent = ((params.value / totalBalance) * 100).toFixed(1);
 						return `{name|${params.name}}\n{value|${currencySymbol}${(params.value / 1000).toFixed(1)}K}\n{percent|${percent}%}`;
@@ -384,6 +388,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
 			axisPointer: { type: "shadow" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				return `${data.name}<br/>${currencySymbol}${data.value.toLocaleString("en-US")}`;
@@ -452,6 +457,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				return `${data.name}<br/>Balance: ${currencySymbol}${Math.round(data.value).toLocaleString("en-US")}`;

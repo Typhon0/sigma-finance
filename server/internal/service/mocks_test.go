@@ -164,6 +164,11 @@ func (m *MockUserRepository) UpdateDisplayCurrency(ctx context.Context, userID s
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) UpdateThemePreferences(ctx context.Context, userID string, preferences model.UserThemePreferences) error {
+	args := m.Called(ctx, userID, preferences)
+	return args.Error(0)
+}
+
 // IRepository interface methods
 func (m *MockUserRepository) GetDB() bun.IDB {
 	args := m.Called()

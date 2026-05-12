@@ -14,6 +14,7 @@ import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { usePortfolioAnalytics } from "@/hooks/use-portfolio-analytics";
 import { useAuth } from "@/lib/auth-context";
 
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export const PortfolioContext = createContext<any>(null);
 
 /** Asset item as exposed by PortfolioProvider, including optional BankAccount metadata */
@@ -83,10 +84,27 @@ function buildSparklineData(
 		return [0, 0, 0, 0, 0, 0, 0];
 	}
 
+	const points = 7;
 	const startPrice = safeCurrentPrice / (1 + safeDayChange / 100);
-	const step = (safeCurrentPrice - startPrice) / 6;
+	const drift = safeCurrentPrice - startPrice;
+	const volatility =
+		Math.max(Math.abs(safeDayChange) / 100, 0.004) * Math.max(safeCurrentPrice, startPrice);
+	const seed = (Math.round(safeCurrentPrice * 100) % 37) / 37;
+	const phaseA = seed * Math.PI * 2;
+	const phaseB = seed * Math.PI;
 
-	return Array.from({ length: 7 }, (_, index) => Number((startPrice + step * index).toFixed(4)));
+	const series = Array.from({ length: points }, (_, index) => {
+		const progress = points > 1 ? index / (points - 1) : 1;
+		const baseline = startPrice + drift * progress;
+		const waveA = Math.sin(progress * Math.PI * 1.8 + phaseA) * volatility * 0.25;
+		const waveB = Math.sin(progress * Math.PI * 3.2 + phaseB) * volatility * 0.12;
+		return Math.max(0, baseline + waveA + waveB);
+	});
+
+	series[0] = startPrice;
+	series[series.length - 1] = safeCurrentPrice;
+
+	return series.map((value) => Number(value.toFixed(4)));
 }
 
 export const usePortfolio = () => {
@@ -140,7 +158,20 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				const bankFields = extractBankAccountFields(
 					a.asset as { __typename?: string } & Record<string, unknown>,
 				);
-				const currentPrice = a.asset?.currentValue ?? 0;
+				const currentPrice =
+					typeof a.asset?.currentValue === "number" && Number.isFinite(a.asset.currentValue)
+						? a.asset.currentValue
+						: 0;
+				const currentValue =
+					typeof a.currentValue === "number" && Number.isFinite(a.currentValue)
+						? a.currentValue
+						: 0;
+				const purchasePrice =
+					typeof a.asset?.purchasePrice === "number" && Number.isFinite(a.asset.purchasePrice)
+						? a.asset.purchasePrice
+						: typeof a.averagePurchasePrice === "number" && Number.isFinite(a.averagePurchasePrice)
+							? a.averagePurchasePrice
+							: 0;
 				const dayChangePercent = a.dayChangePercent ?? null;
 
 				return {
@@ -149,9 +180,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					name: a.asset?.name || "Unnamed Asset",
 					symbol: a.asset?.symbol || "",
 					currentPrice,
-					purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
+					purchasePrice,
 					quantity: a.quantity ?? 1,
-					currentValue: a.currentValue ?? 0,
+					currentValue,
 					sector: a.asset?.sector ?? null,
 					exchange: a.asset?.exchange ?? null,
 					dayChange: a.dayChange ?? null,
@@ -184,7 +215,18 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			const bankFields = extractBankAccountFields(
 				a.asset as { __typename?: string } & Record<string, unknown>,
 			);
-			const currentPrice = a.asset?.currentValue ?? 0;
+			const currentPrice =
+				typeof a.asset?.currentValue === "number" && Number.isFinite(a.asset.currentValue)
+					? a.asset.currentValue
+					: 0;
+			const currentValue =
+				typeof a.currentValue === "number" && Number.isFinite(a.currentValue) ? a.currentValue : 0;
+			const purchasePrice =
+				typeof a.asset?.purchasePrice === "number" && Number.isFinite(a.asset.purchasePrice)
+					? a.asset.purchasePrice
+					: typeof a.averagePurchasePrice === "number" && Number.isFinite(a.averagePurchasePrice)
+						? a.averagePurchasePrice
+						: 0;
 			const dayChangePercent = a.dayChangePercent ?? null;
 
 			return {
@@ -193,9 +235,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				name: a.asset?.name || "Unnamed Asset",
 				symbol: a.asset?.symbol || "",
 				currentPrice,
-				purchasePrice: a.asset?.purchasePrice ?? a.averagePurchasePrice ?? 0,
+				purchasePrice,
 				quantity: a.quantity ?? 1,
-				currentValue: a.currentValue ?? 0,
+				currentValue,
 				sector: a.asset?.sector ?? null,
 				exchange: a.asset?.exchange ?? null,
 				dayChange: a.dayChange ?? null,
@@ -221,14 +263,19 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 
 	const transactions = useMemo(() => {
 		if (!data?.recentTransactions) return [];
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		return data.recentTransactions.map((t: any) => ({
 			id: t.id,
 			assetId: t.asset?.id ?? "",
+			assetSymbol: t.asset?.symbol ?? "",
+			assetName: t.asset?.name ?? "",
 			type: t.transactionType?.toLowerCase() ?? "buy",
 			date: t.executedAt,
 			total: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0),
 			quantity: t.quantity ?? 0,
 			pricePerUnit: t.unitPriceAmount ?? 0,
+			fees: t.feesAmount ?? 0,
+			feesCurrency: t.feesCurrency ?? null,
 			notes: t.notes,
 			portfolioId: t.portfolio?.id ?? currentPortfolio,
 		}));
@@ -360,9 +407,56 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		[currentPortfolio, addWatchMutation, refetch],
 	);
 
-	const { removeAssetFromPortfolio } = useAssetManagement();
+	const { removeAssetFromPortfolio, updateAssetInPortfolio } = useAssetManagement();
 
-	const updateAsset = useCallback(() => {}, []);
+	const updateAsset = useCallback(
+		async (
+			assetId: string,
+			updates: {
+				quantity?: number;
+				purchasePrice?: number;
+				averagePurchasePrice?: number;
+				portfolioId?: string;
+			},
+		) => {
+			const pid = updates.portfolioId || currentPortfolio;
+			if (!pid) {
+				throw new Error("No portfolio selected");
+			}
+			const hasQuantityUpdate = Number.isFinite(updates.quantity);
+			const hasPriceUpdate =
+				Number.isFinite(updates.averagePurchasePrice) || Number.isFinite(updates.purchasePrice);
+			if (!hasQuantityUpdate && !hasPriceUpdate) {
+				return;
+			}
+
+			const current = assets.find((asset) => asset.id === assetId && asset.portfolioId === pid);
+			const nextQuantity = Number.isFinite(updates.quantity) ? updates.quantity : current?.quantity;
+			const nextAveragePurchasePrice = Number.isFinite(updates.averagePurchasePrice)
+				? updates.averagePurchasePrice
+				: Number.isFinite(updates.purchasePrice)
+					? updates.purchasePrice
+					: current?.purchasePrice;
+
+			if (!Number.isFinite(nextQuantity) || nextQuantity === undefined || nextQuantity <= 0) {
+				throw new Error("Quantity must be greater than 0");
+			}
+
+			await updateAssetInPortfolio({
+				portfolioID: pid,
+				assetID: assetId,
+				quantity: nextQuantity,
+				averagePurchasePrice:
+					typeof nextAveragePurchasePrice === "number" &&
+					Number.isFinite(nextAveragePurchasePrice) &&
+					nextAveragePurchasePrice >= 0
+						? nextAveragePurchasePrice
+						: undefined,
+			});
+			await refetch();
+		},
+		[currentPortfolio, assets, refetch, updateAssetInPortfolio],
+	);
 	const deleteAsset = useCallback(
 		async (assetId: string, portfolioId?: string) => {
 			const pid = portfolioId || currentPortfolio;

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
@@ -9,9 +10,11 @@ import (
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service/cache"
+	marketdatastore "sigma_finance/internal/service/marketdata/store"
 	"sigma_finance/internal/service/providers"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -40,6 +43,9 @@ type MarketDataService interface {
 	// Existing candle-based methods
 	GetCandles(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error)
 	GetRealTimePrice(ctx context.Context, userID string, symbol, assetType string) (*model.Candle, error)
+	GetCandlesByInstrument(ctx context.Context, userID string, instrumentID string, interval model.CandleInterval, from, to time.Time, limit int, preferredProvider *string) (*InstrumentCandlesResult, error)
+	GetRealTimePriceByInstrument(ctx context.Context, userID string, instrumentID string, preferredProvider *string) (*InstrumentCandlesResult, error)
+	GetAvailableProviders(ctx context.Context, userID string, instrumentID string, dataType string) ([]AvailableProviderStatus, error)
 	ValidateProviderCredentials(ctx context.Context, userID string, providerID, apiKey string) error
 	GetSupportedProviders(assetType string) []ProviderInfo
 	GetProviderHealth(ctx context.Context) []providers.ProviderHealthEntry
@@ -57,6 +63,27 @@ type MarketDataService interface {
 	IsAssetPriceStale(ctx context.Context, assetID uuid.UUID, maxAge time.Duration) (bool, error)
 	ClearAssetPriceCache()
 	GetAssetPriceCacheStats() AssetPriceCacheStats
+	BackfillAssetPrices(ctx context.Context, userID string, assetID uuid.UUID, instrumentID string, from, to time.Time) error
+}
+
+type RuntimeMarketDataCacheInvalidator interface {
+	InvalidateRuntimeMarketDataCacheForUser(userID string, reason string) int
+	InvalidateRuntimeMarketDataCacheForInstrument(instrumentID string, reason string) int
+	GetRuntimeMarketDataInvalidationStats() RuntimeMarketDataInvalidationStats
+}
+
+const (
+	RuntimeCacheInvalidationReasonCredential = "credential"
+	RuntimeCacheInvalidationReasonMapping    = "mapping"
+	RuntimeCacheInvalidationReasonOther      = "other"
+)
+
+type RuntimeMarketDataInvalidationStats struct {
+	TotalEvents         uint64 `json:"total_events"`
+	TotalEntriesRemoved uint64 `json:"total_entries_removed"`
+	CredentialEvents    uint64 `json:"credential_events"`
+	MappingEvents       uint64 `json:"mapping_events"`
+	OtherEvents         uint64 `json:"other_events"`
 }
 
 // ProviderInfo contains information about a provider
@@ -68,6 +95,30 @@ type ProviderInfo struct {
 	Intervals   []string
 	RateLimit   providers.RateLimit
 	SupportsRT  bool
+}
+
+type ProviderFailure struct {
+	Provider string
+	Reason   string
+}
+
+type InstrumentCandlesResult struct {
+	Candles        []model.Candle
+	SourceProvider string
+	FallbackUsed   bool
+	Failures       []ProviderFailure
+}
+
+type AvailableProviderStatus struct {
+	Provider         string
+	Capability       bool
+	RequiresAPIKey   bool
+	HasCredential    bool
+	CredentialValid  bool
+	CredentialEnable bool
+	Priority         int
+	MappingStatus    string
+	EffectiveEnabled bool
 }
 
 // AssetPriceData represents current price data for an asset
@@ -98,6 +149,12 @@ type AssetPriceCacheStats struct {
 	AvgAge       time.Duration `json:"avg_age"`
 }
 
+type instrumentCandlesCacheEntry struct {
+	Result    *InstrumentCandlesResult
+	CachedAt  time.Time
+	ExpiresAt time.Time
+}
+
 // AssetPriceCache manages caching of asset prices
 type AssetPriceCache struct {
 	prices map[uuid.UUID]*AssetPriceCacheEntry
@@ -114,17 +171,29 @@ func NewAssetPriceCache() *AssetPriceCache {
 type marketDataService struct {
 	uow             repository.IUnitOfWork
 	credRepo        repository.IMarketDataCredentialRepository
+	instrumentRepo  repository.IInstrumentRepository
 	providerManager providers.ProviderManager
+	mappingService  InstrumentProviderMappingService
 	cache           cache.CandleCache
 	security        SecurityService
 	rateLimiter     RateLimiter
+	candleStore     marketdatastore.CandleOverlayStore
 
 	// New fields for asset price management
 	priceRepo       repository.IPriceRepository
 	assetRepo       repository.IAssetRepository
 	assetPriceCache *AssetPriceCache
-	updateMutex     sync.RWMutex
-	db              *bun.DB
+	runtimeCache    map[string]*instrumentCandlesCacheEntry
+	runtimeCacheMu  sync.RWMutex
+
+	runtimeInvalidationTotalEvents         uint64
+	runtimeInvalidationTotalEntriesRemoved uint64
+	runtimeInvalidationCredentialEvents    uint64
+	runtimeInvalidationMappingEvents       uint64
+	runtimeInvalidationOtherEvents         uint64
+
+	updateMutex sync.RWMutex
+	db          *bun.DB
 }
 
 // Price update scheduler
@@ -178,86 +247,187 @@ func NewMarketDataService(
 
 	// Create cache with 1000 entries and 5-minute staleness threshold
 	candleCache := cache.NewCandleCache(candleRepo, 1000, 5*time.Minute)
+	dbCandleStore := marketdatastore.NewDBCandleStore(candleRepo)
+	packRepo := repository.NewMarketDataPackRepository(db)
+	hybridCandleStore := marketdatastore.NewHybridCandleStore(
+		marketdatastore.NewPackCandleStore(packRepo),
+		dbCandleStore,
+	)
 
 	return &marketDataService{
 		uow:             uow,
 		db:              db,
 		credRepo:        credRepo,
+		instrumentRepo:  uow.Instrument(),
 		providerManager: providerManager,
+		mappingService:  NewInstrumentProviderMappingService(uow),
 		cache:           candleCache,
 		security:        security,
 		rateLimiter:     rateLimiter,
+		candleStore:     hybridCandleStore,
 		priceRepo:       priceRepo,
 		assetRepo:       assetRepo,
 		assetPriceCache: NewAssetPriceCache(),
+		runtimeCache:    make(map[string]*instrumentCandlesCacheEntry),
 	}
 }
 
 func (s *marketDataService) GetCandles(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
-	// Check rate limiting
-	if userID != "" && s.rateLimiter != nil {
-		if err := s.rateLimiter.CheckRateLimit(ctx, fmt.Sprintf("candles:user:%s", userID), 60, time.Minute); err != nil {
-			return nil, fmt.Errorf("rate limit exceeded: %w", err)
-		}
-	}
-
-	// Try cache first
-	cached, missingRanges, err := s.cache.GetCachedRange(ctx, symbol, assetType, interval, from, to, limit)
-	if err != nil {
-		return nil, fmt.Errorf("cache error: %w", err)
-	}
-
-	// If we have complete data, return it
-	if len(missingRanges) == 0 && len(cached) > 0 {
-		return cached, nil
-	}
-
-	// Need to fetch missing data
-	var allCandles []model.Candle
-	allCandles = append(allCandles, cached...)
-
-	for _, timeRange := range missingRanges {
-		fetchedCandles, err := s.fetchCandlesFromProviders(ctx, userID, symbol, assetType, interval, timeRange.From, timeRange.To, limit)
-		if err != nil {
-			// Log error but continue with what we have
-			continue
-		}
-
-		// Store in cache
-		if len(fetchedCandles) > 0 {
-			if err := s.cache.StoreCandlesInCache(ctx, fetchedCandles); err != nil {
-				// Log error but continue
-			}
-			allCandles = append(allCandles, fetchedCandles...)
-		}
-	}
-
-	// Sort and deduplicate
-	allCandles = s.sortAndDeduplicateCandles(allCandles)
-
-	// Apply limit
-	if len(allCandles) > limit {
-		allCandles = allCandles[:limit]
-	}
-
-	return allCandles, nil
-}
-
-func (s *marketDataService) GetRealTimePrice(ctx context.Context, userID string, symbol, assetType string) (*model.Candle, error) {
-	// Get the most recent 1-minute candle
-	to := time.Now()
-	from := to.Add(-5 * time.Minute) // Last 5 minutes
-
-	candles, err := s.GetCandles(ctx, userID, symbol, assetType, model.Interval1m, from, to, 1)
+	instrumentID, err := s.resolveInstrumentIDBySymbol(ctx, symbol, assetType)
 	if err != nil {
 		return nil, err
 	}
+
+	result, err := s.GetCandlesByInstrument(ctx, userID, instrumentID, interval, from, to, limit, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return result.Candles, nil
+}
+
+func (s *marketDataService) GetRealTimePrice(ctx context.Context, userID string, symbol, assetType string) (*model.Candle, error) {
+	instrumentID, err := s.resolveInstrumentIDBySymbol(ctx, symbol, assetType)
+	if err != nil {
+		return nil, err
+	}
+	result, err := s.GetRealTimePriceByInstrument(ctx, userID, instrumentID, nil)
+	if err != nil {
+		return nil, err
+	}
+	candles := result.Candles
 
 	if len(candles) == 0 {
 		return nil, fmt.Errorf("no recent price data available")
 	}
 
 	return &candles[len(candles)-1], nil
+}
+
+func (s *marketDataService) GetCandlesByInstrument(ctx context.Context, userID string, instrumentID string, interval model.CandleInterval, from, to time.Time, limit int, preferredProvider *string) (*InstrumentCandlesResult, error) {
+	if strings.TrimSpace(instrumentID) == "" {
+		return nil, fmt.Errorf("instrumentId is required")
+	}
+
+	instrument, err := s.instrumentRepo.GetByID(ctx, instrumentID)
+	if err != nil {
+		return nil, err
+	}
+
+	if interval == "" {
+		interval = model.Interval1d
+	}
+	if limit <= 0 {
+		limit = 500
+	}
+
+	if s.candleStore != nil {
+		quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+			stringOrEmpty(instrument.QuoteCurrency),
+			stringOrEmpty(instrument.Currency),
+			"USD",
+		)))
+		storeTo := to
+		if storeTo.IsZero() {
+			storeTo = time.Now().Add(24 * time.Hour)
+		}
+		candles, storeErr := s.candleStore.GetRange(ctx, marketdatastore.CandleRangeQuery{
+			InstrumentID:  instrument.ID,
+			Symbol:        instrument.Symbol,
+			AssetType:     string(instrument.AssetType),
+			Interval:      interval,
+			From:          from,
+			To:            storeTo,
+			QuoteCurrency: quoteCurrency,
+			Limit:         limit,
+		})
+		if storeErr == nil && len(candles) > 0 {
+			return &InstrumentCandlesResult{
+				Candles:        candles,
+				SourceProvider: "HYBRID",
+				FallbackUsed:   false,
+				Failures:       nil,
+			}, nil
+		}
+		if storeErr != nil {
+			log.Printf("[fetchCandlesByInstrument] hybrid store lookup failed for instrument %s: %v", instrument.ID, storeErr)
+		}
+	}
+
+	result, err := s.fetchCandlesByInstrument(ctx, userID, instrument, interval, from, to, limit, preferredProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
+}
+
+func (s *marketDataService) GetRealTimePriceByInstrument(ctx context.Context, userID string, instrumentID string, preferredProvider *string) (*InstrumentCandlesResult, error) {
+	to := time.Now()
+	from := to.Add(-5 * time.Minute)
+
+	result, err := s.GetCandlesByInstrument(ctx, userID, instrumentID, model.Interval1m, from, to, 1, preferredProvider)
+	if err != nil {
+		return nil, err
+	}
+	if len(result.Candles) == 0 {
+		return nil, fmt.Errorf("no recent price data available")
+	}
+
+	result.Candles = []model.Candle{result.Candles[len(result.Candles)-1]}
+	return result, nil
+}
+
+func (s *marketDataService) GetAvailableProviders(ctx context.Context, userID string, instrumentID string, dataType string) ([]AvailableProviderStatus, error) {
+	if strings.TrimSpace(instrumentID) == "" {
+		return nil, fmt.Errorf("instrumentId is required")
+	}
+
+	instrument, err := s.instrumentRepo.GetByID(ctx, instrumentID)
+	if err != nil {
+		return nil, err
+	}
+
+	credentials, err := s.credentialStateByProvider(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	providersForAsset := s.providerManager.GetProvidersForAssetType(string(instrument.AssetType))
+	statuses := make([]AvailableProviderStatus, 0, len(providersForAsset))
+
+	for index, provider := range providersForAsset {
+		providerID := strings.ToUpper(strings.TrimSpace(provider.ID()))
+		caps := provider.Capabilities()
+
+		mappingStatus := string(model.InstrumentProviderMappingStatusUnmapped)
+		if mapping, mappingErr := s.mappingService.GetVerifiedMapping(ctx, instrumentID, providerID); mappingErr == nil && mapping != nil {
+			mappingStatus = string(mapping.MappingStatus)
+		} else {
+			if _, deterministicErr := s.mappingService.EnsureDeterministicMapping(ctx, instrumentID, providerID); deterministicErr == nil {
+				mappingStatus = string(model.InstrumentProviderMappingStatusVerified)
+			}
+		}
+
+		cred := credentials[providerID]
+		hasCredential := cred.present && strings.TrimSpace(cred.apiKey) != ""
+		credentialValid := !caps.RequiresAPIKey || (cred.enabled && hasCredential)
+		effectiveEnabled := (mappingStatus == string(model.InstrumentProviderMappingStatusVerified)) && (!caps.RequiresAPIKey || credentialValid)
+
+		statuses = append(statuses, AvailableProviderStatus{
+			Provider:         providerID,
+			Capability:       supportsDataType(caps, dataType),
+			RequiresAPIKey:   caps.RequiresAPIKey,
+			HasCredential:    hasCredential,
+			CredentialValid:  credentialValid,
+			CredentialEnable: cred.enabled,
+			Priority:         index + 1,
+			MappingStatus:    mappingStatus,
+			EffectiveEnabled: effectiveEnabled,
+		})
+	}
+
+	return statuses, nil
 }
 
 func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, userID string, providerID, apiKey string) error {
@@ -464,7 +634,7 @@ func (s *marketDataService) GetCurrentAssetPrice(ctx context.Context, assetID uu
 	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetIDStr)
 	if err != nil {
 		// If no price in database, try to fetch from external source
-		return s.fetchAndStoreAssetPriceFromProvider(ctx, asset)
+		return s.fetchAndStoreAssetPriceFromProvider(ctx, asset, nil)
 	}
 
 	// Check if price is stale
@@ -583,6 +753,12 @@ func (s *marketDataService) UpdateAssetPrices(ctx context.Context) error {
 	}
 
 	log.Printf("[UpdateAssetPrices] Found %d tradeable assets to update", len(tradeableAssets))
+	staleAssetIDs, staleErr := s.GetStaleAssetPrices(ctx, s.getMaxAgeForAssetType(model.AssetTypeCrypto))
+	if staleErr != nil {
+		log.Printf("[UpdateAssetPrices] WARNING: failed to compute stale asset count: %v", staleErr)
+	} else {
+		log.Printf("[UpdateAssetPrices] stale_tradeable_assets=%d", len(staleAssetIDs))
+	}
 
 	// Group assets by market data source
 	sourceGroups := make(map[string][]model.Asset)
@@ -626,7 +802,15 @@ func (s *marketDataService) UpdateAssetPrice(ctx context.Context, assetID uuid.U
 		return nil, fmt.Errorf("asset %s is not tradeable", asset.Name)
 	}
 
-	return s.fetchAndStoreAssetPriceFromProvider(ctx, asset)
+	var instrument *model.Instrument
+	if asset.InstrumentID != nil && strings.TrimSpace(*asset.InstrumentID) != "" && s.instrumentRepo != nil {
+		instrument, err = s.instrumentRepo.GetByID(ctx, strings.TrimSpace(*asset.InstrumentID))
+		if err != nil {
+			return nil, fmt.Errorf("failed to get linked instrument %s for asset %s: %w", strings.TrimSpace(*asset.InstrumentID), asset.Name, err)
+		}
+	}
+
+	return s.fetchAndStoreAssetPriceFromProvider(ctx, asset, instrument)
 }
 
 // SchedulePriceUpdates starts automatic price updates at the specified interval
@@ -649,9 +833,13 @@ func (s *marketDataService) SchedulePriceUpdates(ctx context.Context, interval t
 				updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 				if err := s.UpdateAssetPrices(updateCtx); err != nil {
 					// Log error but continue scheduling
-					fmt.Printf("Scheduled asset price update failed: %v\n", err)
+					log.Printf("[SchedulePriceUpdates] scheduled price update failed: %v", err)
 				}
 				cancel()
+			case <-ctx.Done():
+				log.Printf("[SchedulePriceUpdates] context canceled; stopping scheduler")
+				s.StopPriceUpdates()
+				return
 			case <-assetPriceScheduler.stopChan:
 				return
 			}
@@ -754,6 +942,552 @@ func (s *marketDataService) GetAssetPriceCacheStats() AssetPriceCacheStats {
 }
 
 // Private methods
+
+type userCredentialState struct {
+	present bool
+	enabled bool
+	apiKey  string
+}
+
+type providerExecutionTarget struct {
+	provider providers.Provider
+	mapping  *model.InstrumentProviderMapping
+	apiKey   string
+}
+
+func (s *marketDataService) resolveInstrumentIDBySymbol(ctx context.Context, symbol string, assetType string) (string, error) {
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	if normalizedSymbol == "" {
+		return "", NewSymbolCompatibilityError(
+			SymbolCompatibilityInvalidInput,
+			"symbol is required",
+			normalizedSymbol,
+			assetType,
+			nil,
+		)
+	}
+
+	filter := repository.InstrumentSearchFilter{
+		Limit:  3,
+		Offset: 0,
+	}
+	if strings.TrimSpace(assetType) != "" {
+		filter.AssetTypes = []model.InstrumentAssetType{model.InstrumentAssetType(strings.ToUpper(strings.TrimSpace(assetType)))}
+	}
+
+	rows, err := s.instrumentRepo.Search(ctx, normalizedSymbol, filter)
+	if err != nil {
+		return "", err
+	}
+
+	matches := make([]string, 0, len(rows))
+	for _, row := range rows {
+		if strings.EqualFold(strings.TrimSpace(row.Instrument.Symbol), normalizedSymbol) {
+			matches = append(matches, row.Instrument.ID)
+		}
+	}
+
+	if len(matches) == 1 {
+		return matches[0], nil
+	}
+	if len(matches) > 1 {
+		return "", NewSymbolCompatibilityError(
+			SymbolCompatibilityAmbiguous,
+			fmt.Sprintf("symbol %s maps to multiple instruments; use instrumentId", normalizedSymbol),
+			normalizedSymbol,
+			assetType,
+			matches,
+		)
+	}
+
+	return "", NewSymbolCompatibilityError(
+		SymbolCompatibilityNotFound,
+		fmt.Sprintf("no instrument found for symbol %s", normalizedSymbol),
+		normalizedSymbol,
+		assetType,
+		nil,
+	)
+}
+
+func (s *marketDataService) credentialStateByProvider(ctx context.Context, userID string) (map[string]userCredentialState, error) {
+	state := make(map[string]userCredentialState)
+	if strings.TrimSpace(userID) == "" {
+		return state, nil
+	}
+
+	creds, err := s.credRepo.ListByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, cred := range creds {
+		providerID := strings.ToUpper(strings.TrimSpace(cred.Provider))
+		apiKey := strings.TrimSpace(cred.APIKey)
+		if s.security != nil && apiKey != "" {
+			if decrypted, decryptErr := s.security.DecryptString(apiKey); decryptErr == nil {
+				apiKey = strings.TrimSpace(decrypted)
+			}
+		}
+		state[providerID] = userCredentialState{
+			present: true,
+			enabled: cred.IsEnabled,
+			apiKey:  apiKey,
+		}
+	}
+
+	return state, nil
+}
+
+func (s *marketDataService) buildProviderExecutionPlan(ctx context.Context, userID string, instrument *model.Instrument, interval model.CandleInterval, preferredProvider *string) ([]providerExecutionTarget, []ProviderFailure, error) {
+	if instrument == nil {
+		return nil, nil, fmt.Errorf("instrument is required")
+	}
+
+	providerList := s.providerManager.GetProvidersForAssetType(string(instrument.AssetType))
+	if len(providerList) == 0 {
+		return nil, nil, fmt.Errorf("no providers configured for asset type %s", instrument.AssetType)
+	}
+
+	credentials, err := s.credentialStateByProvider(ctx, userID)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	preferred := ""
+	if preferredProvider != nil {
+		preferred = strings.ToUpper(strings.TrimSpace(*preferredProvider))
+	}
+
+	targets := make([]providerExecutionTarget, 0, len(providerList))
+	failures := make([]ProviderFailure, 0)
+
+	appendTarget := func(provider providers.Provider) {
+		providerID := strings.ToUpper(strings.TrimSpace(provider.ID()))
+		caps := provider.Capabilities()
+
+		supportsInterval := false
+		for _, supportedInterval := range caps.Intervals {
+			if supportedInterval == interval {
+				supportsInterval = true
+				break
+			}
+		}
+		if !supportsInterval {
+			failures = append(failures, ProviderFailure{Provider: providerID, Reason: "interval_not_supported"})
+			return
+		}
+
+		mapping, mappingErr := s.mappingService.GetVerifiedMapping(ctx, instrument.ID, providerID)
+		if mappingErr != nil {
+			mapping, mappingErr = s.mappingService.EnsureDeterministicMapping(ctx, instrument.ID, providerID)
+			if mappingErr == nil && mapping != nil {
+				s.InvalidateRuntimeMarketDataCacheForInstrument(instrument.ID, RuntimeCacheInvalidationReasonMapping)
+			}
+		}
+		if mappingErr != nil || mapping == nil || mapping.MappingStatus != model.InstrumentProviderMappingStatusVerified {
+			failures = append(failures, ProviderFailure{Provider: providerID, Reason: "mapping_unresolved"})
+			return
+		}
+
+		apiKey := ""
+		if caps.RequiresAPIKey {
+			credential, ok := credentials[providerID]
+			if !ok || !credential.present || !credential.enabled {
+				failures = append(failures, ProviderFailure{Provider: providerID, Reason: "credential_disabled_or_missing"})
+				return
+			}
+			if strings.TrimSpace(credential.apiKey) == "" {
+				failures = append(failures, ProviderFailure{Provider: providerID, Reason: "credential_empty"})
+				return
+			}
+			apiKey = credential.apiKey
+		}
+
+		targets = append(targets, providerExecutionTarget{
+			provider: provider,
+			mapping:  mapping,
+			apiKey:   apiKey,
+		})
+	}
+
+	if preferred != "" {
+		for _, provider := range providerList {
+			if strings.EqualFold(provider.ID(), preferred) {
+				appendTarget(provider)
+				if len(targets) == 0 {
+					return nil, failures, fmt.Errorf("preferred provider %s is not available for instrument %s", preferred, instrument.ID)
+				}
+				return targets, failures, nil
+			}
+		}
+		return nil, failures, fmt.Errorf("unknown preferred provider %s", preferred)
+	}
+
+	for _, provider := range providerList {
+		appendTarget(provider)
+	}
+
+	if len(targets) == 0 {
+		return nil, failures, fmt.Errorf("no eligible providers for instrument %s", instrument.ID)
+	}
+
+	return targets, failures, nil
+}
+
+func (s *marketDataService) fetchCandlesByInstrument(ctx context.Context, userID string, instrument *model.Instrument, interval model.CandleInterval, from, to time.Time, limit int, preferredProvider *string) (*InstrumentCandlesResult, error) {
+	if userID != "" && s.rateLimiter != nil {
+		if err := s.rateLimiter.CheckRateLimit(ctx, fmt.Sprintf("candles:user:%s", userID), 60, time.Minute); err != nil {
+			return nil, fmt.Errorf("rate limit exceeded: %w", err)
+		}
+	}
+
+	cacheKey := s.runtimeMarketDataCacheKey(userID, instrument.ID, preferredProvider, "candles", interval, from, to, limit)
+	if cached := s.getRuntimeCandlesCache(cacheKey); cached != nil {
+		return cached, nil
+	}
+
+	targets, failures, err := s.buildProviderExecutionPlan(ctx, userID, instrument, interval, preferredProvider)
+	if err != nil {
+		return nil, err
+	}
+
+	for idx, target := range targets {
+		caps := target.provider.Capabilities()
+		providerID := strings.ToUpper(strings.TrimSpace(target.provider.ID()))
+
+		if s.rateLimiter != nil {
+			rateLimitKey := fmt.Sprintf("provider:%s:user:%s:instrument:%s", providerID, userID, instrument.ID)
+			if err := s.rateLimiter.CheckRateLimit(ctx, rateLimitKey, caps.RateLimit.RequestsPerMinute, time.Minute); err != nil {
+				failures = append(failures, ProviderFailure{Provider: providerID, Reason: "provider_rate_limited"})
+				continue
+			}
+		}
+
+		symbol := strings.TrimSpace(firstNonEmpty(
+			stringOrEmpty(target.mapping.ProviderSymbol),
+			target.mapping.ProviderAssetID,
+			instrument.Symbol,
+		))
+
+		response, providerErr := target.provider.GetCandles(ctx, providers.CandleRequest{
+			Symbol:    symbol,
+			AssetType: string(instrument.AssetType),
+			Interval:  interval,
+			From:      from,
+			To:        to,
+			Limit:     limit,
+			APIKey:    target.apiKey,
+		})
+		if providerErr != nil {
+			if !isTransientProviderError(providerErr) {
+				failures = append(failures, ProviderFailure{Provider: providerID, Reason: providerErr.Error()})
+				return nil, fmt.Errorf("provider %s failed: %w", providerID, providerErr)
+			}
+			failures = append(failures, ProviderFailure{Provider: providerID, Reason: providerErr.Error()})
+			continue
+		}
+
+		if response == nil || len(response.Candles) == 0 {
+			failures = append(failures, ProviderFailure{Provider: providerID, Reason: "empty_response"})
+			continue
+		}
+
+		candles := s.sortAndDeduplicateCandles(response.Candles)
+		quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+			stringOrEmpty(instrument.QuoteCurrency),
+			stringOrEmpty(instrument.Currency),
+			stringOrEmpty(target.mapping.QuoteCurrency),
+			"USD",
+		)))
+		for i := range candles {
+			candles[i].InstrumentID = &instrument.ID
+			candles[i].QuoteCurrency = quoteCurrency
+			if strings.TrimSpace(candles[i].Symbol) == "" {
+				candles[i].Symbol = instrument.Symbol
+			}
+			if strings.TrimSpace(candles[i].AssetType) == "" {
+				candles[i].AssetType = string(instrument.AssetType)
+			}
+		}
+		if limit > 0 && len(candles) > limit {
+			candles = candles[:limit]
+		}
+		if s.candleStore != nil {
+			if err := s.candleStore.BulkUpsert(ctx, candles); err != nil {
+				log.Printf("[fetchCandlesByInstrument] candle overlay upsert failed for instrument %s: %v", instrument.ID, err)
+			}
+		}
+
+		result := &InstrumentCandlesResult{
+			Candles:        candles,
+			SourceProvider: providerID,
+			FallbackUsed:   idx > 0,
+			Failures:       failures,
+		}
+		s.setRuntimeCandlesCache(cacheKey, result, runtimeCandlesCacheTTL)
+		return result, nil
+	}
+
+	return nil, fmt.Errorf("no mapped provider succeeded for instrument %s", instrument.ID)
+}
+
+const (
+	runtimeCandlesCacheTTL        = 45 * time.Second
+	runtimeCandlesCacheMaxEntries = 2000
+)
+
+func (s *marketDataService) runtimeMarketDataCacheKey(userID, instrumentID string, preferredProvider *string, dataType string, interval model.CandleInterval, from, to time.Time, limit int) string {
+	provider := "AUTO"
+	if preferredProvider != nil && strings.TrimSpace(*preferredProvider) != "" {
+		provider = strings.ToUpper(strings.TrimSpace(*preferredProvider))
+	}
+
+	normalizedFrom, normalizedTo := normalizeCandleWindowForCache(interval, from, to)
+
+	if strings.TrimSpace(userID) == "" {
+		userID = "anonymous"
+	}
+
+	return fmt.Sprintf("md:v1:user:%s:instrument:%s:provider:%s:type:%s:interval:%s:from:%d:to:%d:limit:%d",
+		userID,
+		strings.TrimSpace(instrumentID),
+		provider,
+		strings.ToUpper(strings.TrimSpace(dataType)),
+		strings.ToUpper(strings.TrimSpace(string(interval))),
+		normalizedFrom.Unix(),
+		normalizedTo.Unix(),
+		limit,
+	)
+}
+
+func normalizeCandleWindowForCache(interval model.CandleInterval, from, to time.Time) (time.Time, time.Time) {
+	bucket := candleIntervalDuration(interval)
+	if bucket <= 0 {
+		bucket = time.Minute
+	}
+
+	normalizedFrom := time.Time{}
+	normalizedTo := time.Time{}
+
+	if !from.IsZero() {
+		normalizedFrom = from.UTC().Truncate(bucket)
+	}
+	if !to.IsZero() {
+		normalizedTo = to.UTC().Truncate(bucket)
+	}
+
+	return normalizedFrom, normalizedTo
+}
+
+func candleIntervalDuration(interval model.CandleInterval) time.Duration {
+	switch interval {
+	case model.Interval1m:
+		return time.Minute
+	case model.Interval5m:
+		return 5 * time.Minute
+	case model.Interval15m:
+		return 15 * time.Minute
+	case model.Interval30m:
+		return 30 * time.Minute
+	case model.Interval1h:
+		return time.Hour
+	case model.Interval4h:
+		return 4 * time.Hour
+	case model.Interval1d:
+		return 24 * time.Hour
+	default:
+		return 0
+	}
+}
+
+func (s *marketDataService) getRuntimeCandlesCache(cacheKey string) *InstrumentCandlesResult {
+	s.runtimeCacheMu.RLock()
+	entry, exists := s.runtimeCache[cacheKey]
+	s.runtimeCacheMu.RUnlock()
+
+	if !exists {
+		return nil
+	}
+	if time.Now().After(entry.ExpiresAt) {
+		s.runtimeCacheMu.Lock()
+		delete(s.runtimeCache, cacheKey)
+		s.runtimeCacheMu.Unlock()
+		return nil
+	}
+
+	return cloneInstrumentCandlesResult(entry.Result)
+}
+
+func (s *marketDataService) setRuntimeCandlesCache(cacheKey string, result *InstrumentCandlesResult, ttl time.Duration) {
+	if result == nil {
+		return
+	}
+	if ttl <= 0 {
+		ttl = runtimeCandlesCacheTTL
+	}
+
+	now := time.Now()
+
+	s.runtimeCacheMu.Lock()
+	defer s.runtimeCacheMu.Unlock()
+
+	for key, entry := range s.runtimeCache {
+		if now.After(entry.ExpiresAt) {
+			delete(s.runtimeCache, key)
+		}
+	}
+
+	if len(s.runtimeCache) >= runtimeCandlesCacheMaxEntries {
+		for key := range s.runtimeCache {
+			delete(s.runtimeCache, key)
+			if len(s.runtimeCache) < runtimeCandlesCacheMaxEntries {
+				break
+			}
+		}
+	}
+
+	s.runtimeCache[cacheKey] = &instrumentCandlesCacheEntry{
+		Result:    cloneInstrumentCandlesResult(result),
+		CachedAt:  now,
+		ExpiresAt: now.Add(ttl),
+	}
+}
+
+func (s *marketDataService) InvalidateRuntimeMarketDataCacheForUser(userID string, reason string) int {
+	normalizedUserID := strings.TrimSpace(userID)
+	if normalizedUserID == "" {
+		return 0
+	}
+
+	marker := fmt.Sprintf("user:%s:", normalizedUserID)
+	deleted := s.invalidateRuntimeCache(func(cacheKey string) bool {
+		return strings.Contains(cacheKey, marker)
+	})
+	s.recordRuntimeCacheInvalidation("user", normalizedUserID, reason, deleted)
+	return deleted
+}
+
+func (s *marketDataService) InvalidateRuntimeMarketDataCacheForInstrument(instrumentID string, reason string) int {
+	normalizedInstrumentID := strings.TrimSpace(instrumentID)
+	if normalizedInstrumentID == "" {
+		return 0
+	}
+
+	marker := fmt.Sprintf("instrument:%s:", normalizedInstrumentID)
+	deleted := s.invalidateRuntimeCache(func(cacheKey string) bool {
+		return strings.Contains(cacheKey, marker)
+	})
+	s.recordRuntimeCacheInvalidation("instrument", normalizedInstrumentID, reason, deleted)
+	return deleted
+}
+
+func (s *marketDataService) GetRuntimeMarketDataInvalidationStats() RuntimeMarketDataInvalidationStats {
+	return RuntimeMarketDataInvalidationStats{
+		TotalEvents:         atomic.LoadUint64(&s.runtimeInvalidationTotalEvents),
+		TotalEntriesRemoved: atomic.LoadUint64(&s.runtimeInvalidationTotalEntriesRemoved),
+		CredentialEvents:    atomic.LoadUint64(&s.runtimeInvalidationCredentialEvents),
+		MappingEvents:       atomic.LoadUint64(&s.runtimeInvalidationMappingEvents),
+		OtherEvents:         atomic.LoadUint64(&s.runtimeInvalidationOtherEvents),
+	}
+}
+
+func (s *marketDataService) invalidateRuntimeCache(matchFn func(cacheKey string) bool) int {
+	if matchFn == nil {
+		return 0
+	}
+
+	deleted := 0
+	s.runtimeCacheMu.Lock()
+	defer s.runtimeCacheMu.Unlock()
+
+	for cacheKey := range s.runtimeCache {
+		if matchFn(cacheKey) {
+			delete(s.runtimeCache, cacheKey)
+			deleted++
+		}
+	}
+
+	return deleted
+}
+
+func (s *marketDataService) recordRuntimeCacheInvalidation(scope string, identifier string, reason string, deleted int) {
+	normalizedReason := strings.ToLower(strings.TrimSpace(reason))
+	if normalizedReason == "" {
+		normalizedReason = RuntimeCacheInvalidationReasonOther
+	}
+
+	atomic.AddUint64(&s.runtimeInvalidationTotalEvents, 1)
+	if deleted > 0 {
+		atomic.AddUint64(&s.runtimeInvalidationTotalEntriesRemoved, uint64(deleted))
+	}
+
+	switch normalizedReason {
+	case RuntimeCacheInvalidationReasonCredential:
+		atomic.AddUint64(&s.runtimeInvalidationCredentialEvents, 1)
+	case RuntimeCacheInvalidationReasonMapping:
+		atomic.AddUint64(&s.runtimeInvalidationMappingEvents, 1)
+	default:
+		atomic.AddUint64(&s.runtimeInvalidationOtherEvents, 1)
+	}
+
+	stats := s.GetRuntimeMarketDataInvalidationStats()
+	log.Printf(
+		"[runtime-candle-cache] invalidation scope=%s id=%s reason=%s removed=%d total_events=%d total_removed=%d credential_events=%d mapping_events=%d other_events=%d",
+		scope,
+		identifier,
+		normalizedReason,
+		deleted,
+		stats.TotalEvents,
+		stats.TotalEntriesRemoved,
+		stats.CredentialEvents,
+		stats.MappingEvents,
+		stats.OtherEvents,
+	)
+}
+
+func cloneInstrumentCandlesResult(input *InstrumentCandlesResult) *InstrumentCandlesResult {
+	if input == nil {
+		return nil
+	}
+
+	candles := make([]model.Candle, len(input.Candles))
+	copy(candles, input.Candles)
+
+	failures := make([]ProviderFailure, len(input.Failures))
+	copy(failures, input.Failures)
+
+	return &InstrumentCandlesResult{
+		Candles:        candles,
+		SourceProvider: input.SourceProvider,
+		FallbackUsed:   input.FallbackUsed,
+		Failures:       failures,
+	}
+}
+
+func isTransientProviderError(err error) bool {
+	if err == nil {
+		return false
+	}
+	var providerErr *providers.ProviderError
+	if errors.As(err, &providerErr) {
+		return providerErr.Retryable || providerErr.Fallback
+	}
+	return strings.Contains(strings.ToLower(err.Error()), "timeout") || strings.Contains(strings.ToLower(err.Error()), "tempor")
+}
+
+func supportsDataType(caps providers.ProviderCapabilities, dataType string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(dataType))
+	if normalized == "" || normalized == "CANDLES" || normalized == "OHLCV" {
+		return len(caps.Intervals) > 0
+	}
+	if normalized == "REALTIME" || normalized == "QUOTE" {
+		return caps.SupportsRealtime || len(caps.Intervals) > 0
+	}
+	if normalized == "MARKET_CAP" {
+		return true
+	}
+	return true
+}
 
 func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
 	log.Printf("[fetchCandlesFromProviders] symbol=%s assetType=%s interval=%s", symbol, assetType, interval)
@@ -873,14 +1607,70 @@ func (s *marketDataService) sortAndDeduplicateCandles(candles []model.Candle) []
 
 // Helper methods for asset price management
 
-// fetchAndStoreAssetPriceFromProvider fetches price from external source and stores it
-func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Context, asset *model.Asset) (*AssetPriceData, error) {
-	if asset.Symbol == nil {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: Asset '%s' (ID: %s) has no symbol - cannot fetch price", asset.Name, asset.ID)
-		return nil, fmt.Errorf("asset symbol is required for price fetching")
+func resolveMappedQuoteSymbol(mapping *model.InstrumentProviderMapping, fallback string) string {
+	if mapping == nil {
+		return strings.TrimSpace(fallback)
+	}
+	return strings.TrimSpace(firstNonEmpty(
+		stringOrEmpty(mapping.ProviderSymbol),
+		mapping.ProviderAssetID,
+		fallback,
+	))
+}
+
+func (s *marketDataService) resolveProviderQuoteSymbolForInstrument(ctx context.Context, instrument *model.Instrument, providerID string) (string, *model.InstrumentProviderMapping, error) {
+	if instrument == nil {
+		return "", nil, fmt.Errorf("instrument is required")
 	}
 
-	log.Printf("[fetchAndStoreAssetPriceFromProvider] Fetching price for asset '%s' (Symbol: %s, Type: %s)", asset.Name, *asset.Symbol, asset.Type)
+	if s.mappingService == nil {
+		return "", nil, fmt.Errorf("mapping service is not configured")
+	}
+
+	normalizedProviderID := strings.ToUpper(strings.TrimSpace(providerID))
+	mapping, mappingErr := s.mappingService.GetVerifiedMapping(ctx, instrument.ID, normalizedProviderID)
+	if mappingErr != nil {
+		mapping, mappingErr = s.mappingService.EnsureDeterministicMapping(ctx, instrument.ID, normalizedProviderID)
+		if mappingErr == nil && mapping != nil {
+			s.InvalidateRuntimeMarketDataCacheForInstrument(instrument.ID, RuntimeCacheInvalidationReasonMapping)
+		}
+	}
+	if mappingErr != nil || mapping == nil || mapping.MappingStatus != model.InstrumentProviderMappingStatusVerified {
+		status := "MISSING"
+		if mapping != nil && mapping.MappingStatus != "" {
+			status = string(mapping.MappingStatus)
+		}
+		if mappingErr != nil {
+			return "", nil, fmt.Errorf("verified mapping unavailable for instrument %s and provider %s (status=%s): %w", instrument.ID, normalizedProviderID, status, mappingErr)
+		}
+		return "", nil, fmt.Errorf("verified mapping unavailable for instrument %s and provider %s (status=%s)", instrument.ID, normalizedProviderID, status)
+	}
+
+	symbol := resolveMappedQuoteSymbol(mapping, instrument.Symbol)
+	if symbol == "" {
+		return "", nil, fmt.Errorf("mapped symbol is empty for instrument %s and provider %s", instrument.ID, normalizedProviderID)
+	}
+
+	return symbol, mapping, nil
+}
+
+// fetchAndStoreAssetPriceFromProvider fetches price from external source and stores it
+func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Context, asset *model.Asset, instrument *model.Instrument) (*AssetPriceData, error) {
+	rawSymbol := ""
+	if asset.Symbol != nil {
+		rawSymbol = strings.TrimSpace(*asset.Symbol)
+	}
+	hasLinkedInstrument := instrument != nil && strings.TrimSpace(instrument.ID) != ""
+	assetSymbolForLogs := rawSymbol
+	if assetSymbolForLogs == "" && instrument != nil {
+		assetSymbolForLogs = strings.TrimSpace(instrument.Symbol)
+	}
+	if !hasLinkedInstrument && rawSymbol == "" {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: Asset '%s' (ID: %s) has no symbol and no linked instrument mapping", asset.Name, asset.ID)
+		return nil, fmt.Errorf("asset symbol is required for legacy assets without linked instrument mapping")
+	}
+
+	log.Printf("[fetchAndStoreAssetPriceFromProvider] Fetching price for asset '%s' (Symbol: %s, Type: %s, linked_instrument=%v)", asset.Name, rawSymbol, asset.Type, hasLinkedInstrument)
 
 	// Try to get system-wide credentials first (admin-set for all users)
 	credMap := make(map[string]string)
@@ -890,27 +1680,14 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		log.Printf("[fetchAndStoreAssetPriceFromProvider] WARNING: Failed to get system-wide credentials: %v", err)
 	}
 
-	// If no system-wide credentials, get ALL credentials from DB
 	if len(systemCreds) == 0 {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] No system-wide API keys. Getting all credentials...")
-
-		allCreds, err := s.credRepo.ListAll(ctx)
-		if err == nil && len(allCreds) > 0 {
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d credentials in database", len(allCreds))
-			for _, cred := range allCreds {
-				log.Printf("[fetchAndStoreAssetPriceFromProvider] Found credential: provider=%s, is_system=%v, user_id=%s",
-					cred.Provider, cred.IsSystem, cred.UserID)
-			}
-			systemCreds = allCreds
-		}
-	}
-
-	if len(systemCreds) == 0 {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: No API keys configured at all. Please configure API keys via UI or insert system-wide credentials directly.")
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] No system-wide API keys configured; only no-key providers can be used.")
 	} else {
 		log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d credentials to try", len(systemCreds))
 	}
 
+	decryptFailureCount := 0
+	usableCredentialCount := 0
 	for i := range systemCreds {
 		cred := &systemCreds[i]
 		apiKey := ""
@@ -944,21 +1721,42 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 		// Last resort: if still looks encrypted, DON'T use it
 		if !decryptionSuccess {
+			decryptFailureCount++
 			log.Printf("[fetchAndStoreAssetPriceFromProvider] CRITICAL: Could not decrypt API key for %s (tried both methods). Key stored with different ENCRYPTION_KEY. Skipping provider.", cred.Provider)
 			continue
 		}
 
 		credMap[cred.Provider] = apiKey
+		usableCredentialCount++
 		log.Printf("[fetchAndStoreAssetPriceFromProvider] Using API key for provider: %s", cred.Provider)
 	}
+	if decryptFailureCount > 0 {
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] credential_decrypt_failures=%d", decryptFailureCount)
+	}
+	log.Printf("[fetchAndStoreAssetPriceFromProvider] usable_system_credentials=%d", usableCredentialCount)
 
 	// Get providers for this asset type
 	providerList := s.providerManager.GetProvidersForAssetType(string(asset.Type))
 	log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d providers for asset type %s", len(providerList), asset.Type)
 
 	var lastError error
+	providerSuccessCount := 0
+	providerFailureCount := 0
 	for _, provider := range providerList {
 		caps := provider.Capabilities()
+		providerID := strings.ToUpper(strings.TrimSpace(provider.ID()))
+
+		requestSymbol := rawSymbol
+		var mapping *model.InstrumentProviderMapping
+		if hasLinkedInstrument {
+			var mappingErr error
+			requestSymbol, mapping, mappingErr = s.resolveProviderQuoteSymbolForInstrument(ctx, instrument, providerID)
+			if mappingErr != nil {
+				log.Printf("[fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s missing linked mapping for instrument %s: %v", providerID, instrument.ID, mappingErr)
+				lastError = mappingErr
+				continue
+			}
+		}
 
 		// Get API key if required
 		apiKey := ""
@@ -973,15 +1771,29 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		}
 
 		quoteReq := providers.QuoteRequest{
-			Symbol:    *asset.Symbol,
+			Symbol:    requestSymbol,
 			AssetType: string(asset.Type),
 			APIKey:    apiKey,
 		}
 
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] Calling provider %s with API key: %q", provider.ID(), apiKey)
+		mappedProviderIdentity := ""
+		mappedQuoteCurrency := ""
+		if mapping != nil {
+			mappedProviderIdentity = firstNonEmpty(stringOrEmpty(mapping.ProviderSymbol), mapping.ProviderAssetID)
+			mappedQuoteCurrency = stringOrEmpty(mapping.QuoteCurrency)
+		}
+
+		log.Printf(
+			"[fetchAndStoreAssetPriceFromProvider] Calling provider %s with symbol=%s provider_asset_id=%s quote_currency=%s",
+			provider.ID(),
+			requestSymbol,
+			mappedProviderIdentity,
+			mappedQuoteCurrency,
+		)
 
 		quoteResp, err := provider.GetQuote(ctx, quoteReq)
 		if err != nil {
+			providerFailureCount++
 			log.Printf("[fetchAndStoreAssetPriceFromProvider] Provider %s GetQuote error: %v", provider.ID(), err)
 			lastError = err
 		} else if quoteResp != nil {
@@ -1003,14 +1815,14 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 			// Validate price data
 			if err := s.ValidateAssetPriceData(ctx, assetPrice); err != nil {
-				log.Printf("[fetchAndStoreAssetPriceFromProvider] Validation failed for %s: %v - trying other providers", *asset.Symbol, err)
+				log.Printf("[fetchAndStoreAssetPriceFromProvider] Validation failed for %s: %v - trying other providers", requestSymbol, err)
 			} else {
 				// Store in database
 				if _, err := s.priceRepo.Create(ctx, assetPrice); err != nil {
 					// Try direct insert into partition table
 					partitionErr := s.tryDirectPartitionInsert(ctx, assetPrice)
 					if partitionErr != nil {
-						log.Printf("[fetchAndStoreAssetPriceFromProvider] DB store failed for %s: %v, partition insert also failed: %v", *asset.Symbol, err, partitionErr)
+						log.Printf("[fetchAndStoreAssetPriceFromProvider] DB store failed for %s: %v, partition insert also failed: %v", requestSymbol, err, partitionErr)
 					} else {
 						// SUCCESS via partition insert
 						assetUUID, _ := uuid.Parse(asset.ID)
@@ -1022,8 +1834,10 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 							Source:    quoteResp.Source,
 							IsStale:   false,
 						}
-						log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s via partition", quoteResp.Last.String(), *asset.Symbol)
+						log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s via partition", quoteResp.Last.String(), requestSymbol)
 						s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
+						providerSuccessCount++
+						log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 						return priceData, nil
 					}
 				} else {
@@ -1042,8 +1856,10 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 						IsStale:   false,
 					}
 
-					log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s", quoteResp.Last.String(), *asset.Symbol)
+					log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s", quoteResp.Last.String(), requestSymbol)
 					s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
+					providerSuccessCount++
+					log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 					return priceData, nil
 				}
 			}
@@ -1051,7 +1867,7 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 		now := time.Now()
 		req := providers.CandleRequest{
-			Symbol:    *asset.Symbol,
+			Symbol:    requestSymbol,
 			AssetType: string(asset.Type),
 			Interval:  model.Interval1m,
 			From:      now.Add(-5 * time.Minute),
@@ -1074,11 +1890,12 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 		response, err := provider.GetCandles(ctx, req)
 		if err != nil || len(response.Candles) == 0 {
+			providerFailureCount++
 			continue
 		}
 
 		candle := response.Candles[len(response.Candles)-1]
-		price := decimal.NewFromInt(int64(candle.Close)).Div(decimal.NewFromInt(100))
+		price := candle.Close
 
 		assetPrice := &model.AssetPrice{
 			AssetID:   asset.ID,
@@ -1087,8 +1904,8 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 			Source:    candle.Source,
 		}
 
-		if candle.Volume > 0 {
-			volume := int64(candle.Volume)
+		if candle.Volume.IsPositive() {
+			volume := candle.Volume.IntPart()
 			assetPrice.Volume = &volume
 		}
 
@@ -1115,14 +1932,17 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		}
 
 		s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
+		providerSuccessCount++
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 		return priceData, nil
 	}
 
+	log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 	if lastError != nil {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: All providers failed for %s %s. Last error: %v", asset.Type, *asset.Symbol, lastError)
-		return nil, fmt.Errorf("no providers returned data for %s %s: %w", asset.Type, *asset.Symbol, lastError)
+		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: All providers failed for %s %s. Last error: %v", asset.Type, assetSymbolForLogs, lastError)
+		return nil, fmt.Errorf("no providers returned data for %s %s: %w", asset.Type, assetSymbolForLogs, lastError)
 	}
-	return nil, fmt.Errorf("no providers returned data for %s %s", asset.Type, *asset.Symbol)
+	return nil, fmt.Errorf("no providers returned data for %s %s", asset.Type, assetSymbolForLogs)
 }
 
 // updateAssetsFromProvider updates prices for a group of assets from the same provider
@@ -1131,17 +1951,29 @@ func (s *marketDataService) updateAssetsFromProvider(ctx context.Context, assets
 	// This could be optimized later with batch requests
 	successCount := 0
 	for _, asset := range assets {
-		if asset.Symbol != nil {
-			_, err := s.fetchAndStoreAssetPriceFromProvider(ctx, &asset)
+		var instrument *model.Instrument
+		if asset.InstrumentID != nil && strings.TrimSpace(*asset.InstrumentID) != "" && s.instrumentRepo != nil {
+			linkedInstrument, err := s.instrumentRepo.GetByID(ctx, strings.TrimSpace(*asset.InstrumentID))
 			if err != nil {
-				// Log error but continue with other assets
-				log.Printf("[updateAssetsFromProvider] Failed to update price for asset %s: %v", asset.Name, err)
+				log.Printf("[updateAssetsFromProvider] SKIP: linked instrument lookup failed for asset %s: %v", asset.Name, err)
 				continue
 			}
-			successCount++
-		} else {
-			log.Printf("[updateAssetsFromProvider] SKIP: Asset '%s' has no symbol", asset.Name)
+			instrument = linkedInstrument
 		}
+
+		hasRawSymbol := asset.Symbol != nil && strings.TrimSpace(*asset.Symbol) != ""
+		if !hasRawSymbol && instrument == nil {
+			log.Printf("[updateAssetsFromProvider] SKIP: Asset '%s' has no symbol and no linked instrument", asset.Name)
+			continue
+		}
+
+		_, err := s.fetchAndStoreAssetPriceFromProvider(ctx, &asset, instrument)
+		if err != nil {
+			// Log error but continue with other assets
+			log.Printf("[updateAssetsFromProvider] Failed to update price for asset %s: %v", asset.Name, err)
+			continue
+		}
+		successCount++
 	}
 	log.Printf("[updateAssetsFromProvider] Updated prices for %d/%d assets from source %s", successCount, len(assets), sourceName)
 	return nil
@@ -1277,4 +2109,50 @@ func (c *AssetPriceCache) GetStats() AssetPriceCacheStats {
 		MissRate:     0,
 		AvgAge:       avgAge,
 	}
+}
+
+// BackfillAssetPrices fetches historical daily prices for an asset and inserts them into asset_prices
+func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID string, assetID uuid.UUID, instrumentID string, from, to time.Time) error {
+	if assetID == uuid.Nil {
+		return fmt.Errorf("asset ID is required")
+	}
+	if strings.TrimSpace(instrumentID) == "" {
+		return fmt.Errorf("instrument ID is required")
+	}
+
+	result, err := s.GetCandlesByInstrument(ctx, userID, instrumentID, model.Interval1d, from, to, 5000, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get historical candles: %w", err)
+	}
+
+	if len(result.Candles) == 0 {
+		log.Printf("[BackfillAssetPrices] No historical data found for instrument %s", instrumentID)
+		return nil
+	}
+
+	prices := make([]model.AssetPrice, 0, len(result.Candles))
+	for _, candle := range result.Candles {
+		priceDec := candle.Close
+
+		var volPtr *int64
+		if candle.Volume.IsPositive() {
+			vol := candle.Volume.IntPart()
+			volPtr = &vol
+		}
+
+		prices = append(prices, model.AssetPrice{
+			AssetID:   assetID.String(),
+			Price:     priceDec,
+			Volume:    volPtr,
+			Timestamp: candle.Timestamp,
+			Source:    result.SourceProvider,
+		})
+	}
+
+	if err := s.priceRepo.UpsertPrices(ctx, prices); err != nil {
+		return fmt.Errorf("failed to upsert historical prices: %w", err)
+	}
+
+	log.Printf("[BackfillAssetPrices] Successfully backfilled %d prices for asset %s from %s to %s", len(prices), assetID, from.Format(time.DateOnly), to.Format(time.DateOnly))
+	return nil
 }

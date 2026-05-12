@@ -24,6 +24,7 @@ type IUserRepository interface {
 	GetLockedUsers(ctx context.Context) ([]model.User, error)
 	GetUsersWithFailedLogins(ctx context.Context, threshold int) ([]model.User, error)
 	UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error
+	UpdateThemePreferences(ctx context.Context, userID string, preferences model.UserThemePreferences) error
 }
 
 // UserRepository wraps the generic repository with user-specific functionality
@@ -238,6 +239,36 @@ func (r *UserRepository) UpdateDisplayCurrency(ctx context.Context, userID strin
 	res, err := r.db.NewUpdate().
 		Model((*model.User)(nil)).
 		Set("display_currency = ?", currency).
+		Set("updated_at = ?", time.Now()).
+		Where("id = ?", userID).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateThemePreferences updates a user's theme preferences
+func (r *UserRepository) UpdateThemePreferences(ctx context.Context, userID string, preferences model.UserThemePreferences) error {
+	res, err := r.db.NewUpdate().
+		Model((*model.User)(nil)).
+		Set("theme_preference = ?", preferences.ThemePreference).
+		Set("theme_base_color = ?", preferences.ThemeBaseColor).
+		Set("theme_accent_color = ?", preferences.ThemeAccentColor).
+		Set("theme_font_preference = ?", preferences.ThemeFontPreference).
+		Set("theme_heading_font = ?", preferences.ThemeHeadingFont).
+		Set("theme_menu_accent = ?", preferences.ThemeMenuAccent).
+		Set("theme_menu_color = ?", preferences.ThemeMenuColor).
+		Set("theme_style = ?", preferences.ThemeStyle).
+		Set("theme_radius = ?", preferences.ThemeRadius).
+		Set("theme_rtl = ?", preferences.ThemeRTL).
 		Set("updated_at = ?", time.Now()).
 		Where("id = ?", userID).
 		Exec(ctx)

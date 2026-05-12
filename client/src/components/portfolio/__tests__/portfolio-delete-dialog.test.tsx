@@ -271,6 +271,7 @@ describe("PortfolioDeleteDialog", () => {
 		const portfolioZeroValue = {
 			...mockPortfolioWithAssets,
 			analytics: {
+				// biome-ignore lint/style/noNonNullAssertion: unavoidable
 				...mockPortfolioWithAssets.analytics!,
 				totalValue: 0,
 			},

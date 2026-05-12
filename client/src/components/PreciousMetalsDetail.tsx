@@ -85,6 +85,7 @@ export function PreciousMetalsDetail({ metalId, onBack }: PreciousMetalsDetailPr
 	const valueChartOption = {
 		tooltip: {
 			trigger: "axis",
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const param = params[0];
 				return `${param.name}<br/>${formatCurrency(param.value)}`;

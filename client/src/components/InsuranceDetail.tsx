@@ -87,6 +87,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 	const valueChartOption = {
 		tooltip: {
 			trigger: "axis",
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const param = params[0];
 				return `${param.name}<br/>${formatCurrency(param.value)}`;
@@ -148,6 +149,7 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 		onBack();
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleEdit = (formData: any) => {
 		updateAsset(insuranceId, {
 			name: formData.name,

@@ -252,6 +252,7 @@ export function AlertTesting({ alerts, onTest, className }: AlertTestingProps) {
 								<Label htmlFor="testType">Test Type *</Label>
 								<Select
 									value={watchedTestType}
+									// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 									onValueChange={(value) => setValue("testType", value as any)}
 								>
 									<SelectTrigger>

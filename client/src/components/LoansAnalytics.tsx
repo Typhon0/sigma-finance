@@ -192,6 +192,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 			axisPointer: {
 				type: "shadow",
 			},
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const loan = loans[params[0].dataIndex];
 				return `${loan.name}<br/>
@@ -285,6 +286,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 				type: "bar",
 				data: loans.map((loan) => loan.interestRate),
 				itemStyle: {
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					color: (params: any) => {
 						const rate = params.value;
 						if (rate < 3) return "#10b981";

@@ -15,11 +15,12 @@ RUN go mod download
 # Copier le reste des fichiers de l'application dans le conteneur
 COPY . .
 
-# Construire l'application Go
-RUN go build -o main ./cmd
+# Construire le serveur HTTP et le CLI d'administration
+RUN go build -o sigma-finance-server ./cmd
+RUN go build -o sigma-finance ./cmd/bun
 
 # Exposer le port sur lequel l'application Go sera accessible
 EXPOSE 8080
 
 # Définir la commande pour démarrer l'application
-CMD ["./main"]
+CMD ["./sigma-finance-server"]

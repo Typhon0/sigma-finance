@@ -89,6 +89,7 @@ export function EnhancedPortfolioForm({
 }: EnhancedPortfolioFormProps) {
 	// Form state
 	const form = useForm<PortfolioFormData>({
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		resolver: zodResolver(portfolioFormSchema) as any,
 		defaultValues: {
 			name: portfolio?.name || "",
@@ -294,6 +295,7 @@ export function EnhancedPortfolioForm({
 										<div className="flex flex-wrap gap-2">
 											{nameSuggestions.map((suggestion, index) => (
 												<Button
+													// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 													key={index}
 													type="button"
 													variant="outline"

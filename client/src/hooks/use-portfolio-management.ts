@@ -243,7 +243,9 @@ export function usePortfolioManagement() {
 							: currentPortfolio.description,
 					sortOrder: variables.input.sortOrder ?? currentPortfolio.sortOrder,
 					updatedAt: new Date().toISOString(),
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				} as any,
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any;
 		},
 		update: (cache, { data: mutationData }) => {

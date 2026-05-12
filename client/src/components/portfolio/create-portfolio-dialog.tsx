@@ -27,6 +27,7 @@ export interface CreatePortfolioDialogProps {
 	/** Dialog description override */
 	description?: string;
 	/** Success callback - called after successful creation */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onSuccess?: (portfolio: any) => void;
 	/** Error callback - called when creation fails */
 	onError?: (error: Error) => void;
@@ -75,12 +76,14 @@ export function CreatePortfolioDialog({
 	const [internalOpen, setInternalOpen] = useState(false);
 	const [successState, setSuccessState] = useState<{
 		show: boolean;
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		portfolio?: any;
 	}>({ show: false });
 	const [errorMessage, setErrorMessage] = useState<string>("");
 
 	const isControlled = controlledOpen !== undefined;
 	const open = isControlled ? controlledOpen : internalOpen;
+	// biome-ignore lint/style/noNonNullAssertion: unavoidable
 	const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
 	// Get existing portfolio names from the portfolios data if not provided
@@ -257,6 +260,7 @@ export interface QuickCreatePortfolioDialogProps {
 	/** Dialog trigger element */
 	children?: React.ReactNode;
 	/** Success callback */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onSuccess?: (portfolio: any) => void;
 	/** Navigate to portfolio detail after creation */
 	navigateAfterCreate?: boolean;
@@ -293,6 +297,7 @@ export interface CreatePortfolioWithListNavigationProps {
 	/** Dialog trigger element */
 	children: React.ReactNode;
 	/** Success callback */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onSuccess?: (portfolio: any) => void;
 }
 

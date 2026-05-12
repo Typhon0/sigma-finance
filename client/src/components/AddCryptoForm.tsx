@@ -15,7 +15,7 @@ import {
 	Wallet,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
 	TradeableInstrumentSearch,
@@ -88,6 +88,7 @@ const SUPPORTED_CURRENCIES = new Set(CURRENCIES.map((currency) => currency.value
 export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 	const { user } = usePortfolio();
 	const [addType, setAddType] = useState<AddType>(null);
+	const detailsRef = useRef<HTMLDivElement>(null);
 	const [selectedCrypto, setSelectedCrypto] = useState<TradeableInstrumentSelection | null>(null);
 	const userDisplayCurrency = (user?.displayCurrency ?? "USD").toUpperCase();
 	const [formData, setFormData] = useState<FormData>({
@@ -105,6 +106,12 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			? userDisplayCurrency
 			: "USD") as SupportedCurrency,
 	});
+
+	useEffect(() => {
+		if (selectedCrypto && detailsRef.current) {
+			detailsRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+		}
+	}, [selectedCrypto]);
 
 	const handleInputChange = <K extends keyof FormData>(field: K, value: FormData[K]) => {
 		setFormData((prev) => ({ ...prev, [field]: value }));
@@ -230,7 +237,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 
 	// Step 1: Choose add type
 	const renderAddTypeSelection = () => (
-		<>
+		<div className="flex flex-col flex-1 min-h-0">
 			{/* Header */}
 			<div className="p-6 pb-4 border-b">
 				<div className="flex items-center justify-between mb-4">
@@ -249,9 +256,10 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 			</div>
 
 			{/* Content */}
-			<div className="flex-1 overflow-y-auto p-6">
+			<div className="flex-1 min-h-0 overflow-y-auto p-6">
 				<div className="grid gap-4">
 					{/* Exchange Sync */}
+					{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 					<div
 						role="button"
 						tabIndex={0}
@@ -282,6 +290,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 					</div>
 
 					{/* Wallet Sync */}
+					{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 					<div
 						role="button"
 						tabIndex={0}
@@ -312,6 +321,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 					</div>
 
 					{/* Manual Entry */}
+					{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 					<div
 						role="button"
 						tabIndex={0}
@@ -354,12 +364,15 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 					</div>
 				</div>
 			</div>
-		</>
+		</div>
 	);
 
 	return (
 		<Dialog open={open} onOpenChange={handleClose}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+			<DialogContent
+				showCloseButton={false}
+				className="max-w-2xl max-h-[90vh] overflow-hidden !flex !flex-col p-0 gap-0"
+			>
 				<DialogTitle className="sr-only">Add Cryptocurrency</DialogTitle>
 				<DialogDescription className="sr-only">
 					Add a new cryptocurrency to your portfolio
@@ -370,9 +383,9 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 
 				{/* Show manual form if manual type chosen */}
 				{addType === "manual" && (
-					<>
+					<div className="flex flex-col flex-1 min-h-0">
 						{/* Header */}
-						<div className="p-6 pb-4 border-b">
+						<div className="p-6 pb-4 border-b flex-shrink-0">
 							<div className="flex items-center justify-between mb-4">
 								<Logo compact />
 								<Button variant="ghost" size="icon" onClick={handleClose}>
@@ -401,7 +414,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 						</div>
 
 						{/* Content */}
-						<div className="flex-1 overflow-y-auto px-6 py-4">
+						<div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
 							<div className="space-y-6">
 								{/* Cryptocurrency Selection */}
 								<div className="space-y-3">
@@ -493,7 +506,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 
 								{/* Holdings Details */}
 								{selectedCrypto && (
-									<div className="space-y-4 p-4 rounded-lg border bg-muted/20">
+									<div ref={detailsRef} className="space-y-4 p-4 rounded-lg border bg-muted/20">
 										<h4 className="font-medium flex items-center gap-2">
 											<Coins className="h-4 w-4 text-primary" />
 											Holdings Details
@@ -712,7 +725,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 						</div>
 
 						{/* Footer */}
-						<div className="p-6 pt-4 border-t bg-muted/20">
+						<div className="p-6 pt-4 border-t bg-muted/20 flex-shrink-0">
 							<div className="flex items-center justify-end gap-3">
 								<Button variant="ghost" onClick={handleClose}>
 									Cancel
@@ -730,14 +743,14 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								</Button>
 							</div>
 						</div>
-					</>
+					</div>
 				)}
 
 				{/* Show Exchange Sync form */}
 				{addType === "exchange" && (
-					<>
+					<div className="flex flex-col flex-1 min-h-0">
 						{/* Header */}
-						<div className="p-6 pb-4 border-b">
+						<div className="p-6 pb-4 border-b flex-shrink-0">
 							<div className="flex items-center justify-between mb-4">
 								<Logo compact />
 								<Button variant="ghost" size="icon" onClick={handleClose}>
@@ -766,7 +779,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 						</div>
 
 						{/* Content */}
-						<div className="flex-1 overflow-y-auto p-6">
+						<div className="flex-1 min-h-0 overflow-y-auto p-6">
 							<div className="space-y-4">
 								<div className="text-center py-12">
 									<RefreshCw className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -781,14 +794,14 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								</div>
 							</div>
 						</div>
-					</>
+					</div>
 				)}
 
 				{/* Show Wallet Sync form */}
 				{addType === "wallet" && (
-					<>
+					<div className="flex flex-col flex-1 min-h-0">
 						{/* Header */}
-						<div className="p-6 pb-4 border-b">
+						<div className="p-6 pb-4 border-b flex-shrink-0">
 							<div className="flex items-center justify-between mb-4">
 								<Logo compact />
 								<Button variant="ghost" size="icon" onClick={handleClose}>
@@ -815,7 +828,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 						</div>
 
 						{/* Content */}
-						<div className="flex-1 overflow-y-auto p-6">
+						<div className="flex-1 min-h-0 overflow-y-auto p-6">
 							<div className="space-y-4">
 								<div className="text-center py-12">
 									<Link2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -830,7 +843,7 @@ export function AddCryptoForm({ open, onClose, onSubmit }: AddCryptoFormProps) {
 								</div>
 							</div>
 						</div>
-					</>
+					</div>
 				)}
 			</DialogContent>
 		</Dialog>

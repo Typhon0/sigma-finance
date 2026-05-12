@@ -386,24 +386,30 @@ func (u *stubUOW) Fund() repository.IFundRepository {
 func (u *stubUOW) Do(_ context.Context, _ func(repository.IUnitOfWork) error) error {
 	panic("not implemented")
 }
-func (u *stubUOW) User() repository.IUserRepository                       { panic("not implemented") }
-func (u *stubUOW) Portfolio() repository.IPortfolioRepository             { panic("not implemented") }
-func (u *stubUOW) Asset() repository.IAssetRepository                     { panic("not implemented") }
-func (u *stubUOW) Position() repository.IPositionRepository               { panic("not implemented") }
-func (u *stubUOW) Transaction() repository.ITransactionRepository         { panic("not implemented") }
-func (u *stubUOW) Watchlist() repository.IWatchlistRepository             { panic("not implemented") }
-func (u *stubUOW) WatchlistAsset() repository.IWatchlistAssetRepository   { panic("not implemented") }
-func (u *stubUOW) Tag() repository.ITagRepository                         { panic("not implemented") }
-func (u *stubUOW) PortfolioAsset() repository.IPortfolioAssetRepository   { panic("not implemented") }
-func (u *stubUOW) AssetType() repository.IAssetTypeRepository             { panic("not implemented") }
-func (u *stubUOW) PortfolioTag() repository.IPortfolioTagRepository       { panic("not implemented") }
-func (u *stubUOW) AssetTag() repository.IAssetTagRepository               { panic("not implemented") }
-func (u *stubUOW) Instrument() repository.IInstrumentRepository           { panic("not implemented") }
+func (u *stubUOW) User() repository.IUserRepository                     { panic("not implemented") }
+func (u *stubUOW) Portfolio() repository.IPortfolioRepository           { panic("not implemented") }
+func (u *stubUOW) Asset() repository.IAssetRepository                   { panic("not implemented") }
+func (u *stubUOW) Position() repository.IPositionRepository             { panic("not implemented") }
+func (u *stubUOW) Transaction() repository.ITransactionRepository       { panic("not implemented") }
+func (u *stubUOW) Watchlist() repository.IWatchlistRepository           { panic("not implemented") }
+func (u *stubUOW) WatchlistAsset() repository.IWatchlistAssetRepository { panic("not implemented") }
+func (u *stubUOW) Tag() repository.ITagRepository                       { panic("not implemented") }
+func (u *stubUOW) PortfolioAsset() repository.IPortfolioAssetRepository { panic("not implemented") }
+func (u *stubUOW) AssetType() repository.IAssetTypeRepository           { panic("not implemented") }
+func (u *stubUOW) PortfolioTag() repository.IPortfolioTagRepository     { panic("not implemented") }
+func (u *stubUOW) AssetTag() repository.IAssetTagRepository             { panic("not implemented") }
+func (u *stubUOW) Instrument() repository.IInstrumentRepository         { panic("not implemented") }
+func (u *stubUOW) InstrumentProviderMapping() repository.IInstrumentProviderMappingRepository {
+	panic("not implemented")
+}
 func (u *stubUOW) InstrumentAlias() repository.IInstrumentAliasRepository { panic("not implemented") }
 func (u *stubUOW) InstrumentSyncState() repository.IInstrumentSyncStateRepository {
 	panic("not implemented")
 }
 func (u *stubUOW) DiscoveryLog() repository.IDiscoveryLogRepository { panic("not implemented") }
+func (u *stubUOW) CatalogSyncRun() repository.ICatalogSyncRunRepository {
+	panic("not implemented")
+}
 func (u *stubUOW) FinanceDatabaseSyncSetting() repository.IFinanceDatabaseSyncSettingRepository {
 	panic("not implemented")
 }

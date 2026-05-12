@@ -124,6 +124,7 @@ describe("Portfolio Error Boundaries", () => {
 						{
 							message: "Portfolio not found",
 							extensions: { code: "NOT_FOUND" },
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						} as any,
 					],
 				});
@@ -145,6 +146,7 @@ describe("Portfolio Error Boundaries", () => {
 						{
 							message: "Unauthorized",
 							extensions: { code: "UNAUTHORIZED" },
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						} as any,
 					],
 				});

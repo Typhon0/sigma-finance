@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"time"
@@ -187,6 +188,7 @@ func (s *TransactionService) RecordTransaction(ctx context.Context, req Transact
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
 
+	s.enqueueDirtyRecalculationForPosition(ctx, req.PositionID, req.ExecutedAt)
 	return createdTransaction, nil
 }
 
@@ -215,6 +217,9 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 	if err != nil {
 		return nil, fmt.Errorf("failed to get transaction: %w", err)
 	}
+
+	dirtyFrom := transaction.ExecutedAt
+	positionID := transaction.PositionID
 
 	// Update fields if provided
 	if req.Type != nil {
@@ -260,6 +265,13 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 		return nil, fmt.Errorf("failed to update transaction: %w", err)
 	}
 
+	if transaction.ExecutedAt.Before(dirtyFrom) {
+		dirtyFrom = transaction.ExecutedAt
+	}
+	if transaction.PositionID != nil {
+		positionID = transaction.PositionID
+	}
+	s.enqueueDirtyRecalculationForPosition(ctx, positionID, dirtyFrom)
 	return transaction, nil
 }
 
@@ -309,7 +321,11 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 				return fmt.Errorf("failed to update position: %w", err)
 			}
 
-			return uow.Transaction().Delete(ctx, id)
+			if err := uow.Transaction().Delete(ctx, id); err != nil {
+				return err
+			}
+			s.enqueuePortfolioRecalculation(ctx, pos.PortfolioID, tx.ExecutedAt)
+			return nil
 		})
 	}
 
@@ -542,6 +558,9 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 	if err != nil {
 		return nil, err
 	}
+	if result != nil && result.Position != nil {
+		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
+	}
 	return result, nil
 }
 
@@ -631,7 +650,39 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 	if err != nil {
 		return nil, err
 	}
+	if result != nil && result.Position != nil {
+		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
+	}
 	return result, nil
+}
+
+func (s *TransactionService) enqueueDirtyRecalculationForPosition(ctx context.Context, positionID *string, dirtyFrom time.Time) {
+	if positionID == nil || *positionID == "" {
+		return
+	}
+	position, err := s.uow.Position().GetByID(ctx, *positionID)
+	if err != nil {
+		log.Printf("[portfolio-materialization] position lookup failed for dirty enqueue position=%s err=%v", *positionID, err)
+		return
+	}
+	s.enqueuePortfolioRecalculation(ctx, position.PortfolioID, dirtyFrom)
+}
+
+func (s *TransactionService) enqueuePortfolioRecalculation(ctx context.Context, portfolioID string, dirtyFrom time.Time) {
+	if portfolioID == "" || dirtyFrom.IsZero() {
+		return
+	}
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if !ok || unit.GetDB() == nil {
+		return
+	}
+	_, err := unit.GetDB().ExecContext(ctx, `
+		INSERT INTO sigma_finance.portfolio_recalculation_jobs (portfolio_id, dirty_from_date, status)
+		VALUES (?, ?, 'queued')
+	`, portfolioID, dirtyFrom.Format(time.DateOnly))
+	if err != nil {
+		log.Printf("[portfolio-materialization] dirty enqueue failed portfolio=%s dirty_from=%s err=%v", portfolioID, dirtyFrom.Format(time.DateOnly), err)
+	}
 }
 
 // ProcessCashTransaction handles cash-only transactions (deposits, withdrawals, etc.)

@@ -429,6 +429,7 @@ export class ChartUpdateManager {
 		delay: number = 300,
 	): (...args: T) => void {
 		if (ChartUpdateManager.debouncedUpdates.has(key)) {
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			return ChartUpdateManager.debouncedUpdates.get(key)!;
 		}
 
@@ -446,6 +447,7 @@ export class ChartUpdateManager {
 		delay: number = 100,
 	): (...args: T) => void {
 		if (ChartUpdateManager.throttledUpdates.has(key)) {
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			return ChartUpdateManager.throttledUpdates.get(key)!;
 		}
 

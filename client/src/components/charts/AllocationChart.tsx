@@ -89,6 +89,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 
 		// Add click handler for interactivity
 		if (interactive && onSegmentClick) {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			baseConfig.series = (baseConfig.series as any[])?.map((series) => ({
 				...series,
 				emphasis: {
@@ -103,6 +104,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 			if (currentChartType === "treemap") {
 				return {
 					...baseConfig,
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					series: (baseConfig.series as any[])?.map((series) => ({
 						...series,
 						label: {
@@ -123,6 +125,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 							fontSize: 10,
 						},
 					},
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					series: (baseConfig.series as any[])?.map((series) => ({
 						...series,
 						radius: compact ? "60%" : "70%",
@@ -149,6 +152,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	]);
 
 	// Handle chart click events
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleChartClick = (params: any) => {
 		if (interactive && onSegmentClick && params.data) {
 			const clickedData = processedData.find((item) => item.name === params.data.name);

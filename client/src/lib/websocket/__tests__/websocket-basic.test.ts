@@ -31,12 +31,14 @@ class MockWebSocket {
 	}
 
 	// Helper method to simulate incoming messages
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	simulateMessage(data: any) {
 		this.onmessage?.(new MessageEvent("message", { data: JSON.stringify(data) }));
 	}
 }
 
 // Mock global WebSocket
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 global.WebSocket = MockWebSocket as any;
 
 describe("WebSocketManager Basic Tests", () => {
@@ -68,6 +70,7 @@ describe("WebSocketManager Basic Tests", () => {
 		await wsManager.connect();
 
 		// Simulate message
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const ws = (wsManager as any).ws as MockWebSocket;
 		const testMessage = {
 			type: "PRICE_UPDATE",
@@ -104,6 +107,7 @@ describe("WebSocketManager Basic Tests", () => {
 		wsManager.subscribe("PRICE_UPDATE", handler);
 		await wsManager.connect();
 
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const ws = (wsManager as any).ws as MockWebSocket;
 
 		// Simulate malformed message
@@ -121,6 +125,7 @@ describe("WebSocketManager Basic Tests", () => {
 		const wsManager = new WebSocketManager("ws://localhost:8080/test");
 		await wsManager.connect();
 
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const ws = (wsManager as any).ws as MockWebSocket;
 		const sendSpy = vi.spyOn(ws, "send");
 

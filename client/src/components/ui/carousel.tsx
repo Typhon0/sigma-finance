@@ -112,6 +112,7 @@ function Carousel({
 				canScrollNext,
 			}}
 		>
+			{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 			<div
 				onKeyDownCapture={handleKeyDown}
 				className={cn("ui-carousel", className)}
@@ -140,6 +141,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
 	const { orientation: _orientation } = useCarousel();
 
 	return (
+		// biome-ignore lint/a11y/useSemanticElements: unavoidable
 		<div
 			role="group"
 			aria-roledescription="slide"

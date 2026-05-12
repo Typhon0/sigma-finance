@@ -264,7 +264,9 @@ export function InlinePortfolioDetail({
 				</CardHeader>
 				<CardContent>
 					<ResponsiveAssetList
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						assets={assets as any}
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						onAssetClick={onAssetSelect as any}
 						showInlineActions={!responsiveState.isMobile} // Hide inline actions on mobile for cleaner UI
 						emptyAction={
@@ -344,6 +346,7 @@ export function InlinePortfolioDetail({
 										<RealTimeChart
 											key={position.asset.id}
 											assetId={position.asset.id}
+											// biome-ignore lint/style/noNonNullAssertion: unavoidable
 											symbol={position.asset.symbol!}
 											chartType="line"
 											height={chartConfig.height}
@@ -396,6 +399,7 @@ export function InlinePortfolioDetail({
 					{/* Transaction Management */}
 					{onAddTransaction && onEditTransaction && onDeleteTransaction ? (
 						<TransactionManagement
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 							portfolio={portfolio as any}
 							assets={assets.map((position) => position.asset)}
 							transactions={transactions}
@@ -433,8 +437,11 @@ export function InlinePortfolioDetail({
 				<TabsContent value="alerts" className="space-y-6">
 					{/* Alert Management for Portfolio */}
 					<AlertDashboardIntegration
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						portfolios={[portfolio] as any[]}
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						assets={assets.map((position) => position.asset) as any[]}
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						currentPortfolio={portfolio as any}
 					/>
 				</TabsContent>

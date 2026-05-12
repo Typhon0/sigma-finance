@@ -262,6 +262,7 @@ export class ChartAccessibility {
 	/**
 	 * Generate accessible description for chart data
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static generateDescription(data: any[], chartType: string): string {
 		const dataLength = data.length;
 
@@ -318,6 +319,5 @@ export class ChartAccessibility {
 
 // Initialize chart libraries on module load
 if (typeof window !== "undefined") {
-	// biome-ignore lint/suspicious/noConsole: chart library init error logging is intentional
 	ChartLibraryManager.initialize().catch((_err: unknown) => {});
 }

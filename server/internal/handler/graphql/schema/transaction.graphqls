@@ -39,3 +39,15 @@ enum TransactionOrderField {
     UNIT_PRICE_AMOUNT
     QUANTITY
 }
+
+input UpdateTransactionInput {
+    quantity: Float
+    unitPriceAmount: Float
+    feesAmount: Float
+    executedAt: Time
+    notes: String
+}
+
+extend type Mutation {
+    updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction! @auth
+}

@@ -61,7 +61,7 @@ func (r *mutationResolver) AddInstrumentToPortfolio(ctx context.Context, input g
 	if input.UnitPriceCurrency != nil {
 		unitPriceCurrency = *input.UnitPriceCurrency
 	}
-	holding, err := r.InstrumentService.AddInstrumentToPortfolio(ctx, input.PortfolioID, input.InstrumentID, input.Quantity, input.AveragePurchasePrice, unitPriceCurrency, userPtr)
+	holding, err := r.InstrumentService.AddInstrumentToPortfolio(ctx, input.PortfolioID, input.InstrumentID, input.Quantity, input.AveragePurchasePrice, unitPriceCurrency, input.PurchaseDate, userPtr)
 	if err != nil {
 		return nil, err
 	}

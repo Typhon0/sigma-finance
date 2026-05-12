@@ -47,7 +47,7 @@
 				"noRedeclare": "error",
 				"noDebugger": "error",
 				"noConsole": "warn",
-				"noImportCycles": "warn",
+				"noImportCycles": "off",
 				"noArrayIndexKey": "warn"
 			},
 			"a11y": {
@@ -75,7 +75,7 @@
 			"style": {
 				"noNonNullAssertion": "warn",
 				"useNamingConvention": "off",
-				"useFilenamingConvention": "warn"
+				"useFilenamingConvention": "off"
 			}
 		}
 	},

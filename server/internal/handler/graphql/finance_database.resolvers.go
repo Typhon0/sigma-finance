@@ -48,14 +48,14 @@ func (r *mutationResolver) ImportFinanceDatabaseAssets(ctx context.Context, asse
 	if err != nil {
 		return nil, err
 	}
-	errors := result.Errors
-	if errors == nil {
-		errors = []string{}
+	errorsList := result.Errors
+	if errorsList == nil {
+		errorsList = []string{}
 	}
 	return &gqlModel.ImportFinanceDatabaseAssetsPayload{
 		Success:       result.Success,
 		ImportedCount: int32(result.ImportedCount),
-		Errors:        errors,
+		Errors:        errorsList,
 	}, nil
 }
 

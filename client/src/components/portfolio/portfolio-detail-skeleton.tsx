@@ -36,6 +36,7 @@ export function PortfolioDetailSkeleton() {
 			{/* Portfolio Metrics */}
 			<div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
 				{Array.from({ length: 4 }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					<Card key={`metric-skeleton-${i}`} className="touch-manipulation">
 						<CardHeader className="pb-2">
 							<Skeleton className="h-3 sm:h-4 w-16 sm:w-20" />
@@ -63,6 +64,7 @@ export function PortfolioDetailSkeleton() {
 					<div className="space-y-3 sm:space-y-4">
 						{Array.from({ length: 3 }).map((_, i) => (
 							<div
+								// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 								key={`asset-skeleton-${i}`}
 								className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 sm:p-4 border rounded-lg"
 							>
@@ -109,6 +111,7 @@ export function PortfolioMetricsSkeleton() {
 	return (
 		<div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
 			{Array.from({ length: 4 }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<Card key={`metric-skeleton-${i}`}>
 					<CardHeader className="pb-2">
 						<Skeleton className="h-4 w-20" />
@@ -128,6 +131,7 @@ export function PortfolioAssetsSkeleton({ count = 3 }: { count?: number }) {
 		<div className="space-y-4">
 			{Array.from({ length: count }).map((_, i) => (
 				<div
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					key={`asset-skeleton-${i}`}
 					className="flex items-center justify-between p-4 border rounded-lg"
 				>

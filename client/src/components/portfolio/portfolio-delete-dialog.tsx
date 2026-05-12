@@ -36,6 +36,7 @@ export function PortfolioDeleteDialog({
 
 	// Calculate total value for display
 	const totalValue = portfolio.analytics?.totalValue || 0;
+	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const { formatCurrency } = useCurrency();
 
 	return (

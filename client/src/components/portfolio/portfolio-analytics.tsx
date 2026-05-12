@@ -196,6 +196,7 @@ export function PortfolioAnalytics({
 		return {
 			tooltip: {
 				trigger: "item",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				formatter: (params: any) => {
 					if (typeof params === "object" && params !== null && "data" in params) {
 						const data = params.data as {
@@ -264,6 +265,7 @@ export function PortfolioAnalytics({
 		return {
 			tooltip: {
 				trigger: "axis",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				formatter: (params: any) => {
 					if (
 						Array.isArray(params) &&

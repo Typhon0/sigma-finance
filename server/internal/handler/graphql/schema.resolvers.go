@@ -15,6 +15,7 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"strings"
+	"time"
 )
 
 // CreateUser is the resolver for the createUser field.
@@ -67,6 +68,42 @@ func (r *mutationResolver) UpdateUserDisplayCurrency(ctx context.Context, input 
 	if err != nil {
 		return nil, err
 	}
+	return mapUserToGQL(*user), nil
+}
+
+// UpdateUserThemePreferences is the resolver for the updateUserThemePreferences field.
+func (r *mutationResolver) UpdateUserThemePreferences(ctx context.Context, input gqlModel.UpdateUserThemePreferencesInput) (*gqlModel.User, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	preferences := model.UserThemePreferences{
+		ThemePreference:     model.ThemePreference(strings.ToLower(input.ThemePreference)),
+		ThemeBaseColor:      model.ThemeBaseColor(strings.ToLower(input.ThemeBaseColor)),
+		ThemeAccentColor:    model.ThemeAccentColor(strings.ToLower(input.ThemeAccentColor)),
+		ThemeFontPreference: model.ThemeFontPreference(strings.ToLower(input.ThemeFontPreference)),
+		ThemeHeadingFont:    model.ThemeHeadingFont(strings.ToLower(input.ThemeHeadingFont)),
+		ThemeMenuAccent:     model.ThemeMenuAccent(strings.ToLower(input.ThemeMenuAccent)),
+		ThemeMenuColor:      model.ThemeMenuColor(strings.ToLower(input.ThemeMenuColor)),
+		ThemeStyle:          model.ThemeStyle(strings.ToLower(input.ThemeStyle)),
+		ThemeRadius:         input.ThemeRadius,
+		ThemeRTL:            input.ThemeRtl,
+	}
+
+	if err := preferences.Validate(); err != nil {
+		return nil, err
+	}
+
+	if err := r.UOW.User().UpdateThemePreferences(ctx, userID, preferences); err != nil {
+		return nil, err
+	}
+
+	user, err := r.UserService.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
 	return mapUserToGQL(*user), nil
 }
 
@@ -297,6 +334,9 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 	metadataPayload := map[string]interface{}{
 		"currency": quoteCurrency.String(),
 	}
+	if input.PurchaseDate != nil {
+		metadataPayload["purchase_date"] = input.PurchaseDate.UTC().Format(time.RFC3339)
+	}
 	if input.BlockchainNetwork != nil {
 		metadataPayload["blockchain"] = *input.BlockchainNetwork
 	}
@@ -309,11 +349,12 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 	}
 
 	err = r.UOW.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// Manual create path is non-tradeable. Tradeable crypto must use addInstrumentToPortfolio.
 		asset, err = uow.Asset().Create(ctx, &model.Asset{
 			Name:        input.Name,
 			Symbol:      &input.Name, // Use name as symbol if ticker not provided
 			Type:        model.AssetTypeCrypto,
-			IsTradeable: true,
+			IsTradeable: false,
 			Metadata:    metadata,
 		})
 		if err != nil {
@@ -341,8 +382,6 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 	result.CurrentValue = input.CurrentValue
 	result.PurchaseDate = input.PurchaseDate
 	result.PurchasePrice = input.PurchasePrice
-
-	r.triggerAssetPriceRefresh(asset)
 
 	return result, nil
 }

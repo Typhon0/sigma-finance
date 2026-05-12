@@ -248,7 +248,9 @@ export function usePerformanceMonitoring() {
 			} else if (entry.entryType === "paint") {
 				eventData.paint_type = entry.name;
 			} else if (entry.entryType === "largest-contentful-paint") {
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				eventData.element = (entry as any).element?.tagName;
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				eventData.size = (entry as any).size;
 			}
 

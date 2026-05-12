@@ -209,8 +209,8 @@ func (t *Transaction) validatePrice() error {
 			expectedAmount := t.Quantity.Mul(*t.UnitPriceAmount).Mul(decimal.NewFromInt(100)) // Convert to cents
 			actualAmount := decimal.NewFromInt(int64(t.Amount.Abs()))
 
-			// Allow for small rounding differences (within 1 cent per unit)
-			tolerance := t.Quantity.Mul(decimal.NewFromInt(1))
+			// Allow for small rounding differences (at least 1 cent total, or 1 cent per unit for large quantities)
+			tolerance := decimal.Max(decimal.NewFromFloat(1.0), t.Quantity.Abs().Mul(decimal.NewFromInt(1)))
 			if expectedAmount.Sub(actualAmount).Abs().GreaterThan(tolerance) {
 				return fmt.Errorf("amount (%d cents) does not match quantity (%s) * price (%s)",
 					t.Amount, t.Quantity.String(), t.UnitPriceAmount.String())

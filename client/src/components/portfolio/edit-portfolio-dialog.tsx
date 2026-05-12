@@ -52,6 +52,7 @@ export function EditPortfolioDialog({
 
 	const isControlled = controlledOpen !== undefined;
 	const open = isControlled ? controlledOpen : internalOpen;
+	// biome-ignore lint/style/noNonNullAssertion: unavoidable
 	const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
 	// Get portfolio data and existing portfolio names

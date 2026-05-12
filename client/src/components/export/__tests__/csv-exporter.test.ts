@@ -6,6 +6,7 @@ describe("CSVExporter", () => {
 	describe("escapeCSVField", () => {
 		it("should handle null and undefined values", () => {
 			// Access private method for testing
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			const escapeField = (CSVExporter as any).escapeCSVField;
 
 			expect(escapeField(null)).toBe("");
@@ -13,18 +14,21 @@ describe("CSVExporter", () => {
 		});
 
 		it("should escape fields with commas", () => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			const escapeField = (CSVExporter as any).escapeCSVField;
 
 			expect(escapeField("Hello, World")).toBe('"Hello, World"');
 		});
 
 		it("should escape fields with quotes", () => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			const escapeField = (CSVExporter as any).escapeCSVField;
 
 			expect(escapeField('Say "Hello"')).toBe('"Say ""Hello"""');
 		});
 
 		it("should not escape simple fields", () => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			const escapeField = (CSVExporter as any).escapeCSVField;
 
 			expect(escapeField("SimpleText")).toBe("SimpleText");

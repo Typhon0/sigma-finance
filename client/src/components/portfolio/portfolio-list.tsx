@@ -404,6 +404,7 @@ function PortfolioListSkeleton({ viewMode }: { viewMode: ViewMode }) {
 			>
 				{Array.from({ length: skeletonCount }).map((_, i) => (
 					<div
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						key={`portfolio-view-skeleton-${i}`}
 						className={cn(
 							"bg-muted rounded-lg animate-pulse",

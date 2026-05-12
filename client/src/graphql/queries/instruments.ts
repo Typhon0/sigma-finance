@@ -12,6 +12,7 @@ export const SEARCH_INSTRUMENTS = graphql(/* GraphQL */ `
 					exchangeCode
 					country
 					currency
+					sector
 					assetType
 					providerSource
 					providerExternalId

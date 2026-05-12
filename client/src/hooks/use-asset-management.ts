@@ -113,17 +113,20 @@ export const optimisticResponseGenerators = {
 	}),
 };
 
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function invalidatePortfolioQueries(cache: any) {
 	cache.evict({ fieldName: "portfolios" });
 	cache.evict({ fieldName: "portfolio" });
 	cache.gc();
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function invalidateDashboardData(cache: any) {
 	cache.evict({ fieldName: "dashboard" });
 	cache.gc();
 }
 
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function invalidatePortfolio(cache: any, portfolioId: string) {
 	cache.evict({
 		id: cache.identify({ __typename: "Portfolio", id: portfolioId }),
@@ -182,6 +185,27 @@ const REMOVE_ASSET_FROM_PORTFOLIO = graphql(/* GraphQL */ `
   }
 `);
 
+const UPDATE_ASSET_IN_PORTFOLIO = graphql(/* GraphQL */ `
+  mutation UpdateAssetInPortfolio($input: PortfolioAssetInput!) {
+    updateAssetInPortfolio(input: $input) {
+      asset {
+        id
+        name
+        symbol
+        currentValue
+        assetType {
+          id
+          name
+        }
+      }
+      quantity
+      averagePurchasePrice
+      ownershipPct
+    }
+  }
+`);
+
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 	const [addAssetToPortfolioMutation] = useMutation<
 		AddAssetToPortfolioMutationResult,
@@ -191,6 +215,7 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 		optimisticResponse: (variables: AddAssetToPortfolioMutationVariables) =>
 			optimisticResponseGenerators.addAssetToPortfolio(variables.input),
 		update: (
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			cache: any,
 			result: Omit<
 				import("@apollo/client").FetchResult<AddAssetToPortfolioMutationResult>,
@@ -222,6 +247,17 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 		},
 		onError: (_error) => {},
 	});
+	const [updateAssetInPortfolioMutation] = useMutation(UPDATE_ASSET_IN_PORTFOLIO, {
+		client: apolloClient,
+		update: (_cache, _result, { variables }) => {
+			const portfolioId = variables?.input?.portfolioID as string | undefined;
+			if (!portfolioId) return;
+			invalidatePortfolioQueries(apolloClient?.cache ?? _cache);
+			invalidateDashboardData(apolloClient?.cache ?? _cache);
+			invalidatePortfolio(apolloClient?.cache ?? _cache, portfolioId);
+		},
+		onError: (_error) => {},
+	});
 
 	const addAssetToPortfolio = async (input: PortfolioAssetInput) => {
 		const result = await addAssetToPortfolioMutation({
@@ -237,8 +273,16 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 		return result;
 	};
 
+	const updateAssetInPortfolio = async (input: PortfolioAssetInput) => {
+		const result = await updateAssetInPortfolioMutation({
+			variables: { input },
+		});
+		return result;
+	};
+
 	return {
 		addAssetToPortfolio,
 		removeAssetFromPortfolio,
+		updateAssetInPortfolio,
 	};
 }

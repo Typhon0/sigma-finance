@@ -56,9 +56,13 @@ export const usePortfolioAnalytics = (userId: string, portfolioId?: string) => {
 			return null;
 		}
 
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const metrics = calculatePortfolioMetrics(portfolioToAnalyze as any);
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const assetPerformances = calculateAssetPerformance(portfolioToAnalyze as any);
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const assetAllocation = calculateAssetAllocation(portfolioToAnalyze as any);
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		const portfolioAllocation = calculatePortfolioAllocation(portfolios as any);
 
 		return {

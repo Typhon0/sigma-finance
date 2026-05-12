@@ -44,6 +44,7 @@ export function TransactionManagement() {
 	const [maxAmount, setMaxAmount] = useState("");
 	const [sortBy, setSortBy] = useState("date-desc");
 	const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const [savedFilters, setSavedFilters] = useState<any[]>([]);
 	const [showSaveFilterDialog, setShowSaveFilterDialog] = useState(false);
 	const [filterName, setFilterName] = useState("");
@@ -392,6 +393,7 @@ export function TransactionManagement() {
 		setShowSaveFilterDialog(false);
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const loadSavedFilter = (filter: any) => {
 		setSearchTerm(filter.config.searchTerm);
 		setSelectedAccount(filter.config.selectedAccount);

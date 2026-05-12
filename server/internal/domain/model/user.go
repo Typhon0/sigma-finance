@@ -1,6 +1,7 @@
 package model
 
 import (
+	"context"
 	"regexp"
 	"strings"
 	"time"
@@ -9,21 +10,72 @@ import (
 	"github.com/uptrace/bun"
 )
 
+type UserRole string
+
+const (
+	UserRoleUser  UserRole = "USER"
+	UserRoleAdmin UserRole = "ADMIN"
+)
+
+func (r UserRole) normalize() UserRole {
+	normalized := strings.ToUpper(strings.TrimSpace(string(r)))
+	if normalized == "" {
+		return UserRoleUser
+	}
+	return UserRole(normalized)
+}
+
+func (r UserRole) IsValid() bool {
+	switch r.normalize() {
+	case UserRoleUser, UserRoleAdmin:
+		return true
+	default:
+		return false
+	}
+}
+
 type User struct {
 	bun.BaseModel `bun:"table:sigma_finance.user"`
 
-	ID               string       `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	Email            string       `bun:"email,unique,notnull"`
-	EmailVerified    bool         `bun:"email_verified,default:false"`
-	Name             string       `bun:"name"`
-	PasswordHash     *string      `bun:"password_hash"`
-	AuthMethods      []AuthMethod `bun:"rel:has-many,join:id=user_id"`
-	CreatedAt        time.Time    `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt        time.Time    `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
-	LastLoginAt      *time.Time   `bun:"last_login_at"`
-	FailedLoginCount int          `bun:"failed_login_count,default:0"`
-	LockedUntil      *time.Time   `bun:"locked_until"`
-	DisplayCurrency  Currency     `bun:"display_currency,type:varchar(3),default:USD"`
+	ID                  string              `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	Email               string              `bun:"email,unique,notnull"`
+	Role                UserRole            `bun:"role,type:varchar(20),notnull,default:USER"`
+	EmailVerified       bool                `bun:"email_verified,default:false"`
+	Name                string              `bun:"name"`
+	PasswordHash        *string             `bun:"password_hash"`
+	AuthMethods         []AuthMethod        `bun:"rel:has-many,join:id=user_id"`
+	CreatedAt           time.Time           `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt           time.Time           `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	LastLoginAt         *time.Time          `bun:"last_login_at"`
+	FailedLoginCount    int                 `bun:"failed_login_count,default:0"`
+	LockedUntil         *time.Time          `bun:"locked_until"`
+	DisplayCurrency     Currency            `bun:"display_currency,type:varchar(3),default:USD"`
+	ThemePreference     ThemePreference     `bun:"theme_preference,type:varchar(10),default:system"`
+	ThemeBaseColor      ThemeBaseColor      `bun:"theme_base_color,type:varchar(20),default:neutral"`
+	ThemeAccentColor    ThemeAccentColor    `bun:"theme_accent_color,type:varchar(20),default:zinc"`
+	ThemeFontPreference ThemeFontPreference `bun:"theme_font_preference,type:varchar(30),default:inter"`
+	ThemeHeadingFont    ThemeHeadingFont    `bun:"theme_heading_font,type:varchar(30),default:inherit"`
+	ThemeMenuAccent     ThemeMenuAccent     `bun:"theme_menu_accent,type:varchar(10),default:subtle"`
+	ThemeMenuColor      ThemeMenuColor      `bun:"theme_menu_color,type:varchar(30),default:default"`
+	ThemeStyle          ThemeStyle          `bun:"theme_style,type:varchar(10),default:vega"`
+	ThemeRadius         float64             `bun:"theme_radius,type:numeric(3,2),default:0.625"`
+	ThemeRTL            bool                `bun:"theme_rtl,default:false"`
+}
+
+func (u *User) normalizeRole() {
+	u.Role = u.Role.normalize()
+}
+
+func (u *User) IsAdmin() bool {
+	return u.Role.normalize() == UserRoleAdmin
+}
+
+func (u *User) BeforeAppendModel(_ context.Context, query bun.Query) error {
+	switch query.(type) {
+	case *bun.InsertQuery, *bun.UpdateQuery:
+		u.normalizeRole()
+	}
+	return nil
 }
 
 // ValidateEmail validates the email format
@@ -133,6 +185,11 @@ func ValidatePassword(password string) error {
 
 // Validate performs full validation of the user model
 func (u *User) Validate() error {
+	u.normalizeRole()
+	if !u.Role.IsValid() {
+		return NewValidationError("role", "Role must be one of USER or ADMIN")
+	}
+
 	if err := u.ValidateEmail(); err != nil {
 		return err
 	}

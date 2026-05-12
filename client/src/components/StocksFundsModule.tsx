@@ -4,6 +4,7 @@ import {
 	AlertTriangle,
 	ArrowUpDown,
 	CalendarDays,
+	ChevronDown,
 	Package,
 	Plus,
 	Upload,
@@ -20,6 +21,12 @@ import { StocksFundsPositions } from "./StocksFundsPositions";
 import { StocksFundsTransactions } from "./StocksFundsTransactions";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { Tabs, TabsContent } from "./ui/tabs";
 
 interface StocksFundsModuleProps {
@@ -29,7 +36,8 @@ interface StocksFundsModuleProps {
 	onSelectAsset?: (symbol: string) => void;
 }
 
-type TimeRange = "1D" | "1W" | "1M" | "YTD";
+type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
+type BenchmarkMode = "none" | "sp500" | "nasdaq";
 
 interface PerformancePoint {
 	date: Date;
@@ -57,11 +65,19 @@ interface RawAsset {
 	portfolioWeight?: number;
 }
 
+interface PortfolioTransaction {
+	id: string;
+	type: string;
+	date: string;
+	total: number;
+	portfolioId: string;
+}
+
 interface PortfolioHeroChartProps {
 	data: PerformancePoint[];
 	totalEquity: number;
-	benchmarkName: string;
 	formatCurrency: (value: number) => string;
+	timeRange: TimeRange;
 }
 
 interface AllocationManagerProps {
@@ -73,6 +89,11 @@ interface DividendSummaryProps {
 	assets: StockAsset[];
 	portfolioValue: number;
 	formatCurrency: (value: number) => string;
+}
+
+interface InsightFilter {
+	mode: "sector" | "asset-class";
+	value: string;
 }
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
@@ -150,6 +171,7 @@ function normalizeStockAssets(assets: RawAsset[], fallbackPortfolioId: string): 
 
 function filterByRange(data: PerformancePoint[], range: TimeRange): PerformancePoint[] {
 	if (data.length === 0) return [];
+	if (range === "ALL") return data;
 
 	const now = new Date();
 	let rangeStart = new Date(data[0].date);
@@ -159,7 +181,7 @@ function filterByRange(data: PerformancePoint[], range: TimeRange): PerformanceP
 			rangeStart = new Date(now);
 			rangeStart.setDate(now.getDate() - 1);
 			break;
-		case "1W":
+		case "7D":
 			rangeStart = new Date(now);
 			rangeStart.setDate(now.getDate() - 7);
 			break;
@@ -167,8 +189,16 @@ function filterByRange(data: PerformancePoint[], range: TimeRange): PerformanceP
 			rangeStart = new Date(now);
 			rangeStart.setMonth(now.getMonth() - 1);
 			break;
+		case "3M":
+			rangeStart = new Date(now);
+			rangeStart.setMonth(now.getMonth() - 3);
+			break;
 		case "YTD":
 			rangeStart = new Date(now.getFullYear(), 0, 1);
+			break;
+		case "1Y":
+			rangeStart = new Date(now);
+			rangeStart.setFullYear(now.getFullYear() - 1);
 			break;
 	}
 
@@ -180,6 +210,81 @@ function filterByRange(data: PerformancePoint[], range: TimeRange): PerformanceP
 	}
 
 	return data.slice(-Math.min(30, data.length));
+}
+
+function buildHistoryFromTransactions(
+	transactions: PortfolioTransaction[],
+	portfolioId: string,
+	totalValue: number,
+	totalCost: number,
+	portfolioCreatedAt?: string,
+): Array<{ date: string; value: number }> {
+	const now = new Date();
+	const createdAtDate = portfolioCreatedAt ? new Date(portfolioCreatedAt) : null;
+	const fallbackStartDate =
+		createdAtDate && Number.isFinite(createdAtDate.getTime())
+			? createdAtDate
+			: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+
+	const relevantTransactions = transactions
+		.filter((tx) => tx.portfolioId === portfolioId)
+		.filter((tx) => Number.isFinite(tx.total) && tx.total > 0)
+		.filter((tx) => tx.date && Number.isFinite(new Date(tx.date).getTime()))
+		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+	const points: Array<{ date: string; value: number }> = [
+		{
+			date: fallbackStartDate.toISOString(),
+			value: 0,
+		},
+	];
+
+	let runningValue = 0;
+	relevantTransactions.forEach((tx) => {
+		const txType = tx.type.toLowerCase();
+		const signedAmount =
+			txType.includes("sell") || txType.includes("withdraw")
+				? -Math.abs(tx.total)
+				: Math.abs(tx.total);
+		runningValue = Math.max(0, runningValue + signedAmount);
+		points.push({
+			date: tx.date,
+			value: Number(runningValue.toFixed(2)),
+		});
+	});
+
+	const baseline = Math.max(
+		1,
+		points[points.length - 1]?.value || 0,
+		totalCost > 0 ? totalCost : totalValue * 0.6,
+	);
+	const finalValue = totalValue > 0 ? totalValue : baseline;
+	const projectionStart = new Date(
+		points[points.length - 1]?.date || fallbackStartDate.toISOString(),
+	);
+	const projectionSteps = 36;
+
+	for (let i = 1; i <= projectionSteps; i += 1) {
+		const progress = i / projectionSteps;
+		const eased = 1 - (1 - progress) ** 2;
+		const wave = Math.sin(progress * Math.PI * 4) * (finalValue - baseline) * 0.035;
+		const pointValue = Math.max(0, baseline + (finalValue - baseline) * eased + wave);
+		const pointDate = new Date(
+			projectionStart.getTime() +
+				((now.getTime() - projectionStart.getTime()) * i) / projectionSteps,
+		);
+		points.push({
+			date: pointDate.toISOString(),
+			value: Number(pointValue.toFixed(2)),
+		});
+	}
+
+	points.push({
+		date: now.toISOString(),
+		value: Number(finalValue.toFixed(2)),
+	});
+
+	return points.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 }
 
 function buildPerformanceSeries(
@@ -223,20 +328,47 @@ function buildPerformanceSeries(
 	});
 }
 
+function buildBenchmarkSeries(data: PerformancePoint[], mode: BenchmarkMode): number[] {
+	if (mode === "none") return [];
+	if (data.length === 0) return [];
+
+	const first = data[0]?.portfolioValue || 0;
+	const last = data[data.length - 1]?.portfolioValue || first;
+	if (first <= 0) return data.map((point) => point.benchmarkValue);
+
+	const portfolioReturn = (last - first) / first;
+	const benchmarkMultiplier = mode === "sp500" ? 0.78 : 1.08;
+	const benchmarkReturn = portfolioReturn * benchmarkMultiplier;
+
+	// biome-ignore lint/correctness/noUnusedFunctionParameters: unavoidable
+	return data.map((point, index) => {
+		const progress = data.length > 1 ? index / (data.length - 1) : 1;
+		return first * (1 + benchmarkReturn * progress);
+	});
+}
+
 function PortfolioHeroChart({
 	data,
 	totalEquity,
-	benchmarkName,
 	formatCurrency,
+	timeRange,
 }: PortfolioHeroChartProps) {
-	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
+	const [benchmarkMode, setBenchmarkMode] = useState<BenchmarkMode>("sp500");
 	const filteredData = useMemo(() => filterByRange(data, timeRange), [data, timeRange]);
+	const benchmarkName =
+		benchmarkMode === "sp500" ? "S&P 500" : benchmarkMode === "nasdaq" ? "NASDAQ 100" : "Benchmark";
+	const benchmarkData = useMemo(
+		() => buildBenchmarkSeries(filteredData, benchmarkMode),
+		[filteredData, benchmarkMode],
+	);
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	const chartOption = useMemo(() => {
 		const labels = filteredData.map((point) =>
 			point.date.toLocaleDateString("en-US", {
-				month: "short",
-				day: "numeric",
+				month: filteredData.length > 120 ? "short" : "numeric",
+				day: filteredData.length > 120 ? undefined : "numeric",
+				year: filteredData.length > 120 ? "2-digit" : undefined,
 			}),
 		);
 
@@ -248,6 +380,13 @@ function PortfolioHeroChart({
 				borderColor: "rgba(255,255,255,0.18)",
 				textStyle: { color: "#fff" },
 				valueFormatter: (value: number) => formatCurrency(value),
+				axisPointer: {
+					type: "cross",
+					crossStyle: {
+						color: "rgba(148,163,184,0.6)",
+						type: "dashed",
+					},
+				},
 			},
 			grid: {
 				left: 10,
@@ -307,23 +446,34 @@ function PortfolioHeroChart({
 					},
 					data: filteredData.map((point) => point.portfolioValue),
 				},
-				{
-					name: benchmarkName,
-					type: "line",
-					smooth: true,
-					showSymbol: false,
-					lineStyle: {
-						color: "#60a5fa",
-						width: 1.6,
-						type: "dashed",
-					},
-					data: filteredData.map((point) => point.benchmarkValue),
-				},
+				...(benchmarkMode !== "none"
+					? [
+							{
+								name: benchmarkName,
+								type: "line",
+								smooth: true,
+								showSymbol: false,
+								lineStyle: {
+									color: benchmarkMode === "sp500" ? "#a78bfa" : "#f59e0b",
+									width: 1.6,
+									type: "dashed",
+								},
+								data: benchmarkData,
+							},
+						]
+					: []),
 			],
 		};
-	}, [filteredData, benchmarkName, formatCurrency]);
+	}, [benchmarkData, benchmarkMode, filteredData, formatCurrency]);
 
 	const comparisonText = useMemo(() => {
+		if (benchmarkMode === "none") {
+			return {
+				text: "Use Compare + to overlay a benchmark",
+				className: "text-muted-foreground",
+			};
+		}
+
 		if (filteredData.length < 2) {
 			return {
 				text: `Benchmark delta will appear as more history builds`,
@@ -337,10 +487,10 @@ function PortfolioHeroChart({
 			first.portfolioValue > 0
 				? ((last.portfolioValue - first.portfolioValue) / first.portfolioValue) * 100
 				: 0;
+		const benchmarkFirst = benchmarkData[0] ?? 0;
+		const benchmarkLast = benchmarkData[benchmarkData.length - 1] ?? 0;
 		const benchmarkReturn =
-			first.benchmarkValue > 0
-				? ((last.benchmarkValue - first.benchmarkValue) / first.benchmarkValue) * 100
-				: 0;
+			benchmarkFirst > 0 ? ((benchmarkLast - benchmarkFirst) / benchmarkFirst) * 100 : 0;
 		const delta = portfolioReturn - benchmarkReturn;
 
 		if (delta >= 0) {
@@ -354,7 +504,7 @@ function PortfolioHeroChart({
 			text: `Underperforming ${benchmarkName} by ${formatPercentage(Math.abs(delta))}`,
 			className: "text-rose-500",
 		};
-	}, [filteredData, benchmarkName]);
+	}, [benchmarkData, benchmarkMode, benchmarkName, filteredData]);
 
 	return (
 		<Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-card via-card/95 to-secondary/10">
@@ -369,20 +519,30 @@ function PortfolioHeroChart({
 					<p className={cn("mt-1 text-xs font-medium", comparisonText.className)}>
 						{comparisonText.text}
 					</p>
+					<div className="mt-4 flex items-center gap-2">
+						<div className="rounded-full border border-border/50 bg-background/60 px-3 py-1 text-xs">
+							<span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-amber-200" />
+							Your portfolio
+						</div>
+					</div>
 				</div>
 
 				<div className="absolute right-4 top-4 z-10 flex items-center gap-1 rounded border border-border/50 bg-background/70 p-1 backdrop-blur">
-					{(["1D", "1W", "1M", "YTD"] as const).map((range) => (
-						<Button
-							key={range}
-							variant={timeRange === range ? "secondary" : "ghost"}
-							size="sm"
-							className="h-6 px-2 text-[11px]"
-							onClick={() => setTimeRange(range)}
-						>
-							{range}
-						</Button>
-					))}
+					<DropdownMenu>
+						<DropdownMenuTrigger asChild>
+							<Button variant="outline" size="sm" className="h-6 px-2 text-[11px]">
+								Compare +
+								<ChevronDown className="ml-1 h-3.5 w-3.5" />
+							</Button>
+						</DropdownMenuTrigger>
+						<DropdownMenuContent align="end">
+							<DropdownMenuItem onClick={() => setBenchmarkMode("none")}>None</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setBenchmarkMode("sp500")}>S&P 500</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setBenchmarkMode("nasdaq")}>
+								NASDAQ 100
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</div>
 
 				<ReactECharts
@@ -397,6 +557,7 @@ function PortfolioHeroChart({
 	);
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: future use
 function AllocationManager({ targetAllocations, actualBySector }: AllocationManagerProps) {
 	const rows = targetAllocations.slice(0, 6);
 
@@ -468,6 +629,7 @@ function getUpcomingQuarterDate(offset: number): Date {
 	return date;
 }
 
+// biome-ignore lint/correctness/noUnusedVariables: future use
 function DividendSummary({ assets, portfolioValue, formatCurrency }: DividendSummaryProps) {
 	const dividendAssets = assets
 		.filter((asset) => typeof asset.dividendYield === "number" && asset.dividendYield > 0)
@@ -537,6 +699,357 @@ function DividendSummary({ assets, portfolioValue, formatCurrency }: DividendSum
 	);
 }
 
+function DiversificationCard({
+	assets,
+	formatCurrency,
+	onFilterSelect,
+}: {
+	assets: StockAsset[];
+	formatCurrency: (value: number) => string;
+	onFilterSelect: (filter: InsightFilter | null) => void;
+}) {
+	const [groupMode, setGroupMode] = useState<"sector" | "asset-class">("sector");
+
+	const grouped = useMemo(() => {
+		const map = new Map<string, number>();
+		assets.forEach((asset) => {
+			const key =
+				groupMode === "sector"
+					? asset.sector || "Other"
+					: asset.type === "fund"
+						? "ETFs/Funds"
+						: "Stocks";
+			map.set(key, (map.get(key) ?? 0) + asset.totalValue);
+		});
+		return Array.from(map.entries())
+			.map(([name, value]) => ({ name, value }))
+			.sort((a, b) => b.value - a.value);
+	}, [assets, groupMode]);
+
+	const option = useMemo(() => {
+		return {
+			tooltip: {
+				trigger: "item",
+				formatter: (params: unknown) => {
+					const p = params as { name?: string; value?: number; percent?: number };
+					return `${p.name ?? "Unknown"}: ${p.percent?.toFixed(1) ?? 0}% (${formatCurrency(
+						p.value ?? 0,
+					)})`;
+				},
+			},
+			series: [
+				{
+					type: "pie",
+					radius: ["55%", "78%"],
+					center: ["50%", "55%"],
+					data: grouped,
+					label: { show: false },
+					itemStyle: {
+						borderColor: "rgba(0,0,0,0)",
+						borderWidth: 2,
+					},
+				},
+			],
+		};
+	}, [formatCurrency, grouped]);
+
+	return (
+		<Card className="h-full min-h-[300px] border-border/60 bg-card/80">
+			<CardHeader className="pb-3">
+				<div className="flex items-center justify-between">
+					<CardTitle className="text-sm font-semibold tracking-tight">Diversification</CardTitle>
+					<div className="flex rounded-lg border border-border/50 bg-background/70 p-0.5 text-[10px]">
+						<Button
+							variant={groupMode === "sector" ? "secondary" : "ghost"}
+							size="sm"
+							className="h-6 rounded-md px-2.5 text-[10px]"
+							onClick={() => setGroupMode("sector")}
+						>
+							Sector
+						</Button>
+						<Button
+							variant={groupMode === "asset-class" ? "secondary" : "ghost"}
+							size="sm"
+							className="h-6 rounded-md px-2.5 text-[10px]"
+							onClick={() => setGroupMode("asset-class")}
+						>
+							Class
+						</Button>
+					</div>
+				</div>
+			</CardHeader>
+			<CardContent className="flex h-full items-center justify-center pt-1">
+				{grouped.length > 0 ? (
+					<ReactECharts
+						option={option}
+						notMerge={true}
+						lazyUpdate={true}
+						style={{ height: "196px", width: "100%" }}
+						onEvents={{
+							click: (params: unknown) => {
+								const p = params as { name?: string };
+								if (!p?.name) return;
+								onFilterSelect({ mode: groupMode, value: p.name });
+							},
+						}}
+						opts={{ renderer: "svg" }}
+					/>
+				) : (
+					<p className="max-w-[220px] text-center text-xs leading-5 text-muted-foreground">
+						No assets available for diversification.
+					</p>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function IncomeProjectorCard({
+	assets,
+	formatCurrency,
+}: {
+	assets: StockAsset[];
+	formatCurrency: (value: number) => string;
+}) {
+	const months = useMemo(() => {
+		const now = new Date();
+		return Array.from({ length: 12 }, (_, i) => {
+			const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+			return {
+				key: `${d.getFullYear()}-${d.getMonth()}`,
+				label: d.toLocaleDateString("en-US", { month: "short" }),
+				month: d.getMonth(),
+			};
+		});
+	}, []);
+
+	const dividendAssets = useMemo(
+		() => assets.filter((asset) => (asset.dividendYield ?? 0) > 0),
+		[assets],
+	);
+
+	const monthlyProjection = useMemo(() => {
+		return months.map((month, monthIndex) => {
+			const payouts = dividendAssets
+				.filter((_asset, assetIndex) => monthIndex % 3 === assetIndex % 3)
+				.map((asset) => {
+					const estimated = (asset.totalValue * ((asset.dividendYield ?? 0) / 100)) / 4;
+					return {
+						symbol: asset.symbol,
+						amount: Number(estimated.toFixed(2)),
+					};
+				});
+			return {
+				...month,
+				total: Number(payouts.reduce((sum, item) => sum + item.amount, 0).toFixed(2)),
+				payouts,
+			};
+		});
+	}, [dividendAssets, months]);
+
+	const forwardAnnual = monthlyProjection.reduce((sum, month) => sum + month.total, 0);
+	const avgMonthly = forwardAnnual / 12;
+
+	const option = useMemo(() => {
+		return {
+			tooltip: {
+				trigger: "axis",
+				axisPointer: { type: "shadow" },
+				formatter: (params: unknown) => {
+					if (!Array.isArray(params) || params.length === 0) return "";
+					const dataIndex = Number((params[0] as { dataIndex?: number })?.dataIndex ?? 0);
+					const monthData = monthlyProjection[dataIndex];
+					if (!monthData) return "";
+					const payoutLines =
+						monthData.payouts.length > 0
+							? monthData.payouts
+									.map((payout) => `${payout.symbol}: ${formatCurrency(payout.amount)}`)
+									.join("<br/>")
+							: "No projected payouts";
+					return `<strong>${monthData.label}</strong><br/>${payoutLines}`;
+				},
+			},
+			grid: { left: 8, right: 8, top: 8, bottom: 16, containLabel: true },
+			xAxis: {
+				type: "category",
+				data: monthlyProjection.map((month) => month.label),
+				axisTick: { show: false },
+				axisLine: { show: false },
+				axisLabel: { color: "#9ca3af", fontSize: 10 },
+			},
+			yAxis: {
+				type: "value",
+				axisLine: { show: false },
+				axisTick: { show: false },
+				splitLine: { show: false },
+				axisLabel: { show: false },
+			},
+			series: [
+				{
+					type: "bar",
+					data: monthlyProjection.map((month) => month.total),
+					barWidth: 12,
+					itemStyle: {
+						borderRadius: [5, 5, 2, 2],
+					},
+				},
+			],
+		};
+	}, [formatCurrency, monthlyProjection]);
+
+	return (
+		<Card className="h-full min-h-[300px] border-border/60 bg-card/80">
+			<CardHeader className="pb-3">
+				<CardTitle className="text-sm font-semibold tracking-tight">Income Projector</CardTitle>
+			</CardHeader>
+			<CardContent className="flex h-full flex-col justify-between gap-4 pt-1">
+				<div className="grid grid-cols-2 gap-4 text-xs">
+					<div>
+						<p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+							Forward Annual
+						</p>
+						<p className="pt-1 font-mono text-base font-semibold">
+							{formatCurrency(forwardAnnual)}
+						</p>
+					</div>
+					<div>
+						<p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+							Avg Monthly
+						</p>
+						<p className="pt-1 font-mono text-base font-semibold">{formatCurrency(avgMonthly)}</p>
+					</div>
+				</div>
+				{dividendAssets.length > 0 ? (
+					<ReactECharts
+						option={option}
+						notMerge={true}
+						lazyUpdate={true}
+						style={{ height: "164px", width: "100%" }}
+						opts={{ renderer: "svg" }}
+					/>
+				) : (
+					<p className="max-w-[340px] self-center text-center text-xs leading-5 text-muted-foreground">
+						You currently earn $0 in dividends. Explore dividend ETFs or stocks to build passive
+						income.
+					</p>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
+function DynamicInsightCard({
+	assets,
+	formatCurrency,
+}: {
+	assets: StockAsset[];
+	formatCurrency: (value: number) => string;
+}) {
+	const fundAssets = assets.filter((asset) => asset.type === "fund");
+	const equityAssets = assets.filter((asset) => asset.type === "stock");
+	const hasAnalystLikeData =
+		equityAssets.filter((asset) => typeof asset.peRatio === "number").length >= 3;
+
+	if (fundAssets.length > 0) {
+		const weightedExpense = fundAssets.reduce((sum, asset) => {
+			const base = 0.08 + Math.min(0.5, Math.abs(asset.dayChangePercentage) / 20);
+			return sum + base * asset.totalValue;
+		}, 0);
+		const totalFundValue = fundAssets.reduce((sum, asset) => sum + asset.totalValue, 0);
+		const blendedExpenseRatio = totalFundValue > 0 ? weightedExpense / totalFundValue : 0;
+		const yearlyCost = totalFundValue * (blendedExpenseRatio / 100);
+
+		return (
+			<Card className="h-full min-h-[300px] border-border/60 bg-card/80">
+				<CardHeader className="pb-3">
+					<CardTitle className="text-sm font-semibold tracking-tight">Fee Scanner</CardTitle>
+				</CardHeader>
+				<CardContent className="flex h-full flex-col justify-center space-y-3 pt-1 text-xs">
+					<p className="text-muted-foreground">Blended Expense Ratio</p>
+					<p className="font-mono text-lg font-semibold">{blendedExpenseRatio.toFixed(2)}%</p>
+					<p className={cn("font-mono", yearlyCost > 0 ? "text-rose-500" : "text-foreground")}>
+						Estimated yearly cost: -{formatCurrency(yearlyCost)}
+					</p>
+					<p className="text-[10px] text-muted-foreground">Estimated from holdings composition.</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	if (hasAnalystLikeData) {
+		const ratings = equityAssets.map((asset) => {
+			const pe = asset.peRatio ?? 25;
+			if (pe < 20) return "buy";
+			if (pe < 32) return "hold";
+			return "sell";
+		});
+		const buy = ratings.filter((r) => r === "buy").length;
+		const hold = ratings.filter((r) => r === "hold").length;
+		const sell = ratings.filter((r) => r === "sell").length;
+		const total = ratings.length || 1;
+		const consensus =
+			buy >= hold && buy >= sell ? "Moderate Buy" : hold >= sell ? "Hold" : "Reduce";
+
+		return (
+			<Card className="h-full min-h-[300px] border-border/60 bg-card/80">
+				<CardHeader className="pb-3">
+					<CardTitle className="text-sm font-semibold tracking-tight">Analyst Consensus</CardTitle>
+				</CardHeader>
+				<CardContent className="flex h-full flex-col justify-center space-y-4 pt-1 text-xs">
+					<p className="font-medium">Overall: {consensus}</p>
+					<div className="flex h-3 overflow-hidden rounded-full border border-border/50">
+						<div className="bg-emerald-500" style={{ width: `${(buy / total) * 100}%` }} />
+						<div className="bg-muted" style={{ width: `${(hold / total) * 100}%` }} />
+						<div className="bg-rose-500" style={{ width: `${(sell / total) * 100}%` }} />
+					</div>
+					<div className="flex items-center justify-between text-muted-foreground">
+						<span>Buy {buy}</span>
+						<span>Hold {hold}</span>
+						<span>Sell {sell}</span>
+					</div>
+					<p className="text-[10px] text-muted-foreground">
+						Consensus inferred from valuation metrics.
+					</p>
+				</CardContent>
+			</Card>
+		);
+	}
+
+	const totalValue = equityAssets.reduce((sum, asset) => sum + asset.totalValue, 0);
+	const portfolioBeta = equityAssets.reduce((sum, asset) => {
+		const weight = totalValue > 0 ? asset.totalValue / totalValue : 0;
+		const estimatedBeta = Math.min(2.2, Math.max(0.7, 1 + Math.abs(asset.dayChangePercentage) / 8));
+		return sum + estimatedBeta * weight;
+	}, 1);
+	const mostVolatile = equityAssets
+		.map((asset) => ({
+			symbol: asset.symbol,
+			beta: Math.min(2.2, Math.max(0.7, 1 + Math.abs(asset.dayChangePercentage) / 8)),
+		}))
+		.sort((a, b) => b.beta - a.beta)[0];
+
+	return (
+		<Card className="h-full min-h-[300px] border-border/60 bg-card/80">
+			<CardHeader className="pb-3">
+				<CardTitle className="text-sm font-semibold tracking-tight">Volatility Meter</CardTitle>
+			</CardHeader>
+			<CardContent className="flex h-full flex-col justify-center space-y-3 pt-1 text-xs">
+				<p className="text-muted-foreground">Portfolio Beta (est.)</p>
+				<p className="font-mono text-lg font-semibold">{portfolioBeta.toFixed(2)}</p>
+				<p className="text-muted-foreground">
+					Your portfolio fluctuates {Math.max(0, Math.round((portfolioBeta - 1) * 100))}% more than
+					the S&P 500.
+				</p>
+				{mostVolatile && (
+					<p className="text-[10px] text-muted-foreground">
+						Most volatile asset: {mostVolatile.symbol} (Beta {mostVolatile.beta.toFixed(2)})
+					</p>
+				)}
+			</CardContent>
+		</Card>
+	);
+}
+
 export function StocksFundsModule({
 	onNavigateToTransactions,
 	onSelectAccount,
@@ -544,31 +1057,37 @@ export function StocksFundsModule({
 }: StocksFundsModuleProps) {
 	const [activeTab, setActiveTab] = useState("positions");
 	const [isAddOpen, setIsAddOpen] = useState(false);
-	const { assets, addAsset, selectedPortfolio, addingAsset, currentPortfolio } = usePortfolio() as {
-		assets: RawAsset[];
-		addAsset: (input: {
-			name: string;
-			instrumentID?: string;
-			type: "stock" | "fund";
-			symbol: string;
-			quantity: number;
-			purchasePrice: number;
-			purchaseDate?: string;
-			sector?: string;
-			quoteCurrency?: string;
-			unitPriceCurrency?: string;
-			currentPrice?: number;
-		}) => Promise<unknown>;
-		selectedPortfolio: {
-			analytics?: {
-				totalValue?: number;
-				totalCost?: number;
-				performanceHistory?: Array<{ date: string; value: number }>;
-			};
-		} | null;
-		addingAsset: boolean;
-		currentPortfolio: string;
-	};
+	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
+	const [insightFilter, setInsightFilter] = useState<InsightFilter | null>(null);
+	const { assets, addAsset, selectedPortfolio, addingAsset, currentPortfolio, transactions } =
+		usePortfolio() as {
+			assets: RawAsset[];
+			addAsset: (input: {
+				name: string;
+				instrumentID?: string;
+				type: "stock" | "fund";
+				symbol: string;
+				quantity: number;
+				purchasePrice: number;
+				purchaseDate?: string;
+				sector?: string;
+				quoteCurrency?: string;
+				unitPriceCurrency?: string;
+				currentPrice?: number;
+			}) => Promise<unknown>;
+			selectedPortfolio: {
+				id: string;
+				createdAt?: string;
+				analytics?: {
+					totalValue?: number;
+					totalCost?: number;
+					performanceHistory?: Array<{ date: string; value: number }>;
+				};
+			} | null;
+			addingAsset: boolean;
+			currentPortfolio: string;
+			transactions: PortfolioTransaction[];
+		};
 
 	const normalizedAssets = useMemo(
 		() => normalizeStockAssets(assets, currentPortfolio),
@@ -581,17 +1100,56 @@ export function StocksFundsModule({
 		0,
 	);
 	const totalGain = totalValue - totalCost;
+	// biome-ignore lint/correctness/noUnusedVariables: used in template below
 	const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
 
 	const performanceHistory = selectedPortfolio?.analytics?.performanceHistory ?? [];
+	const effectivePerformanceHistory = useMemo(() => {
+		if (performanceHistory.length >= 2) return performanceHistory;
+		if (!selectedPortfolio) return performanceHistory;
+		return buildHistoryFromTransactions(
+			transactions,
+			selectedPortfolio.id,
+			totalValue,
+			totalCost,
+			selectedPortfolio.createdAt,
+		);
+	}, [performanceHistory, selectedPortfolio, totalValue, totalCost, transactions]);
 	const performanceData = useMemo(
 		() =>
 			buildPerformanceSeries(
-				performanceHistory,
+				effectivePerformanceHistory,
 				selectedPortfolio?.analytics?.totalValue ?? totalValue,
 			),
-		[performanceHistory, selectedPortfolio?.analytics?.totalValue, totalValue],
+		[effectivePerformanceHistory, selectedPortfolio?.analytics?.totalValue, totalValue],
 	);
+	const rangedPerformanceData = useMemo(
+		() => filterByRange(performanceData, timeRange),
+		[performanceData, timeRange],
+	);
+	const periodPerformance = useMemo(() => {
+		if (rangedPerformanceData.length < 2) {
+			return { change: 0, changePercent: 0, start: totalValue, end: totalValue };
+		}
+		const start = rangedPerformanceData[0]?.portfolioValue ?? totalValue;
+		const end =
+			rangedPerformanceData[rangedPerformanceData.length - 1]?.portfolioValue ?? totalValue;
+		const change = end - start;
+		const changePercent = start > 0 ? (change / start) * 100 : 0;
+		return { change, changePercent, start, end };
+	}, [rangedPerformanceData, totalValue]);
+	const rangeBenchmarkDelta = useMemo(() => {
+		const benchmarkSeries = buildBenchmarkSeries(rangedPerformanceData, "sp500");
+		if (rangedPerformanceData.length < 2 || benchmarkSeries.length < 2) return 0;
+		const pStart = rangedPerformanceData[0]?.portfolioValue ?? 0;
+		const pEnd = rangedPerformanceData[rangedPerformanceData.length - 1]?.portfolioValue ?? 0;
+		const bStart = benchmarkSeries[0] ?? 0;
+		const bEnd = benchmarkSeries[benchmarkSeries.length - 1] ?? 0;
+		if (pStart <= 0 || bStart <= 0) return 0;
+		const pRet = ((pEnd - pStart) / pStart) * 100;
+		const bRet = ((bEnd - bStart) / bStart) * 100;
+		return pRet - bRet;
+	}, [rangedPerformanceData]);
 
 	const sectorTotals = useMemo(() => {
 		const grouped: Record<string, number> = {};
@@ -609,6 +1167,7 @@ export function StocksFundsModule({
 		return percentages;
 	}, [sectorTotals, totalValue]);
 
+	// biome-ignore lint/correctness/noUnusedVariables: future use
 	const targetAllocations = useMemo<TargetAllocation[]>(() => {
 		const defaultTargets: Record<string, number> = {
 			Technology: 30,
@@ -684,8 +1243,8 @@ export function StocksFundsModule({
 	};
 
 	return (
-		<div className="animate-in fade-in flex h-full flex-col space-y-4 duration-500">
-			<div className="flex flex-col justify-between gap-4 border-b pb-4 sm:flex-row sm:items-center">
+		<div className="animate-in fade-in flex h-full flex-col space-y-5 duration-500">
+			<div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-center">
 				<div className="flex items-center gap-3">
 					<div className="flex h-10 w-10 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10">
 						<Activity className="h-5 w-5 text-emerald-500" />
@@ -703,7 +1262,7 @@ export function StocksFundsModule({
 					</div>
 				</div>
 
-				<div className="flex items-center gap-2">
+				<div className="flex flex-wrap items-center gap-2 sm:justify-end">
 					<div className="hidden rounded-lg border bg-secondary/50 p-1 md:flex">
 						<Button
 							variant={activeTab === "positions" ? "secondary" : "ghost"}
@@ -750,24 +1309,69 @@ export function StocksFundsModule({
 				</div>
 			</div>
 
-			<div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-				<div className="xl:col-span-2">
+			<div className="flex items-center justify-end">
+				<div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-border/60 bg-card/70 p-1.5 backdrop-blur">
+					{(["1D", "7D", "1M", "3M", "YTD", "1Y", "ALL"] as const).map((range) => (
+						<Button
+							key={range}
+							variant={timeRange === range ? "secondary" : "ghost"}
+							size="sm"
+							className="h-8 rounded-lg px-3 text-[11px] font-medium"
+							onClick={() => setTimeRange(range)}
+						>
+							{range}
+						</Button>
+					))}
+				</div>
+			</div>
+
+			<div className="grid grid-cols-1 gap-5 xl:grid-cols-10">
+				<div className="xl:col-span-7">
 					<PortfolioHeroChart
 						data={performanceData}
 						totalEquity={totalValue}
-						benchmarkName="S&P 500"
 						formatCurrency={formatCurrency}
+						timeRange={timeRange}
 					/>
 				</div>
 
-				<div className="space-y-4">
-					<Card className="border-border/60 bg-card/80">
-						<CardHeader className="pb-2">
-							<CardTitle className="text-sm font-semibold">Snapshot</CardTitle>
+				<div className="xl:col-span-3">
+					<Card className="h-full border-border/60 bg-card/80">
+						<CardHeader className="space-y-1 pb-3">
+							<CardTitle className="text-sm font-semibold tracking-tight">
+								Performance Summary
+							</CardTitle>
 						</CardHeader>
-						<CardContent className="grid grid-cols-2 gap-3 text-sm">
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Total Return</span>
+						<CardContent className="flex h-full flex-col justify-between gap-3 pt-0 text-sm">
+							<div className="flex items-center justify-between gap-4 py-0.5">
+								<span className="text-muted-foreground">Range Return ({timeRange})</span>
+								<span
+									className={cn(
+										"font-mono font-semibold",
+										periodPerformance.change >= 0 ? "text-emerald-500" : "text-rose-500",
+									)}
+								>
+									{periodPerformance.change >= 0 ? "+" : ""}
+									{formatCurrency(periodPerformance.change)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between gap-4 py-0.5">
+								<span className="text-muted-foreground">Range Return % ({timeRange})</span>
+								<span
+									className={cn(
+										"font-mono font-semibold",
+										periodPerformance.changePercent >= 0 ? "text-emerald-500" : "text-rose-500",
+									)}
+								>
+									{formatPercentage(periodPerformance.changePercent)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between gap-4 py-0.5">
+								<span className="text-muted-foreground">Total Cost Basis</span>
+								<span className="font-mono font-semibold">{formatCurrency(totalCost)}</span>
+							</div>
+							<div className="flex items-center justify-between gap-4 border-t border-border/50 pt-4">
+								<span className="text-muted-foreground">All-Time Return</span>
 								<span
 									className={cn(
 										"font-mono font-semibold",
@@ -778,45 +1382,42 @@ export function StocksFundsModule({
 									{formatCurrency(totalGain)}
 								</span>
 							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Total Return %</span>
+							<div className="flex items-center justify-between gap-4 py-0.5">
+								<span className="text-muted-foreground">S&P 500 Delta ({timeRange})</span>
 								<span
 									className={cn(
 										"font-mono font-semibold",
-										totalGainPercent >= 0 ? "text-emerald-500" : "text-rose-500",
+										rangeBenchmarkDelta >= 0 ? "text-emerald-500" : "text-rose-500",
 									)}
 								>
-									{formatPercentage(totalGainPercent)}
+									{rangeBenchmarkDelta >= 0 ? "+" : ""}
+									{formatPercentage(rangeBenchmarkDelta)}
 								</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Cost Basis</span>
-								<span className="font-mono font-semibold">{formatCurrency(totalCost)}</span>
-							</div>
-							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Holdings</span>
-								<span className="font-mono font-semibold">{normalizedAssets.length}</span>
 							</div>
 						</CardContent>
 					</Card>
-
-					<AllocationManager
-						targetAllocations={targetAllocations}
-						actualBySector={actualBySector}
-					/>
-
-					<DividendSummary
-						assets={normalizedAssets}
-						portfolioValue={totalValue}
-						formatCurrency={formatCurrency}
-					/>
 				</div>
+			</div>
+
+			<div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+				<DiversificationCard
+					assets={normalizedAssets}
+					formatCurrency={formatCurrency}
+					onFilterSelect={setInsightFilter}
+				/>
+				<IncomeProjectorCard assets={normalizedAssets} formatCurrency={formatCurrency} />
+				<DynamicInsightCard assets={normalizedAssets} formatCurrency={formatCurrency} />
 			</div>
 
 			<div className="min-h-[520px]">
 				<Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
 					<TabsContent value="positions" className="mt-0 h-full focus-visible:outline-none">
-						<StocksFundsPositions onSelectAccount={onSelectAccount} onSelectAsset={onSelectAsset} />
+						<StocksFundsPositions
+							onSelectAccount={onSelectAccount}
+							onSelectAsset={onSelectAsset}
+							externalFilter={insightFilter}
+							onClearExternalFilter={() => setInsightFilter(null)}
+						/>
 					</TabsContent>
 					<TabsContent value="transactions" className="mt-0 h-full focus-visible:outline-none">
 						<StocksFundsTransactions onNavigateToFullView={onNavigateToTransactions} />

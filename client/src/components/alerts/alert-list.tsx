@@ -89,6 +89,7 @@ export function AlertList({
 		setSearchTerm(value);
 		if (onFilter) {
 			onFilter({
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				alertType: filterType !== "all" ? (filterType as any) : undefined,
 				isActive: filterStatus !== "all" ? filterStatus === "active" : undefined,
 			});
@@ -100,6 +101,7 @@ export function AlertList({
 		setFilterStatus(status);
 		if (onFilter) {
 			onFilter({
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				alertType: type !== "all" ? (type as any) : undefined,
 				isActive: status !== "all" ? status === "active" : undefined,
 			});

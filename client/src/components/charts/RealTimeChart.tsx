@@ -69,6 +69,7 @@ export function RealTimeChart({
 					top: 0.1,
 					bottom: 0.1,
 				},
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any,
 			timeScale: {
 				borderColor: "#cccccc",
@@ -124,6 +125,7 @@ export function RealTimeChart({
 					type: "volume",
 				},
 				priceScaleId: "",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any);
 		}
 
@@ -168,6 +170,7 @@ export function RealTimeChart({
 
 			if (chartType === "line") {
 				const lineData: LineData = {
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					time: currentTime as any,
 					value: priceData.price,
 				};
@@ -176,6 +179,7 @@ export function RealTimeChart({
 				// For candlestick, we'd need OHLC data
 				// This is a simplified example using current price as all OHLC values
 				const candlestickData: CandlestickData = {
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					time: currentTime as any,
 					open: priceData.price,
 					high: priceData.price,

@@ -68,6 +68,7 @@ export function CompactPortfolioForm({
 	const finalSubmitText = submitButtonText || defaultSubmitText;
 
 	const form = useForm<PortfolioFormData>({
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		resolver: zodResolver(portfolioFormSchema) as any,
 		defaultValues: {
 			name: portfolio?.name || "",

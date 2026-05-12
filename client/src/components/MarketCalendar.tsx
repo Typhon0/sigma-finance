@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface MarketCalendarProps {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onFilterStock?: (filters: any) => void;
 }
 

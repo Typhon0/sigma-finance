@@ -250,17 +250,21 @@ export const PerformanceDashboardExample: React.FC = () => {
 	const [timeRange, setTimeRange] = useState("1M");
 	const [selectedView, setSelectedView] = useState<"full" | "compact" | "individual">("full");
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleMetricClick = (_metric: any) => {};
 
 	const handleAssetTypeClick = (_assetType: string) => {};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleRecommendationAction = (_recommendation: any) => {};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleGenerateReport = async (_config: any) => {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 2000));
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleCreateAlert = async (_alert: any) => {
 		// Simulate API call
 		await new Promise((resolve) => setTimeout(resolve, 1000));

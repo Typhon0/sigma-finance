@@ -1,0 +1,12 @@
+provider_id: eodhd-local-only
+name: EODHD Local Only
+source_url: https://eodhd.com/
+license_name: Proprietary
+redistribution_allowed: false
+commercial_use_allowed: false
+attribution_required: true
+terms_checked_at: "2026-05-11"
+allowed_distribution_modes:
+  - local
+notes:
+  - Use for local/private internal analysis only.

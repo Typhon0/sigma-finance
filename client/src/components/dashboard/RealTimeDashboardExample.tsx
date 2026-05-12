@@ -66,6 +66,7 @@ const mockPortfolios = [
 
 interface DashboardViewState {
 	viewMode: "overview" | "portfolio-detail";
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	selectedPortfolio: any | null;
 }
 
@@ -83,6 +84,7 @@ export function RealTimeDashboardExample() {
 	// Extract all portfolio IDs for real-time tracking
 	const allPortfolioIds = mockPortfolios.map((portfolio) => portfolio.id);
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handlePortfolioSelect = (portfolio: any) => {
 		setViewState({
 			viewMode: "portfolio-detail",
@@ -141,7 +143,9 @@ export function RealTimeDashboardExample() {
 }
 
 interface DashboardOverviewProps {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	portfolios: any[];
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onPortfolioSelect: (portfolio: any) => void;
 }
 

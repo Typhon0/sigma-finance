@@ -218,3 +218,15 @@ export const ADD_ASSET_TO_PORTFOLIO = gql`
     }
   }
 `;
+
+export const REFRESH_SINGLE_ASSET_PRICE = gql`
+  mutation RefreshSingleAssetPrice($assetId: ID!) {
+    refreshSingleAssetPrice(assetId: $assetId) {
+      id
+      assetId
+      price
+      timestamp
+      source
+    }
+  }
+`;

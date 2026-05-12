@@ -521,6 +521,7 @@ export const PerformanceAlerts: React.FC<PerformanceAlertsProps> = ({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{Array.from({ length: 3 }).map((_, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						<Skeleton key={i} className="h-20 w-full" />
 					))}
 				</CardContent>

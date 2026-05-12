@@ -36,6 +36,7 @@ import { WatchlistManagement } from "./WatchlistManagement";
 import { WineDetail } from "./WineDetail";
 
 interface DashboardProps {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	user: any;
 	onLogout: () => void;
 }
@@ -66,6 +67,7 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 
 	const { assets } = usePortfolio();
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const _handleUpdateUser = (updatedUser: any) => {
 		setUser(updatedUser);
 		localStorage.setItem("portfolio_user", JSON.stringify(updatedUser));

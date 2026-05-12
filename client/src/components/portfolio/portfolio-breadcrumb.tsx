@@ -46,7 +46,7 @@ export function PortfolioBreadcrumb({ items }: PortfolioBreadcrumbProps) {
 					const displayText = item.title || item.label || "";
 
 					return (
-						<div key={index} className="flex items-center">
+						<div key={displayText || index} className="flex items-center">
 							<BreadcrumbItem>
 								{item.onClick ? (
 									<BreadcrumbLink asChild>

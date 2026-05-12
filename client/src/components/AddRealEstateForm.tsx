@@ -39,6 +39,7 @@ import { Textarea } from "./ui/textarea";
 interface AddRealEstateFormProps {
 	open: boolean;
 	onClose: () => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onSubmit: (data: any) => void;
 }
 
@@ -1007,6 +1008,7 @@ export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateForm
 				}: {
 					field: keyof FormData;
 					label: string;
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					icon?: any;
 					tooltip?: boolean;
 				}) => (
@@ -1055,6 +1057,7 @@ export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateForm
 				}: {
 					field: keyof FormData;
 					label: string;
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					icon?: any;
 					tooltip?: boolean;
 				}) => (
@@ -1507,6 +1510,7 @@ export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateForm
 					);
 				};
 
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				const updateCoOwner = (id: string, field: keyof CoOwner, value: any) => {
 					handleInputChange(
 						"coOwners",
@@ -1533,6 +1537,7 @@ export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateForm
 					);
 				};
 
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				const updateCompanyOwner = (id: string, field: keyof CompanyOwner, value: any) => {
 					handleInputChange(
 						"companyOwners",

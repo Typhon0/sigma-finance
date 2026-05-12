@@ -366,6 +366,13 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 
 // Logout invalidates a user session
 func (a *authenticationService) Logout(ctx context.Context, userID string, token string) error {
+	if strings.TrimSpace(token) == "" {
+		return NewAuthError(ErrInvalidInput, "Token is required", "token")
+	}
+	// Logout is token-driven for API compatibility; reject invalid JWTs early.
+	if _, err := a.securityService.ValidateJWT(token); err != nil {
+		return NewAuthError(ErrInvalidToken, "Invalid token", "token")
+	}
 	// Revoke the session using SessionService
 	return a.sessionService.RevokeSession(ctx, token)
 }
@@ -389,11 +396,16 @@ func (a *authenticationService) createUserSession(ctx context.Context, user *mod
 		RefreshToken: session.RefreshToken,
 		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
-			ID:              user.ID,
-			Email:           user.Email,
-			Name:            user.Name,
-			EmailVerified:   user.EmailVerified,
-			DisplayCurrency: string(user.DisplayCurrency),
+			ID:                  user.ID,
+			Email:               user.Email,
+			Name:                user.Name,
+			EmailVerified:       user.EmailVerified,
+			DisplayCurrency:     string(user.DisplayCurrency),
+			ThemePreference:     string(user.ThemePreference),
+			ThemeAccentColor:    string(user.ThemeAccentColor),
+			ThemeFontPreference: string(user.ThemeFontPreference),
+			ThemeStyle:          string(user.ThemeStyle),
+			ThemeRadius:         user.ThemeRadius,
 		},
 	}, nil
 }
@@ -662,11 +674,16 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 		RefreshToken: session.RefreshToken,
 		ExpiresAt:    claims.ExpiresAt.Time,
 		User: &UserInfo{
-			ID:              user.ID,
-			Email:           user.Email,
-			Name:            user.Name,
-			EmailVerified:   user.EmailVerified,
-			DisplayCurrency: string(user.DisplayCurrency),
+			ID:                  user.ID,
+			Email:               user.Email,
+			Name:                user.Name,
+			EmailVerified:       user.EmailVerified,
+			DisplayCurrency:     string(user.DisplayCurrency),
+			ThemePreference:     string(user.ThemePreference),
+			ThemeAccentColor:    string(user.ThemeAccentColor),
+			ThemeFontPreference: string(user.ThemeFontPreference),
+			ThemeStyle:          string(user.ThemeStyle),
+			ThemeRadius:         user.ThemeRadius,
 		},
 	}, nil
 }

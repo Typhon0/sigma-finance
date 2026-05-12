@@ -14,6 +14,8 @@ type ICandleRepository interface {
 	BulkUpsert(ctx context.Context, candles []model.Candle) error
 	GetRange(ctx context.Context, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error)
 	GetLatest(ctx context.Context, symbol, assetType string, interval model.CandleInterval) (*model.Candle, error)
+	GetRangeByInstrument(ctx context.Context, instrumentID string, interval model.CandleInterval, from, to time.Time, quoteCurrency string, limit int) ([]model.Candle, error)
+	GetLatestByInstrument(ctx context.Context, instrumentID string, interval model.CandleInterval, quoteCurrency string) (*model.Candle, error)
 }
 
 type candleRepository struct{ db *bun.DB }
@@ -24,11 +26,46 @@ func (r *candleRepository) BulkUpsert(ctx context.Context, candles []model.Candl
 	if len(candles) == 0 {
 		return nil
 	}
-	// NOTE: Upsert requires a unique constraint (symbol, asset_type, interval, timestamp)
-	_, err := r.db.NewInsert().Model(&candles).On("CONFLICT (symbol, asset_type, interval, timestamp) DO UPDATE").
-		Set("open = EXCLUDED.open, high = EXCLUDED.high, low = EXCLUDED.low, close = EXCLUDED.close, volume = EXCLUDED.volume, source = EXCLUDED.source").
-		Exec(ctx)
-	return err
+	withInstrument := make([]model.Candle, 0, len(candles))
+	legacy := make([]model.Candle, 0)
+	for _, candle := range candles {
+		if candle.InstrumentID != nil && *candle.InstrumentID != "" {
+			withInstrument = append(withInstrument, candle)
+			continue
+		}
+		legacy = append(legacy, candle)
+	}
+	if len(withInstrument) > 0 {
+		_, err := r.db.NewInsert().Model(&withInstrument).
+			On("CONFLICT (instrument_id, interval, timestamp, quote_currency) DO UPDATE").
+			Set("symbol = EXCLUDED.symbol").
+			Set("asset_type = EXCLUDED.asset_type").
+			Set("open = EXCLUDED.open").
+			Set("high = EXCLUDED.high").
+			Set("low = EXCLUDED.low").
+			Set("close = EXCLUDED.close").
+			Set("adjusted_close = EXCLUDED.adjusted_close").
+			Set("volume = EXCLUDED.volume").
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+	}
+	if len(legacy) > 0 {
+		_, err := r.db.NewInsert().Model(&legacy).
+			On("CONFLICT (symbol, asset_type, interval, timestamp) DO UPDATE").
+			Set("open = EXCLUDED.open").
+			Set("high = EXCLUDED.high").
+			Set("low = EXCLUDED.low").
+			Set("close = EXCLUDED.close").
+			Set("adjusted_close = EXCLUDED.adjusted_close").
+			Set("volume = EXCLUDED.volume").
+			Set("quote_currency = EXCLUDED.quote_currency").
+			Set("source = EXCLUDED.source").
+			Exec(ctx)
+		return err
+	}
+	return nil
 }
 
 func (r *candleRepository) GetRange(ctx context.Context, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
@@ -51,6 +88,35 @@ func (r *candleRepository) GetLatest(ctx context.Context, symbol, assetType stri
 		Where("symbol = ? AND asset_type = ? AND interval = ?", symbol, assetType, interval).
 		Order("timestamp DESC").
 		Limit(1).Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
+func (r *candleRepository) GetRangeByInstrument(ctx context.Context, instrumentID string, interval model.CandleInterval, from, to time.Time, quoteCurrency string, limit int) ([]model.Candle, error) {
+	var out []model.Candle
+	q := r.db.NewSelect().Model(&out).
+		Where("instrument_id = ? AND interval = ?", instrumentID, interval).
+		Where("timestamp >= ? AND timestamp < ?", from, to)
+	if quoteCurrency != "" {
+		q = q.Where("quote_currency = ?", quoteCurrency)
+	}
+	if limit > 0 {
+		q = q.Limit(limit)
+	}
+	err := q.Order("timestamp ASC").Scan(ctx)
+	return out, err
+}
+
+func (r *candleRepository) GetLatestByInstrument(ctx context.Context, instrumentID string, interval model.CandleInterval, quoteCurrency string) (*model.Candle, error) {
+	var c model.Candle
+	q := r.db.NewSelect().Model(&c).
+		Where("instrument_id = ? AND interval = ?", instrumentID, interval)
+	if quoteCurrency != "" {
+		q = q.Where("quote_currency = ?", quoteCurrency)
+	}
+	err := q.Order("timestamp DESC").Limit(1).Scan(ctx)
 	if err != nil {
 		return nil, err
 	}

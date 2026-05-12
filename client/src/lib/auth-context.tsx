@@ -217,6 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setIsLoading(false);
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[loginMutation, handleAuthError, setupTokenRefresh],
 	);
 
@@ -246,6 +247,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				setIsLoading(false);
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[registerMutation, setupTokenRefresh, handleAuthError],
 	);
 
@@ -302,6 +304,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				throw error;
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[resetPasswordMutation, handleAuthError],
 	);
 
@@ -324,6 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				throw error;
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[confirmPasswordResetMutation, handleAuthError],
 	);
 
@@ -352,6 +356,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				throw error;
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[verifyEmailMutation, user, handleAuthError],
 	);
 
@@ -374,6 +379,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				throw error;
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[resendVerificationMutation, handleAuthError],
 	);
 
@@ -415,6 +421,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			setUser(null);
 			throw error;
 		}
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	}, [refreshTokenMutation, setupTokenRefresh, handleAuthError]);
 
 	useEffect(() => {

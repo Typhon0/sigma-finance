@@ -47,6 +47,7 @@ type PortfolioValuation struct {
 	TotalDisplayCostBasis   model.Money             `json:"total_display_cost_basis"`
 	TotalDisplayGainLoss    model.Money             `json:"total_display_gain_loss"`
 	TotalDisplayGainLossPct decimal.Decimal         `json:"total_display_gain_loss_pct"`
+	PerformanceHistory      []PerformancePoint      `json:"performance_history"`
 	FXAsOf                  time.Time               `json:"fx_as_of"`
 	FXSource                string                  `json:"fx_source"`
 	FXGranularity           model.FXRateGranularity `json:"fx_granularity"`
@@ -206,6 +207,7 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 	var totalDisplayCostBasis model.Money
 	var totalCandidateNative model.Money
 	var coveredNative model.Money
+	var costBasisCoveredDisplayValue model.Money
 	var excludedPositionCount int
 	var mostRecentFXAsOf time.Time
 	anyStale := false
@@ -228,6 +230,9 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 		if valuation.HasDisplayValue {
 			totalDisplayValue += valuation.DisplayValue
 			coveredNative += valuation.NativeValue
+			if valuation.CostBasisDisplay > 0 {
+				costBasisCoveredDisplayValue += valuation.DisplayValue
+			}
 		}
 		totalDisplayCostBasis += valuation.CostBasisDisplay
 		if valuation.IsExcluded {
@@ -300,12 +305,7 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 		coveredValueRatio = decimal.NewFromInt(int64(coveredNative)).Div(decimal.NewFromInt(int64(totalCandidateNative)))
 	}
 	totalDisplayGainLoss := totalDisplayValue - totalDisplayCostBasis
-	totalDisplayGainLossPct := decimal.Zero
-	if totalDisplayCostBasis > 0 {
-		totalDisplayGainLossPct = decimal.NewFromInt(int64(totalDisplayGainLoss)).
-			Div(decimal.NewFromInt(int64(totalDisplayCostBasis))).
-			Mul(decimal.NewFromInt(100))
-	}
+	totalDisplayGainLossPct := calculateGainLossPercent(totalDisplayGainLoss, totalDisplayCostBasis, totalDisplayValue, costBasisCoveredDisplayValue)
 
 	return &PortfolioValuation{
 		TotalNativeValue:        totalNativeValue,
@@ -324,6 +324,25 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 		QuoteCurrency:           primaryQuoteCurrency,
 		DisplayCurrency:         displayCurrency,
 	}, nil
+}
+
+// calculateGainLossPercent returns 0 when cost basis coverage is too low to produce a reliable percentage.
+func calculateGainLossPercent(totalGainLoss, totalCostBasis, totalDisplayValue, costBasisCoveredDisplayValue model.Money) decimal.Decimal {
+	if totalCostBasis <= 0 || totalDisplayValue <= 0 {
+		return decimal.Zero
+	}
+
+	const minCostBasisCoverage = 0.8
+
+	coverageRatio := decimal.NewFromInt(int64(costBasisCoveredDisplayValue)).
+		Div(decimal.NewFromInt(int64(totalDisplayValue)))
+	if coverageRatio.LessThan(decimal.NewFromFloat(minCostBasisCoverage)) {
+		return decimal.Zero
+	}
+
+	return decimal.NewFromInt(int64(totalGainLoss)).
+		Div(decimal.NewFromInt(int64(totalCostBasis))).
+		Mul(decimal.NewFromInt(100))
 }
 
 func (s *portfolioValuationService) calculateRemainingCostBasisByCurrency(ctx context.Context, position model.Position) (map[model.Currency]model.Money, error) {

@@ -134,7 +134,8 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 
 	const historicalData =
 		performanceHistory.length > 0
-			? performanceHistory.map((p: any) => ({
+			? // biome-ignore lint/suspicious/noExplicitAny: unavoidable
+				performanceHistory.map((p: any) => ({
 					date: new Date(p.date).toISOString().split("T")[0],
 					value: p.value,
 				}))

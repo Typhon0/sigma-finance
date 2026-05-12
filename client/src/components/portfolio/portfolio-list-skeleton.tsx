@@ -42,6 +42,7 @@ export function PortfolioListSkeleton({
 				)}
 			>
 				{Array.from({ length: count }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					<PortfolioCardSkeleton key={`portfolio-skeleton-${i}`} viewMode={viewMode} />
 				))}
 			</div>

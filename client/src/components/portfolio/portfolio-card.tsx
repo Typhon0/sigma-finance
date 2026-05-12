@@ -51,6 +51,7 @@ export interface PortfolioCardProps {
 	onSelect?: (selected: boolean) => void;
 	onAction?: (action: PortfolioAction, portfolioId: string) => void;
 	isDragging?: boolean;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	assets?: any[];
 }
 

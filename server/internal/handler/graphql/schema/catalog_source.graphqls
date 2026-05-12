@@ -1,0 +1,32 @@
+input ImportInstrumentFromSourceInput {
+  source: CatalogSource!
+  externalId: String!
+  forceEnrich: Boolean
+}
+
+type ImportInstrumentFromSourcePayload {
+  success: Boolean!
+  instrument: Instrument
+  message: String!
+}
+
+type CatalogSyncRun {
+  id: ID!
+  source: CatalogSource!
+  mode: String!
+  status: String!
+  cursor: String
+  statsJson: JSON
+  errorText: String
+  startedAt: Time!
+  finishedAt: Time
+}
+
+extend type Query {
+  catalogSyncStatus(source: CatalogSource!): CatalogSyncRun @auth
+}
+
+extend type Mutation {
+  importInstrumentFromCatalog(source: CatalogSource!, externalId: String!, forceEnrich: Boolean): ImportInstrumentFromSourcePayload! @auth
+  importInstrumentFromSource(input: ImportInstrumentFromSourceInput!): ImportInstrumentFromSourcePayload! @auth
+}

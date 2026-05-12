@@ -166,6 +166,7 @@ class MarketDataFeed implements IBasicDataFeed {
 			ticker: symbolName,
 			name: symbol,
 			description: `${symbol} ${assetType}`,
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			type: assetType.toLowerCase() as any,
 			session: "24x7",
 			timezone: "Etc/UTC",
@@ -365,6 +366,7 @@ class MarketDataFeed implements IBasicDataFeed {
 		}, 5000);
 
 		// Store interval for cleanup
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		(callback as any)._interval = interval;
 	}
 

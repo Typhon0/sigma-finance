@@ -14,6 +14,7 @@ import {
 } from "../index";
 
 vi.mock("echarts-for-react", () => ({
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	default: function MockReactECharts({ style }: { style: any }) {
 		return <div data-testid="mock-chart" style={style} />;
 	},
@@ -149,6 +150,7 @@ describe("Apache ECharts Components", () => {
 		});
 
 		it("handles undefined data gracefully", () => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			render(<AllocationChart data={undefined as any} title="Undefined Chart" />);
 
 			expect(screen.getByText("No allocation data")).toBeInTheDocument();

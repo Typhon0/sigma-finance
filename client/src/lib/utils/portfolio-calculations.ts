@@ -126,6 +126,7 @@ export function calculateAssetPerformance(portfolios: Readonly<Portfolio[]>): As
 				const changePercent = purchaseValue > 0 ? (changeAmount / purchaseValue) * 100 : 0;
 
 				if (assetMap.has(assetId)) {
+					// biome-ignore lint/style/noNonNullAssertion: unavoidable
 					const existing = assetMap.get(assetId)!;
 					const totalCurrentValue = existing.currentValue + currentValue;
 					const totalPurchaseValue = existing.purchaseValue + purchaseValue;
@@ -212,6 +213,7 @@ export function calculateAssetAllocation(portfolios: Readonly<Portfolio[]>): Ass
 				totalValue += positionValue;
 
 				if (allocationMap.has(assetType)) {
+					// biome-ignore lint/style/noNonNullAssertion: unavoidable
 					const existing = allocationMap.get(assetType)!;
 					allocationMap.set(assetType, {
 						value: existing.value + positionValue,

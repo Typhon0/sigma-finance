@@ -58,6 +58,7 @@ export class AuthErrorHandler {
 	 */
 	static requiresLogout(error: AuthError): boolean {
 		return [AUTH_ERROR_CODES.TOKEN_EXPIRED, AUTH_ERROR_CODES.INVALID_TOKEN].includes(
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			error.code as any,
 		);
 	}

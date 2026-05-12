@@ -285,6 +285,7 @@ function CostBasisSkeleton({ compact = false }: { compact?: boolean }) {
 			<CardContent className="space-y-6">
 				<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 					{Array.from({ length: 4 }).map((_, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						<div key={index} className="space-y-2">
 							<Skeleton className="h-4 w-24" />
 							<Skeleton className="h-6 w-20" />
@@ -294,6 +295,7 @@ function CostBasisSkeleton({ compact = false }: { compact?: boolean }) {
 
 				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 					{Array.from({ length: 2 }).map((_, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						<Card key={index} className="border-2">
 							<CardContent className="p-4">
 								<div className="space-y-2">

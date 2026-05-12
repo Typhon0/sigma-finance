@@ -1,8 +1,14 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
+import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { ADD_ASSET_TO_PORTFOLIO, CREATE_STOCK_ASSET } from "@/graphql/mutations/asset";
+import {
+	ADD_ASSET_TO_PORTFOLIO,
+	CREATE_STOCK_ASSET,
+	REFRESH_SINGLE_ASSET_PRICE,
+} from "@/graphql/mutations/asset";
+import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
 import { useAssetMutations } from "../use-asset-mutations";
 
 // Mock date to have consistent timestamps
@@ -23,6 +29,7 @@ const createStockAssetSuccessMock = (inputOverride?: Record<string, unknown>) =>
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
 				currentValue: 100,
+				quoteCurrency: "USD",
 				...inputOverride,
 			},
 		},
@@ -60,6 +67,7 @@ const createStockAssetErrorMock = (inputOverride?: Record<string, unknown>) => (
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
 				currentValue: 100,
+				quoteCurrency: "USD",
 				...inputOverride,
 			},
 		},
@@ -124,6 +132,25 @@ const addAssetToPortfolioErrorMock = (inputOverride?: Record<string, unknown>) =
 	error: new Error("Failed to add asset to portfolio"),
 });
 
+const refreshSingleAssetPriceSuccessMock = (assetId = "asset-new") => ({
+	request: {
+		query: REFRESH_SINGLE_ASSET_PRICE,
+		variables: { assetId },
+	},
+	result: {
+		data: {
+			refreshSingleAssetPrice: {
+				__typename: "AssetPricePoint",
+				id: "price-refresh",
+				assetId,
+				price: 101.25,
+				timestamp: FIXED_DATE,
+				source: "TEST",
+			},
+		},
+	},
+});
+
 describe("useAssetMutations", () => {
 	describe("addAsset currentValue mapping", () => {
 		it("sends currentValue from currentPrice when provided", async () => {
@@ -140,6 +167,7 @@ describe("useAssetMutations", () => {
 								purchasePrice: 100,
 								purchaseDate: FIXED_DATE,
 								currentValue: 120, // currentPrice used
+								quoteCurrency: "USD",
 							},
 						},
 					},
@@ -201,6 +229,7 @@ describe("useAssetMutations", () => {
 						},
 					},
 				},
+				refreshSingleAssetPriceSuccessMock(),
 			];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
@@ -220,6 +249,7 @@ describe("useAssetMutations", () => {
 				purchasePrice: 100,
 				currentPrice: 120,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			};
 
 			await result.current.addAsset(input);
@@ -233,6 +263,7 @@ describe("useAssetMutations", () => {
 			const mocks = [
 				createStockAssetSuccessMock({ currentValue: 100 }),
 				addAssetToPortfolioSuccessMock(),
+				refreshSingleAssetPriceSuccessMock(),
 			];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
@@ -252,6 +283,7 @@ describe("useAssetMutations", () => {
 				purchasePrice: 100,
 				// No currentPrice - should fall back to purchasePrice
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			};
 
 			await result.current.addAsset(input);
@@ -282,6 +314,7 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			};
 
 			let caughtError: Error | null = null;
@@ -314,6 +347,7 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			};
 
 			let caughtError: Error | null = null;
@@ -341,6 +375,7 @@ describe("useAssetMutations", () => {
 								purchasePrice: 100,
 								purchaseDate: FIXED_DATE,
 								currentValue: 100,
+								quoteCurrency: "USD",
 							},
 						},
 					},
@@ -369,6 +404,7 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			};
 
 			let caughtError: Error | null = null;
@@ -398,6 +434,7 @@ describe("useAssetMutations", () => {
 								purchasePrice: 100,
 								purchaseDate: FIXED_DATE,
 								currentValue: 100,
+								quoteCurrency: "USD",
 							},
 						},
 					},
@@ -459,6 +496,7 @@ describe("useAssetMutations", () => {
 						},
 					},
 				},
+				refreshSingleAssetPriceSuccessMock(),
 			];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
@@ -477,6 +515,7 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			});
 
 			await waitFor(() => {
@@ -498,6 +537,7 @@ describe("useAssetMutations", () => {
 								purchasePrice: 100,
 								purchaseDate: FIXED_DATE,
 								currentValue: 100,
+								quoteCurrency: "USD",
 							},
 						},
 					},
@@ -559,6 +599,7 @@ describe("useAssetMutations", () => {
 						},
 					},
 				},
+				refreshSingleAssetPriceSuccessMock(),
 			];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
@@ -577,6 +618,7 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 100,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			});
 
 			await waitFor(() => {
@@ -598,6 +640,7 @@ describe("useAssetMutations", () => {
 								purchasePrice: 400,
 								purchaseDate: FIXED_DATE,
 								currentValue: 400,
+								quoteCurrency: "USD",
 							},
 						},
 					},
@@ -659,6 +702,7 @@ describe("useAssetMutations", () => {
 						},
 					},
 				},
+				refreshSingleAssetPriceSuccessMock(),
 			];
 
 			const wrapper = ({ children }: { children: ReactNode }) => (
@@ -677,10 +721,94 @@ describe("useAssetMutations", () => {
 				quantity: 10,
 				purchasePrice: 400,
 				purchaseDate: FIXED_DATE,
+				quoteCurrency: "USD",
 			});
 
 			await waitFor(() => {
 				expect(result.current.addAsset).toBeDefined();
+			});
+		});
+	});
+
+	describe("Tradeable price refresh", () => {
+		it("refreshes linked instrument price after addCrypto with instrumentID", async () => {
+			const mocks = [
+				{
+					request: {
+						query: ADD_INSTRUMENT_TO_PORTFOLIO,
+						variables: {
+							input: {
+								portfolioID: "portfolio-1",
+								instrumentID: "inst-btc",
+								quantity: 2,
+								averagePurchasePrice: 42000,
+								unitPriceCurrency: "USD",
+							},
+						},
+					},
+					result: {
+						data: {
+							addInstrumentToPortfolio: {
+								__typename: "PortfolioAsset",
+								instrumentID: "inst-btc",
+								quantity: 2,
+								averagePurchasePrice: 42000,
+								currentValue: 84000,
+								dayChange: null,
+								dayChangePercent: null,
+								asset: {
+									__typename: "Crypto",
+									id: "asset-btc",
+									currentValue: 43000,
+									dayChange: null,
+									dayChangePercent: null,
+								},
+							},
+						},
+					},
+				},
+				{
+					request: {
+						query: REFRESH_SINGLE_ASSET_PRICE,
+						variables: {
+							assetId: "asset-btc",
+						},
+					},
+					result: {
+						data: {
+							refreshSingleAssetPrice: {
+								__typename: "AssetPricePoint",
+								id: "price-1",
+								assetId: "asset-btc",
+								price: 43000,
+								timestamp: FIXED_DATE,
+								source: "BINANCE",
+							},
+						},
+					},
+				},
+			];
+
+			const wrapper = ({ children }: { children: ReactNode }) => (
+				<MockedProvider mocks={mocks} addTypename={false}>
+					{children}
+				</MockedProvider>
+			);
+
+			const { result } = renderHook(() => useAssetMutations(), { wrapper });
+
+			await result.current.addCrypto({
+				portfolioId: "portfolio-1",
+				name: "Bitcoin",
+				assetTypeID: "2",
+				instrumentID: "inst-btc",
+				quantity: 2,
+				purchasePrice: 42000,
+				quoteCurrency: "USD",
+			});
+
+			await waitFor(() => {
+				expect(result.current.addCrypto).toBeDefined();
 			});
 		});
 	});

@@ -2,6 +2,7 @@
 
 # Global custom scalars
 scalar Time
+scalar Int64
 
 # Reusable input for pagination. It's generic enough to live here.
 input PaginationInput {
@@ -48,6 +49,7 @@ type Mutation {
     createUser(input: CreateUserInput!): User! @auth
     updateUser(id: ID!, input: UpdateUserInput!): User! @auth
     updateUserDisplayCurrency(input: UpdateUserDisplayCurrencyInput!): User! @auth
+    updateUserThemePreferences(input: UpdateUserThemePreferencesInput!): User! @auth
     deleteUser(id: ID!): ID! @auth
 
     # Portfolio Mutations
@@ -82,4 +84,3 @@ type Mutation {
 
 
 }
-

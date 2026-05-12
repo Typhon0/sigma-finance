@@ -8,6 +8,7 @@ import { InlinePortfolioDetail } from "../inline-portfolio-detail";
 
 // Mock the chart components to avoid canvas issues
 vi.mock("echarts-for-react", () => ({
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	default: function MockReactECharts({ style }: { style: any }) {
 		return <div data-testid="mock-chart" style={style} />;
 	},

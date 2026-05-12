@@ -188,6 +188,7 @@ export function ProgressiveLoading({ steps, className }: ProgressiveLoadingProps
 
 				<div className="space-y-2">
 					{steps.map((step, index) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						<div key={index} className="flex items-center gap-2 text-sm">
 							{step.error ? (
 								<AlertCircle className="h-4 w-4 text-destructive" />

@@ -81,6 +81,7 @@ export function PieChartWithCenter({
 					label: {
 						show: true, // Active le label au hover
 						position: "center",
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						formatter: (params: any) => {
 							return `{a|${params.name}}\n{b|${formatValue(params.value)}}\n{c|${params.percent}%}`;
 						},

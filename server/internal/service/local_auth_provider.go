@@ -98,13 +98,23 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 
 	// Return user info
 	return &UserInfo{
-		ID:              user.ID,
-		Email:           user.Email,
-		Name:            user.Name,
-		EmailVerified:   user.EmailVerified,
-		DisplayCurrency: string(user.DisplayCurrency),
-		ExternalID:      nil, // Local provider doesn't have external ID
-		Metadata:        nil,
+		ID:                  user.ID,
+		Email:               user.Email,
+		Name:                user.Name,
+		EmailVerified:       user.EmailVerified,
+		DisplayCurrency:     string(user.DisplayCurrency),
+		ThemePreference:     string(user.ThemePreference),
+		ThemeBaseColor:      string(user.ThemeBaseColor),
+		ThemeAccentColor:    string(user.ThemeAccentColor),
+		ThemeFontPreference: string(user.ThemeFontPreference),
+		ThemeHeadingFont:    string(user.ThemeHeadingFont),
+		ThemeMenuAccent:     string(user.ThemeMenuAccent),
+		ThemeMenuColor:      string(user.ThemeMenuColor),
+		ThemeStyle:          string(user.ThemeStyle),
+		ThemeRadius:         user.ThemeRadius,
+		ThemeRTL:            user.ThemeRTL,
+		ExternalID:          nil, // Local provider doesn't have external ID
+		Metadata:            nil,
 	}, nil
 }
 
@@ -142,13 +152,23 @@ func (p *LocalAuthProvider) Register(ctx context.Context, req RegisterRequest) (
 
 	// Create new user
 	user := &model.User{
-		ID:               uuid.New().String(),
-		Email:            req.Email,
-		Name:             req.Name,
-		PasswordHash:     &passwordHash,
-		EmailVerified:    false, // Email verification required
-		FailedLoginCount: 0,
-		DisplayCurrency:  model.CurrencyUSD,
+		ID:                  uuid.New().String(),
+		Email:               req.Email,
+		Name:                req.Name,
+		PasswordHash:        &passwordHash,
+		EmailVerified:       false, // Email verification required
+		FailedLoginCount:    0,
+		DisplayCurrency:     model.CurrencyUSD,
+		ThemePreference:     model.DefaultThemePreference,
+		ThemeBaseColor:      model.DefaultThemeBaseColor,
+		ThemeAccentColor:    model.DefaultThemeAccentColor,
+		ThemeFontPreference: model.DefaultThemeFontPreference,
+		ThemeHeadingFont:    model.DefaultThemeHeadingFont,
+		ThemeMenuAccent:     model.DefaultThemeMenuAccent,
+		ThemeMenuColor:      model.DefaultThemeMenuColor,
+		ThemeStyle:          model.DefaultThemeStyle,
+		ThemeRadius:         model.DefaultThemeRadius,
+		ThemeRTL:            model.DefaultThemeRTL,
 	}
 
 	// Validate user model
@@ -166,12 +186,22 @@ func (p *LocalAuthProvider) Register(ctx context.Context, req RegisterRequest) (
 
 	// Return user info
 	return &UserInfo{
-		ID:              user.ID,
-		Email:           user.Email,
-		Name:            user.Name,
-		EmailVerified:   user.EmailVerified,
-		DisplayCurrency: string(model.CurrencyUSD),
-		ExternalID:      nil,
-		Metadata:        nil,
+		ID:                  user.ID,
+		Email:               user.Email,
+		Name:                user.Name,
+		EmailVerified:       user.EmailVerified,
+		DisplayCurrency:     string(model.CurrencyUSD),
+		ThemePreference:     string(model.DefaultThemePreference),
+		ThemeBaseColor:      string(model.DefaultThemeBaseColor),
+		ThemeAccentColor:    string(model.DefaultThemeAccentColor),
+		ThemeFontPreference: string(model.DefaultThemeFontPreference),
+		ThemeHeadingFont:    string(model.DefaultThemeHeadingFont),
+		ThemeMenuAccent:     string(model.DefaultThemeMenuAccent),
+		ThemeMenuColor:      string(model.DefaultThemeMenuColor),
+		ThemeStyle:          string(model.DefaultThemeStyle),
+		ThemeRadius:         model.DefaultThemeRadius,
+		ThemeRTL:            model.DefaultThemeRTL,
+		ExternalID:          nil,
+		Metadata:            nil,
 	}, nil
 }

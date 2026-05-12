@@ -1,0 +1,21 @@
+pack_id: crypto-binance-core-daily-usdt
+name: Crypto Binance Core Daily USDT
+version: 2026.05.01
+format_version: 1
+distribution: public
+asset_type: CRYPTO
+interval: 1d
+quote_currency: USDT
+source_provider: binance-public-data
+license_policy: binance-public-data
+history:
+  start: 2017-01-01
+  end: auto
+universe:
+  file: packs/universes/crypto-binance-core.yaml
+output:
+  compression: zstd
+  partition_by:
+    - asset_type
+    - quote_currency
+    - year

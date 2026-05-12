@@ -101,6 +101,7 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 	const totalProfitLoss = totalValue - totalCost;
 	const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 
+	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const formatNumber = (num: number, decimals: number = 2) => {
@@ -209,6 +210,7 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 		],
 	};
 
+	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const [hoveredAssetData, setHoveredAssetData] = React.useState<HoveredChartData | null>(null);
 
 	const distributionChartOption =

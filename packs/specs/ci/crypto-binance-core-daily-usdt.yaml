@@ -1,0 +1,22 @@
+# test-only fixture spec for CI/local smoke builds
+pack_id: crypto-binance-core-daily-usdt
+name: Crypto Binance Core Daily USDT
+version: 2026.05.01
+format_version: 1
+distribution: public
+asset_type: CRYPTO
+interval: 1d
+quote_currency: USDT
+source_provider: binance-public-data
+license_policy: binance-public-data
+history:
+  start: 2024-01-01
+  end: 2024-01-03
+universe:
+  file: packs/universes/ci/crypto-binance-core-small.yaml
+output:
+  compression: zstd
+  partition_by:
+    - asset_type
+    - quote_currency
+    - year

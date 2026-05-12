@@ -34,6 +34,7 @@ export function InlineChartSkeleton({
 							<div className="flex items-end justify-between h-32 gap-1">
 								{Array.from({ length: 8 }).map((_, i) => (
 									<Skeleton
+										// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 										key={i}
 										className="w-full"
 										style={{ height: `${Math.random() * 80 + 20}%` }}
@@ -64,6 +65,7 @@ export function InlinePortfolioDetailSkeleton() {
 			{/* Portfolio metrics cards */}
 			<div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
 				{Array.from({ length: 4 }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					<Card key={i}>
 						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 							<Skeleton className="h-4 w-20" />
@@ -88,6 +90,7 @@ export function InlinePortfolioDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-4">
 						{Array.from({ length: 5 }).map((_, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-10 w-10 rounded-full" />
@@ -139,6 +142,7 @@ export function InlineAssetDetailSkeleton() {
 			{/* Asset metrics */}
 			<div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
 				{Array.from({ length: 4 }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					<Card key={i}>
 						<CardContent className="p-4">
 							<Skeleton className="h-4 w-20 mb-2" />
@@ -159,6 +163,7 @@ export function InlineAssetDetailSkeleton() {
 				<CardContent>
 					<div className="space-y-3">
 						{Array.from({ length: 6 }).map((_, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 							<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 								<div className="flex items-center gap-3">
 									<Skeleton className="h-8 w-8 rounded-full" />
@@ -198,15 +203,18 @@ export function DataTableSkeleton({
 					{showHeader && (
 						<div className="flex items-center gap-4 p-4 border-b">
 							{Array.from({ length: columns }).map((_, i) => (
+								// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 								<Skeleton key={i} className="h-4 flex-1" />
 							))}
 						</div>
 					)}
 					<div className="space-y-0">
 						{Array.from({ length: rows }).map((_, rowIndex) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 							<div key={rowIndex} className="flex items-center gap-4 p-4 border-b last:border-b-0">
 								{Array.from({ length: columns }).map((_, colIndex) => (
 									<Skeleton
+										// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 										key={colIndex}
 										className={cn(
 											"h-4 flex-1",
@@ -234,6 +242,7 @@ export function MetricCardsSkeleton({
 	return (
 		<div className={cn("grid gap-4 grid-cols-2 lg:grid-cols-4", className)}>
 			{Array.from({ length: count }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<Card key={i}>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<Skeleton className="h-4 w-24" />
@@ -261,6 +270,7 @@ export function AssetListSkeleton({
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-10 w-10 rounded-full" />
@@ -292,6 +302,7 @@ export function TransactionListSkeleton({
 	return (
 		<div className={cn("space-y-3", className)}>
 			{Array.from({ length: count }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<div key={i} className="flex items-center justify-between p-3 border rounded-lg">
 					<div className="flex items-center gap-3">
 						<Skeleton className="h-8 w-8 rounded-full" />

@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sigma_finance/internal/config"
@@ -9,6 +10,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/uptrace/bun"
@@ -16,13 +18,25 @@ import (
 
 // TestDB holds a test database connection and provides cleanup
 type TestDB struct {
-	DB *bun.DB
-	t  *testing.T
+	DB      *bun.DB
+	t       *testing.T
+	closeMu sync.Mutex
+	closed  bool
 }
 
 // schemaPermOnce ensures schema permissions are checked only once per process,
 // since they persist across tests and GRANT is idempotent but wasteful to repeat.
 var schemaPermOnce sync.Once
+
+// processLock serializes test DB access within a single process (same package)
+// and across processes (parallel packages via `go test ./...`).
+// flock is per-FD, so a second NewTestDB in the same process would deadlock
+// without a process-level guard.
+var (
+	processLockMu   sync.Mutex
+	processLockFile *os.File
+	processLockRefs int
+)
 
 // NewTestDB creates a new test database connection and runs migrations.
 // On first call per process, it ensures the test user has schema permissions
@@ -41,31 +55,61 @@ func NewTestDB(t *testing.T) *TestDB {
 	})
 
 	// Run migrations to ensure tables exist
-	lockFile, err := acquireTestDBLock()
+	err = acquireTestDBLock()
 	require.NoError(t, err, "Failed to acquire test database lock")
 	err = runTestMigrations(ctx, db)
-	releaseTestDBLock(lockFile)
+	if err != nil {
+		releaseTestDBLock()
+	}
 	require.NoError(t, err, "Failed to run test migrations")
-
-	return &TestDB{
+	testDB := &TestDB{
 		DB: db,
 		t:  t,
 	}
+	t.Cleanup(func() {
+		testDB.Close()
+	})
+	return testDB
 }
 
-func acquireTestDBLock() (*os.File, error) {
+// acquireTestDBLock acquires the process-level lock (reentrant within this
+// process) and, on the first acquisition, the cross-process flock.
+func acquireTestDBLock() error {
+	processLockMu.Lock()
+	defer processLockMu.Unlock()
+
+	if processLockRefs > 0 {
+		// Already held by this process — just bump refcount.
+		processLockRefs++
+		return nil
+	}
+
 	lockPath := "/tmp/sigma_finance_test.lock"
 	file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return nil, fmt.Errorf("open lock file: %w", err)
+		return fmt.Errorf("open lock file: %w", err)
 	}
 
-	if err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX); err != nil {
-		_ = file.Close()
-		return nil, fmt.Errorf("acquire lock: %w", err)
+	// Use non-blocking try with retry to avoid hanging when multiple
+	// test packages run in parallel via `go test ./...`.
+	deadline := time.Now().Add(60 * time.Second)
+	for {
+		err := syscall.Flock(int(file.Fd()), syscall.LOCK_EX|syscall.LOCK_NB)
+		if err == nil {
+			processLockFile = file
+			processLockRefs = 1
+			return nil
+		}
+		if !errors.Is(err, syscall.EWOULDBLOCK) {
+			_ = file.Close()
+			return fmt.Errorf("acquire lock: %w", err)
+		}
+		if time.Now().After(deadline) {
+			_ = file.Close()
+			return fmt.Errorf("acquire lock: timed out after 60s waiting for %s", lockPath)
+		}
+		time.Sleep(200 * time.Millisecond)
 	}
-
-	return file, nil
 }
 
 // ensureSchemaPermissions connects to the test database as admin and grants
@@ -95,15 +139,25 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 
 	// Create all authentication tables for testing
 	_, err := db.ExecContext(ctx, `
-		-- Drop and recreate user table with correct schema for authentication
-		DROP TABLE IF EXISTS sigma_finance.user CASCADE;
-		CREATE TABLE sigma_finance.user (
+		-- Ensure user table exists with current authentication schema
+		CREATE TABLE IF NOT EXISTS sigma_finance.user (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 			email VARCHAR(255) UNIQUE NOT NULL,
 			email_verified BOOLEAN DEFAULT FALSE,
 			name VARCHAR(255),
 			password_hash VARCHAR(255),
+			role VARCHAR(20) NOT NULL DEFAULT 'USER',
 			display_currency VARCHAR(3) NOT NULL DEFAULT 'USD',
+			theme_preference VARCHAR(10) NOT NULL DEFAULT 'system',
+			theme_base_color VARCHAR(20) NOT NULL DEFAULT 'neutral',
+			theme_accent_color VARCHAR(20) NOT NULL DEFAULT 'zinc',
+			theme_font_preference VARCHAR(30) NOT NULL DEFAULT 'inter',
+			theme_heading_font VARCHAR(30) NOT NULL DEFAULT 'inherit',
+			theme_menu_accent VARCHAR(10) NOT NULL DEFAULT 'subtle',
+			theme_menu_color VARCHAR(30) NOT NULL DEFAULT 'default',
+			theme_style VARCHAR(10) NOT NULL DEFAULT 'vega',
+			theme_radius NUMERIC(3,2) NOT NULL DEFAULT 0.625,
+			theme_rtl BOOLEAN NOT NULL DEFAULT FALSE,
 			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 			last_login_at TIMESTAMP,
@@ -247,6 +301,26 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 		WHERE executed_at IS NULL;
 
 		-- Instrument catalog columns needed by the updated asset/portfolio model
+		ALTER TABLE IF EXISTS sigma_finance.instruments
+			ADD COLUMN IF NOT EXISTS external_source VARCHAR(64),
+			ADD COLUMN IF NOT EXISTS external_id VARCHAR(255);
+		CREATE UNIQUE INDEX IF NOT EXISTS uq_instruments_external_source_id
+			ON sigma_finance.instruments(external_source, external_id)
+			WHERE external_source IS NOT NULL AND external_id IS NOT NULL;
+
+		ALTER TABLE IF EXISTS sigma_finance."user"
+			ADD COLUMN IF NOT EXISTS role VARCHAR(20) NOT NULL DEFAULT 'USER',
+			ADD COLUMN IF NOT EXISTS theme_preference VARCHAR(10) NOT NULL DEFAULT 'system',
+			ADD COLUMN IF NOT EXISTS theme_base_color VARCHAR(20) NOT NULL DEFAULT 'neutral',
+			ADD COLUMN IF NOT EXISTS theme_accent_color VARCHAR(20) NOT NULL DEFAULT 'zinc',
+			ADD COLUMN IF NOT EXISTS theme_font_preference VARCHAR(30) NOT NULL DEFAULT 'inter',
+			ADD COLUMN IF NOT EXISTS theme_heading_font VARCHAR(30) NOT NULL DEFAULT 'inherit',
+			ADD COLUMN IF NOT EXISTS theme_menu_accent VARCHAR(10) NOT NULL DEFAULT 'subtle',
+			ADD COLUMN IF NOT EXISTS theme_menu_color VARCHAR(30) NOT NULL DEFAULT 'default',
+			ADD COLUMN IF NOT EXISTS theme_style VARCHAR(10) NOT NULL DEFAULT 'vega',
+			ADD COLUMN IF NOT EXISTS theme_radius NUMERIC(3,2) NOT NULL DEFAULT 0.625,
+			ADD COLUMN IF NOT EXISTS theme_rtl BOOLEAN NOT NULL DEFAULT FALSE;
+
 		ALTER TABLE IF EXISTS sigma_finance.assets
 			ADD COLUMN IF NOT EXISTS instrument_id UUID;
 		ALTER TABLE IF EXISTS sigma_finance.portfolio_asset
@@ -259,71 +333,87 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 	return err
 }
 
-// Close closes the test database connection
-func releaseTestDBLock(file *os.File) {
-	if file == nil {
+// releaseTestDBLock decrements the process-level refcount and, when it
+// reaches zero, releases the cross-process flock.
+func releaseTestDBLock() {
+	processLockMu.Lock()
+	defer processLockMu.Unlock()
+
+	if processLockRefs <= 0 {
 		return
 	}
-	_ = syscall.Flock(int(file.Fd()), syscall.LOCK_UN)
-	_ = file.Close()
+	processLockRefs--
+	if processLockRefs == 0 && processLockFile != nil {
+		_ = syscall.Flock(int(processLockFile.Fd()), syscall.LOCK_UN)
+		_ = processLockFile.Close()
+		processLockFile = nil
+	}
 }
 
 // Close closes the test database connection
 func (tdb *TestDB) Close() {
-	if tdb.DB != nil {
-		tdb.DB.Close()
+	tdb.closeMu.Lock()
+	if tdb.closed {
+		tdb.closeMu.Unlock()
+		return
 	}
+	tdb.closed = true
+	db := tdb.DB
+	tdb.DB = nil
+	tdb.closeMu.Unlock()
+
+	if db != nil {
+		db.Close()
+	}
+	releaseTestDBLock()
 }
 
-// CleanupTables removes all data from test tables
+// CleanupTables removes all data from test tables.
+// NewTestDB holds the process lock for the full test lifetime, so this method
+// does not need to reacquire the lock.
 func (tdb *TestDB) CleanupTables(ctx context.Context) {
-	lockFile, err := acquireTestDBLock()
-	if err != nil {
-		tdb.t.Logf("Warning: failed to acquire cleanup lock: %v", err)
-	} else {
-		defer releaseTestDBLock(lockFile)
-	}
-
-	tables := []string{
-		"sigma_finance.auth_event",
-		"sigma_finance.email_verification_token",
-		"sigma_finance.password_reset_token",
-		"sigma_finance.session",
-		"sigma_finance.auth_method",
-		"sigma_finance.asset_tag",
-		"sigma_finance.portfolio_tag",
-		"sigma_finance.portfolio_asset",
-		"sigma_finance.watchlist_asset",
-		"sigma_finance.watchlist",
-		"sigma_finance.assets",
-		"sigma_finance.positions",
-		"sigma_finance.transactions",
-		"sigma_finance.portfolio_performance",
-		"sigma_finance.user_alerts",
-		"sigma_finance.asset_prices",
-		"sigma_finance.asset_allocations",
-		"sigma_finance.portfolio",
-		"sigma_finance.user",
-		"sigma_finance.tag",
-		"sigma_finance.asset_type",
-		"sigma_finance.stock",
-		"sigma_finance.crypto",
-		"sigma_finance.report",
-		"sigma_finance.ownership",
-	}
-
-	for _, table := range tables {
-		_, err := tdb.DB.NewRaw("TRUNCATE TABLE " + table + " CASCADE").Exec(ctx)
-		if err != nil {
-			tdb.t.Logf("Warning: failed to cleanup table %s: %v", table, err)
+	if tdb.DB != nil {
+		tables := []string{
+			"sigma_finance.auth_event",
+			"sigma_finance.email_verification_token",
+			"sigma_finance.password_reset_token",
+			"sigma_finance.session",
+			"sigma_finance.auth_method",
+			"sigma_finance.asset_tag",
+			"sigma_finance.portfolio_tag",
+			"sigma_finance.portfolio_asset",
+			"sigma_finance.watchlist_asset",
+			"sigma_finance.watchlist",
+			"sigma_finance.assets",
+			"sigma_finance.positions",
+			"sigma_finance.transactions",
+			"sigma_finance.portfolio_performance",
+			"sigma_finance.user_alerts",
+			"sigma_finance.asset_prices",
+			"sigma_finance.asset_allocations",
+			"sigma_finance.portfolio",
+			"sigma_finance.user",
+			"sigma_finance.tag",
+			"sigma_finance.asset_type",
+			"sigma_finance.stock",
+			"sigma_finance.crypto",
+			"sigma_finance.report",
+			"sigma_finance.ownership",
 		}
-	}
 
-	// Add debug check
-	var count int
-	if err := tdb.DB.NewRaw("SELECT count(*) FROM sigma_finance.assets").Scan(ctx, &count); err == nil {
-		if count > 0 {
-			tdb.t.Logf("ERROR: assets table still has %d rows after TRUNCATE CASCADE!", count)
+		for _, table := range tables {
+			_, err := tdb.DB.NewRaw("TRUNCATE TABLE " + table + " CASCADE").Exec(ctx)
+			if err != nil {
+				tdb.t.Logf("Warning: failed to cleanup table %s: %v", table, err)
+			}
+		}
+
+		// Add debug check
+		var count int
+		if err := tdb.DB.NewRaw("SELECT count(*) FROM sigma_finance.assets").Scan(ctx, &count); err == nil {
+			if count > 0 {
+				tdb.t.Logf("ERROR: assets table still has %d rows after TRUNCATE CASCADE!", count)
+			}
 		}
 	}
 }

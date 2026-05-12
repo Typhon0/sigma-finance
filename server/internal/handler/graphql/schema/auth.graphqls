@@ -25,6 +25,16 @@ type AuthUser {
     name: String!
     emailVerified: Boolean!
     displayCurrency: String!
+    themePreference: String!
+    themeBaseColor: String!
+    themeAccentColor: String!
+    themeFontPreference: String!
+    themeHeadingFont: String!
+    themeMenuAccent: String!
+    themeMenuColor: String!
+    themeStyle: String!
+    themeRadius: Float!
+    themeRTL: Boolean!
 }
 
 type AuthError {

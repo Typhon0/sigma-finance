@@ -278,12 +278,18 @@ func TestAuthenticationService_Logout(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("successful logout", func(t *testing.T) {
-		authService, _, sessionRepo, _, _, _, _, _ := createTestAuthService(t)
+		authService, _, sessionRepo, _, _, securityService, _, _ := createTestAuthService(t)
 
 		userID := "user-123"
 		token := "jwt_token"
 
 		// Mock expectations
+		securityService.On("ValidateJWT", token).Return(&JWTClaims{
+			UserID: userID,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			},
+		}, nil)
 		sessionRepo.On("RevokeSession", ctx, token).Return(nil)
 
 		// Execute
@@ -292,6 +298,7 @@ func TestAuthenticationService_Logout(t *testing.T) {
 		// Assert
 		require.NoError(t, err)
 
+		securityService.AssertExpectations(t)
 		sessionRepo.AssertExpectations(t)
 	})
 }

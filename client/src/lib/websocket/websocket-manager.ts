@@ -5,6 +5,7 @@
 
 export interface WebSocketMessage {
 	type: "PRICE_UPDATE" | "PORTFOLIO_UPDATE" | "ALERT_NOTIFICATION" | "CONNECTION_STATUS";
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	payload: any;
 	timestamp: number;
 }
@@ -138,6 +139,7 @@ export class WebSocketManager {
 		};
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	send(message: any): void {
 		if (this.ws?.readyState === WebSocket.OPEN) {
 			this.ws.send(JSON.stringify(message));
@@ -160,8 +162,10 @@ export class WebSocketManager {
 		}
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	private emit(type: string, payload: any): void {
 		const message: WebSocketMessage = {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			type: type as any,
 			payload,
 			timestamp: Date.now(),

@@ -40,6 +40,7 @@ export function AssetTypeSelector({
 		return (
 			<div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
 				{Array.from({ length: 6 }).map((_, i) => (
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					<Card key={i} className="animate-pulse">
 						<CardHeader className="pb-2">
 							<div className="h-6 w-6 bg-muted rounded" />

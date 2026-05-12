@@ -23,6 +23,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 interface StockDetailProps {
 	symbol: string;
 	onBack?: () => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onNavigateToScreener?: (filters: any) => void;
 }
 
@@ -70,12 +71,7 @@ export function StockDetail({
 		industry: "Consumer Electronics",
 	};
 
-	// Generate candlestick data
-	const generateCandlestickData = (): {
-		date: string;
-		values: number[];
-		volume: number;
-	}[] => {
+	const candlestickData = useMemo(() => {
 		const days =
 			timeRange === "1D"
 				? 1
@@ -110,9 +106,7 @@ export function StockDetail({
 			currentPrice = close;
 		}
 		return data;
-	};
-
-	const candlestickData = useMemo(() => generateCandlestickData(), [generateCandlestickData]);
+	}, [timeRange, stockData.price, stockData.avgVolume]);
 
 	const calculateMa = (period: number) => {
 		const ma: (number | null)[] = [];
@@ -349,6 +343,7 @@ export function StockDetail({
 									key={r}
 									variant={timeRange === r ? "secondary" : "ghost"}
 									size="sm"
+									// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 									onClick={() => setTimeRange(r as any)}
 									className="h-6 px-2.5 text-[10px] font-medium"
 								>
@@ -357,6 +352,7 @@ export function StockDetail({
 							))}
 						</div>
 						<div className="flex items-center gap-2">
+							{/* biome-ignore lint/suspicious/noExplicitAny: unavoidable */}
 							<Select value={chartType} onValueChange={(v: any) => setChartType(v)}>
 								<SelectTrigger className="h-6 w-[100px] text-[10px] border-border/40 bg-transparent">
 									<SelectValue />
@@ -438,8 +434,8 @@ export function StockDetail({
 										l: "52W Low",
 										v: formatCurrency(stockData.week52Range.low),
 									},
-								].map((item, i) => (
-									<div key={i} className="flex items-center justify-between p-3 text-xs">
+								].map((item) => (
+									<div key={item.l} className="flex items-center justify-between p-3 text-xs">
 										<span className="text-muted-foreground">{item.l}</span>
 										<span className="font-mono font-medium">{item.v}</span>
 									</div>

@@ -238,6 +238,7 @@ const ReportPreview: React.FC<{
 					<h4 className="font-semibold mb-2">Asset Allocation</h4>
 					<div className="space-y-2">
 						{reportData.allocation.slice(0, 3).map((item, index) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 							<div key={index} className="flex justify-between text-sm">
 								<span>{item.assetType}</span>
 								<span>{item.percentage.toFixed(1)}%</span>
@@ -504,6 +505,7 @@ export const PerformanceReports: React.FC<PerformanceReportsProps> = ({
 				</CardHeader>
 				<CardContent className="space-y-4">
 					{Array.from({ length: 3 }).map((_, i) => (
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						<Skeleton key={i} className="h-12 w-full" />
 					))}
 				</CardContent>

@@ -1,0 +1,115 @@
+# Market Data Pack Schema
+
+extend type Query {
+  availableMarketDataPacks: [MarketDataPackRegistryEntry!]! @auth
+  installedMarketDataPacks: [MarketDataPack!]! @auth
+  marketDataPackJob(id: ID!): MarketDataPackJob @auth
+  marketDataCoverage(instrumentId: ID!): [MarketDataPackCoverage!]! @auth
+  packBuildJob(id: ID!): MarketDataPackBuildJob @auth
+  packBuildJobs(limit: Int = 20): [MarketDataPackBuildJob!]! @auth
+}
+
+extend type Mutation {
+  installMarketDataPack(packId: ID!): MarketDataPackJob! @auth
+  updateMarketDataPack(packId: ID!): MarketDataPackJob! @auth
+  removeMarketDataPack(packId: ID!): MarketDataPackJob! @auth
+  repairMarketDataPack(packId: ID!): MarketDataPackJob! @auth
+  cancelMarketDataPackJob(jobId: ID!): MarketDataPackJob! @auth
+  startLocalPackBuild(input: StartLocalPackBuildInput!): MarketDataPackBuildJob! @auth
+  cancelPackBuildJob(id: ID!): MarketDataPackBuildJob! @auth
+}
+
+type MarketDataPackRegistryEntry {
+  packId: ID!
+  version: String!
+  name: String!
+  description: String
+  sizeBytes: Int64!
+  compressedSizeBytes: Int64!
+  assetsCount: Int64!
+  rowsCount: Int64!
+  interval: String!
+  assetTypes: [String!]!
+  quoteCurrencies: [String!]!
+  downloadUrl: String!
+  checksum: String!
+  signatureUrl: String
+  createdAt: Time!
+  recommended: Boolean!
+}
+
+type MarketDataPack {
+  id: ID!
+  version: String!
+  name: String!
+  description: String
+  formatVersion: Int!
+  status: String!
+  parentPackId: ID
+  packPriority: Int!
+  filePath: String!
+  checksum: String!
+  signatureVerified: Boolean!
+  assetsCount: Int64!
+  rowsCount: Int64!
+  installedAt: Time
+  updatedAt: Time
+  createdAt: Time!
+}
+
+type MarketDataPackCoverage {
+  packId: ID!
+  instrumentId: ID!
+  symbol: String!
+  assetType: String!
+  interval: String!
+  quoteCurrency: String!
+  firstDate: Time!
+  lastDate: Time!
+  rowCount: Int64!
+  filePaths: [String!]!
+}
+
+type MarketDataPackJob {
+  id: ID!
+  packId: ID!
+  jobType: String!
+  status: String!
+  progressPercent: Float!
+  downloadedBytes: Int64!
+  totalBytes: Int64!
+  importedRows: Int64!
+  errorMessage: String
+  createdAt: Time!
+  startedAt: Time
+  finishedAt: Time
+}
+
+type MarketDataPackBuildJob {
+  id: ID!
+  packId: ID!
+  sourceProvider: String!
+  status: String!
+  progressPercent: Float!
+  currentSymbol: String
+  totalSymbols: Int!
+  completedSymbols: Int!
+  failedSymbols: Int!
+  errorMessage: String
+  createdAt: Time!
+  startedAt: Time
+  finishedAt: Time
+}
+
+input StartLocalPackBuildInput {
+  packId: String
+  sourceProvider: String!
+  assetTypes: [String!]!
+  historyStart: Time
+  historyEnd: Time
+  portfolioFirst: Boolean = true
+  universeInstrumentIds: [ID!]
+  requestsPerMinute: Int
+  requestsPerDay: Int
+  concurrentRequests: Int
+}

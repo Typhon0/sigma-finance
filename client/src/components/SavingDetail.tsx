@@ -121,9 +121,13 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 	// Derive real transactions for this asset from usePortfolio()
 	const assetTransactions = useMemo(() => {
-		return transactions
-			.filter((t: any) => t.assetId === savingId)
-			.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+		return (
+			transactions
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+				.filter((t: any) => t.assetId === savingId)
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+				.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+		);
 	}, [transactions, savingId]);
 
 	// Calculate monthsOpen from earliest transaction, or 0 if no transactions
@@ -294,6 +298,7 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				return `${data.name}<br/>Balance: ${formatCurrency(data.value)}`;

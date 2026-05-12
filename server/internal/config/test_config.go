@@ -1,11 +1,12 @@
 package config
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
-	"context"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/lib/pq"
 	"github.com/uptrace/bun"
@@ -64,15 +65,18 @@ func GetTestAdminDBConfig() *TestAdminDBConfig {
 func NewTestDB() (*bun.DB, error) {
 	config := GetTestDBConfig()
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s&connect_timeout=5",
 		url.PathEscape(config.User), url.PathEscape(config.Password), config.Host, config.Port, config.DBName, config.SSLMode)
 
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	db := bun.NewDB(sqldb, pgdialect.New())
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to test database: %w", err)
+	// Test the connection with a timeout so tests fail fast when DB is unreachable
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to connect to test database at %s:%s: %w", config.Host, config.Port, err)
 	}
 
 	return db, nil
@@ -83,15 +87,18 @@ func NewTestDB() (*bun.DB, error) {
 func NewAdminTestDB() (*bun.DB, error) {
 	config := GetTestAdminDBConfig()
 
-	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s&connect_timeout=5",
 		url.PathEscape(config.User), url.PathEscape(config.Password), config.Host, config.Port, config.DBName, config.SSLMode)
 
 	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
 	db := bun.NewDB(sqldb, pgdialect.New())
 
-	// Test the connection
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to connect to admin test database: %w", err)
+	// Test the connection with a timeout so tests fail fast when DB is unreachable
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := db.PingContext(ctx); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to connect to admin test database at %s:%s: %w", config.Host, config.Port, err)
 	}
 
 	return db, nil

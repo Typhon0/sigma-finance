@@ -1,0 +1,17 @@
+provider_id: ecb-statistics
+name: ECB Statistics Data Portal
+source_url: https://data.ecb.europa.eu/
+license_name: ECB statistics reuse policy
+redistribution_allowed: true
+commercial_use_allowed: true
+attribution_required: true
+terms_checked_at: "2026-05-11"
+allowed_distribution_modes:
+  - public
+  - private
+  - local
+notes:
+  - "Source quote required: Source: ECB statistics."
+  - Free reuse allowed under ECB statistics reuse policy.
+  - Do not modify ECB official statistics or metadata fields.
+  - Derived pairs must be marked as derived and must not be presented as raw ECB values.

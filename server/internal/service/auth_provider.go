@@ -30,13 +30,23 @@ type Credentials interface {
 
 // UserInfo represents user information returned by authentication providers
 type UserInfo struct {
-	ID              string                 `json:"id"`
-	Email           string                 `json:"email"`
-	Name            string                 `json:"name"`
-	EmailVerified   bool                   `json:"emailVerified"`
-	DisplayCurrency string                 `json:"displayCurrency"`
-	ExternalID      *string                `json:"externalId,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	ID                  string                 `json:"id"`
+	Email               string                 `json:"email"`
+	Name                string                 `json:"name"`
+	EmailVerified       bool                   `json:"emailVerified"`
+	DisplayCurrency     string                 `json:"displayCurrency"`
+	ThemePreference     string                 `json:"themePreference"`
+	ThemeBaseColor      string                 `json:"themeBaseColor"`
+	ThemeAccentColor    string                 `json:"themeAccentColor"`
+	ThemeFontPreference string                 `json:"themeFontPreference"`
+	ThemeHeadingFont    string                 `json:"themeHeadingFont"`
+	ThemeMenuAccent     string                 `json:"themeMenuAccent"`
+	ThemeMenuColor      string                 `json:"themeMenuColor"`
+	ThemeStyle          string                 `json:"themeStyle"`
+	ThemeRadius         float64                `json:"themeRadius"`
+	ThemeRTL            bool                   `json:"themeRTL"`
+	ExternalID          *string                `json:"externalId,omitempty"`
+	Metadata            map[string]interface{} `json:"metadata,omitempty"`
 }
 
 // RegisterRequest represents a user registration request

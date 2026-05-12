@@ -5,7 +5,7 @@ import { CryptoList } from "@/components/CryptoList";
 export const Route = createFileRoute("/_app/assets/crypto")({
 	component: () => (
 		<ProtectedRoute>
-			<CryptoList onSelectCrypto={() => {}} />
+			<CryptoList onSelectCrypto={() => {}} detailMode="panel" />
 		</ProtectedRoute>
 	),
 });

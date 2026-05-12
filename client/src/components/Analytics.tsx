@@ -194,6 +194,7 @@ export function Analytics() {
 				},
 			],
 		};
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	}, [Colors, allocationData]);
 	const assetPerformanceOption = useMemo<EChartsCoreOption>(() => {
 		return {

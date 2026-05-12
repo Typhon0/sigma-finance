@@ -255,6 +255,7 @@ export function ResponsiveFormActions({ children, className }: ResponsiveFormAct
 				if (React.isValidElement(child) && child.type === Button) {
 					return React.cloneElement(child as React.ReactElement<Record<string, unknown>>, {
 						className: cn(
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 							(child.props as any).className,
 							// Larger buttons on mobile
 							responsiveState.isMobile && "h-11 text-base touch-manipulation",
@@ -304,6 +305,7 @@ export function ResponsiveButtonGroup({
 				if (React.isValidElement(child) && child.type === Button) {
 					return React.cloneElement(child as React.ReactElement<Record<string, unknown>>, {
 						className: cn(
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 							(child.props as any).className,
 							// Larger buttons on mobile
 							responsiveState.isMobile && "h-11 text-base touch-manipulation",

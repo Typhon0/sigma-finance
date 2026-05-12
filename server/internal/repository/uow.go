@@ -27,9 +27,11 @@ type IUnitOfWork interface {
 	Crypto() ICryptoRepository
 	Fund() IFundRepository
 	Instrument() IInstrumentRepository
+	InstrumentProviderMapping() IInstrumentProviderMappingRepository
 	InstrumentAlias() IInstrumentAliasRepository
 	InstrumentSyncState() IInstrumentSyncStateRepository
 	DiscoveryLog() IDiscoveryLogRepository
+	CatalogSyncRun() ICatalogSyncRunRepository
 	FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository
 	FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository
 	AssetType() IAssetTypeRepository
@@ -77,9 +79,11 @@ type UnitOfWork struct {
 	crypto                     ICryptoRepository
 	fund                       IFundRepository
 	instrument                 IInstrumentRepository
+	instrumentProviderMapping  IInstrumentProviderMappingRepository
 	instrumentAlias            IInstrumentAliasRepository
 	instrumentSyncState        IInstrumentSyncStateRepository
 	discoveryLog               IDiscoveryLogRepository
+	catalogSyncRun             ICatalogSyncRunRepository
 	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
 	assetType                  IAssetTypeRepository
@@ -131,9 +135,11 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		crypto:                     NewCryptoRepository(db),
 		fund:                       NewFundRepository(db),
 		instrument:                 NewInstrumentRepository(db),
+		instrumentProviderMapping:  NewInstrumentProviderMappingRepository(db),
 		instrumentAlias:            NewInstrumentAliasRepository(db),
 		instrumentSyncState:        NewInstrumentSyncStateRepository(db),
 		discoveryLog:               NewDiscoveryLogRepository(db),
+		catalogSyncRun:             NewCatalogSyncRunRepository(db),
 		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(db),
 		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(db),
 		assetType:                  NewAssetTypeRepository(db),
@@ -178,9 +184,11 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		crypto:                     NewCryptoRepository(&tx),
 		fund:                       NewFundRepository(&tx),
 		instrument:                 NewInstrumentRepository(&tx),
+		instrumentProviderMapping:  NewInstrumentProviderMappingRepository(&tx),
 		instrumentAlias:            NewInstrumentAliasRepository(&tx),
 		instrumentSyncState:        NewInstrumentSyncStateRepository(&tx),
 		discoveryLog:               NewDiscoveryLogRepository(&tx),
+		catalogSyncRun:             NewCatalogSyncRunRepository(&tx),
 		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(&tx),
 		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(&tx),
 		assetType:                  NewAssetTypeRepository(&tx),
@@ -277,6 +285,10 @@ func (uow *UnitOfWork) Instrument() IInstrumentRepository {
 	return uow.instrument
 }
 
+func (uow *UnitOfWork) InstrumentProviderMapping() IInstrumentProviderMappingRepository {
+	return uow.instrumentProviderMapping
+}
+
 // InstrumentAlias returns the instrument alias repository
 func (uow *UnitOfWork) InstrumentAlias() IInstrumentAliasRepository {
 	return uow.instrumentAlias
@@ -290,6 +302,10 @@ func (uow *UnitOfWork) InstrumentSyncState() IInstrumentSyncStateRepository {
 // DiscoveryLog returns the discovery log repository
 func (uow *UnitOfWork) DiscoveryLog() IDiscoveryLogRepository {
 	return uow.discoveryLog
+}
+
+func (uow *UnitOfWork) CatalogSyncRun() ICatalogSyncRunRepository {
+	return uow.catalogSyncRun
 }
 
 // FinanceDatabaseSyncSetting returns the finance database sync settings repository
@@ -358,9 +374,11 @@ type txUnitOfWork struct {
 	crypto                     ICryptoRepository
 	fund                       IFundRepository
 	instrument                 IInstrumentRepository
+	instrumentProviderMapping  IInstrumentProviderMappingRepository
 	instrumentAlias            IInstrumentAliasRepository
 	instrumentSyncState        IInstrumentSyncStateRepository
 	discoveryLog               IDiscoveryLogRepository
+	catalogSyncRun             ICatalogSyncRunRepository
 	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
 	assetType                  IAssetTypeRepository
@@ -438,6 +456,10 @@ func (uow *txUnitOfWork) Instrument() IInstrumentRepository {
 	return uow.instrument
 }
 
+func (uow *txUnitOfWork) InstrumentProviderMapping() IInstrumentProviderMappingRepository {
+	return uow.instrumentProviderMapping
+}
+
 func (uow *txUnitOfWork) InstrumentAlias() IInstrumentAliasRepository {
 	return uow.instrumentAlias
 }
@@ -448,6 +470,10 @@ func (uow *txUnitOfWork) InstrumentSyncState() IInstrumentSyncStateRepository {
 
 func (uow *txUnitOfWork) DiscoveryLog() IDiscoveryLogRepository {
 	return uow.discoveryLog
+}
+
+func (uow *txUnitOfWork) CatalogSyncRun() ICatalogSyncRunRepository {
+	return uow.catalogSyncRun
 }
 
 func (uow *txUnitOfWork) FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository {

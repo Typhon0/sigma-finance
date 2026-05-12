@@ -105,6 +105,7 @@ export function InsuranceList({ onSelectInsurance }: InsuranceListProps) {
 		return badges[category] || { label: category, variant: "outline" };
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleAddInsurance = async (formData: any) => {
 		if (!currentPortfolio) {
 			toast.error("No portfolio selected. Please select a portfolio first.");

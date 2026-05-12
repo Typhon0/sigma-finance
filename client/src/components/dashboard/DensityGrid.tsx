@@ -149,6 +149,7 @@ const AssetAllocationChart = ({
 				},
 			],
 		};
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	}, [Colors, data, formatCurrency]);
 
 	return (

@@ -267,9 +267,9 @@ export function TransactionValidation({
 											Errors ({validation.errors.length})
 										</h4>
 										<div className="space-y-2">
-											{validation.errors.map((error, index) => (
+											{validation.errors.map((error) => (
 												<div
-													key={index}
+													key={`${error.field}-${error.message}`}
 													className="flex items-start gap-2 p-3 bg-red-50 rounded-lg"
 												>
 													<AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
@@ -295,9 +295,9 @@ export function TransactionValidation({
 											Warnings ({validation.warnings.length})
 										</h4>
 										<div className="space-y-2">
-											{validation.warnings.map((warning, index) => (
+											{validation.warnings.map((warning) => (
 												<div
-													key={index}
+													key={`${warning.field}-${warning.message}`}
 													className="flex items-start gap-2 p-3 bg-yellow-50 rounded-lg"
 												>
 													<AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 flex-shrink-0" />
@@ -323,9 +323,9 @@ export function TransactionValidation({
 											Suggestions
 										</h4>
 										<div className="space-y-2">
-											{validation.suggestions.map((suggestion, index) => (
+											{validation.suggestions.map((suggestion) => (
 												<div
-													key={index}
+													key={suggestion}
 													className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg"
 												>
 													<Info className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />

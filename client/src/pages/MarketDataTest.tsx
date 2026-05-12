@@ -356,6 +356,7 @@ export default function MarketDataTest() {
 											</thead>
 											<tbody>
 												{candles.slice(0, 5).map((c, i) => (
+													// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 													<tr key={i} className="border-t">
 														<td className="px-3 py-2">{new Date(c.timestamp).toLocaleString()}</td>
 														<td className="px-3 py-2 text-right">${c.open.toFixed(2)}</td>

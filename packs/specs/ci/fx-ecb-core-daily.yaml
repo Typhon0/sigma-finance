@@ -1,0 +1,22 @@
+# test-only fixture spec for CI/local smoke builds
+pack_id: fx-ecb-core-daily
+name: FX ECB Core Daily
+version: 2026.05.11
+format_version: 1
+distribution: public
+asset_type: FX
+interval: 1d
+quote_currency: EUR
+source_provider: ecb-statistics
+license_policy: ecb-statistics
+history:
+  start: 2026-05-09
+  end: 2026-05-11
+universe:
+  file: packs/universes/ci/fx-ecb-core-small.yaml
+output:
+  compression: zstd
+  partition_by:
+    - asset_type
+    - quote_currency
+    - year

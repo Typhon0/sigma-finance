@@ -16,15 +16,15 @@ import (
 // FXProvider implements Provider interface for FX rate fetching.
 // It uses Twelve Data FOREX (with API key) as primary and Frankfurter (free) as fallback.
 type FXProvider struct {
-	client  *http.Client
-	tdBaseURL  string
-	fkBaseURL  string
+	client    *http.Client
+	tdBaseURL string
+	fkBaseURL string
 }
 
 // NewFXProvider creates a new FX provider
 func NewFXProvider() Provider {
 	return &FXProvider{
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:    &http.Client{Timeout: 30 * time.Second},
 		tdBaseURL: "https://api.twelvedata.com",
 		fkBaseURL: "https://api.frankfurter.dev",
 	}
@@ -193,11 +193,11 @@ func (f *FXProvider) getTwelveDataCandles(ctx context.Context, req CandleRequest
 			Symbol:    req.Symbol,
 			AssetType: req.AssetType,
 			Interval:  req.Interval,
-			Open:      model.FromFloat(open),
-			High:      model.FromFloat(high),
-			Low:       model.FromFloat(low),
-			Close:     model.FromFloat(close),
-			Volume:    volume,
+			Open:      decimal.NewFromFloat(open),
+			High:      decimal.NewFromFloat(high),
+			Low:       decimal.NewFromFloat(low),
+			Close:     decimal.NewFromFloat(close),
+			Volume:    decimal.NewFromFloat(volume),
 			Timestamp: timestamp,
 			Source:    f.ID(),
 		})
@@ -252,10 +252,10 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 	}
 
 	var response struct {
-		Base  string             `json:"base"`
-		StartDate string         `json:"start_date"`
-		EndDate string          `json:"end_date"`
-		Rates map[string]map[string]string `json:"rates"`
+		Base      string                       `json:"base"`
+		StartDate string                       `json:"start_date"`
+		EndDate   string                       `json:"end_date"`
+		Rates     map[string]map[string]string `json:"rates"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -285,11 +285,11 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 			Symbol:    req.Symbol,
 			AssetType: req.AssetType,
 			Interval:  model.Interval1d,
-			Open:      model.FromFloat(closePrice.InexactFloat64()),
-			High:      model.FromFloat(closePrice.InexactFloat64()),
-			Low:       model.FromFloat(closePrice.InexactFloat64()),
-			Close:     model.FromFloat(closePrice.InexactFloat64()),
-			Volume:    0,
+			Open:      closePrice,
+			High:      closePrice,
+			Low:       closePrice,
+			Close:     closePrice,
+			Volume:    decimal.Zero,
 			Timestamp: timestamp,
 			Source:    f.ID(),
 		})
@@ -415,9 +415,9 @@ func (f *FXProvider) getFrankfurterQuote(ctx context.Context, req QuoteRequest) 
 	}
 
 	var response struct {
-		Base      string            `json:"base"`
-		Date      string            `json:"date"`
-		Rates     map[string]string `json:"rates"`
+		Base  string            `json:"base"`
+		Date  string            `json:"date"`
+		Rates map[string]string `json:"rates"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {

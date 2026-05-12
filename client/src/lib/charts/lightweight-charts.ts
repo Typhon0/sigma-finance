@@ -280,6 +280,7 @@ export function formatVolume(volume: number): string {
 /**
  * Chart data validation utilities
  */
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function validateCandlestickData(data: any[]): CandlestickData[] {
 	return data
 		.filter(
@@ -313,6 +314,7 @@ export class ChartPerformanceManager {
 	/**
 	 * Sample data for performance when dataset is too large
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static sampleData<T extends { time: any }>(
 		data: T[],
 		maxPoints: number = ChartPerformanceManager.MAX_DATA_POINTS,

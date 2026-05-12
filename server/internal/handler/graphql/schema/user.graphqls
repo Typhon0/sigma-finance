@@ -9,6 +9,16 @@ type User {
     portfolios: [Portfolio!]!
     watchlists: [Watchlist!]!
     displayCurrency: String!
+    themePreference: String!
+    themeBaseColor: String!
+    themeAccentColor: String!
+    themeFontPreference: String!
+    themeHeadingFont: String!
+    themeMenuAccent: String!
+    themeMenuColor: String!
+    themeStyle: String!
+    themeRadius: Float!
+    themeRTL: Boolean!
 }
 
 # --- Inputs & Enums for User ---
@@ -27,6 +37,19 @@ input UpdateUserInput {
 
 input UpdateUserDisplayCurrencyInput {
     displayCurrency: String!
+}
+
+input UpdateUserThemePreferencesInput {
+    themePreference: String!
+    themeBaseColor: String!
+    themeAccentColor: String!
+    themeFontPreference: String!
+    themeHeadingFont: String!
+    themeMenuAccent: String!
+    themeMenuColor: String!
+    themeStyle: String!
+    themeRadius: Float!
+    themeRTL: Boolean!
 }
 
 input UserFilter {

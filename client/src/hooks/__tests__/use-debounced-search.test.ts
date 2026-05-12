@@ -75,6 +75,7 @@ describe("Search and Filter Utilities", () => {
 
 		const filtered = mockPortfolios.filter((item) => {
 			return Object.entries(filters).every(([key, value]) => {
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				const itemValue = (item as any)[key];
 				return itemValue === value;
 			});

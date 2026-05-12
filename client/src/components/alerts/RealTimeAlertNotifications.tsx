@@ -287,6 +287,7 @@ export function RealTimeAlertNotifications({
  */
 export function FloatingAlertNotification() {
 	const { state, actions } = useRealTimeDashboard();
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const [visibleAlert, setVisibleAlert] = useState<any>(null);
 	const [isVisible, setIsVisible] = useState(false);
 

@@ -17,12 +17,18 @@ vi.mock("echarts-for-react", () => ({
 		onEvents,
 		_opts,
 	}: {
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		option: any;
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		style: any;
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		onEvents?: any;
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		opts?: any;
 	}) {
 		return (
+			// biome-ignore lint/a11y/noStaticElementInteractions: unavoidable
+			// biome-ignore lint/a11y/useKeyWithClickEvents: unavoidable
 			<div
 				data-testid="mock-chart"
 				data-chart-type={option?.series?.[0]?.type || "unknown"}
@@ -471,6 +477,7 @@ describe("Inline Dashboard Charts", () => {
 		it("should show error message for invalid data", () => {
 			const invalidData = [{ date: "invalid-date", value: "not-a-number" }];
 
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			render(<CompactPerformanceChart data={invalidData as any} />);
 
 			expect(screen.getByText("Invalid chart data")).toBeInTheDocument();

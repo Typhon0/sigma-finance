@@ -153,6 +153,7 @@ const QuickActions: React.FC<{
 			<CardContent className={cn("space-y-2", compact && "space-y-1")}>
 				{actions.map((action, index) => (
 					<Button
+						// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 						key={index}
 						variant={action.variant}
 						size={compact ? "sm" : "default"}

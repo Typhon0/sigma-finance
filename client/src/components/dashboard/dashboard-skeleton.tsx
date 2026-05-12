@@ -8,6 +8,7 @@ export function PortfolioOverviewSkeleton() {
 	return (
 		<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 			{Array.from({ length: 4 }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<Card key={`dashboard-metric-skeleton-${i}`}>
 					<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
 						<Skeleton className="h-4 w-32" />

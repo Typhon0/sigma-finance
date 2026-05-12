@@ -309,6 +309,7 @@ describe("useDashboardState - Comprehensive Tests", () => {
 				name: undefined,
 				description: "A test portfolio",
 				assets: [],
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any;
 
 			// This should not crash the application
@@ -328,6 +329,7 @@ describe("useDashboardState - Comprehensive Tests", () => {
 				name: undefined,
 				symbol: "AAPL",
 				type: "STOCK",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any;
 
 			// This should not crash the application
@@ -347,6 +349,7 @@ describe("useDashboardState - Comprehensive Tests", () => {
 				name: undefined,
 				description: "A test portfolio",
 				assets: [],
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			} as any;
 
 			// This should not crash the application

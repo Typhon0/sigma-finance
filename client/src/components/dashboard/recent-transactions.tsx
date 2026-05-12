@@ -255,6 +255,7 @@ export function CompactRecentTransactions({
 					<div className="space-y-2">
 						{Array.from({ length: 3 }).map((_, index) => (
 							<div
+								// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 								key={`compact-recent-transaction-skeleton-${index}`}
 								className="flex items-center justify-between"
 							>

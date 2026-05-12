@@ -1,9 +1,11 @@
 package graphql
 
 import (
+	"encoding/json"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
+	"strings"
 )
 
 func mapGQLInstrumentAssetTypeToDomain(assetType gqlModel.InstrumentAssetType) model.InstrumentAssetType {
@@ -75,45 +77,73 @@ func mapInstrumentDetailsToGraphQL(details *service.InstrumentDetails) *gqlModel
 	}
 
 	return &gqlModel.Instrument{
-		ID:                 details.Instrument.ID,
-		Symbol:             details.Instrument.Symbol,
-		NormalizedSymbol:   details.Instrument.NormalizedSymbol,
-		Name:               details.Instrument.Name,
-		NormalizedName:     details.Instrument.NormalizedName,
-		Exchange:           details.Instrument.Exchange,
-		ExchangeCode:       details.Instrument.ExchangeCode,
-		Country:            details.Instrument.Country,
-		Currency:           details.Instrument.Currency,
-		Summary:            details.Instrument.Summary,
-		Sector:             details.Instrument.Sector,
-		IndustryGroup:      details.Instrument.IndustryGroup,
-		Industry:           details.Instrument.Industry,
-		CategoryGroup:      details.Instrument.CategoryGroup,
-		Category:           details.Instrument.Category,
-		Family:             details.Instrument.Family,
-		Website:            details.Instrument.Website,
-		MarketCap:          details.Instrument.MarketCap,
-		State:              details.Instrument.State,
-		City:               details.Instrument.City,
-		Zipcode:            details.Instrument.Zipcode,
-		BaseCurrency:       details.Instrument.BaseCurrency,
-		QuoteCurrency:      details.Instrument.QuoteCurrency,
-		UnderlyingSymbol:   details.Instrument.UnderlyingSymbol,
-		AssetType:          mapDomainInstrumentAssetTypeToGQL(details.Instrument.AssetType),
-		Status:             string(details.Instrument.Status),
-		ProviderSource:     details.Instrument.ProviderSource,
-		ProviderExternalID: details.Instrument.ProviderExternalID,
-		Isin:               details.Instrument.ISIN,
-		Figi:               details.Instrument.FIGI,
-		Cusip:              details.Instrument.CUSIP,
-		FirstSeenAt:        details.Instrument.FirstSeenAt,
-		LastVerifiedAt:     details.Instrument.LastVerifiedAt,
-		LastUsedAt:         details.Instrument.LastUsedAt,
-		CreatedAt:          details.Instrument.CreatedAt,
-		UpdatedAt:          details.Instrument.UpdatedAt,
-		Aliases:            mapInstrumentAliases(details.Aliases),
-		SyncState:          mapInstrumentSyncState(details.SyncState),
+		ID:                     details.Instrument.ID,
+		Symbol:                 details.Instrument.Symbol,
+		NormalizedSymbol:       details.Instrument.NormalizedSymbol,
+		Name:                   details.Instrument.Name,
+		NormalizedName:         details.Instrument.NormalizedName,
+		Exchange:               details.Instrument.Exchange,
+		ExchangeCode:           details.Instrument.ExchangeCode,
+		Country:                details.Instrument.Country,
+		Currency:               details.Instrument.Currency,
+		Summary:                details.Instrument.Summary,
+		Sector:                 details.Instrument.Sector,
+		IndustryGroup:          details.Instrument.IndustryGroup,
+		Industry:               details.Instrument.Industry,
+		CategoryGroup:          details.Instrument.CategoryGroup,
+		Category:               details.Instrument.Category,
+		Family:                 details.Instrument.Family,
+		Website:                details.Instrument.Website,
+		MarketCap:              details.Instrument.MarketCap,
+		State:                  details.Instrument.State,
+		City:                   details.Instrument.City,
+		Zipcode:                details.Instrument.Zipcode,
+		BaseCurrency:           details.Instrument.BaseCurrency,
+		QuoteCurrency:          details.Instrument.QuoteCurrency,
+		UnderlyingSymbol:       details.Instrument.UnderlyingSymbol,
+		AssetType:              mapDomainInstrumentAssetTypeToGQL(details.Instrument.AssetType),
+		Status:                 string(details.Instrument.Status),
+		ExternalSource:         details.Instrument.ExternalSource,
+		ExternalID:             details.Instrument.ExternalID,
+		Platforms:              mapPlatformsJSON(details.Instrument.PlatformsJSON),
+		PrimaryContractAddress: details.Instrument.PrimaryContractAddress,
+		InstrumentStatus:       details.Instrument.InstrumentStatus,
+		ImageURL:               details.Instrument.ImageURL,
+		MetadataUpdatedAt:      details.Instrument.MetadataUpdatedAt,
+		ProviderSource:         details.Instrument.ProviderSource,
+		ProviderExternalID:     details.Instrument.ProviderExternalID,
+		Isin:                   details.Instrument.ISIN,
+		Figi:                   details.Instrument.FIGI,
+		Cusip:                  details.Instrument.CUSIP,
+		FirstSeenAt:            details.Instrument.FirstSeenAt,
+		LastVerifiedAt:         details.Instrument.LastVerifiedAt,
+		LastUsedAt:             details.Instrument.LastUsedAt,
+		CreatedAt:              details.Instrument.CreatedAt,
+		UpdatedAt:              details.Instrument.UpdatedAt,
+		Aliases:                mapInstrumentAliases(details.Aliases),
+		SyncState:              mapInstrumentSyncState(details.SyncState),
 	}
+}
+
+func mapPlatformsJSON(payload json.RawMessage) []*gqlModel.PlatformAddress {
+	if len(payload) == 0 {
+		return nil
+	}
+
+	platforms := make(map[string]string)
+	if err := json.Unmarshal(payload, &platforms); err != nil {
+		return nil
+	}
+
+	result := make([]*gqlModel.PlatformAddress, 0, len(platforms))
+	for platform, address := range platforms {
+		if strings.TrimSpace(platform) == "" || strings.TrimSpace(address) == "" {
+			continue
+		}
+		result = append(result, &gqlModel.PlatformAddress{Platform: platform, Address: address})
+	}
+
+	return result
 }
 
 func mapInstrumentAliases(aliases []model.InstrumentAlias) []*gqlModel.InstrumentAlias {
@@ -191,9 +221,11 @@ func mapOnlineSearchPayloadToGraphQL(payload *service.OnlineInstrumentSearchPayl
 	}
 
 	return &gqlModel.OnlineInstrumentSearchPayload{
-		OnlineResults: results,
-		QueryMetadata: mapInstrumentQueryMetadata(payload.QueryMetadata),
-		ProviderUsed:  payload.ProviderUsed,
+		OnlineResults:  results,
+		QueryMetadata:  mapInstrumentQueryMetadata(payload.QueryMetadata),
+		ProviderUsed:   payload.ProviderUsed,
+		CoverageStatus: gqlModel.CoverageStatus(payload.CoverageStatus),
+		ErrorMessage:   payload.ErrorMessage,
 	}
 }
 
@@ -210,6 +242,22 @@ func mapInstrumentQueryMetadata(metadata service.InstrumentQueryMetadata) *gqlMo
 }
 
 func mapDiscoveryInstrumentToGraphQL(instrument service.DiscoveryInstrument) *gqlModel.OnlineInstrumentResult {
+	source := gqlModel.CatalogSourceTrustwallet
+	switch strings.ToUpper(strings.TrimSpace(instrument.Source)) {
+	case "TRUSTWALLET":
+		source = gqlModel.CatalogSourceTrustwallet
+	case "COINGECKO":
+		source = gqlModel.CatalogSourceTrustwallet
+	}
+
+	platforms := make([]*gqlModel.PlatformAddress, 0, len(instrument.Platforms))
+	for platform, address := range instrument.Platforms {
+		platforms = append(platforms, &gqlModel.PlatformAddress{
+			Platform: platform,
+			Address:  address,
+		})
+	}
+
 	return &gqlModel.OnlineInstrumentResult{
 		Symbol:             instrument.Symbol,
 		Name:               instrument.Name,
@@ -218,12 +266,46 @@ func mapDiscoveryInstrumentToGraphQL(instrument service.DiscoveryInstrument) *gq
 		Country:            instrument.Country,
 		Currency:           instrument.Currency,
 		AssetType:          mapDomainInstrumentAssetTypeToGQL(instrument.AssetType),
+		Source:             source,
+		ExternalID:         instrument.ExternalID,
+		MarketCapRank:      int32PtrFromIntPtr(instrument.MarketCapRank),
+		ImageURL:           instrument.ImageURL,
+		Platforms:          platforms,
 		ProviderSource:     instrument.ProviderSource,
 		ProviderExternalID: instrument.ProviderExternalID,
 		Isin:               instrument.ISIN,
 		Figi:               instrument.FIGI,
 		Cusip:              instrument.CUSIP,
 	}
+}
+
+func mapCatalogSyncRun(run *model.CatalogSyncRun) *gqlModel.CatalogSyncRun {
+	if run == nil {
+		return nil
+	}
+	var stats map[string]any
+	if len(run.StatsJSON) > 0 {
+		_ = json.Unmarshal(run.StatsJSON, &stats)
+	}
+	return &gqlModel.CatalogSyncRun{
+		ID:         run.ID,
+		Source:     gqlModel.CatalogSource(strings.ToUpper(run.Source)),
+		Mode:       run.Mode,
+		Status:     run.Status,
+		Cursor:     run.Cursor,
+		StatsJSON:  stats,
+		ErrorText:  run.ErrorText,
+		StartedAt:  run.StartedAt,
+		FinishedAt: run.FinishedAt,
+	}
+}
+
+func int32PtrFromIntPtr(value *int) *int32 {
+	if value == nil {
+		return nil
+	}
+	v := int32(*value)
+	return &v
 }
 
 func mapFinanceDatabaseSyncStatusPayload(payload *service.FinanceDatabaseSyncStatusPayload) *gqlModel.FinanceDatabaseSyncStatusPayload {

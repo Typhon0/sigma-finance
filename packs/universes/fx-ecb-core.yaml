@@ -1,0 +1,56 @@
+symbols:
+  - instrument_id: "00000000-0000-0000-0000-00000000e001"
+    symbol: EURUSD
+    base_asset: EUR
+    quote_asset: USD
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e002"
+    symbol: EURGBP
+    base_asset: EUR
+    quote_asset: GBP
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e003"
+    symbol: EURCHF
+    base_asset: EUR
+    quote_asset: CHF
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e004"
+    symbol: EURJPY
+    base_asset: EUR
+    quote_asset: JPY
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e005"
+    symbol: USDEUR
+    base_asset: USD
+    quote_asset: EUR
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e006"
+    symbol: GBPEUR
+    base_asset: GBP
+    quote_asset: EUR
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e007"
+    symbol: CHFEUR
+    base_asset: CHF
+    quote_asset: EUR
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e008"
+    symbol: JPYEUR
+    base_asset: JPY
+    quote_asset: EUR
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e009"
+    symbol: USDGBP
+    base_asset: USD
+    quote_asset: GBP
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e010"
+    symbol: USDCHF
+    base_asset: USD
+    quote_asset: CHF
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e011"
+    symbol: USDJPY
+    base_asset: USD
+    quote_asset: JPY
+    asset_type: FX

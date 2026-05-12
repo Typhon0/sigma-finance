@@ -1,9 +1,5 @@
 import { useApolloClient, useMutation } from "@apollo/client";
 import { useCallback } from "react";
-import type {
-	AddInstrumentToPortfolioMutation,
-	AddInstrumentToPortfolioMutationVariables,
-} from "@/gql/graphql";
 import {
 	ADD_ASSET_TO_PORTFOLIO,
 	CREATE_BANK_ACCOUNT_ASSET,
@@ -13,6 +9,7 @@ import {
 	CREATE_REAL_ESTATE_ASSET,
 	CREATE_STOCK_ASSET,
 	CREATE_WATCH_ASSET,
+	REFRESH_SINGLE_ASSET_PRICE,
 } from "@/graphql/mutations/asset";
 import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
 
@@ -145,6 +142,15 @@ export interface AddCryptoInput {
 	walletAddress?: string;
 	blockchainNetwork?: string;
 	quoteCurrency?: string;
+	unitPriceCurrency?: string;
+}
+
+interface AddInstrumentToPortfolioResult {
+	addInstrumentToPortfolio?: {
+		asset?: {
+			id?: string | null;
+		} | null;
+	} | null;
 }
 
 export const useAssetMutations = () => {
@@ -161,14 +167,29 @@ export const useAssetMutations = () => {
 		useMutation(CREATE_BANK_ACCOUNT_ASSET);
 	const [createLoanAsset, { loading: creatingLoan }] = useMutation(CREATE_LOAN_ASSET);
 	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(ADD_ASSET_TO_PORTFOLIO);
+	const [refreshSingleAssetPrice] = useMutation(REFRESH_SINGLE_ASSET_PRICE);
+
+	const refreshAssetPriceBestEffort = useCallback(
+		async (assetId?: string) => {
+			if (!assetId) {
+				return;
+			}
+			try {
+				await refreshSingleAssetPrice({
+					variables: { assetId },
+				});
+			} catch (error) {
+				// biome-ignore lint/suspicious/noConsole: refresh failures should not block add flow
+				console.warn("refreshSingleAssetPrice failed", { assetId, error });
+			}
+		},
+		[refreshSingleAssetPrice],
+	);
 
 	const addAsset = useCallback(
 		async (input: AddAssetInput) => {
 			if (input.instrumentID) {
-				const instrumentResult = await apolloClient.mutate<
-					AddInstrumentToPortfolioMutation,
-					AddInstrumentToPortfolioMutationVariables
-				>({
+				const instrumentResult = await apolloClient.mutate<AddInstrumentToPortfolioResult>({
 					mutation: ADD_INSTRUMENT_TO_PORTFOLIO,
 					variables: {
 						input: {
@@ -180,6 +201,14 @@ export const useAssetMutations = () => {
 						},
 					},
 				});
+
+				if (instrumentResult.errors && instrumentResult.errors.length > 0) {
+					throw new Error(instrumentResult.errors[0].message);
+				}
+
+				await refreshAssetPriceBestEffort(
+					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
+				);
 
 				return {
 					asset: undefined,
@@ -223,13 +252,14 @@ export const useAssetMutations = () => {
 			const portfolioResult = await addAssetToPortfolio({
 				variables: { input: portfolioInput },
 			});
+			await refreshAssetPriceBestEffort(portfolioResult.data?.addAssetToPortfolio?.asset?.id);
 
 			return {
 				asset: stockResult.data?.createStockAsset,
 				portfolioAsset: portfolioResult.data?.addAssetToPortfolio,
 			};
 		},
-		[createStockAsset, addAssetToPortfolio, apolloClient],
+		[createStockAsset, addAssetToPortfolio, apolloClient, refreshAssetPriceBestEffort],
 	);
 
 	const addBankAccount = useCallback(
@@ -278,10 +308,12 @@ export const useAssetMutations = () => {
 	const addCrypto = useCallback(
 		async (input: AddCryptoInput) => {
 			if (input.instrumentID) {
-				const instrumentResult = await apolloClient.mutate<
-					AddInstrumentToPortfolioMutation,
-					AddInstrumentToPortfolioMutationVariables
-				>({
+				const unitPriceCurrency = (
+					input.unitPriceCurrency ||
+					input.quoteCurrency ||
+					""
+				).toUpperCase();
+				const instrumentResult = await apolloClient.mutate<AddInstrumentToPortfolioResult>({
 					mutation: ADD_INSTRUMENT_TO_PORTFOLIO,
 					variables: {
 						input: {
@@ -289,9 +321,19 @@ export const useAssetMutations = () => {
 							instrumentID: input.instrumentID,
 							quantity: input.quantity,
 							averagePurchasePrice: input.purchasePrice,
+							unitPriceCurrency: unitPriceCurrency || undefined,
+							purchaseDate: input.purchaseDate || undefined,
 						},
 					},
 				});
+
+				if (instrumentResult.errors && instrumentResult.errors.length > 0) {
+					throw new Error(instrumentResult.errors[0].message);
+				}
+
+				await refreshAssetPriceBestEffort(
+					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
+				);
 
 				return {
 					asset: undefined,
@@ -333,13 +375,14 @@ export const useAssetMutations = () => {
 			const portfolioResult = await addAssetToPortfolio({
 				variables: { input: portfolioInput },
 			});
+			await refreshAssetPriceBestEffort(portfolioResult.data?.addAssetToPortfolio?.asset?.id);
 
 			return {
 				asset: cryptoResult.data?.createCryptoAsset,
 				portfolioAsset: portfolioResult.data?.addAssetToPortfolio,
 			};
 		},
-		[createCryptoAsset, addAssetToPortfolio, apolloClient],
+		[createCryptoAsset, addAssetToPortfolio, apolloClient, refreshAssetPriceBestEffort],
 	);
 
 	const addRealEstate = useCallback(

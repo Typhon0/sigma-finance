@@ -94,7 +94,7 @@ export function DashboardBreadcrumb({ items }: DashboardBreadcrumbProps) {
 					}
 
 					return (
-						<div key={index} className="flex items-center">
+						<div key={item.title || index} className="flex items-center">
 							<BreadcrumbItem>
 								{item.onClick ? (
 									<BreadcrumbLink asChild>

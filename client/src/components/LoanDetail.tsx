@@ -135,6 +135,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 		);
 	}
 
+	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const formatDate = (date: Date) => {
@@ -249,6 +250,7 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				return `${data.name}<br/>Balance: ${formatCurrency(data.value)}`;

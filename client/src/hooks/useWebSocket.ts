@@ -163,6 +163,7 @@ export function usePortfolioUpdates(portfolioIds?: string[]) {
 			if (portfolioIds && portfolioIds.length > 0) {
 				wsManager.send({
 					type: "UNSUBSCRIBE_PORTFOLIOS",
+					// biome-ignore lint/style/noNonNullAssertion: unavoidable
 					portfolioIds: portfolioIds!,
 				});
 			}

@@ -27,6 +27,7 @@ const DashboardSkeleton = memo(() => (
 	<div className="space-y-6">
 		<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 			{Array.from({ length: 4 }).map((_, i) => (
+				// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 				<Card key={i}>
 					<CardHeader className="pb-2">
 						<Skeleton className="h-4 w-24" />
@@ -315,7 +316,9 @@ export function PerformanceOptimizedDashboard() {
 	// Memoized handlers to prevent unnecessary re-renders
 	const handlePortfolioSelect = useCallback(
 		(portfolio: DashboardPortfolio) => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			dashboardActions.preloadData(`portfolio_${portfolio.id}`, portfolio as any);
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			dashboardActions.viewPortfolio(portfolio as any);
 		},
 		[dashboardActions],

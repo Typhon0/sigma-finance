@@ -82,6 +82,7 @@ export function useDebounce<T>(value: T, delay: number): T {
 /**
  * Hook for debounced callback execution
  */
+// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 export function useDebouncedCallback<T extends (...args: any[]) => any>(
 	callback: T,
 	delay: number,
@@ -119,6 +120,7 @@ export function useDebouncedCallback<T extends (...args: any[]) => any>(
  * Advanced search hook with filtering and sorting capabilities
  */
 export interface SearchFilters {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	[key: string]: any;
 }
 
@@ -170,6 +172,7 @@ export function useAdvancedSearch<T>(
 		Object.entries(filters).forEach(([key, filterValue]) => {
 			if (filterValue !== undefined && filterValue !== null && filterValue !== "") {
 				result = result.filter((item) => {
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					const itemValue = (item as any)[key];
 					if (Array.isArray(filterValue)) {
 						return filterValue.includes(itemValue);
@@ -205,6 +208,7 @@ export function useAdvancedSearch<T>(
 		return result;
 	}, [items, debouncedSearchTerm, filters, sortConfig, searchFields, caseSensitive, exactMatch]);
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const updateFilter = useCallback((key: string, value: any) => {
 		setFilters((prev) => ({
 			...prev,

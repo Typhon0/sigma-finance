@@ -1,0 +1,16 @@
+symbols:
+  - instrument_id: "00000000-0000-0000-0000-000000000001"
+    symbol: BTCUSDT
+    base_asset: BTC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "00000000-0000-0000-0000-000000000002"
+    symbol: ETHUSDT
+    base_asset: ETH
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "00000000-0000-0000-0000-000000000003"
+    symbol: BNBUSDT
+    base_asset: BNB
+    quote_asset: USDT
+    asset_type: CRYPTO

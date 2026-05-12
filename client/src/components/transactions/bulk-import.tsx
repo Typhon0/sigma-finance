@@ -128,6 +128,7 @@ export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }
 				reader.readAsText(file);
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[parseCsv],
 	);
 
@@ -324,6 +325,7 @@ export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }
 						<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
 							{Object.entries(csvColumnMapping).map(([field, _possibleNames]) => (
 								<div key={field} className="space-y-2">
+									{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 									<label className="text-sm font-medium capitalize">
 										{field.replace("_", " ")}
 									</label>
@@ -339,6 +341,7 @@ export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }
 												.split("\n")[0]
 												?.split(",")
 												.map((header, index) => (
+													// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 													<SelectItem key={index} value={header.trim().replace(/"/g, "")}>
 														{header.trim().replace(/"/g, "")}
 													</SelectItem>
@@ -356,6 +359,7 @@ export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }
 					<div className="space-y-4">
 						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 							<div className="space-y-2">
+								{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 								<label className="text-sm font-medium">Target Portfolio *</label>
 								<Select value={selectedPortfolio} onValueChange={setSelectedPortfolio}>
 									<SelectTrigger>
@@ -372,6 +376,7 @@ export function BulkImport({ portfolios, onImport, onCancel, isLoading = false }
 							</div>
 
 							<div className="space-y-2">
+								{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 								<label className="text-sm font-medium">Import Mode</label>
 								<div className="flex items-center space-x-2">
 									<Checkbox

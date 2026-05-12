@@ -233,6 +233,7 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 			item.data.forEach((point) => {
 				const existingPoint = allData.find((d) => d.date === point.date);
 				if (existingPoint) {
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					(existingPoint as any)[item.name] = point.value;
 				} else {
 					allData.push({
@@ -268,6 +269,7 @@ export const PerformanceComparison: React.FC<PerformanceComparisonProps> = ({
 					<Skeleton className="h-64 w-full" />
 					<div className="space-y-2">
 						{Array.from({ length: 3 }).map((_, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 							<Skeleton key={i} className="h-12 w-full" />
 						))}
 					</div>

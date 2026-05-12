@@ -16,6 +16,7 @@ func TestLoadConfig(t *testing.T) {
 		"BCRYPT_COST", "PASSWORD_MIN_LENGTH", "ACCOUNT_LOCKOUT_THRESHOLD", "ACCOUNT_LOCKOUT_DURATION",
 		"RATE_LIMIT_WINDOW", "MAX_LOGIN_ATTEMPTS", "SESSION_TIMEOUT",
 		"EMAIL_VERIFICATION_EXPIRY", "PASSWORD_RESET_EXPIRY", "REQUIRE_EMAIL_VERIFICATION", "ALLOW_REGISTRATION",
+		"APP_ENV", "ENCRYPTION_KEY",
 	}
 
 	for _, env := range envVars {
@@ -359,6 +360,62 @@ func TestGenerateSecureSecret(t *testing.T) {
 	if secret1 == secret2 {
 		t.Error("Generated secrets should be different")
 	}
+}
+
+func TestMarketDataEncryptionKeyPolicyByEnvironment(t *testing.T) {
+	originalEnv := os.Getenv("APP_ENV")
+	defer func() {
+		if originalEnv != "" {
+			os.Setenv("APP_ENV", originalEnv)
+		} else {
+			os.Unsetenv("APP_ENV")
+		}
+	}()
+
+	baseConfig := &Config{
+		JWT: JWTConfig{
+			SecretKey:              "valid-secret-key-that-is-long-enough-32chars",
+			AccessTokenExpiration:  15 * time.Minute,
+			RefreshTokenExpiration: 7 * 24 * time.Hour,
+			Algorithm:              "HS256",
+		},
+		Security: SecurityConfig{
+			BcryptCost:              12,
+			PasswordMinLength:       8,
+			AccountLockoutThreshold: 5,
+			AccountLockoutDuration:  30 * time.Minute,
+			RateLimitWindow:         15 * time.Minute,
+			SessionTimeout:          24 * time.Hour,
+		},
+		Auth: AuthConfig{
+			EmailVerificationExpiry: 24 * time.Hour,
+			PasswordResetExpiry:     1 * time.Hour,
+		},
+		MarketData: MarketDataConfig{
+			CandleRequestsPerMinute: 60,
+		},
+	}
+
+	t.Run("production requires encryption key", func(t *testing.T) {
+		cfg := *baseConfig
+		os.Setenv("APP_ENV", "production")
+		err := cfg.Validate()
+		if err == nil || err.Error() != "ENCRYPTION_KEY is required in production" {
+			t.Fatalf("expected production encryption key error, got: %v", err)
+		}
+	})
+
+	t.Run("development allows ephemeral encryption key", func(t *testing.T) {
+		cfg := *baseConfig
+		os.Setenv("APP_ENV", "development")
+		err := cfg.Validate()
+		if err != nil {
+			t.Fatalf("expected no error in development, got: %v", err)
+		}
+		if cfg.MarketData.EncryptionKey == "" {
+			t.Fatal("expected generated ephemeral encryption key in development")
+		}
+	})
 }
 
 func TestGetEnvHelpers(t *testing.T) {

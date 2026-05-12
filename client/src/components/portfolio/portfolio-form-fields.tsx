@@ -115,9 +115,9 @@ export function PortfolioFormFields({
 							<div className="mt-2">
 								<p className="text-sm text-muted-foreground mb-2">Suggestions:</p>
 								<div className="flex flex-wrap gap-2">
-									{nameSuggestions.map((suggestion, index) => (
+									{nameSuggestions.map((suggestion) => (
 										<Button
-											key={index}
+											key={suggestion}
 											type="button"
 											variant="outline"
 											size="sm"
@@ -250,9 +250,9 @@ export function PortfolioNameField({
 						<div className="mt-2">
 							<p className="text-sm text-muted-foreground mb-2">Suggestions:</p>
 							<div className="flex flex-wrap gap-2">
-								{nameSuggestions.map((suggestion, index) => (
+								{nameSuggestions.map((suggestion) => (
 									<Button
-										key={index}
+										key={suggestion}
 										type="button"
 										variant="outline"
 										size="sm"

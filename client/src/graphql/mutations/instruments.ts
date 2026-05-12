@@ -1,3 +1,4 @@
+import { gql } from "@apollo/client";
 import { graphql } from "@/gql";
 
 export const PERSIST_DISCOVERED_INSTRUMENT = graphql(/* GraphQL */ `
@@ -10,6 +11,7 @@ export const PERSIST_DISCOVERED_INSTRUMENT = graphql(/* GraphQL */ `
 			exchangeCode
 			country
 			currency
+			sector
 			assetType
 			providerSource
 			providerExternalId
@@ -38,6 +40,7 @@ export const IMPORT_INSTRUMENT_FROM_SOURCE = graphql(/* GraphQL */ `
 				exchangeCode
 				country
 				currency
+				sector
 				assetType
 				providerSource
 				providerExternalId
@@ -67,6 +70,7 @@ export const IMPORT_INSTRUMENT_FROM_CATALOG = graphql(/* GraphQL */ `
 				exchangeCode
 				country
 				currency
+				sector
 				assetType
 				providerSource
 				providerExternalId
@@ -83,7 +87,7 @@ export const IMPORT_INSTRUMENT_FROM_CATALOG = graphql(/* GraphQL */ `
 	}
 `);
 
-export const ADD_INSTRUMENT_TO_PORTFOLIO = graphql(/* GraphQL */ `
+export const ADD_INSTRUMENT_TO_PORTFOLIO = gql`
 	mutation AddInstrumentToPortfolio($input: AddInstrumentHoldingInput!) {
 		addInstrumentToPortfolio(input: $input) {
 			instrumentID
@@ -92,9 +96,15 @@ export const ADD_INSTRUMENT_TO_PORTFOLIO = graphql(/* GraphQL */ `
 			currentValue
 			dayChange
 			dayChangePercent
+			asset {
+				id
+				currentValue
+				dayChange
+				dayChangePercent
+			}
 		}
 	}
-`);
+`;
 
 export const UPDATE_MANUAL_INSTRUMENT = graphql(/* GraphQL */ `
 	mutation UpdateManualInstrument($id: ID!, $input: UpdateManualInstrumentInput!) {

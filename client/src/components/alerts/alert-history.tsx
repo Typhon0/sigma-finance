@@ -92,6 +92,7 @@ export function AlertHistory({ history, onFilter, onExport, className }: AlertHi
 	const applyFilters = () => {
 		if (onFilter) {
 			onFilter({
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				alertType: filterType !== "all" ? (filterType as any) : undefined,
 				triggeredAfter: dateRange.from,
 			});

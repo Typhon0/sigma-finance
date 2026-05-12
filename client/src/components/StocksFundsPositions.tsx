@@ -46,11 +46,18 @@ type GroupByMode = "account" | "asset" | "sector" | "none";
 interface StocksFundsPositionsProps {
 	onSelectAccount?: (accountName: string) => void;
 	onSelectAsset?: (symbol: string) => void;
+	externalFilter?: {
+		mode: "sector" | "asset-class";
+		value: string;
+	} | null;
+	onClearExternalFilter?: () => void;
 }
 
 export function StocksFundsPositions({
 	onSelectAccount,
 	onSelectAsset,
+	externalFilter = null,
+	onClearExternalFilter,
 }: StocksFundsPositionsProps) {
 	const { assets, deleteAsset, currentPortfolio } = usePortfolio();
 	const [deleteTarget, setDeleteTarget] = useState<{
@@ -79,10 +86,12 @@ export function StocksFundsPositions({
 
 	// Transform to standardized format
 	const positions = stocksAndFundsAssets.map((asset, index) => {
-		const currentPrice = (asset.currentValue || 0) / (asset.quantity || 1);
-		const purchasePrice = asset.purchasePrice || currentPrice;
-		const cost = purchasePrice * (asset.quantity || 1);
-		const pl = (asset.currentValue || 0) - cost;
+		const quantity = Number.isFinite(asset.quantity) && asset.quantity > 0 ? asset.quantity : 0;
+		const currentPrice = Number.isFinite(asset.currentPrice) ? asset.currentPrice : 0;
+		const purchasePrice = Number.isFinite(asset.purchasePrice) ? asset.purchasePrice : 0;
+		const currentValue = Number.isFinite(asset.currentValue) ? asset.currentValue : 0;
+		const cost = purchasePrice * quantity;
+		const pl = currentValue - cost;
 		const plPercent = cost > 0 ? (pl / cost) * 100 : 0;
 
 		return {
@@ -90,17 +99,20 @@ export function StocksFundsPositions({
 			portfolioId: asset.portfolioId || currentPortfolio,
 			symbol: asset.symbol || asset.name.substring(0, 4).toUpperCase(),
 			name: asset.name,
-			quantity: asset.quantity || 1,
+			quantity,
 			avgPrice: purchasePrice,
-			currentPrice: currentPrice,
-			value: asset.currentValue || 0,
-			cost: cost,
-			pl: pl,
-			plPercent: plPercent,
+			currentPrice,
+			value: currentValue,
+			cost,
+			pl,
+			plPercent,
 			currency: asset.currency || "USD",
 			account: asset.account || "Manual Entry",
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			sector: (asset as any).sector || "Other",
-			dayChange: (asset as any).dayChange ?? plPercent / 30,
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+			dayChange: (asset as any).dayChange ?? 0,
+			assetClass: asset.type === "fund" ? "ETFs/Funds" : "Stocks",
 		};
 	});
 
@@ -116,6 +128,13 @@ export function StocksFundsPositions({
 				p.name.toLowerCase().includes(q) ||
 				p.account.toLowerCase().includes(q)
 			);
+		})
+		.filter((p) => {
+			if (!externalFilter) return true;
+			if (externalFilter.mode === "sector") {
+				return p.sector === externalFilter.value;
+			}
+			return p.assetClass === externalFilter.value;
 		})
 		.sort((a, b) => {
 			switch (sortBy) {
@@ -158,21 +177,21 @@ export function StocksFundsPositions({
 	return (
 		<Card className="border-border/40 shadow-sm">
 			{/* Toolbar */}
-			<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-b border-border/40 bg-muted/5">
-				<div className="flex items-center gap-2 w-full sm:w-auto">
+			<div className="flex flex-col justify-between gap-3 border-b border-border/40 bg-muted/5 px-4 py-4 lg:flex-row lg:items-center">
+				<div className="flex w-full items-center gap-2 lg:w-auto">
 					<SearchInput
 						placeholder="Filter positions..."
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 						onClear={() => setSearchQuery("")}
 						size="sm"
-						containerClassName="w-full sm:w-64"
-						className="h-8 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
+						containerClassName="w-full lg:w-72"
+						className="h-9 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
 					/>
 
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="sm" className="h-8 w-8 p-0 border-border/50">
+							<Button variant="outline" size="sm" className="h-9 w-9 p-0 border-border/50">
 								<SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
 							</Button>
 						</DropdownMenuTrigger>
@@ -201,18 +220,34 @@ export function StocksFundsPositions({
 					</DropdownMenu>
 				</div>
 
-				<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-					<span className="text-[10px] text-muted-foreground uppercase font-medium mr-1">
+				<div className="flex w-full flex-wrap items-center justify-between gap-3 lg:w-auto lg:flex-nowrap lg:justify-end">
+					{externalFilter && (
+						<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-[10px]">
+							<span className="uppercase text-muted-foreground">
+								Filter: {externalFilter.mode === "sector" ? "Sector" : "Class"}
+							</span>
+							<span className="font-medium">{externalFilter.value}</span>
+							<Button
+								variant="ghost"
+								size="sm"
+								className="h-5 px-1.5 text-[10px]"
+								onClick={onClearExternalFilter}
+							>
+								Clear
+							</Button>
+						</div>
+					)}
+					<span className="mr-1 text-[10px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
 						Group By:
 					</span>
-					<div className="flex bg-muted rounded p-0.5">
+					<div className="flex rounded-lg bg-muted p-0.5">
 						{(["account", "asset", "sector", "none"] as const).map((mode) => (
 							<button
 								type="button"
 								key={mode}
 								onClick={() => setGroupBy(mode)}
 								className={cn(
-									"px-3 py-1 text-[10px] font-medium rounded-sm transition-all",
+									"rounded-md px-3 py-1.5 text-[10px] font-medium transition-all",
 									groupBy === mode
 										? "bg-background shadow-sm text-foreground"
 										: "text-muted-foreground hover:text-foreground",
@@ -226,7 +261,7 @@ export function StocksFundsPositions({
 			</div>
 
 			{/* Content */}
-			<div className="overflow-x-auto min-h-[400px] bg-background">
+			<div className="min-h-[400px] overflow-x-auto bg-background">
 				{groupBy === "none" ? (
 					<PositionsTable
 						positions={filteredPositions}
@@ -266,15 +301,17 @@ export function StocksFundsPositions({
 									className="w-full"
 								>
 									<AccordionItem value={groupName} className="border-none">
-										<AccordionTrigger className="px-4 py-2 hover:bg-muted/5 hover:no-underline border-b border-border/40 data-[state=closed]:border-none">
-											<div className="flex items-center justify-between w-full pr-4">
-												<div className="flex items-center gap-3 group">
-													<div className="h-6 w-6 rounded bg-secondary flex items-center justify-center">
+										<AccordionTrigger className="border-b border-border/40 px-4 py-3 hover:bg-muted/5 hover:no-underline data-[state=closed]:border-none">
+											<div className="flex w-full items-center justify-between pr-4">
+												<div className="group flex items-center gap-3">
+													<div className="flex h-7 w-7 items-center justify-center rounded-md bg-secondary">
 														<GroupIcon className="h-3.5 w-3.5 text-muted-foreground" />
 													</div>
+													{/* biome-ignore lint/a11y/useKeyWithClickEvents: unavoidable */}
+													{/* biome-ignore lint/a11y/noStaticElementInteractions: unavoidable */}
 													<div
 														className={cn(
-															"text-sm font-medium",
+															"text-sm font-medium tracking-tight",
 															isClickableAccount &&
 																"group-hover:text-primary group-hover:underline cursor-pointer",
 														)}
@@ -289,7 +326,7 @@ export function StocksFundsPositions({
 													</div>
 													<Badge
 														variant="outline"
-														className="text-[10px] h-5 font-normal text-muted-foreground"
+														className="h-5 text-[10px] font-normal text-muted-foreground"
 													>
 														{groupPositions.length}
 													</Badge>
@@ -299,7 +336,7 @@ export function StocksFundsPositions({
 												</div>
 												<div className="flex items-center gap-6 text-sm">
 													<div className="text-right">
-														<span className="font-mono font-medium text-xs text-muted-foreground mr-2">
+														<span className="mr-2 font-mono text-xs font-medium text-muted-foreground">
 															Value
 														</span>
 														<span className="font-mono font-medium">
@@ -347,14 +384,14 @@ export function StocksFundsPositions({
 			</div>
 
 			{/* Footer / Pagination Mock */}
-			<div className="border-t border-border/40 p-2 flex items-center justify-between bg-muted/5 text-[10px] text-muted-foreground">
+			<div className="flex items-center justify-between border-t border-border/40 bg-muted/5 px-4 py-3 text-[10px] text-muted-foreground">
 				<span>
 					Showing {filteredPositions.length} of {finalPositions.length} positions
 				</span>
-				<div className="flex gap-1">
-					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">Prev</span>
-					<span className="px-2 py-0.5 rounded bg-secondary text-foreground font-medium">1</span>
-					<span className="px-2 py-0.5 rounded hover:bg-muted cursor-pointer">Next</span>
+				<div className="flex items-center gap-1.5">
+					<span className="cursor-pointer rounded-md px-2.5 py-1 hover:bg-muted">Prev</span>
+					<span className="rounded-md bg-secondary px-2.5 py-1 font-medium text-foreground">1</span>
+					<span className="cursor-pointer rounded-md px-2.5 py-1 hover:bg-muted">Next</span>
 				</div>
 			</div>
 
@@ -403,12 +440,14 @@ function PositionsTable({
 	onSelectAccount: _onSelectAccount,
 	onDeletePosition,
 }: {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	positions: any[];
 	formatCurrency: (val: number) => string;
 	formatNumber: (val: number, decimals?: number) => string;
 	hideHeader?: boolean;
 	onSelectAsset?: (symbol: string) => void;
 	onSelectAccount?: (name: string) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onDeletePosition?: (pos: any) => void;
 }) {
 	return (
@@ -417,28 +456,28 @@ function PositionsTable({
 				<TableHeader className="bg-muted/5">
 					<TableRow className="hover:bg-transparent border-border/50">
 						<TableHead className="w-[30px]"></TableHead>
-						<TableHead className="w-[180px] text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 w-[210px] text-xs font-semibold text-muted-foreground">
 							Instrument
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Price
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Change (1D)
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Quantity
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Avg Cost
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Value
 						</TableHead>
-						<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
+						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
 							Total P&L
 						</TableHead>
-						<TableHead className="w-[40px] h-9"></TableHead>
+						<TableHead className="h-10 w-[44px]"></TableHead>
 					</TableRow>
 				</TableHeader>
 			)}
@@ -448,42 +487,44 @@ function PositionsTable({
 						key={pos.id}
 						className="group hover:bg-muted/5 border-border/40 transition-colors data-[state=selected]:bg-muted"
 					>
-						<TableCell className="py-2 pl-3">
+						<TableCell className="py-3 pl-3">
 							<div
 								className={cn(
-									"w-1 h-8 rounded-full",
+									"h-9 w-1 rounded-full",
 									pos.pl >= 0 ? "bg-emerald-500" : "bg-rose-500",
 								)}
 							/>
 						</TableCell>
-						<TableCell className="py-2">
-							<div className="flex flex-col">
+						<TableCell className="py-3">
+							<div className="flex flex-col gap-1">
+								{/* biome-ignore lint/a11y/useKeyWithClickEvents: unavoidable */}
+								{/* biome-ignore lint/a11y/noStaticElementInteractions: unavoidable */}
 								<div
 									className="flex items-center gap-2 cursor-pointer hover:underline"
 									onClick={() => onSelectAsset?.(pos.symbol)}
 								>
-									<span className="font-bold text-sm tracking-tight">{pos.symbol}</span>
+									<span className="text-sm font-bold tracking-tight">{pos.symbol}</span>
 									{pos.sector !== "Other" && (
 										<Badge
 											variant="outline"
-											className="text-[10px] h-4 px-1 py-0 border-border/40 text-muted-foreground"
+											className="h-4 border-border/40 px-1 py-0 text-[10px] text-muted-foreground"
 										>
 											{pos.sector}
 										</Badge>
 									)}
 								</div>
 								<span
-									className="text-[10px] text-muted-foreground truncate max-w-[140px]"
+									className="max-w-[160px] truncate text-[10px] text-muted-foreground"
 									title={pos.name}
 								>
 									{pos.name}
 								</span>
 							</div>
 						</TableCell>
-						<TableCell className="text-right py-2 font-mono text-sm">
+						<TableCell className="py-3 text-right font-mono text-sm">
 							{formatCurrency(pos.currentPrice)}
 						</TableCell>
-						<TableCell className="text-right py-2">
+						<TableCell className="py-3 text-right">
 							<div
 								className={cn(
 									"inline-flex items-center font-mono text-xs",
@@ -498,16 +539,16 @@ function PositionsTable({
 								{Math.abs(pos.dayChange).toFixed(2)}%
 							</div>
 						</TableCell>
-						<TableCell className="text-right py-2 font-mono text-sm text-muted-foreground">
+						<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground">
 							{formatNumber(pos.quantity, 0)}
 						</TableCell>
-						<TableCell className="text-right py-2 font-mono text-sm text-muted-foreground">
+						<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground">
 							{formatCurrency(pos.avgPrice)}
 						</TableCell>
-						<TableCell className="text-right py-2 font-mono font-medium text-sm">
+						<TableCell className="py-3 text-right font-mono text-sm font-medium">
 							{formatCurrency(pos.value)}
 						</TableCell>
-						<TableCell className="text-right py-2">
+						<TableCell className="py-3 text-right">
 							<div className="flex flex-col items-end">
 								<span
 									className={cn(
@@ -528,13 +569,13 @@ function PositionsTable({
 								</span>
 							</div>
 						</TableCell>
-						<TableCell className="py-2 pr-3">
+						<TableCell className="py-3 pr-3">
 							<DropdownMenu>
 								<DropdownMenuTrigger asChild>
 									<Button
 										variant="ghost"
 										size="sm"
-										className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+										className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100"
 									>
 										<MoreHorizontal className="h-4 w-4 text-muted-foreground" />
 									</Button>

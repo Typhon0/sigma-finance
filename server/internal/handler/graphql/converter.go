@@ -14,13 +14,68 @@ func mapUserToGQL(domainUser model.User) *gqlModel.User {
 		displayCurrency = string(model.CurrencyUSD)
 	}
 
+	themePreference := string(domainUser.ThemePreference)
+	if themePreference == "" {
+		themePreference = string(model.DefaultThemePreference)
+	}
+
+	themeBaseColor := string(domainUser.ThemeBaseColor)
+	if themeBaseColor == "" {
+		themeBaseColor = string(model.DefaultThemeBaseColor)
+	}
+
+	themeAccentColor := string(domainUser.ThemeAccentColor)
+	if themeAccentColor == "" {
+		themeAccentColor = string(model.DefaultThemeAccentColor)
+	}
+
+	themeFontPreference := string(domainUser.ThemeFontPreference)
+	if themeFontPreference == "" {
+		themeFontPreference = string(model.DefaultThemeFontPreference)
+	}
+
+	themeHeadingFont := string(domainUser.ThemeHeadingFont)
+	if themeHeadingFont == "" {
+		themeHeadingFont = string(model.DefaultThemeHeadingFont)
+	}
+
+	themeMenuAccent := string(domainUser.ThemeMenuAccent)
+	if themeMenuAccent == "" {
+		themeMenuAccent = string(model.DefaultThemeMenuAccent)
+	}
+
+	themeMenuColor := string(domainUser.ThemeMenuColor)
+	if themeMenuColor == "" {
+		themeMenuColor = string(model.DefaultThemeMenuColor)
+	}
+
+	themeStyle := string(domainUser.ThemeStyle)
+	if themeStyle == "" {
+		themeStyle = string(model.DefaultThemeStyle)
+	}
+
+	themeRadius := domainUser.ThemeRadius
+	if themeRadius == 0 {
+		themeRadius = model.DefaultThemeRadius
+	}
+
 	return &gqlModel.User{
-		ID:              domainUser.ID,
-		Username:        domainUser.Name,
-		Email:           domainUser.Email,
-		CreatedAt:       domainUser.CreatedAt,
-		UpdatedAt:       domainUser.UpdatedAt,
-		DisplayCurrency: displayCurrency,
+		ID:                  domainUser.ID,
+		Username:            domainUser.Name,
+		Email:               domainUser.Email,
+		CreatedAt:           domainUser.CreatedAt,
+		UpdatedAt:           domainUser.UpdatedAt,
+		DisplayCurrency:     displayCurrency,
+		ThemePreference:     themePreference,
+		ThemeBaseColor:      themeBaseColor,
+		ThemeAccentColor:    themeAccentColor,
+		ThemeFontPreference: themeFontPreference,
+		ThemeHeadingFont:    themeHeadingFont,
+		ThemeMenuAccent:     themeMenuAccent,
+		ThemeMenuColor:      themeMenuColor,
+		ThemeStyle:          themeStyle,
+		ThemeRadius:         themeRadius,
+		ThemeRtl:            domainUser.ThemeRTL,
 	}
 }
 
@@ -448,6 +503,10 @@ func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel
 	if valuation == nil {
 		return nil
 	}
+	history := make([]*gqlModel.PerformancePoint, len(valuation.PerformanceHistory))
+	for i, point := range valuation.PerformanceHistory {
+		history[i] = mapPerformancePointToGQL(point)
+	}
 	var portfolioFXAsOf *time.Time
 	if !valuation.FXAsOf.IsZero() {
 		portfolioFXAsOf = &valuation.FXAsOf
@@ -492,9 +551,9 @@ func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel
 		TotalCost:            float64(valuation.TotalDisplayCostBasis) / 100.0,
 		TotalGainLoss:        float64(valuation.TotalDisplayGainLoss) / 100.0,
 		TotalGainLossPercent: valuation.TotalDisplayGainLossPct.InexactFloat64(),
-		AssetAllocation:      []*gqlModel.AssetAllocation{},  // Not computed in valuation
-		RiskMetrics:          nil,                            // Not available in PortfolioValuation
-		PerformanceHistory:   []*gqlModel.PerformancePoint{}, // Not available in valuation
+		AssetAllocation:      []*gqlModel.AssetAllocation{}, // Not computed in valuation
+		RiskMetrics:          nil,                           // Not available in PortfolioValuation
+		PerformanceHistory:   history,
 		// Multi-currency fields
 		TotalNativeValue:      float64Ptr(float64(valuation.TotalNativeValue) / 100.0),
 		TotalDisplayValue:     float64Ptr(float64(valuation.TotalDisplayValue) / 100.0),
@@ -613,6 +672,56 @@ func mapAuthResponseToGQL(resp *service.AuthResponse) *gqlModel.AuthResponse {
 		return &gqlModel.AuthResponse{Success: false}
 	}
 
+	displayCurrency := resp.User.DisplayCurrency
+	if displayCurrency == "" {
+		displayCurrency = string(model.CurrencyUSD)
+	}
+
+	themePreference := resp.User.ThemePreference
+	if themePreference == "" {
+		themePreference = string(model.DefaultThemePreference)
+	}
+
+	themeBaseColor := resp.User.ThemeBaseColor
+	if themeBaseColor == "" {
+		themeBaseColor = string(model.DefaultThemeBaseColor)
+	}
+
+	themeAccentColor := resp.User.ThemeAccentColor
+	if themeAccentColor == "" {
+		themeAccentColor = string(model.DefaultThemeAccentColor)
+	}
+
+	themeFontPreference := resp.User.ThemeFontPreference
+	if themeFontPreference == "" {
+		themeFontPreference = string(model.DefaultThemeFontPreference)
+	}
+
+	themeHeadingFont := resp.User.ThemeHeadingFont
+	if themeHeadingFont == "" {
+		themeHeadingFont = string(model.DefaultThemeHeadingFont)
+	}
+
+	themeMenuAccent := resp.User.ThemeMenuAccent
+	if themeMenuAccent == "" {
+		themeMenuAccent = string(model.DefaultThemeMenuAccent)
+	}
+
+	themeMenuColor := resp.User.ThemeMenuColor
+	if themeMenuColor == "" {
+		themeMenuColor = string(model.DefaultThemeMenuColor)
+	}
+
+	themeStyle := resp.User.ThemeStyle
+	if themeStyle == "" {
+		themeStyle = string(model.DefaultThemeStyle)
+	}
+
+	themeRadius := resp.User.ThemeRadius
+	if themeRadius == 0 {
+		themeRadius = model.DefaultThemeRadius
+	}
+
 	return &gqlModel.AuthResponse{
 		Success: true,
 		Data: &gqlModel.AuthData{
@@ -620,11 +729,21 @@ func mapAuthResponseToGQL(resp *service.AuthResponse) *gqlModel.AuthResponse {
 			RefreshToken: resp.RefreshToken,
 			ExpiresAt:    resp.ExpiresAt,
 			User: &gqlModel.AuthUser{
-				ID:              resp.User.ID,
-				Email:           resp.User.Email,
-				Name:            resp.User.Name,
-				EmailVerified:   resp.User.EmailVerified,
-				DisplayCurrency: resp.User.DisplayCurrency,
+				ID:                  resp.User.ID,
+				Email:               resp.User.Email,
+				Name:                resp.User.Name,
+				EmailVerified:       resp.User.EmailVerified,
+				DisplayCurrency:     displayCurrency,
+				ThemePreference:     themePreference,
+				ThemeBaseColor:      themeBaseColor,
+				ThemeAccentColor:    themeAccentColor,
+				ThemeFontPreference: themeFontPreference,
+				ThemeHeadingFont:    themeHeadingFont,
+				ThemeMenuAccent:     themeMenuAccent,
+				ThemeMenuColor:      themeMenuColor,
+				ThemeStyle:          themeStyle,
+				ThemeRadius:         themeRadius,
+				ThemeRtl:            resp.User.ThemeRTL,
 			},
 		},
 	}

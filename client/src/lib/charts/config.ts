@@ -456,6 +456,7 @@ export class ChartValidator {
 	/**
 	 * Validate chart data
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static validateData(data: any[], type: ChartType): { valid: boolean; errors: string[] } {
 		const errors: string[] = [];
 

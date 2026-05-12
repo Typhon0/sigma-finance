@@ -11,7 +11,9 @@ import { ScrollArea } from "./ui/scroll-area";
 import { Separator } from "./ui/separator";
 
 interface UserSettingsProps {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	user: any;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onUpdateUser: (userData: any) => void;
 }
 

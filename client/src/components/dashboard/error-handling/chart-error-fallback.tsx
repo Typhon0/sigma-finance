@@ -174,6 +174,7 @@ function BarChartFallback({ height }: { height: number }) {
 		<div className="w-full flex items-end justify-center gap-2 px-4" style={{ height }}>
 			{[60, 80, 45, 90, 70, 55, 85].map((barHeight, index) => (
 				<div
+					// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 					key={index}
 					className="bg-muted-foreground opacity-40 rounded-t"
 					style={{

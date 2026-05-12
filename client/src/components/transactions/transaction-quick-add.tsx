@@ -167,6 +167,7 @@ export function TransactionQuickAdd({
 				{/* Asset Selection */}
 				{!["DEPOSIT", "WITHDRAWAL"].includes(transactionType) && (
 					<div className="space-y-2">
+						{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 						<label className="text-sm font-medium">Asset</label>
 						<Select value={selectedAsset} onValueChange={setSelectedAsset}>
 							<SelectTrigger>
@@ -218,6 +219,7 @@ export function TransactionQuickAdd({
 				{requiresQuantity && (
 					<div className="grid grid-cols-2 gap-3">
 						<div className="space-y-2">
+							{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 							<label className="text-sm font-medium">Quantity</label>
 							<div className="relative">
 								<Hash className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -238,6 +240,7 @@ export function TransactionQuickAdd({
 						</div>
 
 						<div className="space-y-2">
+							{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 							<label className="text-sm font-medium">Price per Unit</label>
 							<div className="relative">
 								<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -261,6 +264,7 @@ export function TransactionQuickAdd({
 
 				{/* Amount */}
 				<div className="space-y-2">
+					{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 					<label className="text-sm font-medium">Amount {requiresQuantity && "(calculated)"}</label>
 					<div className="relative">
 						<DollarSign className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />

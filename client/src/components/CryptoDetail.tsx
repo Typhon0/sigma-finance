@@ -40,6 +40,7 @@ interface CryptoDetailProps {
 	cryptoId?: string;
 	symbol?: string;
 	onBack?: () => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onNavigateToScreener?: (filters: any) => void;
 }
 
@@ -170,6 +171,7 @@ export function CryptoDetail({ symbol, onBack, onNavigateToScreener }: CryptoDet
 		return data;
 	};
 
+	// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	const candlestickData = useMemo(() => generateCandlestickData(), [generateCandlestickData]);
 
 	// Calculate technical indicators
@@ -228,6 +230,7 @@ export function CryptoDetail({ symbol, onBack, onNavigateToScreener }: CryptoDet
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const data = params[0];
 				if (!data) return "";

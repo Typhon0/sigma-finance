@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -17,6 +18,7 @@ type Config struct {
 	Security    SecurityConfig
 	Auth        AuthConfig
 	MarketData  MarketDataConfig
+	Catalog     CatalogConfig
 	Performance PerformanceConfig
 }
 
@@ -76,6 +78,10 @@ type AuthConfig struct {
 type MarketDataConfig struct {
 	// Base64 (raw or std) encoded 32-byte key for AES-256 encryption of user API keys
 	EncryptionKey string
+	// Enable in-process market data scheduler on this process.
+	SchedulerEnabled bool
+	// Postgres advisory lock ID used to ensure single scheduler runner across replicas.
+	SchedulerLockID int64
 	// Per-user candle request limit per minute (across providers)
 	CandleRequestsPerMinute int
 	// Default API keys (optional, for system-wide defaults)
@@ -85,6 +91,24 @@ type MarketDataConfig struct {
 	CoinGeckoAPIBaseURL string
 	// YFinance provider configuration (tier 3 fallback)
 	YFinance YFinanceConfig
+	// Historical daily candle pack configuration
+	PackRegistryURL         string
+	PackStoragePath         string
+	PackSignaturePublicKey  string
+	PackAutoInstall         bool
+	PackAutoInstallBlocking bool
+	PackDefaultPacks        []string
+}
+
+type CatalogConfig struct {
+	Source               string
+	SnapshotPath         string
+	RefreshEnabled       bool
+	SyncProfile          string
+	CatalogVersion       string
+	EnrichTopN           int
+	SeedArtifactPath     string
+	OnlineSearchFallback bool
 }
 
 // YFinanceConfig holds configuration for the YFinance provider
@@ -139,6 +163,8 @@ func LoadConfig() *Config {
 		},
 		MarketData: MarketDataConfig{
 			EncryptionKey:           getEnvOrDefault("ENCRYPTION_KEY", ""),
+			SchedulerEnabled:        getEnvBoolOrDefault("MARKET_DATA_SCHEDULER_ENABLED", true),
+			SchedulerLockID:         getEnvInt64OrDefault("MARKET_DATA_SCHEDULER_LOCK_ID", 824901337),
 			CandleRequestsPerMinute: getEnvIntOrDefault("CANDLE_REQUESTS_PER_MINUTE", 60),
 			TiingoAPIKey:            getEnvOrDefault("TIINGO_API_KEY", ""),
 			AlphaVantageAPIKey:      getEnvOrDefault("ALPHA_VANTAGE_API_KEY", ""),
@@ -148,6 +174,22 @@ func LoadConfig() *Config {
 				Host: getEnvOrDefault("YFINANCE_HOST", "localhost"),
 				Port: getEnvOrDefault("YFINANCE_PORT", "50051"),
 			},
+			PackRegistryURL:         getEnvOrDefault("MARKET_DATA_PACK_REGISTRY_URL", "https://github.com/Typhon0/sigma-finance/releases/latest/download/registry.json"),
+			PackStoragePath:         getEnvOrDefault("MARKET_DATA_PACK_STORAGE_PATH", "data/market-data/packs"),
+			PackSignaturePublicKey:  getEnvOrDefault("MARKET_DATA_PACK_SIGNATURE_PUBLIC_KEY", ""),
+			PackAutoInstall:         getEnvBoolOrDefault("MARKET_DATA_AUTO_INSTALL", false),
+			PackAutoInstallBlocking: getEnvBoolOrDefault("MARKET_DATA_AUTO_INSTALL_BLOCKING", false),
+			PackDefaultPacks:        splitCSVEnv("MARKET_DATA_DEFAULT_PACKS", "core-daily"),
+		},
+		Catalog: CatalogConfig{
+			Source:               getEnvOrDefault("CATALOG_SOURCE", "TRUSTWALLET"),
+			SnapshotPath:         getEnvOrDefault("CATALOG_SNAPSHOT_PATH", getEnvOrDefault("CATALOG_SEED_ARTIFACT_PATH", "")),
+			RefreshEnabled:       getEnvBoolOrDefault("CATALOG_REFRESH_ENABLED", getEnvBoolOrDefault("CATALOG_ADMIN_REFRESH_ENABLED", false)),
+			SyncProfile:          getEnvOrDefault("CATALOG_SYNC_PROFILE", "public-demo"),
+			CatalogVersion:       getEnvOrDefault("CATALOG_VERSION", "trustwallet-v1"),
+			EnrichTopN:           getEnvIntOrDefault("CATALOG_ENRICH_TOP_N", 5000),
+			SeedArtifactPath:     getEnvOrDefault("CATALOG_SEED_ARTIFACT_PATH", ""),
+			OnlineSearchFallback: getEnvBoolOrDefault("CATALOG_ONLINE_SEARCH_FALLBACK", true),
 		},
 		Performance: *LoadPerformanceConfig(),
 	}
@@ -158,6 +200,19 @@ func LoadConfig() *Config {
 	}
 
 	return config
+}
+
+func splitCSVEnv(key string, fallback string) []string {
+	raw := getEnvOrDefault(key, fallback)
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		value := strings.TrimSpace(part)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 // Validate validates the configuration and returns an error if invalid
@@ -233,10 +288,16 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("CANDLE_REQUESTS_PER_MINUTE must be positive")
 	}
 	if c.MarketData.EncryptionKey == "" {
+		if c.IsProduction() {
+			return fmt.Errorf("ENCRYPTION_KEY is required in production")
+		}
 		// Generate ephemeral dev key (not persisted) – warn via stdout
 		gen := generateSecureSecret()
 		fmt.Println("WARN: MARKET_DATA_ENCRYPTION_KEY not set – using ephemeral key (dev only)")
 		c.MarketData.EncryptionKey = gen
+	}
+	if c.MarketData.SchedulerLockID == 0 {
+		c.MarketData.SchedulerLockID = 824901337
 	}
 
 	return nil
@@ -274,6 +335,16 @@ func getEnvOrDefault(key, defaultValue string) string {
 func getEnvIntOrDefault(key string, defaultValue int) int {
 	if value := os.Getenv(key); value != "" {
 		if intValue, err := strconv.Atoi(value); err == nil {
+			return intValue
+		}
+	}
+	return defaultValue
+}
+
+// getEnvInt64OrDefault returns the environment variable as int64 or default if not set/invalid.
+func getEnvInt64OrDefault(key string, defaultValue int64) int64 {
+	if value := os.Getenv(key); value != "" {
+		if intValue, err := strconv.ParseInt(value, 10, 64); err == nil {
 			return intValue
 		}
 	}

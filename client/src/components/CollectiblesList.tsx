@@ -131,6 +131,7 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 		setIsAddFormOpen(true);
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleAddCollectible = async (formData: any) => {
 		if (addFormType !== "watch") {
 			toast.info("Only watches can be added via API currently", {

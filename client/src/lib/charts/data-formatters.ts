@@ -105,6 +105,7 @@ export class LightweightChartsFormatter {
 			.filter((item) => item?.timestamp && typeof item.volume === "number")
 			.map((item) => ({
 				time: LightweightChartsFormatter.toChartTime(item.timestamp),
+				// biome-ignore lint/style/noNonNullAssertion: unavoidable
 				value: item.volume!,
 				color: item.close >= item.open ? "#22c55e" : "#ef4444", // Green for up, red for down
 			}))
@@ -479,6 +480,7 @@ export class DataValidator {
 	/**
 	 * Validate price data
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static validatePriceData(data: any[]): {
 		valid: boolean;
 		errors: string[];
@@ -536,6 +538,7 @@ export class DataValidator {
 	/**
 	 * Validate performance data
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static validatePerformanceData(data: any[]): {
 		valid: boolean;
 		errors: string[];
@@ -578,6 +581,7 @@ export class DataValidator {
 	/**
 	 * Validate allocation data
 	 */
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	static validateAllocationData(data: any[]): {
 		valid: boolean;
 		errors: string[];

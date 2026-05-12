@@ -514,6 +514,7 @@ export function PerformanceDashboard({ className }: PerformanceDashboardProps) {
 							<div className="space-y-4">
 								{engagement?.navigationPatterns?.map((pattern, index) => (
 									<div
+										// biome-ignore lint/suspicious/noArrayIndexKey: unavoidable
 										key={index}
 										className="flex items-center justify-between p-4 border rounded-lg"
 									>

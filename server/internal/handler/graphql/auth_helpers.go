@@ -54,11 +54,15 @@ func convertAuthErrorToGraphQL(err error) *gqlModel.AuthResponse {
 // convertLogoutErrorToGraphQL converts service errors to GraphQL LogoutResponse
 func convertLogoutErrorToGraphQL(err error) *gqlModel.LogoutResponse {
 	if authErr, ok := err.(*service.AuthError); ok {
+		code := authErr.Code
+		if code == service.ErrInvalidToken || code == service.ErrTokenExpired {
+			code = "UNAUTHORIZED"
+		}
 		return &gqlModel.LogoutResponse{
 			Success: false,
 			Errors: []*gqlModel.AuthError{
 				{
-					Code:    authErr.Code,
+					Code:    code,
 					Message: authErr.Message,
 					Field:   stringPtrIfNotEmpty(authErr.Field),
 				},

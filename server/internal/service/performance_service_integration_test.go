@@ -14,7 +14,6 @@ import (
 )
 
 func TestPerformanceService_Integration(t *testing.T) {
-	// Create mock repositories
 	mockPerformanceRepo := &MockPerformanceRepository{}
 	mockPriceRepo := &MockPriceRepository{}
 	mockPositionRepo := &MockPositionRepository{}

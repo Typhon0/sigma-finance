@@ -95,6 +95,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 	const totalValue = getTotalValue();
 	const totalGain = getTotalGain();
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleAddProperty = async (formData: any) => {
 		if (!currentPortfolio) {
 			toast.error("No portfolio selected. Please select a portfolio first.");
@@ -433,6 +434,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 															? "#e6edf3"
 															: "#37352f",
 													},
+													// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 													formatter: (params: any) => {
 														return `
                           <div style="padding: 4px;">

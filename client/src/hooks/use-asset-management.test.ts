@@ -10,6 +10,7 @@ import * as apolloClient from "@apollo/client";
 
 beforeAll(() => {
 	vi.spyOn(apolloClient, "useMutation").mockImplementation(() => [
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		async (options: any) => {
 			// Simulate mutation result and call spied helpers
 			if (options?.variables?.input) {
@@ -49,6 +50,7 @@ beforeAll(() => {
 		{
 			loading: false,
 			called: false,
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			client: {} as any,
 			reset: () => {},
 		}, // Apollo expects a tuple: [mutationFn, MutationResult]
@@ -57,12 +59,14 @@ beforeAll(() => {
 
 // Mock useMutation to always call update and succeed, and call the actual cache invalidation helpers
 vi.mock("@apollo/client", async () => {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const actual = await vi.importActual<any>("@apollo/client");
 	// Import helpers directly for use in mock
 	const helpers = await import("./use-asset-management");
 	return {
 		...actual,
 		useMutation: () => [
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			async (options: any) => {
 				// Simulate mutation result
 				if (options?.variables?.input) {

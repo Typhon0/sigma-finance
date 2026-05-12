@@ -45,6 +45,7 @@ export interface TradeableInstrumentSelection {
 	exchangeCode?: string | null;
 	country?: string | null;
 	currency?: string | null;
+	sector?: string | null;
 	assetType: InstrumentAssetType;
 	providerSource: string;
 	providerExternalId?: string | null;
@@ -75,6 +76,7 @@ function mapLocalResult(result: LocalSearchResult): TradeableInstrumentSelection
 		exchangeCode: result.instrument.exchangeCode,
 		country: result.instrument.country,
 		currency: result.instrument.currency,
+		sector: result.instrument.sector,
 		assetType: result.instrument.assetType,
 		providerSource: result.instrument.providerSource,
 		providerExternalId: result.instrument.providerExternalId,
@@ -94,6 +96,7 @@ function mapPersistedResult(
 		exchangeCode: instrument.exchangeCode,
 		country: instrument.country,
 		currency: instrument.currency,
+		sector: instrument.sector,
 		assetType: instrument.assetType,
 		providerSource: instrument.providerSource,
 		providerExternalId: instrument.providerExternalId,

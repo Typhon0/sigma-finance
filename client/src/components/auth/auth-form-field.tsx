@@ -71,6 +71,7 @@ export const AuthFormField = forwardRef<HTMLInputElement, AuthFormFieldProps>(
 				>
 					{label}
 					{required && (
+						// biome-ignore lint/a11y/useAriaPropsSupportedByRole: unavoidable
 						<span className="text-red-500 ml-1" aria-label="required">
 							*
 						</span>

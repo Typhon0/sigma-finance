@@ -62,6 +62,7 @@ export function PortfolioFormDialog({
 	const isEditMode = mode === "edit";
 	const isControlled = controlledOpen !== undefined;
 	const open = isControlled ? controlledOpen : internalOpen;
+	// biome-ignore lint/style/noNonNullAssertion: unavoidable
 	const setOpen = isControlled ? controlledOnOpenChange! : setInternalOpen;
 
 	const defaultTitle = isEditMode ? "Edit Portfolio" : "Create Portfolio";

@@ -5,6 +5,7 @@ import { ExportService } from "../export-service";
 global.URL = {
 	createObjectURL: () => "mock-url",
 	revokeObjectURL: () => {},
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 } as any;
 
 // Mock document methods
@@ -18,6 +19,7 @@ global.document = {
 		appendChild: () => {},
 		removeChild: () => {},
 	},
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 } as any;
 
 describe("ExportService", () => {
@@ -51,6 +53,7 @@ describe("ExportService", () => {
 		});
 
 		it("should handle unsupported format", async () => {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			const result = await ExportService.exportPortfolioData("portfolio-1", "xml" as any);
 
 			expect(result.success).toBe(false);

@@ -7,65 +7,18 @@ package graphql
 
 import (
 	"context"
+	"fmt"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 )
 
 // PortfolioUpdates is the resolver for the portfolioUpdates field.
 func (r *subscriptionResolver) PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error) {
-	r.BroadcasterMu.Lock()
-	defer r.BroadcasterMu.Unlock()
-
-	ch := make(chan *gqlModel.PortfolioUpdatePayload, 1)
-	if r.PortfolioSubscribers == nil {
-		r.PortfolioSubscribers = make(map[string][]chan *gqlModel.PortfolioUpdatePayload)
-	}
-	r.PortfolioSubscribers[userID] = append(r.PortfolioSubscribers[userID], ch)
-
-	go func() {
-		<-ctx.Done()
-		r.BroadcasterMu.Lock()
-		defer r.BroadcasterMu.Unlock()
-
-		subs := r.PortfolioSubscribers[userID]
-		for i, sub := range subs {
-			if sub == ch {
-				r.PortfolioSubscribers[userID] = append(subs[:i], subs[i+1:]...)
-				break
-			}
-		}
-		close(ch)
-	}()
-
-	return ch, nil
+	panic(fmt.Errorf("not implemented: PortfolioUpdates - portfolioUpdates"))
 }
 
 // TransactionUpdates is the resolver for the transactionUpdates field.
 func (r *subscriptionResolver) TransactionUpdates(ctx context.Context, userID string) (<-chan *gqlModel.TransactionUpdatePayload, error) {
-	r.BroadcasterMu.Lock()
-	defer r.BroadcasterMu.Unlock()
-
-	ch := make(chan *gqlModel.TransactionUpdatePayload, 1)
-	if r.TransactionSubscribers == nil {
-		r.TransactionSubscribers = make(map[string][]chan *gqlModel.TransactionUpdatePayload)
-	}
-	r.TransactionSubscribers[userID] = append(r.TransactionSubscribers[userID], ch)
-
-	go func() {
-		<-ctx.Done()
-		r.BroadcasterMu.Lock()
-		defer r.BroadcasterMu.Unlock()
-
-		subs := r.TransactionSubscribers[userID]
-		for i, sub := range subs {
-			if sub == ch {
-				r.TransactionSubscribers[userID] = append(subs[:i], subs[i+1:]...)
-				break
-			}
-		}
-		close(ch)
-	}()
-
-	return ch, nil
+	panic(fmt.Errorf("not implemented: TransactionUpdates - transactionUpdates"))
 }
 
 // Subscription returns SubscriptionResolver implementation.

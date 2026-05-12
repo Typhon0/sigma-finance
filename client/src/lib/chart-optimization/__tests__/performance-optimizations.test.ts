@@ -140,6 +140,7 @@ describe("Data Sampling", () => {
 
 describe("Chart Virtualization", () => {
 	let virtualizer: ChartVirtualizer;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	let mockDataLoader: vi.MockedFunction<(start: number, end: number) => Promise<any[]>>;
 
 	beforeEach(() => {

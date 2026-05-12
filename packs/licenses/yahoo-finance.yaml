@@ -1,0 +1,13 @@
+provider_id: yahoo-finance
+name: Yahoo Finance
+source_url: https://finance.yahoo.com/
+license_name: Proprietary
+redistribution_allowed: false
+commercial_use_allowed: false
+attribution_required: true
+terms_checked_at: "2026-05-11"
+allowed_distribution_modes:
+  - private
+  - local
+notes:
+  - Public redistribution is not allowed without explicit written license.

@@ -63,6 +63,7 @@ export function EmailVerification({ token, email, onSuccess }: EmailVerification
 		if (token) {
 			handleVerification();
 		}
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	}, [token, handleVerification]);
 
 	const handleResendVerification = async () => {

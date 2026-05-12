@@ -144,6 +144,11 @@ func (m *MockLockoutUserRepo) UpdateDisplayCurrency(ctx context.Context, userID 
 	return args.Error(0)
 }
 
+func (m *MockLockoutUserRepo) UpdateThemePreferences(ctx context.Context, userID string, preferences model.UserThemePreferences) error {
+	args := m.Called(ctx, userID, preferences)
+	return args.Error(0)
+}
+
 // MockLockoutAuditService is a mock implementation of AuditService for lockout testing
 type MockLockoutAuditService struct {
 	mock.Mock

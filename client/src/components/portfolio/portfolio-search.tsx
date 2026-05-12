@@ -17,6 +17,7 @@ import type { SortConfig } from "@/hooks/use-debounced-search";
 interface PortfolioSearchProps {
 	searchTerm: string;
 	onSearchChange: (term: string) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onFilterChange: (key: string, value: any) => void;
 	onSortChange: (config: SortConfig<Portfolio> | null) => void;
 	filters: Record<string, unknown>;

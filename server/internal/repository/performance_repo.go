@@ -82,6 +82,7 @@ type IPerformanceRepository interface {
 	GetPerformanceSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) ([]PerformanceSnapshot, error)
 	GetLatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []string, asOfDate time.Time) error
+	CalculateAndSaveHistoricalSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) error
 
 	// Comparative analysis
 	ComparePortfolioPerformance(ctx context.Context, portfolioIDs []string, startDate, endDate time.Time) (map[string]*PerformanceMetrics, error)
@@ -628,4 +629,69 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 		StartDate:        timeRange.Start,
 		EndDate:          timeRange.End,
 	}, nil
+}
+
+// CalculateAndSaveHistoricalSnapshots calculates daily performance snapshots using a bulk vectorized SQL query.
+// This is significantly faster than calculating day-by-day in Go.
+func (r *PerformanceRepository) CalculateAndSaveHistoricalSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) error {
+	query := `
+WITH date_series AS (
+    SELECT generate_series(?::date, ?::date, '1 day'::interval) AS snapshot_date
+),
+daily_metrics AS (
+    SELECT 
+        ds.snapshot_date,
+        COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100 AS total_value,
+        COALESCE(SUM(p.total_cost_basis), 0) AS total_cost_basis,
+        (COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100) - COALESCE(SUM(p.total_cost_basis), 0) AS unrealized_gain_loss
+    FROM date_series ds
+    CROSS JOIN sigma_finance.positions p
+    LEFT JOIN sigma_finance.assets a ON a.id = p.asset_id
+    LEFT JOIN LATERAL (
+        SELECT price 
+        FROM sigma_finance.asset_prices 
+        WHERE asset_id = a.id AND timestamp <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ORDER BY timestamp DESC 
+        LIMIT 1
+    ) ap ON true
+    WHERE p.portfolio_id = ?
+    GROUP BY ds.snapshot_date
+),
+realized_gains AS (
+    SELECT 
+        ds.snapshot_date,
+        COALESCE(SUM(t.amount), 0) AS realized_gain_loss
+    FROM date_series ds
+    LEFT JOIN sigma_finance.positions p ON p.portfolio_id = ?
+    LEFT JOIN sigma_finance.transactions t ON t.position_id = p.id AND t.type = 'SELL' AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+    GROUP BY ds.snapshot_date
+)
+INSERT INTO sigma_finance.portfolio_performance (
+    portfolio_id, snapshot_date, total_value, total_cost_basis, unrealized_gain_loss, realized_gain_loss, return_percentage, created_at
+)
+SELECT 
+    ?, 
+    dm.snapshot_date, 
+    dm.total_value, 
+    dm.total_cost_basis, 
+    dm.unrealized_gain_loss, 
+    rg.realized_gain_loss,
+    CASE 
+        WHEN dm.total_cost_basis > 0 THEN 
+            ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / dm.total_cost_basis::numeric) * 100
+        ELSE 0 
+    END AS return_percentage,
+    NOW()
+FROM daily_metrics dm
+JOIN realized_gains rg ON dm.snapshot_date = rg.snapshot_date
+ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
+    total_value = EXCLUDED.total_value,
+    total_cost_basis = EXCLUDED.total_cost_basis,
+    unrealized_gain_loss = EXCLUDED.unrealized_gain_loss,
+    realized_gain_loss = EXCLUDED.realized_gain_loss,
+    return_percentage = EXCLUDED.return_percentage,
+    created_at = EXCLUDED.created_at;
+`
+	_, err := r.db.ExecContext(ctx, query, startDate, endDate, portfolioID, portfolioID, portfolioID)
+	return err
 }

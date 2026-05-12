@@ -122,6 +122,7 @@ export function averageSampling(data: DataPoint[], targetPoints: number): DataPo
 		for (let j = start; j < Math.min(end, data.length); j++) {
 			sumTimestamp += data[j].timestamp;
 			sumValue += data[j].value;
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			const point = data[j]!;
 			if (point.volume !== undefined) {
 				sumVolume += point.volume;
@@ -334,6 +335,7 @@ export class DataSampler {
 
 		// Check cache first
 		if (this.cache.has(cacheKey)) {
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			return this.cache.get(cacheKey)!;
 		}
 
@@ -379,6 +381,7 @@ export class DataSampler {
 	private cacheResult(key: string, data: DataPoint[]): void {
 		// Implement LRU cache eviction
 		if (this.cache.size >= this.maxCacheSize) {
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			const firstKey = this.cache.keys().next().value!;
 			this.cache.delete(firstKey);
 		}

@@ -42,10 +42,13 @@ type IInstrumentRepository interface {
 	IRepository[model.Instrument]
 	GetBySymbolAndExchange(ctx context.Context, normalizedSymbol, exchange string, assetType model.InstrumentAssetType) (*model.Instrument, error)
 	GetByProviderIdentity(ctx context.Context, providerSource string, providerExternalID string) (*model.Instrument, error)
+	FindByExternalKey(ctx context.Context, externalSource, externalID string) (*model.Instrument, error)
 	GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error)
+	SearchLocalInstruments(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error)
 	Search(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error)
 	ListManual(ctx context.Context, filter ManualInstrumentFilter) ([]model.Instrument, error)
 	Upsert(ctx context.Context, instrument *model.Instrument) (*model.Instrument, error)
+	UpsertCatalogInstrument(ctx context.Context, instrument *model.Instrument) (*model.Instrument, error)
 }
 
 type InstrumentRepository struct {
@@ -79,6 +82,22 @@ func (r *InstrumentRepository) GetByProviderIdentity(ctx context.Context, provid
 		Model(&instrument).
 		Where("provider_source = ?", providerSource).
 		Where("provider_external_id = ?", providerExternalID).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &instrument, nil
+}
+
+func (r *InstrumentRepository) FindByExternalKey(ctx context.Context, externalSource, externalID string) (*model.Instrument, error) {
+	var instrument model.Instrument
+	err := r.db.NewSelect().
+		Model(&instrument).
+		Where("external_source = ?", externalSource).
+		Where("external_id = ?", externalID).
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -151,6 +170,10 @@ func (r *InstrumentRepository) Search(ctx context.Context, query string, filter 
 	sortInstrumentRows(rows)
 	rows = sliceInstrumentSearchRows(rows, offset, limit)
 	return rows, nil
+}
+
+func (r *InstrumentRepository) SearchLocalInstruments(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error) {
+	return r.Search(ctx, query, filter)
 }
 
 func (r *InstrumentRepository) searchExactSymbolInstruments(ctx context.Context, symbolQuery string, filter InstrumentSearchFilter, limit int) ([]InstrumentSearchRow, error) {
@@ -372,6 +395,53 @@ func (r *InstrumentRepository) Upsert(ctx context.Context, instrument *model.Ins
 		Set("metadata = COALESCE(EXCLUDED.metadata, instruments.metadata)").
 		Set("last_verified_at = COALESCE(EXCLUDED.last_verified_at, instruments.last_verified_at)").
 		Set("last_used_at = COALESCE(EXCLUDED.last_used_at, instruments.last_used_at)").
+		Set("updated_at = EXCLUDED.updated_at").
+		Returning("*").
+		Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return instrument, nil
+}
+
+func (r *InstrumentRepository) UpsertCatalogInstrument(ctx context.Context, instrument *model.Instrument) (*model.Instrument, error) {
+	if instrument.ExternalSource == nil || strings.TrimSpace(*instrument.ExternalSource) == "" ||
+		instrument.ExternalID == nil || strings.TrimSpace(*instrument.ExternalID) == "" {
+		return r.Upsert(ctx, instrument)
+	}
+
+	now := time.Now()
+	if instrument.CreatedAt.IsZero() {
+		instrument.CreatedAt = now
+	}
+	instrument.UpdatedAt = now
+
+	_, err := r.db.NewInsert().
+		Model(instrument).
+		ModelTableExpr("sigma_finance.instruments AS instruments").
+		On("CONFLICT (external_source, external_id) WHERE external_source IS NOT NULL AND external_id IS NOT NULL DO UPDATE").
+		Set("symbol = EXCLUDED.symbol").
+		Set("normalized_symbol = EXCLUDED.normalized_symbol").
+		Set("name = EXCLUDED.name").
+		Set("normalized_name = EXCLUDED.normalized_name").
+		Set("exchange = EXCLUDED.exchange").
+		Set("exchange_code = COALESCE(EXCLUDED.exchange_code, instruments.exchange_code)").
+		Set("country = COALESCE(EXCLUDED.country, instruments.country)").
+		Set("currency = COALESCE(EXCLUDED.currency, instruments.currency)").
+		Set("asset_type = EXCLUDED.asset_type").
+		Set("status = EXCLUDED.status").
+		Set("provider_source = COALESCE(NULLIF(EXCLUDED.provider_source, ''), instruments.provider_source)").
+		Set("provider_external_id = COALESCE(EXCLUDED.provider_external_id, instruments.provider_external_id)").
+		Set("external_source = EXCLUDED.external_source").
+		Set("external_id = EXCLUDED.external_id").
+		Set("platforms_json = COALESCE(EXCLUDED.platforms_json, instruments.platforms_json)").
+		Set("primary_contract_address = COALESCE(NULLIF(EXCLUDED.primary_contract_address, ''), instruments.primary_contract_address)").
+		Set("instrument_status = COALESCE(NULLIF(EXCLUDED.instrument_status, ''), instruments.instrument_status)").
+		Set("market_cap_rank = COALESCE(EXCLUDED.market_cap_rank, instruments.market_cap_rank)").
+		Set("image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), instruments.image_url)").
+		Set("metadata_updated_at = COALESCE(EXCLUDED.metadata_updated_at, instruments.metadata_updated_at)").
+		Set("metadata = COALESCE(EXCLUDED.metadata, instruments.metadata)").
+		Set("last_verified_at = COALESCE(EXCLUDED.last_verified_at, instruments.last_verified_at)").
 		Set("updated_at = EXCLUDED.updated_at").
 		Returning("*").
 		Exec(ctx)

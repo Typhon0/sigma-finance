@@ -1,0 +1,26 @@
+symbols:
+  - instrument_id: "00000000-0000-0000-0000-00000000e001"
+    symbol: EURUSD
+    base_asset: EUR
+    quote_asset: USD
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e005"
+    symbol: USDEUR
+    base_asset: USD
+    quote_asset: EUR
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e009"
+    symbol: USDGBP
+    base_asset: USD
+    quote_asset: GBP
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e010"
+    symbol: USDCHF
+    base_asset: USD
+    quote_asset: CHF
+    asset_type: FX
+  - instrument_id: "00000000-0000-0000-0000-00000000e011"
+    symbol: USDJPY
+    base_asset: USD
+    quote_asset: JPY
+    asset_type: FX

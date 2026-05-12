@@ -8,7 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 interface MarketHeatmapsProps {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onFilterStock?: (filters: any) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onFilterCrypto?: (filters: any) => void;
 }
 
@@ -356,6 +358,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				if (params.data.change !== undefined) {
 					const sign = params.data.change >= 0 ? "+" : "";
@@ -379,6 +382,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 				},
 				label: {
 					show: true,
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					formatter: (params: any) => {
 						if (params.data.change !== undefined) {
 							const sign = params.data.change >= 0 ? "+" : "";
@@ -420,6 +424,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 			backgroundColor: "rgba(0, 0, 0, 0.8)",
 			borderColor: "#333",
 			textStyle: { color: "#fff" },
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				if (params.data.change !== undefined) {
 					const sign = params.data.change >= 0 ? "+" : "";
@@ -451,6 +456,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 				},
 				label: {
 					show: true,
+					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 					formatter: (params: any) => {
 						if (params.data.change !== undefined) {
 							let valueText = "";

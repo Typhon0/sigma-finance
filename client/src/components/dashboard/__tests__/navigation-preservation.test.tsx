@@ -110,6 +110,7 @@ function TestDashboardLayout() {
 									</button>
 									<button
 										type="button"
+										// biome-ignore lint/style/noNonNullAssertion: unavoidable
 										onClick={() => actions.viewAsset(mockAsset, viewState.selectedPortfolio!)}
 										data-testid="view-asset-from-portfolio-btn"
 									>

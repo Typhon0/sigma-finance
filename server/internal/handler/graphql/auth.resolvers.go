@@ -7,6 +7,8 @@ package graphql
 
 import (
 	"context"
+	"fmt"
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/service"
@@ -14,12 +16,15 @@ import (
 
 // Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input gqlModel.RegisterInput) (*gqlModel.AuthResponse, error) {
-	req := service.RegisterRequest{
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	resp, err := r.AuthenticationService.Register(ctx, service.RegisterRequest{
 		Email:    input.Email,
 		Password: input.Password,
 		Name:     input.Name,
-	}
-	resp, err := r.AuthenticationService.Register(ctx, req)
+	})
 	if err != nil {
 		return convertAuthErrorToGraphQL(err), nil
 	}
@@ -28,13 +33,16 @@ func (r *mutationResolver) Register(ctx context.Context, input gqlModel.Register
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input gqlModel.LoginInput) (*gqlModel.AuthResponse, error) {
-	req := service.LoginRequest{
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	resp, err := r.AuthenticationService.Login(ctx, service.LoginRequest{
 		Email:     input.Email,
 		Password:  input.Password,
 		IPAddress: extractIPFromContext(ctx),
 		UserAgent: extractUserAgentFromContext(ctx),
-	}
-	resp, err := r.AuthenticationService.Login(ctx, req)
+	})
 	if err != nil {
 		return convertAuthErrorToGraphQL(err), nil
 	}
@@ -43,18 +51,16 @@ func (r *mutationResolver) Login(ctx context.Context, input gqlModel.LoginInput)
 
 // Logout is the resolver for the logout field.
 func (r *mutationResolver) Logout(ctx context.Context, input gqlModel.LogoutInput) (*gqlModel.LogoutResponse, error) {
-	// Validate the JWT token to extract user_id
-	if input.Token == "" {
-		return &gqlModel.LogoutResponse{Success: false, Errors: []*gqlModel.AuthError{{Code: "UNAUTHORIZED", Message: "Token is required"}}}, nil
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
 	}
 
-	claims, err := r.SecurityService.ValidateJWT(input.Token)
-	if err != nil {
-		return &gqlModel.LogoutResponse{Success: false, Errors: []*gqlModel.AuthError{{Code: "UNAUTHORIZED", Message: "Invalid token"}}}, nil
+	userID := ""
+	if user, err := middleware.RequireAuth(ctx); err == nil {
+		userID = user.ID
 	}
 
-	err = r.AuthenticationService.Logout(ctx, claims.UserID, input.Token)
-	if err != nil {
+	if err := r.AuthenticationService.Logout(ctx, userID, input.Token); err != nil {
 		return convertLogoutErrorToGraphQL(err), nil
 	}
 	return &gqlModel.LogoutResponse{Success: true}, nil
@@ -62,8 +68,11 @@ func (r *mutationResolver) Logout(ctx context.Context, input gqlModel.LogoutInpu
 
 // ResetPassword is the resolver for the resetPassword field.
 func (r *mutationResolver) ResetPassword(ctx context.Context, input gqlModel.PasswordResetInput) (*gqlModel.PasswordResetResponse, error) {
-	err := r.AuthenticationService.ResetPassword(ctx, input.Email)
-	if err != nil {
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	if err := r.AuthenticationService.ResetPassword(ctx, input.Email); err != nil {
 		return convertPasswordResetErrorToGraphQL(err), nil
 	}
 	return &gqlModel.PasswordResetResponse{Success: true}, nil
@@ -71,8 +80,11 @@ func (r *mutationResolver) ResetPassword(ctx context.Context, input gqlModel.Pas
 
 // ConfirmPasswordReset is the resolver for the confirmPasswordReset field.
 func (r *mutationResolver) ConfirmPasswordReset(ctx context.Context, input gqlModel.PasswordResetConfirmInput) (*gqlModel.PasswordResetResponse, error) {
-	err := r.AuthenticationService.ConfirmPasswordReset(ctx, input.Token, input.NewPassword)
-	if err != nil {
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	if err := r.AuthenticationService.ConfirmPasswordReset(ctx, input.Token, input.NewPassword); err != nil {
 		return convertPasswordResetErrorToGraphQL(err), nil
 	}
 	return &gqlModel.PasswordResetResponse{Success: true}, nil
@@ -80,8 +92,11 @@ func (r *mutationResolver) ConfirmPasswordReset(ctx context.Context, input gqlMo
 
 // VerifyEmail is the resolver for the verifyEmail field.
 func (r *mutationResolver) VerifyEmail(ctx context.Context, input gqlModel.EmailVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
-	err := r.AuthenticationService.VerifyEmail(ctx, input.Token)
-	if err != nil {
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	if err := r.AuthenticationService.VerifyEmail(ctx, input.Token); err != nil {
 		return convertEmailVerificationErrorToGraphQL(err), nil
 	}
 	return &gqlModel.EmailVerificationResponse{Success: true}, nil
@@ -89,8 +104,11 @@ func (r *mutationResolver) VerifyEmail(ctx context.Context, input gqlModel.Email
 
 // ResendVerification is the resolver for the resendVerification field.
 func (r *mutationResolver) ResendVerification(ctx context.Context, input gqlModel.ResendVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
-	err := r.AuthenticationService.ResendVerification(ctx, input.Email)
-	if err != nil {
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
+	if err := r.AuthenticationService.ResendVerification(ctx, input.Email); err != nil {
 		return convertEmailVerificationErrorToGraphQL(err), nil
 	}
 	return &gqlModel.EmailVerificationResponse{Success: true}, nil
@@ -98,6 +116,10 @@ func (r *mutationResolver) ResendVerification(ctx context.Context, input gqlMode
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.RefreshTokenInput) (*gqlModel.AuthResponse, error) {
+	if r.AuthenticationService == nil {
+		return nil, fmt.Errorf("authentication service not configured")
+	}
+
 	resp, err := r.AuthenticationService.RefreshToken(ctx, input.RefreshToken)
 	if err != nil {
 		return convertAuthErrorToGraphQL(err), nil
@@ -107,21 +129,61 @@ func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.Refr
 
 // Me is the resolver for the me field.
 func (r *queryResolver) Me(ctx context.Context) (*gqlModel.AuthUser, error) {
-	authUser, ok := ctx.Value(middleware.UserKey).(*middleware.AuthenticatedUser)
-	if !ok || authUser == nil {
-		return nil, nil // GraphQL convention for not authenticated
-	}
-
-	user, err := r.UserService.GetByID(ctx, authUser.ID)
+	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
+	// Prefer canonical user data from user service when available.
+	if r.UserService != nil {
+		user, getErr := r.UserService.GetByID(ctx, authUser.ID)
+		if getErr == nil && user != nil {
+			return &gqlModel.AuthUser{
+				ID:                  user.ID,
+				Email:               user.Email,
+				Name:                user.Name,
+				EmailVerified:       user.EmailVerified,
+				DisplayCurrency:     string(user.DisplayCurrency),
+				ThemePreference:     string(user.ThemePreference),
+				ThemeBaseColor:      string(user.ThemeBaseColor),
+				ThemeAccentColor:    string(user.ThemeAccentColor),
+				ThemeFontPreference: string(user.ThemeFontPreference),
+				ThemeHeadingFont:    string(user.ThemeHeadingFont),
+				ThemeMenuAccent:     string(user.ThemeMenuAccent),
+				ThemeMenuColor:      string(user.ThemeMenuColor),
+				ThemeStyle:          string(user.ThemeStyle),
+				ThemeRadius:         user.ThemeRadius,
+				ThemeRtl:            user.ThemeRTL,
+			}, nil
+		}
+	}
+
+	displayCurrency := "USD"
+	themePreference := string(model.DefaultThemePreference)
+	themeBaseColor := string(model.DefaultThemeBaseColor)
+	themeAccentColor := string(model.DefaultThemeAccentColor)
+	themeFontPreference := string(model.DefaultThemeFontPreference)
+	themeHeadingFont := string(model.DefaultThemeHeadingFont)
+	themeMenuAccent := string(model.DefaultThemeMenuAccent)
+	themeMenuColor := string(model.DefaultThemeMenuColor)
+	themeStyle := string(model.DefaultThemeStyle)
+	themeRadius := model.DefaultThemeRadius
+	themeRTL := model.DefaultThemeRTL
 	return &gqlModel.AuthUser{
-		ID:              user.ID,
-		Email:           user.Email,
-		Name:            user.Name,
-		EmailVerified:   user.EmailVerified,
-		DisplayCurrency: string(user.DisplayCurrency),
+		ID:                  authUser.ID,
+		Email:               authUser.Email,
+		Name:                authUser.Name,
+		EmailVerified:       authUser.EmailVerified,
+		DisplayCurrency:     displayCurrency,
+		ThemePreference:     themePreference,
+		ThemeBaseColor:      themeBaseColor,
+		ThemeAccentColor:    themeAccentColor,
+		ThemeFontPreference: themeFontPreference,
+		ThemeHeadingFont:    themeHeadingFont,
+		ThemeMenuAccent:     themeMenuAccent,
+		ThemeMenuColor:      themeMenuColor,
+		ThemeStyle:          themeStyle,
+		ThemeRadius:         themeRadius,
+		ThemeRtl:            themeRTL,
 	}, nil
 }

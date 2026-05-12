@@ -26,6 +26,7 @@ export class PDFGenerator {
 
 	static async generatePerformanceReport(
 		portfolioData: PortfolioExportData,
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		performanceMetrics: any,
 	): Promise<Blob> {
 		const htmlContent = PDFGenerator.generatePerformanceHTML(portfolioData, performanceMetrics);
@@ -154,6 +155,7 @@ export class PDFGenerator {
 
 	private static generatePerformanceHTML(
 		portfolioData: PortfolioExportData,
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		_performanceMetrics: any,
 	): string {
 		return `

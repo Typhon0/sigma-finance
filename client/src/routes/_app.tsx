@@ -22,6 +22,7 @@ import {
 	Shield,
 	Wallet,
 } from "lucide-react";
+import type React from "react";
 import { useState } from "react";
 import { Logo } from "@/components/Logo";
 import { PortfolioSwitcher } from "@/components/layout/PortfolioSwitcher";
@@ -42,7 +43,7 @@ type NavItem = {
 	label: string;
 	url: string;
 	search?: Record<string, string | undefined>;
-	icon: any;
+	icon: React.ElementType;
 	count?: number;
 };
 
@@ -349,7 +350,7 @@ function AppLayout() {
 	return (
 		<div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
 			<AppSidebar />
-			<main className="flex-1 overflow-auto">
+			<main className="flex-1 overflow-auto p-6">
 				<Outlet />
 			</main>
 		</div>

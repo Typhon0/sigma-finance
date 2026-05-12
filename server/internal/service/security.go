@@ -15,6 +15,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -92,6 +93,7 @@ func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (Securit
 		keyStr = os.Getenv("ENCRYPTION_KEY")
 	}
 	if keyStr != "" {
+		keyStr = strings.TrimSpace(keyStr)
 		var decoded []byte
 		log.Printf("[DEBUG] Loading symmetric key, input length: %d", len(keyStr))
 		// Try hex first (most common for AES-256)

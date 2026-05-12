@@ -56,6 +56,7 @@ export function TransactionManagement({
 	const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 	const [selectedPosition, setSelectedPosition] = useState<Position | null>(null);
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleQuickAdd = async (transaction: any) => {
 		const formData: TransactionFormData = {
 			portfolioId: portfolio.id,

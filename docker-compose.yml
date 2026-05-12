@@ -43,6 +43,12 @@ services:
       - "DB_PASSWORD=xQxW&yATWuC2N3*8"
       - DB_NAME=sigma_finance
       - DB_SSLMODE=disable
+      - MARKET_DATA_PACK_STORAGE_PATH=/data/market-data/packs
+      - MARKET_DATA_PACK_REGISTRY_URL=https://github.com/Typhon0/sigma-finance/releases/latest/download/registry.json
+      - MARKET_DATA_AUTO_INSTALL=false
+      - MARKET_DATA_DEFAULT_PACKS=core-daily
+    volumes:
+      - ./data/market-data:/data/market-data
     depends_on:
       yfinance-service:
         condition: service_started

@@ -1,6 +1,7 @@
 import type { AuditTrailData, PortfolioExportData, TaxReportData } from "./types";
 
 export class CSVExporter {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	private static escapeCSVField(field: any): string {
 		if (field === null || field === undefined) return "";
 
@@ -12,6 +13,7 @@ export class CSVExporter {
 		return str;
 	}
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	private static arrayToCSV(headers: string[], rows: any[][]): string {
 		const csvHeaders = headers.join(",");
 		const csvRows = rows.map((row) =>

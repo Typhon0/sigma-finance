@@ -348,6 +348,10 @@ func TestGraphQLIntegration_AssetOperations(t *testing.T) {
 		assert.Equal(t, "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa", *crypto.WalletAddress)
 		assert.Equal(t, 0.5, crypto.Quantity)
 		assert.NotEmpty(t, crypto.ID)
+
+		createdAsset, lookupErr := uow.Asset().GetByID(ctx, crypto.ID)
+		require.NoError(t, lookupErr)
+		assert.False(t, createdAsset.IsTradeable)
 	})
 
 	t.Run("GetAsset", func(t *testing.T) {

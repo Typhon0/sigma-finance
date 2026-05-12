@@ -88,6 +88,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 	const valueChartOption = {
 		tooltip: {
 			trigger: "axis",
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			formatter: (params: any) => {
 				const param = params[0];
 				return `${param.name}<br/>${formatCurrency(param.value)}`;
@@ -149,6 +150,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 		onBack();
 	};
 
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const handleEdit = (formData: any) => {
 		updateAsset(watchId, {
 			name: formData.name,

@@ -12,12 +12,22 @@ func ToGraphQLUser(user *model.User) *graphmodel.User {
 	}
 
 	return &graphmodel.User{
-		ID:              user.ID,
-		Username:        user.Name,
-		Email:           user.Email,
-		CreatedAt:       user.CreatedAt,
-		UpdatedAt:       user.UpdatedAt,
-		DisplayCurrency: displayCurrency,
+		ID:                  user.ID,
+		Username:            user.Name,
+		Email:               user.Email,
+		CreatedAt:           user.CreatedAt,
+		UpdatedAt:           user.UpdatedAt,
+		DisplayCurrency:     displayCurrency,
+		ThemePreference:     string(user.ThemePreference),
+		ThemeBaseColor:      string(user.ThemeBaseColor),
+		ThemeAccentColor:    string(user.ThemeAccentColor),
+		ThemeFontPreference: string(user.ThemeFontPreference),
+		ThemeHeadingFont:    string(user.ThemeHeadingFont),
+		ThemeMenuAccent:     string(user.ThemeMenuAccent),
+		ThemeMenuColor:      string(user.ThemeMenuColor),
+		ThemeStyle:          string(user.ThemeStyle),
+		ThemeRadius:         user.ThemeRadius,
+		ThemeRtl:            user.ThemeRTL,
 	}
 }
 

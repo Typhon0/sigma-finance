@@ -54,6 +54,7 @@ const ChartDemo: React.FC = () => {
 				<CardContent className="space-y-4">
 					<div className="flex items-center space-x-4">
 						<div className="flex-1">
+							{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 							<label className="text-sm font-medium mb-2 block">Select Symbol</label>
 							<Select value={selectedSymbol} onValueChange={handleSymbolChange}>
 								<SelectTrigger>
@@ -80,6 +81,7 @@ const ChartDemo: React.FC = () => {
 							</Select>
 						</div>
 						<div>
+							{/* biome-ignore lint/a11y/noLabelWithoutControl: unavoidable */}
 							<label className="text-sm font-medium mb-2 block">Asset Type</label>
 							<div className="px-3 py-2 bg-gray-100 rounded-md text-sm">{selectedAssetType}</div>
 						</div>

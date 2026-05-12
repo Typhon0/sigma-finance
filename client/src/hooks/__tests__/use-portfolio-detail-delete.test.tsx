@@ -38,18 +38,22 @@ describe("usePortfolioDetail - Delete Functionality", () => {
 		vi.clearAllMocks();
 
 		// Mock useAuth
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		(useAuth as any).mockReturnValue({
 			user: { id: "user1" },
 		});
 
 		// Mock usePortfolioManagement
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		(usePortfolioManagement as any).mockReturnValue({
 			deletePortfolio: mockDeletePortfolio,
 			updatePortfolio: mockUpdatePortfolio,
 		});
 
 		// Mock toast
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		(toast as any).success = vi.fn();
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		(toast as any).error = vi.fn();
 	});
 

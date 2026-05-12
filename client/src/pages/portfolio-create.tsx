@@ -41,6 +41,7 @@ function PortfolioCreateContent() {
 	const { user } = useAuth();
 	const [errorMessage, setErrorMessage] = useState<string>("");
 	const [showSuccess, setShowSuccess] = useState(false);
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const [createdPortfolio, setCreatedPortfolio] = useState<any>(null);
 
 	// Get existing portfolio names for validation

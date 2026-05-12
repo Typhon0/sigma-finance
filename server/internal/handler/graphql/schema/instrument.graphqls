@@ -57,6 +57,13 @@ type Instrument {
   underlyingSymbol: String
   assetType: InstrumentAssetType!
   status: String!
+  externalSource: String
+  externalId: String
+  platforms: [PlatformAddress!]
+  primaryContractAddress: String
+  instrumentStatus: String
+  imageUrl: String
+  metadataUpdatedAt: Time
   providerSource: String!
   providerExternalId: String
   isin: String
@@ -98,6 +105,22 @@ type OnlineInstrumentSearchPayload {
   onlineResults: [OnlineInstrumentResult!]!
   queryMetadata: InstrumentQueryMetadata!
   providerUsed: String!
+  coverageStatus: CoverageStatus!
+  errorMessage: String
+}
+
+enum CatalogSource {
+  TRUSTWALLET
+}
+
+enum CoverageStatus {
+  FULL
+  PARTIAL
+}
+
+type PlatformAddress {
+  platform: String!
+  address: String!
 }
 
 type OnlineInstrumentResult {
@@ -108,6 +131,11 @@ type OnlineInstrumentResult {
   country: String
   currency: String
   assetType: InstrumentAssetType!
+  source: CatalogSource!
+  externalId: String
+  marketCapRank: Int
+  imageUrl: String
+  platforms: [PlatformAddress!]
   providerSource: String!
   providerExternalId: String
   isin: String
@@ -161,6 +189,7 @@ input AddInstrumentHoldingInput {
   quantity: Float!
   averagePurchasePrice: Float!
   unitPriceCurrency: String
+  purchaseDate: Time
 }
 
 input UpdateManualInstrumentInput {

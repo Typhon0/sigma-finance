@@ -33,6 +33,7 @@ export function ProtectedRoute({
 
 	// Redirect to login if not authenticated
 	if (!isAuthenticated) {
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		return <Navigate to={fallbackPath} search={{ redirect: location.pathname } as any} />;
 	}
 

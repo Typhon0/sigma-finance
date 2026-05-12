@@ -16,6 +16,11 @@ type DiscoveryInstrument struct {
 	AssetType          model.InstrumentAssetType `json:"assetType"`
 	ProviderSource     string                    `json:"providerSource"`
 	ProviderExternalID *string                   `json:"providerExternalId,omitempty"`
+	Source             string                    `json:"source,omitempty"`
+	ExternalID         *string                   `json:"externalId,omitempty"`
+	MarketCapRank      *int                      `json:"marketCapRank,omitempty"`
+	ImageURL           *string                   `json:"imageUrl,omitempty"`
+	Platforms          map[string]string         `json:"platforms,omitempty"`
 	ISIN               *string                   `json:"isin,omitempty"`
 	FIGI               *string                   `json:"figi,omitempty"`
 	CUSIP              *string                   `json:"cusip,omitempty"`

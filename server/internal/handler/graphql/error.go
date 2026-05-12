@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofiber/fiber/v2"
@@ -29,9 +30,10 @@ func NewErrorPresenter() graphql.ErrorPresenterFunc {
 			return gqlErr
 		}
 
-		// For other errors, create a new GraphQL error
+		// For other errors, log it and create a new GraphQL error
+		log.Printf("[GraphQL Error] Unexpected error: %v (path: %v)", err, graphql.GetPath(ctx))
 		return &gqlerror.Error{
-			Message: "An unexpected error occurred",
+			Message: "internal system error",
 			Path:    graphql.GetPath(ctx),
 		}
 	}

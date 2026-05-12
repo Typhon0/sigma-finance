@@ -206,6 +206,7 @@ export function AssetPriceChart({
 		if (!seriesRef.current || !processedData.length) return;
 
 		try {
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			seriesRef.current.setData(processedData as any);
 
 			// Fit content to show all data

@@ -99,6 +99,11 @@ func (m *MockPerformanceRepository) CalculateBenchmarkComparison(ctx context.Con
 	return args.Get(0).(*repository.BenchmarkComparison), args.Error(1)
 }
 
+func (m *MockPerformanceRepository) CalculateAndSaveHistoricalSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) error {
+	args := m.Called(ctx, portfolioID, startDate, endDate)
+	return args.Error(0)
+}
+
 type MockPriceRepository struct {
 	mock.Mock
 }

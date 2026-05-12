@@ -18,31 +18,75 @@ import (
 func main() {
 	loadDotEnv()
 
-	appDB, err := infrastructure.NewDB()
-	if err != nil {
-		log.Fatalf("failed to initialize database: %v", err)
-	}
-	defer appDB.Close()
+	// Determine if DB is needed. Market-data packs build/validate/archive/sign/
+	// registry-entry/validate-spec do not need a database, so we can skip DB
+	// init for those (critical for CI where no Postgres is available).
+	needsDB := dbRequired(os.Args)
 
-	migrationDB, err := newMigrationDB()
-	if err != nil {
-		log.Fatalf("failed to initialize migration database: %v", err)
+	var appDB, migrationDB *bun.DB
+	if needsDB {
+		var err error
+		appDB, err = infrastructure.NewDB()
+		if err != nil {
+			log.Fatalf("failed to initialize database: %v", err)
+		}
+		defer appDB.Close()
+
+		migrationDB, err = newMigrationDB()
+		if err != nil {
+			log.Fatalf("failed to initialize migration database: %v", err)
+		}
+		defer migrationDB.Close()
 	}
-	defer migrationDB.Close()
 
 	templateData := map[string]string{
 		"Prefix": "example_",
 	}
-	app := &cli.App{
-		Name: "bun",
 
-		Commands: []*cli.Command{
+	var commands []*cli.Command
+	if needsDB {
+		commands = []*cli.Command{
 			newDBCommand(migrate.NewMigrator(migrationDB, migrations.Migrations, migrate.WithTemplateData(templateData)), newSeedCommand(appDB)),
-		},
+			newCatalogCommand(appDB),
+			newMarketDataCommand(appDB),
+		}
+	} else {
+		// Register only the market-data command with nil db (only non-DB
+		// subcommands will be invoked in this path).
+		commands = []*cli.Command{
+			newMarketDataCommand(nil),
+		}
+	}
+
+	app := &cli.App{
+		Name:     "bun",
+		Commands: commands,
 	}
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// dbRequired returns false when the CLI args target a market-data packs
+// subcommand that does not need a database connection.
+func dbRequired(args []string) bool {
+	// Commands that can run without a DB connection.
+	noDBCommands := map[string]bool{
+		"build":         true,
+		"validate":      true,
+		"validate-spec": true,
+		"archive":       true,
+		"sign":          true,
+		"registry-entry": true,
+	}
+
+	// Pattern: bun market-data packs <subcommand>
+	if len(args) >= 4 && args[1] == "market-data" && args[2] == "packs" {
+		if noDBCommands[args[3]] {
+			return false
+		}
+	}
+	return true
 }
 
 func newMigrationDB() (*bun.DB, error) {

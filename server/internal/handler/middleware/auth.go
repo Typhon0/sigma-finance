@@ -37,6 +37,7 @@ const (
 type AuthenticatedUser struct {
 	ID            string `json:"id"`
 	Email         string `json:"email"`
+	Role          string `json:"role"`
 	Name          string `json:"name"`
 	EmailVerified bool   `json:"emailVerified"`
 }

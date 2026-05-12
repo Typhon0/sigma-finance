@@ -174,11 +174,11 @@ func (c *CryptoCompareProvider) GetCandles(ctx context.Context, req CandleReques
 			Symbol:    req.Symbol,
 			AssetType: req.AssetType,
 			Interval:  req.Interval,
-			Open:      model.FromFloat(item.Open),
-			High:      model.FromFloat(item.High),
-			Low:       model.FromFloat(item.Low),
-			Close:     model.FromFloat(item.Close),
-			Volume:    item.VolumeFrom, // Use base currency volume
+			Open:      decimal.NewFromFloat(item.Open),
+			High:      decimal.NewFromFloat(item.High),
+			Low:       decimal.NewFromFloat(item.Low),
+			Close:     decimal.NewFromFloat(item.Close),
+			Volume:    decimal.NewFromFloat(item.VolumeFrom), // Use base currency volume
 			Timestamp: timestamp,
 			Source:    c.ID(),
 		}

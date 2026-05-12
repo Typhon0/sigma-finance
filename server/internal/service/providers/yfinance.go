@@ -11,6 +11,7 @@ import (
 	pb "sigma_finance/internal/handler/grpc/pb"
 	grpc "sigma_finance/internal/infrastructure/grpc"
 
+	"github.com/shopspring/decimal"
 	"github.com/sony/gobreaker"
 	"golang.org/x/time/rate"
 )
@@ -349,11 +350,11 @@ func (y *YFinanceProvider) doGetCandles(ctx context.Context, req CandleRequest) 
 			Symbol:    req.Symbol,
 			AssetType: req.AssetType,
 			Interval:  req.Interval,
-			Open:      model.Money(bar.Open),
-			High:      model.Money(bar.High),
-			Low:       model.Money(bar.Low),
-			Close:     model.Money(bar.Close),
-			Volume:    bar.Volume,
+			Open:      model.Money(bar.Open).ToDecimal(),
+			High:      model.Money(bar.High).ToDecimal(),
+			Low:       model.Money(bar.Low).ToDecimal(),
+			Close:     model.Money(bar.Close).ToDecimal(),
+			Volume:    decimal.NewFromFloat(bar.Volume),
 			Timestamp: timestamp,
 			Source:    y.ID(),
 		})

@@ -99,6 +99,7 @@ export function ExportDialog({
 
 	const selectedTypeConfig = exportTypes.find((t) => t.value === exportType);
 	const availableFormats = formatOptions.filter((f) =>
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		f.supportedTypes.includes(exportType as any),
 	);
 
@@ -121,10 +122,12 @@ export function ExportDialog({
 
 			switch (exportType) {
 				case "portfolio-data":
+					// biome-ignore lint/style/noNonNullAssertion: unavoidable
 					result = await ExportService.exportPortfolioData(portfolioId!, format);
 					break;
 				case "transaction-history":
 					result = await ExportService.exportTransactionHistory(
+						// biome-ignore lint/style/noNonNullAssertion: unavoidable
 						portfolioId!,
 						dateRange.start && dateRange.end
 							? (dateRange as { start: Date; end: Date })
@@ -200,6 +203,7 @@ export function ExportDialog({
 								setExportType(value as ExportType);
 								// Reset format to first available option
 								const newAvailableFormats = formatOptions.filter((f) =>
+									// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 									f.supportedTypes.includes(value as any),
 								);
 								if (newAvailableFormats.length > 0) {

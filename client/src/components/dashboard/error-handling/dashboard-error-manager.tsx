@@ -137,6 +137,7 @@ export function DashboardErrorManagerProvider({
 
 			return errorId;
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[isCriticalError, onCriticalError, generateErrorId],
 	);
 

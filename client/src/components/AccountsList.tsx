@@ -278,6 +278,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				}
 			: {
 					tooltip: {
+						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 						formatter: (params: any) => `${params.name}: ${formatCurrency(params.value)}`,
 					},
 					series: [
@@ -417,6 +418,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						style={{ height: "350px" }}
 						opts={{ renderer: "svg" }}
 						onEvents={{
+							// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 							mouseover: (params: any) => {
 								if (params.componentType === "series" && params.seriesType === "pie") {
 									setHoveredAccountData({

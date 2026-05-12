@@ -57,3 +57,123 @@ export const UPDATE_PROVIDER_ROUTING_PREFERENCES = gql`
     }
   }
 `;
+
+export const INSTALL_MARKET_DATA_PACK = gql`
+  mutation InstallMarketDataPack($packId: ID!) {
+    installMarketDataPack(packId: $packId) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const UPDATE_MARKET_DATA_PACK = gql`
+  mutation UpdateMarketDataPack($packId: ID!) {
+    updateMarketDataPack(packId: $packId) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const REMOVE_MARKET_DATA_PACK = gql`
+  mutation RemoveMarketDataPack($packId: ID!) {
+    removeMarketDataPack(packId: $packId) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const REPAIR_MARKET_DATA_PACK = gql`
+  mutation RepairMarketDataPack($packId: ID!) {
+    repairMarketDataPack(packId: $packId) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const CANCEL_MARKET_DATA_PACK_JOB = gql`
+  mutation CancelMarketDataPackJob($jobId: ID!) {
+    cancelMarketDataPackJob(jobId: $jobId) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const START_LOCAL_PACK_BUILD = gql`
+  mutation StartLocalPackBuild($input: StartLocalPackBuildInput!) {
+    startLocalPackBuild(input: $input) {
+      id
+      packId
+      sourceProvider
+      status
+      progressPercent
+      currentSymbol
+      totalSymbols
+      completedSymbols
+      failedSymbols
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const CANCEL_PACK_BUILD_JOB = gql`
+  mutation CancelPackBuildJob($id: ID!) {
+    cancelPackBuildJob(id: $id) {
+      id
+      packId
+      sourceProvider
+      status
+      progressPercent
+      currentSymbol
+      totalSymbols
+      completedSymbols
+      failedSymbols
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;

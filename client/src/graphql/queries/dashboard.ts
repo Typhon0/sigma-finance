@@ -61,6 +61,14 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
   query GetDashboardSecondary($userID: ID!) {
     transactions(filter: { userID: $userID }, pagination: { limit: 10 }) {
       id
+      asset {
+        id
+        symbol
+        name
+      }
+      portfolio {
+        id
+      }
       notes
       quantity
       unitPriceAmount
@@ -92,6 +100,14 @@ export const GET_RECENT_TRANSACTIONS_MINIMAL = graphql(/* GraphQL */ `
   query GetRecentTransactionsMinimal($userID: ID!, $limit: Int) {
     transactions(filter: { userID: $userID }, pagination: { limit: $limit }) {
       id
+      asset {
+        id
+        symbol
+        name
+      }
+      portfolio {
+        id
+      }
       notes
       quantity
       unitPriceAmount

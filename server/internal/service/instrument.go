@@ -10,6 +10,7 @@ import (
 	"sigma_finance/internal/domain/catalog"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	catalogservice "sigma_finance/internal/service/catalog"
 	"strings"
 	"sync"
 	"time"
@@ -33,7 +34,7 @@ type InstrumentDiscoveryService interface {
 
 type InstrumentCatalogService interface {
 	GetInstrumentDetails(ctx context.Context, instrumentID string) (*InstrumentDetails, error)
-	AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, userID *string) (*model.PortfolioAsset, error)
+	AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, purchaseDate *time.Time, userID *string) (*model.PortfolioAsset, error)
 	ListManualInstruments(ctx context.Context, filter ManualInstrumentFilter, userID *string) (*ManualInstrumentPage, error)
 	UpdateManualInstrument(ctx context.Context, instrumentID string, input UpdateManualInstrumentInput, userID *string) (*InstrumentDetails, error)
 	ArchiveManualInstrument(ctx context.Context, instrumentID string, userID *string) (*InstrumentDetails, error)
@@ -45,6 +46,9 @@ type InstrumentCatalogService interface {
 	TriggerFinanceDatabaseSync(ctx context.Context, assetType string) (*FinanceDatabaseSyncItem, error)
 	UpdateFinanceDatabaseSyncEnabled(ctx context.Context, assetType string, enabled bool) (*FinanceDatabaseSyncItem, error)
 	ImportFinanceDatabaseAssets(ctx context.Context, assetType string, symbols []string) (*FinanceDatabaseImportResult, error)
+	ImportInstrumentFromSource(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
+	ImportInstrumentFromCatalog(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
+	GetCatalogSyncStatus(ctx context.Context, source string) (*model.CatalogSyncRun, error)
 }
 
 type InstrumentSyncService interface {
@@ -90,9 +94,11 @@ type InstrumentSearchPayload struct {
 }
 
 type OnlineInstrumentSearchPayload struct {
-	OnlineResults []DiscoveryInstrument   `json:"onlineResults"`
-	QueryMetadata InstrumentQueryMetadata `json:"queryMetadata"`
-	ProviderUsed  string                  `json:"providerUsed"`
+	OnlineResults  []DiscoveryInstrument   `json:"onlineResults"`
+	QueryMetadata  InstrumentQueryMetadata `json:"queryMetadata"`
+	ProviderUsed   string                  `json:"providerUsed"`
+	CoverageStatus string                  `json:"coverageStatus"`
+	ErrorMessage   *string                 `json:"errorMessage,omitempty"`
 }
 
 type PersistDiscoveredInstrumentInput struct {
@@ -191,8 +197,10 @@ type instrumentService struct {
 	uow                            repository.IUnitOfWork
 	instrumentRepo                 repository.IInstrumentRepository
 	aliasRepo                      repository.IInstrumentAliasRepository
+	mappingRepo                    repository.IInstrumentProviderMappingRepository
 	syncRepo                       repository.IInstrumentSyncStateRepository
 	discoveryLogRepo               repository.IDiscoveryLogRepository
+	catalogSyncRunRepo             repository.ICatalogSyncRunRepository
 	financeDatabaseSyncSettingRepo repository.IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistoryRepo repository.IFinanceDatabaseSyncHistoryRepository
 	equityDiscoveryClient          InstrumentDiscoveryClient
@@ -217,8 +225,10 @@ func NewInstrumentService(
 		uow:                            uow,
 		instrumentRepo:                 uow.Instrument(),
 		aliasRepo:                      uow.InstrumentAlias(),
+		mappingRepo:                    uow.InstrumentProviderMapping(),
 		syncRepo:                       uow.InstrumentSyncState(),
 		discoveryLogRepo:               uow.DiscoveryLog(),
+		catalogSyncRunRepo:             uow.CatalogSyncRun(),
 		financeDatabaseSyncSettingRepo: uow.FinanceDatabaseSyncSetting(),
 		financeDatabaseSyncHistoryRepo: uow.FinanceDatabaseSyncHistory(),
 		equityDiscoveryClient:          equityDiscoveryClient,
@@ -266,9 +276,10 @@ func (s *instrumentService) SearchLocal(ctx context.Context, query string, filte
 	}
 
 	weakResults := len(results) == 0 || topScore < 700
+	onlineCapable := s.hasOnlineCapability(filter.AssetTypes)
 	payload := &InstrumentSearchPayload{
 		LocalResults:    results,
-		CanSearchOnline: weakResults,
+		CanSearchOnline: weakResults && onlineCapable,
 		QueryMetadata: InstrumentQueryMetadata{
 			Query:            strings.TrimSpace(query),
 			Limit:            safeLimit(filter.Limit, 20),
@@ -276,7 +287,7 @@ func (s *instrumentService) SearchLocal(ctx context.Context, query string, filte
 			LocalCount:       len(results),
 			TopScore:         topScore,
 			WeakResults:      weakResults,
-			SearchOnlineHint: weakResults,
+			SearchOnlineHint: weakResults && onlineCapable,
 		},
 	}
 
@@ -300,8 +311,33 @@ func (s *instrumentService) SearchOnline(ctx context.Context, query string, filt
 			model.InstrumentAssetTypeCrypto,
 		}
 	}
+	availableAssetTypes := s.onlineSearchAvailableAssetTypes(assetTypes)
 
-	results, providerUsed, err := s.searchOnlineCandidates(ctx, query, assetTypes, safeLimit(filter.Limit, 10))
+	coverageStatus := "FULL"
+	if len(availableAssetTypes) < len(assetTypes) {
+		coverageStatus = "PARTIAL"
+	}
+
+	if len(availableAssetTypes) == 0 {
+		message := "online search is unavailable for the requested asset types"
+		payload := &OnlineInstrumentSearchPayload{
+			OnlineResults: []DiscoveryInstrument{},
+			QueryMetadata: InstrumentQueryMetadata{
+				Query:            strings.TrimSpace(query),
+				Limit:            safeLimit(filter.Limit, 10),
+				Offset:           0,
+				LocalCount:       0,
+				TopScore:         0,
+				SearchOnlineHint: true,
+			},
+			ProviderUsed:   "",
+			CoverageStatus: coverageStatus,
+			ErrorMessage:   &message,
+		}
+		return payload, nil
+	}
+
+	results, providerUsed, err := s.searchOnlineCandidates(ctx, query, availableAssetTypes, safeLimit(filter.Limit, 10))
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +360,8 @@ func (s *instrumentService) SearchOnline(ctx context.Context, query string, filt
 			TopScore:         0,
 			SearchOnlineHint: len(results) == 0,
 		},
-		ProviderUsed: providerUsed,
+		ProviderUsed:   providerUsed,
+		CoverageStatus: coverageStatus,
 	}
 
 	return payload, nil
@@ -361,7 +398,7 @@ func (s *instrumentService) PersistDiscoveredInstrument(ctx context.Context, inp
 	return s.persistInstrument(ctx, source, userID)
 }
 
-func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, userID *string) (*model.PortfolioAsset, error) {
+func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfolioID, instrumentID string, quantity, averagePurchasePrice float64, unitPriceCurrency string, purchaseDate *time.Time, userID *string) (*model.PortfolioAsset, error) {
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
 	}
@@ -378,7 +415,14 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 	}
 	quoteCurrency, err := resolveInstrumentQuoteCurrency(instrument)
 	if err != nil {
-		return nil, err
+		if unitPriceCurrency != "" {
+			quoteCurrency = model.Currency(strings.ToUpper(strings.TrimSpace(unitPriceCurrency)))
+			if !quoteCurrency.IsValid() {
+				return nil, fmt.Errorf("invalid unit price currency fallback: %s", unitPriceCurrency)
+			}
+		} else {
+			return nil, err
+		}
 	}
 	resolvedUnitPriceCurrency := model.Currency(strings.ToUpper(strings.TrimSpace(unitPriceCurrency)))
 	if resolvedUnitPriceCurrency == "" {
@@ -389,6 +433,7 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 	}
 
 	var created *model.PortfolioAsset
+	var backfillFrom time.Time
 	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		portfolio, err := uow.Portfolio().GetByID(ctx, portfolioID)
 		if err != nil {
@@ -458,6 +503,14 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 			if userID != nil && strings.TrimSpace(*userID) != "" {
 				transactionUserID = strings.TrimSpace(*userID)
 			}
+			executedAt := time.Now()
+			if purchaseDate != nil {
+				executedAt = purchaseDate.UTC()
+			}
+			if executedAt.After(time.Now().AddDate(0, 0, 1)) {
+				executedAt = time.Now()
+			}
+
 			transaction := &model.Transaction{
 				UserID:            transactionUserID,
 				PositionID:        &positionIDCopy,
@@ -468,11 +521,12 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 				UnitPriceCurrency: resolvedUnitPriceCurrency,
 				FeesAmount:        0,
 				FeesCurrency:      resolvedUnitPriceCurrency,
-				ExecutedAt:        time.Now(),
+				ExecutedAt:        executedAt,
 			}
 			if _, txErr := uow.Transaction().Create(ctx, transaction); txErr != nil {
 				return fmt.Errorf("failed to create initial transaction: %w", txErr)
 			}
+			backfillFrom = executedAt
 		}
 		return nil
 	})
@@ -501,8 +555,65 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 			}
 		}()
 	}
+	if !backfillFrom.IsZero() {
+		portfolioIDCopy := portfolioID
+		backfillFromCopy := backfillFrom
+		userIDCopy := userID
+		instrumentIDCopy := instrumentID
+		var assetIDStr string
+		if created != nil {
+			assetIDStr = created.AssetID
+		}
+		
+		go func() {
+			// First backfill historical prices for the asset
+			if s.marketData != nil && assetIDStr != "" {
+				parsedAssetID, parseErr := uuid.Parse(assetIDStr)
+				if parseErr == nil {
+					backfillCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+					defer cancel()
+					now := time.Now()
+					userIDStr := ""
+					if userIDCopy != nil {
+						userIDStr = *userIDCopy
+					}
+					if err := s.marketData.BackfillAssetPrices(backfillCtx, userIDStr, parsedAssetID, instrumentIDCopy, backfillFromCopy, now); err != nil {
+						fmt.Printf("[AddInstrumentToPortfolio] BackfillAssetPrices failed for asset %s: %v\n", assetIDStr, err)
+					}
+				}
+			}
+			
+			// Then compute performance snapshots using the backfilled data
+			s.backfillPortfolioPerformanceSnapshots(portfolioIDCopy, backfillFromCopy)
+		}()
+	}
 
 	return created, nil
+}
+
+func (s *instrumentService) backfillPortfolioPerformanceSnapshots(portfolioID string, from time.Time) {
+	if strings.TrimSpace(portfolioID) == "" || from.IsZero() {
+		return
+	}
+
+	now := time.Now().UTC()
+	startDay := time.Date(from.UTC().Year(), from.UTC().Month(), from.UTC().Day(), 0, 0, 0, 0, time.UTC)
+	endDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+
+	if startDay.After(endDay) {
+		startDay = endDay
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+
+	if err := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); err != nil {
+		fmt.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill failed portfolio=%s from=%s to=%s err=%v\n",
+			portfolioID, startDay.Format("2006-01-02"), endDay.Format("2006-01-02"), err)
+	} else {
+		fmt.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill complete portfolio=%s days=%d\n",
+			portfolioID, int(endDay.Sub(startDay).Hours()/24)+1)
+	}
 }
 
 func (s *instrumentService) ListManualInstruments(ctx context.Context, filter ManualInstrumentFilter, userID *string) (*ManualInstrumentPage, error) {
@@ -637,6 +748,7 @@ func (s *instrumentService) UpdateManualInstrument(ctx context.Context, instrume
 			asset.Name = instrument.Name
 			asset.Type = mapInstrumentTypeToAssetType(instrument.AssetType)
 			asset.IsTradeable = isTradeableInstrumentType(instrument.AssetType)
+			asset.Metadata = buildTradeableAssetMetadata(asset.Metadata, instrument, asset.Type)
 			if updateErr := uow.Asset().Update(ctx, asset); updateErr != nil {
 				return updateErr
 			}
@@ -842,6 +954,10 @@ func (s *instrumentService) GetFinanceDatabasePreview(ctx context.Context, asset
 }
 
 func (s *instrumentService) TriggerFinanceDatabaseSync(ctx context.Context, assetType string) (*FinanceDatabaseSyncItem, error) {
+	if !isFinanceDatabaseSyncAssetTypeSupported(assetType) {
+		return nil, fmt.Errorf("finance database sync for %s is disabled; use catalog sync for crypto assets", assetType)
+	}
+
 	s.financeDatabaseSyncMu.Lock()
 	if s.financeDatabaseSyncRunning {
 		s.financeDatabaseSyncMu.Unlock()
@@ -954,6 +1070,10 @@ func (s *instrumentService) runFinanceDatabaseSyncJob(assetType string) {
 }
 
 func (s *instrumentService) UpdateFinanceDatabaseSyncEnabled(ctx context.Context, assetType string, enabled bool) (*FinanceDatabaseSyncItem, error) {
+	if !isFinanceDatabaseSyncAssetTypeSupported(assetType) {
+		return nil, fmt.Errorf("finance database sync for %s is disabled; use catalog sync for crypto assets", assetType)
+	}
+
 	setting, err := s.ensureFinanceDatabaseSyncSetting(ctx, assetType)
 	if err != nil {
 		return nil, err
@@ -1057,7 +1177,6 @@ func financeDatabaseAssetTypes() []string {
 		"ETFS",
 		"FUNDS",
 		"INDICES",
-		"CRYPTOCURRENCIES",
 		"CURRENCIES",
 		"MONEY_MARKETS",
 	}
@@ -1073,8 +1192,6 @@ func financeDatabaseAssetTypesForSyncType(assetType string) []model.InstrumentAs
 		return []model.InstrumentAssetType{model.InstrumentAssetTypeFund}
 	case "INDICES":
 		return []model.InstrumentAssetType{model.InstrumentAssetTypeIndex}
-	case "CRYPTOCURRENCIES":
-		return []model.InstrumentAssetType{model.InstrumentAssetTypeCrypto}
 	case "CURRENCIES":
 		return []model.InstrumentAssetType{model.InstrumentAssetTypeCurrency}
 	case "MONEY_MARKETS":
@@ -1082,6 +1199,10 @@ func financeDatabaseAssetTypesForSyncType(assetType string) []model.InstrumentAs
 	default:
 		return nil
 	}
+}
+
+func isFinanceDatabaseSyncAssetTypeSupported(assetType string) bool {
+	return len(financeDatabaseAssetTypesForSyncType(assetType)) > 0
 }
 
 func mapFinanceDatabaseSyncSettingToItem(setting *model.FinanceDatabaseSyncSetting) FinanceDatabaseSyncItem {
@@ -1124,6 +1245,14 @@ func (s *instrumentService) SyncCatalog(ctx context.Context) error {
 }
 
 func (s *instrumentService) findExistingInstrument(ctx context.Context, input DiscoveryInstrument) (*model.Instrument, error) {
+	if input.ExternalID != nil && strings.TrimSpace(input.Source) != "" {
+		if instrument, err := s.instrumentRepo.FindByExternalKey(ctx, strings.ToUpper(strings.TrimSpace(input.Source)), strings.TrimSpace(*input.ExternalID)); err == nil {
+			return instrument, nil
+		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+			return nil, err
+		}
+	}
+
 	if input.ProviderExternalID != nil && strings.TrimSpace(input.ProviderSource) != "" {
 		if instrument, err := s.instrumentRepo.GetByProviderIdentity(ctx, strings.TrimSpace(input.ProviderSource), strings.TrimSpace(*input.ProviderExternalID)); err == nil {
 			return instrument, nil
@@ -1188,41 +1317,60 @@ func (s *instrumentService) persistInstrument(ctx context.Context, source Source
 	metadata := marshalInstrumentMetadata(source)
 
 	record := &model.Instrument{
-		Symbol:             strings.TrimSpace(discovery.Symbol),
-		NormalizedSymbol:   normalizedSymbol,
-		Name:               strings.TrimSpace(discovery.Name),
-		NormalizedName:     normalizedName,
-		Exchange:           exchange,
-		ExchangeCode:       discovery.ExchangeCode,
-		Country:            discovery.Country,
-		Currency:           discovery.Currency,
-		Summary:            source.Summary,
-		Sector:             source.Sector,
-		IndustryGroup:      source.IndustryGroup,
-		Industry:           source.Industry,
-		CategoryGroup:      source.CategoryGroup,
-		Category:           source.Category,
-		Family:             source.Family,
-		Website:            source.Website,
-		MarketCap:          source.MarketCap,
-		State:              source.State,
-		City:               source.City,
-		Zipcode:            source.Zipcode,
-		BaseCurrency:       source.BaseCurrency,
-		QuoteCurrency:      source.QuoteCurrency,
-		UnderlyingSymbol:   source.UnderlyingSymbol,
-		AssetType:          discovery.AssetType,
-		Status:             model.InstrumentStatusActive,
-		ProviderSource:     strings.TrimSpace(discovery.ProviderSource),
-		ProviderExternalID: discovery.ProviderExternalID,
-		ISIN:               discovery.ISIN,
-		FIGI:               discovery.FIGI,
-		CUSIP:              discovery.CUSIP,
-		Metadata:           metadata,
-		UpdatedAt:          now,
+		Symbol:                 strings.TrimSpace(discovery.Symbol),
+		NormalizedSymbol:       normalizedSymbol,
+		Name:                   strings.TrimSpace(discovery.Name),
+		NormalizedName:         normalizedName,
+		Exchange:               exchange,
+		ExchangeCode:           discovery.ExchangeCode,
+		Country:                discovery.Country,
+		Currency:               discovery.Currency,
+		Summary:                source.Summary,
+		Sector:                 source.Sector,
+		IndustryGroup:          source.IndustryGroup,
+		Industry:               source.Industry,
+		CategoryGroup:          source.CategoryGroup,
+		Category:               source.Category,
+		Family:                 source.Family,
+		Website:                source.Website,
+		MarketCap:              source.MarketCap,
+		State:                  source.State,
+		City:                   source.City,
+		Zipcode:                source.Zipcode,
+		BaseCurrency:           source.BaseCurrency,
+		QuoteCurrency:          source.QuoteCurrency,
+		UnderlyingSymbol:       source.UnderlyingSymbol,
+		AssetType:              discovery.AssetType,
+		Status:                 model.InstrumentStatusActive,
+		ProviderSource:         strings.TrimSpace(discovery.ProviderSource),
+		ProviderExternalID:     discovery.ProviderExternalID,
+		ExternalSource:         nil,
+		ExternalID:             nil,
+		PlatformsJSON:          mustMarshalPlatformsJSON(discovery.Platforms),
+		PrimaryContractAddress: derivePrimaryContractAddress(discovery.Platforms),
+		MarketCapRank:          discovery.MarketCapRank,
+		ImageURL:               discovery.ImageURL,
+		ISIN:                   discovery.ISIN,
+		FIGI:                   discovery.FIGI,
+		CUSIP:                  discovery.CUSIP,
+		Metadata:               metadata,
+		UpdatedAt:              now,
 	}
 	if record.ProviderSource == "" {
 		record.ProviderSource = "yfinance"
+	}
+	if strings.TrimSpace(discovery.Source) != "" {
+		record.ExternalSource = ptrString(strings.ToUpper(strings.TrimSpace(discovery.Source)))
+	} else if strings.EqualFold(record.ProviderSource, "trustwallet") {
+		record.ExternalSource = ptrString("TRUSTWALLET")
+	}
+	if discovery.ExternalID != nil && strings.TrimSpace(*discovery.ExternalID) != "" {
+		record.ExternalID = ptrString(strings.TrimSpace(*discovery.ExternalID))
+	} else if discovery.ProviderExternalID != nil && strings.TrimSpace(*discovery.ProviderExternalID) != "" {
+		record.ExternalID = ptrString(strings.TrimSpace(*discovery.ProviderExternalID))
+	}
+	if record.ExternalSource != nil || record.ExternalID != nil || record.MarketCapRank != nil || record.ImageURL != nil {
+		record.MetadataUpdatedAt = &now
 	}
 
 	manualImport := strings.EqualFold(record.ProviderSource, "manual")
@@ -1268,6 +1416,10 @@ func (s *instrumentService) persistInstrument(ctx context.Context, source Source
 		record = created
 	}
 
+	if err := s.upsertDefaultProviderMappings(ctx, record); err != nil {
+		return nil, err
+	}
+
 	aliases := s.buildAliases(*record)
 	if err := s.upsertAliases(ctx, record.ID, aliases); err != nil {
 		return nil, err
@@ -1301,6 +1453,188 @@ func (s *instrumentService) persistInstrument(ctx context.Context, source Source
 	return details, nil
 }
 
+func (s *instrumentService) ImportInstrumentFromSource(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error) {
+	normalizedSource := strings.ToUpper(strings.TrimSpace(source))
+	normalizedExternalID := strings.TrimSpace(externalID)
+	if normalizedSource == "" || normalizedExternalID == "" {
+		return nil, errors.New("source and externalId are required")
+	}
+	if normalizedSource != "TRUSTWALLET" {
+		return nil, fmt.Errorf("unsupported catalog source: %s", source)
+	}
+	_ = forceEnrich
+
+	if existing, err := s.instrumentRepo.FindByExternalKey(ctx, normalizedSource, normalizedExternalID); err == nil && existing != nil {
+		return s.GetInstrumentDetails(ctx, existing.ID)
+	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		return nil, err
+	}
+
+	client, ok := s.cryptoDiscoveryClient.(catalogservice.CatalogClient)
+	if !ok || client == nil {
+		return nil, errors.New("trustwallet catalog client is not configured")
+	}
+
+	syncService := catalogservice.NewSyncService(client, s.instrumentRepo, s.mappingRepo, s.catalogSyncRunRepo)
+	result, err := syncService.Sync(ctx, catalogservice.SyncRequest{
+		Mode:       catalogservice.SyncModeSearchImport,
+		ExternalID: normalizedExternalID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if result != nil && result.Imported != nil {
+		return s.GetInstrumentDetails(ctx, result.Imported.ID)
+	}
+
+	if existing, err := s.instrumentRepo.FindByExternalKey(ctx, normalizedSource, normalizedExternalID); err == nil && existing != nil {
+		return s.GetInstrumentDetails(ctx, existing.ID)
+	}
+
+	return nil, fmt.Errorf("instrument import did not return a persisted record for %s", normalizedExternalID)
+}
+
+func (s *instrumentService) ImportInstrumentFromCatalog(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error) {
+	return s.ImportInstrumentFromSource(ctx, source, externalID, forceEnrich, userID)
+}
+
+func (s *instrumentService) GetCatalogSyncStatus(ctx context.Context, source string) (*model.CatalogSyncRun, error) {
+	normalizedSource := strings.ToUpper(strings.TrimSpace(source))
+	if normalizedSource == "" {
+		return nil, errors.New("source is required")
+	}
+	return s.catalogSyncRunRepo.GetLatestBySource(ctx, normalizedSource)
+}
+
+func mustMarshalPlatformsJSON(platforms map[string]string) json.RawMessage {
+	if len(platforms) == 0 {
+		return nil
+	}
+	normalized := make(map[string]string, len(platforms))
+	for chain, address := range platforms {
+		chainName := strings.TrimSpace(strings.ToLower(chain))
+		contract := strings.TrimSpace(address)
+		if chainName == "" || contract == "" {
+			continue
+		}
+		normalized[chainName] = contract
+	}
+	if len(normalized) == 0 {
+		return nil
+	}
+	payload, err := json.Marshal(normalized)
+	if err != nil {
+		return nil
+	}
+	return payload
+}
+
+func derivePrimaryContractAddress(platforms map[string]string) *string {
+	if len(platforms) == 0 {
+		return nil
+	}
+	preferred := []string{"ethereum", "binance-smart-chain", "polygon-pos", "arbitrum-one", "optimistic-ethereum", "solana", "avalanche"}
+	for _, chain := range preferred {
+		if address, ok := platforms[chain]; ok && strings.TrimSpace(address) != "" {
+			return ptrString(address)
+		}
+	}
+	for _, address := range platforms {
+		if strings.TrimSpace(address) != "" {
+			return ptrString(address)
+		}
+	}
+	return nil
+}
+
+func firstNonEmptyPtr(values ...string) *string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			trimmed := strings.TrimSpace(value)
+			return &trimmed
+		}
+	}
+	return nil
+}
+
+func intPtrIfPositive(value int) *int {
+	if value <= 0 {
+		return nil
+	}
+	v := value
+	return &v
+}
+
+func buildTradeableAssetMetadata(existing json.RawMessage, instrument *model.Instrument, assetType model.AssetType) json.RawMessage {
+	metadata := map[string]any{}
+	if len(existing) > 0 {
+		_ = json.Unmarshal(existing, &metadata)
+	}
+	if metadata == nil {
+		metadata = map[string]any{}
+	}
+
+	if instrument == nil {
+		payload, err := json.Marshal(metadata)
+		if err != nil {
+			return existing
+		}
+		return payload
+	}
+
+	if exchange := strings.TrimSpace(instrument.Exchange); exchange != "" {
+		metadata["exchange"] = exchange
+	}
+	if instrument.Sector != nil && strings.TrimSpace(*instrument.Sector) != "" {
+		metadata["sector"] = strings.TrimSpace(*instrument.Sector)
+	}
+	if instrument.Industry != nil && strings.TrimSpace(*instrument.Industry) != "" {
+		metadata["industry"] = strings.TrimSpace(*instrument.Industry)
+	}
+	if currency := firstNonEmptyPtrValue(instrument.QuoteCurrency, instrument.Currency); currency != "" {
+		metadata["currency"] = currency
+	}
+	if assetType == model.AssetTypeFund {
+		if fundType := fundTypeForInstrumentAssetType(instrument.AssetType); fundType != "" {
+			metadata["fund_type"] = fundType
+		}
+	}
+
+	payload, err := json.Marshal(metadata)
+	if err != nil {
+		return existing
+	}
+	return payload
+}
+
+func firstNonEmptyPtrValue(values ...*string) string {
+	for _, value := range values {
+		if value == nil {
+			continue
+		}
+		if trimmed := strings.TrimSpace(*value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
+
+func fundTypeForInstrumentAssetType(assetType model.InstrumentAssetType) string {
+	switch assetType {
+	case model.InstrumentAssetTypeETF:
+		return "etf"
+	case model.InstrumentAssetTypeMoneyMarket:
+		return "money_market"
+	case model.InstrumentAssetTypeIndex:
+		return "index_fund"
+	case model.InstrumentAssetTypeFund:
+		return "fund"
+	default:
+		return ""
+	}
+}
+
 func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repository.IUnitOfWork, instrument *model.Instrument) (*model.Asset, error) {
 	if !isTradeableInstrumentType(instrument.AssetType) {
 		return nil, fmt.Errorf("instrument type %s is not tradeable", instrument.AssetType)
@@ -1308,6 +1642,10 @@ func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repos
 
 	// 1. Check by instrument_id first (exact link)
 	if asset, err := uow.Asset().GetByInstrumentID(ctx, instrument.ID); err == nil {
+		asset.Metadata = buildTradeableAssetMetadata(asset.Metadata, instrument, asset.Type)
+		if updateErr := uow.Asset().Update(ctx, asset); updateErr != nil {
+			return nil, fmt.Errorf("failed to refresh tradeable asset metadata for instrument %s: %w", instrument.ID, updateErr)
+		}
 		return asset, nil
 	} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
@@ -1326,11 +1664,16 @@ func (s *instrumentService) resolveTradeableAsset(ctx context.Context, uow repos
 		Symbol:       &symbol,
 		Name:         instrument.Name,
 		IsTradeable:  true,
+		Metadata:     buildTradeableAssetMetadata(nil, instrument, assetType),
 	}
 
 	upserted, err := uow.Asset().UpsertTradeable(ctx, asset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upsert tradeable asset for instrument %s: %w", instrument.ID, err)
+	}
+	upserted.Metadata = buildTradeableAssetMetadata(upserted.Metadata, instrument, assetType)
+	if updateErr := uow.Asset().Update(ctx, upserted); updateErr != nil {
+		return nil, fmt.Errorf("failed to sync tradeable asset metadata for instrument %s: %w", instrument.ID, updateErr)
 	}
 	return upserted, nil
 }
@@ -1380,6 +1723,70 @@ func (s *instrumentService) upsertAliases(ctx context.Context, instrumentID stri
 		batch = append(batch, alias)
 	}
 	return s.aliasRepo.CreateBatch(ctx, batch)
+}
+
+func (s *instrumentService) upsertDefaultProviderMappings(ctx context.Context, instrument *model.Instrument) error {
+	if s.mappingRepo == nil || instrument == nil {
+		return nil
+	}
+
+	providers := defaultProvidersForInstrumentType(instrument.AssetType)
+	if len(providers) == 0 {
+		providers = []string{strings.ToUpper(strings.TrimSpace(instrument.ProviderSource))}
+	}
+
+	now := time.Now()
+	mappingUpdated := false
+	for _, provider := range providers {
+		normalizedProvider := strings.ToUpper(strings.TrimSpace(provider))
+		if normalizedProvider == "" {
+			continue
+		}
+
+		providerAssetID, providerSymbol, providerMarket, quoteCurrency := deriveProviderIdentity(instrument, normalizedProvider)
+		mapping := &model.InstrumentProviderMapping{
+			InstrumentID:    instrument.ID,
+			Provider:        normalizedProvider,
+			ProviderAssetID: firstNonEmpty(providerAssetID, instrument.ID),
+			ProviderSymbol:  providerSymbol,
+			ProviderMarket:  providerMarket,
+			QuoteCurrency:   quoteCurrency,
+		}
+
+		if strings.TrimSpace(providerAssetID) == "" {
+			mapping.MappingStatus = model.InstrumentProviderMappingStatusUnmapped
+			mapping.LastErrorText = ptrString("deterministic mapping unavailable")
+		} else {
+			mapping.MappingStatus = model.InstrumentProviderMappingStatusVerified
+			mapping.LastVerifiedAt = &now
+		}
+
+		if _, err := s.mappingRepo.Upsert(ctx, mapping); err != nil {
+			return err
+		}
+		mappingUpdated = true
+	}
+
+	if mappingUpdated {
+		if invalidator, ok := s.marketData.(RuntimeMarketDataCacheInvalidator); ok {
+			invalidator.InvalidateRuntimeMarketDataCacheForInstrument(instrument.ID, RuntimeCacheInvalidationReasonMapping)
+		}
+	}
+
+	return nil
+}
+
+func defaultProvidersForInstrumentType(assetType model.InstrumentAssetType) []string {
+	switch assetType {
+	case model.InstrumentAssetTypeCrypto:
+		return []string{"BINANCE", "CRYPTOCOMPARE", "TWELVEDATA"}
+	case model.InstrumentAssetTypeStock, model.InstrumentAssetTypeETF, model.InstrumentAssetTypeFund:
+		return []string{"TIINGO", "ALPHAVANTAGE", "TWELVEDATA", "FINNHUB"}
+	case model.InstrumentAssetTypeCurrency:
+		return []string{"ALPHAVANTAGE", "TWELVEDATA"}
+	default:
+		return nil
+	}
 }
 
 func safeLimit(value int, fallback int) int {
@@ -1484,6 +1891,32 @@ func (s *instrumentService) onlineSearchAssetTypes(assetTypes []model.Instrument
 	return filtered
 }
 
+func (s *instrumentService) onlineSearchAvailableAssetTypes(assetTypes []model.InstrumentAssetType) []model.InstrumentAssetType {
+	available := make([]model.InstrumentAssetType, 0, len(assetTypes))
+	for _, assetType := range assetTypes {
+		client, _ := s.discoveryClientForAssetType(assetType)
+		if client == nil {
+			continue
+		}
+		available = append(available, assetType)
+	}
+	return available
+}
+
+func (s *instrumentService) hasOnlineCapability(assetTypes []model.InstrumentAssetType) bool {
+	searchAssetTypes := s.onlineSearchAssetTypes(assetTypes)
+	if len(searchAssetTypes) == 0 {
+		searchAssetTypes = []model.InstrumentAssetType{
+			model.InstrumentAssetTypeStock,
+			model.InstrumentAssetTypeETF,
+			model.InstrumentAssetTypeFund,
+			model.InstrumentAssetTypeCrypto,
+		}
+	}
+
+	return len(s.onlineSearchAvailableAssetTypes(searchAssetTypes)) > 0
+}
+
 func (s *instrumentService) searchOnlineCandidates(ctx context.Context, query string, assetTypes []model.InstrumentAssetType, limit int) ([]DiscoveryInstrument, string, error) {
 	results := make([]DiscoveryInstrument, 0, limit)
 	providersUsed := make([]string, 0, 2)
@@ -1515,6 +1948,9 @@ func (s *instrumentService) searchOnlineCandidates(ctx context.Context, query st
 
 		for _, row := range rows {
 			key := strings.ToUpper(strings.TrimSpace(row.Symbol)) + "|" + strings.ToUpper(strings.TrimSpace(row.Exchange)) + "|" + string(row.AssetType)
+			if strings.TrimSpace(row.Source) != "" && row.ExternalID != nil && strings.TrimSpace(*row.ExternalID) != "" {
+				key = strings.ToUpper(strings.TrimSpace(row.Source)) + "|" + strings.TrimSpace(*row.ExternalID)
+			}
 			if _, ok := seen[key]; ok {
 				continue
 			}

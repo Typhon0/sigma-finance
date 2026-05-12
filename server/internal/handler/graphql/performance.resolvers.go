@@ -8,294 +8,88 @@ package graphql
 import (
 	"context"
 	"fmt"
-	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
-	"sigma_finance/internal/handler/middleware"
-	"sigma_finance/internal/service"
 	"time"
 )
 
 // CreatePerformanceSnapshot is the resolver for the createPerformanceSnapshot field.
 func (r *mutationResolver) CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error) {
-	// Create snapshot using service
-	snapshot, err := r.PerformanceService.CreatePerformanceSnapshot(ctx, portfolioID, asOfDate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create performance snapshot: %w", err)
-	}
-
-	// Convert to GraphQL model
-	return mapPerformanceSnapshotToGQL(snapshot), nil
+	panic(fmt.Errorf("not implemented: CreatePerformanceSnapshot - createPerformanceSnapshot"))
 }
 
 // UpdatePerformanceSnapshots is the resolver for the updatePerformanceSnapshots field.
 func (r *mutationResolver) UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error) {
-	// Update snapshots using service
-	err := r.PerformanceService.UpdatePerformanceSnapshots(ctx, portfolioIds, asOfDate)
-	if err != nil {
-		return false, fmt.Errorf("failed to update performance snapshots: %w", err)
-	}
-
-	return true, nil
+	panic(fmt.Errorf("not implemented: UpdatePerformanceSnapshots - updatePerformanceSnapshots"))
 }
 
 // PortfolioPerformance is the resolver for the portfolioPerformance field.
 func (r *queryResolver) PortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.PerformanceMetrics, error) {
-	metrics, err := r.PerformanceService.CalculatePortfolioPerformance(ctx, portfolioID, asOfDate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate portfolio performance: %w", err)
-	}
-	return mapPerformanceMetricsToGQL(metrics), nil
+	panic(fmt.Errorf("not implemented: PortfolioPerformance - portfolioPerformance"))
 }
 
 // PortfolioAllocation is the resolver for the portfolioAllocation field.
 func (r *queryResolver) PortfolioAllocation(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.AllocationBreakdown, error) {
-	breakdown, err := r.PerformanceService.CalculateAssetAllocation(ctx, portfolioID, asOfDate)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate asset allocation: %w", err)
-	}
-	return mapAllocationBreakdownToGQL(breakdown), nil
+	panic(fmt.Errorf("not implemented: PortfolioAllocation - portfolioAllocation"))
 }
 
 // PortfolioRiskMetrics is the resolver for the portfolioRiskMetrics field.
 func (r *queryResolver) PortfolioRiskMetrics(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.RiskMetrics, error) {
-	// Import service package to use PerformanceTimeRange type
-	// Note: make sure to add it to imports later if missing. The `goimports` will handle it.
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	metrics, err := r.PerformanceService.CalculateRiskMetrics(ctx, portfolioID, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate risk metrics: %w", err)
-	}
-	return mapServiceRiskMetricsToGQL(metrics), nil
+	panic(fmt.Errorf("not implemented: PortfolioRiskMetrics - portfolioRiskMetrics"))
 }
 
 // PerformanceSnapshots is the resolver for the performanceSnapshots field.
 func (r *queryResolver) PerformanceSnapshots(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceSnapshot, error) {
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	snapshots, err := r.PerformanceService.GetPerformanceSnapshots(ctx, portfolioID, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get performance snapshots: %w", err)
-	}
-
-	result := make([]*gqlModel.PerformanceSnapshot, 0, len(snapshots))
-	for i := range snapshots {
-		result = append(result, mapPerformanceSnapshotToGQL(&snapshots[i]))
-	}
-	return result, nil
+	panic(fmt.Errorf("not implemented: PerformanceSnapshots - performanceSnapshots"))
 }
 
 // LatestPerformanceSnapshot is the resolver for the latestPerformanceSnapshot field.
 func (r *queryResolver) LatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*gqlModel.PerformanceSnapshot, error) {
-	snapshot, err := r.PerformanceService.GetLatestPerformanceSnapshot(ctx, portfolioID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get latest performance snapshot: %w", err)
-	}
-	return mapPerformanceSnapshotToGQL(snapshot), nil
+	panic(fmt.Errorf("not implemented: LatestPerformanceSnapshot - latestPerformanceSnapshot"))
 }
 
 // PortfolioChartData is the resolver for the portfolioChartData field.
 func (r *queryResolver) PortfolioChartData(ctx context.Context, input gqlModel.ChartDataInput) (*gqlModel.TimeSeriesData, error) {
-	// Query performance snapshots to create simplified chart data
-	tr := service.PerformanceTimeRange{Start: input.TimeRange.Start, End: input.TimeRange.End}
-	pid := ""
-	if input.PortfolioID != nil {
-		pid = *input.PortfolioID
-	}
-	snapshots, err := r.PerformanceService.GetPerformanceSnapshots(ctx, pid, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chart data: %w", err)
-	}
-
-	points := make([]*gqlModel.ChartDataPoint, 0, len(snapshots))
-	for _, s := range snapshots {
-		points = append(points, &gqlModel.ChartDataPoint{
-			Timestamp: s.SnapshotDate,
-			Value:     s.TotalValue.ToFloat(),
-		})
-	}
-
-	// Just return points without OHLC for now
-	return &gqlModel.TimeSeriesData{
-		DataPoints: points,
-	}, nil
+	panic(fmt.Errorf("not implemented: PortfolioChartData - portfolioChartData"))
 }
 
 // AssetChartData is the resolver for the assetChartData field.
 func (r *queryResolver) AssetChartData(ctx context.Context, input gqlModel.ChartDataInput) (*gqlModel.TimeSeriesData, error) {
-	if input.AssetID == nil || *input.AssetID == "" {
-		return nil, fmt.Errorf("assetId is required for asset chart data")
-	}
-
-	// Get authenticated user ID from context for API key lookup
-	var userID string
-	if user, ok := ctx.Value(middleware.UserKey).(*middleware.AuthenticatedUser); ok && user != nil {
-		userID = user.ID
-	}
-
-	// Get asset to find symbol and type
-	asset, err := r.AssetService.GetAsset(ctx, *input.AssetID)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get asset: %w", err)
-	}
-
-	if asset.Symbol == nil || *asset.Symbol == "" {
-		return nil, fmt.Errorf("asset has no symbol for price lookup")
-	}
-
-	// Determine time range
-	var from, to time.Time
-	var limit int = 365
-
-	if input.TimeRange != nil {
-		from = input.TimeRange.Start
-		to = input.TimeRange.End
-	} else {
-		to = time.Now()
-		from = to.AddDate(-1, 0, 0) // Default to 1 year
-	}
-
-	// Get candles from MarketDataService (fetches from Tiingo, cached)
-	candles, err := r.MarketDataService.GetCandles(ctx, userID, *asset.Symbol, string(asset.Type), model.Interval1d, from, to, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get price data: %w", err)
-	}
-
-	// Map to chart data points
-	points := make([]*gqlModel.ChartDataPoint, 0, len(candles))
-	for _, c := range candles {
-		points = append(points, &gqlModel.ChartDataPoint{
-			Timestamp: c.Timestamp,
-			Value:     c.Close.ToFloat(),
-		})
-	}
-
-	return &gqlModel.TimeSeriesData{
-		AssetID:     input.AssetID,
-		DataPoints:  points,
-		Aggregation: input.Aggregation,
-		TimeRange: &gqlModel.TimeRange{
-			Start: from,
-			End:   to,
-		},
-	}, nil
+	panic(fmt.Errorf("not implemented: AssetChartData - assetChartData"))
 }
 
 // AllocationChartData is the resolver for the allocationChartData field.
 func (r *queryResolver) AllocationChartData(ctx context.Context, portfolioID string, timeRange *gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.ChartDataPoint, error) {
-	if portfolioID == "" {
-		return nil, fmt.Errorf("portfolioID is required")
-	}
-	if timeRange == nil {
-		return nil, fmt.Errorf("timeRange is required")
-	}
-
-	tr := service.PerformanceTimeRange{
-		Start: timeRange.Start,
-		End:   timeRange.End,
-	}
-
-	snapshots, err := r.PerformanceService.GetPerformanceSnapshots(ctx, portfolioID, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get performance snapshots: %w", err)
-	}
-
-	points := make([]*gqlModel.ChartDataPoint, 0, len(snapshots))
-	for _, s := range snapshots {
-		points = append(points, &gqlModel.ChartDataPoint{
-			Timestamp: s.SnapshotDate,
-			Value:     s.TotalValue.ToFloat(),
-		})
-	}
-
-	return points, nil
+	panic(fmt.Errorf("not implemented: AllocationChartData - allocationChartData"))
 }
 
 // ComparePortfolios is the resolver for the comparePortfolios field.
 func (r *queryResolver) ComparePortfolios(ctx context.Context, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceMetrics, error) {
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	comparisons, err := r.PerformanceService.ComparePortfolioPerformance(ctx, portfolioIds, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to compare portfolios: %w", err)
-	}
-
-	result := make([]*gqlModel.PerformanceMetrics, 0, len(comparisons))
-	for _, metrics := range comparisons {
-		result = append(result, mapPerformanceMetricsToGQL(metrics))
-	}
-	return result, nil
+	panic(fmt.Errorf("not implemented: ComparePortfolios - comparePortfolios"))
 }
 
 // BenchmarkComparison is the resolver for the benchmarkComparison field.
 func (r *queryResolver) BenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.BenchmarkComparison, error) {
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	comparison, err := r.PerformanceService.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate benchmark comparison: %w", err)
-	}
-	return mapBenchmarkComparisonToGQL(comparison), nil
+	panic(fmt.Errorf("not implemented: BenchmarkComparison - benchmarkComparison"))
 }
 
 // TopPerformingAssets is the resolver for the topPerformingAssets field.
 func (r *queryResolver) TopPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
-	l := 5
-	if limit != nil {
-		l = int(*limit)
-	}
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	positions, err := r.PerformanceService.GetTopPerformingAssets(ctx, portfolioID, l, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get top performing assets: %w", err)
-	}
-
-	result := make([]*gqlModel.PositionPerformance, 0, len(positions))
-	for i := range positions {
-		result = append(result, mapPositionPerformanceResultToGQL(&positions[i]))
-	}
-	return result, nil
+	panic(fmt.Errorf("not implemented: TopPerformingAssets - topPerformingAssets"))
 }
 
 // WorstPerformingAssets is the resolver for the worstPerformingAssets field.
 func (r *queryResolver) WorstPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
-	l := 5
-	if limit != nil {
-		l = int(*limit)
-	}
-	tr := service.PerformanceTimeRange{Start: timeRange.Start, End: timeRange.End}
-	positions, err := r.PerformanceService.GetWorstPerformingAssets(ctx, portfolioID, l, tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get worst performing assets: %w", err)
-	}
-
-	result := make([]*gqlModel.PositionPerformance, 0, len(positions))
-	for i := range positions {
-		result = append(result, mapPositionPerformanceResultToGQL(&positions[i]))
-	}
-	return result, nil
+	panic(fmt.Errorf("not implemented: WorstPerformingAssets - worstPerformingAssets"))
 }
 
 // GeneratePerformanceReport is the resolver for the generatePerformanceReport field.
 func (r *queryResolver) GeneratePerformanceReport(ctx context.Context, input gqlModel.GenerateReportInput) (*gqlModel.PerformanceReport, error) {
-	tr := service.PerformanceTimeRange{Start: input.TimeRange.Start, End: input.TimeRange.End}
-	report, err := r.PerformanceService.GeneratePerformanceReport(ctx, input.PortfolioID, service.ReportType(input.ReportType), tr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to generate performance report: %w", err)
-	}
-	return mapPerformanceReportToGQL(report), nil
+	panic(fmt.Errorf("not implemented: GeneratePerformanceReport - generatePerformanceReport"))
 }
 
 // ExportPortfolioData is the resolver for the exportPortfolioData field.
 func (r *queryResolver) ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error) {
-	// For now, return a placeholder implementation
-	// In a real implementation, this would generate the export data
-	// and potentially store it in a file system or cloud storage
-
-	return &gqlModel.ExportData{
-		PortfolioID: input.PortfolioID,
-		Format:      input.Format,
-		Data:        "placeholder export data",
-		DownloadURL: "https://example.com/exports/portfolio-" + input.PortfolioID + ".csv",
-		GeneratedAt: time.Now(),
-		ExpiresAt:   time.Now().Add(24 * time.Hour),
-	}, nil
+	panic(fmt.Errorf("not implemented: ExportPortfolioData - exportPortfolioData"))
 }
 
 // PortfolioPerformanceUpdates is the resolver for the portfolioPerformanceUpdates field.

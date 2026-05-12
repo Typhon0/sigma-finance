@@ -47,6 +47,7 @@ export interface DashboardState {
 	// Performance optimization fields
 	lastUpdate: number;
 	transitionInProgress: boolean;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	preloadedData: Map<string, any>;
 	stateHistory: DashboardState[];
 	maxHistorySize: number;
@@ -59,6 +60,7 @@ export type DashboardAction =
 	| { type: "BACK_TO_PORTFOLIO"; payload: Portfolio }
 	| { type: "START_TRANSITION" }
 	| { type: "END_TRANSITION" }
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	| { type: "PRELOAD_DATA"; payload: { key: string; data: any } }
 	| { type: "CLEAR_PRELOADED_DATA" }
 	| { type: "UPDATE_PORTFOLIO"; payload: Portfolio }
@@ -257,6 +259,7 @@ export function useOptimizedDashboardState() {
 	// Debounced data preloading
 	const debouncedPreloadData = useMemo(
 		() =>
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			debounce((key: string, data: any) => {
 				throttledDispatch({ type: "PRELOAD_DATA", payload: { key, data } });
 			}, 100),
@@ -319,6 +322,7 @@ export function useOptimizedDashboardState() {
 				throttledDispatch({ type: "UPDATE_ASSET", payload: asset });
 			},
 
+			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 			preloadData: (key: string, data: any) => {
 				debouncedPreloadData(key, data);
 			},
@@ -358,6 +362,7 @@ export function useOptimizedDashboardState() {
 							state.selectedAsset,
 							state.selectedPortfolio,
 							actions.backToOverview,
+							// biome-ignore lint/style/noNonNullAssertion: unavoidable
 							() => actions.backToPortfolio(state.selectedPortfolio!),
 						)
 					: createOverviewBreadcrumb();

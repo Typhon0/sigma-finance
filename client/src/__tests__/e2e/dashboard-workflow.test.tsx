@@ -9,6 +9,7 @@ import DashboardHomePage from "@/pages/dashboard-home";
 
 // Mock external dependencies
 vi.mock("echarts-for-react", () => ({
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	default: function MockReactECharts({ style }: { style: any }) {
 		return <div data-testid="mock-chart" style={style} />;
 	},
@@ -384,6 +385,7 @@ describe("Dashboard Workflow E2E Tests", () => {
 
 			// Click on asset from top performing assets section
 			const topPerformingSection = screen.getByText("Top Performing Assets").closest("div");
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			const appleAsset = within(topPerformingSection!).getByText("Apple Inc.");
 			fireEvent.click(appleAsset);
 
@@ -722,12 +724,15 @@ describe("Dashboard Workflow E2E Tests", () => {
 			// Simulate swipe gesture to go back
 			const portfolioDetail = screen.getByText("High-growth technology stocks").closest("div");
 
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			fireEvent.touchStart(portfolioDetail!, {
 				touches: [{ clientX: 0, clientY: 0 }],
 			});
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			fireEvent.touchMove(portfolioDetail!, {
 				touches: [{ clientX: 100, clientY: 0 }],
 			});
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			fireEvent.touchEnd(portfolioDetail!);
 
 			// Verify swipe back navigation (if implemented)

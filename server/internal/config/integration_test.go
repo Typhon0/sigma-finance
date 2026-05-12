@@ -14,7 +14,7 @@ func TestConfigurationIntegration(t *testing.T) {
 	envVars := []string{
 		"JWT_SECRET", "BCRYPT_COST", "PASSWORD_MIN_LENGTH",
 		"ACCOUNT_LOCKOUT_THRESHOLD", "EMAIL_VERIFICATION_EXPIRY",
-		"PASSWORD_RESET_EXPIRY", "APP_ENV",
+		"PASSWORD_RESET_EXPIRY", "APP_ENV", "ENCRYPTION_KEY",
 	}
 
 	for _, env := range envVars {
@@ -38,6 +38,7 @@ func TestConfigurationIntegration(t *testing.T) {
 		os.Setenv("APP_ENV", "production")
 		os.Setenv("JWT_SECRET", "production-secret-key-that-is-secure-and-long-enough-32chars")
 		os.Setenv("BCRYPT_COST", "14") // Higher cost for production
+		os.Setenv("ENCRYPTION_KEY", "production-market-data-encryption-key-32-chars-min")
 
 		config := LoadConfig()
 

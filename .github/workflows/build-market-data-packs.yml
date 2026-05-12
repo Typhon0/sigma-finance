@@ -1,0 +1,190 @@
+name: Build Market Data Packs
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Build mode
+        required: false
+        default: fixture
+        type: choice
+        options:
+          - fixture
+          - full
+      publish:
+        description: Publish assets to GitHub Release
+        required: false
+        default: false
+        type: boolean
+      ref_name:
+        description: Release tag override (publish mode)
+        required: false
+        type: string
+  schedule:
+    - cron: "15 3 * * 1"
+
+permissions:
+  contents: write
+
+jobs:
+  build-packs:
+    runs-on: ubuntu-latest
+    env:
+      PACK_SIGNING_KEY: ${{ secrets.PACK_SIGNING_KEY }}
+      MARKET_DATA_PACK_BASE_URL: ${{ vars.MARKET_DATA_PACK_BASE_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+          cache: true
+          cache-dependency-path: server/go.sum
+
+      - name: Resolve Workflow Mode
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            echo "MODE=full" >> "$GITHUB_ENV"
+            echo "PUBLISH=false" >> "$GITHUB_ENV"
+          else
+            echo "MODE=${{ inputs.mode }}" >> "$GITHUB_ENV"
+            echo "PUBLISH=${{ inputs.publish }}" >> "$GITHUB_ENV"
+          fi
+          if [[ -n "${{ inputs.ref_name }}" ]]; then
+            echo "REF_NAME=${{ inputs.ref_name }}" >> "$GITHUB_ENV"
+          else
+            echo "REF_NAME=${GITHUB_REF_NAME}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Validate Required Secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${PACK_SIGNING_KEY:-}" ]]; then
+            echo "PACK_SIGNING_KEY secret is required for public pack signing"
+            exit 1
+          fi
+          if [[ "${PUBLISH}" == "true" && -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
+            echo "MARKET_DATA_PACK_BASE_URL is required when publish=true"
+            exit 1
+          fi
+          if [[ -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
+            echo "MARKET_DATA_PACK_BASE_URL=https://example.invalid/sigma-finance/packs" >> "$GITHUB_ENV"
+          fi
+
+      - name: Focused Pack Tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd server
+          GOCACHE=/tmp/go-build-cache go test ./internal/marketdata/packs/... ./internal/service/marketdata/packs ./internal/service/marketdata/store
+          GOCACHE=/tmp/go-build-cache go build ./cmd/bun
+          GOCACHE=/tmp/go-build-cache go build ./cmd/market-data-pack-ci
+
+      - name: Prepare Dist Directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf dist
+          mkdir -p dist
+
+      - name: Start Fixture Source Server
+        if: env.MODE == 'fixture'
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd server
+          GOCACHE=/tmp/go-build-cache go run ./cmd/market-data-pack-ci serve-fixtures --addr 127.0.0.1:18080 > ../dist/fixture-server.log 2>&1 &
+          echo $! > ../dist/fixture-server.pid
+          sleep 2
+          curl --fail --silent --show-error http://127.0.0.1:18080/healthz >/dev/null
+
+      - name: Build, Validate, and Generate Registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd server
+
+          if [[ "${MODE}" == "fixture" ]]; then
+            CRYPTO_SPEC="../packs/specs/ci/crypto-binance-core-daily-usdt.yaml"
+            FX_SPEC="../packs/specs/ci/fx-ecb-core-daily.yaml"
+            SOURCE_ARGS=(--source-base-url "http://127.0.0.1:18080")
+          else
+            CRYPTO_SPEC="../packs/specs/crypto-binance-core-daily-usdt.yaml"
+            FX_SPEC="../packs/specs/fx-ecb-core-daily.yaml"
+            SOURCE_ARGS=()
+          fi
+
+          GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
+            --spec "${CRYPTO_SPEC}" \
+            --out ../dist \
+            --all \
+            --archive \
+            --sign \
+            "${SOURCE_ARGS[@]}"
+
+          GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
+            --spec "${FX_SPEC}" \
+            --out ../dist \
+            --all \
+            --archive \
+            --sign \
+            "${SOURCE_ARGS[@]}"
+
+          for pack_dir in ../dist/packs/*; do
+            GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs validate --path "$pack_dir"
+          done
+
+          for pack_file in ../dist/*.sfpack; do
+            GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs validate --path "$pack_file"
+            base_name="$(basename "$pack_file")"
+            GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs registry-entry \
+              --pack "$pack_file" \
+              --download-url "${MARKET_DATA_PACK_BASE_URL}/${base_name}" \
+              --signature-url "${MARKET_DATA_PACK_BASE_URL}/${base_name}.sig" \
+              --out "${pack_file%.sfpack}.registry.json"
+          done
+
+          GOCACHE=/tmp/go-build-cache go run ./cmd/market-data-pack-ci aggregate-registry \
+            --input ../dist \
+            --out ../dist/registry.json \
+            --latest-version "${REF_NAME}"
+
+          GOCACHE=/tmp/go-build-cache go run ./cmd/market-data-pack-ci validate-registry \
+            --registry ../dist/registry.json \
+            --dist-dir ../dist
+
+      - name: Stop Fixture Source Server
+        if: always() && env.MODE == 'fixture'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f dist/fixture-server.pid ]]; then
+            kill "$(cat dist/fixture-server.pid)" || true
+          fi
+
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-data-packs
+          path: |
+            dist/*.sfpack
+            dist/*.sfpack.sig
+            dist/registry.json
+            dist/fixture-server.log
+          if-no-files-found: error
+
+      - name: Publish GitHub Release Assets
+        if: env.PUBLISH == 'true' && github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.REF_NAME }}
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.sfpack
+            dist/*.sfpack.sig
+            dist/registry.json

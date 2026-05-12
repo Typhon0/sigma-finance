@@ -59,6 +59,7 @@ export function useRetryMechanism(options: RetryOptions = {}) {
 							retryCount: attempt - 1,
 						}));
 
+						// biome-ignore lint/style/noNonNullAssertion: unavoidable
 						onRetryAttempt?.(attempt - 1, lastError!);
 
 						const delay = calculateDelay(attempt - 1);
@@ -104,6 +105,7 @@ export function useRetryMechanism(options: RetryOptions = {}) {
 				}
 			}
 
+			// biome-ignore lint/style/noNonNullAssertion: unavoidable
 			throw lastError!;
 		},
 		[maxRetries, retryCondition, onRetryAttempt, onMaxRetriesReached, calculateDelay],

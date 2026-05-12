@@ -13,6 +13,7 @@ type IMarketDataCredentialRepository interface {
 	Update(ctx context.Context, cred *model.MarketDataCredential) error
 	GetByUserAndProvider(ctx context.Context, userID string, provider string) (*model.MarketDataCredential, error)
 	ListByUser(ctx context.Context, userID string) ([]model.MarketDataCredential, error)
+	ListEnabledByUser(ctx context.Context, userID string) ([]model.MarketDataCredential, error)
 	ListSystemWide(ctx context.Context) ([]model.MarketDataCredential, error)
 	ListAll(ctx context.Context) ([]model.MarketDataCredential, error)
 	Delete(ctx context.Context, id string) error
@@ -45,7 +46,18 @@ func (r *marketDataCredentialRepository) GetByUserAndProvider(ctx context.Contex
 
 func (r *marketDataCredentialRepository) ListByUser(ctx context.Context, userID string) ([]model.MarketDataCredential, error) {
 	var creds []model.MarketDataCredential
-	err := r.db.NewSelect().Model(&creds).Where("user_id = ?", userID).Scan(ctx)
+	err := r.db.NewSelect().Model(&creds).Where("user_id = ?", userID).Order("priority ASC", "provider ASC").Scan(ctx)
+	return creds, err
+}
+
+func (r *marketDataCredentialRepository) ListEnabledByUser(ctx context.Context, userID string) ([]model.MarketDataCredential, error) {
+	var creds []model.MarketDataCredential
+	err := r.db.NewSelect().
+		Model(&creds).
+		Where("user_id = ?", userID).
+		Where("is_enabled = ?", true).
+		Order("priority ASC", "provider ASC").
+		Scan(ctx)
 	return creds, err
 }
 

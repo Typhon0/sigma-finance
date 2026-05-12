@@ -72,6 +72,7 @@ const DEFAULT_CONFIG: Required<RealTimeConfig> = {
  */
 export interface WSMessage {
 	type: "subscribe" | "unsubscribe" | "price_update" | "candlestick_update" | "heartbeat" | "error";
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	payload?: any;
 }
 
@@ -559,6 +560,7 @@ export function createMockRealTimeData(assetIds: string[]): () => void {
 
 				// Simulate WebSocket message
 				const manager = getRealTimeManager();
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				(manager as any).handlePriceUpdate(mockUpdate);
 			},
 			1000 + Math.random() * 2000,

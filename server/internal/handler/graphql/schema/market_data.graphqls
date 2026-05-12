@@ -3,10 +3,13 @@
 extend type Query {
   # Market Data
   candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]! @auth
+  candlesByInstrument(instrumentId: ID!, interval: String!, from: Time!, to: Time!, limit: Int = 500, preferredProvider: String): MarketDataCandlesPayload! @auth
   marketDataCredentials: [MarketDataCredential!]! @auth
   supportedProviders(assetType: String): [ProviderInfo!]! @auth
+  availableProviders(instrumentId: ID!, dataType: String!): [AvailableProvider!]! @auth
   providerHealth: [ProviderHealth!]! @auth
   realTimePrice(symbol: String!, assetType: String!): Candle @auth
+  realTimePriceByInstrument(instrumentId: ID!, preferredProvider: String): MarketDataCandlePayload @auth
 
   # Asset Price History (from database - for tracked assets)
   assetPriceHistory(assetId: ID!, from: Time!, to: Time!, limit: Int): [AssetPricePoint!]! @auth
@@ -30,7 +33,7 @@ extend type Query {
 
 extend type Mutation {
     # Market Data
-    upsertMarketDataCredential(provider: String!, apiKey: String!): MarketDataCredential! @auth
+    upsertMarketDataCredential(provider: String!, apiKey: String!, isEnabled: Boolean, priority: Int): MarketDataCredential! @auth
     deleteMarketDataCredential(provider: String!): ID! @auth
     validateProviderCredentials(provider: String!, apiKey: String!): ValidationResult! @auth
 
@@ -59,8 +62,42 @@ type Candle {
 type MarketDataCredential {
     id: ID!
     provider: String!
+    isEnabled: Boolean!
+    priority: Int!
+    lastValidatedAt: Time
     createdAt: Time!
     updatedAt: Time!
+}
+
+type ProviderFailure {
+    provider: String!
+    reason: String!
+}
+
+type MarketDataCandlesPayload {
+    candles: [Candle!]!
+    sourceProvider: String!
+    fallbackUsed: Boolean!
+    failures: [ProviderFailure!]!
+}
+
+type MarketDataCandlePayload {
+    candle: Candle
+    sourceProvider: String!
+    fallbackUsed: Boolean!
+    failures: [ProviderFailure!]!
+}
+
+type AvailableProvider {
+    provider: String!
+    capability: Boolean!
+    requiresApiKey: Boolean!
+    hasCredential: Boolean!
+    credentialValid: Boolean!
+    credentialEnabled: Boolean!
+    priority: Int!
+    mappingStatus: String!
+    effectiveEnabled: Boolean!
 }
 
 type ProviderInfo {

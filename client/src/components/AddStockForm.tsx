@@ -132,7 +132,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 		exchange: selection.exchange,
 		currency: selection.currency ?? null,
 		source: selection.source as "local" | "online" | "manual" | undefined,
-		sector: "Other",
+		sector: selection.sector?.trim() || "Other",
 		price: 0,
 	});
 
@@ -281,6 +281,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 			<div className="flex-1 overflow-y-auto p-6">
 				<div className="grid gap-4">
 					{/* Broker Sync */}
+					{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 					<div
 						role="button"
 						tabIndex={0}
@@ -323,6 +324,7 @@ export function AddStockForm({ open, onClose, onSubmit }: AddStockFormProps) {
 					</div>
 
 					{/* Manual Entry */}
+					{/* biome-ignore lint/a11y/useSemanticElements: unavoidable */}
 					<div
 						role="button"
 						tabIndex={0}

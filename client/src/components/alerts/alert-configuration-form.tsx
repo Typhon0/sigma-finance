@@ -107,6 +107,7 @@ export function AlertConfigurationForm({
 		setValue,
 		formState: { errors, isSubmitting },
 	} = useForm<AlertFormData>({
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		resolver: zodResolver(alertFormSchema) as any,
 		defaultValues: {
 			alertType: initialData?.alertType || "PRICE",
@@ -223,6 +224,7 @@ export function AlertConfigurationForm({
 						<Select
 							value={watchedAlertType}
 							onValueChange={(value) => {
+								// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 								setValue("alertType", value as any);
 								setSelectedAlertType(value);
 							}}
@@ -267,6 +269,7 @@ export function AlertConfigurationForm({
 						<Select
 							value={watch("conditionType")}
 							onValueChange={(value) => {
+								// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 								setValue("conditionType", value as any);
 								setSelectedConditionType(value);
 							}}

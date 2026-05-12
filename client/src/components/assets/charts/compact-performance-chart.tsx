@@ -78,6 +78,7 @@ export function CompactPerformanceChart({
 			],
 			tooltip: {
 				trigger: "axis",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 				formatter: (params: any) => {
 					const point = params[0];
 					return `

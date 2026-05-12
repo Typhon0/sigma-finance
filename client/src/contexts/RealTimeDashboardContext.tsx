@@ -268,6 +268,7 @@ export function RealTimeDashboardProvider({
 			wsAcknowledgeAlert(alertId);
 		},
 
+		// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 		addOptimisticUpdate: (key: string, data: any) => {
 			dispatch({ type: "ADD_OPTIMISTIC_UPDATE", payload: { key, data } });
 		},

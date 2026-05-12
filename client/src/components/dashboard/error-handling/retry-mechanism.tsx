@@ -53,6 +53,7 @@ export function useRetryMechanism(retryFn: () => Promise<void>, config: Partial<
 
 			return Math.floor(delay);
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[fullConfig],
 	);
 
@@ -138,6 +139,7 @@ export function useRetryMechanism(retryFn: () => Promise<void>, config: Partial<
 				}
 			}
 		},
+		// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 		[retryState, fullConfig, retryFn, calculateDelay, startCountdown],
 	);
 

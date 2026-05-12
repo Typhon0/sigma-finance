@@ -125,3 +125,115 @@ export const GET_MARKET_DATA_SETTINGS = gql`
     }
   }
 `;
+
+export const GET_MARKET_DATA_PACKS_CENTER = gql`
+  query GetMarketDataPacksCenter($instrumentId: ID!) {
+    availableMarketDataPacks {
+      packId
+      version
+      name
+      description
+      sizeBytes
+      compressedSizeBytes
+      assetsCount
+      rowsCount
+      interval
+      assetTypes
+      quoteCurrencies
+      downloadUrl
+      checksum
+      signatureUrl
+      createdAt
+      recommended
+    }
+    installedMarketDataPacks {
+      id
+      version
+      name
+      description
+      formatVersion
+      status
+      parentPackId
+      packPriority
+      filePath
+      checksum
+      signatureVerified
+      assetsCount
+      rowsCount
+      installedAt
+      updatedAt
+      createdAt
+    }
+    marketDataCoverage(instrumentId: $instrumentId) {
+      packId
+      instrumentId
+      symbol
+      assetType
+      interval
+      quoteCurrency
+      firstDate
+      lastDate
+      rowCount
+      filePaths
+    }
+  }
+`;
+
+export const GET_MARKET_DATA_PACK_JOB = gql`
+  query GetMarketDataPackJob($id: ID!) {
+    marketDataPackJob(id: $id) {
+      id
+      packId
+      jobType
+      status
+      progressPercent
+      downloadedBytes
+      totalBytes
+      importedRows
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const GET_PACK_BUILD_JOB = gql`
+  query GetPackBuildJob($id: ID!) {
+    packBuildJob(id: $id) {
+      id
+      packId
+      sourceProvider
+      status
+      progressPercent
+      currentSymbol
+      totalSymbols
+      completedSymbols
+      failedSymbols
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;
+
+export const GET_PACK_BUILD_JOBS = gql`
+  query GetPackBuildJobs($limit: Int) {
+    packBuildJobs(limit: $limit) {
+      id
+      packId
+      sourceProvider
+      status
+      progressPercent
+      currentSymbol
+      totalSymbols
+      completedSymbols
+      failedSymbols
+      errorMessage
+      createdAt
+      startedAt
+      finishedAt
+    }
+  }
+`;

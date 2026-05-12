@@ -186,11 +186,33 @@ type ComplexityRoot struct {
 	}
 
 	AuthUser struct {
-		DisplayCurrency func(childComplexity int) int
-		Email           func(childComplexity int) int
-		EmailVerified   func(childComplexity int) int
-		ID              func(childComplexity int) int
-		Name            func(childComplexity int) int
+		DisplayCurrency     func(childComplexity int) int
+		Email               func(childComplexity int) int
+		EmailVerified       func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Name                func(childComplexity int) int
+		ThemeAccentColor    func(childComplexity int) int
+		ThemeBaseColor      func(childComplexity int) int
+		ThemeFontPreference func(childComplexity int) int
+		ThemeHeadingFont    func(childComplexity int) int
+		ThemeMenuAccent     func(childComplexity int) int
+		ThemeMenuColor      func(childComplexity int) int
+		ThemePreference     func(childComplexity int) int
+		ThemeRadius         func(childComplexity int) int
+		ThemeRtl            func(childComplexity int) int
+		ThemeStyle          func(childComplexity int) int
+	}
+
+	AvailableProvider struct {
+		Capability        func(childComplexity int) int
+		CredentialEnabled func(childComplexity int) int
+		CredentialValid   func(childComplexity int) int
+		EffectiveEnabled  func(childComplexity int) int
+		HasCredential     func(childComplexity int) int
+		MappingStatus     func(childComplexity int) int
+		Priority          func(childComplexity int) int
+		Provider          func(childComplexity int) int
+		RequiresAPIKey    func(childComplexity int) int
 	}
 
 	BankAccount struct {
@@ -267,6 +289,18 @@ type ComplexityRoot struct {
 		Symbol    func(childComplexity int) int
 		Timestamp func(childComplexity int) int
 		Volume    func(childComplexity int) int
+	}
+
+	CatalogSyncRun struct {
+		Cursor     func(childComplexity int) int
+		ErrorText  func(childComplexity int) int
+		FinishedAt func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Mode       func(childComplexity int) int
+		Source     func(childComplexity int) int
+		StartedAt  func(childComplexity int) int
+		StatsJSON  func(childComplexity int) int
+		Status     func(childComplexity int) int
 	}
 
 	ChartDataPoint struct {
@@ -407,45 +441,58 @@ type ComplexityRoot struct {
 		Success       func(childComplexity int) int
 	}
 
+	ImportInstrumentFromSourcePayload struct {
+		Instrument func(childComplexity int) int
+		Message    func(childComplexity int) int
+		Success    func(childComplexity int) int
+	}
+
 	Instrument struct {
-		Aliases            func(childComplexity int) int
-		AssetType          func(childComplexity int) int
-		BaseCurrency       func(childComplexity int) int
-		Category           func(childComplexity int) int
-		CategoryGroup      func(childComplexity int) int
-		City               func(childComplexity int) int
-		Country            func(childComplexity int) int
-		CreatedAt          func(childComplexity int) int
-		Currency           func(childComplexity int) int
-		Cusip              func(childComplexity int) int
-		Exchange           func(childComplexity int) int
-		ExchangeCode       func(childComplexity int) int
-		Family             func(childComplexity int) int
-		Figi               func(childComplexity int) int
-		FirstSeenAt        func(childComplexity int) int
-		ID                 func(childComplexity int) int
-		Industry           func(childComplexity int) int
-		IndustryGroup      func(childComplexity int) int
-		Isin               func(childComplexity int) int
-		LastUsedAt         func(childComplexity int) int
-		LastVerifiedAt     func(childComplexity int) int
-		MarketCap          func(childComplexity int) int
-		Name               func(childComplexity int) int
-		NormalizedName     func(childComplexity int) int
-		NormalizedSymbol   func(childComplexity int) int
-		ProviderExternalID func(childComplexity int) int
-		ProviderSource     func(childComplexity int) int
-		QuoteCurrency      func(childComplexity int) int
-		Sector             func(childComplexity int) int
-		State              func(childComplexity int) int
-		Status             func(childComplexity int) int
-		Summary            func(childComplexity int) int
-		Symbol             func(childComplexity int) int
-		SyncState          func(childComplexity int) int
-		UnderlyingSymbol   func(childComplexity int) int
-		UpdatedAt          func(childComplexity int) int
-		Website            func(childComplexity int) int
-		Zipcode            func(childComplexity int) int
+		Aliases                func(childComplexity int) int
+		AssetType              func(childComplexity int) int
+		BaseCurrency           func(childComplexity int) int
+		Category               func(childComplexity int) int
+		CategoryGroup          func(childComplexity int) int
+		City                   func(childComplexity int) int
+		Country                func(childComplexity int) int
+		CreatedAt              func(childComplexity int) int
+		Currency               func(childComplexity int) int
+		Cusip                  func(childComplexity int) int
+		Exchange               func(childComplexity int) int
+		ExchangeCode           func(childComplexity int) int
+		ExternalID             func(childComplexity int) int
+		ExternalSource         func(childComplexity int) int
+		Family                 func(childComplexity int) int
+		Figi                   func(childComplexity int) int
+		FirstSeenAt            func(childComplexity int) int
+		ID                     func(childComplexity int) int
+		ImageURL               func(childComplexity int) int
+		Industry               func(childComplexity int) int
+		IndustryGroup          func(childComplexity int) int
+		InstrumentStatus       func(childComplexity int) int
+		Isin                   func(childComplexity int) int
+		LastUsedAt             func(childComplexity int) int
+		LastVerifiedAt         func(childComplexity int) int
+		MarketCap              func(childComplexity int) int
+		MetadataUpdatedAt      func(childComplexity int) int
+		Name                   func(childComplexity int) int
+		NormalizedName         func(childComplexity int) int
+		NormalizedSymbol       func(childComplexity int) int
+		Platforms              func(childComplexity int) int
+		PrimaryContractAddress func(childComplexity int) int
+		ProviderExternalID     func(childComplexity int) int
+		ProviderSource         func(childComplexity int) int
+		QuoteCurrency          func(childComplexity int) int
+		Sector                 func(childComplexity int) int
+		State                  func(childComplexity int) int
+		Status                 func(childComplexity int) int
+		Summary                func(childComplexity int) int
+		Symbol                 func(childComplexity int) int
+		SyncState              func(childComplexity int) int
+		UnderlyingSymbol       func(childComplexity int) int
+		UpdatedAt              func(childComplexity int) int
+		Website                func(childComplexity int) int
+		Zipcode                func(childComplexity int) int
 	}
 
 	InstrumentAlias struct {
@@ -570,11 +617,110 @@ type ComplexityRoot struct {
 		Offset  func(childComplexity int) int
 	}
 
+	MarketDataCandlePayload struct {
+		Candle         func(childComplexity int) int
+		Failures       func(childComplexity int) int
+		FallbackUsed   func(childComplexity int) int
+		SourceProvider func(childComplexity int) int
+	}
+
+	MarketDataCandlesPayload struct {
+		Candles        func(childComplexity int) int
+		Failures       func(childComplexity int) int
+		FallbackUsed   func(childComplexity int) int
+		SourceProvider func(childComplexity int) int
+	}
+
 	MarketDataCredential struct {
-		CreatedAt func(childComplexity int) int
-		ID        func(childComplexity int) int
-		Provider  func(childComplexity int) int
-		UpdatedAt func(childComplexity int) int
+		CreatedAt       func(childComplexity int) int
+		ID              func(childComplexity int) int
+		IsEnabled       func(childComplexity int) int
+		LastValidatedAt func(childComplexity int) int
+		Priority        func(childComplexity int) int
+		Provider        func(childComplexity int) int
+		UpdatedAt       func(childComplexity int) int
+	}
+
+	MarketDataPack struct {
+		AssetsCount       func(childComplexity int) int
+		Checksum          func(childComplexity int) int
+		CreatedAt         func(childComplexity int) int
+		Description       func(childComplexity int) int
+		FilePath          func(childComplexity int) int
+		FormatVersion     func(childComplexity int) int
+		ID                func(childComplexity int) int
+		InstalledAt       func(childComplexity int) int
+		Name              func(childComplexity int) int
+		PackPriority      func(childComplexity int) int
+		ParentPackID      func(childComplexity int) int
+		RowsCount         func(childComplexity int) int
+		SignatureVerified func(childComplexity int) int
+		Status            func(childComplexity int) int
+		UpdatedAt         func(childComplexity int) int
+		Version           func(childComplexity int) int
+	}
+
+	MarketDataPackBuildJob struct {
+		CompletedSymbols func(childComplexity int) int
+		CreatedAt        func(childComplexity int) int
+		CurrentSymbol    func(childComplexity int) int
+		ErrorMessage     func(childComplexity int) int
+		FailedSymbols    func(childComplexity int) int
+		FinishedAt       func(childComplexity int) int
+		ID               func(childComplexity int) int
+		PackID           func(childComplexity int) int
+		ProgressPercent  func(childComplexity int) int
+		SourceProvider   func(childComplexity int) int
+		StartedAt        func(childComplexity int) int
+		Status           func(childComplexity int) int
+		TotalSymbols     func(childComplexity int) int
+	}
+
+	MarketDataPackCoverage struct {
+		AssetType     func(childComplexity int) int
+		FilePaths     func(childComplexity int) int
+		FirstDate     func(childComplexity int) int
+		InstrumentID  func(childComplexity int) int
+		Interval      func(childComplexity int) int
+		LastDate      func(childComplexity int) int
+		PackID        func(childComplexity int) int
+		QuoteCurrency func(childComplexity int) int
+		RowCount      func(childComplexity int) int
+		Symbol        func(childComplexity int) int
+	}
+
+	MarketDataPackJob struct {
+		CreatedAt       func(childComplexity int) int
+		DownloadedBytes func(childComplexity int) int
+		ErrorMessage    func(childComplexity int) int
+		FinishedAt      func(childComplexity int) int
+		ID              func(childComplexity int) int
+		ImportedRows    func(childComplexity int) int
+		JobType         func(childComplexity int) int
+		PackID          func(childComplexity int) int
+		ProgressPercent func(childComplexity int) int
+		StartedAt       func(childComplexity int) int
+		Status          func(childComplexity int) int
+		TotalBytes      func(childComplexity int) int
+	}
+
+	MarketDataPackRegistryEntry struct {
+		AssetTypes          func(childComplexity int) int
+		AssetsCount         func(childComplexity int) int
+		Checksum            func(childComplexity int) int
+		CompressedSizeBytes func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		Description         func(childComplexity int) int
+		DownloadURL         func(childComplexity int) int
+		Interval            func(childComplexity int) int
+		Name                func(childComplexity int) int
+		PackID              func(childComplexity int) int
+		QuoteCurrencies     func(childComplexity int) int
+		Recommended         func(childComplexity int) int
+		RowsCount           func(childComplexity int) int
+		SignatureURL        func(childComplexity int) int
+		SizeBytes           func(childComplexity int) int
+		Version             func(childComplexity int) int
 	}
 
 	MethodParameter struct {
@@ -610,6 +756,8 @@ type ComplexityRoot struct {
 		AddAssetToWatchlist              func(childComplexity int, watchlistID string, assetID string) int
 		AddInstrumentToPortfolio         func(childComplexity int, input gqlModel.AddInstrumentHoldingInput) int
 		ArchiveManualInstrument          func(childComplexity int, id string) int
+		CancelMarketDataPackJob          func(childComplexity int, jobID string) int
+		CancelPackBuildJob               func(childComplexity int, id string) int
 		ConfirmPasswordReset             func(childComplexity int, input gqlModel.PasswordResetConfirmInput) int
 		CreateAlert                      func(childComplexity int, input gqlModel.CreateAlertInput) int
 		CreateAlertRule                  func(childComplexity int, input gqlModel.AlertRuleInput) int
@@ -635,6 +783,9 @@ type ComplexityRoot struct {
 		DuplicatePortfolio               func(childComplexity int, input gqlModel.DuplicatePortfolioInput) int
 		ExportPortfolio                  func(childComplexity int, input gqlModel.ExportPortfolioInput) int
 		ImportFinanceDatabaseAssets      func(childComplexity int, assetType gqlModel.AssetSyncType, symbols []string) int
+		ImportInstrumentFromCatalog      func(childComplexity int, source gqlModel.CatalogSource, externalID string, forceEnrich *bool) int
+		ImportInstrumentFromSource       func(childComplexity int, input gqlModel.ImportInstrumentFromSourceInput) int
+		InstallMarketDataPack            func(childComplexity int, packID string) int
 		Login                            func(childComplexity int, input gqlModel.LoginInput) int
 		Logout                           func(childComplexity int, input gqlModel.LogoutInput) int
 		PersistDiscoveredInstrument      func(childComplexity int, input gqlModel.PersistDiscoveredInstrumentInput) int
@@ -645,10 +796,13 @@ type ComplexityRoot struct {
 		Register                         func(childComplexity int, input gqlModel.RegisterInput) int
 		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string) int
 		RemoveAssetFromWatchlist         func(childComplexity int, watchlistID string, assetID string) int
+		RemoveMarketDataPack             func(childComplexity int, packID string) int
 		ReorderPortfolios                func(childComplexity int, input gqlModel.ReorderPortfoliosInput) int
+		RepairMarketDataPack             func(childComplexity int, packID string) int
 		ResendVerification               func(childComplexity int, input gqlModel.ResendVerificationInput) int
 		ResetPassword                    func(childComplexity int, input gqlModel.PasswordResetInput) int
 		RestoreManualInstrument          func(childComplexity int, id string) int
+		StartLocalPackBuild              func(childComplexity int, input gqlModel.StartLocalPackBuildInput) int
 		TagAsset                         func(childComplexity int, assetID string, tagID string) int
 		TagPortfolio                     func(childComplexity int, portfolioID string, tagID string) int
 		TriggerFinanceDatabaseSync       func(childComplexity int, assetType gqlModel.AssetSyncType) int
@@ -659,12 +813,15 @@ type ComplexityRoot struct {
 		UpdateAssetInPortfolio           func(childComplexity int, input gqlModel.PortfolioAssetInput) int
 		UpdateFinanceDatabaseSyncEnabled func(childComplexity int, assetType gqlModel.AssetSyncType, enabled bool) int
 		UpdateManualInstrument           func(childComplexity int, id string, input gqlModel.UpdateManualInstrumentInput) int
+		UpdateMarketDataPack             func(childComplexity int, packID string) int
 		UpdatePerformanceSnapshots       func(childComplexity int, portfolioIds []string, asOfDate time.Time) int
 		UpdatePortfolio                  func(childComplexity int, id string, input gqlModel.UpdatePortfolioInput) int
 		UpdateProviderRoutingPreferences func(childComplexity int, input gqlModel.ProviderRoutingPreferencesInput) int
+		UpdateTransaction                func(childComplexity int, id string, input gqlModel.UpdateTransactionInput) int
 		UpdateUser                       func(childComplexity int, id string, input gqlModel.UpdateUserInput) int
 		UpdateUserDisplayCurrency        func(childComplexity int, input gqlModel.UpdateUserDisplayCurrencyInput) int
-		UpsertMarketDataCredential       func(childComplexity int, provider string, apiKey string) int
+		UpdateUserThemePreferences       func(childComplexity int, input gqlModel.UpdateUserThemePreferencesInput) int
+		UpsertMarketDataCredential       func(childComplexity int, provider string, apiKey string, isEnabled *bool, priority *int32) int
 		ValidateProviderCredentials      func(childComplexity int, provider string, apiKey string) int
 		VerifyEmail                      func(childComplexity int, input gqlModel.EmailVerificationInput) int
 	}
@@ -683,18 +840,25 @@ type ComplexityRoot struct {
 		Cusip              func(childComplexity int) int
 		Exchange           func(childComplexity int) int
 		ExchangeCode       func(childComplexity int) int
+		ExternalID         func(childComplexity int) int
 		Figi               func(childComplexity int) int
+		ImageURL           func(childComplexity int) int
 		Isin               func(childComplexity int) int
+		MarketCapRank      func(childComplexity int) int
 		Name               func(childComplexity int) int
+		Platforms          func(childComplexity int) int
 		ProviderExternalID func(childComplexity int) int
 		ProviderSource     func(childComplexity int) int
+		Source             func(childComplexity int) int
 		Symbol             func(childComplexity int) int
 	}
 
 	OnlineInstrumentSearchPayload struct {
-		OnlineResults func(childComplexity int) int
-		ProviderUsed  func(childComplexity int) int
-		QueryMetadata func(childComplexity int) int
+		CoverageStatus func(childComplexity int) int
+		ErrorMessage   func(childComplexity int) int
+		OnlineResults  func(childComplexity int) int
+		ProviderUsed   func(childComplexity int) int
+		QueryMetadata  func(childComplexity int) int
 	}
 
 	Ownership struct {
@@ -756,6 +920,11 @@ type ComplexityRoot struct {
 		TotalCostBasis     func(childComplexity int) int
 		TotalValue         func(childComplexity int) int
 		UnrealizedGainLoss func(childComplexity int) int
+	}
+
+	PlatformAddress struct {
+		Address  func(childComplexity int) int
+		Platform func(childComplexity int) int
 	}
 
 	Portfolio struct {
@@ -843,6 +1012,11 @@ type ComplexityRoot struct {
 		QuoteCurrency   func(childComplexity int) int
 	}
 
+	ProviderFailure struct {
+		Provider func(childComplexity int) int
+		Reason   func(childComplexity int) int
+	}
+
 	ProviderHealth struct {
 		APIKeyValid func(childComplexity int) int
 		AssetType   func(childComplexity int) int
@@ -889,8 +1063,12 @@ type ComplexityRoot struct {
 		AssetPriceStatistics       func(childComplexity int, assetID string) int
 		AssetTypes                 func(childComplexity int) int
 		Assets                     func(childComplexity int, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) int
+		AvailableMarketDataPacks   func(childComplexity int) int
+		AvailableProviders         func(childComplexity int, instrumentID string, dataType string) int
 		BenchmarkComparison        func(childComplexity int, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		Candles                    func(childComplexity int, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) int
+		CandlesByInstrument        func(childComplexity int, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) int
+		CatalogSyncStatus          func(childComplexity int, source gqlModel.CatalogSource) int
 		ComparePortfolios          func(childComplexity int, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		ExportPortfolioData        func(childComplexity int, input gqlModel.ExportDataInput) int
 		FinanceDatabasePreview     func(childComplexity int, assetType gqlModel.AssetSyncType, search *string, limit *int32) int
@@ -898,13 +1076,18 @@ type ComplexityRoot struct {
 		FinanceDatabaseSyncStatus  func(childComplexity int) int
 		GeneratePerformanceReport  func(childComplexity int, input gqlModel.GenerateReportInput) int
 		GetPortfoliosWithAnalytics func(childComplexity int, userID string) int
+		InstalledMarketDataPacks   func(childComplexity int) int
 		Instrument                 func(childComplexity int, id string) int
 		LatestPerformanceSnapshot  func(childComplexity int, portfolioID string) int
 		ManualInstruments          func(childComplexity int, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) int
+		MarketDataCoverage         func(childComplexity int, instrumentID string) int
 		MarketDataCredentials      func(childComplexity int) int
+		MarketDataPackJob          func(childComplexity int, id string) int
 		Me                         func(childComplexity int) int
 		Metric                     func(childComplexity int, name string) int
 		Metrics                    func(childComplexity int) int
+		PackBuildJob               func(childComplexity int, id string) int
+		PackBuildJobs              func(childComplexity int, limit *int32) int
 		PerformanceMetrics         func(childComplexity int, timeRange *string) int
 		PerformanceSnapshots       func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		Portfolio                  func(childComplexity int, id string) int
@@ -916,6 +1099,7 @@ type ComplexityRoot struct {
 		ProviderHealth             func(childComplexity int) int
 		ProviderRoutingPreferences func(childComplexity int) int
 		RealTimePrice              func(childComplexity int, symbol string, assetType string) int
+		RealTimePriceByInstrument  func(childComplexity int, instrumentID string, preferredProvider *string) int
 		SearchInstruments          func(childComplexity int, input gqlModel.InstrumentSearchInput) int
 		SearchInstrumentsOnline    func(childComplexity int, input gqlModel.InstrumentSearchInput) int
 		SupportedProviders         func(childComplexity int, assetType *string) int
@@ -1088,14 +1272,24 @@ type ComplexityRoot struct {
 	}
 
 	User struct {
-		CreatedAt       func(childComplexity int) int
-		DisplayCurrency func(childComplexity int) int
-		Email           func(childComplexity int) int
-		ID              func(childComplexity int) int
-		Portfolios      func(childComplexity int) int
-		UpdatedAt       func(childComplexity int) int
-		Username        func(childComplexity int) int
-		Watchlists      func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		DisplayCurrency     func(childComplexity int) int
+		Email               func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Portfolios          func(childComplexity int) int
+		ThemeAccentColor    func(childComplexity int) int
+		ThemeBaseColor      func(childComplexity int) int
+		ThemeFontPreference func(childComplexity int) int
+		ThemeHeadingFont    func(childComplexity int) int
+		ThemeMenuAccent     func(childComplexity int) int
+		ThemeMenuColor      func(childComplexity int) int
+		ThemePreference     func(childComplexity int) int
+		ThemeRadius         func(childComplexity int) int
+		ThemeRtl            func(childComplexity int) int
+		ThemeStyle          func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+		Username            func(childComplexity int) int
+		Watchlists          func(childComplexity int) int
 	}
 
 	UserEngagementMetrics struct {
@@ -1153,6 +1347,7 @@ type MutationResolver interface {
 	CreateUser(ctx context.Context, input gqlModel.CreateUserInput) (*gqlModel.User, error)
 	UpdateUser(ctx context.Context, id string, input gqlModel.UpdateUserInput) (*gqlModel.User, error)
 	UpdateUserDisplayCurrency(ctx context.Context, input gqlModel.UpdateUserDisplayCurrencyInput) (*gqlModel.User, error)
+	UpdateUserThemePreferences(ctx context.Context, input gqlModel.UpdateUserThemePreferencesInput) (*gqlModel.User, error)
 	DeleteUser(ctx context.Context, id string) (string, error)
 	CreatePortfolio(ctx context.Context, input gqlModel.CreatePortfolioInput) (*gqlModel.Portfolio, error)
 	UpdatePortfolio(ctx context.Context, id string, input gqlModel.UpdatePortfolioInput) (*gqlModel.Portfolio, error)
@@ -1192,6 +1387,8 @@ type MutationResolver interface {
 	VerifyEmail(ctx context.Context, input gqlModel.EmailVerificationInput) (*gqlModel.EmailVerificationResponse, error)
 	ResendVerification(ctx context.Context, input gqlModel.ResendVerificationInput) (*gqlModel.EmailVerificationResponse, error)
 	RefreshToken(ctx context.Context, input gqlModel.RefreshTokenInput) (*gqlModel.AuthResponse, error)
+	ImportInstrumentFromCatalog(ctx context.Context, source gqlModel.CatalogSource, externalID string, forceEnrich *bool) (*gqlModel.ImportInstrumentFromSourcePayload, error)
+	ImportInstrumentFromSource(ctx context.Context, input gqlModel.ImportInstrumentFromSourceInput) (*gqlModel.ImportInstrumentFromSourcePayload, error)
 	TriggerFinanceDatabaseSync(ctx context.Context, assetType gqlModel.AssetSyncType) (*gqlModel.TriggerFinanceDatabaseSyncPayload, error)
 	UpdateFinanceDatabaseSyncEnabled(ctx context.Context, assetType gqlModel.AssetSyncType, enabled bool) (*gqlModel.FinanceDatabaseSyncItem, error)
 	ImportFinanceDatabaseAssets(ctx context.Context, assetType gqlModel.AssetSyncType, symbols []string) (*gqlModel.ImportFinanceDatabaseAssetsPayload, error)
@@ -1200,18 +1397,26 @@ type MutationResolver interface {
 	UpdateManualInstrument(ctx context.Context, id string, input gqlModel.UpdateManualInstrumentInput) (*gqlModel.Instrument, error)
 	ArchiveManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error)
 	RestoreManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error)
-	UpsertMarketDataCredential(ctx context.Context, provider string, apiKey string) (*gqlModel.MarketDataCredential, error)
+	UpsertMarketDataCredential(ctx context.Context, provider string, apiKey string, isEnabled *bool, priority *int32) (*gqlModel.MarketDataCredential, error)
 	DeleteMarketDataCredential(ctx context.Context, provider string) (string, error)
 	ValidateProviderCredentials(ctx context.Context, provider string, apiKey string) (*gqlModel.ValidationResult, error)
 	RefreshAssetPrices(ctx context.Context, assetID *string) (*gqlModel.RefreshAssetPricesResult, error)
 	RefreshSingleAssetPrice(ctx context.Context, assetID string) (*gqlModel.AssetPricePoint, error)
 	UpdateProviderRoutingPreferences(ctx context.Context, input gqlModel.ProviderRoutingPreferencesInput) (*gqlModel.ProviderRoutingPreferences, error)
+	InstallMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error)
+	UpdateMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error)
+	RemoveMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error)
+	RepairMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error)
+	CancelMarketDataPackJob(ctx context.Context, jobID string) (*gqlModel.MarketDataPackJob, error)
+	StartLocalPackBuild(ctx context.Context, input gqlModel.StartLocalPackBuildInput) (*gqlModel.MarketDataPackBuildJob, error)
+	CancelPackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error)
 	RecordDashboardEvent(ctx context.Context, input gqlModel.DashboardEventInput) (bool, error)
 	CreateAlertRule(ctx context.Context, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error)
 	UpdateAlertRule(ctx context.Context, id string, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error)
 	DeleteAlertRule(ctx context.Context, id string) (bool, error)
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error)
+	UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error)
 }
 type QueryResolver interface {
 	User(ctx context.Context, id string) (*gqlModel.User, error)
@@ -1232,6 +1437,7 @@ type QueryResolver interface {
 	Alert(ctx context.Context, id string) (*gqlModel.Alert, error)
 	AlertHistory(ctx context.Context, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.AlertTriggerEvent, error)
 	Me(ctx context.Context) (*gqlModel.AuthUser, error)
+	CatalogSyncStatus(ctx context.Context, source gqlModel.CatalogSource) (*gqlModel.CatalogSyncRun, error)
 	FinanceDatabaseSyncStatus(ctx context.Context) (*gqlModel.FinanceDatabaseSyncStatusPayload, error)
 	FinanceDatabaseSyncHistory(ctx context.Context, limit *int32) ([]*gqlModel.FinanceDatabaseSyncHistoryEntry, error)
 	FinanceDatabasePreview(ctx context.Context, assetType gqlModel.AssetSyncType, search *string, limit *int32) ([]*gqlModel.FinanceDatabasePreviewItem, error)
@@ -1240,14 +1446,23 @@ type QueryResolver interface {
 	SearchInstrumentsOnline(ctx context.Context, input gqlModel.InstrumentSearchInput) (*gqlModel.OnlineInstrumentSearchPayload, error)
 	ManualInstruments(ctx context.Context, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) (*gqlModel.ManualInstrumentPayload, error)
 	Candles(ctx context.Context, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) ([]*gqlModel.Candle, error)
+	CandlesByInstrument(ctx context.Context, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) (*gqlModel.MarketDataCandlesPayload, error)
 	MarketDataCredentials(ctx context.Context) ([]*gqlModel.MarketDataCredential, error)
 	SupportedProviders(ctx context.Context, assetType *string) ([]*gqlModel.ProviderInfo, error)
+	AvailableProviders(ctx context.Context, instrumentID string, dataType string) ([]*gqlModel.AvailableProvider, error)
 	ProviderHealth(ctx context.Context) ([]*gqlModel.ProviderHealth, error)
 	RealTimePrice(ctx context.Context, symbol string, assetType string) (*gqlModel.Candle, error)
+	RealTimePriceByInstrument(ctx context.Context, instrumentID string, preferredProvider *string) (*gqlModel.MarketDataCandlePayload, error)
 	AssetPriceHistory(ctx context.Context, assetID string, from time.Time, to time.Time, limit *int32) ([]*gqlModel.AssetPricePoint, error)
 	AssetPriceStatistics(ctx context.Context, assetID string) (*gqlModel.AssetPriceStatistics, error)
 	TechnicalIndicator(ctx context.Context, symbol string, assetType string, indicator string, interval string, timePeriod int32, seriesType string, from *time.Time, to *time.Time) (*gqlModel.TechnicalIndicatorResponse, error)
 	ProviderRoutingPreferences(ctx context.Context) (*gqlModel.ProviderRoutingPreferences, error)
+	AvailableMarketDataPacks(ctx context.Context) ([]*gqlModel.MarketDataPackRegistryEntry, error)
+	InstalledMarketDataPacks(ctx context.Context) ([]*gqlModel.MarketDataPack, error)
+	MarketDataPackJob(ctx context.Context, id string) (*gqlModel.MarketDataPackJob, error)
+	MarketDataCoverage(ctx context.Context, instrumentID string) ([]*gqlModel.MarketDataPackCoverage, error)
+	PackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error)
+	PackBuildJobs(ctx context.Context, limit *int32) ([]*gqlModel.MarketDataPackBuildJob, error)
 	SystemHealth(ctx context.Context) (*gqlModel.SystemHealth, error)
 	PerformanceMetrics(ctx context.Context, timeRange *string) (*gqlModel.DashboardPerformanceMetrics, error)
 	UserEngagementMetrics(ctx context.Context, timeRange *string) (*gqlModel.UserEngagementMetrics, error)
@@ -1920,6 +2135,121 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuthUser.Name(childComplexity), true
+	case "AuthUser.themeAccentColor":
+		if e.ComplexityRoot.AuthUser.ThemeAccentColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeAccentColor(childComplexity), true
+	case "AuthUser.themeBaseColor":
+		if e.ComplexityRoot.AuthUser.ThemeBaseColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeBaseColor(childComplexity), true
+	case "AuthUser.themeFontPreference":
+		if e.ComplexityRoot.AuthUser.ThemeFontPreference == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeFontPreference(childComplexity), true
+	case "AuthUser.themeHeadingFont":
+		if e.ComplexityRoot.AuthUser.ThemeHeadingFont == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeHeadingFont(childComplexity), true
+	case "AuthUser.themeMenuAccent":
+		if e.ComplexityRoot.AuthUser.ThemeMenuAccent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeMenuAccent(childComplexity), true
+	case "AuthUser.themeMenuColor":
+		if e.ComplexityRoot.AuthUser.ThemeMenuColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeMenuColor(childComplexity), true
+	case "AuthUser.themePreference":
+		if e.ComplexityRoot.AuthUser.ThemePreference == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemePreference(childComplexity), true
+	case "AuthUser.themeRadius":
+		if e.ComplexityRoot.AuthUser.ThemeRadius == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeRadius(childComplexity), true
+	case "AuthUser.themeRTL":
+		if e.ComplexityRoot.AuthUser.ThemeRtl == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeRtl(childComplexity), true
+	case "AuthUser.themeStyle":
+		if e.ComplexityRoot.AuthUser.ThemeStyle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.ThemeStyle(childComplexity), true
+
+	case "AvailableProvider.capability":
+		if e.ComplexityRoot.AvailableProvider.Capability == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.Capability(childComplexity), true
+	case "AvailableProvider.credentialEnabled":
+		if e.ComplexityRoot.AvailableProvider.CredentialEnabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.CredentialEnabled(childComplexity), true
+	case "AvailableProvider.credentialValid":
+		if e.ComplexityRoot.AvailableProvider.CredentialValid == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.CredentialValid(childComplexity), true
+	case "AvailableProvider.effectiveEnabled":
+		if e.ComplexityRoot.AvailableProvider.EffectiveEnabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.EffectiveEnabled(childComplexity), true
+	case "AvailableProvider.hasCredential":
+		if e.ComplexityRoot.AvailableProvider.HasCredential == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.HasCredential(childComplexity), true
+	case "AvailableProvider.mappingStatus":
+		if e.ComplexityRoot.AvailableProvider.MappingStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.MappingStatus(childComplexity), true
+	case "AvailableProvider.priority":
+		if e.ComplexityRoot.AvailableProvider.Priority == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.Priority(childComplexity), true
+	case "AvailableProvider.provider":
+		if e.ComplexityRoot.AvailableProvider.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.Provider(childComplexity), true
+	case "AvailableProvider.requiresApiKey":
+		if e.ComplexityRoot.AvailableProvider.RequiresAPIKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AvailableProvider.RequiresAPIKey(childComplexity), true
 
 	case "BankAccount.accountNumber":
 		if e.ComplexityRoot.BankAccount.AccountNumber == nil {
@@ -2257,6 +2587,61 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Candle.Volume(childComplexity), true
+
+	case "CatalogSyncRun.cursor":
+		if e.ComplexityRoot.CatalogSyncRun.Cursor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.Cursor(childComplexity), true
+	case "CatalogSyncRun.errorText":
+		if e.ComplexityRoot.CatalogSyncRun.ErrorText == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.ErrorText(childComplexity), true
+	case "CatalogSyncRun.finishedAt":
+		if e.ComplexityRoot.CatalogSyncRun.FinishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.FinishedAt(childComplexity), true
+	case "CatalogSyncRun.id":
+		if e.ComplexityRoot.CatalogSyncRun.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.ID(childComplexity), true
+	case "CatalogSyncRun.mode":
+		if e.ComplexityRoot.CatalogSyncRun.Mode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.Mode(childComplexity), true
+	case "CatalogSyncRun.source":
+		if e.ComplexityRoot.CatalogSyncRun.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.Source(childComplexity), true
+	case "CatalogSyncRun.startedAt":
+		if e.ComplexityRoot.CatalogSyncRun.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.StartedAt(childComplexity), true
+	case "CatalogSyncRun.statsJson":
+		if e.ComplexityRoot.CatalogSyncRun.StatsJSON == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.StatsJSON(childComplexity), true
+	case "CatalogSyncRun.status":
+		if e.ComplexityRoot.CatalogSyncRun.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CatalogSyncRun.Status(childComplexity), true
 
 	case "ChartDataPoint.metadata":
 		if e.ComplexityRoot.ChartDataPoint.Metadata == nil {
@@ -2814,6 +3199,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ImportFinanceDatabaseAssetsPayload.Success(childComplexity), true
 
+	case "ImportInstrumentFromSourcePayload.instrument":
+		if e.ComplexityRoot.ImportInstrumentFromSourcePayload.Instrument == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportInstrumentFromSourcePayload.Instrument(childComplexity), true
+	case "ImportInstrumentFromSourcePayload.message":
+		if e.ComplexityRoot.ImportInstrumentFromSourcePayload.Message == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportInstrumentFromSourcePayload.Message(childComplexity), true
+	case "ImportInstrumentFromSourcePayload.success":
+		if e.ComplexityRoot.ImportInstrumentFromSourcePayload.Success == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ImportInstrumentFromSourcePayload.Success(childComplexity), true
+
 	case "Instrument.aliases":
 		if e.ComplexityRoot.Instrument.Aliases == nil {
 			break
@@ -2886,6 +3290,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Instrument.ExchangeCode(childComplexity), true
+	case "Instrument.externalId":
+		if e.ComplexityRoot.Instrument.ExternalID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.ExternalID(childComplexity), true
+	case "Instrument.externalSource":
+		if e.ComplexityRoot.Instrument.ExternalSource == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.ExternalSource(childComplexity), true
 	case "Instrument.family":
 		if e.ComplexityRoot.Instrument.Family == nil {
 			break
@@ -2910,6 +3326,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Instrument.ID(childComplexity), true
+	case "Instrument.imageUrl":
+		if e.ComplexityRoot.Instrument.ImageURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.ImageURL(childComplexity), true
 	case "Instrument.industry":
 		if e.ComplexityRoot.Instrument.Industry == nil {
 			break
@@ -2922,6 +3344,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Instrument.IndustryGroup(childComplexity), true
+	case "Instrument.instrumentStatus":
+		if e.ComplexityRoot.Instrument.InstrumentStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.InstrumentStatus(childComplexity), true
 	case "Instrument.isin":
 		if e.ComplexityRoot.Instrument.Isin == nil {
 			break
@@ -2946,6 +3374,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Instrument.MarketCap(childComplexity), true
+	case "Instrument.metadataUpdatedAt":
+		if e.ComplexityRoot.Instrument.MetadataUpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.MetadataUpdatedAt(childComplexity), true
 	case "Instrument.name":
 		if e.ComplexityRoot.Instrument.Name == nil {
 			break
@@ -2964,6 +3398,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Instrument.NormalizedSymbol(childComplexity), true
+	case "Instrument.platforms":
+		if e.ComplexityRoot.Instrument.Platforms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.Platforms(childComplexity), true
+	case "Instrument.primaryContractAddress":
+		if e.ComplexityRoot.Instrument.PrimaryContractAddress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Instrument.PrimaryContractAddress(childComplexity), true
 	case "Instrument.providerExternalId":
 		if e.ComplexityRoot.Instrument.ProviderExternalID == nil {
 			break
@@ -3605,6 +4051,56 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ManualInstrumentPayload.Offset(childComplexity), true
 
+	case "MarketDataCandlePayload.candle":
+		if e.ComplexityRoot.MarketDataCandlePayload.Candle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlePayload.Candle(childComplexity), true
+	case "MarketDataCandlePayload.failures":
+		if e.ComplexityRoot.MarketDataCandlePayload.Failures == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlePayload.Failures(childComplexity), true
+	case "MarketDataCandlePayload.fallbackUsed":
+		if e.ComplexityRoot.MarketDataCandlePayload.FallbackUsed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlePayload.FallbackUsed(childComplexity), true
+	case "MarketDataCandlePayload.sourceProvider":
+		if e.ComplexityRoot.MarketDataCandlePayload.SourceProvider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlePayload.SourceProvider(childComplexity), true
+
+	case "MarketDataCandlesPayload.candles":
+		if e.ComplexityRoot.MarketDataCandlesPayload.Candles == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlesPayload.Candles(childComplexity), true
+	case "MarketDataCandlesPayload.failures":
+		if e.ComplexityRoot.MarketDataCandlesPayload.Failures == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlesPayload.Failures(childComplexity), true
+	case "MarketDataCandlesPayload.fallbackUsed":
+		if e.ComplexityRoot.MarketDataCandlesPayload.FallbackUsed == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlesPayload.FallbackUsed(childComplexity), true
+	case "MarketDataCandlesPayload.sourceProvider":
+		if e.ComplexityRoot.MarketDataCandlesPayload.SourceProvider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCandlesPayload.SourceProvider(childComplexity), true
+
 	case "MarketDataCredential.createdAt":
 		if e.ComplexityRoot.MarketDataCredential.CreatedAt == nil {
 			break
@@ -3617,6 +4113,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataCredential.ID(childComplexity), true
+	case "MarketDataCredential.isEnabled":
+		if e.ComplexityRoot.MarketDataCredential.IsEnabled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCredential.IsEnabled(childComplexity), true
+	case "MarketDataCredential.lastValidatedAt":
+		if e.ComplexityRoot.MarketDataCredential.LastValidatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCredential.LastValidatedAt(childComplexity), true
+	case "MarketDataCredential.priority":
+		if e.ComplexityRoot.MarketDataCredential.Priority == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCredential.Priority(childComplexity), true
 	case "MarketDataCredential.provider":
 		if e.ComplexityRoot.MarketDataCredential.Provider == nil {
 			break
@@ -3629,6 +4143,413 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataCredential.UpdatedAt(childComplexity), true
+
+	case "MarketDataPack.assetsCount":
+		if e.ComplexityRoot.MarketDataPack.AssetsCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.AssetsCount(childComplexity), true
+	case "MarketDataPack.checksum":
+		if e.ComplexityRoot.MarketDataPack.Checksum == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.Checksum(childComplexity), true
+	case "MarketDataPack.createdAt":
+		if e.ComplexityRoot.MarketDataPack.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.CreatedAt(childComplexity), true
+	case "MarketDataPack.description":
+		if e.ComplexityRoot.MarketDataPack.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.Description(childComplexity), true
+	case "MarketDataPack.filePath":
+		if e.ComplexityRoot.MarketDataPack.FilePath == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.FilePath(childComplexity), true
+	case "MarketDataPack.formatVersion":
+		if e.ComplexityRoot.MarketDataPack.FormatVersion == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.FormatVersion(childComplexity), true
+	case "MarketDataPack.id":
+		if e.ComplexityRoot.MarketDataPack.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.ID(childComplexity), true
+	case "MarketDataPack.installedAt":
+		if e.ComplexityRoot.MarketDataPack.InstalledAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.InstalledAt(childComplexity), true
+	case "MarketDataPack.name":
+		if e.ComplexityRoot.MarketDataPack.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.Name(childComplexity), true
+	case "MarketDataPack.packPriority":
+		if e.ComplexityRoot.MarketDataPack.PackPriority == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.PackPriority(childComplexity), true
+	case "MarketDataPack.parentPackId":
+		if e.ComplexityRoot.MarketDataPack.ParentPackID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.ParentPackID(childComplexity), true
+	case "MarketDataPack.rowsCount":
+		if e.ComplexityRoot.MarketDataPack.RowsCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.RowsCount(childComplexity), true
+	case "MarketDataPack.signatureVerified":
+		if e.ComplexityRoot.MarketDataPack.SignatureVerified == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.SignatureVerified(childComplexity), true
+	case "MarketDataPack.status":
+		if e.ComplexityRoot.MarketDataPack.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.Status(childComplexity), true
+	case "MarketDataPack.updatedAt":
+		if e.ComplexityRoot.MarketDataPack.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.UpdatedAt(childComplexity), true
+	case "MarketDataPack.version":
+		if e.ComplexityRoot.MarketDataPack.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPack.Version(childComplexity), true
+
+	case "MarketDataPackBuildJob.completedSymbols":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CompletedSymbols == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CompletedSymbols(childComplexity), true
+	case "MarketDataPackBuildJob.createdAt":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CreatedAt(childComplexity), true
+	case "MarketDataPackBuildJob.currentSymbol":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CurrentSymbol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CurrentSymbol(childComplexity), true
+	case "MarketDataPackBuildJob.errorMessage":
+		if e.ComplexityRoot.MarketDataPackBuildJob.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.ErrorMessage(childComplexity), true
+	case "MarketDataPackBuildJob.failedSymbols":
+		if e.ComplexityRoot.MarketDataPackBuildJob.FailedSymbols == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.FailedSymbols(childComplexity), true
+	case "MarketDataPackBuildJob.finishedAt":
+		if e.ComplexityRoot.MarketDataPackBuildJob.FinishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.FinishedAt(childComplexity), true
+	case "MarketDataPackBuildJob.id":
+		if e.ComplexityRoot.MarketDataPackBuildJob.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.ID(childComplexity), true
+	case "MarketDataPackBuildJob.packId":
+		if e.ComplexityRoot.MarketDataPackBuildJob.PackID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.PackID(childComplexity), true
+	case "MarketDataPackBuildJob.progressPercent":
+		if e.ComplexityRoot.MarketDataPackBuildJob.ProgressPercent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.ProgressPercent(childComplexity), true
+	case "MarketDataPackBuildJob.sourceProvider":
+		if e.ComplexityRoot.MarketDataPackBuildJob.SourceProvider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.SourceProvider(childComplexity), true
+	case "MarketDataPackBuildJob.startedAt":
+		if e.ComplexityRoot.MarketDataPackBuildJob.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.StartedAt(childComplexity), true
+	case "MarketDataPackBuildJob.status":
+		if e.ComplexityRoot.MarketDataPackBuildJob.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.Status(childComplexity), true
+	case "MarketDataPackBuildJob.totalSymbols":
+		if e.ComplexityRoot.MarketDataPackBuildJob.TotalSymbols == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.TotalSymbols(childComplexity), true
+
+	case "MarketDataPackCoverage.assetType":
+		if e.ComplexityRoot.MarketDataPackCoverage.AssetType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.AssetType(childComplexity), true
+	case "MarketDataPackCoverage.filePaths":
+		if e.ComplexityRoot.MarketDataPackCoverage.FilePaths == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.FilePaths(childComplexity), true
+	case "MarketDataPackCoverage.firstDate":
+		if e.ComplexityRoot.MarketDataPackCoverage.FirstDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.FirstDate(childComplexity), true
+	case "MarketDataPackCoverage.instrumentId":
+		if e.ComplexityRoot.MarketDataPackCoverage.InstrumentID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.InstrumentID(childComplexity), true
+	case "MarketDataPackCoverage.interval":
+		if e.ComplexityRoot.MarketDataPackCoverage.Interval == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.Interval(childComplexity), true
+	case "MarketDataPackCoverage.lastDate":
+		if e.ComplexityRoot.MarketDataPackCoverage.LastDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.LastDate(childComplexity), true
+	case "MarketDataPackCoverage.packId":
+		if e.ComplexityRoot.MarketDataPackCoverage.PackID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.PackID(childComplexity), true
+	case "MarketDataPackCoverage.quoteCurrency":
+		if e.ComplexityRoot.MarketDataPackCoverage.QuoteCurrency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.QuoteCurrency(childComplexity), true
+	case "MarketDataPackCoverage.rowCount":
+		if e.ComplexityRoot.MarketDataPackCoverage.RowCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.RowCount(childComplexity), true
+	case "MarketDataPackCoverage.symbol":
+		if e.ComplexityRoot.MarketDataPackCoverage.Symbol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackCoverage.Symbol(childComplexity), true
+
+	case "MarketDataPackJob.createdAt":
+		if e.ComplexityRoot.MarketDataPackJob.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.CreatedAt(childComplexity), true
+	case "MarketDataPackJob.downloadedBytes":
+		if e.ComplexityRoot.MarketDataPackJob.DownloadedBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.DownloadedBytes(childComplexity), true
+	case "MarketDataPackJob.errorMessage":
+		if e.ComplexityRoot.MarketDataPackJob.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.ErrorMessage(childComplexity), true
+	case "MarketDataPackJob.finishedAt":
+		if e.ComplexityRoot.MarketDataPackJob.FinishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.FinishedAt(childComplexity), true
+	case "MarketDataPackJob.id":
+		if e.ComplexityRoot.MarketDataPackJob.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.ID(childComplexity), true
+	case "MarketDataPackJob.importedRows":
+		if e.ComplexityRoot.MarketDataPackJob.ImportedRows == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.ImportedRows(childComplexity), true
+	case "MarketDataPackJob.jobType":
+		if e.ComplexityRoot.MarketDataPackJob.JobType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.JobType(childComplexity), true
+	case "MarketDataPackJob.packId":
+		if e.ComplexityRoot.MarketDataPackJob.PackID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.PackID(childComplexity), true
+	case "MarketDataPackJob.progressPercent":
+		if e.ComplexityRoot.MarketDataPackJob.ProgressPercent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.ProgressPercent(childComplexity), true
+	case "MarketDataPackJob.startedAt":
+		if e.ComplexityRoot.MarketDataPackJob.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.StartedAt(childComplexity), true
+	case "MarketDataPackJob.status":
+		if e.ComplexityRoot.MarketDataPackJob.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.Status(childComplexity), true
+	case "MarketDataPackJob.totalBytes":
+		if e.ComplexityRoot.MarketDataPackJob.TotalBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackJob.TotalBytes(childComplexity), true
+
+	case "MarketDataPackRegistryEntry.assetTypes":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.AssetTypes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.AssetTypes(childComplexity), true
+	case "MarketDataPackRegistryEntry.assetsCount":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.AssetsCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.AssetsCount(childComplexity), true
+	case "MarketDataPackRegistryEntry.checksum":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Checksum == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Checksum(childComplexity), true
+	case "MarketDataPackRegistryEntry.compressedSizeBytes":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.CompressedSizeBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.CompressedSizeBytes(childComplexity), true
+	case "MarketDataPackRegistryEntry.createdAt":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.CreatedAt(childComplexity), true
+	case "MarketDataPackRegistryEntry.description":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Description == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Description(childComplexity), true
+	case "MarketDataPackRegistryEntry.downloadUrl":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.DownloadURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.DownloadURL(childComplexity), true
+	case "MarketDataPackRegistryEntry.interval":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Interval == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Interval(childComplexity), true
+	case "MarketDataPackRegistryEntry.name":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Name(childComplexity), true
+	case "MarketDataPackRegistryEntry.packId":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.PackID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.PackID(childComplexity), true
+	case "MarketDataPackRegistryEntry.quoteCurrencies":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.QuoteCurrencies == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.QuoteCurrencies(childComplexity), true
+	case "MarketDataPackRegistryEntry.recommended":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Recommended == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Recommended(childComplexity), true
+	case "MarketDataPackRegistryEntry.rowsCount":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.RowsCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.RowsCount(childComplexity), true
+	case "MarketDataPackRegistryEntry.signatureUrl":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.SignatureURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.SignatureURL(childComplexity), true
+	case "MarketDataPackRegistryEntry.sizeBytes":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.SizeBytes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.SizeBytes(childComplexity), true
+	case "MarketDataPackRegistryEntry.version":
+		if e.ComplexityRoot.MarketDataPackRegistryEntry.Version == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackRegistryEntry.Version(childComplexity), true
 
 	case "MethodParameter.key":
 		if e.ComplexityRoot.MethodParameter.Key == nil {
@@ -3796,6 +4717,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ArchiveManualInstrument(childComplexity, args["id"].(string)), true
+	case "Mutation.cancelMarketDataPackJob":
+		if e.ComplexityRoot.Mutation.CancelMarketDataPackJob == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelMarketDataPackJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CancelMarketDataPackJob(childComplexity, args["jobId"].(string)), true
+	case "Mutation.cancelPackBuildJob":
+		if e.ComplexityRoot.Mutation.CancelPackBuildJob == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_cancelPackBuildJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CancelPackBuildJob(childComplexity, args["id"].(string)), true
 	case "Mutation.confirmPasswordReset":
 		if e.ComplexityRoot.Mutation.ConfirmPasswordReset == nil {
 			break
@@ -4071,6 +5014,39 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ImportFinanceDatabaseAssets(childComplexity, args["assetType"].(gqlModel.AssetSyncType), args["symbols"].([]string)), true
+	case "Mutation.importInstrumentFromCatalog":
+		if e.ComplexityRoot.Mutation.ImportInstrumentFromCatalog == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importInstrumentFromCatalog_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ImportInstrumentFromCatalog(childComplexity, args["source"].(gqlModel.CatalogSource), args["externalId"].(string), args["forceEnrich"].(*bool)), true
+	case "Mutation.importInstrumentFromSource":
+		if e.ComplexityRoot.Mutation.ImportInstrumentFromSource == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_importInstrumentFromSource_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ImportInstrumentFromSource(childComplexity, args["input"].(gqlModel.ImportInstrumentFromSourceInput)), true
+	case "Mutation.installMarketDataPack":
+		if e.ComplexityRoot.Mutation.InstallMarketDataPack == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_installMarketDataPack_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.InstallMarketDataPack(childComplexity, args["packId"].(string)), true
 	case "Mutation.login":
 		if e.ComplexityRoot.Mutation.Login == nil {
 			break
@@ -4181,6 +5157,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveAssetFromWatchlist(childComplexity, args["watchlistID"].(string), args["assetID"].(string)), true
+	case "Mutation.removeMarketDataPack":
+		if e.ComplexityRoot.Mutation.RemoveMarketDataPack == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeMarketDataPack_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveMarketDataPack(childComplexity, args["packId"].(string)), true
 	case "Mutation.reorderPortfolios":
 		if e.ComplexityRoot.Mutation.ReorderPortfolios == nil {
 			break
@@ -4192,6 +5179,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ReorderPortfolios(childComplexity, args["input"].(gqlModel.ReorderPortfoliosInput)), true
+	case "Mutation.repairMarketDataPack":
+		if e.ComplexityRoot.Mutation.RepairMarketDataPack == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_repairMarketDataPack_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RepairMarketDataPack(childComplexity, args["packId"].(string)), true
 	case "Mutation.resendVerification":
 		if e.ComplexityRoot.Mutation.ResendVerification == nil {
 			break
@@ -4225,6 +5223,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RestoreManualInstrument(childComplexity, args["id"].(string)), true
+	case "Mutation.startLocalPackBuild":
+		if e.ComplexityRoot.Mutation.StartLocalPackBuild == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_startLocalPackBuild_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.StartLocalPackBuild(childComplexity, args["input"].(gqlModel.StartLocalPackBuildInput)), true
 	case "Mutation.tagAsset":
 		if e.ComplexityRoot.Mutation.TagAsset == nil {
 			break
@@ -4335,6 +5344,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateManualInstrument(childComplexity, args["id"].(string), args["input"].(gqlModel.UpdateManualInstrumentInput)), true
+	case "Mutation.updateMarketDataPack":
+		if e.ComplexityRoot.Mutation.UpdateMarketDataPack == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateMarketDataPack_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateMarketDataPack(childComplexity, args["packId"].(string)), true
 	case "Mutation.updatePerformanceSnapshots":
 		if e.ComplexityRoot.Mutation.UpdatePerformanceSnapshots == nil {
 			break
@@ -4368,6 +5388,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateProviderRoutingPreferences(childComplexity, args["input"].(gqlModel.ProviderRoutingPreferencesInput)), true
+	case "Mutation.updateTransaction":
+		if e.ComplexityRoot.Mutation.UpdateTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateTransaction(childComplexity, args["id"].(string), args["input"].(gqlModel.UpdateTransactionInput)), true
 	case "Mutation.updateUser":
 		if e.ComplexityRoot.Mutation.UpdateUser == nil {
 			break
@@ -4390,6 +5421,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateUserDisplayCurrency(childComplexity, args["input"].(gqlModel.UpdateUserDisplayCurrencyInput)), true
+	case "Mutation.updateUserThemePreferences":
+		if e.ComplexityRoot.Mutation.UpdateUserThemePreferences == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateUserThemePreferences_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateUserThemePreferences(childComplexity, args["input"].(gqlModel.UpdateUserThemePreferencesInput)), true
 	case "Mutation.upsertMarketDataCredential":
 		if e.ComplexityRoot.Mutation.UpsertMarketDataCredential == nil {
 			break
@@ -4400,7 +5442,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.UpsertMarketDataCredential(childComplexity, args["provider"].(string), args["apiKey"].(string)), true
+		return e.ComplexityRoot.Mutation.UpsertMarketDataCredential(childComplexity, args["provider"].(string), args["apiKey"].(string), args["isEnabled"].(*bool), args["priority"].(*int32)), true
 	case "Mutation.validateProviderCredentials":
 		if e.ComplexityRoot.Mutation.ValidateProviderCredentials == nil {
 			break
@@ -4485,24 +5527,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OnlineInstrumentResult.ExchangeCode(childComplexity), true
+	case "OnlineInstrumentResult.externalId":
+		if e.ComplexityRoot.OnlineInstrumentResult.ExternalID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentResult.ExternalID(childComplexity), true
 	case "OnlineInstrumentResult.figi":
 		if e.ComplexityRoot.OnlineInstrumentResult.Figi == nil {
 			break
 		}
 
 		return e.ComplexityRoot.OnlineInstrumentResult.Figi(childComplexity), true
+	case "OnlineInstrumentResult.imageUrl":
+		if e.ComplexityRoot.OnlineInstrumentResult.ImageURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentResult.ImageURL(childComplexity), true
 	case "OnlineInstrumentResult.isin":
 		if e.ComplexityRoot.OnlineInstrumentResult.Isin == nil {
 			break
 		}
 
 		return e.ComplexityRoot.OnlineInstrumentResult.Isin(childComplexity), true
+	case "OnlineInstrumentResult.marketCapRank":
+		if e.ComplexityRoot.OnlineInstrumentResult.MarketCapRank == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentResult.MarketCapRank(childComplexity), true
 	case "OnlineInstrumentResult.name":
 		if e.ComplexityRoot.OnlineInstrumentResult.Name == nil {
 			break
 		}
 
 		return e.ComplexityRoot.OnlineInstrumentResult.Name(childComplexity), true
+	case "OnlineInstrumentResult.platforms":
+		if e.ComplexityRoot.OnlineInstrumentResult.Platforms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentResult.Platforms(childComplexity), true
 	case "OnlineInstrumentResult.providerExternalId":
 		if e.ComplexityRoot.OnlineInstrumentResult.ProviderExternalID == nil {
 			break
@@ -4515,6 +5581,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.OnlineInstrumentResult.ProviderSource(childComplexity), true
+	case "OnlineInstrumentResult.source":
+		if e.ComplexityRoot.OnlineInstrumentResult.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentResult.Source(childComplexity), true
 	case "OnlineInstrumentResult.symbol":
 		if e.ComplexityRoot.OnlineInstrumentResult.Symbol == nil {
 			break
@@ -4522,6 +5594,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.OnlineInstrumentResult.Symbol(childComplexity), true
 
+	case "OnlineInstrumentSearchPayload.coverageStatus":
+		if e.ComplexityRoot.OnlineInstrumentSearchPayload.CoverageStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentSearchPayload.CoverageStatus(childComplexity), true
+	case "OnlineInstrumentSearchPayload.errorMessage":
+		if e.ComplexityRoot.OnlineInstrumentSearchPayload.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.OnlineInstrumentSearchPayload.ErrorMessage(childComplexity), true
 	case "OnlineInstrumentSearchPayload.onlineResults":
 		if e.ComplexityRoot.OnlineInstrumentSearchPayload.OnlineResults == nil {
 			break
@@ -4804,6 +5888,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PerformanceSnapshot.UnrealizedGainLoss(childComplexity), true
+
+	case "PlatformAddress.address":
+		if e.ComplexityRoot.PlatformAddress.Address == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PlatformAddress.Address(childComplexity), true
+	case "PlatformAddress.platform":
+		if e.ComplexityRoot.PlatformAddress.Platform == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PlatformAddress.Platform(childComplexity), true
 
 	case "Portfolio.analytics":
 		if e.ComplexityRoot.Portfolio.Analytics == nil {
@@ -5196,6 +6293,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PositionValuation.QuoteCurrency(childComplexity), true
 
+	case "ProviderFailure.provider":
+		if e.ComplexityRoot.ProviderFailure.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProviderFailure.Provider(childComplexity), true
+	case "ProviderFailure.reason":
+		if e.ComplexityRoot.ProviderFailure.Reason == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ProviderFailure.Reason(childComplexity), true
+
 	case "ProviderHealth.apiKeyValid":
 		if e.ComplexityRoot.ProviderHealth.APIKeyValid == nil {
 			break
@@ -5443,6 +6553,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Assets(childComplexity, args["filter"].(*gqlModel.AssetFilter), args["pagination"].(*gqlModel.PaginationInput), args["orderBy"].(*gqlModel.AssetOrder)), true
+	case "Query.availableMarketDataPacks":
+		if e.ComplexityRoot.Query.AvailableMarketDataPacks == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.AvailableMarketDataPacks(childComplexity), true
+	case "Query.availableProviders":
+		if e.ComplexityRoot.Query.AvailableProviders == nil {
+			break
+		}
+
+		args, err := ec.field_Query_availableProviders_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AvailableProviders(childComplexity, args["instrumentId"].(string), args["dataType"].(string)), true
 	case "Query.benchmarkComparison":
 		if e.ComplexityRoot.Query.BenchmarkComparison == nil {
 			break
@@ -5465,6 +6592,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Candles(childComplexity, args["symbol"].(string), args["assetType"].(string), args["interval"].(string), args["from"].(time.Time), args["to"].(time.Time), args["limit"].(*int32)), true
+	case "Query.candlesByInstrument":
+		if e.ComplexityRoot.Query.CandlesByInstrument == nil {
+			break
+		}
+
+		args, err := ec.field_Query_candlesByInstrument_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CandlesByInstrument(childComplexity, args["instrumentId"].(string), args["interval"].(string), args["from"].(time.Time), args["to"].(time.Time), args["limit"].(*int32), args["preferredProvider"].(*string)), true
+	case "Query.catalogSyncStatus":
+		if e.ComplexityRoot.Query.CatalogSyncStatus == nil {
+			break
+		}
+
+		args, err := ec.field_Query_catalogSyncStatus_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CatalogSyncStatus(childComplexity, args["source"].(gqlModel.CatalogSource)), true
 	case "Query.comparePortfolios":
 		if e.ComplexityRoot.Query.ComparePortfolios == nil {
 			break
@@ -5537,6 +6686,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GetPortfoliosWithAnalytics(childComplexity, args["userID"].(string)), true
+	case "Query.installedMarketDataPacks":
+		if e.ComplexityRoot.Query.InstalledMarketDataPacks == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.InstalledMarketDataPacks(childComplexity), true
 	case "Query.instrument":
 		if e.ComplexityRoot.Query.Instrument == nil {
 			break
@@ -5571,12 +6726,34 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.ManualInstruments(childComplexity, args["filter"].(*gqlModel.ManualInstrumentFilterInput), args["pagination"].(*gqlModel.PaginationInput)), true
+	case "Query.marketDataCoverage":
+		if e.ComplexityRoot.Query.MarketDataCoverage == nil {
+			break
+		}
+
+		args, err := ec.field_Query_marketDataCoverage_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MarketDataCoverage(childComplexity, args["instrumentId"].(string)), true
 	case "Query.marketDataCredentials":
 		if e.ComplexityRoot.Query.MarketDataCredentials == nil {
 			break
 		}
 
 		return e.ComplexityRoot.Query.MarketDataCredentials(childComplexity), true
+	case "Query.marketDataPackJob":
+		if e.ComplexityRoot.Query.MarketDataPackJob == nil {
+			break
+		}
+
+		args, err := ec.field_Query_marketDataPackJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.MarketDataPackJob(childComplexity, args["id"].(string)), true
 	case "Query.me":
 		if e.ComplexityRoot.Query.Me == nil {
 			break
@@ -5600,6 +6777,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Metrics(childComplexity), true
+	case "Query.packBuildJob":
+		if e.ComplexityRoot.Query.PackBuildJob == nil {
+			break
+		}
+
+		args, err := ec.field_Query_packBuildJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PackBuildJob(childComplexity, args["id"].(string)), true
+	case "Query.packBuildJobs":
+		if e.ComplexityRoot.Query.PackBuildJobs == nil {
+			break
+		}
+
+		args, err := ec.field_Query_packBuildJobs_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PackBuildJobs(childComplexity, args["limit"].(*int32)), true
 	case "Query.performanceMetrics":
 		if e.ComplexityRoot.Query.PerformanceMetrics == nil {
 			break
@@ -5711,6 +6910,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.RealTimePrice(childComplexity, args["symbol"].(string), args["assetType"].(string)), true
+	case "Query.realTimePriceByInstrument":
+		if e.ComplexityRoot.Query.RealTimePriceByInstrument == nil {
+			break
+		}
+
+		args, err := ec.field_Query_realTimePriceByInstrument_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.RealTimePriceByInstrument(childComplexity, args["instrumentId"].(string), args["preferredProvider"].(*string)), true
 	case "Query.searchInstruments":
 		if e.ComplexityRoot.Query.SearchInstruments == nil {
 			break
@@ -6579,6 +7789,66 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.Portfolios(childComplexity), true
+	case "User.themeAccentColor":
+		if e.ComplexityRoot.User.ThemeAccentColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeAccentColor(childComplexity), true
+	case "User.themeBaseColor":
+		if e.ComplexityRoot.User.ThemeBaseColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeBaseColor(childComplexity), true
+	case "User.themeFontPreference":
+		if e.ComplexityRoot.User.ThemeFontPreference == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeFontPreference(childComplexity), true
+	case "User.themeHeadingFont":
+		if e.ComplexityRoot.User.ThemeHeadingFont == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeHeadingFont(childComplexity), true
+	case "User.themeMenuAccent":
+		if e.ComplexityRoot.User.ThemeMenuAccent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeMenuAccent(childComplexity), true
+	case "User.themeMenuColor":
+		if e.ComplexityRoot.User.ThemeMenuColor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeMenuColor(childComplexity), true
+	case "User.themePreference":
+		if e.ComplexityRoot.User.ThemePreference == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemePreference(childComplexity), true
+	case "User.themeRadius":
+		if e.ComplexityRoot.User.ThemeRadius == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeRadius(childComplexity), true
+	case "User.themeRTL":
+		if e.ComplexityRoot.User.ThemeRtl == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeRtl(childComplexity), true
+	case "User.themeStyle":
+		if e.ComplexityRoot.User.ThemeStyle == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.ThemeStyle(childComplexity), true
 	case "User.updatedAt":
 		if e.ComplexityRoot.User.UpdatedAt == nil {
 			break
@@ -6866,6 +8136,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExportDataInput,
 		ec.unmarshalInputExportPortfolioInput,
 		ec.unmarshalInputGenerateReportInput,
+		ec.unmarshalInputImportInstrumentFromSourceInput,
 		ec.unmarshalInputInstrumentSearchInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputLogoutInput,
@@ -6886,13 +8157,16 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputReorderPortfoliosInput,
 		ec.unmarshalInputResendVerificationInput,
+		ec.unmarshalInputStartLocalPackBuildInput,
 		ec.unmarshalInputTransactionFilter,
 		ec.unmarshalInputTransactionOrder,
 		ec.unmarshalInputUpdateAlertInput,
 		ec.unmarshalInputUpdateManualInstrumentInput,
 		ec.unmarshalInputUpdatePortfolioInput,
+		ec.unmarshalInputUpdateTransactionInput,
 		ec.unmarshalInputUpdateUserDisplayCurrencyInput,
 		ec.unmarshalInputUpdateUserInput,
+		ec.unmarshalInputUpdateUserThemePreferencesInput,
 		ec.unmarshalInputUserFilter,
 		ec.unmarshalInputUserOrder,
 		ec.unmarshalInputWatchlistFilter,
@@ -6987,7 +8261,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
+//go:embed "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -7002,9 +8276,11 @@ var sources = []*ast.Source{
 	{Name: "schema/alert.graphqls", Input: sourceData("schema/alert.graphqls"), BuiltIn: false},
 	{Name: "schema/asset.graphqls", Input: sourceData("schema/asset.graphqls"), BuiltIn: false},
 	{Name: "schema/auth.graphqls", Input: sourceData("schema/auth.graphqls"), BuiltIn: false},
+	{Name: "schema/catalog_source.graphqls", Input: sourceData("schema/catalog_source.graphqls"), BuiltIn: false},
 	{Name: "schema/finance_database.graphqls", Input: sourceData("schema/finance_database.graphqls"), BuiltIn: false},
 	{Name: "schema/instrument.graphqls", Input: sourceData("schema/instrument.graphqls"), BuiltIn: false},
 	{Name: "schema/market_data.graphqls", Input: sourceData("schema/market_data.graphqls"), BuiltIn: false},
+	{Name: "schema/market_data_packs.graphqls", Input: sourceData("schema/market_data_packs.graphqls"), BuiltIn: false},
 	{Name: "schema/monitoring.graphqls", Input: sourceData("schema/monitoring.graphqls"), BuiltIn: false},
 	{Name: "schema/ownership.graphqls", Input: sourceData("schema/ownership.graphqls"), BuiltIn: false},
 	{Name: "schema/performance.graphqls", Input: sourceData("schema/performance.graphqls"), BuiltIn: false},
@@ -7072,6 +8348,28 @@ func (ec *executionContext) field_Mutation_addInstrumentToPortfolio_args(ctx con
 }
 
 func (ec *executionContext) field_Mutation_archiveManualInstrument_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cancelMarketDataPackJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "jobId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["jobId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_cancelPackBuildJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -7367,6 +8665,49 @@ func (ec *executionContext) field_Mutation_importFinanceDatabaseAssets_args(ctx 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_importInstrumentFromCatalog_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "source", ec.unmarshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource)
+	if err != nil {
+		return nil, err
+	}
+	args["source"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "externalId", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["externalId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "forceEnrich", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["forceEnrich"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_importInstrumentFromSource_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNImportInstrumentFromSourceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourceInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_installMarketDataPack_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "packId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["packId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_login_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7487,6 +8828,17 @@ func (ec *executionContext) field_Mutation_removeAssetFromWatchlist_args(ctx con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeMarketDataPack_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "packId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["packId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_reorderPortfolios_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7495,6 +8847,17 @@ func (ec *executionContext) field_Mutation_reorderPortfolios_args(ctx context.Co
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_repairMarketDataPack_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "packId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["packId"] = arg0
 	return args, nil
 }
 
@@ -7528,6 +8891,17 @@ func (ec *executionContext) field_Mutation_restoreManualInstrument_args(ctx cont
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_startLocalPackBuild_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNStartLocalPackBuildInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐStartLocalPackBuildInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
 	return args, nil
 }
 
@@ -7681,6 +9055,17 @@ func (ec *executionContext) field_Mutation_updateManualInstrument_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateMarketDataPack_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "packId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["packId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updatePerformanceSnapshots_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7724,10 +9109,37 @@ func (ec *executionContext) field_Mutation_updateProviderRoutingPreferences_args
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_updateTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateTransactionInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateTransactionInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_updateUserDisplayCurrency_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUserDisplayCurrencyInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateUserDisplayCurrencyInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateUserThemePreferences_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateUserThemePreferencesInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateUserThemePreferencesInput)
 	if err != nil {
 		return nil, err
 	}
@@ -7764,6 +9176,16 @@ func (ec *executionContext) field_Mutation_upsertMarketDataCredential_args(ctx c
 		return nil, err
 	}
 	args["apiKey"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "isEnabled", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["isEnabled"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "priority", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["priority"] = arg3
 	return args, nil
 }
 
@@ -7960,6 +9382,22 @@ func (ec *executionContext) field_Query_assets_args(ctx context.Context, rawArgs
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_availableProviders_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instrumentId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["instrumentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "dataType", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["dataType"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_benchmarkComparison_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -7978,6 +9416,42 @@ func (ec *executionContext) field_Query_benchmarkComparison_args(ctx context.Con
 		return nil, err
 	}
 	args["timeRange"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_candlesByInstrument_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instrumentId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["instrumentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "interval", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["interval"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "from", ec.unmarshalNTime2timeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["from"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "to", ec.unmarshalNTime2timeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["to"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "preferredProvider", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["preferredProvider"] = arg5
 	return args, nil
 }
 
@@ -8014,6 +9488,17 @@ func (ec *executionContext) field_Query_candles_args(ctx context.Context, rawArg
 		return nil, err
 	}
 	args["limit"] = arg5
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_catalogSyncStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "source", ec.unmarshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource)
+	if err != nil {
+		return nil, err
+	}
+	args["source"] = arg0
 	return args, nil
 }
 
@@ -8125,6 +9610,28 @@ func (ec *executionContext) field_Query_manualInstruments_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_marketDataCoverage_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instrumentId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["instrumentId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_marketDataPackJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_metric_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -8133,6 +9640,28 @@ func (ec *executionContext) field_Query_metric_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_packBuildJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_packBuildJobs_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "limit", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["limit"] = arg0
 	return args, nil
 }
 
@@ -8251,6 +9780,22 @@ func (ec *executionContext) field_Query_portfolios_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["orderBy"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_realTimePriceByInstrument_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "instrumentId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["instrumentId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "preferredProvider", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["preferredProvider"] = arg1
 	return args, nil
 }
 
@@ -11301,6 +12846,26 @@ func (ec *executionContext) fieldContext_AuthData_user(_ context.Context, field 
 				return ec.fieldContext_AuthUser_emailVerified(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_AuthUser_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_AuthUser_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_AuthUser_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_AuthUser_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_AuthUser_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_AuthUser_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_AuthUser_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_AuthUser_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_AuthUser_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_AuthUser_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_AuthUser_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AuthUser", field.Name)
 		},
@@ -11640,6 +13205,557 @@ func (ec *executionContext) fieldContext_AuthUser_displayCurrency(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themePreference(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themePreference,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemePreference, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themePreference(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeBaseColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeBaseColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeBaseColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeBaseColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeAccentColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeAccentColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeAccentColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeAccentColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeFontPreference(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeFontPreference,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeFontPreference, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeFontPreference(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeHeadingFont(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeHeadingFont,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeHeadingFont, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeHeadingFont(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeMenuAccent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeMenuAccent,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeMenuAccent, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeMenuAccent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeMenuColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeMenuColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeMenuColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeMenuColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeStyle(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeStyle,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeStyle, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeStyle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeRadius(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeRadius,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeRadius, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeRadius(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_themeRTL(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_themeRTL,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeRtl, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_themeRTL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_capability(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_capability,
+		func(ctx context.Context) (any, error) {
+			return obj.Capability, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_capability(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_requiresApiKey(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_requiresApiKey,
+		func(ctx context.Context) (any, error) {
+			return obj.RequiresAPIKey, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_requiresApiKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_hasCredential(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_hasCredential,
+		func(ctx context.Context) (any, error) {
+			return obj.HasCredential, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_hasCredential(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_credentialValid(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_credentialValid,
+		func(ctx context.Context) (any, error) {
+			return obj.CredentialValid, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_credentialValid(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_credentialEnabled(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_credentialEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.CredentialEnabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_credentialEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_priority(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_priority,
+		func(ctx context.Context) (any, error) {
+			return obj.Priority, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_mappingStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_mappingStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.MappingStatus, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_mappingStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AvailableProvider_effectiveEnabled(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AvailableProvider) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AvailableProvider_effectiveEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.EffectiveEnabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AvailableProvider_effectiveEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AvailableProvider",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -13313,6 +15429,267 @@ func (ec *executionContext) fieldContext_Candle_source(_ context.Context, field 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_source(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CatalogSource does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_mode(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_cursor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_cursor,
+		func(ctx context.Context) (any, error) {
+			return obj.Cursor, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_cursor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_statsJson(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_statsJson,
+		func(ctx context.Context) (any, error) {
+			return obj.StatsJSON, nil
+		},
+		nil,
+		ec.marshalOJSON2map,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_statsJson(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type JSON does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_errorText(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_errorText,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorText, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_errorText(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CatalogSyncRun_finishedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CatalogSyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CatalogSyncRun_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_CatalogSyncRun_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CatalogSyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16130,6 +18507,185 @@ func (ec *executionContext) fieldContext_ImportFinanceDatabaseAssetsPayload_erro
 	return fc, nil
 }
 
+func (ec *executionContext) _ImportInstrumentFromSourcePayload_success(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ImportInstrumentFromSourcePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportInstrumentFromSourcePayload_success,
+		func(ctx context.Context) (any, error) {
+			return obj.Success, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportInstrumentFromSourcePayload_success(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportInstrumentFromSourcePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportInstrumentFromSourcePayload_instrument(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ImportInstrumentFromSourcePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportInstrumentFromSourcePayload_instrument,
+		func(ctx context.Context) (any, error) {
+			return obj.Instrument, nil
+		},
+		nil,
+		ec.marshalOInstrument2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐInstrument,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportInstrumentFromSourcePayload_instrument(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportInstrumentFromSourcePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Instrument_id(ctx, field)
+			case "symbol":
+				return ec.fieldContext_Instrument_symbol(ctx, field)
+			case "normalizedSymbol":
+				return ec.fieldContext_Instrument_normalizedSymbol(ctx, field)
+			case "name":
+				return ec.fieldContext_Instrument_name(ctx, field)
+			case "normalizedName":
+				return ec.fieldContext_Instrument_normalizedName(ctx, field)
+			case "exchange":
+				return ec.fieldContext_Instrument_exchange(ctx, field)
+			case "exchangeCode":
+				return ec.fieldContext_Instrument_exchangeCode(ctx, field)
+			case "country":
+				return ec.fieldContext_Instrument_country(ctx, field)
+			case "currency":
+				return ec.fieldContext_Instrument_currency(ctx, field)
+			case "summary":
+				return ec.fieldContext_Instrument_summary(ctx, field)
+			case "sector":
+				return ec.fieldContext_Instrument_sector(ctx, field)
+			case "industryGroup":
+				return ec.fieldContext_Instrument_industryGroup(ctx, field)
+			case "industry":
+				return ec.fieldContext_Instrument_industry(ctx, field)
+			case "categoryGroup":
+				return ec.fieldContext_Instrument_categoryGroup(ctx, field)
+			case "category":
+				return ec.fieldContext_Instrument_category(ctx, field)
+			case "family":
+				return ec.fieldContext_Instrument_family(ctx, field)
+			case "website":
+				return ec.fieldContext_Instrument_website(ctx, field)
+			case "marketCap":
+				return ec.fieldContext_Instrument_marketCap(ctx, field)
+			case "state":
+				return ec.fieldContext_Instrument_state(ctx, field)
+			case "city":
+				return ec.fieldContext_Instrument_city(ctx, field)
+			case "zipcode":
+				return ec.fieldContext_Instrument_zipcode(ctx, field)
+			case "baseCurrency":
+				return ec.fieldContext_Instrument_baseCurrency(ctx, field)
+			case "quoteCurrency":
+				return ec.fieldContext_Instrument_quoteCurrency(ctx, field)
+			case "underlyingSymbol":
+				return ec.fieldContext_Instrument_underlyingSymbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_Instrument_assetType(ctx, field)
+			case "status":
+				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
+			case "providerSource":
+				return ec.fieldContext_Instrument_providerSource(ctx, field)
+			case "providerExternalId":
+				return ec.fieldContext_Instrument_providerExternalId(ctx, field)
+			case "isin":
+				return ec.fieldContext_Instrument_isin(ctx, field)
+			case "figi":
+				return ec.fieldContext_Instrument_figi(ctx, field)
+			case "cusip":
+				return ec.fieldContext_Instrument_cusip(ctx, field)
+			case "firstSeenAt":
+				return ec.fieldContext_Instrument_firstSeenAt(ctx, field)
+			case "lastVerifiedAt":
+				return ec.fieldContext_Instrument_lastVerifiedAt(ctx, field)
+			case "lastUsedAt":
+				return ec.fieldContext_Instrument_lastUsedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Instrument_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Instrument_updatedAt(ctx, field)
+			case "aliases":
+				return ec.fieldContext_Instrument_aliases(ctx, field)
+			case "syncState":
+				return ec.fieldContext_Instrument_syncState(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Instrument", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ImportInstrumentFromSourcePayload_message(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ImportInstrumentFromSourcePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ImportInstrumentFromSourcePayload_message,
+		func(ctx context.Context) (any, error) {
+			return obj.Message, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ImportInstrumentFromSourcePayload_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ImportInstrumentFromSourcePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Instrument_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16879,6 +19435,215 @@ func (ec *executionContext) fieldContext_Instrument_status(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_externalSource(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_externalSource,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalSource, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_externalSource(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_externalId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_externalId,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_externalId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_platforms(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_platforms,
+		func(ctx context.Context) (any, error) {
+			return obj.Platforms, nil
+		},
+		nil,
+		ec.marshalOPlatformAddress2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPlatformAddressᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_platforms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "platform":
+				return ec.fieldContext_PlatformAddress_platform(ctx, field)
+			case "address":
+				return ec.fieldContext_PlatformAddress_address(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlatformAddress", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_primaryContractAddress(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_primaryContractAddress,
+		func(ctx context.Context) (any, error) {
+			return obj.PrimaryContractAddress, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_primaryContractAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_instrumentStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_instrumentStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.InstrumentStatus, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_instrumentStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_imageUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_imageUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ImageURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Instrument_metadataUpdatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Instrument) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Instrument_metadataUpdatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.MetadataUpdatedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Instrument_metadataUpdatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Instrument",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17794,6 +20559,16 @@ func (ec *executionContext) fieldContext_InstrumentSearchPayload_onlineResults(_
 				return ec.fieldContext_OnlineInstrumentResult_currency(ctx, field)
 			case "assetType":
 				return ec.fieldContext_OnlineInstrumentResult_assetType(ctx, field)
+			case "source":
+				return ec.fieldContext_OnlineInstrumentResult_source(ctx, field)
+			case "externalId":
+				return ec.fieldContext_OnlineInstrumentResult_externalId(ctx, field)
+			case "marketCapRank":
+				return ec.fieldContext_OnlineInstrumentResult_marketCapRank(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_OnlineInstrumentResult_imageUrl(ctx, field)
+			case "platforms":
+				return ec.fieldContext_OnlineInstrumentResult_platforms(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_OnlineInstrumentResult_providerSource(ctx, field)
 			case "providerExternalId":
@@ -17887,6 +20662,20 @@ func (ec *executionContext) fieldContext_InstrumentSearchResult_instrument(_ con
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -20084,6 +22873,20 @@ func (ec *executionContext) fieldContext_ManualInstrumentPayload_items(_ context
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -20202,6 +23005,294 @@ func (ec *executionContext) fieldContext_ManualInstrumentPayload_offset(_ contex
 	return fc, nil
 }
 
+func (ec *executionContext) _MarketDataCandlePayload_candle(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlePayload_candle,
+		func(ctx context.Context) (any, error) {
+			return obj.Candle, nil
+		},
+		nil,
+		ec.marshalOCandle2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCandle,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlePayload_candle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "symbol":
+				return ec.fieldContext_Candle_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_Candle_assetType(ctx, field)
+			case "interval":
+				return ec.fieldContext_Candle_interval(ctx, field)
+			case "open":
+				return ec.fieldContext_Candle_open(ctx, field)
+			case "high":
+				return ec.fieldContext_Candle_high(ctx, field)
+			case "low":
+				return ec.fieldContext_Candle_low(ctx, field)
+			case "close":
+				return ec.fieldContext_Candle_close(ctx, field)
+			case "volume":
+				return ec.fieldContext_Candle_volume(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Candle_timestamp(ctx, field)
+			case "source":
+				return ec.fieldContext_Candle_source(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Candle", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlePayload_sourceProvider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlePayload_sourceProvider,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceProvider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlePayload_sourceProvider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlePayload_fallbackUsed(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlePayload_fallbackUsed,
+		func(ctx context.Context) (any, error) {
+			return obj.FallbackUsed, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlePayload_fallbackUsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlePayload_failures(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlePayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlePayload_failures,
+		func(ctx context.Context) (any, error) {
+			return obj.Failures, nil
+		},
+		nil,
+		ec.marshalNProviderFailure2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderFailureᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlePayload_failures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlePayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "provider":
+				return ec.fieldContext_ProviderFailure_provider(ctx, field)
+			case "reason":
+				return ec.fieldContext_ProviderFailure_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProviderFailure", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlesPayload_candles(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlesPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlesPayload_candles,
+		func(ctx context.Context) (any, error) {
+			return obj.Candles, nil
+		},
+		nil,
+		ec.marshalNCandle2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCandleᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlesPayload_candles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "symbol":
+				return ec.fieldContext_Candle_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_Candle_assetType(ctx, field)
+			case "interval":
+				return ec.fieldContext_Candle_interval(ctx, field)
+			case "open":
+				return ec.fieldContext_Candle_open(ctx, field)
+			case "high":
+				return ec.fieldContext_Candle_high(ctx, field)
+			case "low":
+				return ec.fieldContext_Candle_low(ctx, field)
+			case "close":
+				return ec.fieldContext_Candle_close(ctx, field)
+			case "volume":
+				return ec.fieldContext_Candle_volume(ctx, field)
+			case "timestamp":
+				return ec.fieldContext_Candle_timestamp(ctx, field)
+			case "source":
+				return ec.fieldContext_Candle_source(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Candle", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlesPayload_sourceProvider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlesPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlesPayload_sourceProvider,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceProvider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlesPayload_sourceProvider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlesPayload_fallbackUsed(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlesPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlesPayload_fallbackUsed,
+		func(ctx context.Context) (any, error) {
+			return obj.FallbackUsed, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlesPayload_fallbackUsed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCandlesPayload_failures(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCandlesPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCandlesPayload_failures,
+		func(ctx context.Context) (any, error) {
+			return obj.Failures, nil
+		},
+		nil,
+		ec.marshalNProviderFailure2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderFailureᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCandlesPayload_failures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCandlesPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "provider":
+				return ec.fieldContext_ProviderFailure_provider(ctx, field)
+			case "reason":
+				return ec.fieldContext_ProviderFailure_reason(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProviderFailure", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MarketDataCredential_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20260,6 +23351,93 @@ func (ec *executionContext) fieldContext_MarketDataCredential_provider(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _MarketDataCredential_isEnabled(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCredential_isEnabled,
+		func(ctx context.Context) (any, error) {
+			return obj.IsEnabled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCredential_isEnabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCredential_priority(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCredential_priority,
+		func(ctx context.Context) (any, error) {
+			return obj.Priority, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCredential_priority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataCredential_lastValidatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCredential_lastValidatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastValidatedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCredential_lastValidatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MarketDataCredential_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20313,6 +23491,1949 @@ func (ec *executionContext) fieldContext_MarketDataCredential_updatedAt(_ contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_version(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_version,
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_description(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_formatVersion(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_formatVersion,
+		func(ctx context.Context) (any, error) {
+			return obj.FormatVersion, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_formatVersion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_parentPackId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_parentPackId,
+		func(ctx context.Context) (any, error) {
+			return obj.ParentPackID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_parentPackId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_packPriority(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_packPriority,
+		func(ctx context.Context) (any, error) {
+			return obj.PackPriority, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_packPriority(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_filePath(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_filePath,
+		func(ctx context.Context) (any, error) {
+			return obj.FilePath, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_filePath(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_checksum(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_checksum,
+		func(ctx context.Context) (any, error) {
+			return obj.Checksum, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_checksum(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_signatureVerified(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_signatureVerified,
+		func(ctx context.Context) (any, error) {
+			return obj.SignatureVerified, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_signatureVerified(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_assetsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_assetsCount,
+		func(ctx context.Context) (any, error) {
+			return obj.AssetsCount, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_assetsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_rowsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_rowsCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RowsCount, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_rowsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_installedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_installedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.InstalledAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_installedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPack_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPack) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPack_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPack_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPack",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_packId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_packId,
+		func(ctx context.Context) (any, error) {
+			return obj.PackID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_packId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_sourceProvider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_sourceProvider,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceProvider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_sourceProvider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_progressPercent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_progressPercent,
+		func(ctx context.Context) (any, error) {
+			return obj.ProgressPercent, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_progressPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_currentSymbol(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_currentSymbol,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentSymbol, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_currentSymbol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_totalSymbols(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_totalSymbols,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalSymbols, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_totalSymbols(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_completedSymbols(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_completedSymbols,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedSymbols, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_completedSymbols(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_failedSymbols(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_failedSymbols,
+		func(ctx context.Context) (any, error) {
+			return obj.FailedSymbols, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_failedSymbols(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_finishedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_packId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_packId,
+		func(ctx context.Context) (any, error) {
+			return obj.PackID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_packId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_instrumentId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_instrumentId,
+		func(ctx context.Context) (any, error) {
+			return obj.InstrumentID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_instrumentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_symbol(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_symbol,
+		func(ctx context.Context) (any, error) {
+			return obj.Symbol, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_symbol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_assetType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_assetType,
+		func(ctx context.Context) (any, error) {
+			return obj.AssetType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_assetType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_interval(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_interval,
+		func(ctx context.Context) (any, error) {
+			return obj.Interval, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_interval(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_quoteCurrency(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_quoteCurrency,
+		func(ctx context.Context) (any, error) {
+			return obj.QuoteCurrency, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_quoteCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_firstDate(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_firstDate,
+		func(ctx context.Context) (any, error) {
+			return obj.FirstDate, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_firstDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_lastDate(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_lastDate,
+		func(ctx context.Context) (any, error) {
+			return obj.LastDate, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_lastDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_rowCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_rowCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RowCount, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_rowCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackCoverage_filePaths(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackCoverage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackCoverage_filePaths,
+		func(ctx context.Context) (any, error) {
+			return obj.FilePaths, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackCoverage_filePaths(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackCoverage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_packId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_packId,
+		func(ctx context.Context) (any, error) {
+			return obj.PackID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_packId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_jobType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_jobType,
+		func(ctx context.Context) (any, error) {
+			return obj.JobType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_jobType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_progressPercent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_progressPercent,
+		func(ctx context.Context) (any, error) {
+			return obj.ProgressPercent, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_progressPercent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_downloadedBytes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_downloadedBytes,
+		func(ctx context.Context) (any, error) {
+			return obj.DownloadedBytes, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_downloadedBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_totalBytes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_totalBytes,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalBytes, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_totalBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_importedRows(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_importedRows,
+		func(ctx context.Context) (any, error) {
+			return obj.ImportedRows, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_importedRows(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackJob_finishedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackJob_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackJob_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_packId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_packId,
+		func(ctx context.Context) (any, error) {
+			return obj.PackID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_packId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_version(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_version,
+		func(ctx context.Context) (any, error) {
+			return obj.Version, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_version(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_description(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_description,
+		func(ctx context.Context) (any, error) {
+			return obj.Description, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_description(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_sizeBytes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_sizeBytes,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeBytes, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_sizeBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_compressedSizeBytes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_compressedSizeBytes,
+		func(ctx context.Context) (any, error) {
+			return obj.CompressedSizeBytes, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_compressedSizeBytes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_assetsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_assetsCount,
+		func(ctx context.Context) (any, error) {
+			return obj.AssetsCount, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_assetsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_rowsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_rowsCount,
+		func(ctx context.Context) (any, error) {
+			return obj.RowsCount, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_rowsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_interval(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_interval,
+		func(ctx context.Context) (any, error) {
+			return obj.Interval, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_interval(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_assetTypes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_assetTypes,
+		func(ctx context.Context) (any, error) {
+			return obj.AssetTypes, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_assetTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_quoteCurrencies(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_quoteCurrencies,
+		func(ctx context.Context) (any, error) {
+			return obj.QuoteCurrencies, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_quoteCurrencies(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_downloadUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_downloadUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.DownloadURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_downloadUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_checksum(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_checksum,
+		func(ctx context.Context) (any, error) {
+			return obj.Checksum, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_checksum(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_signatureUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_signatureUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.SignatureURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_signatureUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry_recommended(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackRegistryEntry) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackRegistryEntry_recommended,
+		func(ctx context.Context) (any, error) {
+			return obj.Recommended, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackRegistryEntry_recommended(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackRegistryEntry",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -20894,6 +26015,26 @@ func (ec *executionContext) fieldContext_Mutation_createUser(ctx context.Context
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -20966,6 +26107,26 @@ func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -21038,6 +26199,26 @@ func (ec *executionContext) fieldContext_Mutation_updateUserDisplayCurrency(ctx 
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -21050,6 +26231,98 @@ func (ec *executionContext) fieldContext_Mutation_updateUserDisplayCurrency(ctx 
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateUserDisplayCurrency_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateUserThemePreferences(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateUserThemePreferences,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateUserThemePreferences(ctx, fc.Args["input"].(gqlModel.UpdateUserThemePreferencesInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateUserThemePreferences(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateUserThemePreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -23742,6 +29015,130 @@ func (ec *executionContext) fieldContext_Mutation_refreshToken(ctx context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_importInstrumentFromCatalog(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_importInstrumentFromCatalog,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ImportInstrumentFromCatalog(ctx, fc.Args["source"].(gqlModel.CatalogSource), fc.Args["externalId"].(string), fc.Args["forceEnrich"].(*bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.ImportInstrumentFromSourcePayload
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNImportInstrumentFromSourcePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourcePayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importInstrumentFromCatalog(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_success(ctx, field)
+			case "instrument":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_instrument(ctx, field)
+			case "message":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportInstrumentFromSourcePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importInstrumentFromCatalog_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_importInstrumentFromSource(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_importInstrumentFromSource,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ImportInstrumentFromSource(ctx, fc.Args["input"].(gqlModel.ImportInstrumentFromSourceInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.ImportInstrumentFromSourcePayload
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNImportInstrumentFromSourcePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourcePayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_importInstrumentFromSource(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "success":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_success(ctx, field)
+			case "instrument":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_instrument(ctx, field)
+			case "message":
+				return ec.fieldContext_ImportInstrumentFromSourcePayload_message(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ImportInstrumentFromSourcePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_importInstrumentFromSource_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_triggerFinanceDatabaseSync(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24028,6 +29425,20 @@ func (ec *executionContext) fieldContext_Mutation_persistDiscoveredInstrument(ct
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -24234,6 +29645,20 @@ func (ec *executionContext) fieldContext_Mutation_updateManualInstrument(ctx con
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -24366,6 +29791,20 @@ func (ec *executionContext) fieldContext_Mutation_archiveManualInstrument(ctx co
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -24498,6 +29937,20 @@ func (ec *executionContext) fieldContext_Mutation_restoreManualInstrument(ctx co
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -24548,7 +30001,7 @@ func (ec *executionContext) _Mutation_upsertMarketDataCredential(ctx context.Con
 		ec.fieldContext_Mutation_upsertMarketDataCredential,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().UpsertMarketDataCredential(ctx, fc.Args["provider"].(string), fc.Args["apiKey"].(string))
+			return ec.Resolvers.Mutation().UpsertMarketDataCredential(ctx, fc.Args["provider"].(string), fc.Args["apiKey"].(string), fc.Args["isEnabled"].(*bool), fc.Args["priority"].(*int32))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -24582,6 +30035,12 @@ func (ec *executionContext) fieldContext_Mutation_upsertMarketDataCredential(ctx
 				return ec.fieldContext_MarketDataCredential_id(ctx, field)
 			case "provider":
 				return ec.fieldContext_MarketDataCredential_provider(ctx, field)
+			case "isEnabled":
+				return ec.fieldContext_MarketDataCredential_isEnabled(ctx, field)
+			case "priority":
+				return ec.fieldContext_MarketDataCredential_priority(ctx, field)
+			case "lastValidatedAt":
+				return ec.fieldContext_MarketDataCredential_lastValidatedAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_MarketDataCredential_createdAt(ctx, field)
 			case "updatedAt":
@@ -24918,6 +30377,570 @@ func (ec *executionContext) fieldContext_Mutation_updateProviderRoutingPreferenc
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateProviderRoutingPreferences_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_installMarketDataPack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_installMarketDataPack,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().InstallMarketDataPack(ctx, fc.Args["packId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_installMarketDataPack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_installMarketDataPack_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateMarketDataPack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateMarketDataPack,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateMarketDataPack(ctx, fc.Args["packId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateMarketDataPack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateMarketDataPack_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeMarketDataPack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeMarketDataPack,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveMarketDataPack(ctx, fc.Args["packId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeMarketDataPack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeMarketDataPack_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_repairMarketDataPack(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_repairMarketDataPack,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RepairMarketDataPack(ctx, fc.Args["packId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_repairMarketDataPack(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_repairMarketDataPack_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cancelMarketDataPackJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cancelMarketDataPackJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CancelMarketDataPackJob(ctx, fc.Args["jobId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cancelMarketDataPackJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelMarketDataPackJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_startLocalPackBuild(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_startLocalPackBuild,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().StartLocalPackBuild(ctx, fc.Args["input"].(gqlModel.StartLocalPackBuildInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackBuildJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_startLocalPackBuild(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackBuildJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackBuildJob_packId(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataPackBuildJob_sourceProvider(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackBuildJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
+			case "currentSymbol":
+				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "totalSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
+			case "completedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
+			case "failedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackBuildJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackBuildJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_startLocalPackBuild_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_cancelPackBuildJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_cancelPackBuildJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CancelPackBuildJob(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackBuildJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_cancelPackBuildJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackBuildJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackBuildJob_packId(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataPackBuildJob_sourceProvider(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackBuildJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
+			case "currentSymbol":
+				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "totalSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
+			case "completedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
+			case "failedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackBuildJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackBuildJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_cancelPackBuildJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -25270,6 +31293,84 @@ func (ec *executionContext) fieldContext_Mutation_updatePerformanceSnapshots(ctx
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_updateTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateTransaction,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateTransaction(ctx, fc.Args["id"].(string), fc.Args["input"].(gqlModel.UpdateTransactionInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.Transaction
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNTransaction2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransaction,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Transaction_id(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_Transaction_portfolio(ctx, field)
+			case "asset":
+				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "transactionType":
+				return ec.fieldContext_Transaction_transactionType(ctx, field)
+			case "quantity":
+				return ec.fieldContext_Transaction_quantity(ctx, field)
+			case "unitPriceAmount":
+				return ec.fieldContext_Transaction_unitPriceAmount(ctx, field)
+			case "unitPriceCurrency":
+				return ec.fieldContext_Transaction_unitPriceCurrency(ctx, field)
+			case "feesAmount":
+				return ec.fieldContext_Transaction_feesAmount(ctx, field)
+			case "feesCurrency":
+				return ec.fieldContext_Transaction_feesCurrency(ctx, field)
+			case "executedAt":
+				return ec.fieldContext_Transaction_executedAt(ctx, field)
+			case "notes":
+				return ec.fieldContext_Transaction_notes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _NavigationPattern_pattern(ctx context.Context, field graphql.CollectedField, obj *gqlModel.NavigationPattern) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25589,6 +31690,157 @@ func (ec *executionContext) fieldContext_OnlineInstrumentResult_assetType(_ cont
 	return fc, nil
 }
 
+func (ec *executionContext) _OnlineInstrumentResult_source(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentResult_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentResult_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CatalogSource does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnlineInstrumentResult_externalId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentResult_externalId,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentResult_externalId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnlineInstrumentResult_marketCapRank(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentResult_marketCapRank,
+		func(ctx context.Context) (any, error) {
+			return obj.MarketCapRank, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentResult_marketCapRank(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnlineInstrumentResult_imageUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentResult_imageUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ImageURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentResult_imageUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnlineInstrumentResult_platforms(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentResult_platforms,
+		func(ctx context.Context) (any, error) {
+			return obj.Platforms, nil
+		},
+		nil,
+		ec.marshalOPlatformAddress2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPlatformAddressᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentResult_platforms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "platform":
+				return ec.fieldContext_PlatformAddress_platform(ctx, field)
+			case "address":
+				return ec.fieldContext_PlatformAddress_address(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type PlatformAddress", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _OnlineInstrumentResult_providerSource(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentResult) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25772,6 +32024,16 @@ func (ec *executionContext) fieldContext_OnlineInstrumentSearchPayload_onlineRes
 				return ec.fieldContext_OnlineInstrumentResult_currency(ctx, field)
 			case "assetType":
 				return ec.fieldContext_OnlineInstrumentResult_assetType(ctx, field)
+			case "source":
+				return ec.fieldContext_OnlineInstrumentResult_source(ctx, field)
+			case "externalId":
+				return ec.fieldContext_OnlineInstrumentResult_externalId(ctx, field)
+			case "marketCapRank":
+				return ec.fieldContext_OnlineInstrumentResult_marketCapRank(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_OnlineInstrumentResult_imageUrl(ctx, field)
+			case "platforms":
+				return ec.fieldContext_OnlineInstrumentResult_platforms(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_OnlineInstrumentResult_providerSource(ctx, field)
 			case "providerExternalId":
@@ -25863,6 +32125,64 @@ func (ec *executionContext) fieldContext_OnlineInstrumentSearchPayload_providerU
 	return fc, nil
 }
 
+func (ec *executionContext) _OnlineInstrumentSearchPayload_coverageStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentSearchPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentSearchPayload_coverageStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.CoverageStatus, nil
+		},
+		nil,
+		ec.marshalNCoverageStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoverageStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentSearchPayload_coverageStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentSearchPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type CoverageStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _OnlineInstrumentSearchPayload_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.OnlineInstrumentSearchPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_OnlineInstrumentSearchPayload_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_OnlineInstrumentSearchPayload_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "OnlineInstrumentSearchPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Ownership_user(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Ownership) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25903,6 +32223,26 @@ func (ec *executionContext) fieldContext_Ownership_user(_ context.Context, field
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -27294,6 +33634,64 @@ func (ec *executionContext) fieldContext_PerformanceSnapshot_dataQuality(_ conte
 	return fc, nil
 }
 
+func (ec *executionContext) _PlatformAddress_platform(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PlatformAddress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlatformAddress_platform,
+		func(ctx context.Context) (any, error) {
+			return obj.Platform, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlatformAddress_platform(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlatformAddress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PlatformAddress_address(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PlatformAddress) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PlatformAddress_address,
+		func(ctx context.Context) (any, error) {
+			return obj.Address, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_PlatformAddress_address(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PlatformAddress",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Portfolio_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Portfolio) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -27508,6 +33906,26 @@ func (ec *executionContext) fieldContext_Portfolio_user(_ context.Context, field
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -29356,6 +35774,64 @@ func (ec *executionContext) fieldContext_PositionValuation_displayCurrency(_ con
 	return fc, nil
 }
 
+func (ec *executionContext) _ProviderFailure_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ProviderFailure) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderFailure_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderFailure_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderFailure",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProviderFailure_reason(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ProviderFailure) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProviderFailure_reason,
+		func(ctx context.Context) (any, error) {
+			return obj.Reason, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProviderFailure_reason(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProviderFailure",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProviderHealth_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ProviderHealth) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -30093,6 +36569,26 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -30165,6 +36661,26 @@ func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field 
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -31256,9 +37772,103 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_AuthUser_emailVerified(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_AuthUser_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_AuthUser_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_AuthUser_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_AuthUser_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_AuthUser_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_AuthUser_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_AuthUser_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_AuthUser_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_AuthUser_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_AuthUser_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_AuthUser_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AuthUser", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_catalogSyncStatus(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_catalogSyncStatus,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CatalogSyncStatus(ctx, fc.Args["source"].(gqlModel.CatalogSource))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.CatalogSyncRun
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOCatalogSyncRun2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSyncRun,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_catalogSyncStatus(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CatalogSyncRun_id(ctx, field)
+			case "source":
+				return ec.fieldContext_CatalogSyncRun_source(ctx, field)
+			case "mode":
+				return ec.fieldContext_CatalogSyncRun_mode(ctx, field)
+			case "status":
+				return ec.fieldContext_CatalogSyncRun_status(ctx, field)
+			case "cursor":
+				return ec.fieldContext_CatalogSyncRun_cursor(ctx, field)
+			case "statsJson":
+				return ec.fieldContext_CatalogSyncRun_statsJson(ctx, field)
+			case "errorText":
+				return ec.fieldContext_CatalogSyncRun_errorText(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_CatalogSyncRun_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_CatalogSyncRun_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CatalogSyncRun", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_catalogSyncStatus_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -31533,6 +38143,20 @@ func (ec *executionContext) fieldContext_Query_instrument(ctx context.Context, f
 				return ec.fieldContext_Instrument_assetType(ctx, field)
 			case "status":
 				return ec.fieldContext_Instrument_status(ctx, field)
+			case "externalSource":
+				return ec.fieldContext_Instrument_externalSource(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Instrument_externalId(ctx, field)
+			case "platforms":
+				return ec.fieldContext_Instrument_platforms(ctx, field)
+			case "primaryContractAddress":
+				return ec.fieldContext_Instrument_primaryContractAddress(ctx, field)
+			case "instrumentStatus":
+				return ec.fieldContext_Instrument_instrumentStatus(ctx, field)
+			case "imageUrl":
+				return ec.fieldContext_Instrument_imageUrl(ctx, field)
+			case "metadataUpdatedAt":
+				return ec.fieldContext_Instrument_metadataUpdatedAt(ctx, field)
 			case "providerSource":
 				return ec.fieldContext_Instrument_providerSource(ctx, field)
 			case "providerExternalId":
@@ -31683,6 +38307,10 @@ func (ec *executionContext) fieldContext_Query_searchInstrumentsOnline(ctx conte
 				return ec.fieldContext_OnlineInstrumentSearchPayload_queryMetadata(ctx, field)
 			case "providerUsed":
 				return ec.fieldContext_OnlineInstrumentSearchPayload_providerUsed(ctx, field)
+			case "coverageStatus":
+				return ec.fieldContext_OnlineInstrumentSearchPayload_coverageStatus(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_OnlineInstrumentSearchPayload_errorMessage(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type OnlineInstrumentSearchPayload", field.Name)
 		},
@@ -31841,6 +38469,70 @@ func (ec *executionContext) fieldContext_Query_candles(ctx context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_candlesByInstrument(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_candlesByInstrument,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CandlesByInstrument(ctx, fc.Args["instrumentId"].(string), fc.Args["interval"].(string), fc.Args["from"].(time.Time), fc.Args["to"].(time.Time), fc.Args["limit"].(*int32), fc.Args["preferredProvider"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataCandlesPayload
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataCandlesPayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCandlesPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_candlesByInstrument(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "candles":
+				return ec.fieldContext_MarketDataCandlesPayload_candles(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataCandlesPayload_sourceProvider(ctx, field)
+			case "fallbackUsed":
+				return ec.fieldContext_MarketDataCandlesPayload_fallbackUsed(ctx, field)
+			case "failures":
+				return ec.fieldContext_MarketDataCandlesPayload_failures(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataCandlesPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_candlesByInstrument_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_marketDataCredentials(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -31882,6 +38574,12 @@ func (ec *executionContext) fieldContext_Query_marketDataCredentials(_ context.C
 				return ec.fieldContext_MarketDataCredential_id(ctx, field)
 			case "provider":
 				return ec.fieldContext_MarketDataCredential_provider(ctx, field)
+			case "isEnabled":
+				return ec.fieldContext_MarketDataCredential_isEnabled(ctx, field)
+			case "priority":
+				return ec.fieldContext_MarketDataCredential_priority(ctx, field)
+			case "lastValidatedAt":
+				return ec.fieldContext_MarketDataCredential_lastValidatedAt(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_MarketDataCredential_createdAt(ctx, field)
 			case "updatedAt":
@@ -31957,6 +38655,80 @@ func (ec *executionContext) fieldContext_Query_supportedProviders(ctx context.Co
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_supportedProviders_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_availableProviders(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_availableProviders,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AvailableProviders(ctx, fc.Args["instrumentId"].(string), fc.Args["dataType"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.AvailableProvider
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNAvailableProvider2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAvailableProviderᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_availableProviders(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "provider":
+				return ec.fieldContext_AvailableProvider_provider(ctx, field)
+			case "capability":
+				return ec.fieldContext_AvailableProvider_capability(ctx, field)
+			case "requiresApiKey":
+				return ec.fieldContext_AvailableProvider_requiresApiKey(ctx, field)
+			case "hasCredential":
+				return ec.fieldContext_AvailableProvider_hasCredential(ctx, field)
+			case "credentialValid":
+				return ec.fieldContext_AvailableProvider_credentialValid(ctx, field)
+			case "credentialEnabled":
+				return ec.fieldContext_AvailableProvider_credentialEnabled(ctx, field)
+			case "priority":
+				return ec.fieldContext_AvailableProvider_priority(ctx, field)
+			case "mappingStatus":
+				return ec.fieldContext_AvailableProvider_mappingStatus(ctx, field)
+			case "effectiveEnabled":
+				return ec.fieldContext_AvailableProvider_effectiveEnabled(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AvailableProvider", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_availableProviders_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -32087,6 +38859,70 @@ func (ec *executionContext) fieldContext_Query_realTimePrice(ctx context.Context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_realTimePrice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_realTimePriceByInstrument(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_realTimePriceByInstrument,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().RealTimePriceByInstrument(ctx, fc.Args["instrumentId"].(string), fc.Args["preferredProvider"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataCandlePayload
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOMarketDataCandlePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCandlePayload,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_realTimePriceByInstrument(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "candle":
+				return ec.fieldContext_MarketDataCandlePayload_candle(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataCandlePayload_sourceProvider(ctx, field)
+			case "fallbackUsed":
+				return ec.fieldContext_MarketDataCandlePayload_fallbackUsed(ctx, field)
+			case "failures":
+				return ec.fieldContext_MarketDataCandlePayload_failures(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataCandlePayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_realTimePriceByInstrument_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -32373,6 +39209,478 @@ func (ec *executionContext) fieldContext_Query_providerRoutingPreferences(_ cont
 			}
 			return nil, fmt.Errorf("no field named %q was found under type ProviderRoutingPreferences", field.Name)
 		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_availableMarketDataPacks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_availableMarketDataPacks,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().AvailableMarketDataPacks(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.MarketDataPackRegistryEntry
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackRegistryEntry2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackRegistryEntryᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_availableMarketDataPacks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "packId":
+				return ec.fieldContext_MarketDataPackRegistryEntry_packId(ctx, field)
+			case "version":
+				return ec.fieldContext_MarketDataPackRegistryEntry_version(ctx, field)
+			case "name":
+				return ec.fieldContext_MarketDataPackRegistryEntry_name(ctx, field)
+			case "description":
+				return ec.fieldContext_MarketDataPackRegistryEntry_description(ctx, field)
+			case "sizeBytes":
+				return ec.fieldContext_MarketDataPackRegistryEntry_sizeBytes(ctx, field)
+			case "compressedSizeBytes":
+				return ec.fieldContext_MarketDataPackRegistryEntry_compressedSizeBytes(ctx, field)
+			case "assetsCount":
+				return ec.fieldContext_MarketDataPackRegistryEntry_assetsCount(ctx, field)
+			case "rowsCount":
+				return ec.fieldContext_MarketDataPackRegistryEntry_rowsCount(ctx, field)
+			case "interval":
+				return ec.fieldContext_MarketDataPackRegistryEntry_interval(ctx, field)
+			case "assetTypes":
+				return ec.fieldContext_MarketDataPackRegistryEntry_assetTypes(ctx, field)
+			case "quoteCurrencies":
+				return ec.fieldContext_MarketDataPackRegistryEntry_quoteCurrencies(ctx, field)
+			case "downloadUrl":
+				return ec.fieldContext_MarketDataPackRegistryEntry_downloadUrl(ctx, field)
+			case "checksum":
+				return ec.fieldContext_MarketDataPackRegistryEntry_checksum(ctx, field)
+			case "signatureUrl":
+				return ec.fieldContext_MarketDataPackRegistryEntry_signatureUrl(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackRegistryEntry_createdAt(ctx, field)
+			case "recommended":
+				return ec.fieldContext_MarketDataPackRegistryEntry_recommended(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackRegistryEntry", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_installedMarketDataPacks(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_installedMarketDataPacks,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().InstalledMarketDataPacks(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.MarketDataPack
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPack2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_installedMarketDataPacks(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPack_id(ctx, field)
+			case "version":
+				return ec.fieldContext_MarketDataPack_version(ctx, field)
+			case "name":
+				return ec.fieldContext_MarketDataPack_name(ctx, field)
+			case "description":
+				return ec.fieldContext_MarketDataPack_description(ctx, field)
+			case "formatVersion":
+				return ec.fieldContext_MarketDataPack_formatVersion(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPack_status(ctx, field)
+			case "parentPackId":
+				return ec.fieldContext_MarketDataPack_parentPackId(ctx, field)
+			case "packPriority":
+				return ec.fieldContext_MarketDataPack_packPriority(ctx, field)
+			case "filePath":
+				return ec.fieldContext_MarketDataPack_filePath(ctx, field)
+			case "checksum":
+				return ec.fieldContext_MarketDataPack_checksum(ctx, field)
+			case "signatureVerified":
+				return ec.fieldContext_MarketDataPack_signatureVerified(ctx, field)
+			case "assetsCount":
+				return ec.fieldContext_MarketDataPack_assetsCount(ctx, field)
+			case "rowsCount":
+				return ec.fieldContext_MarketDataPack_rowsCount(ctx, field)
+			case "installedAt":
+				return ec.fieldContext_MarketDataPack_installedAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_MarketDataPack_updatedAt(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPack_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPack", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_marketDataPackJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_marketDataPackJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MarketDataPackJob(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_marketDataPackJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackJob_packId(ctx, field)
+			case "jobType":
+				return ec.fieldContext_MarketDataPackJob_jobType(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackJob_progressPercent(ctx, field)
+			case "downloadedBytes":
+				return ec.fieldContext_MarketDataPackJob_downloadedBytes(ctx, field)
+			case "totalBytes":
+				return ec.fieldContext_MarketDataPackJob_totalBytes(ctx, field)
+			case "importedRows":
+				return ec.fieldContext_MarketDataPackJob_importedRows(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_marketDataPackJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_marketDataCoverage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_marketDataCoverage,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().MarketDataCoverage(ctx, fc.Args["instrumentId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.MarketDataPackCoverage
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackCoverage2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackCoverageᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_marketDataCoverage(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "packId":
+				return ec.fieldContext_MarketDataPackCoverage_packId(ctx, field)
+			case "instrumentId":
+				return ec.fieldContext_MarketDataPackCoverage_instrumentId(ctx, field)
+			case "symbol":
+				return ec.fieldContext_MarketDataPackCoverage_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_MarketDataPackCoverage_assetType(ctx, field)
+			case "interval":
+				return ec.fieldContext_MarketDataPackCoverage_interval(ctx, field)
+			case "quoteCurrency":
+				return ec.fieldContext_MarketDataPackCoverage_quoteCurrency(ctx, field)
+			case "firstDate":
+				return ec.fieldContext_MarketDataPackCoverage_firstDate(ctx, field)
+			case "lastDate":
+				return ec.fieldContext_MarketDataPackCoverage_lastDate(ctx, field)
+			case "rowCount":
+				return ec.fieldContext_MarketDataPackCoverage_rowCount(ctx, field)
+			case "filePaths":
+				return ec.fieldContext_MarketDataPackCoverage_filePaths(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackCoverage", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_marketDataCoverage_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_packBuildJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_packBuildJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PackBuildJob(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.MarketDataPackBuildJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_packBuildJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackBuildJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackBuildJob_packId(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataPackBuildJob_sourceProvider(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackBuildJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
+			case "currentSymbol":
+				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "totalSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
+			case "completedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
+			case "failedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackBuildJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackBuildJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_packBuildJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_packBuildJobs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_packBuildJobs,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PackBuildJobs(ctx, fc.Args["limit"].(*int32))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.MarketDataPackBuildJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNMarketDataPackBuildJob2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJobᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_packBuildJobs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_MarketDataPackBuildJob_id(ctx, field)
+			case "packId":
+				return ec.fieldContext_MarketDataPackBuildJob_packId(ctx, field)
+			case "sourceProvider":
+				return ec.fieldContext_MarketDataPackBuildJob_sourceProvider(ctx, field)
+			case "status":
+				return ec.fieldContext_MarketDataPackBuildJob_status(ctx, field)
+			case "progressPercent":
+				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
+			case "currentSymbol":
+				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "totalSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
+			case "completedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
+			case "failedSymbols":
+				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_MarketDataPackBuildJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_MarketDataPackBuildJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type MarketDataPackBuildJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_packBuildJobs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -37396,6 +44704,296 @@ func (ec *executionContext) fieldContext_User_displayCurrency(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _User_themePreference(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themePreference,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemePreference, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themePreference(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeBaseColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeBaseColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeBaseColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeBaseColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeAccentColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeAccentColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeAccentColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeAccentColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeFontPreference(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeFontPreference,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeFontPreference, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeFontPreference(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeHeadingFont(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeHeadingFont,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeHeadingFont, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeHeadingFont(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeMenuAccent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeMenuAccent,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeMenuAccent, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeMenuAccent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeMenuColor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeMenuColor,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeMenuColor, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeMenuColor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeStyle(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeStyle,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeStyle, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeStyle(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeRadius(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeRadius,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeRadius, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeRadius(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_themeRTL(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_themeRTL,
+		func(ctx context.Context) (any, error) {
+			return obj.ThemeRtl, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_themeRTL(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _UserEngagementMetrics_totalUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38526,6 +46124,26 @@ func (ec *executionContext) fieldContext_Watchlist_user(_ context.Context, field
 				return ec.fieldContext_User_watchlists(ctx, field)
 			case "displayCurrency":
 				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -40019,7 +47637,7 @@ func (ec *executionContext) unmarshalInputAddInstrumentHoldingInput(ctx context.
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"portfolioID", "instrumentID", "quantity", "averagePurchasePrice", "unitPriceCurrency"}
+	fieldsInOrder := [...]string{"portfolioID", "instrumentID", "quantity", "averagePurchasePrice", "unitPriceCurrency", "purchaseDate"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -40061,6 +47679,13 @@ func (ec *executionContext) unmarshalInputAddInstrumentHoldingInput(ctx context.
 				return it, err
 			}
 			it.UnitPriceCurrency = data
+		case "purchaseDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchaseDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchaseDate = data
 		}
 	}
 	return it, nil
@@ -41934,6 +49559,50 @@ func (ec *executionContext) unmarshalInputGenerateReportInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputImportInstrumentFromSourceInput(ctx context.Context, obj any) (gqlModel.ImportInstrumentFromSourceInput, error) {
+	var it gqlModel.ImportInstrumentFromSourceInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"source", "externalId", "forceEnrich"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "source":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("source"))
+			data, err := ec.unmarshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Source = data
+		case "externalId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("externalId"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExternalID = data
+		case "forceEnrich":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("forceEnrich"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ForceEnrich = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputInstrumentSearchInput(ctx context.Context, obj any) (gqlModel.InstrumentSearchInput, error) {
 	var it gqlModel.InstrumentSearchInput
 	if obj == nil {
@@ -42800,6 +50469,103 @@ func (ec *executionContext) unmarshalInputResendVerificationInput(ctx context.Co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputStartLocalPackBuildInput(ctx context.Context, obj any) (gqlModel.StartLocalPackBuildInput, error) {
+	var it gqlModel.StartLocalPackBuildInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	if _, present := asMap["portfolioFirst"]; !present {
+		asMap["portfolioFirst"] = true
+	}
+
+	fieldsInOrder := [...]string{"packId", "sourceProvider", "assetTypes", "historyStart", "historyEnd", "portfolioFirst", "universeInstrumentIds", "requestsPerMinute", "requestsPerDay", "concurrentRequests"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "packId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("packId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PackID = data
+		case "sourceProvider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceProvider"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceProvider = data
+		case "assetTypes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetTypes"))
+			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AssetTypes = data
+		case "historyStart":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("historyStart"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HistoryStart = data
+		case "historyEnd":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("historyEnd"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HistoryEnd = data
+		case "portfolioFirst":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioFirst"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioFirst = data
+		case "universeInstrumentIds":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("universeInstrumentIds"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UniverseInstrumentIds = data
+		case "requestsPerMinute":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestsPerMinute"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestsPerMinute = data
+		case "requestsPerDay":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("requestsPerDay"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RequestsPerDay = data
+		case "concurrentRequests":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("concurrentRequests"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ConcurrentRequests = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context, obj any) (gqlModel.TransactionFilter, error) {
 	var it gqlModel.TransactionFilter
 	if obj == nil {
@@ -43195,6 +50961,64 @@ func (ec *executionContext) unmarshalInputUpdatePortfolioInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Context, obj any) (gqlModel.UpdateTransactionInput, error) {
+	var it gqlModel.UpdateTransactionInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"quantity", "unitPriceAmount", "feesAmount", "executedAt", "notes"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "quantity":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("quantity"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Quantity = data
+		case "unitPriceAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("unitPriceAmount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UnitPriceAmount = data
+		case "feesAmount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("feesAmount"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FeesAmount = data
+		case "executedAt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("executedAt"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExecutedAt = data
+		case "notes":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notes"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Notes = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateUserDisplayCurrencyInput(ctx context.Context, obj any) (gqlModel.UpdateUserDisplayCurrencyInput, error) {
 	var it gqlModel.UpdateUserDisplayCurrencyInput
 	if obj == nil {
@@ -43264,6 +51088,99 @@ func (ec *executionContext) unmarshalInputUpdateUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateUserThemePreferencesInput(ctx context.Context, obj any) (gqlModel.UpdateUserThemePreferencesInput, error) {
+	var it gqlModel.UpdateUserThemePreferencesInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"themePreference", "themeBaseColor", "themeAccentColor", "themeFontPreference", "themeHeadingFont", "themeMenuAccent", "themeMenuColor", "themeStyle", "themeRadius", "themeRTL"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "themePreference":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themePreference"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemePreference = data
+		case "themeBaseColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeBaseColor"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeBaseColor = data
+		case "themeAccentColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeAccentColor"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeAccentColor = data
+		case "themeFontPreference":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeFontPreference"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeFontPreference = data
+		case "themeHeadingFont":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeHeadingFont"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeHeadingFont = data
+		case "themeMenuAccent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeMenuAccent"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeMenuAccent = data
+		case "themeMenuColor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeMenuColor"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeMenuColor = data
+		case "themeStyle":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeStyle"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeStyle = data
+		case "themeRadius":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeRadius"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeRadius = data
+		case "themeRTL":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("themeRTL"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ThemeRtl = data
 		}
 	}
 	return it, nil
@@ -44490,6 +52407,135 @@ func (ec *executionContext) _AuthUser(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "themePreference":
+			out.Values[i] = ec._AuthUser_themePreference(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeBaseColor":
+			out.Values[i] = ec._AuthUser_themeBaseColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeAccentColor":
+			out.Values[i] = ec._AuthUser_themeAccentColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeFontPreference":
+			out.Values[i] = ec._AuthUser_themeFontPreference(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeHeadingFont":
+			out.Values[i] = ec._AuthUser_themeHeadingFont(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeMenuAccent":
+			out.Values[i] = ec._AuthUser_themeMenuAccent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeMenuColor":
+			out.Values[i] = ec._AuthUser_themeMenuColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeStyle":
+			out.Values[i] = ec._AuthUser_themeStyle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeRadius":
+			out.Values[i] = ec._AuthUser_themeRadius(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeRTL":
+			out.Values[i] = ec._AuthUser_themeRTL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var availableProviderImplementors = []string{"AvailableProvider"}
+
+func (ec *executionContext) _AvailableProvider(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AvailableProvider) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, availableProviderImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AvailableProvider")
+		case "provider":
+			out.Values[i] = ec._AvailableProvider_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "capability":
+			out.Values[i] = ec._AvailableProvider_capability(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requiresApiKey":
+			out.Values[i] = ec._AvailableProvider_requiresApiKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasCredential":
+			out.Values[i] = ec._AvailableProvider_hasCredential(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "credentialValid":
+			out.Values[i] = ec._AvailableProvider_credentialValid(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "credentialEnabled":
+			out.Values[i] = ec._AvailableProvider_credentialEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "priority":
+			out.Values[i] = ec._AvailableProvider_priority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mappingStatus":
+			out.Values[i] = ec._AvailableProvider_mappingStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "effectiveEnabled":
+			out.Values[i] = ec._AvailableProvider_effectiveEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -44970,6 +53016,73 @@ func (ec *executionContext) _Candle(ctx context.Context, sel ast.SelectionSet, o
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var catalogSyncRunImplementors = []string{"CatalogSyncRun"}
+
+func (ec *executionContext) _CatalogSyncRun(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.CatalogSyncRun) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, catalogSyncRunImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CatalogSyncRun")
+		case "id":
+			out.Values[i] = ec._CatalogSyncRun_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "source":
+			out.Values[i] = ec._CatalogSyncRun_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mode":
+			out.Values[i] = ec._CatalogSyncRun_mode(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._CatalogSyncRun_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cursor":
+			out.Values[i] = ec._CatalogSyncRun_cursor(ctx, field, obj)
+		case "statsJson":
+			out.Values[i] = ec._CatalogSyncRun_statsJson(ctx, field, obj)
+		case "errorText":
+			out.Values[i] = ec._CatalogSyncRun_errorText(ctx, field, obj)
+		case "startedAt":
+			out.Values[i] = ec._CatalogSyncRun_startedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "finishedAt":
+			out.Values[i] = ec._CatalogSyncRun_finishedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -45867,6 +53980,52 @@ func (ec *executionContext) _ImportFinanceDatabaseAssetsPayload(ctx context.Cont
 	return out
 }
 
+var importInstrumentFromSourcePayloadImplementors = []string{"ImportInstrumentFromSourcePayload"}
+
+func (ec *executionContext) _ImportInstrumentFromSourcePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.ImportInstrumentFromSourcePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, importInstrumentFromSourcePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ImportInstrumentFromSourcePayload")
+		case "success":
+			out.Values[i] = ec._ImportInstrumentFromSourcePayload_success(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "instrument":
+			out.Values[i] = ec._ImportInstrumentFromSourcePayload_instrument(ctx, field, obj)
+		case "message":
+			out.Values[i] = ec._ImportInstrumentFromSourcePayload_message(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var instrumentImplementors = []string{"Instrument"}
 
 func (ec *executionContext) _Instrument(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Instrument) graphql.Marshaler {
@@ -45954,6 +54113,20 @@ func (ec *executionContext) _Instrument(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "externalSource":
+			out.Values[i] = ec._Instrument_externalSource(ctx, field, obj)
+		case "externalId":
+			out.Values[i] = ec._Instrument_externalId(ctx, field, obj)
+		case "platforms":
+			out.Values[i] = ec._Instrument_platforms(ctx, field, obj)
+		case "primaryContractAddress":
+			out.Values[i] = ec._Instrument_primaryContractAddress(ctx, field, obj)
+		case "instrumentStatus":
+			out.Values[i] = ec._Instrument_instrumentStatus(ctx, field, obj)
+		case "imageUrl":
+			out.Values[i] = ec._Instrument_imageUrl(ctx, field, obj)
+		case "metadataUpdatedAt":
+			out.Values[i] = ec._Instrument_metadataUpdatedAt(ctx, field, obj)
 		case "providerSource":
 			out.Values[i] = ec._Instrument_providerSource(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -46714,6 +54887,111 @@ func (ec *executionContext) _ManualInstrumentPayload(ctx context.Context, sel as
 	return out
 }
 
+var marketDataCandlePayloadImplementors = []string{"MarketDataCandlePayload"}
+
+func (ec *executionContext) _MarketDataCandlePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataCandlePayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataCandlePayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataCandlePayload")
+		case "candle":
+			out.Values[i] = ec._MarketDataCandlePayload_candle(ctx, field, obj)
+		case "sourceProvider":
+			out.Values[i] = ec._MarketDataCandlePayload_sourceProvider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fallbackUsed":
+			out.Values[i] = ec._MarketDataCandlePayload_fallbackUsed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failures":
+			out.Values[i] = ec._MarketDataCandlePayload_failures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataCandlesPayloadImplementors = []string{"MarketDataCandlesPayload"}
+
+func (ec *executionContext) _MarketDataCandlesPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataCandlesPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataCandlesPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataCandlesPayload")
+		case "candles":
+			out.Values[i] = ec._MarketDataCandlesPayload_candles(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceProvider":
+			out.Values[i] = ec._MarketDataCandlesPayload_sourceProvider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "fallbackUsed":
+			out.Values[i] = ec._MarketDataCandlesPayload_fallbackUsed(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failures":
+			out.Values[i] = ec._MarketDataCandlesPayload_failures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var marketDataCredentialImplementors = []string{"MarketDataCredential"}
 
 func (ec *executionContext) _MarketDataCredential(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataCredential) graphql.Marshaler {
@@ -46735,6 +55013,18 @@ func (ec *executionContext) _MarketDataCredential(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "isEnabled":
+			out.Values[i] = ec._MarketDataCredential_isEnabled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "priority":
+			out.Values[i] = ec._MarketDataCredential_priority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastValidatedAt":
+			out.Values[i] = ec._MarketDataCredential_lastValidatedAt(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._MarketDataCredential_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -46742,6 +55032,472 @@ func (ec *executionContext) _MarketDataCredential(ctx context.Context, sel ast.S
 			}
 		case "updatedAt":
 			out.Values[i] = ec._MarketDataCredential_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataPackImplementors = []string{"MarketDataPack"}
+
+func (ec *executionContext) _MarketDataPack(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataPack) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataPackImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataPack")
+		case "id":
+			out.Values[i] = ec._MarketDataPack_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._MarketDataPack_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._MarketDataPack_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._MarketDataPack_description(ctx, field, obj)
+		case "formatVersion":
+			out.Values[i] = ec._MarketDataPack_formatVersion(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._MarketDataPack_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "parentPackId":
+			out.Values[i] = ec._MarketDataPack_parentPackId(ctx, field, obj)
+		case "packPriority":
+			out.Values[i] = ec._MarketDataPack_packPriority(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filePath":
+			out.Values[i] = ec._MarketDataPack_filePath(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "checksum":
+			out.Values[i] = ec._MarketDataPack_checksum(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "signatureVerified":
+			out.Values[i] = ec._MarketDataPack_signatureVerified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetsCount":
+			out.Values[i] = ec._MarketDataPack_assetsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rowsCount":
+			out.Values[i] = ec._MarketDataPack_rowsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "installedAt":
+			out.Values[i] = ec._MarketDataPack_installedAt(ctx, field, obj)
+		case "updatedAt":
+			out.Values[i] = ec._MarketDataPack_updatedAt(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._MarketDataPack_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataPackBuildJobImplementors = []string{"MarketDataPackBuildJob"}
+
+func (ec *executionContext) _MarketDataPackBuildJob(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataPackBuildJob) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataPackBuildJobImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataPackBuildJob")
+		case "id":
+			out.Values[i] = ec._MarketDataPackBuildJob_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "packId":
+			out.Values[i] = ec._MarketDataPackBuildJob_packId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sourceProvider":
+			out.Values[i] = ec._MarketDataPackBuildJob_sourceProvider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._MarketDataPackBuildJob_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "progressPercent":
+			out.Values[i] = ec._MarketDataPackBuildJob_progressPercent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currentSymbol":
+			out.Values[i] = ec._MarketDataPackBuildJob_currentSymbol(ctx, field, obj)
+		case "totalSymbols":
+			out.Values[i] = ec._MarketDataPackBuildJob_totalSymbols(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completedSymbols":
+			out.Values[i] = ec._MarketDataPackBuildJob_completedSymbols(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "failedSymbols":
+			out.Values[i] = ec._MarketDataPackBuildJob_failedSymbols(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorMessage":
+			out.Values[i] = ec._MarketDataPackBuildJob_errorMessage(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._MarketDataPackBuildJob_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startedAt":
+			out.Values[i] = ec._MarketDataPackBuildJob_startedAt(ctx, field, obj)
+		case "finishedAt":
+			out.Values[i] = ec._MarketDataPackBuildJob_finishedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataPackCoverageImplementors = []string{"MarketDataPackCoverage"}
+
+func (ec *executionContext) _MarketDataPackCoverage(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataPackCoverage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataPackCoverageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataPackCoverage")
+		case "packId":
+			out.Values[i] = ec._MarketDataPackCoverage_packId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "instrumentId":
+			out.Values[i] = ec._MarketDataPackCoverage_instrumentId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "symbol":
+			out.Values[i] = ec._MarketDataPackCoverage_symbol(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetType":
+			out.Values[i] = ec._MarketDataPackCoverage_assetType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "interval":
+			out.Values[i] = ec._MarketDataPackCoverage_interval(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quoteCurrency":
+			out.Values[i] = ec._MarketDataPackCoverage_quoteCurrency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "firstDate":
+			out.Values[i] = ec._MarketDataPackCoverage_firstDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastDate":
+			out.Values[i] = ec._MarketDataPackCoverage_lastDate(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rowCount":
+			out.Values[i] = ec._MarketDataPackCoverage_rowCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "filePaths":
+			out.Values[i] = ec._MarketDataPackCoverage_filePaths(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataPackJobImplementors = []string{"MarketDataPackJob"}
+
+func (ec *executionContext) _MarketDataPackJob(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataPackJob) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataPackJobImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataPackJob")
+		case "id":
+			out.Values[i] = ec._MarketDataPackJob_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "packId":
+			out.Values[i] = ec._MarketDataPackJob_packId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "jobType":
+			out.Values[i] = ec._MarketDataPackJob_jobType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._MarketDataPackJob_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "progressPercent":
+			out.Values[i] = ec._MarketDataPackJob_progressPercent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "downloadedBytes":
+			out.Values[i] = ec._MarketDataPackJob_downloadedBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalBytes":
+			out.Values[i] = ec._MarketDataPackJob_totalBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importedRows":
+			out.Values[i] = ec._MarketDataPackJob_importedRows(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorMessage":
+			out.Values[i] = ec._MarketDataPackJob_errorMessage(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._MarketDataPackJob_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startedAt":
+			out.Values[i] = ec._MarketDataPackJob_startedAt(ctx, field, obj)
+		case "finishedAt":
+			out.Values[i] = ec._MarketDataPackJob_finishedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var marketDataPackRegistryEntryImplementors = []string{"MarketDataPackRegistryEntry"}
+
+func (ec *executionContext) _MarketDataPackRegistryEntry(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MarketDataPackRegistryEntry) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, marketDataPackRegistryEntryImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("MarketDataPackRegistryEntry")
+		case "packId":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_packId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "version":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "description":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_description(ctx, field, obj)
+		case "sizeBytes":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_sizeBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "compressedSizeBytes":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_compressedSizeBytes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetsCount":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_assetsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rowsCount":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_rowsCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "interval":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_interval(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetTypes":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_assetTypes(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "quoteCurrencies":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_quoteCurrencies(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "downloadUrl":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_downloadUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "checksum":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_checksum(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "signatureUrl":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_signatureUrl(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "recommended":
+			out.Values[i] = ec._MarketDataPackRegistryEntry_recommended(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -46996,6 +55752,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateUserDisplayCurrency":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateUserDisplayCurrency(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateUserThemePreferences":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateUserThemePreferences(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -47273,6 +56036,20 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "importInstrumentFromCatalog":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importInstrumentFromCatalog(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "importInstrumentFromSource":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_importInstrumentFromSource(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "triggerFinanceDatabaseSync":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_triggerFinanceDatabaseSync(ctx, field)
@@ -47371,6 +56148,55 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "installMarketDataPack":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_installMarketDataPack(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateMarketDataPack":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateMarketDataPack(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeMarketDataPack":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeMarketDataPack(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "repairMarketDataPack":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_repairMarketDataPack(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cancelMarketDataPackJob":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelMarketDataPackJob(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startLocalPackBuild":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_startLocalPackBuild(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "cancelPackBuildJob":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_cancelPackBuildJob(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "recordDashboardEvent":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_recordDashboardEvent(ctx, field)
@@ -47409,6 +56235,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updatePerformanceSnapshots":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updatePerformanceSnapshots(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateTransaction(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -47527,6 +56360,19 @@ func (ec *executionContext) _OnlineInstrumentResult(ctx context.Context, sel ast
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "source":
+			out.Values[i] = ec._OnlineInstrumentResult_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "externalId":
+			out.Values[i] = ec._OnlineInstrumentResult_externalId(ctx, field, obj)
+		case "marketCapRank":
+			out.Values[i] = ec._OnlineInstrumentResult_marketCapRank(ctx, field, obj)
+		case "imageUrl":
+			out.Values[i] = ec._OnlineInstrumentResult_imageUrl(ctx, field, obj)
+		case "platforms":
+			out.Values[i] = ec._OnlineInstrumentResult_platforms(ctx, field, obj)
 		case "providerSource":
 			out.Values[i] = ec._OnlineInstrumentResult_providerSource(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -47589,6 +56435,13 @@ func (ec *executionContext) _OnlineInstrumentSearchPayload(ctx context.Context, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "coverageStatus":
+			out.Values[i] = ec._OnlineInstrumentSearchPayload_coverageStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorMessage":
+			out.Values[i] = ec._OnlineInstrumentSearchPayload_errorMessage(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -47999,6 +56852,50 @@ func (ec *executionContext) _PerformanceSnapshot(ctx context.Context, sel ast.Se
 			}
 		case "dataQuality":
 			out.Values[i] = ec._PerformanceSnapshot_dataQuality(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var platformAddressImplementors = []string{"PlatformAddress"}
+
+func (ec *executionContext) _PlatformAddress(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.PlatformAddress) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, platformAddressImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("PlatformAddress")
+		case "platform":
+			out.Values[i] = ec._PlatformAddress_platform(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "address":
+			out.Values[i] = ec._PlatformAddress_address(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -48476,6 +57373,50 @@ func (ec *executionContext) _PositionValuation(ctx context.Context, sel ast.Sele
 			}
 		case "displayCurrency":
 			out.Values[i] = ec._PositionValuation_displayCurrency(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var providerFailureImplementors = []string{"ProviderFailure"}
+
+func (ec *executionContext) _ProviderFailure(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.ProviderFailure) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, providerFailureImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProviderFailure")
+		case "provider":
+			out.Values[i] = ec._ProviderFailure_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reason":
+			out.Values[i] = ec._ProviderFailure_reason(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -49141,6 +58082,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "catalogSyncStatus":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_catalogSyncStatus(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "financeDatabaseSyncStatus":
 			field := field
 
@@ -49314,6 +58274,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "candlesByInstrument":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_candlesByInstrument(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "marketDataCredentials":
 			field := field
 
@@ -49358,6 +58340,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "availableProviders":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_availableProviders(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "providerHealth":
 			field := field
 
@@ -49390,6 +58394,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_realTimePrice(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "realTimePriceByInstrument":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_realTimePriceByInstrument(ctx, field)
 				return res
 			}
 
@@ -49475,6 +58498,132 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_providerRoutingPreferences(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "availableMarketDataPacks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_availableMarketDataPacks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "installedMarketDataPacks":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_installedMarketDataPacks(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "marketDataPackJob":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_marketDataPackJob(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "marketDataCoverage":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_marketDataCoverage(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "packBuildJob":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_packBuildJob(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "packBuildJobs":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_packBuildJobs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -50908,6 +60057,56 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "themePreference":
+			out.Values[i] = ec._User_themePreference(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeBaseColor":
+			out.Values[i] = ec._User_themeBaseColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeAccentColor":
+			out.Values[i] = ec._User_themeAccentColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeFontPreference":
+			out.Values[i] = ec._User_themeFontPreference(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeHeadingFont":
+			out.Values[i] = ec._User_themeHeadingFont(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeMenuAccent":
+			out.Values[i] = ec._User_themeMenuAccent(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeMenuColor":
+			out.Values[i] = ec._User_themeMenuColor(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeStyle":
+			out.Values[i] = ec._User_themeStyle(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeRadius":
+			out.Values[i] = ec._User_themeRadius(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "themeRTL":
+			out.Values[i] = ec._User_themeRTL(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -52013,6 +61212,32 @@ func (ec *executionContext) marshalNAuthUser2ᚖsigma_financeᚋinternalᚋhandl
 	return ec._AuthUser(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNAvailableProvider2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAvailableProviderᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.AvailableProvider) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNAvailableProvider2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAvailableProvider(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNAvailableProvider2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAvailableProvider(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AvailableProvider) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AvailableProvider(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNBankAccount2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBankAccount(ctx context.Context, sel ast.SelectionSet, v gqlModel.BankAccount) graphql.Marshaler {
 	return ec._BankAccount(ctx, sel, &v)
 }
@@ -52173,6 +61398,16 @@ func (ec *executionContext) marshalNCandle2ᚖsigma_financeᚋinternalᚋhandler
 	return ec._Candle(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource(ctx context.Context, v any) (gqlModel.CatalogSource, error) {
+	var res gqlModel.CatalogSource
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCatalogSource2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSource(ctx context.Context, sel ast.SelectionSet, v gqlModel.CatalogSource) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNChartDataInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐChartDataInput(ctx context.Context, v any) (gqlModel.ChartDataInput, error) {
 	res, err := ec.unmarshalInputChartDataInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -52215,6 +61450,16 @@ func (ec *executionContext) unmarshalNConditionType2sigma_financeᚋinternalᚋh
 }
 
 func (ec *executionContext) marshalNConditionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐConditionType(ctx context.Context, sel ast.SelectionSet, v gqlModel.ConditionType) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNCoverageStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoverageStatus(ctx context.Context, v any) (gqlModel.CoverageStatus, error) {
+	var res gqlModel.CoverageStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNCoverageStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoverageStatus(ctx context.Context, sel ast.SelectionSet, v gqlModel.CoverageStatus) graphql.Marshaler {
 	return v
 }
 
@@ -52653,6 +61898,25 @@ func (ec *executionContext) marshalNImportFinanceDatabaseAssetsPayload2ᚖsigma_
 	return ec._ImportFinanceDatabaseAssetsPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNImportInstrumentFromSourceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourceInput(ctx context.Context, v any) (gqlModel.ImportInstrumentFromSourceInput, error) {
+	res, err := ec.unmarshalInputImportInstrumentFromSourceInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNImportInstrumentFromSourcePayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourcePayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.ImportInstrumentFromSourcePayload) graphql.Marshaler {
+	return ec._ImportInstrumentFromSourcePayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNImportInstrumentFromSourcePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐImportInstrumentFromSourcePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ImportInstrumentFromSourcePayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ImportInstrumentFromSourcePayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNInstrument2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐInstrument(ctx context.Context, sel ast.SelectionSet, v gqlModel.Instrument) graphql.Marshaler {
 	return ec._Instrument(ctx, sel, &v)
 }
@@ -52790,6 +62054,22 @@ func (ec *executionContext) marshalNInt2int32(ctx context.Context, sel ast.Selec
 	return res
 }
 
+func (ec *executionContext) unmarshalNInt642int(ctx context.Context, v any) (int, error) {
+	res, err := graphql.UnmarshalInt(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNInt642int(ctx context.Context, sel ast.SelectionSet, v int) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalInt(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
 func (ec *executionContext) unmarshalNJSON2map(ctx context.Context, v any) (map[string]any, error) {
 	res, err := graphql.UnmarshalMap(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -52888,6 +62168,20 @@ func (ec *executionContext) marshalNManualInstrumentPayload2ᚖsigma_financeᚋi
 	return ec._ManualInstrumentPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNMarketDataCandlesPayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCandlesPayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.MarketDataCandlesPayload) graphql.Marshaler {
+	return ec._MarketDataCandlesPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMarketDataCandlesPayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCandlesPayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataCandlesPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataCandlesPayload(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNMarketDataCredential2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCredential(ctx context.Context, sel ast.SelectionSet, v gqlModel.MarketDataCredential) graphql.Marshaler {
 	return ec._MarketDataCredential(ctx, sel, &v)
 }
@@ -52916,6 +62210,128 @@ func (ec *executionContext) marshalNMarketDataCredential2ᚖsigma_financeᚋinte
 		return graphql.Null
 	}
 	return ec._MarketDataCredential(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMarketDataPack2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.MarketDataPack) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMarketDataPack2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPack(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMarketDataPack2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPack(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPack) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataPack(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackBuildJob2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob(ctx context.Context, sel ast.SelectionSet, v gqlModel.MarketDataPackBuildJob) graphql.Marshaler {
+	return ec._MarketDataPackBuildJob(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackBuildJob2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJobᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.MarketDataPackBuildJob) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackBuildJob) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataPackBuildJob(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackCoverage2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackCoverageᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.MarketDataPackCoverage) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMarketDataPackCoverage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackCoverage(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMarketDataPackCoverage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackCoverage(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackCoverage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataPackCoverage(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackJob2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob(ctx context.Context, sel ast.SelectionSet, v gqlModel.MarketDataPackJob) graphql.Marshaler {
+	return ec._MarketDataPackJob(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackJob) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataPackJob(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNMarketDataPackRegistryEntry2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackRegistryEntryᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.MarketDataPackRegistryEntry) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNMarketDataPackRegistryEntry2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackRegistryEntry(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNMarketDataPackRegistryEntry2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackRegistryEntry(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackRegistryEntry) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._MarketDataPackRegistryEntry(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNMethodParameter2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMethodParameterᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.MethodParameter) graphql.Marshaler {
@@ -53190,6 +62606,16 @@ func (ec *executionContext) unmarshalNPersistDiscoveredInstrumentInput2sigma_fin
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNPlatformAddress2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPlatformAddress(ctx context.Context, sel ast.SelectionSet, v *gqlModel.PlatformAddress) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._PlatformAddress(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNPortfolio2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx context.Context, sel ast.SelectionSet, v gqlModel.Portfolio) graphql.Marshaler {
 	return ec._Portfolio(ctx, sel, &v)
 }
@@ -53359,6 +62785,32 @@ func (ec *executionContext) marshalNPositionValuation2ᚖsigma_financeᚋinterna
 		return graphql.Null
 	}
 	return ec._PositionValuation(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNProviderFailure2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderFailureᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.ProviderFailure) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNProviderFailure2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderFailure(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNProviderFailure2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderFailure(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ProviderFailure) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProviderFailure(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNProviderHealth2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐProviderHealthᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.ProviderHealth) graphql.Marshaler {
@@ -53596,6 +63048,11 @@ func (ec *executionContext) marshalNSortDirection2sigma_financeᚋinternalᚋhan
 	return v
 }
 
+func (ec *executionContext) unmarshalNStartLocalPackBuildInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐStartLocalPackBuildInput(ctx context.Context, v any) (gqlModel.StartLocalPackBuildInput, error) {
+	res, err := ec.unmarshalInputStartLocalPackBuildInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalNStock2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐStock(ctx context.Context, sel ast.SelectionSet, v gqlModel.Stock) graphql.Marshaler {
 	return ec._Stock(ctx, sel, &v)
 }
@@ -53812,6 +63269,10 @@ func (ec *executionContext) marshalNTimeSeriesData2ᚖsigma_financeᚋinternal�
 	return ec._TimeSeriesData(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTransaction2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v gqlModel.Transaction) graphql.Marshaler {
+	return ec._Transaction(ctx, sel, &v)
+}
+
 func (ec *executionContext) marshalNTransaction2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Transaction) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -53901,6 +63362,11 @@ func (ec *executionContext) unmarshalNUpdatePortfolioInput2sigma_financeᚋinter
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateTransactionInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateTransactionInput(ctx context.Context, v any) (gqlModel.UpdateTransactionInput, error) {
+	res, err := ec.unmarshalInputUpdateTransactionInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateUserDisplayCurrencyInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateUserDisplayCurrencyInput(ctx context.Context, v any) (gqlModel.UpdateUserDisplayCurrencyInput, error) {
 	res, err := ec.unmarshalInputUpdateUserDisplayCurrencyInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -53908,6 +63374,11 @@ func (ec *executionContext) unmarshalNUpdateUserDisplayCurrencyInput2sigma_finan
 
 func (ec *executionContext) unmarshalNUpdateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateUserInput(ctx context.Context, v any) (gqlModel.UpdateUserInput, error) {
 	res, err := ec.unmarshalInputUpdateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateUserThemePreferencesInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateUserThemePreferencesInput(ctx context.Context, v any) (gqlModel.UpdateUserThemePreferencesInput, error) {
+	res, err := ec.unmarshalInputUpdateUserThemePreferencesInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -54333,6 +63804,13 @@ func (ec *executionContext) marshalOCandle2ᚖsigma_financeᚋinternalᚋhandler
 	return ec._Candle(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalOCatalogSyncRun2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCatalogSyncRun(ctx context.Context, sel ast.SelectionSet, v *gqlModel.CatalogSyncRun) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._CatalogSyncRun(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOChartMetadata2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐChartMetadata(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ChartMetadata) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -54559,6 +64037,27 @@ func (ec *executionContext) unmarshalOManualInstrumentFilterInput2ᚖsigma_finan
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalOMarketDataCandlePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataCandlePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataCandlePayload) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MarketDataCandlePayload(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOMarketDataPackBuildJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackBuildJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackBuildJob) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MarketDataPackBuildJob(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOMarketDataPackJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMarketDataPackJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MarketDataPackJob) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._MarketDataPackJob(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOMetric2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetric(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Metric) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -54613,6 +64112,25 @@ func (ec *executionContext) unmarshalOPerformanceTimeRangeInput2ᚖsigma_finance
 	}
 	res, err := ec.unmarshalInputPerformanceTimeRangeInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOPlatformAddress2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPlatformAddressᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.PlatformAddress) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNPlatformAddress2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPlatformAddress(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOPortfolio2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Portfolio) graphql.Marshaler {
