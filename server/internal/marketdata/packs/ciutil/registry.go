@@ -119,7 +119,7 @@ func ValidateRegistry(opts ValidateRegistryOptions) error {
 
 func validateRegistryPack(pack packservice.RegistryPack, distDir string) error {
 	sourceProvider := strings.ToLower(strings.TrimSpace(pack.SourceProvider))
-	if sourceProvider == "yahoo-finance" || sourceProvider == "eodhd-local-only" {
+	if sourceProvider == "yahoo-finance" || sourceProvider == "eodhd-local-only" || sourceProvider == "proprietary-market-data-local-only" || sourceProvider == "marketparquet" {
 		return fmt.Errorf("forbidden source provider %s", pack.SourceProvider)
 	}
 	required := map[string]string{

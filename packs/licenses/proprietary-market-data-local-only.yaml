@@ -1,0 +1,14 @@
+provider_id: proprietary-market-data-local-only
+name: Proprietary Market Data Local Only
+source_url: https://example.invalid/proprietary-market-data-license
+license_name: Proprietary
+redistribution_allowed: false
+commercial_use_allowed: false
+attribution_required: true
+terms_checked_at: "2026-05-13"
+allowed_distribution_modes:
+  - local
+notes:
+  - Supports user-owned provider keys for TIINGO, TWELVEDATA, ALPHAVANTAGE, and FINNHUB.
+  - Local/private storage only.
+  - Uploading or redistributing generated packs is forbidden without written redistribution license.

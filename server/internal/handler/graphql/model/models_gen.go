@@ -1119,9 +1119,14 @@ type MarketDataPackBuildJob struct {
 	Status           string     `json:"status"`
 	ProgressPercent  float64    `json:"progressPercent"`
 	CurrentSymbol    *string    `json:"currentSymbol,omitempty"`
+	CurrentDate      *time.Time `json:"currentDate,omitempty"`
+	CurrentAssetType *string    `json:"currentAssetType,omitempty"`
 	TotalSymbols     int32      `json:"totalSymbols"`
 	CompletedSymbols int32      `json:"completedSymbols"`
 	FailedSymbols    int32      `json:"failedSymbols"`
+	CompletedDates   int32      `json:"completedDates"`
+	TotalDates       int32      `json:"totalDates"`
+	RowsWritten      int        `json:"rowsWritten"`
 	ErrorMessage     *string    `json:"errorMessage,omitempty"`
 	CreatedAt        time.Time  `json:"createdAt"`
 	StartedAt        *time.Time `json:"startedAt,omitempty"`
@@ -1619,16 +1624,20 @@ type RiskMetrics struct {
 }
 
 type StartLocalPackBuildInput struct {
-	PackID                *string    `json:"packId,omitempty"`
-	SourceProvider        string     `json:"sourceProvider"`
-	AssetTypes            []string   `json:"assetTypes"`
-	HistoryStart          *time.Time `json:"historyStart,omitempty"`
-	HistoryEnd            *time.Time `json:"historyEnd,omitempty"`
-	PortfolioFirst        *bool      `json:"portfolioFirst,omitempty"`
-	UniverseInstrumentIds []string   `json:"universeInstrumentIds,omitempty"`
-	RequestsPerMinute     *int32     `json:"requestsPerMinute,omitempty"`
-	RequestsPerDay        *int32     `json:"requestsPerDay,omitempty"`
-	ConcurrentRequests    *int32     `json:"concurrentRequests,omitempty"`
+	PackID                  *string    `json:"packId,omitempty"`
+	SourceProvider          string     `json:"sourceProvider"`
+	SourceMode              *string    `json:"sourceMode,omitempty"`
+	ImportPath              *string    `json:"importPath,omitempty"`
+	MarketParquetSourceMode *string    `json:"marketParquetSourceMode,omitempty"`
+	MarketParquetLocalPath  *string    `json:"marketParquetLocalPath,omitempty"`
+	AssetTypes              []string   `json:"assetTypes"`
+	HistoryStart            *time.Time `json:"historyStart,omitempty"`
+	HistoryEnd              *time.Time `json:"historyEnd,omitempty"`
+	PortfolioFirst          *bool      `json:"portfolioFirst,omitempty"`
+	UniverseInstrumentIds   []string   `json:"universeInstrumentIds,omitempty"`
+	RequestsPerMinute       *int32     `json:"requestsPerMinute,omitempty"`
+	RequestsPerDay          *int32     `json:"requestsPerDay,omitempty"`
+	ConcurrentRequests      *int32     `json:"concurrentRequests,omitempty"`
 }
 
 type Stock struct {

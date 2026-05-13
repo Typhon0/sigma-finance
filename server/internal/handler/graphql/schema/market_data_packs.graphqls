@@ -92,9 +92,14 @@ type MarketDataPackBuildJob {
   status: String!
   progressPercent: Float!
   currentSymbol: String
+  currentDate: Time
+  currentAssetType: String
   totalSymbols: Int!
   completedSymbols: Int!
   failedSymbols: Int!
+  completedDates: Int!
+  totalDates: Int!
+  rowsWritten: Int64!
   errorMessage: String
   createdAt: Time!
   startedAt: Time
@@ -104,6 +109,10 @@ type MarketDataPackBuildJob {
 input StartLocalPackBuildInput {
   packId: String
   sourceProvider: String!
+  sourceMode: String
+  importPath: String
+  marketParquetSourceMode: String
+  marketParquetLocalPath: String
   assetTypes: [String!]!
   historyStart: Time
   historyEnd: Time

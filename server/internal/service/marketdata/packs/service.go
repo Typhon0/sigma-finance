@@ -31,11 +31,14 @@ import (
 const CurrentFormatVersion = 1
 
 type Config struct {
-	RegistryURL        string
-	StoragePath        string
-	SignaturePublicKey string
-	AppVersion         string
-	BuildJobStaleAfter time.Duration
+	RegistryURL                   string
+	StoragePath                   string
+	SignaturePublicKey            string
+	AppVersion                    string
+	BuildJobStaleAfter            time.Duration
+	LocalBuildDefaultHistoryYears int
+	MarketParquetAPIBaseURL       string
+	MarketParquetImportRoot       string
 }
 
 type Service interface {
@@ -50,10 +53,14 @@ type Service interface {
 	GetPackJob(ctx context.Context, jobID string) (*model.MarketDataPackJob, error)
 	GetCoverage(ctx context.Context, instrumentID string) ([]model.MarketDataPackCoverage, error)
 	StartLocalPackBuild(ctx context.Context, userID string, input StartLocalPackBuildInput) (*model.MarketDataPackBuildJob, error)
+	EstimateLocalPackBuild(ctx context.Context, userID string, input StartLocalPackBuildInput) (*LocalPackBuildEstimate, error)
 	GetLocalPackBuildJob(ctx context.Context, userID string, jobID string) (*model.MarketDataPackBuildJob, error)
+	GetLocalPackBuildJobItems(ctx context.Context, userID string, jobID string) ([]model.MarketDataPackBuildJobItem, error)
 	ListLocalPackBuildJobs(ctx context.Context, userID string, limit int) ([]model.MarketDataPackBuildJob, error)
 	CancelLocalPackBuild(ctx context.Context, userID string, jobID string) (*model.MarketDataPackBuildJob, error)
+	RetryFailedLocalPackBuild(ctx context.Context, userID string, jobID string) (*model.MarketDataPackBuildJob, error)
 	ResumeQueuedLocalPackBuilds(ctx context.Context) error
+	RepairLocalBuildStorage(ctx context.Context) (int, error)
 }
 
 type Registry struct {
@@ -92,36 +99,38 @@ type RegistryPack struct {
 }
 
 type Manifest struct {
-	PackID                string             `json:"pack_id"`
-	Version               string             `json:"version"`
-	Name                  string             `json:"name"`
-	Description           string             `json:"description"`
-	FormatVersion         int                `json:"format_version"`
-	ParentPackID          *string            `json:"parent_pack_id,omitempty"`
-	Distribution          string             `json:"distribution,omitempty"`
-	Interval              string             `json:"interval"`
-	AssetTypes            []string           `json:"asset_types,omitempty"`
-	QuoteCurrencies       []string           `json:"quote_currencies,omitempty"`
-	SourceProvider        string             `json:"source_provider"`
-	DataLicense           string             `json:"data_license"`
-	RedistributionAllowed bool               `json:"redistribution_allowed"`
-	CommercialUseAllowed  bool               `json:"commercial_use_allowed"`
-	AttributionRequired   bool               `json:"attribution_required"`
-	LicenseURL            string             `json:"license_url,omitempty"`
-	GeneratedBy           string             `json:"generated_by,omitempty"`
-	GeneratedByUser       bool               `json:"generated_by_user,omitempty"`
-	UploadForbidden       bool               `json:"upload_forbidden,omitempty"`
-	InstallMode           string             `json:"install_mode,omitempty"`
-	GeneratedAt           time.Time          `json:"generated_at,omitempty"`
-	HistoryStart          string             `json:"history_start,omitempty"`
-	HistoryEnd            string             `json:"history_end,omitempty"`
-	CreatedAt             time.Time          `json:"created_at,omitempty"`
-	AssetsCount           int64              `json:"assets_count"`
-	RowsCount             int64              `json:"rows_count"`
-	Compression           string             `json:"compression,omitempty"`
-	MinAppVersion         string             `json:"min_app_version,omitempty"`
-	Files                 []ManifestFile     `json:"files"`
-	Coverage              []ManifestCoverage `json:"coverage"`
+	PackID                 string             `json:"pack_id"`
+	Version                string             `json:"version"`
+	Name                   string             `json:"name"`
+	Description            string             `json:"description"`
+	FormatVersion          int                `json:"format_version"`
+	ParentPackID           *string            `json:"parent_pack_id,omitempty"`
+	Distribution           string             `json:"distribution,omitempty"`
+	Interval               string             `json:"interval"`
+	AssetTypes             []string           `json:"asset_types,omitempty"`
+	QuoteCurrencies        []string           `json:"quote_currencies,omitempty"`
+	SourceProvider         string             `json:"source_provider"`
+	DataLicense            string             `json:"data_license"`
+	RedistributionAllowed  bool               `json:"redistribution_allowed"`
+	CommercialUseAllowed   bool               `json:"commercial_use_allowed"`
+	AttributionRequired    bool               `json:"attribution_required"`
+	LicenseURL             string             `json:"license_url,omitempty"`
+	GeneratedBy            string             `json:"generated_by,omitempty"`
+	GeneratedByUser        bool               `json:"generated_by_user,omitempty"`
+	UploadForbidden        bool               `json:"upload_forbidden,omitempty"`
+	InstallMode            string             `json:"install_mode,omitempty"`
+	GeneratedAt            time.Time          `json:"generated_at,omitempty"`
+	HistoryStart           string             `json:"history_start,omitempty"`
+	HistoryEnd             string             `json:"history_end,omitempty"`
+	CreatedAt              time.Time          `json:"created_at,omitempty"`
+	AssetsCount            int64              `json:"assets_count"`
+	RowsCount              int64              `json:"rows_count"`
+	Compression            string             `json:"compression,omitempty"`
+	PriceAdjustment        string             `json:"price_adjustment,omitempty"`
+	RawUnadjustedAvailable bool               `json:"raw_unadjusted_available,omitempty"`
+	MinAppVersion          string             `json:"min_app_version,omitempty"`
+	Files                  []ManifestFile     `json:"files"`
+	Coverage               []ManifestCoverage `json:"coverage"`
 }
 
 type ManifestFile struct {
@@ -164,6 +173,15 @@ func NewService(repo repository.IMarketDataPackRepository, cfg Config) Service {
 	}
 	if cfg.BuildJobStaleAfter <= 0 {
 		cfg.BuildJobStaleAfter = 30 * time.Minute
+	}
+	if cfg.LocalBuildDefaultHistoryYears < 1 {
+		cfg.LocalBuildDefaultHistoryYears = 10
+	}
+	if cfg.LocalBuildDefaultHistoryYears > 30 {
+		cfg.LocalBuildDefaultHistoryYears = 30
+	}
+	if strings.TrimSpace(cfg.MarketParquetAPIBaseURL) == "" {
+		cfg.MarketParquetAPIBaseURL = "https://www.marketparquet.com"
 	}
 	return &packService{
 		repo: repo,

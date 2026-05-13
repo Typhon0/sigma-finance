@@ -72,9 +72,14 @@ type MarketDataPackBuildJob struct {
 	Status           string          `bun:"status,notnull"`
 	ProgressPercent  decimal.Decimal `bun:"progress_percent,notnull,default:0"`
 	CurrentSymbol    *string         `bun:"current_symbol"`
+	CurrentDate      *time.Time      `bun:"current_date,type:date"`
+	CurrentAssetType *string         `bun:"current_asset_type"`
 	TotalSymbols     int             `bun:"total_symbols,notnull,default:0"`
 	CompletedSymbols int             `bun:"completed_symbols,notnull,default:0"`
 	FailedSymbols    int             `bun:"failed_symbols,notnull,default:0"`
+	CompletedDates   int             `bun:"completed_dates,notnull,default:0"`
+	TotalDates       int             `bun:"total_dates,notnull,default:0"`
+	RowsWritten      int64           `bun:"rows_written,notnull,default:0"`
 	ErrorMessage     *string         `bun:"error_message"`
 	CreatedAt        time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 	StartedAt        *time.Time      `bun:"started_at"`
@@ -84,14 +89,17 @@ type MarketDataPackBuildJob struct {
 type MarketDataPackBuildJobItem struct {
 	bun.BaseModel `bun:"table:sigma_finance.market_data_pack_build_job_items"`
 
-	ID           string     `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	JobID        string     `bun:"job_id,notnull,type:uuid"`
-	InstrumentID string     `bun:"instrument_id,notnull,type:uuid"`
-	Symbol       string     `bun:"symbol,notnull"`
-	Status       string     `bun:"status,notnull"`
-	FirstDate    *time.Time `bun:"first_date,type:date"`
-	LastDate     *time.Time `bun:"last_date,type:date"`
-	AttemptCount int        `bun:"attempt_count,notnull,default:0"`
-	NextRetryAt  *time.Time `bun:"next_retry_at"`
-	ErrorMessage *string    `bun:"error_message"`
+	ID                string     `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	JobID             string     `bun:"job_id,notnull,type:uuid"`
+	InstrumentID      string     `bun:"instrument_id,notnull,type:uuid"`
+	Symbol            string     `bun:"symbol,notnull"`
+	Status            string     `bun:"status,notnull"`
+	FirstDate         *time.Time `bun:"first_date,type:date"`
+	LastDate          *time.Time `bun:"last_date,type:date"`
+	AttemptCount      int        `bun:"attempt_count,notnull,default:0"`
+	NextRetryAt       *time.Time `bun:"next_retry_at"`
+	ErrorMessage      *string    `bun:"error_message"`
+	ProviderErrorCode *string    `bun:"provider_error_code"`
+	HTTPStatus        *int       `bun:"http_status"`
+	Retryable         *bool      `bun:"retryable"`
 }

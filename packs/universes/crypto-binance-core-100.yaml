@@ -1,0 +1,501 @@
+symbols:
+  - instrument_id: "585111e0-b762-5102-a1f6-e5a070dbeb5b"
+    symbol: CHIPUSDT
+    base_asset: CHIP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "9af4da3a-9ce5-508d-952f-05fd8f45dd98"
+    symbol: BTCUSDT
+    base_asset: BTC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a40d30e7-f1a4-5c1c-b637-1d7f72050cad"
+    symbol: ETHUSDT
+    base_asset: ETH
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "eb95bceb-6d6c-5856-9319-fd1fd73d657e"
+    symbol: SOLUSDT
+    base_asset: SOL
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "9ce69774-7c4a-5f20-a68a-25520689d553"
+    symbol: XRPUSDT
+    base_asset: XRP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "37266159-0e7d-5686-963c-ed4352792500"
+    symbol: DOGEUSDT
+    base_asset: DOGE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "95116993-1d87-521c-a813-68f34790c85a"
+    symbol: ZECUSDT
+    base_asset: ZEC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "38713c6e-c936-5791-a67d-060a6ce20a55"
+    symbol: BNBUSDT
+    base_asset: BNB
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "1dc2a628-215e-5534-a537-5481fc76d287"
+    symbol: SAGAUSDT
+    base_asset: SAGA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "182bc085-e50c-52d4-84f0-133177d9800c"
+    symbol: SPKUSDT
+    base_asset: SPK
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "64aafcbb-7a7f-5caf-b626-4a8f154a67cf"
+    symbol: SUIUSDT
+    base_asset: SUI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "9181b71c-1b25-5fa2-be70-e7d29c195ab8"
+    symbol: INJUSDT
+    base_asset: INJ
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "7b598e0d-ff2e-513c-9fff-0df53d562402"
+    symbol: RLUSDUSDT
+    base_asset: RLUSD
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "d8e59c1a-80a5-5f80-bda0-7e26a45eb4c4"
+    symbol: TONUSDT
+    base_asset: TON
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "cd12ef42-a546-5725-bce6-e0a0843235ce"
+    symbol: NEARUSDT
+    base_asset: NEAR
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "0128e88a-c683-570c-bc6d-c868db1a8c15"
+    symbol: LINKUSDT
+    base_asset: LINK
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c6ade978-d861-504b-b4bf-c8bd9b60a693"
+    symbol: TRUMPUSDT
+    base_asset: TRUMP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "cf35b689-00ae-50ae-b4f8-a3dbd1af53fb"
+    symbol: TRXUSDT
+    base_asset: TRX
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "1b712887-00fb-5b9f-9525-80e16423636a"
+    symbol: COSUSDT
+    base_asset: COS
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c800b7e0-b0a2-5fa2-a4c1-20da9a180ecf"
+    symbol: TAOUSDT
+    base_asset: TAO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "e34e5186-16cd-5911-ba46-33fd08090cfc"
+    symbol: PEPEUSDT
+    base_asset: PEPE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "56ccdd43-92f7-58bd-b27b-afedbf47187f"
+    symbol: ADAUSDT
+    base_asset: ADA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "dd80769c-6e9e-59ac-b8d9-3e65c22a9bab"
+    symbol: TIAUSDT
+    base_asset: TIA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "2b45c927-26d7-5245-8feb-1ae4b7d97496"
+    symbol: LTCUSDT
+    base_asset: LTC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "236340a1-0ad4-5d4e-9f9c-a3c4bf3b5f27"
+    symbol: PAXGUSDT
+    base_asset: PAXG
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "6a435d7e-6b43-58c6-89e1-7be57899a9cc"
+    symbol: ONDOUSDT
+    base_asset: ONDO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "bdee5596-366e-518f-bfa5-0fc18b1f6225"
+    symbol: WLDUSDT
+    base_asset: WLD
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "5b78487a-ff9c-52aa-9db8-5931ca7fb049"
+    symbol: KITEUSDT
+    base_asset: KITE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "e3be4dab-d40e-5549-87cf-52cfc85ae434"
+    symbol: AVAXUSDT
+    base_asset: AVAX
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "54214ec7-1dba-5516-9395-8a0bd98dea32"
+    symbol: DYMUSDT
+    base_asset: DYM
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "870cdee9-f9c8-58a9-a413-3fb16c7ce830"
+    symbol: FFUSDT
+    base_asset: FF
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "1f31f0fd-23aa-5fff-8291-50878df017c8"
+    symbol: LUNCUSDT
+    base_asset: LUNC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "96dd2534-b48c-5bab-9013-ed5d19aaf2c6"
+    symbol: OSMOUSDT
+    base_asset: OSMO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "51f42c9a-bc4f-5d17-a549-ad930724b007"
+    symbol: SAHARAUSDT
+    base_asset: SAHARA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "aa87026a-f4a9-5edb-84c7-87c439028596"
+    symbol: ENAUSDT
+    base_asset: ENA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "b649e886-f72c-55ee-ac39-29783a5231c3"
+    symbol: PENGUUSDT
+    base_asset: PENGU
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "2d644384-d32e-5f07-8086-2aa133a6387e"
+    symbol: AAVEUSDT
+    base_asset: AAVE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "05090b7e-24a5-5321-a821-b68b2df56431"
+    symbol: UUSDT
+    base_asset: U
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "eb1370c0-77dd-577c-bb5c-6c768f474e5c"
+    symbol: DASHUSDT
+    base_asset: DASH
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "57209195-cc91-5853-be97-8e127f055785"
+    symbol: MBOXUSDT
+    base_asset: MBOX
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "5df402e4-abc8-5ab1-9688-feb2f410707f"
+    symbol: UNIUSDT
+    base_asset: UNI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "d80a41bd-70fe-59b4-a518-429f62097556"
+    symbol: DOTUSDT
+    base_asset: DOT
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "55401e0a-57c0-5354-9679-b54fe6403e52"
+    symbol: FETUSDT
+    base_asset: FET
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "5032cb99-4ae1-527b-9bf7-f0d983c23b3f"
+    symbol: VICUSDT
+    base_asset: VIC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "10b5eb65-9871-5758-9357-d3c037e578f4"
+    symbol: ATOMUSDT
+    base_asset: ATOM
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "080d57a2-4a78-5ccc-b344-d516fcc91bd0"
+    symbol: HBARUSDT
+    base_asset: HBAR
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "1708a82b-25f2-5bbf-afec-00678c4b4093"
+    symbol: ZBTUSDT
+    base_asset: ZBT
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "0f9c1a60-0f4d-5add-a585-2532f7007626"
+    symbol: BBUSDT
+    base_asset: BB
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "fec17755-834b-5ada-889c-f2bedf038632"
+    symbol: PENDLEUSDT
+    base_asset: PENDLE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "2ecfdfaf-7ec8-5755-9c6f-aec9618c25f8"
+    symbol: ICPUSDT
+    base_asset: ICP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "f46ad082-f1f5-50e4-a778-43bc40acf69b"
+    symbol: TURBOUSDT
+    base_asset: TURBO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "b8e49956-1459-5263-badc-8b6247f421e8"
+    symbol: BCHUSDT
+    base_asset: BCH
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "9ecf185d-c733-5154-a8df-8c0c4c633894"
+    symbol: FILUSDT
+    base_asset: FIL
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "81b9e1ba-d11e-54fe-9ca6-fe55360be489"
+    symbol: CFXUSDT
+    base_asset: CFX
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "8f532c5f-99c9-5e6f-8cc6-b542fd8c325e"
+    symbol: XAUTUSDT
+    base_asset: XAUT
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "e0555e61-13f5-5c1a-863f-5cc94f9b65b7"
+    symbol: RENDERUSDT
+    base_asset: RENDER
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a43139bc-2ad8-5f1b-9369-a76b400fdf67"
+    symbol: XLMUSDT
+    base_asset: XLM
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a834659b-bdf8-5278-b8b5-c8252f97d096"
+    symbol: SEIUSDT
+    base_asset: SEI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "0df348fc-b792-550d-99cb-95072d849d19"
+    symbol: CRVUSDT
+    base_asset: CRV
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "ec71b317-ea90-5209-9ac2-9556cdbcb47a"
+    symbol: SHIBUSDT
+    base_asset: SHIB
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "07e54120-6443-550c-87bd-2ea6bb906d55"
+    symbol: VIRTUALUSDT
+    base_asset: VIRTUAL
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "8862f0c6-0c13-5ffc-a4b8-26a4265b2953"
+    symbol: GALAUSDT
+    base_asset: GALA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "742433d4-711f-5f31-947c-41434d49a04e"
+    symbol: APTUSDT
+    base_asset: APT
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "54019fe6-3b8b-5d11-8462-f27239cc8da4"
+    symbol: XUSDUSDT
+    base_asset: XUSD
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "58bb0f9d-4089-559b-8909-c1ec348bd0b5"
+    symbol: ASTERUSDT
+    base_asset: ASTER
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "0c0661a8-8b87-5fa9-8527-288447c6e6ea"
+    symbol: STXUSDT
+    base_asset: STX
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "51a06d07-e1c0-5532-8ab3-11fc1028bf2d"
+    symbol: WLFIUSDT
+    base_asset: WLFI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c5ea187a-15ea-5fc2-a01c-941778feb9e8"
+    symbol: MITOUSDT
+    base_asset: MITO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "39dd91c5-658a-5d10-a229-0c53fe1f7fd8"
+    symbol: BERAUSDT
+    base_asset: BERA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "0f576d7a-1777-5ed1-a7e2-c88d44a73d9b"
+    symbol: XPLUSDT
+    base_asset: XPL
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "6731cedc-1a11-5289-9f32-f224aeb12e88"
+    symbol: CHZUSDT
+    base_asset: CHZ
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "7c32b7a8-6c68-52d1-ba96-a9dd329139c5"
+    symbol: PSGUSDT
+    base_asset: PSG
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "d56adff9-429b-5a1a-aa7d-aff186f47956"
+    symbol: ORDIUSDT
+    base_asset: ORDI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c720061f-8de9-5ee0-8cbd-71229d56d47b"
+    symbol: EIGENUSDT
+    base_asset: EIGEN
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "40463a39-12a5-533b-887c-2ab3c537773f"
+    symbol: BIOUSDT
+    base_asset: BIO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "aee79d6f-beae-5563-8b56-538136ae3598"
+    symbol: ARBUSDT
+    base_asset: ARB
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "f1b64aab-123c-557a-975f-3cee78a63590"
+    symbol: PUMPUSDT
+    base_asset: PUMP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a1dbb568-7a4a-536b-8d7f-4d404b35f235"
+    symbol: ROSEUSDT
+    base_asset: ROSE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a2b71771-9c7c-599f-bfeb-9170042b088c"
+    symbol: JTOUSDT
+    base_asset: JTO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c3866c20-0194-58cf-bd24-4bc0db0904f9"
+    symbol: MEGAUSDT
+    base_asset: MEGA
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "62e96716-d48a-5aed-b3f3-16a6aca80c7e"
+    symbol: PARTIUSDT
+    base_asset: PARTI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "7541afd6-bf8c-520c-a17b-2b078fc1fbb8"
+    symbol: BONKUSDT
+    base_asset: BONK
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "82e337ca-e83f-54d1-90fb-e9fc7109eff7"
+    symbol: GIGGLEUSDT
+    base_asset: GIGGLE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "292c2545-dc6d-5d2f-8ff3-921243cf0dfb"
+    symbol: USDEUSDT
+    base_asset: USDE
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "b72d111a-d198-5317-ad5e-dfd35ecb0d37"
+    symbol: ETHFIUSDT
+    base_asset: ETHFI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "3616fc30-d1a3-5e84-905e-1e2b24cebf15"
+    symbol: CFGUSDT
+    base_asset: CFG
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "1437c67d-035b-5bd6-95fd-2f9596d1b15d"
+    symbol: FLOKIUSDT
+    base_asset: FLOKI
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "9ebffcd2-c046-54e1-b0e9-38acf93270ed"
+    symbol: OPUSDT
+    base_asset: OP
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "526f1bf2-87b4-5e79-9eed-505e07a789ff"
+    symbol: DOGSUSDT
+    base_asset: DOGS
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "72473047-b377-5f14-a8e7-a2ac52275ce7"
+    symbol: PHBUSDT
+    base_asset: PHB
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "167ec0b2-17e6-5766-a8fb-bde611efff01"
+    symbol: RADUSDT
+    base_asset: RAD
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "3529615d-4e48-5195-8ca3-f3e52c8dcf35"
+    symbol: STRKUSDT
+    base_asset: STRK
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "115fb5b2-9454-52c0-a47a-0f25f411afa7"
+    symbol: ARUSDT
+    base_asset: AR
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c37d8ae4-6a9d-567a-9c7b-10530228afba"
+    symbol: TNSRUSDT
+    base_asset: TNSR
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a46e3194-2296-53e7-836e-3c36382db79f"
+    symbol: SOLVUSDT
+    base_asset: SOLV
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "a2b6b168-12a0-5e5b-8de8-0606b8e7836d"
+    symbol: BANANAS31USDT
+    base_asset: BANANAS31
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "c9a8203b-c095-5e2d-9f1f-f27f25791b5e"
+    symbol: HOLOUSDT
+    base_asset: HOLO
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "7fadb127-17d0-5bdd-8fcf-9137167d0b9d"
+    symbol: ETCUSDT
+    base_asset: ETC
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "6a51a5b2-4903-5467-b537-6762ef0f0a1b"
+    symbol: SANDUSDT
+    base_asset: SAND
+    quote_asset: USDT
+    asset_type: CRYPTO
+  - instrument_id: "405914d2-9dab-5a89-ad0e-641ee91ccfd5"
+    symbol: NOTUSDT
+    base_asset: NOT
+    quote_asset: USDT
+    asset_type: CRYPTO

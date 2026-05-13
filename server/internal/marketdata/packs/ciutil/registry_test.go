@@ -104,7 +104,7 @@ func TestValidateRegistryFailsForForbiddenSourceProvider(t *testing.T) {
 	}
 }
 
-func TestValidateRegistryFailsForEODHDProvider(t *testing.T) {
+func TestValidateRegistryFailsForProprietaryLocalOnlyProvider(t *testing.T) {
 	dir := t.TempDir()
 	writeArchivePair(t, dir, CryptoPackID, "2026.05.01")
 	writeArchivePair(t, dir, FXPackID, "2026.05.11")
@@ -112,7 +112,30 @@ func TestValidateRegistryFailsForEODHDProvider(t *testing.T) {
 	registry := packservice.Registry{
 		LatestVersion: "build-1",
 		Packs: []packservice.RegistryPack{
-			validRegistryPack(CryptoPackID, "2026.05.01", "eodhd-local-only"),
+			validRegistryPack(CryptoPackID, "2026.05.01", "proprietary-market-data-local-only"),
+			validRegistryPack(FXPackID, "2026.05.11", "ecb-statistics"),
+		},
+	}
+	registryPath := filepath.Join(dir, "registry.json")
+	writeRegistry(t, registryPath, registry)
+
+	if err := ValidateRegistry(ValidateRegistryOptions{
+		RegistryPath: registryPath,
+		DistDir:      dir,
+	}); err == nil {
+		t.Fatal("expected forbidden source provider failure")
+	}
+}
+
+func TestValidateRegistryFailsForMarketParquetProvider(t *testing.T) {
+	dir := t.TempDir()
+	writeArchivePair(t, dir, CryptoPackID, "2026.05.01")
+	writeArchivePair(t, dir, FXPackID, "2026.05.11")
+
+	registry := packservice.Registry{
+		LatestVersion: "build-1",
+		Packs: []packservice.RegistryPack{
+			validRegistryPack(CryptoPackID, "2026.05.01", "marketparquet"),
 			validRegistryPack(FXPackID, "2026.05.11", "ecb-statistics"),
 		},
 	}

@@ -45,6 +45,7 @@ cd server
 GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
   --spec ../packs/specs/crypto-binance-core-daily-usdt.yaml \
   --out ../dist \
+  --build-mode public_release \
   --all \
   --archive \
   --sign \
@@ -55,6 +56,7 @@ GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
 GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
   --spec ../packs/specs/fx-ecb-core-daily.yaml \
   --out ../dist \
+  --build-mode public_release \
   --all \
   --archive \
   --sign \
@@ -88,18 +90,45 @@ GOCACHE=/tmp/go-build-cache go run ./cmd/market-data-pack-ci validate-registry \
 
 ## Local Pack Creation Flow
 
-Local pack builds are for user-owned provider credentials and non-redistributable data.
+Local stock/fund pack builds are local-only and non-redistributable.
 No SigmaFinance/system provider key is used for local builds.
 
 Backend/API flow:
 
 1. `startLocalPackBuild(input)` creates local build job + items.
-2. Worker reads user credential (`market_data_credential`) for provider and fetches daily candles.
-3. Worker writes unpacked local pack under `MARKET_DATA_PACK_STORAGE_PATH/local-builds/<job_id>/packs/<pack_id>/`.
-4. Worker registers pack metadata and coverage in existing pack tables.
-5. UI polls `packBuildJob(id)` and can cancel with `cancelPackBuildJob(id)`.
+2. Worker resolves local build source:
+   - MarketParquet (recommended) date-partitioned parquet files (`stock_daily`, `etf_daily`)
+   - fallback per-symbol providers (`TIINGO`, `TWELVEDATA`, `ALPHAVANTAGE`, `FINNHUB`)
+3. Worker reads user credential (`market_data_credential`) for API modes, or local folder path for MarketParquet local import mode.
+4. Worker writes unpacked local pack under `MARKET_DATA_PACK_STORAGE_PATH/local-builds/<job_id>/packs/<pack_id>/`.
+5. Worker registers pack metadata and coverage in existing pack tables.
+6. UI polls `packBuildJob(id)` and can cancel with `cancelPackBuildJob(id)`.
 
-Supported local stock providers currently:
+Local build statuses: `queued`, `running`, `succeeded`, `partial`, `failed`, `canceled`.
+
+REST endpoints (session auth, own-job scope only):
+
+- `GET /market-data/packs/build-jobs`
+- `POST /market-data/packs/build-jobs`
+- `GET /market-data/packs/build-jobs/{jobId}`
+- `GET /market-data/packs/build-jobs/{jobId}/items`
+- `POST /market-data/packs/build-jobs/{jobId}/cancel`
+- `POST /market-data/packs/build-jobs/{jobId}/retry-failed`
+
+Local provider order:
+
+1. `MARKETPARQUET` (recommended)
+2. `TIINGO` (fallback)
+3. `TWELVEDATA` (fallback)
+4. `ALPHAVANTAGE` (fallback)
+5. `FINNHUB` (fallback)
+
+MarketParquet modes:
+
+- `api_key`: fetches date files from API endpoints and caches under `source-cache/marketparquet`.
+- `local_folder`: reads server-local parquet files (for example `by_date/stock_daily/YYYY-MM-DD.parquet` and `by_date/etf_daily/YYYY-MM-DD.parquet`).
+
+Fallback per-symbol local providers:
 
 - `TIINGO`
 - `TWELVEDATA`
@@ -120,16 +149,18 @@ Rules:
 - Public build requires known license policy and `redistribution_allowed=true`.
 - Public build is blocked when `commercial_use_allowed=false`.
 - Public unsigned archive is blocked unless explicitly bypassed with `--allow-unsigned-public` (never use in CI/release).
-- Stock providers stay local-only unless written redistribution license exists.
+- Stock/fund providers stay local-only unless written redistribution license exists.
 - No explicit redistribution license means no public pack.
+- No proprietary stock/fund API pack may be published without written redistribution license.
 
 ## Supported Sources
 
 - Public crypto candidate: Binance Public Data (`binance-public-data`)
 - Public FX candidate: ECB statistics (`ecb-statistics`)
-- Stock data: local-only by default unless explicit written redistribution license exists
+- Stock/fund local builds: MarketParquet recommended (`marketparquet-local-only`), or fallback proprietary API providers (`proprietary-market-data-local-only`)
 
 No public stock pack is shipped by default.
+No MarketParquet stock/ETF pack is published in GitHub Releases.
 
 ## Signing Keys
 
@@ -198,7 +229,7 @@ Safety gates in CI fail when:
 
 - public pack lacks redistributable license metadata
 - public pack is unsigned
-- forbidden provider (`yahoo-finance`, `eodhd-local-only`) appears in public registry
+- forbidden provider (`yahoo-finance`, `proprietary-market-data-local-only`, `marketparquet`) appears in public registry
 - checksum/signature/URLs are missing
 - registry pack set differs from expected official pack IDs
 
@@ -213,10 +244,23 @@ volumes:
 
 Without persistent storage, installed packs are lost after container recreation.
 
+Local stock/fund build output path:
+
+- `MARKET_DATA_PACK_STORAGE_PATH/local-builds`
+
+MarketParquet download cache path:
+
+- `MARKET_DATA_PACK_STORAGE_PATH/source-cache/marketparquet`
+
 ## Troubleshooting
 
 - `registry returned HTTP 404`: verify `MARKET_DATA_PACK_REGISTRY_URL` and output path for `registry.json`.
 - `relation sigma_finance.market_data_packs does not exist`: run DB migrations before install/list commands.
 - signature validation failure: verify signing/public key pair and digest metadata.
+- missing provider key: configure enabled credential for selected provider in settings.
+- provider rate-limited: lower local build req/min, req/day, or concurrency and retry failed symbols.
+- missing symbol mapping: verify `instrument_provider_mappings` for the provider or use canonical provider symbol.
+- partial pack status: some symbols failed; run retry-failed after credential/rate-limit/mapping fix.
+- adjusted price semantics: MarketParquet candles are split/dividend-adjusted and intended for historical performance charting.
 - coverage missing for old transaction: confirm instrument ID + quote currency exists in pack coverage.
 - smoke install skipped: set `MARKET_DATA_SMOKE_INSTALL=true` and provide DB env (`DB_HOST` or `DATABASE_URL`).

@@ -431,6 +431,12 @@ func (s *marketDataService) GetAvailableProviders(ctx context.Context, userID st
 }
 
 func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, userID string, providerID, apiKey string) error {
+	if strings.EqualFold(strings.TrimSpace(providerID), "MARKETPARQUET") {
+		if strings.TrimSpace(apiKey) == "" {
+			return fmt.Errorf("api key is required")
+		}
+		return nil
+	}
 	provider, exists := s.providerManager.GetProvider(providerID)
 	if !exists {
 		return fmt.Errorf("unknown provider: %s", providerID)
@@ -440,15 +446,15 @@ func (s *marketDataService) ValidateProviderCredentials(ctx context.Context, use
 }
 
 func (s *marketDataService) GetSupportedProviders(assetType string) []ProviderInfo {
-	var providers []providers.Provider
+	var providerList []providers.Provider
 	if assetType == "" {
-		providers = s.providerManager.GetAllProviders()
+		providerList = s.providerManager.GetAllProviders()
 	} else {
-		providers = s.providerManager.GetProvidersForAssetType(assetType)
+		providerList = s.providerManager.GetProvidersForAssetType(assetType)
 	}
 
-	info := make([]ProviderInfo, 0, len(providers))
-	for _, provider := range providers {
+	info := make([]ProviderInfo, 0, len(providerList))
+	for _, provider := range providerList {
 		caps := provider.Capabilities()
 
 		intervals := make([]string, len(caps.Intervals))
@@ -464,6 +470,26 @@ func (s *marketDataService) GetSupportedProviders(assetType string) []ProviderIn
 			Intervals:   intervals,
 			RateLimit:   caps.RateLimit,
 			SupportsRT:  caps.SupportsRealtime,
+		})
+	}
+
+	includeMarketParquet := assetType == ""
+	if !includeMarketParquet {
+		normalized := strings.ToUpper(strings.TrimSpace(assetType))
+		includeMarketParquet = normalized == "STOCK" || normalized == "FUND"
+	}
+	if includeMarketParquet {
+		info = append(info, ProviderInfo{
+			ID:          "MARKETPARQUET",
+			Name:        "MarketParquet",
+			Type:        string(providers.ProviderTypeStock),
+			RequiresKey: true,
+			Intervals:   []string{string(model.Interval1d)},
+			RateLimit: providers.RateLimit{
+				RequestsPerMinute: 60,
+				RequestsPerDay:    500,
+			},
+			SupportsRT: false,
 		})
 	}
 

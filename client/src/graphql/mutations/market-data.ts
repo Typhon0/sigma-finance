@@ -147,9 +147,14 @@ export const START_LOCAL_PACK_BUILD = gql`
       status
       progressPercent
       currentSymbol
+      currentDate
+      currentAssetType
       totalSymbols
       completedSymbols
       failedSymbols
+      completedDates
+      totalDates
+      rowsWritten
       errorMessage
       createdAt
       startedAt
@@ -167,9 +172,14 @@ export const CANCEL_PACK_BUILD_JOB = gql`
       status
       progressPercent
       currentSymbol
+      currentDate
+      currentAssetType
       totalSymbols
       completedSymbols
       failedSymbols
+      completedDates
+      totalDates
+      rowsWritten
       errorMessage
       createdAt
       startedAt

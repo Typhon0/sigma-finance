@@ -106,12 +106,13 @@ type Provider interface {
 // ProviderError represents an error from a market data provider with metadata
 // for intelligent routing fallback decisions.
 type ProviderError struct {
-	Provider  string // Which provider returned this error
-	Code      string // Machine-readable error code (TICKER_NOT_FOUND, RATE_LIMITED, etc.)
-	Message   string // Human-readable error message
-	HTTPCode  int    // HTTP status code from the provider (0 if N/A)
-	Retryable bool   // Whether this error is transient and retrying might succeed
-	Fallback  bool   // Whether fallback to another provider should be attempted
+	Provider          string // Which provider returned this error
+	Code              string // Machine-readable error code (TICKER_NOT_FOUND, RATE_LIMITED, etc.)
+	Message           string // Human-readable error message
+	HTTPCode          int    // HTTP status code from the provider (0 if N/A)
+	Retryable         bool   // Whether this error is transient and retrying might succeed
+	Fallback          bool   // Whether fallback to another provider should be attempted
+	RetryAfterSeconds int    // Retry-After hint in seconds when available
 }
 
 func (e *ProviderError) Error() string {

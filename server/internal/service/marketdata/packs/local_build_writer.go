@@ -38,6 +38,23 @@ type localBuildWriteResult struct {
 	ChecksumsPath string
 }
 
+type localBuildStreamingWriter struct {
+	packDir         string
+	partitionBy     []string
+	manifest        Manifest
+	writers         map[string]*localBuildPartitionWriter
+	coverage        map[localCoverageKey]*localCoverageAccumulator
+	seen            map[string]struct{}
+	assetTypes      map[string]struct{}
+	quoteCurrencies map[string]struct{}
+}
+
+type localBuildPartitionWriter struct {
+	file *os.File
+	pq   *pq.GenericWriter[localBuildParquetRow]
+	rows int64
+}
+
 type localBuildParquetRow struct {
 	InstrumentID  string    `parquet:"instrument_id,uuid"`
 	Symbol        string    `parquet:"symbol"`
@@ -180,6 +197,154 @@ func buildLocalUnpackedDirectory(ctx context.Context, candles []sources.Normaliz
 		ManifestPath:  manifestPath,
 		ChecksumsPath: checksumsPath,
 	}, nil
+}
+
+func newLocalBuildStreamingWriter(options localBuildWriteOptions) (*localBuildStreamingWriter, error) {
+	rootDir := strings.TrimSpace(options.RootDir)
+	if rootDir == "" {
+		return nil, fmt.Errorf("root dir is required")
+	}
+	if strings.TrimSpace(options.Manifest.PackID) == "" {
+		return nil, fmt.Errorf("manifest pack_id is required")
+	}
+	if len(options.PartitionBy) == 0 {
+		return nil, fmt.Errorf("partition_by is required")
+	}
+	packDir := filepath.Join(rootDir, "packs", options.Manifest.PackID)
+	if err := os.MkdirAll(packDir, 0o755); err != nil {
+		return nil, err
+	}
+	return &localBuildStreamingWriter{
+		packDir:         packDir,
+		partitionBy:     append([]string(nil), options.PartitionBy...),
+		manifest:        options.Manifest,
+		writers:         make(map[string]*localBuildPartitionWriter, 16),
+		coverage:        make(map[localCoverageKey]*localCoverageAccumulator, 256),
+		seen:            make(map[string]struct{}, 4096),
+		assetTypes:      make(map[string]struct{}, 8),
+		quoteCurrencies: make(map[string]struct{}, 8),
+	}, nil
+}
+
+func (w *localBuildStreamingWriter) Add(ctx context.Context, candle sources.NormalizedCandle) error {
+	if w == nil {
+		return fmt.Errorf("streaming writer is required")
+	}
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	default:
+	}
+	key := sources.CanonicalKey(candle)
+	if _, exists := w.seen[key]; exists {
+		return fmt.Errorf("duplicate canonical candle key %s", key)
+	}
+	w.seen[key] = struct{}{}
+	row, err := toLocalParquetRow(candle)
+	if err != nil {
+		return err
+	}
+	partitionDir, err := localPartitionPath(candle, w.partitionBy)
+	if err != nil {
+		return err
+	}
+	relPath := filepath.ToSlash(filepath.Join("data", partitionDir, "part-000.parquet"))
+	partitionWriter, err := w.partitionWriter(relPath)
+	if err != nil {
+		return err
+	}
+	if _, err := partitionWriter.pq.Write([]localBuildParquetRow{row}); err != nil {
+		return err
+	}
+	partitionWriter.rows++
+	accumulateLocalCoverage(w.coverage, candle, relPath)
+	w.assetTypes[strings.TrimSpace(candle.AssetType)] = struct{}{}
+	w.quoteCurrencies[strings.ToUpper(strings.TrimSpace(candle.QuoteCurrency))] = struct{}{}
+	return nil
+}
+
+func (w *localBuildStreamingWriter) Close(ctx context.Context) (*localBuildWriteResult, error) {
+	if w == nil {
+		return nil, fmt.Errorf("streaming writer is required")
+	}
+	filePaths := make([]string, 0, len(w.writers))
+	for relPath := range w.writers {
+		filePaths = append(filePaths, relPath)
+	}
+	sort.Strings(filePaths)
+
+	manifest := w.manifest
+	manifest.Files = make([]ManifestFile, 0, len(filePaths)+1)
+	totalRows := int64(0)
+	for _, relPath := range filePaths {
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+		partitionWriter := w.writers[relPath]
+		if err := partitionWriter.pq.Close(); err != nil {
+			_ = partitionWriter.file.Close()
+			return nil, err
+		}
+		if err := partitionWriter.file.Close(); err != nil {
+			return nil, err
+		}
+		fullPath := filepath.Join(w.packDir, filepath.FromSlash(relPath))
+		sum, err := sha256FileHex(fullPath)
+		if err != nil {
+			return nil, err
+		}
+		manifest.Files = append(manifest.Files, ManifestFile{
+			Path:     relPath,
+			Rows:     partitionWriter.rows,
+			Checksum: sum,
+		})
+		totalRows += partitionWriter.rows
+	}
+
+	manifest.RowsCount = totalRows
+	manifest.AssetsCount = int64(len(w.coverage))
+	manifest.AssetTypes = localSortedKeys(w.assetTypes)
+	manifest.QuoteCurrencies = localSortedKeys(w.quoteCurrencies)
+	manifest.Coverage = localCoverageManifest(w.coverage)
+
+	manifestPath := filepath.Join(w.packDir, "manifest.json")
+	if err := writeLocalManifest(manifestPath, &manifest); err != nil {
+		return nil, err
+	}
+	manifestSum, err := sha256FileHex(manifestPath)
+	if err != nil {
+		return nil, err
+	}
+	checksumsPath := filepath.Join(w.packDir, "checksums.sha256")
+	if err := writeLocalChecksumsFile(checksumsPath, &manifest, manifestSum); err != nil {
+		return nil, err
+	}
+	return &localBuildWriteResult{
+		PackDir:       w.packDir,
+		Manifest:      &manifest,
+		ManifestPath:  manifestPath,
+		ChecksumsPath: checksumsPath,
+	}, nil
+}
+
+func (w *localBuildStreamingWriter) partitionWriter(relPath string) (*localBuildPartitionWriter, error) {
+	if existing := w.writers[relPath]; existing != nil {
+		return existing, nil
+	}
+	fullPath := filepath.Join(w.packDir, filepath.FromSlash(relPath))
+	if err := os.MkdirAll(filepath.Dir(fullPath), 0o755); err != nil {
+		return nil, err
+	}
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	writer := pq.NewGenericWriter[localBuildParquetRow](file, pq.Compression(&pqzstd.Codec{}))
+	partitionWriter := &localBuildPartitionWriter{file: file, pq: writer}
+	w.writers[relPath] = partitionWriter
+	return partitionWriter, nil
 }
 
 func writeLocalParquetFile(path string, rows []localBuildParquetRow) error {

@@ -18,7 +18,7 @@ import {
 	Upload,
 	Wallet,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ReactElement, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { SearchInput } from "@/components/ui/search-input";
@@ -89,7 +89,7 @@ interface SparklinePoint {
 interface PrioritizedInsightCard {
 	id: string;
 	priority: number;
-	node: JSX.Element;
+	node: ReactElement;
 }
 
 interface CryptoListProps {

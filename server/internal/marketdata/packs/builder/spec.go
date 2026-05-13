@@ -9,20 +9,24 @@ import (
 )
 
 type PackSpec struct {
-	PackID         string         `yaml:"pack_id"`
-	Name           string         `yaml:"name"`
-	Description    string         `yaml:"description"`
-	Version        string         `yaml:"version"`
-	FormatVersion  int            `yaml:"format_version"`
-	Distribution   string         `yaml:"distribution"`
-	AssetType      string         `yaml:"asset_type"`
-	Interval       string         `yaml:"interval"`
-	QuoteCurrency  string         `yaml:"quote_currency"`
-	SourceProvider string         `yaml:"source_provider"`
-	LicensePolicy  string         `yaml:"license_policy"`
-	History        HistorySpec    `yaml:"history"`
-	Universe       UniverseConfig `yaml:"universe"`
-	Output         OutputConfig   `yaml:"output"`
+	PackID                string         `yaml:"pack_id"`
+	Name                  string         `yaml:"name"`
+	Description           string         `yaml:"description"`
+	Version               string         `yaml:"version"`
+	FormatVersion         int            `yaml:"format_version"`
+	Distribution          string         `yaml:"distribution"`
+	AssetType             string         `yaml:"asset_type"`
+	Interval              string         `yaml:"interval"`
+	QuoteCurrency         string         `yaml:"quote_currency"`
+	SourceProvider        string         `yaml:"source_provider"`
+	LicensePolicy         string         `yaml:"license_policy"`
+	RedistributionAllowed *bool          `yaml:"redistribution_allowed,omitempty"`
+	GeneratedByUser       bool           `yaml:"generated_by_user,omitempty"`
+	UploadForbidden       bool           `yaml:"upload_forbidden,omitempty"`
+	InstallMode           string         `yaml:"install_mode,omitempty"`
+	History               HistorySpec    `yaml:"history"`
+	Universe              UniverseConfig `yaml:"universe"`
+	Output                OutputConfig   `yaml:"output"`
 }
 
 type HistorySpec struct {

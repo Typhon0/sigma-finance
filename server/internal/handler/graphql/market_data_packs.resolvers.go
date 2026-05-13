@@ -3,6 +3,7 @@ package graphql
 import (
 	"context"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"sigma_finance/internal/domain/model"
@@ -224,16 +225,20 @@ func (r *mutationResolver) StartLocalPackBuild(ctx context.Context, input gqlMod
 		portfolioFirst = *input.PortfolioFirst
 	}
 	job, err := r.Resolver.MarketDataPackService.StartLocalPackBuild(ctx, user.ID, marketdatapacks.StartLocalPackBuildInput{
-		PackID:                packID,
-		SourceProvider:        input.SourceProvider,
-		AssetTypes:            input.AssetTypes,
-		HistoryStart:          historyStart,
-		HistoryEnd:            historyEnd,
-		PortfolioFirst:        portfolioFirst,
-		UniverseInstrumentIDs: input.UniverseInstrumentIds,
-		RequestsPerMinute:     requestsPerMinute,
-		RequestsPerDay:        requestsPerDay,
-		ConcurrentRequests:    concurrentRequests,
+		PackID:                  packID,
+		SourceProvider:          input.SourceProvider,
+		SourceMode:              nullableGraphQLString(input.SourceMode),
+		ImportPath:              nullableGraphQLString(input.ImportPath),
+		MarketParquetSourceMode: nullableGraphQLString(input.MarketParquetSourceMode),
+		MarketParquetLocalPath:  nullableGraphQLString(input.MarketParquetLocalPath),
+		AssetTypes:              input.AssetTypes,
+		HistoryStart:            historyStart,
+		HistoryEnd:              historyEnd,
+		PortfolioFirst:          portfolioFirst,
+		UniverseInstrumentIDs:   input.UniverseInstrumentIds,
+		RequestsPerMinute:       requestsPerMinute,
+		RequestsPerDay:          requestsPerDay,
+		ConcurrentRequests:      concurrentRequests,
 	})
 	if err != nil {
 		return nil, err
@@ -306,12 +311,28 @@ func mapLocalBuildJobToGraphQL(job *model.MarketDataPackBuildJob) *gqlModel.Mark
 		Status:           job.Status,
 		ProgressPercent:  progress,
 		CurrentSymbol:    job.CurrentSymbol,
+		CurrentDate:      job.CurrentDate,
+		CurrentAssetType: job.CurrentAssetType,
 		TotalSymbols:     int32(job.TotalSymbols),
 		CompletedSymbols: int32(job.CompletedSymbols),
 		FailedSymbols:    int32(job.FailedSymbols),
+		CompletedDates:   int32(job.CompletedDates),
+		TotalDates:       int32(job.TotalDates),
+		RowsWritten:      int(job.RowsWritten),
 		ErrorMessage:     job.ErrorMessage,
 		CreatedAt:        job.CreatedAt,
 		StartedAt:        job.StartedAt,
 		FinishedAt:       job.FinishedAt,
 	}
+}
+
+func nullableGraphQLString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }

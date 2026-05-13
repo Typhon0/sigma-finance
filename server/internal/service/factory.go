@@ -138,10 +138,13 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	marketDataPackService := marketdatapacks.NewService(
 		repository.NewMarketDataPackRepository(db),
 		marketdatapacks.Config{
-			RegistryURL:        cfg.MarketData.PackRegistryURL,
-			StoragePath:        cfg.MarketData.PackStoragePath,
-			SignaturePublicKey: cfg.MarketData.PackSignaturePublicKey,
-			AppVersion:         "0.0.0",
+			RegistryURL:                   cfg.MarketData.PackRegistryURL,
+			StoragePath:                   cfg.MarketData.PackStoragePath,
+			SignaturePublicKey:            cfg.MarketData.PackSignaturePublicKey,
+			AppVersion:                    "0.0.0",
+			LocalBuildDefaultHistoryYears: cfg.MarketData.LocalBuildDefaultHistoryYears,
+			MarketParquetAPIBaseURL:       cfg.MarketData.MarketParquetAPIBaseURL,
+			MarketParquetImportRoot:       cfg.MarketData.MarketParquetImportRoot,
 		},
 	)
 	fxRateService := NewFXRateService(uow, 60)

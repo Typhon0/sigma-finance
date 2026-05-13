@@ -16,8 +16,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
 	"sigma_finance/internal/marketdata/packs/sources"
 
 	"github.com/shopspring/decimal"
@@ -55,7 +57,13 @@ func NewSource(cfg Config) *Source {
 	}
 	client := cfg.HTTPClient
 	if client == nil {
-		client = http.DefaultClient
+		transport := http.DefaultTransport.(*http.Transport).Clone()
+		transport.MaxIdleConns = 100
+		transport.MaxIdleConnsPerHost = 100
+		client = &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+		}
 	}
 	return &Source{
 		baseURL: baseURL,
@@ -134,6 +142,12 @@ func (s *Source) fetchSymbol(
 	monthCursor := time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
 	lastMonth := time.Date(end.Year(), end.Month(), 1, 0, 0, 0, 0, time.UTC)
 
+	var mu sync.Mutex
+	var allCandles []sources.NormalizedCandle
+
+	eg, gctx := errgroup.WithContext(ctx)
+	eg.SetLimit(10) // fetch up to 10 months concurrently
+
 	for !monthCursor.After(lastMonth) {
 		monthStart := maxTime(start, monthCursor)
 		monthEnd := minTime(end, monthCursor.AddDate(0, 1, 0).Add(-24*time.Hour))
@@ -142,37 +156,43 @@ func (s *Source) fetchSymbol(
 			continue
 		}
 
-		useDaily := monthCursor.Year() == now.Year() && monthCursor.Month() == now.Month()
-		if useDaily {
-			candles, err := s.fetchDailyRange(ctx, spec, symbol, monthStart, monthEnd, delay)
-			if err != nil {
-				return err
-			}
-			if err := emitCandles(ctx, candles, seen, out); err != nil {
-				return err
-			}
-			monthCursor = monthCursor.AddDate(0, 1, 0)
-			continue
-		}
+		mc := monthCursor
+		useDaily := mc.Year() == now.Year() && mc.Month() == now.Month()
 
-		candles, found, err := s.fetchMonthly(ctx, spec, symbol, monthCursor, monthStart, monthEnd, delay)
-		if err != nil {
-			return err
-		}
-		if !found {
-			candles, err = s.fetchDailyRange(ctx, spec, symbol, monthStart, monthEnd, delay)
+		eg.Go(func() error {
+			var candles []sources.NormalizedCandle
+			var err error
+			if useDaily {
+				candles, err = s.fetchDailyRange(gctx, spec, symbol, monthStart, monthEnd, delay)
+			} else {
+				c, found, errMonth := s.fetchMonthly(gctx, spec, symbol, mc, monthStart, monthEnd, delay)
+				if errMonth != nil {
+					return errMonth
+				}
+				if !found {
+					candles, err = s.fetchDailyRange(gctx, spec, symbol, monthStart, monthEnd, delay)
+				} else {
+					candles = c
+				}
+			}
 			if err != nil {
 				return err
 			}
-		}
-		if err := emitCandles(ctx, candles, seen, out); err != nil {
-			return err
-		}
+			
+			mu.Lock()
+			allCandles = append(allCandles, candles...)
+			mu.Unlock()
+			return nil
+		})
 
 		monthCursor = monthCursor.AddDate(0, 1, 0)
 	}
 
-	return nil
+	if err := eg.Wait(); err != nil {
+		return err
+	}
+
+	return emitCandles(ctx, allCandles, seen, out)
 }
 
 func (s *Source) fetchMonthly(
@@ -207,26 +227,40 @@ func (s *Source) fetchDailyRange(
 	to time.Time,
 	delay time.Duration,
 ) ([]sources.NormalizedCandle, error) {
-	candles := make([]sources.NormalizedCandle, 0, 64)
+	var mu sync.Mutex
+	var allCandles []sources.NormalizedCandle
+
+	eg, gctx := errgroup.WithContext(ctx)
+	eg.SetLimit(10) // fetch up to 10 days concurrently
+
 	for day := from; !day.After(to); day = day.Add(24 * time.Hour) {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		url := s.dailyURL(symbol.Symbol, day)
-		archive, err := s.downloadArchive(ctx, url, delay)
-		if err != nil {
-			if errors.Is(err, errArchiveNotFound) {
-				continue
+		d := day
+		eg.Go(func() error {
+			url := s.dailyURL(symbol.Symbol, d)
+			archive, err := s.downloadArchive(gctx, url, delay)
+			if err != nil {
+				if errors.Is(err, errArchiveNotFound) {
+					return nil
+				}
+				return err
 			}
-			return nil, err
-		}
-		rows, err := parseArchive(archive, spec, symbol)
-		if err != nil {
-			return nil, fmt.Errorf("parse daily archive %s: %w", day.Format("2006-01-02"), err)
-		}
-		candles = append(candles, filterRange(rows, day, day)...)
+			rows, err := parseArchive(archive, spec, symbol)
+			if err != nil {
+				return fmt.Errorf("parse daily archive %s: %w", d.Format("2006-01-02"), err)
+			}
+			filtered := filterRange(rows, d, d)
+			
+			mu.Lock()
+			allCandles = append(allCandles, filtered...)
+			mu.Unlock()
+			return nil
+		})
 	}
-	return candles, nil
+	
+	if err := eg.Wait(); err != nil {
+		return nil, err
+	}
+	return allCandles, nil
 }
 
 func emitCandles(

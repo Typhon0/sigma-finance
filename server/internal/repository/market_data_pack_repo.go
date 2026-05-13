@@ -27,9 +27,11 @@ type IMarketDataPackRepository interface {
 	CreateBuildJobItems(ctx context.Context, items []model.MarketDataPackBuildJobItem) error
 	UpdateBuildJobItem(ctx context.Context, item *model.MarketDataPackBuildJobItem) error
 	ListBuildJobItems(ctx context.Context, jobID string) ([]model.MarketDataPackBuildJobItem, error)
+	ListBuildJobItemsByUser(ctx context.Context, userID string, jobID string) ([]model.MarketDataPackBuildJobItem, error)
 	ListBuildJobItemsByStatus(ctx context.Context, jobID string, statuses ...string) ([]model.MarketDataPackBuildJobItem, error)
 	ListUserBuildUniverse(ctx context.Context, userID string, assetTypes []string) ([]LocalBuildInstrumentCandidate, error)
 	ListInstrumentsByIDs(ctx context.Context, ids []string, assetTypes []string) ([]LocalBuildInstrumentCandidate, error)
+	ListProviderSymbolMappings(ctx context.Context, provider string, instrumentIDs []string) (map[string]string, error)
 	GetUserCredentialForProvider(ctx context.Context, userID string, provider string) (*model.MarketDataCredential, error)
 }
 
@@ -207,6 +209,19 @@ func (r *MarketDataPackRepository) ListBuildJobItems(ctx context.Context, jobID 
 	return items, err
 }
 
+func (r *MarketDataPackRepository) ListBuildJobItemsByUser(ctx context.Context, userID string, jobID string) ([]model.MarketDataPackBuildJobItem, error) {
+	var items []model.MarketDataPackBuildJobItem
+	err := r.db.NewRaw(`
+		SELECT i.*
+		FROM sigma_finance.market_data_pack_build_job_items i
+		JOIN sigma_finance.market_data_pack_build_jobs j ON j.id = i.job_id
+		WHERE i.job_id = ?
+		  AND j.user_id = ?
+		ORDER BY i.symbol ASC
+	`, jobID, userID).Scan(ctx, &items)
+	return items, err
+}
+
 func (r *MarketDataPackRepository) ListBuildJobItemsByStatus(ctx context.Context, jobID string, statuses ...string) ([]model.MarketDataPackBuildJobItem, error) {
 	var items []model.MarketDataPackBuildJobItem
 	q := r.db.NewSelect().Model(&items).Where("job_id = ?", jobID)
@@ -243,6 +258,25 @@ func (r *MarketDataPackRepository) ListUserBuildUniverse(ctx context.Context, us
 		return nil, err
 	}
 
+	var currentRows []LocalBuildInstrumentCandidate
+	if err := r.db.NewRaw(`
+		SELECT DISTINCT
+			i.id AS instrument_id,
+			i.symbol,
+			i.asset_type,
+			COALESCE(NULLIF(i.quote_currency, ''), 'USD') AS quote_currency,
+			0 AS priority
+		FROM sigma_finance.positions p
+		JOIN sigma_finance.assets a ON a.id = p.asset_id
+		JOIN sigma_finance.portfolios pf ON pf.id = p.portfolio_id
+		JOIN sigma_finance.instruments i ON i.id = a.instrument_id
+		WHERE pf.user_id = ?
+		  AND i.asset_type IN (?)
+		  AND i.status <> 'ARCHIVED'
+	`, userID, bun.In(normalizedTypes)).Scan(ctx, &currentRows); err != nil {
+		return nil, err
+	}
+
 	var watchlistRows []LocalBuildInstrumentCandidate
 	if err := r.db.NewRaw(`
 		SELECT DISTINCT
@@ -262,6 +296,7 @@ func (r *MarketDataPackRepository) ListUserBuildUniverse(ctx context.Context, us
 		return nil, err
 	}
 
+	candidates = append(candidates, currentRows...)
 	candidates = append(candidates, positionRows...)
 	candidates = append(candidates, watchlistRows...)
 	return candidates, nil
@@ -289,6 +324,42 @@ func (r *MarketDataPackRepository) ListInstrumentsByIDs(ctx context.Context, ids
 		  AND i.status <> 'ARCHIVED'
 	`, bun.In(ids), bun.In(normalizedTypes)).Scan(ctx, &rows)
 	return rows, err
+}
+
+func (r *MarketDataPackRepository) ListProviderSymbolMappings(ctx context.Context, provider string, instrumentIDs []string) (map[string]string, error) {
+	out := make(map[string]string, len(instrumentIDs))
+	if len(instrumentIDs) == 0 {
+		return out, nil
+	}
+	type row struct {
+		InstrumentID    string  `bun:"instrument_id"`
+		ProviderSymbol  *string `bun:"provider_symbol"`
+		ProviderAssetID string  `bun:"provider_asset_id"`
+	}
+	rows := make([]row, 0, len(instrumentIDs))
+	err := r.db.NewRaw(`
+		SELECT DISTINCT ON (m.instrument_id)
+			m.instrument_id,
+			m.provider_symbol,
+			m.provider_asset_id
+		FROM sigma_finance.instrument_provider_mappings m
+		WHERE m.provider = ?
+		  AND m.instrument_id IN (?)
+		ORDER BY m.instrument_id, m.updated_at DESC
+	`, strings.ToUpper(strings.TrimSpace(provider)), bun.In(instrumentIDs)).Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range rows {
+		if item.ProviderSymbol != nil && strings.TrimSpace(*item.ProviderSymbol) != "" {
+			out[item.InstrumentID] = strings.TrimSpace(*item.ProviderSymbol)
+			continue
+		}
+		if strings.TrimSpace(item.ProviderAssetID) != "" {
+			out[item.InstrumentID] = strings.TrimSpace(item.ProviderAssetID)
+		}
+	}
+	return out, nil
 }
 
 func normalizeAssetTypes(assetTypes []string) []string {

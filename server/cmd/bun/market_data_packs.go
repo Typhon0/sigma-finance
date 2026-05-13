@@ -33,11 +33,37 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 								Usage:    "path to pack spec yaml",
 								Required: true,
 							},
+							&cli.BoolFlag{
+								Name:  "skip-availability",
+								Usage: "skip Binance public-data availability checks",
+							},
+							&cli.StringFlag{
+								Name:  "availability-base-url",
+								Usage: "override Binance public-data base URL for availability checks",
+							},
+							&cli.StringFlag{
+								Name:  "build-mode",
+								Usage: "build mode: public_release, ci_fixture, local_user_build",
+								Value: packbuilder.BuildModeLocalUser,
+							},
 						},
 						Action: func(c *cli.Context) error {
-							plan, err := packbuilder.PrepareBuild(c.Context, strings.TrimSpace(c.String("spec")), ".")
+							plan, err := packbuilder.PrepareBuildForMode(
+								c.Context,
+								strings.TrimSpace(c.String("spec")),
+								".",
+								strings.TrimSpace(c.String("build-mode")),
+							)
 							if err != nil {
 								return err
+							}
+							if strings.EqualFold(plan.Spec.SourceProvider, "binance-public-data") {
+								if err := packbuilder.ValidateBinanceUniverse(c.Context, plan.UniversePath, plan.Universe, packbuilder.BinanceUniverseValidationOptions{
+									CheckAvailability: !c.Bool("skip-availability"),
+									BaseURL:           strings.TrimSpace(c.String("availability-base-url")),
+								}); err != nil {
+									return err
+								}
 							}
 							fmt.Printf("spec valid pack=%s version=%s distribution=%s symbols=%d\n", plan.Spec.PackID, plan.Spec.Version, plan.Spec.Distribution, len(plan.Universe.Symbols))
 							for _, warning := range plan.LicenseGate.Warnings {
@@ -104,9 +130,19 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 								Name:  "signature-url",
 								Usage: "signature URL for generated registry entry",
 							},
+							&cli.StringFlag{
+								Name:  "build-mode",
+								Usage: "build mode: public_release, ci_fixture, local_user_build",
+								Value: packbuilder.BuildModeLocalUser,
+							},
 						},
 						Action: func(c *cli.Context) error {
-							plan, err := packbuilder.PrepareBuild(c.Context, strings.TrimSpace(c.String("spec")), strings.TrimSpace(c.String("out")))
+							plan, err := packbuilder.PrepareBuildForMode(
+								c.Context,
+								strings.TrimSpace(c.String("spec")),
+								strings.TrimSpace(c.String("out")),
+								strings.TrimSpace(c.String("build-mode")),
+							)
 							if err != nil {
 								return err
 							}
@@ -498,6 +534,18 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 							return nil
 						},
 					},
+					{
+						Name:  "repair-local",
+						Usage: "repair local-build pack metadata and coverage from disk",
+						Action: func(c *cli.Context) error {
+							repaired, err := newMarketDataPackService(db).RepairLocalBuildStorage(c.Context)
+							if err != nil {
+								return err
+							}
+							fmt.Printf("repair-local repaired=%d\n", repaired)
+							return nil
+						},
+					},
 				},
 			},
 		},
@@ -509,10 +557,13 @@ func newMarketDataPackService(db *bun.DB) marketdatapacks.Service {
 	return marketdatapacks.NewService(
 		repository.NewMarketDataPackRepository(db),
 		marketdatapacks.Config{
-			RegistryURL:        cfg.MarketData.PackRegistryURL,
-			StoragePath:        cfg.MarketData.PackStoragePath,
-			SignaturePublicKey: cfg.MarketData.PackSignaturePublicKey,
-			AppVersion:         "0.0.0",
+			RegistryURL:                   cfg.MarketData.PackRegistryURL,
+			StoragePath:                   cfg.MarketData.PackStoragePath,
+			SignaturePublicKey:            cfg.MarketData.PackSignaturePublicKey,
+			AppVersion:                    "0.0.0",
+			LocalBuildDefaultHistoryYears: cfg.MarketData.LocalBuildDefaultHistoryYears,
+			MarketParquetAPIBaseURL:       cfg.MarketData.MarketParquetAPIBaseURL,
+			MarketParquetImportRoot:       cfg.MarketData.MarketParquetImportRoot,
 		},
 	)
 }

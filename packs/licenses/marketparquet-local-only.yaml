@@ -1,0 +1,14 @@
+provider_id: marketparquet
+name: MarketParquet
+source_url: https://www.marketparquet.com
+license_name: MarketParquet Local Use
+redistribution_allowed: false
+commercial_use_allowed: false
+attribution_required: true
+terms_checked_at: "2026-05-13"
+allowed_distribution_modes:
+  - local
+notes:
+  - MarketParquet data can be used locally by the user.
+  - Redistribution of raw data files is not permitted.
+  - SigmaFinance must not publish packs generated from this source.

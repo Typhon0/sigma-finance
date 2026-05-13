@@ -17,9 +17,11 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	catalogservice "sigma_finance/internal/service/catalog"
+	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
@@ -139,6 +141,113 @@ func NewApp() (*AppContainer, error) {
 	}))
 	app.Use(logger.New())
 	app.Use(recover.New())
+
+	localPackBuildGroup := app.Group("/market-data/packs/build-jobs", middleware.AuthMiddleware(serviceContainer.Session))
+	localPackBuildGroup.Get("/", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		limit := c.QueryInt("limit", 20)
+		jobs, err := serviceContainer.MarketDataPacks.ListLocalPackBuildJobs(c.Context(), user.ID, limit)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"jobs": mapLocalBuildJobsDTO(jobs)})
+	})
+	localPackBuildGroup.Post("/", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		var body startLocalBuildRequest
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		}
+		input, err := localBuildInputFromRequest(body)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		job, err := serviceContainer.MarketDataPacks.StartLocalPackBuild(c.Context(), user.ID, input)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.Status(fiber.StatusCreated).JSON(mapLocalBuildJobDTO(job))
+	})
+	localPackBuildGroup.Post("/estimate", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		var body startLocalBuildRequest
+		if err := c.BodyParser(&body); err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid request body"})
+		}
+		input, err := localBuildInputFromRequest(body)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		estimate, err := serviceContainer.MarketDataPacks.EstimateLocalPackBuild(c.Context(), user.ID, input)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(estimate)
+	})
+	localPackBuildGroup.Post("/repair-local", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		repaired, err := serviceContainer.MarketDataPacks.RepairLocalBuildStorage(c.Context())
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"repaired": repaired})
+	})
+	localPackBuildGroup.Get("/:jobId", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		job, err := serviceContainer.MarketDataPacks.GetLocalPackBuildJob(c.Context(), user.ID, c.Params("jobId"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(mapLocalBuildJobDTO(job))
+	})
+	localPackBuildGroup.Get("/:jobId/items", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		items, err := serviceContainer.MarketDataPacks.GetLocalPackBuildJobItems(c.Context(), user.ID, c.Params("jobId"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(fiber.Map{"items": mapLocalBuildItemsDTO(items)})
+	})
+	localPackBuildGroup.Post("/:jobId/cancel", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		job, err := serviceContainer.MarketDataPacks.CancelLocalPackBuild(c.Context(), user.ID, c.Params("jobId"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(mapLocalBuildJobDTO(job))
+	})
+	localPackBuildGroup.Post("/:jobId/retry-failed", func(c *fiber.Ctx) error {
+		user, ok := c.Locals("user").(*middleware.AuthenticatedUser)
+		if !ok || user == nil || strings.TrimSpace(user.ID) == "" {
+			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "authentication required"})
+		}
+		job, err := serviceContainer.MarketDataPacks.RetryFailedLocalPackBuild(c.Context(), user.ID, c.Params("jobId"))
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err.Error()})
+		}
+		return c.JSON(mapLocalBuildJobDTO(job))
+	})
 
 	// Setup GraphQL endpoint with authentication middleware and directives
 	config := graphql.Config{
@@ -290,4 +399,137 @@ func parseAdminEmails(rawValues ...string) []string {
 	}
 	slices.Sort(result)
 	return result
+}
+
+type startLocalBuildRequest struct {
+	PackID                  *string  `json:"pack_id"`
+	SourceProvider          string   `json:"source_provider"`
+	SourceMode              *string  `json:"source_mode"`
+	ImportPath              *string  `json:"import_path"`
+	MarketParquetSourceMode *string  `json:"marketparquet_source_mode"`
+	MarketParquetLocalPath  *string  `json:"marketparquet_local_path"`
+	AssetTypes              []string `json:"asset_types"`
+	HistoryStart            *string  `json:"history_start"`
+	HistoryEnd              *string  `json:"history_end"`
+	PortfolioFirst          *bool    `json:"portfolio_first"`
+	UniverseInstrumentIDs   []string `json:"universe_instrument_ids"`
+	RequestsPerMinute       *int     `json:"requests_per_minute"`
+	RequestsPerDay          *int     `json:"requests_per_day"`
+	ConcurrentRequests      *int     `json:"concurrent_requests"`
+}
+
+func parseOptionalTime(value *string) (*time.Time, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return nil, nil
+	}
+	raw := strings.TrimSpace(*value)
+	if len(raw) == len(time.DateOnly) {
+		parsed, err := time.Parse(time.DateOnly, raw)
+		if err != nil {
+			return nil, fmt.Errorf("invalid date %q", raw)
+		}
+		utc := parsed.UTC()
+		return &utc, nil
+	}
+	parsed, err := time.Parse(time.RFC3339, raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid datetime %q", raw)
+	}
+	utc := parsed.UTC()
+	return &utc, nil
+}
+
+func optionalString(value *string) *string {
+	if value == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*value)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
+}
+
+func localBuildInputFromRequest(body startLocalBuildRequest) (marketdatapacks.StartLocalPackBuildInput, error) {
+	historyStart, err := parseOptionalTime(body.HistoryStart)
+	if err != nil {
+		return marketdatapacks.StartLocalPackBuildInput{}, err
+	}
+	historyEnd, err := parseOptionalTime(body.HistoryEnd)
+	if err != nil {
+		return marketdatapacks.StartLocalPackBuildInput{}, err
+	}
+	return marketdatapacks.StartLocalPackBuildInput{
+		PackID:                  optionalString(body.PackID),
+		SourceProvider:          body.SourceProvider,
+		SourceMode:              optionalString(body.SourceMode),
+		ImportPath:              optionalString(body.ImportPath),
+		MarketParquetSourceMode: optionalString(body.MarketParquetSourceMode),
+		MarketParquetLocalPath:  optionalString(body.MarketParquetLocalPath),
+		AssetTypes:              body.AssetTypes,
+		HistoryStart:            historyStart,
+		HistoryEnd:              historyEnd,
+		PortfolioFirst:          body.PortfolioFirst == nil || *body.PortfolioFirst,
+		UniverseInstrumentIDs:   body.UniverseInstrumentIDs,
+		RequestsPerMinute:       body.RequestsPerMinute,
+		RequestsPerDay:          body.RequestsPerDay,
+		ConcurrentRequests:      body.ConcurrentRequests,
+	}, nil
+}
+
+func mapLocalBuildJobDTO(job *model.MarketDataPackBuildJob) fiber.Map {
+	if job == nil {
+		return fiber.Map{}
+	}
+	progress, _ := job.ProgressPercent.Float64()
+	return fiber.Map{
+		"id":                 job.ID,
+		"pack_id":            job.PackID,
+		"source_provider":    job.SourceProvider,
+		"status":             job.Status,
+		"progress_percent":   progress,
+		"current_symbol":     job.CurrentSymbol,
+		"current_date":       job.CurrentDate,
+		"current_asset_type": job.CurrentAssetType,
+		"total_symbols":      job.TotalSymbols,
+		"completed_symbols":  job.CompletedSymbols,
+		"failed_symbols":     job.FailedSymbols,
+		"completed_dates":    job.CompletedDates,
+		"total_dates":        job.TotalDates,
+		"rows_written":       job.RowsWritten,
+		"error_message":      job.ErrorMessage,
+		"created_at":         job.CreatedAt,
+		"started_at":         job.StartedAt,
+		"finished_at":        job.FinishedAt,
+	}
+}
+
+func mapLocalBuildJobsDTO(jobs []model.MarketDataPackBuildJob) []fiber.Map {
+	out := make([]fiber.Map, 0, len(jobs))
+	for i := range jobs {
+		out = append(out, mapLocalBuildJobDTO(&jobs[i]))
+	}
+	return out
+}
+
+func mapLocalBuildItemsDTO(items []model.MarketDataPackBuildJobItem) []fiber.Map {
+	out := make([]fiber.Map, 0, len(items))
+	for i := range items {
+		out = append(out, fiber.Map{
+			"id":                  items[i].ID,
+			"job_id":              items[i].JobID,
+			"instrument_id":       items[i].InstrumentID,
+			"symbol":              items[i].Symbol,
+			"status":              items[i].Status,
+			"first_date":          items[i].FirstDate,
+			"last_date":           items[i].LastDate,
+			"attempt_count":       items[i].AttemptCount,
+			"next_retry_at":       items[i].NextRetryAt,
+			"error_message":       items[i].ErrorMessage,
+			"provider_error_code": items[i].ProviderErrorCode,
+			"http_status":         items[i].HTTPStatus,
+			"retryable":           items[i].Retryable,
+		})
+	}
+	return out
 }

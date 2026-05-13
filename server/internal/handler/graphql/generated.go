@@ -661,8 +661,11 @@ type ComplexityRoot struct {
 	}
 
 	MarketDataPackBuildJob struct {
+		CompletedDates   func(childComplexity int) int
 		CompletedSymbols func(childComplexity int) int
 		CreatedAt        func(childComplexity int) int
+		CurrentAssetType func(childComplexity int) int
+		CurrentDate      func(childComplexity int) int
 		CurrentSymbol    func(childComplexity int) int
 		ErrorMessage     func(childComplexity int) int
 		FailedSymbols    func(childComplexity int) int
@@ -670,9 +673,11 @@ type ComplexityRoot struct {
 		ID               func(childComplexity int) int
 		PackID           func(childComplexity int) int
 		ProgressPercent  func(childComplexity int) int
+		RowsWritten      func(childComplexity int) int
 		SourceProvider   func(childComplexity int) int
 		StartedAt        func(childComplexity int) int
 		Status           func(childComplexity int) int
+		TotalDates       func(childComplexity int) int
 		TotalSymbols     func(childComplexity int) int
 	}
 
@@ -4241,6 +4246,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.MarketDataPack.Version(childComplexity), true
 
+	case "MarketDataPackBuildJob.completedDates":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CompletedDates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CompletedDates(childComplexity), true
 	case "MarketDataPackBuildJob.completedSymbols":
 		if e.ComplexityRoot.MarketDataPackBuildJob.CompletedSymbols == nil {
 			break
@@ -4253,6 +4264,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataPackBuildJob.CreatedAt(childComplexity), true
+	case "MarketDataPackBuildJob.currentAssetType":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CurrentAssetType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CurrentAssetType(childComplexity), true
+	case "MarketDataPackBuildJob.currentDate":
+		if e.ComplexityRoot.MarketDataPackBuildJob.CurrentDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.CurrentDate(childComplexity), true
 	case "MarketDataPackBuildJob.currentSymbol":
 		if e.ComplexityRoot.MarketDataPackBuildJob.CurrentSymbol == nil {
 			break
@@ -4295,6 +4318,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataPackBuildJob.ProgressPercent(childComplexity), true
+	case "MarketDataPackBuildJob.rowsWritten":
+		if e.ComplexityRoot.MarketDataPackBuildJob.RowsWritten == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.RowsWritten(childComplexity), true
 	case "MarketDataPackBuildJob.sourceProvider":
 		if e.ComplexityRoot.MarketDataPackBuildJob.SourceProvider == nil {
 			break
@@ -4313,6 +4342,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataPackBuildJob.Status(childComplexity), true
+	case "MarketDataPackBuildJob.totalDates":
+		if e.ComplexityRoot.MarketDataPackBuildJob.TotalDates == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataPackBuildJob.TotalDates(childComplexity), true
 	case "MarketDataPackBuildJob.totalSymbols":
 		if e.ComplexityRoot.MarketDataPackBuildJob.TotalSymbols == nil {
 			break
@@ -24134,6 +24169,64 @@ func (ec *executionContext) fieldContext_MarketDataPackBuildJob_currentSymbol(_ 
 	return fc, nil
 }
 
+func (ec *executionContext) _MarketDataPackBuildJob_currentDate(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_currentDate,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentDate, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_currentDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_currentAssetType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_currentAssetType,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentAssetType, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_currentAssetType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MarketDataPackBuildJob_totalSymbols(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -24216,6 +24309,93 @@ func (ec *executionContext) fieldContext_MarketDataPackBuildJob_failedSymbols(_ 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_completedDates(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_completedDates,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedDates, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_completedDates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_totalDates(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_totalDates,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalDates, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_totalDates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _MarketDataPackBuildJob_rowsWritten(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataPackBuildJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataPackBuildJob_rowsWritten,
+		func(ctx context.Context) (any, error) {
+			return obj.RowsWritten, nil
+		},
+		nil,
+		ec.marshalNInt642int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataPackBuildJob_rowsWritten(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataPackBuildJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int64 does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30833,12 +31013,22 @@ func (ec *executionContext) fieldContext_Mutation_startLocalPackBuild(ctx contex
 				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
 			case "currentSymbol":
 				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "currentDate":
+				return ec.fieldContext_MarketDataPackBuildJob_currentDate(ctx, field)
+			case "currentAssetType":
+				return ec.fieldContext_MarketDataPackBuildJob_currentAssetType(ctx, field)
 			case "totalSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
 			case "completedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
 			case "failedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "completedDates":
+				return ec.fieldContext_MarketDataPackBuildJob_completedDates(ctx, field)
+			case "totalDates":
+				return ec.fieldContext_MarketDataPackBuildJob_totalDates(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_MarketDataPackBuildJob_rowsWritten(ctx, field)
 			case "errorMessage":
 				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
 			case "createdAt":
@@ -30915,12 +31105,22 @@ func (ec *executionContext) fieldContext_Mutation_cancelPackBuildJob(ctx context
 				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
 			case "currentSymbol":
 				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "currentDate":
+				return ec.fieldContext_MarketDataPackBuildJob_currentDate(ctx, field)
+			case "currentAssetType":
+				return ec.fieldContext_MarketDataPackBuildJob_currentAssetType(ctx, field)
 			case "totalSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
 			case "completedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
 			case "failedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "completedDates":
+				return ec.fieldContext_MarketDataPackBuildJob_completedDates(ctx, field)
+			case "totalDates":
+				return ec.fieldContext_MarketDataPackBuildJob_totalDates(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_MarketDataPackBuildJob_rowsWritten(ctx, field)
 			case "errorMessage":
 				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
 			case "createdAt":
@@ -39571,12 +39771,22 @@ func (ec *executionContext) fieldContext_Query_packBuildJob(ctx context.Context,
 				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
 			case "currentSymbol":
 				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "currentDate":
+				return ec.fieldContext_MarketDataPackBuildJob_currentDate(ctx, field)
+			case "currentAssetType":
+				return ec.fieldContext_MarketDataPackBuildJob_currentAssetType(ctx, field)
 			case "totalSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
 			case "completedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
 			case "failedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "completedDates":
+				return ec.fieldContext_MarketDataPackBuildJob_completedDates(ctx, field)
+			case "totalDates":
+				return ec.fieldContext_MarketDataPackBuildJob_totalDates(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_MarketDataPackBuildJob_rowsWritten(ctx, field)
 			case "errorMessage":
 				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
 			case "createdAt":
@@ -39653,12 +39863,22 @@ func (ec *executionContext) fieldContext_Query_packBuildJobs(ctx context.Context
 				return ec.fieldContext_MarketDataPackBuildJob_progressPercent(ctx, field)
 			case "currentSymbol":
 				return ec.fieldContext_MarketDataPackBuildJob_currentSymbol(ctx, field)
+			case "currentDate":
+				return ec.fieldContext_MarketDataPackBuildJob_currentDate(ctx, field)
+			case "currentAssetType":
+				return ec.fieldContext_MarketDataPackBuildJob_currentAssetType(ctx, field)
 			case "totalSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_totalSymbols(ctx, field)
 			case "completedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_completedSymbols(ctx, field)
 			case "failedSymbols":
 				return ec.fieldContext_MarketDataPackBuildJob_failedSymbols(ctx, field)
+			case "completedDates":
+				return ec.fieldContext_MarketDataPackBuildJob_completedDates(ctx, field)
+			case "totalDates":
+				return ec.fieldContext_MarketDataPackBuildJob_totalDates(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_MarketDataPackBuildJob_rowsWritten(ctx, field)
 			case "errorMessage":
 				return ec.fieldContext_MarketDataPackBuildJob_errorMessage(ctx, field)
 			case "createdAt":
@@ -50484,7 +50704,7 @@ func (ec *executionContext) unmarshalInputStartLocalPackBuildInput(ctx context.C
 		asMap["portfolioFirst"] = true
 	}
 
-	fieldsInOrder := [...]string{"packId", "sourceProvider", "assetTypes", "historyStart", "historyEnd", "portfolioFirst", "universeInstrumentIds", "requestsPerMinute", "requestsPerDay", "concurrentRequests"}
+	fieldsInOrder := [...]string{"packId", "sourceProvider", "sourceMode", "importPath", "marketParquetSourceMode", "marketParquetLocalPath", "assetTypes", "historyStart", "historyEnd", "portfolioFirst", "universeInstrumentIds", "requestsPerMinute", "requestsPerDay", "concurrentRequests"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -50505,6 +50725,34 @@ func (ec *executionContext) unmarshalInputStartLocalPackBuildInput(ctx context.C
 				return it, err
 			}
 			it.SourceProvider = data
+		case "sourceMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sourceMode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SourceMode = data
+		case "importPath":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("importPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ImportPath = data
+		case "marketParquetSourceMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("marketParquetSourceMode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MarketParquetSourceMode = data
+		case "marketParquetLocalPath":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("marketParquetLocalPath"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MarketParquetLocalPath = data
 		case "assetTypes":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetTypes"))
 			data, err := ec.unmarshalNString2ᚕstringᚄ(ctx, v)
@@ -55198,6 +55446,10 @@ func (ec *executionContext) _MarketDataPackBuildJob(ctx context.Context, sel ast
 			}
 		case "currentSymbol":
 			out.Values[i] = ec._MarketDataPackBuildJob_currentSymbol(ctx, field, obj)
+		case "currentDate":
+			out.Values[i] = ec._MarketDataPackBuildJob_currentDate(ctx, field, obj)
+		case "currentAssetType":
+			out.Values[i] = ec._MarketDataPackBuildJob_currentAssetType(ctx, field, obj)
 		case "totalSymbols":
 			out.Values[i] = ec._MarketDataPackBuildJob_totalSymbols(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -55210,6 +55462,21 @@ func (ec *executionContext) _MarketDataPackBuildJob(ctx context.Context, sel ast
 			}
 		case "failedSymbols":
 			out.Values[i] = ec._MarketDataPackBuildJob_failedSymbols(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completedDates":
+			out.Values[i] = ec._MarketDataPackBuildJob_completedDates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalDates":
+			out.Values[i] = ec._MarketDataPackBuildJob_totalDates(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rowsWritten":
+			out.Values[i] = ec._MarketDataPackBuildJob_rowsWritten(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

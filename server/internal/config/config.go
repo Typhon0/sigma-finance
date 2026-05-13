@@ -92,12 +92,15 @@ type MarketDataConfig struct {
 	// YFinance provider configuration (tier 3 fallback)
 	YFinance YFinanceConfig
 	// Historical daily candle pack configuration
-	PackRegistryURL         string
-	PackStoragePath         string
-	PackSignaturePublicKey  string
-	PackAutoInstall         bool
-	PackAutoInstallBlocking bool
-	PackDefaultPacks        []string
+	PackRegistryURL               string
+	PackStoragePath               string
+	PackSignaturePublicKey        string
+	PackAutoInstall               bool
+	PackAutoInstallBlocking       bool
+	PackDefaultPacks              []string
+	LocalBuildDefaultHistoryYears int
+	MarketParquetAPIBaseURL       string
+	MarketParquetImportRoot       string
 }
 
 type CatalogConfig struct {
@@ -180,6 +183,19 @@ func LoadConfig() *Config {
 			PackAutoInstall:         getEnvBoolOrDefault("MARKET_DATA_AUTO_INSTALL", false),
 			PackAutoInstallBlocking: getEnvBoolOrDefault("MARKET_DATA_AUTO_INSTALL_BLOCKING", false),
 			PackDefaultPacks:        splitCSVEnv("MARKET_DATA_DEFAULT_PACKS", "core-daily"),
+			MarketParquetAPIBaseURL: getEnvOrDefault(
+				"MARKETPARQUET_API_BASE_URL",
+				"https://www.marketparquet.com",
+			),
+			MarketParquetImportRoot: getEnvOrDefault(
+				"MARKETPARQUET_IMPORT_ROOT",
+				"data/market-data/import/marketparquet",
+			),
+			LocalBuildDefaultHistoryYears: clampInt(
+				getEnvIntOrDefault("MARKET_DATA_LOCAL_BUILD_DEFAULT_HISTORY_YEARS", 10),
+				1,
+				30,
+			),
 		},
 		Catalog: CatalogConfig{
 			Source:               getEnvOrDefault("CATALOG_SOURCE", "TRUSTWALLET"),
@@ -213,6 +229,16 @@ func splitCSVEnv(key string, fallback string) []string {
 		}
 	}
 	return out
+}
+
+func clampInt(value, min, max int) int {
+	if value < min {
+		return min
+	}
+	if value > max {
+		return max
+	}
+	return value
 }
 
 // Validate validates the configuration and returns an error if invalid

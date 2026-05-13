@@ -37,6 +37,7 @@ market-data-pack-fixture:
 >GOCACHE="$(GO_CACHE)" go run ./cmd/bun market-data packs build \
 >  --spec "$(CRYPTO_SPEC)" \
 >  --out ../dist/market-data-fixture \
+>  --build-mode ci_fixture \
 >  --all \
 >  --archive \
 >  --sign \
@@ -47,6 +48,7 @@ market-data-pack-fixture:
 >GOCACHE="$(GO_CACHE)" go run ./cmd/bun market-data packs build \
 >  --spec "$(FX_SPEC)" \
 >  --out ../dist/market-data-fixture \
+>  --build-mode ci_fixture \
 >  --all \
 >  --archive \
 >  --sign \
@@ -81,6 +83,7 @@ market-data-pack-crypto-small:
 >GOCACHE="$(GO_CACHE)" go run ./cmd/bun market-data packs build \
 >  --spec "$(CRYPTO_SPEC)" \
 >  --out ../dist/market-data-fixture \
+>  --build-mode ci_fixture \
 >  --all \
 >  --archive \
 >  --sign \

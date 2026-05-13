@@ -207,9 +207,14 @@ export const GET_PACK_BUILD_JOB = gql`
       status
       progressPercent
       currentSymbol
+      currentDate
+      currentAssetType
       totalSymbols
       completedSymbols
       failedSymbols
+      completedDates
+      totalDates
+      rowsWritten
       errorMessage
       createdAt
       startedAt
@@ -227,9 +232,14 @@ export const GET_PACK_BUILD_JOBS = gql`
       status
       progressPercent
       currentSymbol
+      currentDate
+      currentAssetType
       totalSymbols
       completedSymbols
       failedSymbols
+      completedDates
+      totalDates
+      rowsWritten
       errorMessage
       createdAt
       startedAt

@@ -1,7 +1,6 @@
 import { MockedProvider } from "@apollo/client/testing";
 import { renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
-import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
 	ADD_ASSET_TO_PORTFOLIO,

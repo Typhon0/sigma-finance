@@ -34,6 +34,7 @@ jobs:
   build-packs:
     runs-on: ubuntu-latest
     env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       PACK_SIGNING_KEY: ${{ secrets.PACK_SIGNING_KEY }}
       MARKET_DATA_PACK_BASE_URL: ${{ vars.MARKET_DATA_PACK_BASE_URL }}
     steps:
@@ -113,10 +114,18 @@ jobs:
           cd server
 
           if [[ "${MODE}" == "fixture" ]]; then
+            # Only redistributable public packs belong in this workflow.
+            # Stock/fund provider packs are local user builds only.
+            # Do not add MarketParquet stock/ETF packs here.
+            # MarketParquet stock/ETF packs are built inside the user's instance only.
             CRYPTO_SPEC="../packs/specs/ci/crypto-binance-core-daily-usdt.yaml"
             FX_SPEC="../packs/specs/ci/fx-ecb-core-daily.yaml"
             SOURCE_ARGS=(--source-base-url "http://127.0.0.1:18080")
           else
+            # Only redistributable public packs belong in this workflow.
+            # Stock/fund provider packs are local user builds only.
+            # Do not add MarketParquet stock/ETF packs here.
+            # MarketParquet stock/ETF packs are built inside the user's instance only.
             CRYPTO_SPEC="../packs/specs/crypto-binance-core-daily-usdt.yaml"
             FX_SPEC="../packs/specs/fx-ecb-core-daily.yaml"
             SOURCE_ARGS=()
@@ -125,6 +134,7 @@ jobs:
           GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
             --spec "${CRYPTO_SPEC}" \
             --out ../dist \
+            --build-mode public_release \
             --all \
             --archive \
             --sign \
@@ -133,6 +143,7 @@ jobs:
           GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
             --spec "${FX_SPEC}" \
             --out ../dist \
+            --build-mode public_release \
             --all \
             --archive \
             --sign \
