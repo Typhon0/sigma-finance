@@ -55,8 +55,8 @@ jobs:
             echo "MODE=full" >> "$GITHUB_ENV"
             echo "PUBLISH=false" >> "$GITHUB_ENV"
           else
-            echo "MODE=${{ inputs.mode }}" >> "$GITHUB_ENV"
-            echo "PUBLISH=${{ inputs.publish }}" >> "$GITHUB_ENV"
+            echo "MODE=${{ inputs.mode || 'fixture' }}" >> "$GITHUB_ENV"
+            echo "PUBLISH=${{ inputs.publish || 'false' }}" >> "$GITHUB_ENV"
           fi
           if [[ -n "${{ inputs.ref_name }}" ]]; then
             echo "REF_NAME=${{ inputs.ref_name }}" >> "$GITHUB_ENV"
@@ -73,8 +73,7 @@ jobs:
             exit 1
           fi
           if [[ "${PUBLISH}" == "true" && -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
-            echo "MARKET_DATA_PACK_BASE_URL is required when publish=true"
-            exit 1
+            echo "MARKET_DATA_PACK_BASE_URL=https://github.com/${{ github.repository }}/releases/download/${REF_NAME}" >> "$GITHUB_ENV"
           fi
           if [[ -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
             echo "MARKET_DATA_PACK_BASE_URL=https://example.invalid/sigma-finance/packs" >> "$GITHUB_ENV"

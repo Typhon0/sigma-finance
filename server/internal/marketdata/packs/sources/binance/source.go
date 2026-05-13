@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"path"
 	"sort"
@@ -81,11 +82,12 @@ func (s *Source) FetchCandles(ctx context.Context, req sources.FetchCandlesReque
 		seen := make(map[string]struct{}, 1024)
 		now := time.Now().UTC()
 
-		for _, symbol := range req.Symbols {
+		for i, symbol := range req.Symbols {
 			if err := ctx.Err(); err != nil {
 				errCh <- err
 				return
 			}
+			log.Printf("Fetching data for %s (%d/%d)...", symbol.Symbol, i+1, len(req.Symbols))
 			if err := s.fetchSymbol(ctx, req.PackSpec, symbol, start, end, now, delay, seen, candlesCh); err != nil {
 				errCh <- fmt.Errorf("fetch symbol %s: %w", symbol.Symbol, err)
 				return
