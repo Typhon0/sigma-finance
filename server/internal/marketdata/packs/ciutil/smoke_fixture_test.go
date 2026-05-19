@@ -32,11 +32,11 @@ func TestFixtureBuildArchiveAndRegistrySmoke(t *testing.T) {
 	signingKey := filepath.Join(repoRoot, "packs", "fixtures", "keys", "test-ed25519-private-key.hex")
 
 	dist := t.TempDir()
-	cryptoPlan, err := packbuilder.PrepareBuild(context.Background(), specCrypto, dist)
+	cryptoPlan, err := packbuilder.PrepareBuildForMode(context.Background(), specCrypto, dist, packbuilder.BuildModeCIFixture)
 	if err != nil {
 		t.Fatalf("prepare crypto plan: %v", err)
 	}
-	fxPlan, err := packbuilder.PrepareBuild(context.Background(), specFX, dist)
+	fxPlan, err := packbuilder.PrepareBuildForMode(context.Background(), specFX, dist, packbuilder.BuildModeCIFixture)
 	if err != nil {
 		t.Fatalf("prepare fx plan: %v", err)
 	}
