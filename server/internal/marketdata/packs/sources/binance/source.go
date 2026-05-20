@@ -847,57 +847,93 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		return nil, fmt.Errorf("skipping coingecko in test/local environment")
 	}
 
-	perPage := count * 2
-	if perPage < 50 {
-		perPage = 50
-	}
-	if perPage > 250 {
-		perPage = 250
-	}
-
-	url := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1", coingeckoURL, perPage)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create coingecko request: %w", err)
-	}
-
-	// Set custom User-Agent to avoid Cloudflare blocks
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("coingecko API request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("coingecko API returned HTTP %d", resp.StatusCode)
-	}
-
-	var markets []struct {
-		Symbol string `json:"symbol"`
-		Name   string `json:"name"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
-		return nil, fmt.Errorf("decode coingecko markets: %w", err)
-	}
-
 	var uniSymbols []sources.UniverseSymbol
-	for _, m := range markets {
-		base := strings.ToUpper(m.Symbol)
-		if IsExcludedBaseAsset(base) {
-			continue
+	seenSymbols := make(map[string]struct{})
+
+	page := 1
+	for len(uniSymbols) < count {
+		// Calculate appropriate perPage. Max is 250.
+		// If we need e.g. 10 more, query 50 to have enough buffer for exclusions.
+		perPage := (count - len(uniSymbols)) * 2
+		if perPage < 50 {
+			perPage = 50
 		}
-		symbol := base + "USDT"
-		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-			InstrumentID: instrumentID(symbol),
-			Symbol:       symbol,
-			BaseAsset:    base,
-			QuoteAsset:   "USDT",
-			AssetType:    "CRYPTO",
-		})
-		if len(uniSymbols) >= count {
+		if perPage > 250 {
+			perPage = 250
+		}
+
+		url := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=%d", coingeckoURL, perPage, page)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("create coingecko request page %d: %w", page, err)
+		}
+
+		// Set custom User-Agent to avoid Cloudflare blocks
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			if len(uniSymbols) > 0 {
+				log.Printf("WARNING: coingecko API request page %d failed (%v). Returning %d symbols.", page, err, len(uniSymbols))
+				break
+			}
+			return nil, fmt.Errorf("coingecko API request page %d: %w", page, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			if len(uniSymbols) > 0 {
+				log.Printf("WARNING: coingecko API page %d returned HTTP %d. Returning %d symbols.", page, resp.StatusCode, len(uniSymbols))
+				break
+			}
+			return nil, fmt.Errorf("coingecko API returned HTTP %d on page %d", resp.StatusCode, page)
+		}
+
+		var markets []struct {
+			Symbol string `json:"symbol"`
+			Name   string `json:"name"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
+			resp.Body.Close()
+			if len(uniSymbols) > 0 {
+				log.Printf("WARNING: failed to decode coingecko page %d. Returning %d symbols.", page, len(uniSymbols))
+				break
+			}
+			return nil, fmt.Errorf("decode coingecko markets page %d: %w", page, err)
+		}
+		resp.Body.Close()
+
+		if len(markets) == 0 {
+			break // No more coins available
+		}
+
+		for _, m := range markets {
+			base := strings.ToUpper(m.Symbol)
+			if IsExcludedBaseAsset(base) {
+				continue
+			}
+			symbol := base + "USDT"
+			if _, ok := seenSymbols[symbol]; ok {
+				continue
+			}
+			seenSymbols[symbol] = struct{}{}
+
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+				InstrumentID: instrumentID(symbol),
+				Symbol:       symbol,
+				BaseAsset:    base,
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			})
+			if len(uniSymbols) >= count {
+				break
+			}
+		}
+
+		page++
+		// Safety limit to avoid infinite loops if API keeps returning data but we can't find enough valid symbols.
+		if page > 5 {
 			break
 		}
 	}
@@ -911,6 +947,7 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		Symbols: uniSymbols,
 	}, nil
 }
+
 
 func (s *Source) fallbackUniverse(ctx context.Context, count int, triggerErr error) (*sources.Universe, error) {
 	log.Printf("WARNING: dynamic universe discovery from Binance failed (%v). Trying dynamic discovery via CoinGecko.", triggerErr)

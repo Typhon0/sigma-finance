@@ -141,15 +141,27 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 			// Binance fails with 451 Legal Reasons to trigger fallback
 			w.WriteHeader(http.StatusUnavailableForLegalReasons)
 		case "/api/v3/coins/markets":
-			// Mock CoinGecko response
-			resp := []struct {
+			pageStr := r.URL.Query().Get("page")
+			var resp []struct {
 				Symbol string `json:"symbol"`
 				Name   string `json:"name"`
-			}{
-				{Symbol: "btc", Name: "Bitcoin"},
-				{Symbol: "eth", Name: "Ethereum"},
-				{Symbol: "usdt", Name: "Tether"}, // Should be excluded
-				{Symbol: "sol", Name: "Solana"},
+			}
+			if pageStr == "1" || pageStr == "" {
+				resp = []struct {
+					Symbol string `json:"symbol"`
+					Name   string `json:"name"`
+				}{
+					{Symbol: "btc", Name: "Bitcoin"},
+					{Symbol: "usdt", Name: "Tether"}, // Should be excluded
+				}
+			} else if pageStr == "2" {
+				resp = []struct {
+					Symbol string `json:"symbol"`
+					Name   string `json:"name"`
+				}{
+					{Symbol: "eth", Name: "Ethereum"},
+					{Symbol: "sol", Name: "Solana"},
+				}
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(resp)
@@ -169,15 +181,15 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 		HTTPClient: server.Client(),
 	})
 
-	// Discover top 2 symbols. Bitcoin, Ethereum, Solana are candidate tradeable base assets.
-	// Tether should be excluded.
-	uni, err := src.DiscoverUniverse(context.Background(), 2)
+	// Discover top 3 symbols. 
+	// Page 1 yields BTCUSDT (1 valid), so it requests Page 2 which yields ETHUSDT and SOLUSDT.
+	uni, err := src.DiscoverUniverse(context.Background(), 3)
 	if err != nil {
 		t.Fatalf("DiscoverUniverse failed: %v", err)
 	}
 
-	if len(uni.Symbols) != 2 {
-		t.Fatalf("expected 2 symbols from CoinGecko discovery, got %d", len(uni.Symbols))
+	if len(uni.Symbols) != 3 {
+		t.Fatalf("expected 3 symbols from CoinGecko discovery, got %d", len(uni.Symbols))
 	}
 
 	if uni.Symbols[0].Symbol != "BTCUSDT" {
@@ -185,6 +197,9 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 	}
 	if uni.Symbols[1].Symbol != "ETHUSDT" {
 		t.Errorf("expected 2nd symbol to be ETHUSDT, got %s", uni.Symbols[1].Symbol)
+	}
+	if uni.Symbols[2].Symbol != "SOLUSDT" {
+		t.Errorf("expected 3rd symbol to be SOLUSDT, got %s", uni.Symbols[2].Symbol)
 	}
 
 	expectedBtcID := instrumentID("BTCUSDT")
