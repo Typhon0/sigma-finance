@@ -766,12 +766,12 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("fetch exchange info: %w", err)
+		return s.fallbackUniverse(count, fmt.Errorf("fetch exchange info: %w", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode)
+		return s.fallbackUniverse(count, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode))
 	}
 
 	var info exchangeInfoResponse
@@ -797,7 +797,7 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	// 3. Fetch 24h tickers
 	tickers, err := s.fetch24hrTickers(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("fetch 24hr tickers for discovery: %w", err)
+		return s.fallbackUniverse(count, fmt.Errorf("fetch 24hr tickers for discovery: %w", err))
 	}
 
 	volumeMap := make(map[string]decimal.Decimal, len(tickers))
@@ -837,5 +837,50 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	return &sources.Universe{
 		Symbols: uniSymbols,
 	}, nil
+}
+
+func (s *Source) fallbackUniverse(count int, triggerErr error) (*sources.Universe, error) {
+	log.Printf("WARNING: dynamic universe discovery failed (%v). Falling back to static universe files.", triggerErr)
+
+	// Determine the best fallback file to use based on requested count
+	fallbackCount := 50
+	if count > 100 {
+		fallbackCount = 250
+	} else if count > 50 {
+		fallbackCount = 100
+	}
+
+	paths := []string{
+		fmt.Sprintf("packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+	}
+
+	var universe *sources.Universe
+	var lastErr error
+	for _, p := range paths {
+		u, err := sources.LoadUniverse(p)
+		if err == nil {
+			universe = u
+			log.Printf("Successfully loaded fallback static universe from %s", p)
+			break
+		}
+		lastErr = err
+	}
+
+	if universe == nil {
+		return nil, fmt.Errorf("dynamic universe discovery failed (%v) and fallback static universe load failed: %w", triggerErr, lastErr)
+	}
+
+	// Slice to requested count if necessary
+	if len(universe.Symbols) > count {
+		universe.Symbols = universe.Symbols[:count]
+	}
+
+	return universe, nil
 }
 

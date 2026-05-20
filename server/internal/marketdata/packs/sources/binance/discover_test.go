@@ -101,3 +101,34 @@ func TestDiscoverUniverse(t *testing.T) {
 		t.Errorf("expected SOLUSDT InstrumentID to be %s, got %s", expectedSolID, uni.Symbols[0].InstrumentID)
 	}
 }
+
+func TestDiscoverUniverse_Fallback(t *testing.T) {
+	// Mock Binance API returning 451 legal block
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+	}))
+	defer server.Close()
+
+	src := NewSource(Config{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+	})
+
+	// Ask for 5 symbols, which should trigger loading 50-symbol fallback and slicing to 5
+	uni, err := src.DiscoverUniverse(context.Background(), 5)
+	if err != nil {
+		t.Fatalf("DiscoverUniverse fallback failed: %v", err)
+	}
+
+	if len(uni.Symbols) != 5 {
+		t.Fatalf("expected 5 symbols after fallback slice, got %d", len(uni.Symbols))
+	}
+
+	// Spot check the fallback universe contents (should match crypto-binance-core-50.yaml top symbols)
+	if uni.Symbols[0].Symbol != "CHIPUSDT" {
+		t.Errorf("expected 1st symbol to be CHIPUSDT, got %s", uni.Symbols[0].Symbol)
+	}
+	if uni.Symbols[1].Symbol != "BTCUSDT" {
+		t.Errorf("expected 2nd symbol to be BTCUSDT, got %s", uni.Symbols[1].Symbol)
+	}
+}
