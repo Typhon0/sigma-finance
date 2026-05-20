@@ -11,7 +11,7 @@ func TestLoadUniverseFromSample(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get wd: %v", err)
 	}
-	samplePath := filepath.Clean(filepath.Join(wd, "../../../../../packs/universes/crypto-binance-core.yaml"))
+	samplePath := filepath.Clean(filepath.Join(wd, "../../../../../packs/universes/crypto-binance-core-100.yaml"))
 	universe, err := LoadUniverse(samplePath)
 	if err != nil {
 		t.Fatalf("load universe: %v", err)

@@ -153,7 +153,7 @@ type fixtureConfig struct {
 
 func writeFixturePackFiles(t *testing.T, root string, cfg fixtureConfig) string {
 	t.Helper()
-	universePath := filepath.Join(root, "packs", "universes", "crypto-binance-core.yaml")
+	universePath := filepath.Join(root, "packs", "universes", "crypto-binance-core-100.yaml")
 	if err := os.MkdirAll(filepath.Dir(universePath), 0o755); err != nil {
 		t.Fatalf("mkdir universe dir: %v", err)
 	}
@@ -205,7 +205,7 @@ func writeFixturePackFiles(t *testing.T, root string, cfg fixtureConfig) string 
 		"source_provider: " + sourceProvider + "\n" +
 		"license_policy: " + cfg.licensePolicy + "\n" +
 		"history:\n  start: 2017-01-01\n  end: auto\n" +
-		"universe:\n  file: packs/universes/crypto-binance-core.yaml\n" +
+		"universe:\n  file: packs/universes/crypto-binance-core-100.yaml\n" +
 		"output:\n  compression: zstd\n  partition_by:\n    - asset_type\n    - quote_currency\n    - year\n"
 	if strings.EqualFold(cfg.distribution, "local") {
 		specContent = strings.Replace(specContent, "history:\n", "upload_forbidden: true\ngenerated_by_user: true\ninstall_mode: build_local\nhistory:\n", 1)

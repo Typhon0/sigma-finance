@@ -83,7 +83,7 @@ func TestValidateBinanceUniverseDefaultCoreCount(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get wd: %v", err)
 	}
-	universePath := filepath.Clean(filepath.Join(wd, "../../../../../packs/universes/crypto-binance-core.yaml"))
+	universePath := filepath.Clean(filepath.Join(wd, "../../../../../packs/universes/crypto-binance-core-100.yaml"))
 	u, err := sources.LoadUniverse(universePath)
 	if err != nil {
 		t.Fatalf("load universe: %v", err)
