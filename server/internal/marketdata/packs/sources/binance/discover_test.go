@@ -141,27 +141,14 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 			// Binance fails with 451 Legal Reasons to trigger fallback
 			w.WriteHeader(http.StatusUnavailableForLegalReasons)
 		case "/api/v3/coins/markets":
-			pageStr := r.URL.Query().Get("page")
-			var resp []struct {
+			resp := []struct {
 				Symbol string `json:"symbol"`
 				Name   string `json:"name"`
-			}
-			if pageStr == "1" || pageStr == "" {
-				resp = []struct {
-					Symbol string `json:"symbol"`
-					Name   string `json:"name"`
-				}{
-					{Symbol: "btc", Name: "Bitcoin"},
-					{Symbol: "usdt", Name: "Tether"}, // Should be excluded
-				}
-			} else if pageStr == "2" {
-				resp = []struct {
-					Symbol string `json:"symbol"`
-					Name   string `json:"name"`
-				}{
-					{Symbol: "eth", Name: "Ethereum"},
-					{Symbol: "sol", Name: "Solana"},
-				}
+			}{
+				{Symbol: "btc", Name: "Bitcoin"},
+				{Symbol: "eth", Name: "Ethereum"},
+				{Symbol: "usdt", Name: "Tether"}, // Should be excluded
+				{Symbol: "sol", Name: "Solana"},
 			}
 			w.Header().Set("Content-Type", "application/json")
 			_ = json.NewEncoder(w).Encode(resp)
@@ -181,8 +168,7 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 		HTTPClient: server.Client(),
 	})
 
-	// Discover top 3 symbols. 
-	// Page 1 yields BTCUSDT (1 valid), so it requests Page 2 which yields ETHUSDT and SOLUSDT.
+	// Discover top 3 symbols.
 	uni, err := src.DiscoverUniverse(context.Background(), 3)
 	if err != nil {
 		t.Fatalf("DiscoverUniverse failed: %v", err)
@@ -207,4 +193,5 @@ func TestDiscoverUniverse_CoinGecko(t *testing.T) {
 		t.Errorf("expected BTCUSDT InstrumentID to be %s, got %s", expectedBtcID, uni.Symbols[0].InstrumentID)
 	}
 }
+
 
