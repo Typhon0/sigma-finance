@@ -90,18 +90,34 @@ func (s *Source) FetchCandles(ctx context.Context, req sources.FetchCandlesReque
 
 		delay := deriveDelay(req.RateLimit)
 		seen := make(map[string]struct{}, 1024)
+		var seenMu sync.Mutex
 		now := time.Now().UTC()
 
+		concurrency := 8
+		if req.RateLimit.Concurrency > 0 {
+			concurrency = req.RateLimit.Concurrency
+		}
+
+		eg, gctx := errgroup.WithContext(ctx)
+		eg.SetLimit(concurrency)
+
 		for i, symbol := range req.Symbols {
-			if err := ctx.Err(); err != nil {
-				errCh <- err
-				return
-			}
-			log.Printf("Fetching data for %s (%d/%d)...", symbol.Symbol, i+1, len(req.Symbols))
-			if err := s.fetchSymbol(ctx, req.PackSpec, symbol, start, end, now, delay, seen, candlesCh); err != nil {
-				errCh <- fmt.Errorf("fetch symbol %s: %w", symbol.Symbol, err)
-				return
-			}
+			i := i
+			symbol := symbol
+			eg.Go(func() error {
+				if err := gctx.Err(); err != nil {
+					return err
+				}
+				log.Printf("Fetching data for %s (%d/%d)...", symbol.Symbol, i+1, len(req.Symbols))
+				if err := s.fetchSymbol(gctx, req.PackSpec, symbol, start, end, now, delay, seen, &seenMu, candlesCh); err != nil {
+					return fmt.Errorf("fetch symbol %s: %w", symbol.Symbol, err)
+				}
+				return nil
+			})
+		}
+
+		if err := eg.Wait(); err != nil {
+			errCh <- err
 		}
 	}()
 
@@ -139,6 +155,7 @@ func (s *Source) fetchSymbol(
 	now time.Time,
 	delay time.Duration,
 	seen map[string]struct{},
+	seenMu *sync.Mutex,
 	out chan<- sources.NormalizedCandle,
 ) error {
 	monthCursor := time.Date(start.Year(), start.Month(), 1, 0, 0, 0, 0, time.UTC)
@@ -201,7 +218,7 @@ func (s *Source) fetchSymbol(
 		return err
 	}
 
-	return emitCandles(ctx, allCandles, seen, out)
+	return emitCandles(ctx, allCandles, seen, seenMu, out)
 }
 
 func (s *Source) fetchMonthly(
@@ -276,6 +293,7 @@ func emitCandles(
 	ctx context.Context,
 	candles []sources.NormalizedCandle,
 	seen map[string]struct{},
+	seenMu *sync.Mutex,
 	out chan<- sources.NormalizedCandle,
 ) error {
 	sort.Slice(candles, func(i, j int) bool {
@@ -283,11 +301,18 @@ func emitCandles(
 	})
 	for _, candle := range candles {
 		key := sources.CanonicalKey(candle)
-		if _, exists := seen[key]; exists {
+		
+		seenMu.Lock()
+		_, exists := seen[key]
+		if !exists {
+			seen[key] = struct{}{}
+		}
+		seenMu.Unlock()
+
+		if exists {
 			log.Printf("WARNING: duplicate candle key %s, skipping", key)
 			continue
 		}
-		seen[key] = struct{}{}
 
 		select {
 		case <-ctx.Done():
@@ -847,6 +872,39 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		return nil, fmt.Errorf("skipping coingecko in test/local environment")
 	}
 
+	// Load the static fallback universe as a whitelist of known valid Binance USDT symbols.
+	// CoinGecko lists all crypto coins (not just Binance), so we must filter its results
+	// against symbols we know actually exist on Binance and have archives on data.binance.vision.
+	fallbackCount := 250
+	if count <= 50 {
+		fallbackCount = 50
+	} else if count <= 100 {
+		fallbackCount = 100
+	}
+
+	paths := []string{
+		fmt.Sprintf("packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+		fmt.Sprintf("../../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
+	}
+
+	allowedSymbols := make(map[string]struct{})
+	var fallbackUniverse *sources.Universe
+	for _, p := range paths {
+		u, err := sources.LoadUniverse(p)
+		if err == nil {
+			fallbackUniverse = u
+			for _, sym := range u.Symbols {
+				allowedSymbols[strings.ToUpper(sym.Symbol)] = struct{}{}
+			}
+			break
+		}
+	}
+
 	perPage := count * 2
 	if perPage < 100 {
 		perPage = 100
@@ -895,6 +953,13 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		if _, ok := seenSymbols[symbol]; ok {
 			continue
 		}
+		// Only accept symbols that exist in the static fallback universe (known Binance symbols).
+		// If no fallback was loaded, accept all (best effort).
+		if len(allowedSymbols) > 0 {
+			if _, allowed := allowedSymbols[symbol]; !allowed {
+				continue
+			}
+		}
 		seenSymbols[symbol] = struct{}{}
 
 		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
@@ -909,54 +974,26 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		}
 	}
 
-	// If we still need more symbols to satisfy count, load the fallback static universe and fill the rest
-	if len(uniSymbols) < count {
+	// If we still need more symbols to satisfy count, fill from the fallback universe
+	if len(uniSymbols) < count && fallbackUniverse != nil {
 		log.Printf("CoinGecko dynamic discovery returned %d symbols. Filling remaining %d slots using static fallback universe.", len(uniSymbols), count-len(uniSymbols))
 
-		fallbackCount := 50
-		if count > 100 {
-			fallbackCount = 250
-		} else if count > 50 {
-			fallbackCount = 100
-		}
-
-		paths := []string{
-			fmt.Sprintf("packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-			fmt.Sprintf("../../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		}
-
-		var fallbackUniverse *sources.Universe
-		for _, p := range paths {
-			u, err := sources.LoadUniverse(p)
-			if err == nil {
-				fallbackUniverse = u
-				break
+		for _, sym := range fallbackUniverse.Symbols {
+			symbol := strings.ToUpper(sym.Symbol)
+			if _, ok := seenSymbols[symbol]; ok {
+				continue
 			}
-		}
+			seenSymbols[symbol] = struct{}{}
 
-		if fallbackUniverse != nil {
-			for _, sym := range fallbackUniverse.Symbols {
-				symbol := strings.ToUpper(sym.Symbol)
-				if _, ok := seenSymbols[symbol]; ok {
-					continue
-				}
-				seenSymbols[symbol] = struct{}{}
-
-				uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-					InstrumentID: instrumentID(symbol),
-					Symbol:       symbol,
-					BaseAsset:    sym.BaseAsset,
-					QuoteAsset:   "USDT",
-					AssetType:    "CRYPTO",
-				})
-				if len(uniSymbols) >= count {
-					break
-				}
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+				InstrumentID: instrumentID(symbol),
+				Symbol:       symbol,
+				BaseAsset:    sym.BaseAsset,
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			})
+			if len(uniSymbols) >= count {
+				break
 			}
 		}
 	}
