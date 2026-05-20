@@ -233,8 +233,16 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 	for _, sym := range symbolMap {
 		allSymbols = append(allSymbols, sym)
 	}
+	symbolRank := make(map[string]int)
+	for _, p := range plans {
+		for idx, sym := range p.Universe.Symbols {
+			if r, exists := symbolRank[sym.Symbol]; !exists || idx < r {
+				symbolRank[sym.Symbol] = idx
+			}
+		}
+	}
 	sort.Slice(allSymbols, func(i, j int) bool {
-		return allSymbols[i].Symbol < allSymbols[j].Symbol
+		return symbolRank[allSymbols[i].Symbol] < symbolRank[allSymbols[j].Symbol]
 	})
 
 	startDate, endDate, err := resolveHistoryRange(first.Spec.History)
