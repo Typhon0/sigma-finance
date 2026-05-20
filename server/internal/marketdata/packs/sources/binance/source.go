@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"context"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/csv"
 	"encoding/hex"
@@ -610,6 +611,13 @@ func minTime(a time.Time, b time.Time) time.Time {
 
 const binanceAPIBase = "https://api.binance.com"
 
+func (s *Source) apiBase() string {
+	if strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost") {
+		return s.baseURL
+	}
+	return binanceAPIBase
+}
+
 // tickerEntry represents a single ticker from Binance's 24hr API.
 type tickerEntry struct {
 	Symbol      string `json:"symbol"`
@@ -653,7 +661,7 @@ func (s *Source) RankSymbols(ctx context.Context, symbols []sources.UniverseSymb
 }
 
 func (s *Source) fetch24hrTickers(ctx context.Context) ([]tickerEntry, error) {
-	url := binanceAPIBase + "/api/v3/ticker/24hr"
+	url := s.apiBase() + "/api/v3/ticker/24hr"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -683,3 +691,151 @@ func topN(symbols []sources.UniverseSymbol, n int) string {
 	}
 	return strings.Join(names, ", ")
 }
+
+const InstrumentNamespace = "sigma-finance:binance-spot"
+
+// instrumentID generates a deterministic UUIDv5 using namespace and symbol
+func instrumentID(symbol string) string {
+	h := sha1.New()
+	h.Write([]byte(InstrumentNamespace))
+	h.Write([]byte(symbol))
+	sum := h.Sum(nil)
+
+	// Set version 5 (0x50)
+	sum[6] = (sum[6] & 0x0f) | 0x50
+	// Set variant 1 (RFC 4122, 0x80)
+	sum[8] = (sum[8] & 0x3f) | 0x80
+
+	// Format as UUID string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+	dst := make([]byte, 36)
+	hex.Encode(dst[0:8], sum[0:4])
+	dst[8] = '-'
+	hex.Encode(dst[9:13], sum[4:6])
+	dst[13] = '-'
+	hex.Encode(dst[14:18], sum[6:8])
+	dst[18] = '-'
+	hex.Encode(dst[19:23], sum[8:10])
+	dst[23] = '-'
+	hex.Encode(dst[24:36], sum[10:16])
+
+	return string(dst)
+}
+
+func IsExcludedBaseAsset(base string) bool {
+	if base == "" {
+		return true
+	}
+	if strings.HasPrefix(base, "1000") || strings.HasPrefix(base, "LD") {
+		return true
+	}
+	if strings.HasSuffix(base, "UP") || strings.HasSuffix(base, "DOWN") || strings.HasSuffix(base, "BULL") || strings.HasSuffix(base, "BEAR") {
+		return true
+	}
+	switch base {
+	case "USDT", "USDC", "FDUSD", "BUSD", "TUSD", "USDP", "DAI", "USD1",
+		"EUR", "TRY", "BRL", "RUB", "UAH", "GBP", "AUD", "JPY", "BIDR", "IDRT", "NGN", "ZAR", "PLN", "RON", "ARS",
+		"WBTC", "WETH", "WBETH", "WBNB":
+		return true
+	default:
+		return false
+	}
+}
+
+type exchangeInfoResponse struct {
+	Symbols []exchangeInfoSymbol `json:"symbols"`
+}
+
+type exchangeInfoSymbol struct {
+	Symbol     string `json:"symbol"`
+	Status     string `json:"status"`
+	BaseAsset  string `json:"baseAsset"`
+	QuoteAsset string `json:"quoteAsset"`
+}
+
+// DiscoverUniverse dynamically discovers the top N symbols by 24h quote volume from Binance's API.
+func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Universe, error) {
+	if count <= 0 {
+		return nil, fmt.Errorf("invalid count %d for dynamic universe discovery", count)
+	}
+
+	// 1. Fetch exchange info
+	url := s.apiBase() + "/api/v3/exchangeInfo"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create exchange info request: %w", err)
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("fetch exchange info: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode)
+	}
+
+	var info exchangeInfoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, fmt.Errorf("decode exchange info: %w", err)
+	}
+
+	// 2. Filter USDT symbols, status=TRADING, apply IsExcludedBaseAsset
+	var candidateSymbols []exchangeInfoSymbol
+	for _, sym := range info.Symbols {
+		if strings.ToUpper(sym.QuoteAsset) != "USDT" {
+			continue
+		}
+		if strings.ToUpper(sym.Status) != "TRADING" {
+			continue
+		}
+		if IsExcludedBaseAsset(strings.ToUpper(sym.BaseAsset)) {
+			continue
+		}
+		candidateSymbols = append(candidateSymbols, sym)
+	}
+
+	// 3. Fetch 24h tickers
+	tickers, err := s.fetch24hrTickers(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("fetch 24hr tickers for discovery: %w", err)
+	}
+
+	volumeMap := make(map[string]decimal.Decimal, len(tickers))
+	for _, t := range tickers {
+		vol, parseErr := decimal.NewFromString(t.QuoteVolume)
+		if parseErr != nil {
+			continue
+		}
+		volumeMap[strings.ToUpper(t.Symbol)] = vol
+	}
+
+	// 4. Sort candidates by descending 24h volume
+	sort.SliceStable(candidateSymbols, func(i, j int) bool {
+		vi := volumeMap[strings.ToUpper(candidateSymbols[i].Symbol)]
+		vj := volumeMap[strings.ToUpper(candidateSymbols[j].Symbol)]
+		return vi.GreaterThan(vj)
+	})
+
+	if len(candidateSymbols) < count {
+		count = len(candidateSymbols)
+	}
+
+	var uniSymbols []sources.UniverseSymbol
+	for i := 0; i < count; i++ {
+		sym := candidateSymbols[i]
+		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+			InstrumentID: instrumentID(sym.Symbol),
+			Symbol:       sym.Symbol,
+			BaseAsset:    sym.BaseAsset,
+			QuoteAsset:   sym.QuoteAsset,
+			AssetType:    "CRYPTO",
+		})
+	}
+
+	log.Printf("Discovered %d symbols from Binance API (top 3: %s)", len(uniSymbols), topN(uniSymbols, 3))
+
+	return &sources.Universe{
+		Symbols: uniSymbols,
+	}, nil
+}
+

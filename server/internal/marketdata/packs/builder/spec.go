@@ -35,7 +35,8 @@ type HistorySpec struct {
 }
 
 type UniverseConfig struct {
-	File string `yaml:"file"`
+	File     string `yaml:"file"`
+	Discover int    `yaml:"discover,omitempty"` // e.g. 50, 100, 250
 }
 
 type OutputConfig struct {
@@ -77,13 +78,18 @@ func (s *PackSpec) Validate() error {
 		"source_provider":    s.SourceProvider,
 		"history.start":      s.History.Start,
 		"history.end":        s.History.End,
-		"universe.file":      s.Universe.File,
 		"output.compression": s.Output.Compression,
 	}
 	for field, value := range required {
 		if strings.TrimSpace(value) == "" {
 			return fmt.Errorf("pack spec %s is required", field)
 		}
+	}
+	if strings.TrimSpace(s.Universe.File) == "" && s.Universe.Discover <= 0 {
+		return fmt.Errorf("pack spec universe.file or universe.discover is required")
+	}
+	if s.Universe.Discover < 0 {
+		return fmt.Errorf("pack spec universe.discover must be >= 0")
 	}
 	if s.FormatVersion <= 0 {
 		return fmt.Errorf("pack spec format_version must be > 0")

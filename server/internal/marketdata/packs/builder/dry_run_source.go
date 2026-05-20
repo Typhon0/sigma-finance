@@ -30,9 +30,27 @@ type DryRunSourceSummary struct {
 }
 
 func RunSourceDryRun(ctx context.Context, plan *BuildPlan, opts DryRunSourceOptions) (*DryRunSourceSummary, error) {
-	if plan == nil || plan.Spec == nil || plan.Universe == nil {
+	if plan == nil || plan.Spec == nil {
 		return nil, fmt.Errorf("build plan is required")
 	}
+
+	source, err := newSourceForProvider(plan.Spec.SourceProvider, opts.SourceBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if plan.Universe == nil {
+		discoverer, ok := source.(sources.UniverseDiscoverer)
+		if !ok {
+			return nil, fmt.Errorf("source provider %s does not support dynamic universe discovery", plan.Spec.SourceProvider)
+		}
+		universe, err := discoverer.DiscoverUniverse(ctx, plan.Spec.Universe.Discover)
+		if err != nil {
+			return nil, fmt.Errorf("dynamic universe discovery failed: %w", err)
+		}
+		plan.Universe = universe
+	}
+
 	if len(plan.Universe.Symbols) == 0 {
 		return nil, fmt.Errorf("universe symbols are required")
 	}
@@ -45,11 +63,6 @@ func RunSourceDryRun(ctx context.Context, plan *BuildPlan, opts DryRunSourceOpti
 	symbols := plan.Universe.Symbols
 	if !opts.AllSymbols && len(symbols) > 2 {
 		symbols = symbols[:2]
-	}
-
-	source, err := newSourceForProvider(plan.Spec.SourceProvider, opts.SourceBaseURL)
-	if err != nil {
-		return nil, err
 	}
 	candlesCh, errCh := source.FetchCandles(ctx, sources.FetchCandlesRequest{
 		PackSpec:  toSourcePackSpec(plan.Spec),

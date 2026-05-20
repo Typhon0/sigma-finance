@@ -44,13 +44,18 @@ func PrepareBuildForMode(_ context.Context, specPath string, outDir string, buil
 		return nil, err
 	}
 
-	universePath, err := resolveExistingPath(spec.Universe.File, resolvedSpecPath)
-	if err != nil {
-		return nil, fmt.Errorf("resolve universe file: %w", err)
-	}
-	universe, err := sources.LoadUniverse(universePath)
-	if err != nil {
-		return nil, err
+	var universePath string
+	var universe *sources.Universe
+	if spec.Universe.Discover <= 0 {
+		var err error
+		universePath, err = resolveExistingPath(spec.Universe.File, resolvedSpecPath)
+		if err != nil {
+			return nil, fmt.Errorf("resolve universe file: %w", err)
+		}
+		universe, err = sources.LoadUniverse(universePath)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	plan := &BuildPlan{

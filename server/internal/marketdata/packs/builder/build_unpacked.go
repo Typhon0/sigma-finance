@@ -34,11 +34,28 @@ type BuildUnpackedResult struct {
 }
 
 func BuildUnpackedPack(ctx context.Context, plan *BuildPlan, opts BuildUnpackedOptions) (*BuildUnpackedResult, error) {
-	if plan == nil || plan.Spec == nil || plan.Universe == nil {
+	if plan == nil || plan.Spec == nil {
 		return nil, fmt.Errorf("build plan is required")
 	}
 	if opts.MaxSymbolsSet && !opts.AllSymbols && opts.MaxSymbols <= 0 {
 		return nil, fmt.Errorf("--max-symbols must be > 0 unless --all is set")
+	}
+
+	source, err := newSourceForProvider(plan.Spec.SourceProvider, opts.SourceBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	if plan.Universe == nil {
+		discoverer, ok := source.(sources.UniverseDiscoverer)
+		if !ok {
+			return nil, fmt.Errorf("source provider %s does not support dynamic universe discovery", plan.Spec.SourceProvider)
+		}
+		universe, err := discoverer.DiscoverUniverse(ctx, plan.Spec.Universe.Discover)
+		if err != nil {
+			return nil, fmt.Errorf("dynamic universe discovery failed: %w", err)
+		}
+		plan.Universe = universe
 	}
 
 	startDate, endDate, err := resolveHistoryRange(plan.Spec.History)
@@ -62,11 +79,6 @@ func BuildUnpackedPack(ctx context.Context, plan *BuildPlan, opts BuildUnpackedO
 	}
 	if cleanupWorkDir {
 		defer os.RemoveAll(workDir) //nolint:errcheck
-	}
-
-	source, err := newSourceForProvider(plan.Spec.SourceProvider, opts.SourceBaseURL)
-	if err != nil {
-		return nil, err
 	}
 	candles, err := fetchCandles(ctx, source, sources.FetchCandlesRequest{
 		PackSpec:  toSourcePackSpec(plan.Spec),
@@ -221,6 +233,25 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 		}
 	}
 
+	source, err := newSourceForProvider(first.Spec.SourceProvider, opts.SourceBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, plan := range plans {
+		if plan.Universe == nil {
+			discoverer, ok := source.(sources.UniverseDiscoverer)
+			if !ok {
+				return nil, fmt.Errorf("source provider %s does not support dynamic universe discovery", plan.Spec.SourceProvider)
+			}
+			universe, err := discoverer.DiscoverUniverse(ctx, plan.Spec.Universe.Discover)
+			if err != nil {
+				return nil, fmt.Errorf("dynamic universe discovery failed: %w", err)
+			}
+			plan.Universe = universe
+		}
+	}
+
 	// 2. Build union of all symbols across all plans
 	symbolMap := make(map[string]sources.UniverseSymbol)
 	for _, p := range plans {
@@ -232,11 +263,6 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 	allSymbols := make([]sources.UniverseSymbol, 0, len(symbolMap))
 	for _, sym := range symbolMap {
 		allSymbols = append(allSymbols, sym)
-	}
-
-	source, err := newSourceForProvider(first.Spec.SourceProvider, opts.SourceBaseURL)
-	if err != nil {
-		return nil, err
 	}
 
 	// 2b. Sort symbols by real-time popularity if the source supports it,

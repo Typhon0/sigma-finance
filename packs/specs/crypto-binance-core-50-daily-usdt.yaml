@@ -12,7 +12,7 @@ history:
   start: 2017-01-01
   end: auto
 universe:
-  file: packs/universes/crypto-binance-core-50.yaml
+  discover: 50
 output:
   compression: zstd
   partition_by:

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"sigma_finance/internal/marketdata/packs/sources"
+	"sigma_finance/internal/marketdata/packs/sources/binance"
 )
 
 const defaultBinancePublicDataBaseURL = "https://data.binance.vision"
@@ -25,6 +26,9 @@ type BinanceUniverseValidationOptions struct {
 }
 
 func ValidateBinanceUniverse(ctx context.Context, universePath string, universe *sources.Universe, opts BinanceUniverseValidationOptions) error {
+	if universePath == "" {
+		return nil
+	}
 	if universe == nil {
 		return fmt.Errorf("universe is required")
 	}
@@ -48,7 +52,7 @@ func ValidateBinanceUniverse(ctx context.Context, universePath string, universe 
 		if quoteAsset != "USDT" {
 			return fmt.Errorf("universe symbol %s quote_asset must be USDT", symbol)
 		}
-		if isExcludedBaseAsset(baseAsset) {
+		if binance.IsExcludedBaseAsset(baseAsset) {
 			return fmt.Errorf("universe symbol %s excluded by policy (base_asset=%s)", symbol, baseAsset)
 		}
 
@@ -136,22 +140,4 @@ func hasBinancePublicData(ctx context.Context, client *http.Client, baseURL stri
 	return false, nil
 }
 
-func isExcludedBaseAsset(base string) bool {
-	if base == "" {
-		return true
-	}
-	if strings.HasPrefix(base, "1000") || strings.HasPrefix(base, "LD") {
-		return true
-	}
-	if strings.HasSuffix(base, "UP") || strings.HasSuffix(base, "DOWN") || strings.HasSuffix(base, "BULL") || strings.HasSuffix(base, "BEAR") {
-		return true
-	}
-	switch base {
-	case "USDT", "USDC", "FDUSD", "BUSD", "TUSD", "USDP", "DAI", "USD1",
-		"EUR", "TRY", "BRL", "RUB", "UAH", "GBP", "AUD", "JPY", "BIDR", "IDRT", "NGN", "ZAR", "PLN", "RON", "ARS",
-		"WBTC", "WETH", "WBETH", "WBNB":
-		return true
-	default:
-		return false
-	}
-}
+

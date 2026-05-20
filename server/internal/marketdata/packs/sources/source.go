@@ -19,6 +19,13 @@ type SymbolRanker interface {
 	RankSymbols(ctx context.Context, symbols []UniverseSymbol) ([]UniverseSymbol, error)
 }
 
+// UniverseDiscoverer is optionally implemented by a CandleSource to
+// dynamically discover the top N symbols by real-time trading volume,
+// replacing static universe YAML files.
+type UniverseDiscoverer interface {
+	DiscoverUniverse(ctx context.Context, count int) (*Universe, error)
+}
+
 type PackSpec struct {
 	PackID         string
 	Name           string
