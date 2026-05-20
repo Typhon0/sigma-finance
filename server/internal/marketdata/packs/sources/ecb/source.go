@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"path"
@@ -105,8 +106,8 @@ func (s *Source) FetchCandles(ctx context.Context, req sources.FetchCandlesReque
 				}
 				key := sources.CanonicalKey(candle)
 				if _, exists := seen[key]; exists {
-					errCh <- fmt.Errorf("duplicate candle key %s", key)
-					return
+					log.Printf("WARNING: duplicate candle key %s, skipping", key)
+					continue
 				}
 				seen[key] = struct{}{}
 				select {

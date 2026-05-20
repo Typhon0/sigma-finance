@@ -107,7 +107,7 @@ func TestFetchCandlesDuplicateKeyRejected(t *testing.T) {
 		BaseURL:    server.URL,
 		HTTPClient: server.Client(),
 	})
-	_, err := collect(src.FetchCandles(context.Background(), sources.FetchCandlesRequest{
+	candles, err := collect(src.FetchCandles(context.Background(), sources.FetchCandlesRequest{
 		PackSpec: sources.PackSpec{
 			AssetType:      "FX",
 			SourceProvider: SourceName,
@@ -119,8 +119,11 @@ func TestFetchCandlesDuplicateKeyRejected(t *testing.T) {
 		StartDate: time.Date(2026, 5, 9, 0, 0, 0, 0, time.UTC),
 		EndDate:   time.Date(2026, 5, 9, 0, 0, 0, 0, time.UTC),
 	}))
-	if err == nil || !strings.Contains(err.Error(), "duplicate candle key") {
-		t.Fatalf("expected duplicate key error, got %v", err)
+	if err != nil {
+		t.Fatalf("expected duplicate error to be skipped gracefully, but got error: %v", err)
+	}
+	if len(candles) != 1 {
+		t.Fatalf("expected duplicate candle to be skipped (1 candle expected), got %d", len(candles))
 	}
 }
 

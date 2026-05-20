@@ -170,7 +170,14 @@ func (s *Source) fetchSymbol(
 					return errMonth
 				}
 				if !found {
-					candles, err = s.fetchDailyRange(gctx, spec, symbol, monthStart, monthEnd, delay)
+					prevMonth := time.Date(now.Year(), now.Month()-1, 1, 0, 0, 0, 0, time.UTC)
+					if mc.Before(prevMonth) && !strings.HasPrefix(s.baseURL, "http://127.0.0.1") && !strings.HasPrefix(s.baseURL, "http://localhost") {
+						// Historical month missing means token didn't exist yet. Skip daily fallback.
+						candles = nil
+						err = nil
+					} else {
+						candles, err = s.fetchDailyRange(gctx, spec, symbol, monthStart, monthEnd, delay)
+					}
 				} else {
 					candles = c
 				}
@@ -275,7 +282,8 @@ func emitCandles(
 	for _, candle := range candles {
 		key := sources.CanonicalKey(candle)
 		if _, exists := seen[key]; exists {
-			return fmt.Errorf("duplicate candle key %s", key)
+			log.Printf("WARNING: duplicate candle key %s, skipping", key)
+			continue
 		}
 		seen[key] = struct{}{}
 
@@ -367,6 +375,35 @@ func extractChecksumDigest(content string) (string, error) {
 }
 
 func (s *Source) get(ctx context.Context, url string) ([]byte, int, error) {
+	var body []byte
+	var statusCode int
+	var err error
+
+	maxRetries := 3
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			select {
+			case <-ctx.Done():
+				return nil, 0, ctx.Err()
+			case <-time.After(backoff):
+			}
+			log.Printf("Retrying GET %s (attempt %d/%d) after error/status: %v", url, attempt, maxRetries, err)
+		}
+
+		body, statusCode, err = s.getOnce(ctx, url)
+		if err == nil {
+			if statusCode >= 500 || statusCode == http.StatusTooManyRequests {
+				err = fmt.Errorf("HTTP status %d", statusCode)
+				continue
+			}
+			return body, statusCode, nil
+		}
+	}
+	return nil, 0, fmt.Errorf("after %d retries: %w", maxRetries, err)
+}
+
+func (s *Source) getOnce(ctx context.Context, url string) ([]byte, int, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, 0, err

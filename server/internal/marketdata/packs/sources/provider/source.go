@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/marketdata/packs/sources"
 	"sigma_finance/internal/service/providers"
@@ -92,8 +93,8 @@ func (s *Source) FetchCandles(ctx context.Context, req sources.FetchCandlesReque
 				}
 				key := sources.CanonicalKey(candle)
 				if _, exists := seen[key]; exists {
-					errCh <- fmt.Errorf("duplicate canonical candle key %s", key)
-					return
+					log.Printf("WARNING: duplicate canonical candle key %s, skipping", key)
+					continue
 				}
 				seen[key] = struct{}{}
 
