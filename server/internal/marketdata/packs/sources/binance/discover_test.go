@@ -125,11 +125,11 @@ func TestDiscoverUniverse_Fallback(t *testing.T) {
 	}
 
 	// Spot check the fallback universe contents (should match crypto-binance-core-50.yaml top symbols)
-	if uni.Symbols[0].Symbol != "CHIPUSDT" {
-		t.Errorf("expected 1st symbol to be CHIPUSDT, got %s", uni.Symbols[0].Symbol)
+	if uni.Symbols[0].Symbol != "BTCUSDT" {
+		t.Errorf("expected 1st symbol to be BTCUSDT, got %s", uni.Symbols[0].Symbol)
 	}
-	if uni.Symbols[1].Symbol != "BTCUSDT" {
-		t.Errorf("expected 2nd symbol to be BTCUSDT, got %s", uni.Symbols[1].Symbol)
+	if uni.Symbols[1].Symbol != "ETHUSDT" {
+		t.Errorf("expected 2nd symbol to be ETHUSDT, got %s", uni.Symbols[1].Symbol)
 	}
 }
 
