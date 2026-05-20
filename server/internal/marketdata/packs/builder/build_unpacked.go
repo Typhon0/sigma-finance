@@ -233,17 +233,34 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 	for _, sym := range symbolMap {
 		allSymbols = append(allSymbols, sym)
 	}
-	symbolRank := make(map[string]int)
-	for _, p := range plans {
-		for idx, sym := range p.Universe.Symbols {
-			if r, exists := symbolRank[sym.Symbol]; !exists || idx < r {
-				symbolRank[sym.Symbol] = idx
+
+	source, err := newSourceForProvider(first.Spec.SourceProvider, opts.SourceBaseURL)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2b. Sort symbols by real-time popularity if the source supports it,
+	// otherwise fall back to the static YAML order.
+	if ranker, ok := source.(sources.SymbolRanker); ok {
+		ranked, rankErr := ranker.RankSymbols(ctx, allSymbols)
+		if rankErr != nil {
+			log.Printf("WARNING: real-time ranking failed, using YAML order: %v", rankErr)
+		} else {
+			allSymbols = ranked
+		}
+	} else {
+		symbolRank := make(map[string]int)
+		for _, p := range plans {
+			for idx, sym := range p.Universe.Symbols {
+				if r, exists := symbolRank[sym.Symbol]; !exists || idx < r {
+					symbolRank[sym.Symbol] = idx
+				}
 			}
 		}
+		sort.Slice(allSymbols, func(i, j int) bool {
+			return symbolRank[allSymbols[i].Symbol] < symbolRank[allSymbols[j].Symbol]
+		})
 	}
-	sort.Slice(allSymbols, func(i, j int) bool {
-		return symbolRank[allSymbols[i].Symbol] < symbolRank[allSymbols[j].Symbol]
-	})
 
 	startDate, endDate, err := resolveHistoryRange(first.Spec.History)
 	if err != nil {
@@ -267,11 +284,6 @@ func BuildUnpackedPacksMulti(ctx context.Context, plans []*BuildPlan, opts Build
 	}
 	if cleanupWorkDir {
 		defer os.RemoveAll(workDir) //nolint:errcheck
-	}
-
-	source, err := newSourceForProvider(first.Spec.SourceProvider, opts.SourceBaseURL)
-	if err != nil {
-		return nil, err
 	}
 
 	log.Printf("Fetching candles for union of all plans (%d symbols total)...", len(symbolsToFetch))

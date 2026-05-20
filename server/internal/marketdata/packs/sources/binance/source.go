@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"encoding/csv"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -605,4 +606,80 @@ func minTime(a time.Time, b time.Time) time.Time {
 		return a
 	}
 	return b
+}
+
+const binanceAPIBase = "https://api.binance.com"
+
+// tickerEntry represents a single ticker from Binance's 24hr API.
+type tickerEntry struct {
+	Symbol      string `json:"symbol"`
+	QuoteVolume string `json:"quoteVolume"`
+}
+
+// RankSymbols sorts the provided symbols by real-time 24h trading volume
+// (descending) using Binance's public ticker API. On failure it logs a
+// warning and returns the original order.
+func (s *Source) RankSymbols(ctx context.Context, symbols []sources.UniverseSymbol) ([]sources.UniverseSymbol, error) {
+	if len(symbols) <= 1 {
+		return symbols, nil
+	}
+
+	tickers, err := s.fetch24hrTickers(ctx)
+	if err != nil {
+		log.Printf("WARNING: failed to fetch 24hr tickers for ranking, using original order: %v", err)
+		return symbols, nil
+	}
+
+	volumeMap := make(map[string]decimal.Decimal, len(tickers))
+	for _, t := range tickers {
+		vol, parseErr := decimal.NewFromString(t.QuoteVolume)
+		if parseErr != nil {
+			continue
+		}
+		volumeMap[strings.ToUpper(t.Symbol)] = vol
+	}
+
+	result := make([]sources.UniverseSymbol, len(symbols))
+	copy(result, symbols)
+
+	sort.SliceStable(result, func(i, j int) bool {
+		vi := volumeMap[strings.ToUpper(result[i].Symbol)]
+		vj := volumeMap[strings.ToUpper(result[j].Symbol)]
+		return vi.GreaterThan(vj)
+	})
+
+	log.Printf("Ranked %d symbols by 24h volume (top 3: %s)", len(result), topN(result, 3))
+	return result, nil
+}
+
+func (s *Source) fetch24hrTickers(ctx context.Context) ([]tickerEntry, error) {
+	url := binanceAPIBase + "/api/v3/ticker/24hr"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("binance ticker API returned HTTP %d", resp.StatusCode)
+	}
+	var tickers []tickerEntry
+	if err := json.NewDecoder(resp.Body).Decode(&tickers); err != nil {
+		return nil, fmt.Errorf("decode ticker response: %w", err)
+	}
+	return tickers, nil
+}
+
+func topN(symbols []sources.UniverseSymbol, n int) string {
+	if n > len(symbols) {
+		n = len(symbols)
+	}
+	names := make([]string, n)
+	for i := 0; i < n; i++ {
+		names[i] = symbols[i].Symbol
+	}
+	return strings.Join(names, ", ")
 }

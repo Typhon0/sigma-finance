@@ -13,6 +13,12 @@ type CandleSource interface {
 	FetchCandles(ctx context.Context, req FetchCandlesRequest) (<-chan NormalizedCandle, <-chan error)
 }
 
+// SymbolRanker is optionally implemented by a CandleSource to sort symbols
+// by real-time popularity (e.g. 24h trading volume) before fetching.
+type SymbolRanker interface {
+	RankSymbols(ctx context.Context, symbols []UniverseSymbol) ([]UniverseSymbol, error)
+}
+
 type PackSpec struct {
 	PackID         string
 	Name           string
