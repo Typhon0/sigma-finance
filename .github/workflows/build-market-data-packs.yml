@@ -75,8 +75,7 @@ jobs:
           fi
           if [[ "${PUBLISH}" == "true" && -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
             echo "MARKET_DATA_PACK_BASE_URL=https://github.com/${{ github.repository }}/releases/download/${REF_NAME}" >> "$GITHUB_ENV"
-          fi
-          if [[ -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
+          elif [[ -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
             echo "MARKET_DATA_PACK_BASE_URL=https://example.invalid/sigma-finance/packs" >> "$GITHUB_ENV"
           fi
 
