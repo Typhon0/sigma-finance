@@ -125,7 +125,7 @@ jobs:
             # Stock/fund provider packs are local user builds only.
             # Do not add MarketParquet stock/ETF packs here.
             # MarketParquet stock/ETF packs are built inside the user's instance only.
-            CRYPTO_SPEC="../packs/specs/crypto-binance-core-daily-usdt.yaml"
+            CRYPTO_SPEC="../packs/specs/crypto-binance-core-50-daily-usdt.yaml,../packs/specs/crypto-binance-core-100-daily-usdt.yaml,../packs/specs/crypto-binance-core-250-daily-usdt.yaml"
             FX_SPEC="../packs/specs/fx-ecb-core-daily.yaml"
             SOURCE_ARGS=()
           fi

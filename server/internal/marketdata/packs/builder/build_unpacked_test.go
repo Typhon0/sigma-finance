@@ -107,6 +107,119 @@ func TestBuildUnpackedPackDefaultSymbolCapAndMaxSymbols(t *testing.T) {
 	}
 }
 
+func TestBuildUnpackedPacksMulti(t *testing.T) {
+	server := newBinanceFixtureServer(t)
+	defer server.Close()
+
+	plan1 := &BuildPlan{
+		Spec: &PackSpec{
+			PackID:         "pack-50",
+			Name:           "Top 50 Pack",
+			Version:        "2026.05.01",
+			FormatVersion:  1,
+			Distribution:   "public",
+			AssetType:      "CRYPTO",
+			Interval:       "1d",
+			QuoteCurrency:  "USDT",
+			SourceProvider: "binance-public-data",
+			History: HistorySpec{
+				Start: "2024-01-01",
+				End:   "2024-01-01",
+			},
+			Output: OutputConfig{
+				Compression: "zstd",
+				PartitionBy: []string{"asset_type", "quote_currency", "year"},
+			},
+		},
+		Universe: &sources.Universe{
+			Symbols: []sources.UniverseSymbol{
+				{InstrumentID: "00000000-0000-0000-0000-000000000001", Symbol: "BTCUSDT", QuoteAsset: "USDT", AssetType: "CRYPTO"},
+				{InstrumentID: "00000000-0000-0000-0000-000000000002", Symbol: "ETHUSDT", QuoteAsset: "USDT", AssetType: "CRYPTO"},
+			},
+		},
+		LicensePolicy: &licensegate.Policy{
+			ProviderID:            "binance-public-data",
+			Name:                  "Binance Public Data",
+			SourceURL:             "https://example.test/license",
+			LicenseName:           "MIT",
+			RedistributionAllowed: true,
+			CommercialUseAllowed:  true,
+			AttributionRequired:   true,
+			TermsCheckedAt:        "2026-05-11",
+		},
+		OutputDir: filepath.Join(t.TempDir(), "pack-50"),
+	}
+
+	plan2 := &BuildPlan{
+		Spec: &PackSpec{
+			PackID:         "pack-100",
+			Name:           "Top 100 Pack",
+			Version:        "2026.05.01",
+			FormatVersion:  1,
+			Distribution:   "public",
+			AssetType:      "CRYPTO",
+			Interval:       "1d",
+			QuoteCurrency:  "USDT",
+			SourceProvider: "binance-public-data",
+			History: HistorySpec{
+				Start: "2024-01-01",
+				End:   "2024-01-01",
+			},
+			Output: OutputConfig{
+				Compression: "zstd",
+				PartitionBy: []string{"asset_type", "quote_currency", "year"},
+			},
+		},
+		Universe: &sources.Universe{
+			Symbols: []sources.UniverseSymbol{
+				{InstrumentID: "00000000-0000-0000-0000-000000000002", Symbol: "ETHUSDT", QuoteAsset: "USDT", AssetType: "CRYPTO"},
+				{InstrumentID: "00000000-0000-0000-0000-000000000003", Symbol: "BNBUSDT", QuoteAsset: "USDT", AssetType: "CRYPTO"},
+			},
+		},
+		LicensePolicy: &licensegate.Policy{
+			ProviderID:            "binance-public-data",
+			Name:                  "Binance Public Data",
+			SourceURL:             "https://example.test/license",
+			LicenseName:           "MIT",
+			RedistributionAllowed: true,
+			CommercialUseAllowed:  true,
+			AttributionRequired:   true,
+			TermsCheckedAt:        "2026-05-11",
+		},
+		OutputDir: filepath.Join(t.TempDir(), "pack-100"),
+	}
+
+	results, err := BuildUnpackedPacksMulti(context.Background(), []*BuildPlan{plan1, plan2}, BuildUnpackedOptions{
+		SourceBaseURL: server.URL,
+		AllSymbols:    true,
+	})
+	if err != nil {
+		t.Fatalf("BuildUnpackedPacksMulti failed: %v", err)
+	}
+
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+
+	// Verify plan1 result
+	r1 := results[0]
+	if r1.Manifest.PackID != "pack-50" {
+		t.Errorf("expected pack-50, got %s", r1.Manifest.PackID)
+	}
+	if r1.AssetsCount != 2 {
+		t.Errorf("expected 2 assets in pack-50, got %d", r1.AssetsCount)
+	}
+
+	// Verify plan2 result
+	r2 := results[1]
+	if r2.Manifest.PackID != "pack-100" {
+		t.Errorf("expected pack-100, got %s", r2.Manifest.PackID)
+	}
+	if r2.AssetsCount != 2 {
+		t.Errorf("expected 2 assets in pack-100, got %d", r2.AssetsCount)
+	}
+}
+
 func newBinanceFixtureServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	archives := map[string][]byte{
@@ -151,3 +264,4 @@ func zipCSVFixture(t *testing.T, name string, content string) []byte {
 	}
 	return buf.Bytes()
 }
+

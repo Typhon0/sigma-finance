@@ -137,50 +137,65 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 							},
 						},
 						Action: func(c *cli.Context) error {
-							plan, err := packbuilder.PrepareBuildForMode(
-								c.Context,
-								strings.TrimSpace(c.String("spec")),
-								strings.TrimSpace(c.String("out")),
-								strings.TrimSpace(c.String("build-mode")),
-							)
-							if err != nil {
-								return err
+							specInput := strings.TrimSpace(c.String("spec"))
+							specFiles := strings.Split(specInput, ",")
+							var plans []*packbuilder.BuildPlan
+							for _, specFile := range specFiles {
+								specFile = strings.TrimSpace(specFile)
+								if specFile == "" {
+									continue
+								}
+								plan, err := packbuilder.PrepareBuildForMode(
+									c.Context,
+									specFile,
+									strings.TrimSpace(c.String("out")),
+									strings.TrimSpace(c.String("build-mode")),
+								)
+								if err != nil {
+									return err
+								}
+								plans = append(plans, plan)
+							}
+							if len(plans) == 0 {
+								return fmt.Errorf("no build specs provided")
 							}
 
 							if c.Bool("dry-run-source") {
-								workDir := strings.TrimSpace(c.String("work-dir"))
-								cleanupWorkDir := false
-								if workDir == "" {
-									tmpDir, tmpErr := os.MkdirTemp("", "sigma-finance-pack-dry-run-*")
-									if tmpErr != nil {
-										return tmpErr
+								for _, plan := range plans {
+									workDir := strings.TrimSpace(c.String("work-dir"))
+									cleanupWorkDir := false
+									if workDir == "" {
+										tmpDir, tmpErr := os.MkdirTemp("", "sigma-finance-pack-dry-run-*")
+										if tmpErr != nil {
+											return tmpErr
+										}
+										workDir = tmpDir
+										cleanupWorkDir = true
 									}
-									workDir = tmpDir
-									cleanupWorkDir = true
-								}
-								if cleanupWorkDir {
-									defer os.RemoveAll(workDir) //nolint:errcheck
-								}
+									if cleanupWorkDir {
+										defer os.RemoveAll(workDir) //nolint:errcheck
+									}
 
-								summary, dryRunErr := packbuilder.RunSourceDryRun(c.Context, plan, packbuilder.DryRunSourceOptions{
-									AllSymbols:    c.Bool("all"),
-									SourceBaseURL: strings.TrimSpace(c.String("source-base-url")),
-									WorkDir:       workDir,
-								})
-								if dryRunErr != nil {
-									return dryRunErr
-								}
-								fmt.Printf("source dry run pack=%s symbols=%d total_rows=%d\n", plan.Spec.PackID, len(summary.Symbols), summary.RowsCount)
-								for _, symbol := range summary.Symbols {
-									first := "n/a"
-									last := "n/a"
-									if !symbol.First.IsZero() {
-										first = symbol.First.UTC().Format("2006-01-02")
+									summary, dryRunErr := packbuilder.RunSourceDryRun(c.Context, plan, packbuilder.DryRunSourceOptions{
+										AllSymbols:    c.Bool("all"),
+										SourceBaseURL: strings.TrimSpace(c.String("source-base-url")),
+										WorkDir:       workDir,
+									})
+									if dryRunErr != nil {
+										return dryRunErr
 									}
-									if !symbol.Last.IsZero() {
-										last = symbol.Last.UTC().Format("2006-01-02")
+									fmt.Printf("source dry run pack=%s symbols=%d total_rows=%d\n", plan.Spec.PackID, len(summary.Symbols), summary.RowsCount)
+									for _, symbol := range summary.Symbols {
+										first := "n/a"
+										last := "n/a"
+										if !symbol.First.IsZero() {
+											first = symbol.First.UTC().Format("2006-01-02")
+										}
+										if !symbol.Last.IsZero() {
+											last = symbol.Last.UTC().Format("2006-01-02")
+										}
+										fmt.Printf("- %s rows=%d first=%s last=%s\n", symbol.Symbol, symbol.Rows, first, last)
 									}
-									fmt.Printf("- %s rows=%d first=%s last=%s\n", symbol.Symbol, symbol.Rows, first, last)
 								}
 								fmt.Println("dry-run-source complete")
 								return nil
@@ -191,7 +206,7 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 							if maxSymbolsSet && !c.Bool("all") && maxSymbols <= 0 {
 								return fmt.Errorf("--max-symbols must be > 0 unless --all is set")
 							}
-							result, buildErr := packbuilder.BuildUnpackedPack(c.Context, plan, packbuilder.BuildUnpackedOptions{
+							results, buildErr := packbuilder.BuildUnpackedPacksMulti(c.Context, plans, packbuilder.BuildUnpackedOptions{
 								AllSymbols:    c.Bool("all"),
 								MaxSymbols:    maxSymbols,
 								MaxSymbolsSet: maxSymbolsSet,
@@ -202,57 +217,71 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 								return buildErr
 							}
 
-							fmt.Printf("build complete pack=%s version=%s\n", result.Manifest.PackID, result.Manifest.Version)
-							fmt.Printf("output=%s\n", result.PackDir)
-							fmt.Printf("rows=%d assets=%d files=%d\n", result.RowsCount, result.AssetsCount, result.FilesCount)
-							fmt.Printf("history=%s..%s\n", result.Manifest.HistoryStart, result.Manifest.HistoryEnd)
-							fmt.Printf("partition_by=%s\n", strings.Join(plan.Spec.Output.PartitionBy, ","))
+							for idx, result := range results {
+								plan := plans[idx]
+								fmt.Printf("build complete pack=%s version=%s\n", result.Manifest.PackID, result.Manifest.Version)
+								fmt.Printf("output=%s\n", result.PackDir)
+								fmt.Printf("rows=%d assets=%d files=%d\n", result.RowsCount, result.AssetsCount, result.FilesCount)
+								fmt.Printf("history=%s..%s\n", result.Manifest.HistoryStart, result.Manifest.HistoryEnd)
+								fmt.Printf("partition_by=%s\n", strings.Join(plan.Spec.Output.PartitionBy, ","))
 
-							archiveRequested := c.Bool("archive") || c.Bool("sign") || strings.TrimSpace(c.String("download-url")) != "" || strings.TrimSpace(c.String("signature-url")) != ""
-							if !archiveRequested {
-								return nil
-							}
-
-							signingKey := resolveSigningKey(strings.TrimSpace(c.String("signing-key")))
-							if c.Bool("sign") && signingKey == "" {
-								return fmt.Errorf("--sign requires --signing-key or PACK_SIGNING_KEY")
-							}
-
-							archiveResult, archiveErr := sfpackwriter.CreateArchive(c.Context, sfpackwriter.ArchiveOptions{
-								PackDir:             result.PackDir,
-								OutDir:              strings.TrimSpace(c.String("out")),
-								SigningKey:          signingKey,
-								AllowUnsignedPublic: c.Bool("allow-unsigned-public"),
-							})
-							if archiveErr != nil {
-								return archiveErr
-							}
-							fmt.Printf("archive=%s\n", archiveResult.PackPath)
-							fmt.Printf("archive_sha256=%s\n", archiveResult.ArchiveSHA256)
-							if archiveResult.SignaturePath != "" {
-								fmt.Printf("signature=%s\n", archiveResult.SignaturePath)
-							}
-
-							if downloadURL := strings.TrimSpace(c.String("download-url")); downloadURL != "" {
-								meta := &sfpackwriter.ArchiveMetadata{
-									PackID:          archiveResult.PackID,
-									Version:         archiveResult.Version,
-									ArchivePath:     archiveResult.PackPath,
-									ArchiveSHA256:   archiveResult.ArchiveSHA256,
-									ManifestSHA256:  archiveResult.ManifestSHA256,
-									ChecksumsSHA256: archiveResult.ChecksumsSHA256,
-									SizeBytes:       archiveResult.SizeBytes,
-									Manifest:        archiveResult.Manifest,
+								archiveRequested := c.Bool("archive") || c.Bool("sign") || strings.TrimSpace(c.String("download-url")) != "" || strings.TrimSpace(c.String("signature-url")) != ""
+								if !archiveRequested {
+									continue
 								}
-								registryEntry, regErr := sfpackwriter.BuildRegistryEntry(meta, downloadURL, strings.TrimSpace(c.String("signature-url")))
-								if regErr != nil {
-									return regErr
+
+								signingKey := resolveSigningKey(strings.TrimSpace(c.String("signing-key")))
+								if c.Bool("sign") && signingKey == "" {
+									return fmt.Errorf("--sign requires --signing-key or PACK_SIGNING_KEY")
 								}
-								registryPath := filepath.Join(strings.TrimSpace(c.String("out")), fmt.Sprintf("%s-%s.registry.json", archiveResult.PackID, archiveResult.Version))
-								if writeErr := sfpackwriter.WriteRegistryEntry(registryPath, registryEntry); writeErr != nil {
-									return writeErr
+
+								archiveResult, archiveErr := sfpackwriter.CreateArchive(c.Context, sfpackwriter.ArchiveOptions{
+									PackDir:             result.PackDir,
+									OutDir:              strings.TrimSpace(c.String("out")),
+									SigningKey:          signingKey,
+									AllowUnsignedPublic: c.Bool("allow-unsigned-public"),
+								})
+								if archiveErr != nil {
+									return archiveErr
 								}
-								fmt.Printf("registry=%s\n", registryPath)
+								fmt.Printf("archive=%s\n", archiveResult.PackPath)
+								fmt.Printf("archive_sha256=%s\n", archiveResult.ArchiveSHA256)
+								if archiveResult.SignaturePath != "" {
+									fmt.Printf("signature=%s\n", archiveResult.SignaturePath)
+								}
+
+								if downloadURL := strings.TrimSpace(c.String("download-url")); downloadURL != "" {
+									resolvedDownloadURL := downloadURL
+									resolvedSignatureURL := strings.TrimSpace(c.String("signature-url"))
+									if len(results) > 1 {
+										firstPackID := plans[0].Spec.PackID
+										currPackID := plan.Spec.PackID
+										resolvedDownloadURL = strings.ReplaceAll(downloadURL, firstPackID, currPackID)
+										if resolvedSignatureURL != "" {
+											resolvedSignatureURL = strings.ReplaceAll(resolvedSignatureURL, firstPackID, currPackID)
+										}
+									}
+
+									meta := &sfpackwriter.ArchiveMetadata{
+										PackID:          archiveResult.PackID,
+										Version:         archiveResult.Version,
+										ArchivePath:     archiveResult.PackPath,
+										ArchiveSHA256:   archiveResult.ArchiveSHA256,
+										ManifestSHA256:  archiveResult.ManifestSHA256,
+										ChecksumsSHA256: archiveResult.ChecksumsSHA256,
+										SizeBytes:       archiveResult.SizeBytes,
+										Manifest:        archiveResult.Manifest,
+									}
+									registryEntry, regErr := sfpackwriter.BuildRegistryEntry(meta, resolvedDownloadURL, resolvedSignatureURL)
+									if regErr != nil {
+										return regErr
+									}
+									registryPath := filepath.Join(strings.TrimSpace(c.String("out")), fmt.Sprintf("%s-%s.registry.json", archiveResult.PackID, archiveResult.Version))
+									if writeErr := sfpackwriter.WriteRegistryEntry(registryPath, registryEntry); writeErr != nil {
+										return writeErr
+									}
+									fmt.Printf("registry=%s\n", registryPath)
+								}
 							}
 							return nil
 						},
