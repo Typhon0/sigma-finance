@@ -132,3 +132,64 @@ func TestDiscoverUniverse_Fallback(t *testing.T) {
 		t.Errorf("expected 2nd symbol to be BTCUSDT, got %s", uni.Symbols[1].Symbol)
 	}
 }
+
+func TestDiscoverUniverse_CoinGecko(t *testing.T) {
+	// Mock CoinGecko and Binance APIs
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v3/exchangeInfo":
+			// Binance fails with 451 Legal Reasons to trigger fallback
+			w.WriteHeader(http.StatusUnavailableForLegalReasons)
+		case "/api/v3/coins/markets":
+			// Mock CoinGecko response
+			resp := []struct {
+				Symbol string `json:"symbol"`
+				Name   string `json:"name"`
+			}{
+				{Symbol: "btc", Name: "Bitcoin"},
+				{Symbol: "eth", Name: "Ethereum"},
+				{Symbol: "usdt", Name: "Tether"}, // Should be excluded
+				{Symbol: "sol", Name: "Solana"},
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	// Override coingeckoURL for the test
+	origCoinGeckoURL := coingeckoURL
+	coingeckoURL = server.URL
+	defer func() { coingeckoURL = origCoinGeckoURL }()
+
+	src := NewSource(Config{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+	})
+
+	// Discover top 2 symbols. Bitcoin, Ethereum, Solana are candidate tradeable base assets.
+	// Tether should be excluded.
+	uni, err := src.DiscoverUniverse(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("DiscoverUniverse failed: %v", err)
+	}
+
+	if len(uni.Symbols) != 2 {
+		t.Fatalf("expected 2 symbols from CoinGecko discovery, got %d", len(uni.Symbols))
+	}
+
+	if uni.Symbols[0].Symbol != "BTCUSDT" {
+		t.Errorf("expected 1st symbol to be BTCUSDT, got %s", uni.Symbols[0].Symbol)
+	}
+	if uni.Symbols[1].Symbol != "ETHUSDT" {
+		t.Errorf("expected 2nd symbol to be ETHUSDT, got %s", uni.Symbols[1].Symbol)
+	}
+
+	expectedBtcID := instrumentID("BTCUSDT")
+	if uni.Symbols[0].InstrumentID != expectedBtcID {
+		t.Errorf("expected BTCUSDT InstrumentID to be %s, got %s", expectedBtcID, uni.Symbols[0].InstrumentID)
+	}
+}
+

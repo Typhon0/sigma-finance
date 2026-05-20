@@ -610,6 +610,7 @@ func minTime(a time.Time, b time.Time) time.Time {
 }
 
 const binanceAPIBase = "https://api.binance.com"
+var coingeckoURL = "https://api.coingecko.com"
 
 func (s *Source) apiBase() string {
 	if strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost") {
@@ -766,12 +767,12 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return s.fallbackUniverse(count, fmt.Errorf("fetch exchange info: %w", err))
+		return s.fallbackUniverse(ctx, count, fmt.Errorf("fetch exchange info: %w", err))
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return s.fallbackUniverse(count, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode))
+		return s.fallbackUniverse(ctx, count, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode))
 	}
 
 	var info exchangeInfoResponse
@@ -797,7 +798,7 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	// 3. Fetch 24h tickers
 	tickers, err := s.fetch24hrTickers(ctx)
 	if err != nil {
-		return s.fallbackUniverse(count, fmt.Errorf("fetch 24hr tickers for discovery: %w", err))
+		return s.fallbackUniverse(ctx, count, fmt.Errorf("fetch 24hr tickers for discovery: %w", err))
 	}
 
 	volumeMap := make(map[string]decimal.Decimal, len(tickers))
@@ -839,8 +840,87 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 	}, nil
 }
 
-func (s *Source) fallbackUniverse(count int, triggerErr error) (*sources.Universe, error) {
-	log.Printf("WARNING: dynamic universe discovery failed (%v). Falling back to static universe files.", triggerErr)
+func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sources.Universe, error) {
+	// Only skip in test/local environment if we are not explicitly testing CoinGecko (i.e. coingeckoURL is not overridden to a local host)
+	if (strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost")) &&
+		!strings.HasPrefix(coingeckoURL, "http://127.0.0.1") && !strings.HasPrefix(coingeckoURL, "http://localhost") {
+		return nil, fmt.Errorf("skipping coingecko in test/local environment")
+	}
+
+	perPage := count * 2
+	if perPage < 50 {
+		perPage = 50
+	}
+	if perPage > 250 {
+		perPage = 250
+	}
+
+	url := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1", coingeckoURL, perPage)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create coingecko request: %w", err)
+	}
+
+	// Set custom User-Agent to avoid Cloudflare blocks
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("coingecko API request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("coingecko API returned HTTP %d", resp.StatusCode)
+	}
+
+	var markets []struct {
+		Symbol string `json:"symbol"`
+		Name   string `json:"name"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
+		return nil, fmt.Errorf("decode coingecko markets: %w", err)
+	}
+
+	var uniSymbols []sources.UniverseSymbol
+	for _, m := range markets {
+		base := strings.ToUpper(m.Symbol)
+		if IsExcludedBaseAsset(base) {
+			continue
+		}
+		symbol := base + "USDT"
+		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+			InstrumentID: instrumentID(symbol),
+			Symbol:       symbol,
+			BaseAsset:    base,
+			QuoteAsset:   "USDT",
+			AssetType:    "CRYPTO",
+		})
+		if len(uniSymbols) >= count {
+			break
+		}
+	}
+
+	if len(uniSymbols) == 0 {
+		return nil, fmt.Errorf("no valid symbols discovered from coingecko")
+	}
+
+	log.Printf("Discovered %d symbols from CoinGecko API (top 3: %s)", len(uniSymbols), topN(uniSymbols, 3))
+	return &sources.Universe{
+		Symbols: uniSymbols,
+	}, nil
+}
+
+func (s *Source) fallbackUniverse(ctx context.Context, count int, triggerErr error) (*sources.Universe, error) {
+	log.Printf("WARNING: dynamic universe discovery from Binance failed (%v). Trying dynamic discovery via CoinGecko.", triggerErr)
+
+	uni, err := s.discoverCoinGeckoUniverse(ctx, count)
+	if err == nil {
+		return uni, nil
+	}
+
+	log.Printf("WARNING: dynamic universe discovery from CoinGecko failed (%v). Falling back to static universe files.", err)
 
 	// Determine the best fallback file to use based on requested count
 	fallbackCount := 50
