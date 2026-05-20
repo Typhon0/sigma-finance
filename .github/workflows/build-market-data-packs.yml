@@ -120,6 +120,7 @@ jobs:
             CRYPTO_SPEC="../packs/specs/ci/crypto-binance-core-daily-usdt.yaml"
             FX_SPEC="../packs/specs/ci/fx-ecb-core-daily.yaml"
             SOURCE_ARGS=(--source-base-url "http://127.0.0.1:18080")
+            EXPECTED_PACK_IDS="crypto-binance-core-daily-usdt,fx-ecb-core-daily"
           else
             # Only redistributable public packs belong in this workflow.
             # Stock/fund provider packs are local user builds only.
@@ -128,6 +129,7 @@ jobs:
             CRYPTO_SPEC="../packs/specs/crypto-binance-core-50-daily-usdt.yaml,../packs/specs/crypto-binance-core-100-daily-usdt.yaml,../packs/specs/crypto-binance-core-250-daily-usdt.yaml"
             FX_SPEC="../packs/specs/fx-ecb-core-daily.yaml"
             SOURCE_ARGS=()
+            EXPECTED_PACK_IDS="crypto-binance-core-50-daily-usdt,crypto-binance-core-100-daily-usdt,crypto-binance-core-250-daily-usdt,fx-ecb-core-daily"
           fi
 
           GOCACHE=/tmp/go-build-cache go run ./cmd/bun market-data packs build \
@@ -169,7 +171,8 @@ jobs:
 
           GOCACHE=/tmp/go-build-cache go run ./cmd/market-data-pack-ci validate-registry \
             --registry ../dist/registry.json \
-            --dist-dir ../dist
+            --dist-dir ../dist \
+            --expected-pack-ids "${EXPECTED_PACK_IDS}"
 
       - name: Stop Fixture Source Server
         if: always() && env.MODE == 'fixture'
