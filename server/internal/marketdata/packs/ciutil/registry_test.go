@@ -58,6 +58,33 @@ func TestAggregateRegistrySortsByPackID(t *testing.T) {
 	}
 }
 
+func TestAggregateRegistryIgnoresRegistryJson(t *testing.T) {
+	dir := t.TempDir()
+	entry := validRegistryPack(CryptoPackID, "2026.05.01", "binance-public-data")
+	writeRegistryEntryFile(t, filepath.Join(dir, "crypto.registry.json"), entry)
+
+	// Write a registry.json file which also matches *.registry.json glob
+	writeRegistry(t, filepath.Join(dir, "registry.json"), packservice.Registry{
+		LatestVersion: "old",
+		Packs:         []packservice.RegistryPack{entry},
+	})
+
+	outPath := filepath.Join(dir, "new_registry.json")
+	registry, err := AggregateRegistry(AggregateRegistryOptions{
+		InputDir:      dir,
+		OutputPath:    outPath,
+		LatestVersion: "new",
+	})
+	if err != nil {
+		t.Fatalf("aggregate registry: %v", err)
+	}
+
+	// Should only have the 1 pack from crypto.registry.json, NOT the one inside registry.json itself
+	if len(registry.Packs) != 1 {
+		t.Fatalf("expected exactly 1 pack, got %d", len(registry.Packs))
+	}
+}
+
 func TestValidateRegistryPassesForValidFixtureOutput(t *testing.T) {
 	dir := t.TempDir()
 	writeArchivePair(t, dir, CryptoPackID, "2026.05.01")

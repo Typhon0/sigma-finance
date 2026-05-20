@@ -45,12 +45,20 @@ func AggregateRegistry(opts AggregateRegistryOptions) (*packservice.Registry, er
 	if err != nil {
 		return nil, err
 	}
-	if len(registryFiles) == 0 {
+
+	var filteredFiles []string
+	for _, path := range registryFiles {
+		if filepath.Base(path) != "registry.json" {
+			filteredFiles = append(filteredFiles, path)
+		}
+	}
+
+	if len(filteredFiles) == 0 {
 		return nil, fmt.Errorf("no registry entry files found in %s", inputDir)
 	}
 
-	packs := make([]packservice.RegistryPack, 0, len(registryFiles))
-	for _, path := range registryFiles {
+	packs := make([]packservice.RegistryPack, 0, len(filteredFiles))
+	for _, path := range filteredFiles {
 		body, readErr := os.ReadFile(path)
 		if readErr != nil {
 			return nil, readErr
