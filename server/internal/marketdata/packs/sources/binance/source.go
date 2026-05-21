@@ -842,23 +842,89 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 		return vi.GreaterThan(vj)
 	})
 
-	if len(candidateSymbols) < count {
-		count = len(candidateSymbols)
-	}
+	// Probe candidates to verify they have archive data on data.binance.vision.
+	// Some symbols are TRADING on the exchange API but have no historical archives.
+	// We probe the most recent complete monthly archive with a HEAD request.
+	// Skip probing in local/fixture environments where the fixture server doesn't serve these paths.
+	isLocal := strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost")
 
 	var uniSymbols []sources.UniverseSymbol
-	for i := 0; i < count; i++ {
-		sym := candidateSymbols[i]
-		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-			InstrumentID: instrumentID(sym.Symbol),
-			Symbol:       sym.Symbol,
-			BaseAsset:    sym.BaseAsset,
-			QuoteAsset:   sym.QuoteAsset,
-			AssetType:    "CRYPTO",
-		})
+
+	if isLocal {
+		// In local/fixture mode, trust the exchange info API results directly.
+		if len(candidateSymbols) < count {
+			count = len(candidateSymbols)
+		}
+		for i := 0; i < count; i++ {
+			sym := candidateSymbols[i]
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+				InstrumentID: instrumentID(sym.Symbol),
+				Symbol:       sym.Symbol,
+				BaseAsset:    sym.BaseAsset,
+				QuoteAsset:   sym.QuoteAsset,
+				AssetType:    "CRYPTO",
+			})
+		}
+	} else {
+		probeMonth := time.Now().UTC().AddDate(0, -2, 0) // 2 months ago is reliably available
+		probeMonth = time.Date(probeMonth.Year(), probeMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+		type probeResult struct {
+			index int
+			ok    bool
+		}
+
+		probeConcurrency := 20
+		results := make([]probeResult, len(candidateSymbols))
+		eg, gctx := errgroup.WithContext(ctx)
+		eg.SetLimit(probeConcurrency)
+
+		for i := range candidateSymbols {
+			i := i
+			sym := candidateSymbols[i]
+			eg.Go(func() error {
+				probeURL := s.monthlyURL(sym.Symbol, probeMonth)
+				req, reqErr := http.NewRequestWithContext(gctx, http.MethodHead, probeURL, nil)
+				if reqErr != nil {
+					results[i] = probeResult{index: i, ok: false}
+					return nil
+				}
+				resp, doErr := s.client.Do(req)
+				if doErr != nil {
+					results[i] = probeResult{index: i, ok: false}
+					return nil
+				}
+				resp.Body.Close()
+				results[i] = probeResult{index: i, ok: resp.StatusCode == http.StatusOK}
+				return nil
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return nil, fmt.Errorf("probe archive availability: %w", err)
+		}
+
+		for i, sym := range candidateSymbols {
+			if !results[i].ok {
+				continue
+			}
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+				InstrumentID: instrumentID(sym.Symbol),
+				Symbol:       sym.Symbol,
+				BaseAsset:    sym.BaseAsset,
+				QuoteAsset:   sym.QuoteAsset,
+				AssetType:    "CRYPTO",
+			})
+			if len(uniSymbols) >= count {
+				break
+			}
+		}
 	}
 
-	log.Printf("Discovered %d symbols from Binance API (top 3: %s)", len(uniSymbols), topN(uniSymbols, 3))
+	if len(uniSymbols) == 0 {
+		return s.fallbackUniverse(ctx, count, fmt.Errorf("no candidates had archive data on data.binance.vision"))
+	}
+
+	log.Printf("Discovered %d symbols from Binance API (probed %d candidates, top 3: %s)", len(uniSymbols), len(candidateSymbols), topN(uniSymbols, 3))
 
 	return &sources.Universe{
 		Symbols: uniSymbols,
