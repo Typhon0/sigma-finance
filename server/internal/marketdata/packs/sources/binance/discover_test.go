@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -114,22 +115,14 @@ func TestDiscoverUniverse_Fallback(t *testing.T) {
 		HTTPClient: server.Client(),
 	})
 
-	// Ask for 5 symbols, which should trigger loading 50-symbol fallback and slicing to 5
-	uni, err := src.DiscoverUniverse(context.Background(), 5)
-	if err != nil {
-		t.Fatalf("DiscoverUniverse fallback failed: %v", err)
+	// When both Binance (451) and CoinGecko (skipped in local env) fail,
+	// DiscoverUniverse should return an error — no static fallback.
+	_, err := src.DiscoverUniverse(context.Background(), 5)
+	if err == nil {
+		t.Fatal("expected error when all dynamic discovery methods fail, got nil")
 	}
-
-	if len(uni.Symbols) != 5 {
-		t.Fatalf("expected 5 symbols after fallback slice, got %d", len(uni.Symbols))
-	}
-
-	// Spot check the fallback universe contents (should match crypto-binance-core-50.yaml top symbols)
-	if uni.Symbols[0].Symbol != "BTCUSDT" {
-		t.Errorf("expected 1st symbol to be BTCUSDT, got %s", uni.Symbols[0].Symbol)
-	}
-	if uni.Symbols[1].Symbol != "ETHUSDT" {
-		t.Errorf("expected 2nd symbol to be ETHUSDT, got %s", uni.Symbols[1].Symbol)
+	if !strings.Contains(err.Error(), "all dynamic discovery methods failed") {
+		t.Errorf("unexpected error message: %v", err)
 	}
 }
 

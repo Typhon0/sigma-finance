@@ -938,79 +938,67 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		return nil, fmt.Errorf("skipping coingecko in test/local environment")
 	}
 
-	// Load the static fallback universe as a whitelist of known valid Binance USDT symbols.
-	// CoinGecko lists all crypto coins (not just Binance), so we must filter its results
-	// against symbols we know actually exist on Binance and have archives on data.binance.vision.
-	fallbackCount := 250
-	if count <= 50 {
-		fallbackCount = 50
-	} else if count <= 100 {
-		fallbackCount = 100
+	// Over-discover: fetch 3x the requested count from CoinGecko to compensate
+	// for coins that don't have USDT pairs or archives on data.binance.vision.
+	perPage := 250 // CoinGecko max per page
+	totalNeeded := count * 3
+	if totalNeeded < 100 {
+		totalNeeded = 100
+	}
+	pages := (totalNeeded + perPage - 1) / perPage
+	if pages > 4 {
+		pages = 4 // cap at 1000 coins max
 	}
 
-	paths := []string{
-		fmt.Sprintf("packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-	}
-
-	allowedSymbols := make(map[string]struct{})
-	var fallbackUniverse *sources.Universe
-	for _, p := range paths {
-		u, err := sources.LoadUniverse(p)
-		if err == nil {
-			fallbackUniverse = u
-			for _, sym := range u.Symbols {
-				allowedSymbols[strings.ToUpper(sym.Symbol)] = struct{}{}
-			}
-			break
-		}
-	}
-
-	perPage := count * 2
-	if perPage < 100 {
-		perPage = 100
-	}
-	if perPage > 250 {
-		perPage = 250
-	}
-
-	url := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=1", coingeckoURL, perPage)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create coingecko request: %w", err)
-	}
-
-	// Set custom User-Agent to avoid Cloudflare blocks
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "application/json")
-
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("coingecko API request: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("coingecko API returned HTTP %d", resp.StatusCode)
-	}
-
-	var markets []struct {
+	type cgMarket struct {
 		Symbol string `json:"symbol"`
 		Name   string `json:"name"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
-		return nil, fmt.Errorf("decode coingecko markets: %w", err)
+
+	var allMarkets []cgMarket
+	for page := 1; page <= pages; page++ {
+		reqURL := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=%d", coingeckoURL, perPage, page)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("create coingecko request: %w", err)
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
+		req.Header.Set("Accept", "application/json")
+
+		resp, err := s.client.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("coingecko API request (page %d): %w", page, err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			if page == 1 {
+				return nil, fmt.Errorf("coingecko API returned HTTP %d", resp.StatusCode)
+			}
+			break // got enough from previous pages
+		}
+
+		var markets []cgMarket
+		if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
+			resp.Body.Close()
+			return nil, fmt.Errorf("decode coingecko markets (page %d): %w", page, err)
+		}
+		resp.Body.Close()
+
+		allMarkets = append(allMarkets, markets...)
+		if len(markets) < perPage {
+			break // last page
+		}
 	}
 
-	var uniSymbols []sources.UniverseSymbol
+	// Deduplicate and construct candidate USDT pairs
+	type candidate struct {
+		symbol    string
+		baseAsset string
+	}
+	var candidates []candidate
 	seenSymbols := make(map[string]struct{})
-
-	for _, m := range markets {
+	for _, m := range allMarkets {
 		base := strings.ToUpper(m.Symbol)
 		if IsExcludedBaseAsset(base) {
 			continue
@@ -1019,19 +1007,61 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		if _, ok := seenSymbols[symbol]; ok {
 			continue
 		}
-		// Only accept symbols that exist in the static fallback universe (known Binance symbols).
-		// If no fallback was loaded, accept all (best effort).
-		if len(allowedSymbols) > 0 {
-			if _, allowed := allowedSymbols[symbol]; !allowed {
-				continue
-			}
-		}
 		seenSymbols[symbol] = struct{}{}
+		candidates = append(candidates, candidate{symbol: symbol, baseAsset: base})
+	}
 
+	log.Printf("CoinGecko returned %d coins, %d unique USDT candidates after filtering", len(allMarkets), len(candidates))
+
+	// Probe data.binance.vision to verify each candidate has archive data.
+	// Use HEAD requests on a recent monthly archive — cheap and fast.
+	probeMonth := time.Now().UTC().AddDate(0, -2, 0)
+	probeMonth = time.Date(probeMonth.Year(), probeMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	type probeResult struct {
+		ok bool
+	}
+
+	probeResults := make([]probeResult, len(candidates))
+	eg, gctx := errgroup.WithContext(ctx)
+	eg.SetLimit(30)
+
+	for i := range candidates {
+		i := i
+		c := candidates[i]
+		eg.Go(func() error {
+			probeURL := s.probeArchiveURL(c.symbol, probeMonth)
+			req, reqErr := http.NewRequestWithContext(gctx, http.MethodHead, probeURL, nil)
+			if reqErr != nil {
+				probeResults[i] = probeResult{ok: false}
+				return nil
+			}
+			resp, doErr := s.client.Do(req)
+			if doErr != nil {
+				probeResults[i] = probeResult{ok: false}
+				return nil
+			}
+			resp.Body.Close()
+			probeResults[i] = probeResult{ok: resp.StatusCode == http.StatusOK}
+			return nil
+		})
+	}
+	if err := eg.Wait(); err != nil {
+		return nil, fmt.Errorf("probe archive availability: %w", err)
+	}
+
+	var uniSymbols []sources.UniverseSymbol
+	var probed, verified int
+	for i, c := range candidates {
+		probed++
+		if !probeResults[i].ok {
+			continue
+		}
+		verified++
 		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-			InstrumentID: instrumentID(symbol),
-			Symbol:       symbol,
-			BaseAsset:    base,
+			InstrumentID: instrumentID(c.symbol),
+			Symbol:       c.symbol,
+			BaseAsset:    c.baseAsset,
 			QuoteAsset:   "USDT",
 			AssetType:    "CRYPTO",
 		})
@@ -1040,90 +1070,33 @@ func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sou
 		}
 	}
 
-	// If we still need more symbols to satisfy count, fill from the fallback universe
-	if len(uniSymbols) < count && fallbackUniverse != nil {
-		log.Printf("CoinGecko dynamic discovery returned %d symbols. Filling remaining %d slots using static fallback universe.", len(uniSymbols), count-len(uniSymbols))
-
-		for _, sym := range fallbackUniverse.Symbols {
-			symbol := strings.ToUpper(sym.Symbol)
-			if _, ok := seenSymbols[symbol]; ok {
-				continue
-			}
-			seenSymbols[symbol] = struct{}{}
-
-			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-				InstrumentID: instrumentID(symbol),
-				Symbol:       symbol,
-				BaseAsset:    sym.BaseAsset,
-				QuoteAsset:   "USDT",
-				AssetType:    "CRYPTO",
-			})
-			if len(uniSymbols) >= count {
-				break
-			}
-		}
-	}
-
 	if len(uniSymbols) == 0 {
-		return nil, fmt.Errorf("no valid symbols discovered from coingecko or fallback")
+		return nil, fmt.Errorf("no CoinGecko candidates had archive data on data.binance.vision (probed %d)", probed)
 	}
 
-	log.Printf("Discovered %d symbols from CoinGecko API (top 3: %s)", len(uniSymbols), topN(uniSymbols, 3))
+	log.Printf("Discovered %d verified symbols from CoinGecko (probed %d candidates, %d had archives, top 3: %s)",
+		len(uniSymbols), probed, verified, topN(uniSymbols, 3))
 	return &sources.Universe{
 		Symbols: uniSymbols,
 	}, nil
+}
+
+// probeArchiveURL returns the URL for a monthly kline archive on data.binance.vision.
+// Used for HEAD-request probing to verify a symbol has historical data.
+func (s *Source) probeArchiveURL(symbol string, month time.Time) string {
+	fileName := fmt.Sprintf("%s-%s-%04d-%02d.zip", symbol, Interval1D, month.Year(), int(month.Month()))
+	return DefaultBaseURL + "/" + path.Join("data", DefaultMarket, "monthly", "klines", symbol, Interval1D, fileName)
 }
 
 func (s *Source) fallbackUniverse(ctx context.Context, count int, triggerErr error) (*sources.Universe, error) {
 	log.Printf("WARNING: dynamic universe discovery from Binance failed (%v). Trying dynamic discovery via CoinGecko.", triggerErr)
 
 	uni, err := s.discoverCoinGeckoUniverse(ctx, count)
-	if err == nil {
-		return uni, nil
+	if err != nil {
+		return nil, fmt.Errorf("all dynamic discovery methods failed (binance: %v, coingecko: %w)", triggerErr, err)
 	}
-
-	log.Printf("WARNING: dynamic universe discovery from CoinGecko failed (%v). Falling back to static universe files.", err)
-
-	// Determine the best fallback file to use based on requested count
-	fallbackCount := 50
-	if count > 100 {
-		fallbackCount = 250
-	} else if count > 50 {
-		fallbackCount = 100
-	}
-
-	paths := []string{
-		fmt.Sprintf("packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-		fmt.Sprintf("../../../../../../packs/universes/crypto-binance-core-%d.yaml", fallbackCount),
-	}
-
-	var universe *sources.Universe
-	var lastErr error
-	for _, p := range paths {
-		u, err := sources.LoadUniverse(p)
-		if err == nil {
-			universe = u
-			log.Printf("Successfully loaded fallback static universe from %s", p)
-			break
-		}
-		lastErr = err
-	}
-
-	if universe == nil {
-		return nil, fmt.Errorf("dynamic universe discovery failed (%v) and fallback static universe load failed: %w", triggerErr, lastErr)
-	}
-
-	// Slice to requested count if necessary
-	if len(universe.Symbols) > count {
-		universe.Symbols = universe.Symbols[:count]
-	}
-
-	return universe, nil
+	return uni, nil
 }
+
 
 
