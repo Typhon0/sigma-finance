@@ -657,11 +657,12 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 		return nil, fmt.Errorf("invalid count %d for universe discovery", count)
 	}
 
-	// Over-fetch from CMC to compensate for coins without Binance USDT pairs
-	// or without archive data on data.binance.vision.
-	overFetch := count * 4
-	if overFetch < 500 {
-		overFetch = 500
+	// Over-fetch from CMC to compensate for coins/tokens without Binance USDT pairs
+	// or without archive data on data.binance.vision. The hit rate is typically
+	// 20-30% of CMC-listed assets, so fetch 6x and floor at 1000.
+	overFetch := count * 6
+	if overFetch < 1000 {
+		overFetch = 1000
 	}
 
 	cmcBase := CoinMarketCapAPIBase
@@ -669,8 +670,8 @@ func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Univ
 		cmcBase = s.baseURL // test/fixture: CMC endpoint served by local server
 	}
 
-	reqURL := fmt.Sprintf("%s/v1/cryptocurrency/listings/latest?limit=%d&sort=market_cap&cryptocurrency_type=coins&aux=",
-cmcBase, overFetch)
+	reqURL := fmt.Sprintf("%s/v1/cryptocurrency/listings/latest?limit=%d&sort=market_cap&aux=",
+		cmcBase, overFetch)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create CMC request: %w", err)
