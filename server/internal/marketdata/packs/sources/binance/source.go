@@ -36,16 +36,20 @@ const (
 
 var errArchiveNotFound = errors.New("archive not found")
 
+const CoinMarketCapAPIBase = "https://pro-api.coinmarketcap.com"
+
 type Config struct {
-	BaseURL    string
-	Market     string
-	HTTPClient *http.Client
+	BaseURL             string
+	Market              string
+	HTTPClient          *http.Client
+	CoinMarketCapAPIKey string
 }
 
 type Source struct {
-	baseURL string
-	market  string
-	client  *http.Client
+	baseURL    string
+	market     string
+	client     *http.Client
+	cmcAPIKey  string
 }
 
 func NewSource(cfg Config) *Source {
@@ -68,9 +72,10 @@ func NewSource(cfg Config) *Source {
 		}
 	}
 	return &Source{
-		baseURL: baseURL,
-		market:  market,
-		client:  client,
+		baseURL:   baseURL,
+		market:    market,
+		client:    client,
+		cmcAPIKey: strings.TrimSpace(cfg.CoinMarketCapAPIKey),
 	}
 }
 
@@ -634,77 +639,184 @@ func minTime(a time.Time, b time.Time) time.Time {
 	return b
 }
 
-const binanceAPIBase = "https://api.binance.com"
-var coingeckoURL = "https://api.coingecko.com"
+// cmcListing is a single entry from the CoinMarketCap listings/latest endpoint.
+type cmcListing struct {
+	Symbol string `json:"symbol"`
+}
 
-func (s *Source) apiBase() string {
+type cmcListingsResponse struct {
+	Data []cmcListing `json:"data"`
+}
+
+// DiscoverUniverse fetches the top-N crypto coins by CoinMarketCap market-cap rank,
+// verifies each candidate has historical archive data on data.binance.vision, and
+// returns exactly `count` symbols. Returns an error if fewer than `count` symbols
+// can be verified — no silent short-delivery.
+func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Universe, error) {
+	if count <= 0 {
+		return nil, fmt.Errorf("invalid count %d for universe discovery", count)
+	}
+
+	// Over-fetch from CMC to compensate for coins without Binance USDT pairs
+	// or without archive data on data.binance.vision.
+	overFetch := count * 4
+	if overFetch < 500 {
+		overFetch = 500
+	}
+
+	cmcBase := CoinMarketCapAPIBase
 	if strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost") {
-		return s.baseURL
-	}
-	return binanceAPIBase
-}
-
-// tickerEntry represents a single ticker from Binance's 24hr API.
-type tickerEntry struct {
-	Symbol      string `json:"symbol"`
-	QuoteVolume string `json:"quoteVolume"`
-}
-
-// RankSymbols sorts the provided symbols by real-time 24h trading volume
-// (descending) using Binance's public ticker API. On failure it logs a
-// warning and returns the original order.
-func (s *Source) RankSymbols(ctx context.Context, symbols []sources.UniverseSymbol) ([]sources.UniverseSymbol, error) {
-	if len(symbols) <= 1 {
-		return symbols, nil
+		cmcBase = s.baseURL // test/fixture: CMC endpoint served by local server
 	}
 
-	tickers, err := s.fetch24hrTickers(ctx)
+	reqURL := fmt.Sprintf("%s/v1/cryptocurrency/listings/latest?limit=%d&sort=market_cap&cryptocurrency_type=coins&aux=",
+cmcBase, overFetch)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
-		log.Printf("WARNING: failed to fetch 24hr tickers for ranking, using original order: %v", err)
-		return symbols, nil
+		return nil, fmt.Errorf("create CMC request: %w", err)
 	}
-
-	volumeMap := make(map[string]decimal.Decimal, len(tickers))
-	for _, t := range tickers {
-		vol, parseErr := decimal.NewFromString(t.QuoteVolume)
-		if parseErr != nil {
-			continue
-		}
-		volumeMap[strings.ToUpper(t.Symbol)] = vol
+	if s.cmcAPIKey != "" {
+		req.Header.Set("X-CMC_PRO_API_KEY", s.cmcAPIKey)
 	}
+	req.Header.Set("Accept", "application/json")
 
-	result := make([]sources.UniverseSymbol, len(symbols))
-	copy(result, symbols)
-
-	sort.SliceStable(result, func(i, j int) bool {
-		vi := volumeMap[strings.ToUpper(result[i].Symbol)]
-		vj := volumeMap[strings.ToUpper(result[j].Symbol)]
-		return vi.GreaterThan(vj)
-	})
-
-	log.Printf("Ranked %d symbols by 24h volume (top 3: %s)", len(result), topN(result, 3))
-	return result, nil
-}
-
-func (s *Source) fetch24hrTickers(ctx context.Context) ([]tickerEntry, error) {
-	url := s.apiBase() + "/api/v3/ticker/24hr"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("CMC API request: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("binance ticker API returned HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("CMC API returned HTTP %d", resp.StatusCode)
 	}
-	var tickers []tickerEntry
-	if err := json.NewDecoder(resp.Body).Decode(&tickers); err != nil {
-		return nil, fmt.Errorf("decode ticker response: %w", err)
+
+	var cmcResp cmcListingsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&cmcResp); err != nil {
+		return nil, fmt.Errorf("decode CMC response: %w", err)
 	}
-	return tickers, nil
+
+	// Build candidate USDT symbols in market-cap order, applying exclusion rules.
+	type candidate struct {
+		symbol    string
+		baseAsset string
+	}
+	var candidates []candidate
+	seen := make(map[string]struct{})
+	for _, entry := range cmcResp.Data {
+		base := strings.ToUpper(strings.TrimSpace(entry.Symbol))
+		if IsExcludedBaseAsset(base) {
+			continue
+		}
+		symbol := base + "USDT"
+		if _, ok := seen[symbol]; ok {
+			continue
+		}
+		seen[symbol] = struct{}{}
+		candidates = append(candidates, candidate{symbol: symbol, baseAsset: base})
+	}
+
+	log.Printf("CMC returned %d coins, %d unique USDT candidates after filtering", len(cmcResp.Data), len(candidates))
+
+	if len(candidates) == 0 {
+		return nil, fmt.Errorf("CMC returned no usable USDT candidates")
+	}
+
+	// Probe data.binance.vision to verify each candidate has historical archive data.
+	// Use a HEAD request on a monthly archive from 2 months ago (reliably available).
+	// In local/fixture mode, skip probing and trust the CMC order directly.
+	isLocal := strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost")
+
+	var uniSymbols []sources.UniverseSymbol
+
+	if isLocal {
+		for _, c := range candidates {
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+InstrumentID: instrumentID(c.symbol),
+Symbol:       c.symbol,
+BaseAsset:    c.baseAsset,
+QuoteAsset:   "USDT",
+AssetType:    "CRYPTO",
+})
+			if len(uniSymbols) >= count {
+				break
+			}
+		}
+	} else {
+		probeMonth := time.Now().UTC().AddDate(0, -2, 0)
+		probeMonth = time.Date(probeMonth.Year(), probeMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+		type probeResult struct {
+			ok bool
+		}
+		probeResults := make([]probeResult, len(candidates))
+		eg, gctx := errgroup.WithContext(ctx)
+		eg.SetLimit(30)
+
+		for i := range candidates {
+			i := i
+			c := candidates[i]
+			eg.Go(func() error {
+				probeURL := s.probeArchiveURL(c.symbol, probeMonth)
+				preq, reqErr := http.NewRequestWithContext(gctx, http.MethodHead, probeURL, nil)
+				if reqErr != nil {
+					probeResults[i] = probeResult{ok: false}
+					return nil
+				}
+				presp, doErr := s.client.Do(preq)
+				if doErr != nil {
+					probeResults[i] = probeResult{ok: false}
+					return nil
+				}
+				presp.Body.Close()
+				probeResults[i] = probeResult{ok: presp.StatusCode == http.StatusOK}
+				return nil
+			})
+		}
+		if err := eg.Wait(); err != nil {
+			return nil, fmt.Errorf("probe archive availability: %w", err)
+		}
+
+		var verified int
+		for i, c := range candidates {
+			if !probeResults[i].ok {
+				continue
+			}
+			verified++
+			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
+InstrumentID: instrumentID(c.symbol),
+Symbol:       c.symbol,
+BaseAsset:    c.baseAsset,
+QuoteAsset:   "USDT",
+AssetType:    "CRYPTO",
+})
+			if len(uniSymbols) >= count {
+				break
+			}
+		}
+		log.Printf("Discovered %d verified symbols via CMC+binance.vision (probed %d candidates, %d had archives, top 3: %s)",
+len(uniSymbols), len(candidates), verified, topN(uniSymbols, 3))
+	}
+
+	if len(uniSymbols) < count {
+		return nil, fmt.Errorf("CMC discovery found only %d verified symbols, need exactly %d; increase over-fetch or check CMC_API_KEY",
+len(uniSymbols), count)
+	}
+
+	return &sources.Universe{
+		Symbols: uniSymbols[:count],
+	}, nil
+}
+
+// RankSymbols returns symbols in their existing order. CoinMarketCap already
+// provides market-cap ranking, so no re-ranking is needed.
+func (s *Source) RankSymbols(_ context.Context, symbols []sources.UniverseSymbol) ([]sources.UniverseSymbol, error) {
+	return symbols, nil
+}
+
+// probeArchiveURL returns the data.binance.vision URL for a monthly kline archive.
+// Used for HEAD-request probing to verify a symbol has historical data.
+func (s *Source) probeArchiveURL(symbol string, month time.Time) string {
+	fileName := fmt.Sprintf("%s-%s-%04d-%02d.zip", symbol, Interval1D, month.Year(), int(month.Month()))
+	return DefaultBaseURL + "/" + path.Join("data", DefaultMarket, "monthly", "klines", symbol, Interval1D, fileName)
 }
 
 func topN(symbols []sources.UniverseSymbol, n int) string {
@@ -720,7 +832,7 @@ func topN(symbols []sources.UniverseSymbol, n int) string {
 
 const InstrumentNamespace = "sigma-finance:binance-spot"
 
-// instrumentID generates a deterministic UUIDv5 using namespace and symbol
+// instrumentID generates a deterministic UUIDv5 from namespace + symbol.
 func instrumentID(symbol string) string {
 	h := sha1.New()
 	h.Write([]byte(InstrumentNamespace))
@@ -747,6 +859,8 @@ func instrumentID(symbol string) string {
 	return string(dst)
 }
 
+// IsExcludedBaseAsset returns true for stablecoins, wrapped tokens,
+// leveraged tokens, and other assets that should not appear in crypto packs.
 func IsExcludedBaseAsset(base string) bool {
 	if base == "" {
 		return true
@@ -766,337 +880,3 @@ func IsExcludedBaseAsset(base string) bool {
 		return false
 	}
 }
-
-type exchangeInfoResponse struct {
-	Symbols []exchangeInfoSymbol `json:"symbols"`
-}
-
-type exchangeInfoSymbol struct {
-	Symbol     string `json:"symbol"`
-	Status     string `json:"status"`
-	BaseAsset  string `json:"baseAsset"`
-	QuoteAsset string `json:"quoteAsset"`
-}
-
-// DiscoverUniverse dynamically discovers the top N symbols by 24h quote volume from Binance's API.
-func (s *Source) DiscoverUniverse(ctx context.Context, count int) (*sources.Universe, error) {
-	if count <= 0 {
-		return nil, fmt.Errorf("invalid count %d for dynamic universe discovery", count)
-	}
-
-	// 1. Fetch exchange info
-	url := s.apiBase() + "/api/v3/exchangeInfo"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("create exchange info request: %w", err)
-	}
-	resp, err := s.client.Do(req)
-	if err != nil {
-		return s.fallbackUniverse(ctx, count, fmt.Errorf("fetch exchange info: %w", err))
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return s.fallbackUniverse(ctx, count, fmt.Errorf("binance exchange info API returned HTTP %d", resp.StatusCode))
-	}
-
-	var info exchangeInfoResponse
-	if err := json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, fmt.Errorf("decode exchange info: %w", err)
-	}
-
-	// 2. Filter USDT symbols, status=TRADING, apply IsExcludedBaseAsset
-	var candidateSymbols []exchangeInfoSymbol
-	for _, sym := range info.Symbols {
-		if strings.ToUpper(sym.QuoteAsset) != "USDT" {
-			continue
-		}
-		if strings.ToUpper(sym.Status) != "TRADING" {
-			continue
-		}
-		if IsExcludedBaseAsset(strings.ToUpper(sym.BaseAsset)) {
-			continue
-		}
-		candidateSymbols = append(candidateSymbols, sym)
-	}
-
-	// 3. Fetch 24h tickers
-	tickers, err := s.fetch24hrTickers(ctx)
-	if err != nil {
-		return s.fallbackUniverse(ctx, count, fmt.Errorf("fetch 24hr tickers for discovery: %w", err))
-	}
-
-	volumeMap := make(map[string]decimal.Decimal, len(tickers))
-	for _, t := range tickers {
-		vol, parseErr := decimal.NewFromString(t.QuoteVolume)
-		if parseErr != nil {
-			continue
-		}
-		volumeMap[strings.ToUpper(t.Symbol)] = vol
-	}
-
-	// 4. Sort candidates by descending 24h volume
-	sort.SliceStable(candidateSymbols, func(i, j int) bool {
-		vi := volumeMap[strings.ToUpper(candidateSymbols[i].Symbol)]
-		vj := volumeMap[strings.ToUpper(candidateSymbols[j].Symbol)]
-		return vi.GreaterThan(vj)
-	})
-
-	// Probe candidates to verify they have archive data on data.binance.vision.
-	// Some symbols are TRADING on the exchange API but have no historical archives.
-	// We probe the most recent complete monthly archive with a HEAD request.
-	// Skip probing in local/fixture environments where the fixture server doesn't serve these paths.
-	isLocal := strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost")
-
-	var uniSymbols []sources.UniverseSymbol
-
-	if isLocal {
-		// In local/fixture mode, trust the exchange info API results directly.
-		if len(candidateSymbols) < count {
-			count = len(candidateSymbols)
-		}
-		for i := 0; i < count; i++ {
-			sym := candidateSymbols[i]
-			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-				InstrumentID: instrumentID(sym.Symbol),
-				Symbol:       sym.Symbol,
-				BaseAsset:    sym.BaseAsset,
-				QuoteAsset:   sym.QuoteAsset,
-				AssetType:    "CRYPTO",
-			})
-		}
-	} else {
-		probeMonth := time.Now().UTC().AddDate(0, -2, 0) // 2 months ago is reliably available
-		probeMonth = time.Date(probeMonth.Year(), probeMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
-
-		type probeResult struct {
-			index int
-			ok    bool
-		}
-
-		probeConcurrency := 20
-		results := make([]probeResult, len(candidateSymbols))
-		eg, gctx := errgroup.WithContext(ctx)
-		eg.SetLimit(probeConcurrency)
-
-		for i := range candidateSymbols {
-			i := i
-			sym := candidateSymbols[i]
-			eg.Go(func() error {
-				probeURL := s.monthlyURL(sym.Symbol, probeMonth)
-				req, reqErr := http.NewRequestWithContext(gctx, http.MethodHead, probeURL, nil)
-				if reqErr != nil {
-					results[i] = probeResult{index: i, ok: false}
-					return nil
-				}
-				resp, doErr := s.client.Do(req)
-				if doErr != nil {
-					results[i] = probeResult{index: i, ok: false}
-					return nil
-				}
-				resp.Body.Close()
-				results[i] = probeResult{index: i, ok: resp.StatusCode == http.StatusOK}
-				return nil
-			})
-		}
-		if err := eg.Wait(); err != nil {
-			return nil, fmt.Errorf("probe archive availability: %w", err)
-		}
-
-		for i, sym := range candidateSymbols {
-			if !results[i].ok {
-				continue
-			}
-			uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-				InstrumentID: instrumentID(sym.Symbol),
-				Symbol:       sym.Symbol,
-				BaseAsset:    sym.BaseAsset,
-				QuoteAsset:   sym.QuoteAsset,
-				AssetType:    "CRYPTO",
-			})
-			if len(uniSymbols) >= count {
-				break
-			}
-		}
-	}
-
-	if len(uniSymbols) == 0 {
-		return s.fallbackUniverse(ctx, count, fmt.Errorf("no candidates had archive data on data.binance.vision"))
-	}
-
-	log.Printf("Discovered %d symbols from Binance API (probed %d candidates, top 3: %s)", len(uniSymbols), len(candidateSymbols), topN(uniSymbols, 3))
-
-	return &sources.Universe{
-		Symbols: uniSymbols,
-	}, nil
-}
-
-func (s *Source) discoverCoinGeckoUniverse(ctx context.Context, count int) (*sources.Universe, error) {
-	// Only skip in test/local environment if we are not explicitly testing CoinGecko (i.e. coingeckoURL is not overridden to a local host)
-	if (strings.HasPrefix(s.baseURL, "http://127.0.0.1") || strings.HasPrefix(s.baseURL, "http://localhost")) &&
-		!strings.HasPrefix(coingeckoURL, "http://127.0.0.1") && !strings.HasPrefix(coingeckoURL, "http://localhost") {
-		return nil, fmt.Errorf("skipping coingecko in test/local environment")
-	}
-
-	// Over-discover: fetch 3x the requested count from CoinGecko to compensate
-	// for coins that don't have USDT pairs or archives on data.binance.vision.
-	perPage := 250 // CoinGecko max per page
-	totalNeeded := count * 3
-	if totalNeeded < 100 {
-		totalNeeded = 100
-	}
-	pages := (totalNeeded + perPage - 1) / perPage
-	if pages > 4 {
-		pages = 4 // cap at 1000 coins max
-	}
-
-	type cgMarket struct {
-		Symbol string `json:"symbol"`
-		Name   string `json:"name"`
-	}
-
-	var allMarkets []cgMarket
-	for page := 1; page <= pages; page++ {
-		reqURL := fmt.Sprintf("%s/api/v3/coins/markets?vs_currency=usd&order=market_cap_desc&per_page=%d&page=%d", coingeckoURL, perPage, page)
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("create coingecko request: %w", err)
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-		req.Header.Set("Accept", "application/json")
-
-		resp, err := s.client.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("coingecko API request (page %d): %w", page, err)
-		}
-
-		if resp.StatusCode != http.StatusOK {
-			resp.Body.Close()
-			if page == 1 {
-				return nil, fmt.Errorf("coingecko API returned HTTP %d", resp.StatusCode)
-			}
-			break // got enough from previous pages
-		}
-
-		var markets []cgMarket
-		if err := json.NewDecoder(resp.Body).Decode(&markets); err != nil {
-			resp.Body.Close()
-			return nil, fmt.Errorf("decode coingecko markets (page %d): %w", page, err)
-		}
-		resp.Body.Close()
-
-		allMarkets = append(allMarkets, markets...)
-		if len(markets) < perPage {
-			break // last page
-		}
-	}
-
-	// Deduplicate and construct candidate USDT pairs
-	type candidate struct {
-		symbol    string
-		baseAsset string
-	}
-	var candidates []candidate
-	seenSymbols := make(map[string]struct{})
-	for _, m := range allMarkets {
-		base := strings.ToUpper(m.Symbol)
-		if IsExcludedBaseAsset(base) {
-			continue
-		}
-		symbol := base + "USDT"
-		if _, ok := seenSymbols[symbol]; ok {
-			continue
-		}
-		seenSymbols[symbol] = struct{}{}
-		candidates = append(candidates, candidate{symbol: symbol, baseAsset: base})
-	}
-
-	log.Printf("CoinGecko returned %d coins, %d unique USDT candidates after filtering", len(allMarkets), len(candidates))
-
-	// Probe data.binance.vision to verify each candidate has archive data.
-	// Use HEAD requests on a recent monthly archive — cheap and fast.
-	probeMonth := time.Now().UTC().AddDate(0, -2, 0)
-	probeMonth = time.Date(probeMonth.Year(), probeMonth.Month(), 1, 0, 0, 0, 0, time.UTC)
-
-	type probeResult struct {
-		ok bool
-	}
-
-	probeResults := make([]probeResult, len(candidates))
-	eg, gctx := errgroup.WithContext(ctx)
-	eg.SetLimit(30)
-
-	for i := range candidates {
-		i := i
-		c := candidates[i]
-		eg.Go(func() error {
-			probeURL := s.probeArchiveURL(c.symbol, probeMonth)
-			req, reqErr := http.NewRequestWithContext(gctx, http.MethodHead, probeURL, nil)
-			if reqErr != nil {
-				probeResults[i] = probeResult{ok: false}
-				return nil
-			}
-			resp, doErr := s.client.Do(req)
-			if doErr != nil {
-				probeResults[i] = probeResult{ok: false}
-				return nil
-			}
-			resp.Body.Close()
-			probeResults[i] = probeResult{ok: resp.StatusCode == http.StatusOK}
-			return nil
-		})
-	}
-	if err := eg.Wait(); err != nil {
-		return nil, fmt.Errorf("probe archive availability: %w", err)
-	}
-
-	var uniSymbols []sources.UniverseSymbol
-	var probed, verified int
-	for i, c := range candidates {
-		probed++
-		if !probeResults[i].ok {
-			continue
-		}
-		verified++
-		uniSymbols = append(uniSymbols, sources.UniverseSymbol{
-			InstrumentID: instrumentID(c.symbol),
-			Symbol:       c.symbol,
-			BaseAsset:    c.baseAsset,
-			QuoteAsset:   "USDT",
-			AssetType:    "CRYPTO",
-		})
-		if len(uniSymbols) >= count {
-			break
-		}
-	}
-
-	if len(uniSymbols) == 0 {
-		return nil, fmt.Errorf("no CoinGecko candidates had archive data on data.binance.vision (probed %d)", probed)
-	}
-
-	log.Printf("Discovered %d verified symbols from CoinGecko (probed %d candidates, %d had archives, top 3: %s)",
-		len(uniSymbols), probed, verified, topN(uniSymbols, 3))
-	return &sources.Universe{
-		Symbols: uniSymbols,
-	}, nil
-}
-
-// probeArchiveURL returns the URL for a monthly kline archive on data.binance.vision.
-// Used for HEAD-request probing to verify a symbol has historical data.
-func (s *Source) probeArchiveURL(symbol string, month time.Time) string {
-	fileName := fmt.Sprintf("%s-%s-%04d-%02d.zip", symbol, Interval1D, month.Year(), int(month.Month()))
-	return DefaultBaseURL + "/" + path.Join("data", DefaultMarket, "monthly", "klines", symbol, Interval1D, fileName)
-}
-
-func (s *Source) fallbackUniverse(ctx context.Context, count int, triggerErr error) (*sources.Universe, error) {
-	log.Printf("WARNING: dynamic universe discovery from Binance failed (%v). Trying dynamic discovery via CoinGecko.", triggerErr)
-
-	uni, err := s.discoverCoinGeckoUniverse(ctx, count)
-	if err != nil {
-		return nil, fmt.Errorf("all dynamic discovery methods failed (binance: %v, coingecko: %w)", triggerErr, err)
-	}
-	return uni, nil
-}
-
-
-

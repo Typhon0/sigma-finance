@@ -30,41 +30,42 @@ func TestInstrumentIDDeterminism(t *testing.T) {
 	}
 }
 
-func TestDiscoverUniverse(t *testing.T) {
-	// Mock Binance APIs
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v3/exchangeInfo":
-			resp := exchangeInfoResponse{
-				Symbols: []exchangeInfoSymbol{
-					{Symbol: "BTCUSDT", Status: "TRADING", BaseAsset: "BTC", QuoteAsset: "USDT"},
-					{Symbol: "ETHUSDT", Status: "TRADING", BaseAsset: "ETH", QuoteAsset: "USDT"},
-					{Symbol: "SOLUSDT", Status: "TRADING", BaseAsset: "SOL", QuoteAsset: "USDT"},
-					{Symbol: "DOGEUSDT", Status: "TRADING", BaseAsset: "DOGE", QuoteAsset: "USDT"},
-					// Leverage token - should be excluded
-					{Symbol: "BTCUPUSDT", Status: "TRADING", BaseAsset: "BTCUP", QuoteAsset: "USDT"},
-					// Status not TRADING
-					{Symbol: "XRPUSDT", Status: "BREAK", BaseAsset: "XRP", QuoteAsset: "USDT"},
-					// Non-USDT pair
-					{Symbol: "BTCAUD", Status: "TRADING", BaseAsset: "BTC", QuoteAsset: "AUD"},
-				},
+// mockCMCServer returns a test server that serves a CMC listings/latest response.
+// The serveArchives flag controls whether HEAD requests to archive URLs return 200.
+func mockCMCServer(t *testing.T, coins []string, serveArchives bool) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/v1/cryptocurrency/listings/latest") {
+			type entry struct {
+				Symbol string `json:"symbol"`
+			}
+			type resp struct {
+				Data []entry `json:"data"`
+			}
+			data := make([]entry, len(coins))
+			for i, c := range coins {
+				data[i] = entry{Symbol: c}
 			}
 			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-		case "/api/v3/ticker/24hr":
-			resp := []tickerEntry{
-				{Symbol: "BTCUSDT", QuoteVolume: "1000000"},
-				{Symbol: "ETHUSDT", QuoteVolume: "800000"},
-				{Symbol: "SOLUSDT", QuoteVolume: "1200000"}, // highest volume
-				{Symbol: "DOGEUSDT", QuoteVolume: "10000"},
-				{Symbol: "BTCUPUSDT", QuoteVolume: "999999999"},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-		default:
-			http.NotFound(w, r)
+			_ = json.NewEncoder(w).Encode(resp{Data: data})
+			return
 		}
+		// Archive probe HEAD requests
+		if r.Method == http.MethodHead {
+			if serveArchives {
+				w.WriteHeader(http.StatusOK)
+			} else {
+				w.WriteHeader(http.StatusNotFound)
+			}
+			return
+		}
+		http.NotFound(w, r)
 	}))
+}
+
+func TestDiscoverUniverse_CMC(t *testing.T) {
+	// Local mode: no archive probing, trust CMC order directly.
+	server := mockCMCServer(t, []string{"BTC", "ETH", "SOL", "DOGE", "USDT" /* excluded */}, true)
 	defer server.Close()
 
 	src := NewSource(Config{
@@ -72,41 +73,70 @@ func TestDiscoverUniverse(t *testing.T) {
 		HTTPClient: server.Client(),
 	})
 
-	// Discover top 3 symbols
 	uni, err := src.DiscoverUniverse(context.Background(), 3)
 	if err != nil {
 		t.Fatalf("DiscoverUniverse failed: %v", err)
 	}
-
 	if len(uni.Symbols) != 3 {
 		t.Fatalf("expected 3 symbols, got %d", len(uni.Symbols))
 	}
 
-	// Should be sorted by quote volume descending (excluding leverage token BTCUPUSDT):
-	// 1st: SOLUSDT (1200000)
-	// 2nd: BTCUSDT (1000000)
-	// 3rd: ETHUSDT (800000)
-	if uni.Symbols[0].Symbol != "SOLUSDT" {
-		t.Errorf("expected 1st symbol to be SOLUSDT, got %s", uni.Symbols[0].Symbol)
-	}
-	if uni.Symbols[1].Symbol != "BTCUSDT" {
-		t.Errorf("expected 2nd symbol to be BTCUSDT, got %s", uni.Symbols[1].Symbol)
-	}
-	if uni.Symbols[2].Symbol != "ETHUSDT" {
-		t.Errorf("expected 3rd symbol to be ETHUSDT, got %s", uni.Symbols[2].Symbol)
-	}
-
-	// Instrument ID should be generated deterministically via UUIDv5
-	expectedSolID := instrumentID("SOLUSDT")
-	if uni.Symbols[0].InstrumentID != expectedSolID {
-		t.Errorf("expected SOLUSDT InstrumentID to be %s, got %s", expectedSolID, uni.Symbols[0].InstrumentID)
+	// CMC order: BTC, ETH, SOL (USDT excluded)
+	want := []string{"BTCUSDT", "ETHUSDT", "SOLUSDT"}
+	for i, sym := range uni.Symbols {
+		if sym.Symbol != want[i] {
+			t.Errorf("symbol[%d]: want %s got %s", i, want[i], sym.Symbol)
+		}
+		if sym.QuoteAsset != "USDT" {
+			t.Errorf("symbol[%d]: expected QuoteAsset USDT, got %s", i, sym.QuoteAsset)
+		}
+		if sym.AssetType != "CRYPTO" {
+			t.Errorf("symbol[%d]: expected AssetType CRYPTO, got %s", i, sym.AssetType)
+		}
+		expectedID := instrumentID(sym.Symbol)
+		if sym.InstrumentID != expectedID {
+			t.Errorf("symbol[%d] InstrumentID mismatch: want %s got %s", i, expectedID, sym.InstrumentID)
+		}
 	}
 }
 
-func TestDiscoverUniverse_Fallback(t *testing.T) {
-	// Mock Binance API returning 451 legal block
+func TestDiscoverUniverse_APIKeyHeader(t *testing.T) {
+	var receivedKey string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnavailableForLegalReasons)
+		if strings.HasPrefix(r.URL.Path, "/v1/cryptocurrency/listings/latest") {
+			receivedKey = r.Header.Get("X-CMC_PRO_API_KEY")
+			type entry struct {
+				Symbol string `json:"symbol"`
+			}
+			type resp struct {
+				Data []entry `json:"data"`
+			}
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(resp{Data: []entry{{Symbol: "BTC"}, {Symbol: "ETH"}}})
+			return
+		}
+		w.WriteHeader(http.StatusOK) // archive probes always pass
+	}))
+	defer server.Close()
+
+	src := NewSource(Config{
+		BaseURL:             server.URL,
+		HTTPClient:          server.Client(),
+		CoinMarketCapAPIKey: "test-api-key-123",
+	})
+
+	_, err := src.DiscoverUniverse(context.Background(), 2)
+	if err != nil {
+		t.Fatalf("DiscoverUniverse failed: %v", err)
+	}
+	if receivedKey != "test-api-key-123" {
+		t.Errorf("expected X-CMC_PRO_API_KEY=test-api-key-123, got %q", receivedKey)
+	}
+}
+
+func TestDiscoverUniverse_CMCError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer server.Close()
 
@@ -115,76 +145,52 @@ func TestDiscoverUniverse_Fallback(t *testing.T) {
 		HTTPClient: server.Client(),
 	})
 
-	// When both Binance (451) and CoinGecko (skipped in local env) fail,
-	// DiscoverUniverse should return an error — no static fallback.
 	_, err := src.DiscoverUniverse(context.Background(), 5)
 	if err == nil {
-		t.Fatal("expected error when all dynamic discovery methods fail, got nil")
+		t.Fatal("expected error on CMC HTTP 401, got nil")
 	}
-	if !strings.Contains(err.Error(), "all dynamic discovery methods failed") {
+	if !strings.Contains(err.Error(), "CMC API returned HTTP 401") {
 		t.Errorf("unexpected error message: %v", err)
 	}
 }
 
-func TestDiscoverUniverse_CoinGecko(t *testing.T) {
-	// Mock CoinGecko and Binance APIs
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v3/exchangeInfo":
-			// Binance fails with 451 Legal Reasons to trigger fallback
-			w.WriteHeader(http.StatusUnavailableForLegalReasons)
-		case "/api/v3/coins/markets":
-			resp := []struct {
-				Symbol string `json:"symbol"`
-				Name   string `json:"name"`
-			}{
-				{Symbol: "btc", Name: "Bitcoin"},
-				{Symbol: "eth", Name: "Ethereum"},
-				{Symbol: "usdt", Name: "Tether"}, // Should be excluded
-				{Symbol: "sol", Name: "Solana"},
-			}
-			w.Header().Set("Content-Type", "application/json")
-			_ = json.NewEncoder(w).Encode(resp)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
+func TestDiscoverUniverse_StrictCount(t *testing.T) {
+	// Local mode with only 2 candidates but requesting 5 → must error.
+	server := mockCMCServer(t, []string{"BTC", "ETH"}, true)
 	defer server.Close()
-
-	// Override coingeckoURL for the test
-	origCoinGeckoURL := coingeckoURL
-	coingeckoURL = server.URL
-	defer func() { coingeckoURL = origCoinGeckoURL }()
 
 	src := NewSource(Config{
 		BaseURL:    server.URL,
 		HTTPClient: server.Client(),
 	})
 
-	// Discover top 3 symbols.
+	_, err := src.DiscoverUniverse(context.Background(), 5)
+	if err == nil {
+		t.Fatal("expected error when verified count < requested count, got nil")
+	}
+	if !strings.Contains(err.Error(), "CMC discovery found only") {
+		t.Errorf("unexpected error message: %v", err)
+	}
+}
+
+func TestDiscoverUniverse_ExcludesStablecoins(t *testing.T) {
+	// Mix of real coins and excluded assets.
+	coins := []string{"BTC", "ETH", "USDT", "USDC", "SOL", "BUSD", "WBTC"}
+	server := mockCMCServer(t, coins, true)
+	defer server.Close()
+
+	src := NewSource(Config{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+	})
+
 	uni, err := src.DiscoverUniverse(context.Background(), 3)
 	if err != nil {
 		t.Fatalf("DiscoverUniverse failed: %v", err)
 	}
-
-	if len(uni.Symbols) != 3 {
-		t.Fatalf("expected 3 symbols from CoinGecko discovery, got %d", len(uni.Symbols))
-	}
-
-	if uni.Symbols[0].Symbol != "BTCUSDT" {
-		t.Errorf("expected 1st symbol to be BTCUSDT, got %s", uni.Symbols[0].Symbol)
-	}
-	if uni.Symbols[1].Symbol != "ETHUSDT" {
-		t.Errorf("expected 2nd symbol to be ETHUSDT, got %s", uni.Symbols[1].Symbol)
-	}
-	if uni.Symbols[2].Symbol != "SOLUSDT" {
-		t.Errorf("expected 3rd symbol to be SOLUSDT, got %s", uni.Symbols[2].Symbol)
-	}
-
-	expectedBtcID := instrumentID("BTCUSDT")
-	if uni.Symbols[0].InstrumentID != expectedBtcID {
-		t.Errorf("expected BTCUSDT InstrumentID to be %s, got %s", expectedBtcID, uni.Symbols[0].InstrumentID)
+	for _, sym := range uni.Symbols {
+		if sym.Symbol == "USDTUSDT" || sym.Symbol == "USDCUSDT" || sym.Symbol == "BUSDUSDT" || sym.Symbol == "WBTCUSDT" {
+			t.Errorf("excluded asset appeared in results: %s", sym.Symbol)
+		}
 	}
 }
-
-

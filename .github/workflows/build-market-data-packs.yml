@@ -36,6 +36,7 @@ jobs:
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       PACK_SIGNING_KEY: ${{ secrets.PACK_SIGNING_KEY }}
+      CMC_API_KEY: ${{ secrets.CMC_API_KEY }}
       MARKET_DATA_PACK_BASE_URL: ${{ vars.MARKET_DATA_PACK_BASE_URL }}
     steps:
       - name: Checkout
@@ -71,6 +72,10 @@ jobs:
           set -euo pipefail
           if [[ -z "${PACK_SIGNING_KEY:-}" ]]; then
             echo "PACK_SIGNING_KEY secret is required for public pack signing"
+            exit 1
+          fi
+          if [[ "${MODE}" == "full" && -z "${CMC_API_KEY:-}" ]]; then
+            echo "CMC_API_KEY secret is required for full-mode universe discovery"
             exit 1
           fi
           if [[ "${PUBLISH}" == "true" && -z "${MARKET_DATA_PACK_BASE_URL:-}" ]]; then
@@ -191,8 +196,15 @@ jobs:
             dist/*.sfpack
             dist/*.sfpack.sig
             dist/registry.json
-            dist/fixture-server.log
           if-no-files-found: error
+
+      - name: Upload Fixture Server Log
+        if: env.MODE == 'fixture'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fixture-server-log
+          path: dist/fixture-server.log
+          if-no-files-found: warn
 
       - name: Publish GitHub Release Assets
         if: env.PUBLISH == 'true' && github.event_name == 'workflow_dispatch'

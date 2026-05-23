@@ -340,3 +340,58 @@ func loadZipFromCSVFixture(t *testing.T, filename string) []byte {
 	}
 	return buf.Bytes()
 }
+
+func TestFetchCandlesConcurrentSymbols(t *testing.T) {
+	archive1 := loadZipFromCSVFixture(t, "kline-ms.csv")
+	archive2 := loadZipFromCSVFixture(t, "kline-ms.csv")
+	server := newFixtureServer(t, map[string]fixtureResponse{
+		"/data/spot/monthly/klines/BTCUSDT/1d/BTCUSDT-1d-2024-01.zip": {
+			StatusCode:   http.StatusOK,
+			Body:         archive1,
+			WithChecksum: true,
+		},
+		"/data/spot/monthly/klines/ETHUSDT/1d/ETHUSDT-1d-2024-01.zip": {
+			StatusCode:   http.StatusOK,
+			Body:         archive2,
+			WithChecksum: true,
+		},
+	})
+	defer server.Close()
+
+	src := NewSource(Config{
+		BaseURL:    server.URL,
+		HTTPClient: server.Client(),
+	})
+	candles, err := collect(src.FetchCandles(context.Background(), sources.FetchCandlesRequest{
+		PackSpec: sources.PackSpec{
+			AssetType:     "CRYPTO",
+			QuoteCurrency: "USDT",
+		},
+		Symbols: []sources.UniverseSymbol{
+			{
+				InstrumentID: "00000000-0000-0000-0000-000000000001",
+				Symbol:       "BTCUSDT",
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			},
+			{
+				InstrumentID: "00000000-0000-0000-0000-000000000002",
+				Symbol:       "ETHUSDT",
+				QuoteAsset:   "USDT",
+				AssetType:    "CRYPTO",
+			},
+		},
+		StartDate: time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC),
+		EndDate:   time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
+		RateLimit: sources.RateLimitConfig{
+			Concurrency: 2,
+		},
+	}))
+	if err != nil {
+		t.Fatalf("fetch candles: %v", err)
+	}
+	if len(candles) != 2 {
+		t.Fatalf("expected 2 candles, got %d", len(candles))
+	}
+}
+

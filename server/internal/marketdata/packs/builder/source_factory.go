@@ -2,6 +2,7 @@ package builder
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"sigma_finance/internal/marketdata/packs/sources"
@@ -13,7 +14,8 @@ func newSourceForProvider(provider string, baseURL string) (sources.CandleSource
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case binancesource.SourceName:
 		return binancesource.NewSource(binancesource.Config{
-			BaseURL: strings.TrimSpace(baseURL),
+			BaseURL:             strings.TrimSpace(baseURL),
+			CoinMarketCapAPIKey: strings.TrimSpace(os.Getenv("CMC_API_KEY")),
 		}), nil
 	case ecbsource.SourceName:
 		return ecbsource.NewSource(ecbsource.Config{
@@ -23,3 +25,4 @@ func newSourceForProvider(provider string, baseURL string) (sources.CandleSource
 		return nil, fmt.Errorf("unsupported source_provider=%s", strings.TrimSpace(provider))
 	}
 }
+
