@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { SavingsList } from "@/components/assets/savings/SavingsList";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { SavingsList } from "@/components/SavingsList";
 
 function SavingsPage() {
 	const navigate = useNavigate();

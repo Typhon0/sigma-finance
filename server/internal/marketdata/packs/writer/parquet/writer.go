@@ -95,47 +95,44 @@ func BuildUnpackedDirectory(ctx context.Context, candles []sources.NormalizedCan
 		return nil, fmt.Errorf("create pack dir: %w", err)
 	}
 
-	sorted := append([]sources.NormalizedCandle(nil), candles...)
-	sort.Slice(sorted, func(i, j int) bool {
-		return canonicalLess(sorted[i], sorted[j])
+	sort.Slice(candles, func(i, j int) bool {
+		return canonicalLess(candles[i], candles[j])
 	})
 
-	partitionRows := make(map[string][]parquetCandleRow, 64)
+	partitionIndices := make(map[string][]int, 64)
 	coverage := make(map[coverageKey]*coverageAccumulator, 256)
-	canonical := make(map[string]struct{}, len(sorted))
 	assetTypes := make(map[string]struct{}, 8)
 	quoteCurrencies := make(map[string]struct{}, 8)
 
-	for _, candle := range sorted {
+	for i, candle := range candles {
 		select {
 		case <-ctx.Done():
 			return nil, ctx.Err()
 		default:
 		}
 
-		key := sources.CanonicalKey(candle)
-		if _, exists := canonical[key]; exists {
-			return nil, fmt.Errorf("duplicate canonical candle key %s", key)
+		// Adjacent duplicate checking (avoids storing millions of strings in a separate map)
+		if i > 0 {
+			prevKey := sources.CanonicalKey(candles[i-1])
+			currKey := sources.CanonicalKey(candle)
+			if prevKey == currKey {
+				return nil, fmt.Errorf("duplicate canonical candle key %s", currKey)
+			}
 		}
-		canonical[key] = struct{}{}
 
-		row, err := toParquetRow(candle)
-		if err != nil {
-			return nil, err
-		}
 		partitionDir, err := partitionPath(candle, options.PartitionBy)
 		if err != nil {
 			return nil, err
 		}
 		relPath := filepath.ToSlash(filepath.Join("data", partitionDir, "part-000.parquet"))
-		partitionRows[relPath] = append(partitionRows[relPath], row)
+		partitionIndices[relPath] = append(partitionIndices[relPath], i)
 		accumulateCoverage(coverage, candle, relPath)
 		assetTypes[strings.TrimSpace(candle.AssetType)] = struct{}{}
 		quoteCurrencies[strings.ToUpper(strings.TrimSpace(candle.QuoteCurrency))] = struct{}{}
 	}
 
-	filePaths := make([]string, 0, len(partitionRows))
-	for relPath := range partitionRows {
+	filePaths := make([]string, 0, len(partitionIndices))
+	for relPath := range partitionIndices {
 		filePaths = append(filePaths, relPath)
 	}
 	sort.Strings(filePaths)
@@ -144,14 +141,23 @@ func BuildUnpackedDirectory(ctx context.Context, candles []sources.NormalizedCan
 	manifest.Files = make([]packservice.ManifestFile, 0, len(filePaths)+1)
 	totalRows := int64(0)
 	for _, relPath := range filePaths {
-		rows := partitionRows[relPath]
-		if len(rows) == 0 {
+		indices := partitionIndices[relPath]
+		if len(indices) == 0 {
 			continue
+		}
+		// Convert candles to parquetCandleRows on the fly for only the active partition
+		rows := make([]parquetCandleRow, len(indices))
+		for k, idx := range indices {
+			row, err := toParquetRow(candles[idx])
+			if err != nil {
+				return nil, err
+			}
+			rows[k] = row
 		}
 		if err := writeParquetFile(filepath.Join(packDir, filepath.FromSlash(relPath)), rows); err != nil {
 			return nil, err
 		}
-		sum, err := sha256FileHex(filepath.Join(packDir, filepath.FromSlash(relPath)))
+		sum, err := Sha256FileHex(filepath.Join(packDir, filepath.FromSlash(relPath)))
 		if err != nil {
 			return nil, err
 		}
@@ -179,16 +185,16 @@ func BuildUnpackedDirectory(ctx context.Context, candles []sources.NormalizedCan
 	}
 
 	manifestPath := filepath.Join(packDir, "manifest.json")
-	if err := writeManifest(manifestPath, &manifest); err != nil {
+	if err := WriteManifest(manifestPath, &manifest); err != nil {
 		return nil, err
 	}
-	manifestSum, err := sha256FileHex(manifestPath)
+	manifestSum, err := Sha256FileHex(manifestPath)
 	if err != nil {
 		return nil, err
 	}
 
 	checksumsPath := filepath.Join(packDir, "checksums.sha256")
-	if err := writeChecksumsFile(checksumsPath, &manifest, manifestSum); err != nil {
+	if err := WriteChecksumsFile(checksumsPath, &manifest, manifestSum); err != nil {
 		return nil, err
 	}
 
@@ -417,7 +423,7 @@ func accumulateCoverage(coverage map[coverageKey]*coverageAccumulator, candle so
 	item.FilePaths[filePath] = struct{}{}
 }
 
-func writeManifest(path string, manifest *packservice.Manifest) error {
+func WriteManifest(path string, manifest *packservice.Manifest) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("create manifest: %w", err)
@@ -431,7 +437,7 @@ func writeManifest(path string, manifest *packservice.Manifest) error {
 	return nil
 }
 
-func writeChecksumsFile(path string, manifest *packservice.Manifest, manifestChecksum string) error {
+func WriteChecksumsFile(path string, manifest *packservice.Manifest, manifestChecksum string) error {
 	lines := make([]string, 0, len(manifest.Files))
 	for _, file := range manifest.Files {
 		sum := strings.TrimSpace(strings.TrimPrefix(file.Checksum, "sha256:"))
@@ -443,7 +449,7 @@ func writeChecksumsFile(path string, manifest *packservice.Manifest, manifestChe
 	return os.WriteFile(path, []byte(body), 0o644)
 }
 
-func sha256FileHex(path string) (string, error) {
+func Sha256FileHex(path string) (string, error) {
 	body, err := os.ReadFile(path)
 	if err != nil {
 		return "", err

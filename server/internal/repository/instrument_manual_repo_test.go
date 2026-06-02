@@ -67,8 +67,9 @@ func TestInstrumentRepository_ListManual(t *testing.T) {
 			owner_user_id UUID,
 			isin VARCHAR(32),
 			figi VARCHAR(32),
-			cusip VARCHAR(32),
-			metadata JSONB,
+		cusip VARCHAR(32),
+		search_vector tsvector,
+		metadata JSONB,
 			first_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 			last_verified_at TIMESTAMP WITH TIME ZONE,
 			last_used_at TIMESTAMP WITH TIME ZONE,
@@ -120,6 +121,9 @@ func TestInstrumentRepository_ListManual(t *testing.T) {
 		Status:           model.InstrumentStatusUnknown,
 		ProviderSource:   "manual",
 		OwnerUserID:      repoPtrString(repoTestOwnerOne),
+		ISIN:             repoPtrString("US0378331005"),
+		CUSIP:            repoPtrString("037833100"),
+		FIGI:             repoPtrString("BBG000B9Y5X2"),
 	}
 	archived := &model.Instrument{
 		Symbol:           "BBB",
@@ -160,4 +164,22 @@ func TestInstrumentRepository_ListManual(t *testing.T) {
 
 	visibleRows = filterVisibleInstrumentSearchRows(searchRows, repoPtrString(repoTestOwnerTwo))
 	require.Len(t, visibleRows, 0)
+
+	// Test matching by ISIN
+	isinRows, err := repo.searchExactSymbolInstruments(ctx, "US0378331005", InstrumentSearchFilter{}, 10)
+	require.NoError(t, err)
+	require.Len(t, isinRows, 1)
+	require.Equal(t, "AAA", isinRows[0].Instrument.Symbol)
+
+	// Test matching by CUSIP
+	cusipRows, err := repo.searchExactSymbolInstruments(ctx, "037833100", InstrumentSearchFilter{}, 10)
+	require.NoError(t, err)
+	require.Len(t, cusipRows, 1)
+	require.Equal(t, "AAA", cusipRows[0].Instrument.Symbol)
+
+	// Test matching by FIGI
+	figiRows, err := repo.searchExactSymbolInstruments(ctx, "BBG000B9Y5X2", InstrumentSearchFilter{}, 10)
+	require.NoError(t, err)
+	require.Len(t, figiRows, 1)
+	require.Equal(t, "AAA", figiRows[0].Instrument.Symbol)
 }

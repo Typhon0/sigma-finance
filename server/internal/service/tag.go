@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"strings"
@@ -13,7 +14,8 @@ import (
 type ITagService interface {
 	GetByID(ctx context.Context, id string) (*model.Tag, error)
 	FindAll(ctx context.Context, opts ...repository.QueryOption) ([]model.Tag, error)
-	FindByName(ctx context.Context, name string) (*model.Tag, error)
+	FindAllByUserID(ctx context.Context, userID string) ([]model.Tag, error)
+	FindByNameAndUserID(ctx context.Context, name string, userID string) (*model.Tag, error)
 	CreateTag(ctx context.Context, input CreateTagInput) (*model.Tag, error)
 	UpdateTag(ctx context.Context, id string, input UpdateTagInput) (*model.Tag, error)
 	DeleteTag(ctx context.Context, id string) error
@@ -26,7 +28,7 @@ type ITagService interface {
 	GetTaggedAssets(ctx context.Context, tagID string) ([]model.Asset, error)
 	GetTaggedPortfolios(ctx context.Context, tagID string) ([]model.Portfolio, error)
 	GetTagUsageStatistics(ctx context.Context, tagID string) (TagUsageStats, error)
-	FindOrCreateTag(ctx context.Context, name string) (*model.Tag, error)
+	FindOrCreateTag(ctx context.Context, name string, userID string) (*model.Tag, error)
 	BulkTagAssets(ctx context.Context, assetIDs []string, tagID string) error
 	BulkTagPortfolios(ctx context.Context, portfolioIDs []string, tagID string) error
 	GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error)
@@ -44,7 +46,8 @@ func NewTagService(uow repository.IUnitOfWork) *TagService {
 
 // Input structs for tag operations
 type CreateTagInput struct {
-	Name string
+	Name   string
+	UserID string
 }
 
 type UpdateTagInput struct {
@@ -70,13 +73,19 @@ func (s *TagService) FindAll(ctx context.Context, opts ...repository.QueryOption
 	return s.uow.Tag().FindAllBy(ctx, opts...)
 }
 
-// FindByName retrieves a tag by its name
-func (s *TagService) FindByName(ctx context.Context, name string) (*model.Tag, error) {
-	return s.uow.Tag().FindOneBy(ctx, repository.ByColumn("name", name))
+// FindByNameAndUserID retrieves a tag by its name scoped to a specific user
+func (s *TagService) FindByNameAndUserID(ctx context.Context, name string, userID string) (*model.Tag, error) {
+	return s.uow.Tag().FindOneBy(ctx, repository.ByColumn("name", name), repository.ByColumn("user_id", userID))
+}
+
+// FindAllByUserID retrieves all tags for a specific user
+func (s *TagService) FindAllByUserID(ctx context.Context, userID string) ([]model.Tag, error) {
+	return s.uow.Tag().FindAllBy(ctx, repository.ByColumn("user_id", userID))
 }
 
 // CreateTag creates a new tag with validation
 func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*model.Tag, error) {
+	log.Printf("[TagService] CreateTag: started user=%s name=%s", input.UserID, input.Name)
 	// Validate input
 	if err := s.validateCreateTagInput(input); err != nil {
 		return nil, err
@@ -85,8 +94,8 @@ func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*mode
 	// Normalize tag name
 	normalizedName := s.normalizeTagName(input.Name)
 
-	// Check if tag already exists
-	_, err := s.FindByName(ctx, normalizedName)
+	// Check if tag already exists for this user
+	_, err := s.FindByNameAndUserID(ctx, normalizedName, input.UserID)
 	if err == nil {
 		return nil, fmt.Errorf("tag with name '%s' already exists", normalizedName)
 	}
@@ -96,14 +105,16 @@ func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*mode
 
 	// Create tag
 	newTag := model.Tag{
-		Name: normalizedName,
+		Name:   normalizedName,
+		UserID: input.UserID,
 	}
 
 	createdTag, err := s.uow.Tag().Create(ctx, &newTag)
 	if err != nil {
+		log.Printf("[TagService] CreateTag: ERROR creation failed user=%s name=%s: %v", input.UserID, normalizedName, err)
 		return nil, fmt.Errorf("failed to create tag: %w", err)
 	}
-
+	log.Printf("[TagService] CreateTag: SUCCESS id=%s user=%s name=%s", createdTag.ID, input.UserID, normalizedName)
 	return createdTag, nil
 }
 
@@ -123,8 +134,8 @@ func (s *TagService) UpdateTag(ctx context.Context, id string, input UpdateTagIn
 	// Normalize tag name
 	normalizedName := s.normalizeTagName(input.Name)
 
-	// Check if another tag with the same name exists (excluding current tag)
-	existingTag, err := s.FindByName(ctx, normalizedName)
+	// Check if another tag with the same name exists for this user (excluding current tag)
+	existingTag, err := s.FindByNameAndUserID(ctx, normalizedName, tagToUpdate.UserID)
 	if err == nil && existingTag.ID != tagToUpdate.ID {
 		return nil, fmt.Errorf("tag with name '%s' already exists", normalizedName)
 	}
@@ -146,8 +157,9 @@ func (s *TagService) UpdateTag(ctx context.Context, id string, input UpdateTagIn
 
 // DeleteTag removes a tag and all its associations
 func (s *TagService) DeleteTag(ctx context.Context, id string) error {
+	log.Printf("[TagService] DeleteTag: started id=%s", id)
 	// Use Unit of Work to ensure atomicity
-	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify tag exists
 		_, err := uow.Tag().GetByID(ctx, id)
 		if err != nil {
@@ -182,16 +194,23 @@ func (s *TagService) DeleteTag(ctx context.Context, id string) error {
 		// Delete the tag
 		return uow.Tag().Delete(ctx, id)
 	})
+	if err != nil {
+		log.Printf("[TagService] DeleteTag: ERROR id=%s: %v", id, err)
+	} else {
+		log.Printf("[TagService] DeleteTag: SUCCESS id=%s", id)
+	}
+	return err
 }
 
 // TagAsset associates a tag with an asset
 func (s *TagService) TagAsset(ctx context.Context, assetID, tagID string) error {
+	log.Printf("[TagService] TagAsset: started asset=%s tag=%s", assetID, tagID)
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
 	}
 
-	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify asset exists
 		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
@@ -222,18 +241,31 @@ func (s *TagService) TagAsset(ctx context.Context, assetID, tagID string) error 
 		// Create association
 		return uow.AssetTag().Add(ctx, assetID, tagID)
 	})
+	if err != nil {
+		log.Printf("[TagService] TagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
+	} else {
+		log.Printf("[TagService] TagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
+	}
+	return err
 }
 
 // UntagAsset removes a tag association from an asset
 func (s *TagService) UntagAsset(ctx context.Context, assetID, tagID string) error {
+	log.Printf("[TagService] UntagAsset: started asset=%s tag=%s", assetID, tagID)
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
 	}
 
-	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		return uow.AssetTag().Remove(ctx, assetID, tagID)
 	})
+	if err != nil {
+		log.Printf("[TagService] UntagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
+	} else {
+		log.Printf("[TagService] UntagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
+	}
+	return err
 }
 
 // TagPortfolio associates a tag with a portfolio
@@ -411,9 +443,9 @@ func (s *TagService) GetTagUsageStatistics(ctx context.Context, tagID string) (T
 }
 
 // FindOrCreateTag finds a tag by name or creates it if it doesn't exist
-func (s *TagService) FindOrCreateTag(ctx context.Context, name string) (*model.Tag, error) {
+func (s *TagService) FindOrCreateTag(ctx context.Context, name string, userID string) (*model.Tag, error) {
 	normalizedName := s.normalizeTagName(name)
-	tag, err := s.FindByName(ctx, normalizedName)
+	tag, err := s.FindByNameAndUserID(ctx, normalizedName, userID)
 	if err == nil {
 		return tag, nil // Tag found
 	}
@@ -422,7 +454,7 @@ func (s *TagService) FindOrCreateTag(ctx context.Context, name string) (*model.T
 	}
 
 	// Tag not found, create it
-	return s.CreateTag(ctx, CreateTagInput{Name: normalizedName})
+	return s.CreateTag(ctx, CreateTagInput{Name: normalizedName, UserID: userID})
 }
 
 // BulkTagAssets associates a tag with multiple assets

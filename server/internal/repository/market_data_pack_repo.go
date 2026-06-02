@@ -116,7 +116,23 @@ func (r *MarketDataPackRepository) ListCoverage(ctx context.Context, instrumentI
 	q := r.db.NewSelect().Model(&coverage).
 		Order("last_date DESC", "pack_id DESC")
 	if instrumentID != "" {
-		q = q.Where("instrument_id = ?", instrumentID)
+		// Try to match coverage records dynamically by matching the symbol and suffix
+		var inst model.Instrument
+		err := r.db.NewSelect().Model(&inst).Where("id = ?", instrumentID).Scan(ctx)
+		if err == nil {
+			symbol := inst.Symbol
+			symbolWithSuffix := symbol
+			if inst.Exchange != "" {
+				symbolWithSuffix = symbol + "." + inst.Exchange
+			}
+			q = q.WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
+				return q.Where("instrument_id = ?", instrumentID).
+					WhereOr("LOWER(symbol) = ?", strings.ToLower(symbol)).
+					WhereOr("LOWER(symbol) = ?", strings.ToLower(symbolWithSuffix))
+			})
+		} else {
+			q = q.Where("instrument_id = ?", instrumentID)
+		}
 	}
 	err := q.Scan(ctx)
 	return coverage, err
@@ -394,3 +410,5 @@ func (r *MarketDataPackRepository) GetUserCredentialForProvider(ctx context.Cont
 	}
 	return &credential, nil
 }
+
+

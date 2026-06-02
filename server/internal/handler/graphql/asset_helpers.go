@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
@@ -111,11 +112,23 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		}
 	}
 
+	var assetIDs []string
+	for _, domPa := range pa {
+		assetIDs = append(assetIDs, domPa.AssetID)
+	}
+
+	prefetchedAssets, batchErr := r.getAssetsWithDetailsBatch(ctx, assetIDs)
+	if batchErr != nil {
+		log.Printf("buildPortfolioAssets: batch fetch failed for portfolio %s: %v", portfolioID, batchErr)
+		// Fallback to empty map on error to let loop skip gracefully
+		prefetchedAssets = make(map[string]gqlModel.Asset)
+	}
+
 	var assets []*gqlModel.PortfolioAsset
 	for _, domPa := range pa {
-		gqlAsset, gqlErr := r.getAssetWithDetails(ctx, domPa.AssetID)
-		if gqlErr != nil || gqlAsset == nil {
-			log.Printf("buildPortfolioAssets: skipping asset %s in portfolio %s: err=%v, asset=%v", domPa.AssetID, portfolioID, gqlErr, gqlAsset)
+		gqlAsset, ok := prefetchedAssets[domPa.AssetID]
+		if !ok || gqlAsset == nil {
+			log.Printf("buildPortfolioAssets: skipping asset %s in portfolio %s: not found in batch", domPa.AssetID, portfolioID)
 			continue
 		}
 		avgPP := domPa.AveragePurchasePrice
@@ -137,11 +150,16 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 				currentVal = &v
 			}
 		}
+		quoteCurrencyStr := domPa.QuoteCurrency.String()
 		assets = append(assets, &gqlModel.PortfolioAsset{
 			Asset:                gqlAsset,
+			InstrumentID:         domPa.InstrumentID,
 			Quantity:             domPa.Quantity,
 			AveragePurchasePrice: &avgPP,
 			CurrentValue:         currentVal,
+			DayChange:            gqlAsset.GetDayChange(),
+			DayChangePercent:     gqlAsset.GetDayChangePercent(),
+			QuoteCurrency:        &quoteCurrencyStr,
 		})
 	}
 	return assets
@@ -156,4 +174,37 @@ func (r *Resolver) safeGetPortfolioAnalytics(ctx context.Context, portfolioID st
 	}()
 
 	return r.PortfolioService.GetPortfolioAnalytics(ctx, portfolioID, displayCurrency)
+}
+
+func (r *Resolver) buildGraphQLTransaction(ctx context.Context, tx *model.Transaction) *gqlModel.Transaction {
+	if tx == nil || tx.PositionID == nil || strings.TrimSpace(*tx.PositionID) == "" {
+		return nil
+	}
+
+	position, err := r.UOW.Position().GetByID(ctx, *tx.PositionID)
+	if err != nil || position == nil {
+		log.Printf("buildGraphQLTransaction: skipping transaction %s: position lookup failed err=%v", tx.ID, err)
+		return nil
+	}
+	if strings.TrimSpace(position.PortfolioID) == "" || strings.TrimSpace(position.AssetID) == "" {
+		log.Printf("buildGraphQLTransaction: skipping transaction %s: invalid position links portfolio=%q asset=%q", tx.ID, position.PortfolioID, position.AssetID)
+		return nil
+	}
+
+	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, position.AssetID)
+	if gqlErr != nil || gqlAsset == nil {
+		log.Printf("buildGraphQLTransaction: skipping transaction %s: asset lookup failed asset=%s err=%v", tx.ID, position.AssetID, gqlErr)
+		return nil
+	}
+
+	portfolio, portfolioErr := r.UOW.Portfolio().GetByID(ctx, position.PortfolioID)
+	if portfolioErr != nil || portfolio == nil {
+		log.Printf("buildGraphQLTransaction: skipping transaction %s: portfolio lookup failed portfolio=%s err=%v", tx.ID, position.PortfolioID, portfolioErr)
+		return nil
+	}
+
+	mapped := mapTransactionToGQL(*tx)
+	mapped.Asset = gqlAsset
+	mapped.Portfolio = mapPortfolioToGQL(*portfolio)
+	return mapped
 }

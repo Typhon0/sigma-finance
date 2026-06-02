@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sigma_finance/internal/domain/model"
 	"strconv"
@@ -16,11 +17,15 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// alphavantageMaxCooldown is the maximum cooldown duration for rate limiting.
+const alphavantageMaxCooldown = 5 * time.Minute
+
 type AlphaVantageProvider struct {
 	client  *http.Client
 	baseURL string
 	cb      *gobreaker.CircuitBreaker
 	limiter *rate.Limiter
+	CooldownMixin
 }
 
 func NewAlphaVantageProvider() Provider {
@@ -34,7 +39,7 @@ func NewAlphaVantageProvider() Provider {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			fmt.Printf("AlphaVantage circuit breaker: %s -> %s\n", from, to)
+			log.Printf("AlphaVantage circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -49,9 +54,10 @@ func NewAlphaVantageProvider() Provider {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
-		baseURL: "https://www.alphavantage.co/query",
-		cb:      cb,
-		limiter: limiter,
+		baseURL:       "https://www.alphavantage.co/query",
+		cb:            cb,
+		limiter:       limiter,
+		CooldownMixin: NewCooldownMixin(alphavantageMaxCooldown),
 	}
 }
 
@@ -107,6 +113,10 @@ func (a *AlphaVantageProvider) GetCandles(ctx context.Context, req CandleRequest
 		return nil, fmt.Errorf("alpha vantage requires API key")
 	}
 
+	if a.IsInCooldown() {
+		return nil, a.CooldownError(a.ID(), a.Name())
+	}
+
 	if err := a.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("alpha vantage rate limit exceeded: %w", err)
 	}
@@ -157,12 +167,15 @@ func (a *AlphaVantageProvider) getStockCandles(ctx context.Context, req CandleRe
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, alphavantageMaxCooldown)
+		a.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -191,12 +204,14 @@ func (a *AlphaVantageProvider) getStockCandles(ctx context.Context, req CandleRe
 
 	if notes, ok := response["Note"].(string); ok {
 		if strings.Contains(notes, "API call frequency") || strings.Contains(notes, "rate limit") {
+			a.EnterCooldown(alphavantageMaxCooldown)
 			return nil, &ProviderError{
-				Provider:  a.ID(),
-				Code:      "RATE_LIMITED",
-				Message:   "Alpha Vantage rate limit message in response",
-				HTTPCode:  200,
-				Retryable: true,
+				Provider:          a.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           "Alpha Vantage rate limit message in response",
+				HTTPCode:          200,
+				Retryable:         true,
+				RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 			}
 		}
 	}
@@ -213,12 +228,14 @@ func (a *AlphaVantageProvider) getStockCandles(ctx context.Context, req CandleRe
 
 	if timeSeriesKey == "" {
 		if _, hasNote := response["Note"]; hasNote {
+			a.EnterCooldown(alphavantageMaxCooldown)
 			return nil, &ProviderError{
-				Provider:  a.ID(),
-				Code:      "RATE_LIMITED",
-				Message:   "Alpha Vantage rate limit message",
-				HTTPCode:  200,
-				Retryable: true,
+				Provider:          a.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           "Alpha Vantage rate limit message",
+				HTTPCode:          200,
+				Retryable:         true,
+				RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 			}
 		}
 		return nil, &ProviderError{
@@ -324,12 +341,15 @@ func (a *AlphaVantageProvider) getForexCandles(ctx context.Context, req CandleRe
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, alphavantageMaxCooldown)
+		a.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage forex rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage forex rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -343,12 +363,14 @@ func (a *AlphaVantageProvider) getForexCandles(ctx context.Context, req CandleRe
 	}
 
 	if _, ok := response["Note"]; ok {
+		a.EnterCooldown(alphavantageMaxCooldown)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit",
-			HTTPCode:  200,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit",
+			HTTPCode:          200,
+			Retryable:         true,
+			RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 		}
 	}
 
@@ -452,12 +474,15 @@ func (a *AlphaVantageProvider) getCryptoCandles(ctx context.Context, req CandleR
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, alphavantageMaxCooldown)
+		a.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage crypto rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage crypto rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -471,12 +496,14 @@ func (a *AlphaVantageProvider) getCryptoCandles(ctx context.Context, req CandleR
 	}
 
 	if _, ok := response["Note"]; ok {
+		a.EnterCooldown(alphavantageMaxCooldown)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit",
-			HTTPCode:  200,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit",
+			HTTPCode:          200,
+			Retryable:         true,
+			RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 		}
 	}
 
@@ -603,6 +630,10 @@ func (a *AlphaVantageProvider) GetQuote(ctx context.Context, req QuoteRequest) (
 		return nil, fmt.Errorf("alpha vantage requires API key")
 	}
 
+	if a.IsInCooldown() {
+		return nil, a.CooldownError(a.ID(), a.Name())
+	}
+
 	if err := a.limiter.Wait(ctx); err != nil {
 		return nil, &ProviderError{
 			Provider:  a.ID(),
@@ -640,12 +671,15 @@ func (a *AlphaVantageProvider) doGetQuote(ctx context.Context, req QuoteRequest)
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests || resp.StatusCode == http.StatusForbidden {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, alphavantageMaxCooldown)
+		a.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -670,12 +704,14 @@ func (a *AlphaVantageProvider) doGetQuote(ctx context.Context, req QuoteRequest)
 	}
 
 	if _, ok := response["Note"].(string); ok {
+		a.EnterCooldown(alphavantageMaxCooldown)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit",
-			HTTPCode:  200,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit",
+			HTTPCode:          200,
+			Retryable:         true,
+			RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 		}
 	}
 
@@ -709,7 +745,8 @@ func (a *AlphaVantageProvider) doGetQuote(ctx context.Context, req QuoteRequest)
 	volumeStr, ok := globalQuote["06. volume"].(string)
 	var volume int64
 	if ok && volumeStr != "" {
-		volume, _ = strconv.ParseInt(volumeStr, 10, 64)
+		fvol, _ := strconv.ParseFloat(volumeStr, 64)
+		volume = int64(fvol)
 	}
 
 	var timestamp time.Time
@@ -809,6 +846,10 @@ func (a *AlphaVantageProvider) GetTechnicalIndicator(ctx context.Context, req Te
 		return nil, fmt.Errorf("alpha vantage requires API key for technical indicators")
 	}
 
+	if a.IsInCooldown() {
+		return nil, a.CooldownError(a.ID(), a.Name())
+	}
+
 	if err := a.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("alpha vantage rate limit exceeded: %w", err)
 	}
@@ -829,12 +870,15 @@ func (a *AlphaVantageProvider) GetTechnicalIndicator(ctx context.Context, req Te
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, alphavantageMaxCooldown)
+		a.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -849,12 +893,14 @@ func (a *AlphaVantageProvider) GetTechnicalIndicator(ctx context.Context, req Te
 	}
 
 	if _, ok := response["Note"]; ok {
+		a.EnterCooldown(alphavantageMaxCooldown)
 		return nil, &ProviderError{
-			Provider:  a.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Alpha Vantage rate limit",
-			HTTPCode:  200,
-			Retryable: true,
+			Provider:          a.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Alpha Vantage rate limit",
+			HTTPCode:          200,
+			Retryable:         true,
+			RetryAfterSeconds: int(alphavantageMaxCooldown.Seconds()),
 		}
 	}
 

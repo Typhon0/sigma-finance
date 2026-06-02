@@ -257,7 +257,6 @@ export function AlertHistory({ history, onFilter, onExport, className }: AlertHi
 						</PopoverTrigger>
 						<PopoverContent className="w-auto p-0" align="start">
 							<CalendarComponent
-								initialFocus
 								mode="range"
 								defaultMonth={dateRange.from}
 								selected={{ from: dateRange.from, to: dateRange.to }}

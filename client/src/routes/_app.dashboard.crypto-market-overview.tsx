@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CryptoMarketOverview } from "@/components/assets/crypto/CryptoMarketOverview";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { CryptoMarketOverview } from "@/components/CryptoMarketOverview";
 
 export const Route = createFileRoute("/_app/dashboard/crypto-market-overview")({
 	component: () => (

@@ -13,55 +13,55 @@ import (
 
 // RecordDashboardEvent is the resolver for the recordDashboardEvent field.
 func (r *mutationResolver) RecordDashboardEvent(ctx context.Context, input gqlModel.DashboardEventInput) (bool, error) {
-	panic(fmt.Errorf("not implemented: RecordDashboardEvent - recordDashboardEvent"))
+	return false, fmt.Errorf("not implemented: RecordDashboardEvent - recordDashboardEvent")
 }
 
 // CreateAlertRule is the resolver for the createAlertRule field.
 func (r *mutationResolver) CreateAlertRule(ctx context.Context, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error) {
-	panic(fmt.Errorf("not implemented: CreateAlertRule - createAlertRule"))
+	return nil, fmt.Errorf("not implemented: CreateAlertRule - createAlertRule")
 }
 
 // UpdateAlertRule is the resolver for the updateAlertRule field.
 func (r *mutationResolver) UpdateAlertRule(ctx context.Context, id string, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error) {
-	panic(fmt.Errorf("not implemented: UpdateAlertRule - updateAlertRule"))
+	return nil, fmt.Errorf("not implemented: UpdateAlertRule - updateAlertRule")
 }
 
 // DeleteAlertRule is the resolver for the deleteAlertRule field.
 func (r *mutationResolver) DeleteAlertRule(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteAlertRule - deleteAlertRule"))
+	return false, fmt.Errorf("not implemented: DeleteAlertRule - deleteAlertRule")
 }
 
 // SystemHealth is the resolver for the systemHealth field.
 func (r *queryResolver) SystemHealth(ctx context.Context) (*gqlModel.SystemHealth, error) {
-	panic(fmt.Errorf("not implemented: SystemHealth - systemHealth"))
+	return nil, fmt.Errorf("not implemented: SystemHealth - systemHealth")
 }
 
 // PerformanceMetrics is the resolver for the performanceMetrics field.
 func (r *queryResolver) PerformanceMetrics(ctx context.Context, timeRange *string) (*gqlModel.DashboardPerformanceMetrics, error) {
-	panic(fmt.Errorf("not implemented: PerformanceMetrics - performanceMetrics"))
+	return nil, fmt.Errorf("not implemented: PerformanceMetrics - performanceMetrics")
 }
 
 // UserEngagementMetrics is the resolver for the userEngagementMetrics field.
 func (r *queryResolver) UserEngagementMetrics(ctx context.Context, timeRange *string) (*gqlModel.UserEngagementMetrics, error) {
-	panic(fmt.Errorf("not implemented: UserEngagementMetrics - userEngagementMetrics"))
+	return nil, fmt.Errorf("not implemented: UserEngagementMetrics - userEngagementMetrics")
 }
 
 // Metric is the resolver for the metric field.
 func (r *queryResolver) Metric(ctx context.Context, name string) (*gqlModel.Metric, error) {
-	panic(fmt.Errorf("not implemented: Metric - metric"))
+	return nil, fmt.Errorf("not implemented: Metric - metric")
 }
 
 // Metrics is the resolver for the metrics field.
 func (r *queryResolver) Metrics(ctx context.Context) ([]*gqlModel.Metric, error) {
-	panic(fmt.Errorf("not implemented: Metrics - metrics"))
+	return nil, fmt.Errorf("not implemented: Metrics - metrics")
 }
 
 // PerformanceMetricsUpdated is the resolver for the performanceMetricsUpdated field.
 func (r *subscriptionResolver) PerformanceMetricsUpdated(ctx context.Context) (<-chan *gqlModel.DashboardPerformanceMetrics, error) {
-	panic(fmt.Errorf("not implemented: PerformanceMetricsUpdated - performanceMetricsUpdated"))
+	return nil, fmt.Errorf("not implemented: PerformanceMetricsUpdated - performanceMetricsUpdated")
 }
 
 // SystemHealthUpdated is the resolver for the systemHealthUpdated field.
 func (r *subscriptionResolver) SystemHealthUpdated(ctx context.Context) (<-chan *gqlModel.SystemHealth, error) {
-	panic(fmt.Errorf("not implemented: SystemHealthUpdated - systemHealthUpdated"))
+	return nil, fmt.Errorf("not implemented: SystemHealthUpdated - systemHealthUpdated")
 }

@@ -34,6 +34,7 @@ type IUnitOfWork interface {
 	CatalogSyncRun() ICatalogSyncRunRepository
 	FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettingRepository
 	FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository
+	HistoricalDataBackfillJob() IHistoricalDataBackfillJobRepository
 	AssetType() IAssetTypeRepository
 	PortfolioTag() IPortfolioTagRepository
 	AssetTag() IAssetTagRepository
@@ -86,6 +87,7 @@ type UnitOfWork struct {
 	catalogSyncRun             ICatalogSyncRunRepository
 	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
+	historicalDataBackfillJob  IHistoricalDataBackfillJobRepository
 	assetType                  IAssetTypeRepository
 	portfolioTag               IPortfolioTagRepository
 	assetTag                   IAssetTagRepository
@@ -142,6 +144,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		catalogSyncRun:             NewCatalogSyncRunRepository(db),
 		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(db),
 		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(db),
+		historicalDataBackfillJob:  NewHistoricalDataBackfillJobRepository(db),
 		assetType:                  NewAssetTypeRepository(db),
 		portfolioTag:               NewPortfolioTagRepository(db),
 		assetTag:                   NewAssetTagRepository(db),
@@ -191,6 +194,7 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		catalogSyncRun:             NewCatalogSyncRunRepository(&tx),
 		financeDatabaseSyncSetting: NewFinanceDatabaseSyncSettingRepository(&tx),
 		financeDatabaseSyncHistory: NewFinanceDatabaseSyncHistoryRepository(&tx),
+		historicalDataBackfillJob:  NewHistoricalDataBackfillJobRepository(&tx),
 		assetType:                  NewAssetTypeRepository(&tx),
 		portfolioTag:               NewPortfolioTagRepository(&tx),
 		assetTag:                   NewAssetTagRepository(&tx),
@@ -318,6 +322,10 @@ func (uow *UnitOfWork) FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryR
 	return uow.financeDatabaseSyncHistory
 }
 
+func (uow *UnitOfWork) HistoricalDataBackfillJob() IHistoricalDataBackfillJobRepository {
+	return uow.historicalDataBackfillJob
+}
+
 // AssetType returns the asset type repository
 func (uow *UnitOfWork) AssetType() IAssetTypeRepository {
 	return uow.assetType
@@ -381,6 +389,7 @@ type txUnitOfWork struct {
 	catalogSyncRun             ICatalogSyncRunRepository
 	financeDatabaseSyncSetting IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistory IFinanceDatabaseSyncHistoryRepository
+	historicalDataBackfillJob  IHistoricalDataBackfillJobRepository
 	assetType                  IAssetTypeRepository
 	portfolioTag               IPortfolioTagRepository
 	assetTag                   IAssetTagRepository
@@ -482,6 +491,10 @@ func (uow *txUnitOfWork) FinanceDatabaseSyncSetting() IFinanceDatabaseSyncSettin
 
 func (uow *txUnitOfWork) FinanceDatabaseSyncHistory() IFinanceDatabaseSyncHistoryRepository {
 	return uow.financeDatabaseSyncHistory
+}
+
+func (uow *txUnitOfWork) HistoricalDataBackfillJob() IHistoricalDataBackfillJobRepository {
+	return uow.historicalDataBackfillJob
 }
 
 func (uow *txUnitOfWork) AssetType() IAssetTypeRepository {

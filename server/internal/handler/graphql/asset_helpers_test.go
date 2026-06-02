@@ -161,7 +161,10 @@ func (s *stubTagService) GetByID(_ context.Context, _ string) (*model.Tag, error
 func (s *stubTagService) FindAll(_ context.Context, _ ...repository.QueryOption) ([]model.Tag, error) {
 	panic("not implemented")
 }
-func (s *stubTagService) FindByName(_ context.Context, _ string) (*model.Tag, error) {
+func (s *stubTagService) FindByNameAndUserID(_ context.Context, _ string, _ string) (*model.Tag, error) {
+	panic("not implemented")
+}
+func (s *stubTagService) FindAllByUserID(_ context.Context, _ string) ([]model.Tag, error) {
 	panic("not implemented")
 }
 func (s *stubTagService) CreateTag(_ context.Context, _ service.CreateTagInput) (*model.Tag, error) {
@@ -189,7 +192,7 @@ func (s *stubTagService) GetTaggedPortfolios(_ context.Context, _ string) ([]mod
 func (s *stubTagService) GetTagUsageStatistics(_ context.Context, _ string) (service.TagUsageStats, error) {
 	panic("not implemented")
 }
-func (s *stubTagService) FindOrCreateTag(_ context.Context, _ string) (*model.Tag, error) {
+func (s *stubTagService) FindOrCreateTag(_ context.Context, _ string, _ string) (*model.Tag, error) {
 	panic("not implemented")
 }
 func (s *stubTagService) BulkTagAssets(_ context.Context, _ []string, _ string) error {
@@ -205,10 +208,11 @@ func (s *stubTagService) GetAssetsByTag(_ context.Context, _ string) ([]model.As
 // stubPriceRepo implements repository.IPriceRepository for tests.
 // Only GetLatestPrice and GetPriceStatistics are functional.
 type stubPriceRepo struct {
-	latestPrice *model.AssetPrice
-	priceErr    error
-	statistics  *repository.PriceStatistics
-	statsErr    error
+	latestPrice  *model.AssetPrice
+	latestPrices []model.AssetPrice
+	priceErr     error
+	statistics   *repository.PriceStatistics
+	statsErr     error
 }
 
 func (s *stubPriceRepo) GetLatestPrice(_ context.Context, _ string) (*model.AssetPrice, error) {
@@ -237,8 +241,22 @@ func (s *stubPriceRepo) Count(_ context.Context, _ ...repository.QueryOption) (i
 	return 0, fmt.Errorf("not implemented")
 }
 func (s *stubPriceRepo) GetDB() bun.IDB { panic("not implemented") }
-func (s *stubPriceRepo) GetLatestPrices(_ context.Context, _ []string) ([]model.AssetPrice, error) {
-	panic("not implemented")
+func (s *stubPriceRepo) GetLatestPrices(_ context.Context, assetIDs []string) ([]model.AssetPrice, error) {
+	if s.latestPrices != nil {
+		return s.latestPrices, s.priceErr
+	}
+	if s.latestPrice != nil {
+		var res []model.AssetPrice
+		for _, id := range assetIDs {
+			p := *s.latestPrice
+			if p.AssetID == "" {
+				p.AssetID = id
+			}
+			res = append(res, p)
+		}
+		return res, s.priceErr
+	}
+	return nil, s.priceErr
 }
 func (s *stubPriceRepo) GetPriceHistory(_ context.Context, _ string, _ repository.TimeRange) ([]model.AssetPrice, error) {
 	panic("not implemented")
@@ -293,7 +311,10 @@ func (s *stubStockRepo) FindOneBy(_ context.Context, _ ...repository.QueryOption
 	panic("not implemented")
 }
 func (s *stubStockRepo) FindAllBy(_ context.Context, _ ...repository.QueryOption) ([]model.Stock, error) {
-	panic("not implemented")
+	if s.stock != nil {
+		return []model.Stock{*s.stock}, s.err
+	}
+	return nil, s.err
 }
 func (s *stubStockRepo) Count(_ context.Context, _ ...repository.QueryOption) (int, error) {
 	return 0, fmt.Errorf("not implemented")
@@ -318,7 +339,10 @@ func (s *stubCryptoRepo) FindOneBy(_ context.Context, _ ...repository.QueryOptio
 	panic("not implemented")
 }
 func (s *stubCryptoRepo) FindAllBy(_ context.Context, _ ...repository.QueryOption) ([]model.Crypto, error) {
-	panic("not implemented")
+	if s.crypto != nil {
+		return []model.Crypto{*s.crypto}, s.err
+	}
+	return nil, s.err
 }
 func (s *stubCryptoRepo) Count(_ context.Context, _ ...repository.QueryOption) (int, error) {
 	return 0, fmt.Errorf("not implemented")
@@ -343,11 +367,48 @@ func (s *stubFundRepo) FindOneBy(_ context.Context, _ ...repository.QueryOption)
 	panic("not implemented")
 }
 func (s *stubFundRepo) FindAllBy(_ context.Context, _ ...repository.QueryOption) ([]model.Fund, error) {
-	panic("not implemented")
+	if s.fund != nil {
+		return []model.Fund{*s.fund}, s.err
+	}
+	return nil, s.err
 }
 func (s *stubFundRepo) Count(_ context.Context, _ ...repository.QueryOption) (int, error) {
 	return 0, fmt.Errorf("not implemented")
 }
+
+// stubAssetRepo implements repository.IAssetRepository for tests.
+type stubAssetRepo struct {
+	assets []model.Asset
+	err    error
+}
+
+func (s *stubAssetRepo) GetDB() bun.IDB { panic("not implemented") }
+func (s *stubAssetRepo) Create(ctx context.Context, entity *model.Asset) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) Update(ctx context.Context, entity *model.Asset) error { panic("not implemented") }
+func (s *stubAssetRepo) Delete(ctx context.Context, id string) error { panic("not implemented") }
+func (s *stubAssetRepo) GetByID(ctx context.Context, id string) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.Asset, error) {
+	return s.assets, s.err
+}
+func (s *stubAssetRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) { panic("not implemented") }
+
+func (s *stubAssetRepo) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) CountWithFilters(ctx context.Context, filter repository.AssetFilter) (int, error) { panic("not implemented") }
+
+func (s *stubAssetRepo) GetAssetsByType(ctx context.Context, assetType model.AssetType) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetTradeableAssets(ctx context.Context) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) SearchAssetsByName(ctx context.Context, searchTerm string, limit int) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetAssetsByMetadataField(ctx context.Context, field string, value interface{}) ([]model.Asset, error) { panic("not implemented") }
+
+func (s *stubAssetRepo) CreateBatch(ctx context.Context, assets []model.Asset) error { panic("not implemented") }
+func (s *stubAssetRepo) UpdateBatch(ctx context.Context, assets []model.Asset) error { panic("not implemented") }
+
+func (s *stubAssetRepo) GetAssetTypes(ctx context.Context) ([]model.AssetType, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) { panic("not implemented") }
 
 // stubUOW implements repository.IUnitOfWork for tests.
 // Only the methods needed by getAssetWithDetails are functional;
@@ -357,6 +418,7 @@ type stubUOW struct {
 	stockRepo  repository.IStockRepository
 	cryptoRepo repository.ICryptoRepository
 	fundRepo   repository.IFundRepository
+	assetRepo  repository.IAssetRepository
 }
 
 func (u *stubUOW) AssetPrice() repository.IPriceRepository {
@@ -388,7 +450,12 @@ func (u *stubUOW) Do(_ context.Context, _ func(repository.IUnitOfWork) error) er
 }
 func (u *stubUOW) User() repository.IUserRepository                     { panic("not implemented") }
 func (u *stubUOW) Portfolio() repository.IPortfolioRepository           { panic("not implemented") }
-func (u *stubUOW) Asset() repository.IAssetRepository                   { panic("not implemented") }
+func (u *stubUOW) Asset() repository.IAssetRepository {
+	if u.assetRepo != nil {
+		return u.assetRepo
+	}
+	return &stubAssetRepo{}
+}
 func (u *stubUOW) Position() repository.IPositionRepository             { panic("not implemented") }
 func (u *stubUOW) Transaction() repository.ITransactionRepository       { panic("not implemented") }
 func (u *stubUOW) Watchlist() repository.IWatchlistRepository           { panic("not implemented") }
@@ -414,6 +481,9 @@ func (u *stubUOW) FinanceDatabaseSyncSetting() repository.IFinanceDatabaseSyncSe
 	panic("not implemented")
 }
 func (u *stubUOW) FinanceDatabaseSyncHistory() repository.IFinanceDatabaseSyncHistoryRepository {
+	panic("not implemented")
+}
+func (u *stubUOW) HistoricalDataBackfillJob() repository.IHistoricalDataBackfillJobRepository {
 	panic("not implemented")
 }
 func (u *stubUOW) MarketDataCredential() repository.IMarketDataCredentialRepository {
@@ -449,6 +519,26 @@ func newTestResolver(
 	ts service.ITagService,
 	uow repository.IUnitOfWork,
 ) *Resolver {
+	if su, ok := uow.(*stubUOW); ok && su.assetRepo == nil {
+		var assets []model.Asset
+		var err error
+		if sas, ok := as.(*stubAssetService); ok {
+			if sas.asset != nil {
+				assets = []model.Asset{*sas.asset}
+			}
+			err = sas.err
+		} else if pas, ok := as.(*perIDAssetService); ok {
+			for _, a := range pas.assets {
+				if a != nil {
+					assets = append(assets, *a)
+				}
+			}
+		}
+		su.assetRepo = &stubAssetRepo{
+			assets: assets,
+			err:    err,
+		}
+	}
 	return &Resolver{
 		PortfolioService: ps,
 		AssetService:     as,

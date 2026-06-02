@@ -2,6 +2,7 @@
  * Chart virtualization utilities for handling large datasets efficiently
  */
 
+import React from "react";
 import type { DataPoint } from "./data-sampling";
 
 export interface VirtualChunk {
@@ -37,12 +38,16 @@ export class ChartVirtualizer {
 	private dataLoader: (startIndex: number, endIndex: number) => Promise<DataPoint[]>;
 	private loadingPromises = new Map<string, Promise<DataPoint[]>>();
 	private observers: Set<(state: VirtualizationState) => void> = new Set();
+	private globalMinTime?: number;
+	private globalMaxTime?: number;
 
 	constructor(
 		totalDataPoints: number,
 		chunkSize: number = 1000,
 		preloadChunks: number = 2,
 		dataLoader: (startIndex: number, endIndex: number) => Promise<DataPoint[]>,
+		globalMinTime?: number,
+		globalMaxTime?: number,
 	) {
 		this.state = {
 			chunks: new Map(),
@@ -52,6 +57,8 @@ export class ChartVirtualizer {
 			preloadChunks,
 		};
 		this.dataLoader = dataLoader;
+		this.globalMinTime = globalMinTime;
+		this.globalMaxTime = globalMaxTime;
 	}
 
 	/**
@@ -87,8 +94,6 @@ export class ChartVirtualizer {
 		startIndex: number;
 		endIndex: number;
 	} {
-		// This is a simplified calculation - in reality, you'd need to map
-		// time ranges to data indices based on your data structure
 		const totalTimeRange = viewport.endTime - viewport.startTime;
 
 		if (totalTimeRange <= 0 || this.state.totalDataPoints <= 0) {
@@ -98,14 +103,52 @@ export class ChartVirtualizer {
 			};
 		}
 
-		// Calculate approximate indices based on time range
-		const timePerDataPoint = totalTimeRange / Math.max(1, this.state.totalDataPoints);
-		const viewportDataPoints = Math.ceil(totalTimeRange / timePerDataPoint);
+		// Find global time bounds
+		let minTime = this.globalMinTime;
+		let maxTime = this.globalMaxTime;
 
-		const startIndex = Math.max(0, Math.floor(this.state.totalDataPoints * 0.1)); // Start at 10% of data
-		const endIndex = Math.min(
-			this.state.totalDataPoints - 1,
-			startIndex + Math.max(100, viewportDataPoints),
+		if (minTime === undefined || maxTime === undefined) {
+			let scanMin = Infinity;
+			let scanMax = -Infinity;
+			for (const chunk of this.state.chunks.values()) {
+				if (chunk.isLoaded && chunk.data.length > 0) {
+					const firstPoint = chunk.data[0];
+					const lastPoint = chunk.data[chunk.data.length - 1];
+					if (firstPoint && lastPoint) {
+						scanMin = Math.min(scanMin, firstPoint.timestamp);
+						scanMax = Math.max(scanMax, lastPoint.timestamp);
+					}
+				}
+			}
+			if (scanMin !== Infinity && scanMax !== -Infinity) {
+				minTime = scanMin;
+				maxTime = scanMax;
+			}
+		}
+
+		// If time bounds are still unknown, fallback to a uniform estimate
+		if (minTime === undefined || maxTime === undefined || maxTime <= minTime) {
+			const timePerDataPoint = totalTimeRange / Math.max(1, this.state.totalDataPoints);
+			const viewportDataPoints = Math.ceil(totalTimeRange / timePerDataPoint);
+			const startIndex = Math.max(0, Math.floor(this.state.totalDataPoints * 0.1));
+			const endIndex = Math.min(
+				this.state.totalDataPoints - 1,
+				startIndex + Math.max(100, viewportDataPoints),
+			);
+			return { startIndex, endIndex };
+		}
+
+		const totalSpan = maxTime - minTime;
+		const startPct = Math.max(0, Math.min(1, (viewport.startTime - minTime) / totalSpan));
+		const endPct = Math.max(0, Math.min(1, (viewport.endTime - minTime) / totalSpan));
+
+		const startIndex = Math.max(
+			0,
+			Math.min(this.state.totalDataPoints - 1, Math.floor(startPct * this.state.totalDataPoints)),
+		);
+		const endIndex = Math.max(
+			startIndex,
+			Math.min(this.state.totalDataPoints - 1, Math.ceil(endPct * this.state.totalDataPoints)),
 		);
 
 		return { startIndex, endIndex };
@@ -356,6 +399,8 @@ export function useChartVirtualization(
 	totalDataPoints: number,
 	chunkSize: number,
 	dataLoader: (startIndex: number, endIndex: number) => Promise<DataPoint[]>,
+	globalMinTime?: number,
+	globalMaxTime?: number,
 ) {
 	const virtualizerRef = React.useRef<ChartVirtualizer | null>(null);
 	const [state, setState] = React.useState<VirtualizationState | null>(null);
@@ -367,6 +412,8 @@ export function useChartVirtualization(
 			chunkSize,
 			2, // preloadChunks
 			dataLoader,
+			globalMinTime,
+			globalMaxTime,
 		);
 
 		const unsubscribe = virtualizer.subscribe(setState);
@@ -376,7 +423,7 @@ export function useChartVirtualization(
 			unsubscribe();
 			virtualizer.clearCache();
 		};
-	}, [totalDataPoints, chunkSize, dataLoader]);
+	}, [totalDataPoints, chunkSize, dataLoader, globalMinTime, globalMaxTime]);
 
 	const updateViewport = React.useCallback(async (viewport: ViewportInfo) => {
 		if (!virtualizerRef.current) return [];
@@ -417,6 +464,3 @@ export function useChartVirtualization(
 		getCacheStats,
 	};
 }
-
-// Add React import for the hook
-import React from "react";

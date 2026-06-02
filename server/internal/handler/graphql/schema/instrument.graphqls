@@ -150,6 +150,31 @@ type ManualInstrumentPayload {
   offset: Int!
 }
 
+type HistoricalDataBackfillJob {
+  id: ID!
+  userId: ID
+  portfolioId: ID!
+  assetId: ID!
+  instrumentId: ID!
+  provider: String!
+  status: String!
+  step: String!
+  progress: Int!
+  rowsWritten: Int!
+  errorCode: String
+  errorMessage: String
+  requestedFrom: Time!
+  requestedTo: Time!
+  createdAt: Time!
+  startedAt: Time
+  finishedAt: Time
+}
+
+input HistoricalDataBackfillJobFilterInput {
+  status: String
+  provider: String
+}
+
 input InstrumentSearchInput {
   query: String!
   assetTypes: [InstrumentAssetType!]
@@ -222,6 +247,9 @@ extend type Query {
   searchInstruments(input: InstrumentSearchInput!): InstrumentSearchPayload! @auth
   searchInstrumentsOnline(input: InstrumentSearchInput!): OnlineInstrumentSearchPayload! @auth
   manualInstruments(filter: ManualInstrumentFilterInput, pagination: PaginationInput): ManualInstrumentPayload! @auth
+  historicalDataBackfillJob(id: ID!): HistoricalDataBackfillJob @auth
+  latestHistoricalDataBackfillJob(portfolioId: ID!, assetId: ID!): HistoricalDataBackfillJob @auth
+  historicalDataBackfillJobs(filter: HistoricalDataBackfillJobFilterInput, pagination: PaginationInput): [HistoricalDataBackfillJob!]! @auth
 }
 
 extend type Mutation {
@@ -230,4 +258,5 @@ extend type Mutation {
   updateManualInstrument(id: ID!, input: UpdateManualInstrumentInput!): Instrument! @auth
   archiveManualInstrument(id: ID!): Instrument! @auth
   restoreManualInstrument(id: ID!): Instrument! @auth
+  retryHistoricalDataBackfillJob(id: ID!): HistoricalDataBackfillJob! @auth
 }

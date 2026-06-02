@@ -17,6 +17,31 @@ import (
 	"strings"
 )
 
+func mapHistoricalBackfillJobToGraphQL(job *model.HistoricalDataBackfillJob) *gqlModel.HistoricalDataBackfillJob {
+	if job == nil {
+		return nil
+	}
+	return &gqlModel.HistoricalDataBackfillJob{
+		ID:            job.ID,
+		UserID:        job.UserID,
+		PortfolioID:   job.PortfolioID,
+		AssetID:       job.AssetID,
+		InstrumentID:  job.InstrumentID,
+		Provider:      job.Provider,
+		Status:        job.Status,
+		Step:          job.Step,
+		Progress:      int32(job.Progress),
+		RowsWritten:   int32(job.RowsWritten),
+		ErrorCode:     job.ErrorCode,
+		ErrorMessage:  job.ErrorMessage,
+		RequestedFrom: job.RequestedFrom,
+		RequestedTo:   job.RequestedTo,
+		CreatedAt:     job.CreatedAt,
+		StartedAt:     job.StartedAt,
+		FinishedAt:    job.FinishedAt,
+	}
+}
+
 // PersistDiscoveredInstrument is the resolver for the persistDiscoveredInstrument field.
 func (r *mutationResolver) PersistDiscoveredInstrument(ctx context.Context, input gqlModel.PersistDiscoveredInstrumentInput) (*gqlModel.Instrument, error) {
 	userID, _ := getUserIDFromContext(ctx)
@@ -137,6 +162,24 @@ func (r *mutationResolver) RestoreManualInstrument(ctx context.Context, id strin
 	return mapInstrumentDetailsToGraphQL(details), nil
 }
 
+// RetryHistoricalDataBackfillJob is the resolver for the retryHistoricalDataBackfillJob field.
+func (r *mutationResolver) RetryHistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error) {
+	userID, _ := getUserIDFromContext(ctx)
+	var userPtr *string
+	if userID != "" {
+		userPtr = &userID
+	}
+	includeAll := false
+	if _, adminErr := requireCatalogAdmin(ctx, r.Resolver); adminErr == nil {
+		includeAll = true
+	}
+	job, err := r.InstrumentService.RetryHistoricalDataBackfillJob(ctx, id, userPtr, includeAll)
+	if err != nil {
+		return nil, err
+	}
+	return mapHistoricalBackfillJobToGraphQL(job), nil
+}
+
 // Instrument is the resolver for the instrument field.
 func (r *queryResolver) Instrument(ctx context.Context, id string) (*gqlModel.Instrument, error) {
 	if r.InstrumentService == nil {
@@ -240,4 +283,83 @@ func (r *queryResolver) ManualInstruments(ctx context.Context, filter *gqlModel.
 		Limit:   int32(payload.Limit),
 		Offset:  int32(payload.Offset),
 	}, nil
+}
+
+// HistoricalDataBackfillJob is the resolver for the historicalDataBackfillJob field.
+func (r *queryResolver) HistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error) {
+	userID, _ := getUserIDFromContext(ctx)
+	var userPtr *string
+	if userID != "" {
+		userPtr = &userID
+	}
+	includeAll := false
+	if _, adminErr := requireCatalogAdmin(ctx, r.Resolver); adminErr == nil {
+		includeAll = true
+	}
+	job, err := r.InstrumentService.GetHistoricalDataBackfillJob(ctx, id, userPtr, includeAll)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return mapHistoricalBackfillJobToGraphQL(job), nil
+}
+
+// LatestHistoricalDataBackfillJob is the resolver for the latestHistoricalDataBackfillJob field.
+func (r *queryResolver) LatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string) (*gqlModel.HistoricalDataBackfillJob, error) {
+	userID, _ := getUserIDFromContext(ctx)
+	var userPtr *string
+	if userID != "" {
+		userPtr = &userID
+	}
+	includeAll := false
+	if _, adminErr := requireCatalogAdmin(ctx, r.Resolver); adminErr == nil {
+		includeAll = true
+	}
+	job, err := r.InstrumentService.GetLatestHistoricalDataBackfillJob(ctx, portfolioID, assetID, userPtr, includeAll)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return mapHistoricalBackfillJobToGraphQL(job), nil
+}
+
+// HistoricalDataBackfillJobs is the resolver for the historicalDataBackfillJobs field.
+func (r *queryResolver) HistoricalDataBackfillJobs(ctx context.Context, filter *gqlModel.HistoricalDataBackfillJobFilterInput, pagination *gqlModel.PaginationInput) ([]*gqlModel.HistoricalDataBackfillJob, error) {
+	userID, _ := getUserIDFromContext(ctx)
+	var userPtr *string
+	if userID != "" {
+		userPtr = &userID
+	}
+	includeAll := false
+	if _, adminErr := requireCatalogAdmin(ctx, r.Resolver); adminErr == nil {
+		includeAll = true
+	}
+	limit := 50
+	offset := 0
+	if pagination != nil {
+		if pagination.Limit != nil {
+			limit = int(*pagination.Limit)
+		}
+		if pagination.Offset != nil {
+			offset = int(*pagination.Offset)
+		}
+	}
+	repoFilter := repository.HistoricalDataBackfillJobFilter{Limit: limit, Offset: offset}
+	if filter != nil {
+		repoFilter.Status = filter.Status
+		repoFilter.Provider = filter.Provider
+	}
+	rows, err := r.InstrumentService.ListHistoricalDataBackfillJobs(ctx, repoFilter, userPtr, includeAll)
+	if err != nil {
+		return nil, err
+	}
+	result := make([]*gqlModel.HistoricalDataBackfillJob, 0, len(rows))
+	for i := range rows {
+		result = append(result, mapHistoricalBackfillJobToGraphQL(&rows[i]))
+	}
+	return result, nil
 }

@@ -13,12 +13,12 @@ import (
 
 // PortfolioUpdates is the resolver for the portfolioUpdates field.
 func (r *subscriptionResolver) PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error) {
-	panic(fmt.Errorf("not implemented: PortfolioUpdates - portfolioUpdates"))
+	return nil, fmt.Errorf("not implemented: PortfolioUpdates - portfolioUpdates")
 }
 
 // TransactionUpdates is the resolver for the transactionUpdates field.
 func (r *subscriptionResolver) TransactionUpdates(ctx context.Context, userID string) (<-chan *gqlModel.TransactionUpdatePayload, error) {
-	panic(fmt.Errorf("not implemented: TransactionUpdates - transactionUpdates"))
+	return nil, fmt.Errorf("not implemented: TransactionUpdates - transactionUpdates")
 }
 
 // Subscription returns SubscriptionResolver implementation.

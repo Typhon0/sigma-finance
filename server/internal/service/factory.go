@@ -40,6 +40,7 @@ type ServiceContainer struct {
 	Monitoring      *MonitoringService
 	Instrument      InstrumentService
 	MarketDataPacks marketdatapacks.Service
+	LogBuffer       *LogBuffer
 }
 
 // NewServiceContainer creates a new service container with all services initialized
@@ -149,6 +150,11 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	)
 	fxRateService := NewFXRateService(uow, 60)
 
+	// Initialize log buffer and capture standard log output
+	logBuffer := NewLogBuffer(10000)
+	logBuffer.CaptureStandardLog()
+	log.Printf("[ServiceContainer] log buffer initialized with capacity 10000")
+
 	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
@@ -177,12 +183,16 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 			NewNotificationService(uow, emailService, cfg),
 		),
 		Monitoring:      NewMonitoringService(),
-		Instrument:      NewInstrumentService(uow, discoveryClient, cryptoDiscoveryClient, marketDataService),
+		Instrument:      NewInstrumentServiceWithCache(uow, discoveryClient, cryptoDiscoveryClient, NewSearchCache(500, 5*time.Minute), marketDataService),
 		MarketDataPacks: marketDataPackService,
+		LogBuffer:       logBuffer,
 	}
 
 	if portfolioService, ok := container.Portfolio.(*PortfolioService); ok {
 		portfolioService.SetMarketDataService(marketDataService)
+	}
+	if instrumentService, ok := container.Instrument.(*instrumentService); ok {
+		instrumentService.StartHistoricalBackfillWorker()
 	}
 
 	logMarketDataStartupSummary(uow, cfg)
@@ -331,14 +341,14 @@ func startPriceSchedulerWithAdvisoryLock(container *ServiceContainer, db *bun.DB
 
 func tryAcquireAdvisoryLock(ctx context.Context, conn bun.Conn, lockID int64) (bool, error) {
 	var acquired bool
-	if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock($1)", lockID).Scan(&acquired); err != nil {
+	if err := conn.QueryRowContext(ctx, "SELECT pg_try_advisory_lock(?)", lockID).Scan(&acquired); err != nil {
 		return false, err
 	}
 	return acquired, nil
 }
 
 func releaseAdvisoryLock(ctx context.Context, conn bun.Conn, lockID int64) error {
-	if _, err := conn.ExecContext(ctx, "SELECT pg_advisory_unlock($1)", lockID); err != nil {
+	if _, err := conn.ExecContext(ctx, "SELECT pg_advisory_unlock(?)", lockID); err != nil {
 		return err
 	}
 	return nil

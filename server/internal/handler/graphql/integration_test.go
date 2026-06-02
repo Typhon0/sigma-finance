@@ -8,10 +8,12 @@ import (
 
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"sigma_finance/internal/testutil"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -171,6 +173,11 @@ func TestGraphQLIntegration_PortfolioOperations(t *testing.T) {
 	}
 	testUser, err := mutationResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
+
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
 
 	t.Run("CreatePortfolio", func(t *testing.T) {
 		input := gqlModel.CreatePortfolioInput{
@@ -473,8 +480,12 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	// Setup services
 	uow := repository.NewUnitOfWork(testDB.DB)
 	transactionService := service.NewTransactionService(uow)
+	assetService := service.NewAssetService(uow.Asset())
+	tagService := service.NewTagService(uow)
 	resolver := &Resolver{
 		TransactionService: transactionService,
+		AssetService:       assetService,
+		TagService:         tagService,
 		UOW:                uow,
 	}
 
@@ -483,11 +494,30 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	// Seed test data
 	testData := testDB.SeedTestData(ctx)
 	testUser := testData.Users[0]
+	testAsset := testData.Assets[0]
+
+	// Create a portfolio
+	portfolio := &model.Portfolio{
+		UserID: testUser.ID,
+		Name:   "Test Portfolio",
+	}
+	err := testDB.DB.NewInsert().Model(portfolio).Returning("*").Scan(ctx, portfolio)
+	require.NoError(t, err)
+
+	// Create a position
+	position := &model.Position{
+		PortfolioID: portfolio.ID,
+		AssetID:     testAsset.ID,
+		Quantity:    decimal.NewFromInt(10),
+	}
+	err = testDB.DB.NewInsert().Model(position).Returning("*").Scan(ctx, position)
+	require.NoError(t, err)
 
 	t.Run("GetTransaction", func(t *testing.T) {
 		// Create a transaction directly in the database for testing
 		transaction := &model.Transaction{
 			UserID:     testUser.ID,
+			PositionID: &position.ID,
 			Type:       model.TransactionTypeBuy,
 			Amount:     model.Money(150000), // 1500.00
 			ExecutedAt: time.Now(),
@@ -508,12 +538,14 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 		transactions := []*model.Transaction{
 			{
 				UserID:     testUser.ID,
+				PositionID: &position.ID,
 				Type:       model.TransactionTypeBuy,
 				Amount:     model.Money(50000),
 				ExecutedAt: time.Now().AddDate(0, 0, -1),
 			},
 			{
 				UserID:     testUser.ID,
+				PositionID: &position.ID,
 				Type:       model.TransactionTypeSell,
 				Amount:     model.Money(40000),
 				ExecutedAt: time.Now(),
@@ -746,6 +778,11 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 	testUser, err := mutationResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
 
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
+
 	t.Run("PortfolioWithAssets", func(t *testing.T) {
 		// Create a portfolio
 		portfolioInput := gqlModel.CreatePortfolioInput{
@@ -793,7 +830,10 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 
 	t.Run("TaggingOperations", func(t *testing.T) {
 		// Create a tag first
-		tag := &model.Tag{Name: "Tech Stock"}
+		tag := &model.Tag{
+			Name:   "Tech Stock",
+			UserID: testUser.ID,
+		}
 		err := testDB.DB.NewInsert().Model(tag).Returning("*").Scan(ctx, tag)
 		require.NoError(t, err)
 
@@ -934,12 +974,19 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 
 		// Create portfolios for both users
 		for i, user := range []*gqlModel.User{testUser, user2} {
+			userCtx := ctx
+			if user.ID == user2.ID {
+				userCtx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+					ID:    user2.ID,
+					Email: user2.Email,
+				})
+			}
 			for j := 0; j < 3; j++ {
 				portfolioInput := gqlModel.CreatePortfolioInput{
 					UserID: user.ID,
 					Name:   fmt.Sprintf("Portfolio %d-%d", i, j),
 				}
-				_, err := mutationResolver.CreatePortfolio(ctx, portfolioInput)
+				_, err := mutationResolver.CreatePortfolio(userCtx, portfolioInput)
 				require.NoError(t, err)
 			}
 		}

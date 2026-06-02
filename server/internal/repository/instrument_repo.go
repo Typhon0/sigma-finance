@@ -127,6 +127,13 @@ func (r *InstrumentRepository) GetByGlobalIdentifier(ctx context.Context, field,
 	return &instruments[0], nil
 }
 
+// Search performs instrument search across four strategies in order:
+// 1. Exact symbol match (B-tree indexed)
+// 2. Exact text match (B-tree indexed)
+// 3. tsvector full-text search (GIN indexed) — NEW in large-effort tier
+// 4. Fuzzy trigram search (pg_trgm) — expensive fallback
+// Strategies 1+2 run in parallel. Strategy 3 runs only if results are insufficient.
+// Strategy 4 runs only if all prior strategies fail to produce enough results.
 func (r *InstrumentRepository) Search(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error) {
 	symbolQuery := normalizeSymbolSearchQuery(query)
 	textQuery := normalizeTextSearchQuery(query)
@@ -135,28 +142,119 @@ func (r *InstrumentRepository) Search(ctx context.Context, query string, filter 
 	}
 	limit := max(filter.Limit, 1)
 	offset := max(filter.Offset, 0)
-	rows := make([]InstrumentSearchRow, 0, limit+offset)
 
-	exactRows, err := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
-	if err != nil {
-		return nil, err
+	// Run exact symbol and text searches in parallel (both fast, B-tree indexed)
+	type searchResult struct {
+		rows []InstrumentSearchRow
+		err  error
 	}
-	exactRows = filterVisibleInstrumentSearchRows(exactRows, filter.OwnerUserID)
-	scoreInstrumentRows(exactRows, symbolQuery, textQuery)
-	rows = append(rows, exactRows...)
+	exactCh := make(chan searchResult, 1)
+	textCh := make(chan searchResult, 1)
 
+	go func() {
+		r, e := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
+		exactCh <- searchResult{r, e}
+	}()
+	go func() {
+		r, e := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
+		textCh <- searchResult{r, e}
+	}()
+
+	exactRes := <-exactCh
+	if exactRes.err != nil {
+		return nil, exactRes.err
+	}
+	exactRes.rows = filterVisibleInstrumentSearchRows(exactRes.rows, filter.OwnerUserID)
+	scoreInstrumentRows(exactRes.rows, symbolQuery, textQuery)
+
+	textRes := <-textCh
+	if textRes.err != nil {
+		return nil, textRes.err
+	}
+	textRes.rows = filterVisibleInstrumentSearchRows(textRes.rows, filter.OwnerUserID)
+	scoreInstrumentRows(textRes.rows, symbolQuery, textQuery)
+
+	rows := mergeInstrumentSearchRows(exactRes.rows, textRes.rows)
 	topScore := maxScore(rows)
-	if len(rows) < limit || topScore < 850 {
-		textRows, err := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
+
+	// Try tsvector full-text search before falling back to expensive pg_trgm fuzzy.
+	// tsvector is GIN-indexed and handles partial-word matching (e.g. "appl" → "Apple"),
+	// multi-word queries, and weighted ranking (symbol > name > aliases).
+	if len(rows) < limit || topScore < 500 {
+		tsRows, err := r.searchTsvectorTextInstruments(ctx, textQuery, filter, limit+offset)
 		if err != nil {
 			return nil, err
 		}
-		textRows = filterVisibleInstrumentSearchRows(textRows, filter.OwnerUserID)
-		scoreInstrumentRows(textRows, symbolQuery, textQuery)
-		rows = mergeInstrumentSearchRows(rows, textRows)
+		tsRows = filterVisibleInstrumentSearchRows(tsRows, filter.OwnerUserID)
+		scoreInstrumentRows(tsRows, symbolQuery, textQuery)
+		rows = mergeInstrumentSearchRows(rows, tsRows)
 		topScore = maxScore(rows)
 	}
 
+	// Only run expensive fuzzy (trigram) search if all prior strategies are insufficient
+	if len(rows) < limit || topScore < 700 {
+		fuzzyRows, err := r.searchFuzzyInstruments(ctx, symbolQuery, textQuery, filter, limit+offset)
+		if err != nil {
+			return nil, err
+		}
+		fuzzyRows = filterVisibleInstrumentSearchRows(fuzzyRows, filter.OwnerUserID)
+		scoreInstrumentRows(fuzzyRows, symbolQuery, textQuery)
+		rows = mergeInstrumentSearchRows(rows, fuzzyRows)
+	}
+
+	sortInstrumentRows(rows)
+	rows = sliceInstrumentSearchRows(rows, offset, limit)
+	return rows, nil
+}
+
+// SearchBaseline mirrors the pre-tsvector Search behavior — exact symbol + exact text
+// (in parallel), then fuzzy trigram as fallback. No tsvector step.
+//
+// BENCHMARK ONLY — keep in sync with Search(). Any changes to Search()'s strategy
+// orchestration, scoring thresholds, or merge logic MUST be reflected here.
+func (r *InstrumentRepository) SearchBaseline(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error) {
+	symbolQuery := normalizeSymbolSearchQuery(query)
+	textQuery := normalizeTextSearchQuery(query)
+	if symbolQuery == "" && textQuery == "" {
+		return []InstrumentSearchRow{}, nil
+	}
+	limit := max(filter.Limit, 1)
+	offset := max(filter.Offset, 0)
+
+	type searchResult struct {
+		rows []InstrumentSearchRow
+		err  error
+	}
+	exactCh := make(chan searchResult, 1)
+	textCh := make(chan searchResult, 1)
+
+	go func() {
+		r, e := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
+		exactCh <- searchResult{r, e}
+	}()
+	go func() {
+		r, e := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
+		textCh <- searchResult{r, e}
+	}()
+
+	exactRes := <-exactCh
+	if exactRes.err != nil {
+		return nil, exactRes.err
+	}
+	exactRes.rows = filterVisibleInstrumentSearchRows(exactRes.rows, filter.OwnerUserID)
+	scoreInstrumentRows(exactRes.rows, symbolQuery, textQuery)
+
+	textRes := <-textCh
+	if textRes.err != nil {
+		return nil, textRes.err
+	}
+	textRes.rows = filterVisibleInstrumentSearchRows(textRes.rows, filter.OwnerUserID)
+	scoreInstrumentRows(textRes.rows, symbolQuery, textQuery)
+
+	rows := mergeInstrumentSearchRows(exactRes.rows, textRes.rows)
+	topScore := maxScore(rows)
+
+	// Only run expensive fuzzy (trigram) search if exact strategies are insufficient
 	if len(rows) < limit || topScore < 700 {
 		fuzzyRows, err := r.searchFuzzyInstruments(ctx, symbolQuery, textQuery, filter, limit+offset)
 		if err != nil {
@@ -186,11 +284,21 @@ func (r *InstrumentRepository) searchExactSymbolInstruments(ctx context.Context,
 		Model(&rows).
 		ModelTableExpr("sigma_finance.instruments AS i").
 		ColumnExpr("i.*").
-		ColumnExpr("NULL AS alias_match").
-		Where("(i.normalized_symbol = ? OR i.normalized_symbol LIKE ?)", symbolQuery, symbolQuery+"%")
+		ColumnExpr("NULL AS alias_match")
 
+	// Build symbol-matching condition: exact/prefix match on normalized_symbol
+	// (and standard identifiers) OR ticker-candidate typo match.
+	// Use OR between them (not AND) so that exact prefix match (e.g. "AAPL"
+	// matching "AAPL.US" via LIKE 'AAPL%') isn't nullified by the IN clause
+	// whose candidates are exactly the same length as the query.
 	if candidates := buildTickerCandidates(symbolQuery); len(candidates) > 0 {
-		querySQL = querySQL.Where("i.normalized_symbol IN (?)", bun.In(candidates))
+		querySQL = querySQL.WhereGroup(" OR ", func(q *bun.SelectQuery) *bun.SelectQuery {
+			q = q.Where("(i.normalized_symbol = ? OR i.normalized_symbol LIKE ? OR i.isin = ? OR i.cusip = ? OR i.figi = ?)", symbolQuery, symbolQuery+"%", symbolQuery, symbolQuery, symbolQuery)
+			q = q.Where("i.normalized_symbol IN (?)", bun.In(candidates))
+			return q
+		})
+	} else {
+		querySQL = querySQL.Where("(i.normalized_symbol = ? OR i.normalized_symbol LIKE ? OR i.isin = ? OR i.cusip = ? OR i.figi = ?)", symbolQuery, symbolQuery+"%", symbolQuery, symbolQuery, symbolQuery)
 	}
 
 	if len(filter.AssetTypes) > 0 {
@@ -247,6 +355,76 @@ func (r *InstrumentRepository) searchExactTextInstruments(ctx context.Context, t
 	}
 
 	return rows, nil
+}
+
+// searchTsvectorTextInstruments uses PostgreSQL full-text search (tsvector) for
+// partial-word matching with weighted ranking. The search_vector column is
+// auto-populated by a database trigger from normalized_symbol (weight A),
+// normalized_name (weight B), and instrument_aliases.normalized_alias_text (weight C).
+//
+// The query is tokenized into words, each prefixed with :* for prefix matching,
+// and joined with | (OR) for broad matching. Results are ranked by ts_rank
+// which accounts for the weighted contributions of symbol, name, and aliases.
+func (r *InstrumentRepository) searchTsvectorTextInstruments(ctx context.Context, textQuery string, filter InstrumentSearchFilter, limit int) ([]InstrumentSearchRow, error) {
+	if textQuery == "" {
+		return []InstrumentSearchRow{}, nil
+	}
+
+	tsquery := buildTsquery(textQuery)
+	if tsquery == "" {
+		return []InstrumentSearchRow{}, nil
+	}
+
+	var rows []InstrumentSearchRow
+	querySQL := r.db.NewSelect().
+		Model(&rows).
+		ModelTableExpr("sigma_finance.instruments AS i").
+		ColumnExpr("i.*").
+		ColumnExpr("(SELECT a.normalized_alias_text FROM sigma_finance.instrument_aliases AS a WHERE a.instrument_id = i.id AND to_tsvector('simple', a.normalized_alias_text) @@ to_tsquery('simple', ?) ORDER BY ts_rank(to_tsvector('simple', a.normalized_alias_text), to_tsquery('simple', ?)) DESC LIMIT 1) AS alias_match", tsquery, tsquery).
+		Where("i.search_vector @@ to_tsquery('simple', ?)", tsquery)
+
+	if len(filter.AssetTypes) > 0 {
+		querySQL = querySQL.Where("i.asset_type IN (?)", bun.In(filter.AssetTypes))
+	}
+	if filter.Exchange != nil && *filter.Exchange != "" {
+		querySQL = querySQL.Where("i.exchange = ?", *filter.Exchange)
+	}
+	querySQL = querySQL.Where("i.status <> ?", model.InstrumentStatusArchived)
+	querySQL = querySQL.OrderExpr("ts_rank(i.search_vector, to_tsquery('simple', ?), 32) DESC, i.normalized_symbol ASC", tsquery).Limit(limit)
+
+	if err := querySQL.Scan(ctx); err != nil {
+		return nil, err
+	}
+
+	return rows, nil
+}
+
+// buildTsquery constructs a PostgreSQL tsquery string from a normalized text query.
+// Each word is stripped of non-alphanumeric characters and appended with :* for
+// prefix matching (e.g. "appl" matches "apple"). Words are joined with | (OR).
+func buildTsquery(textQuery string) string {
+	words := strings.Fields(textQuery)
+	if len(words) == 0 {
+		return ""
+	}
+	tsqueryWords := make([]string, 0, len(words))
+	for _, w := range words {
+		// Strip non-alphanumeric characters for safety
+		clean := strings.Map(func(r rune) rune {
+			if (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') {
+				return r
+			}
+			return -1
+		}, w)
+		if len(clean) < 2 {
+			continue
+		}
+		tsqueryWords = append(tsqueryWords, clean+":*")
+	}
+	if len(tsqueryWords) == 0 {
+		return ""
+	}
+	return strings.Join(tsqueryWords, " | ")
 }
 
 func (r *InstrumentRepository) searchFuzzyInstruments(ctx context.Context, symbolQuery, textQuery string, filter InstrumentSearchFilter, limit int) ([]InstrumentSearchRow, error) {
@@ -359,43 +537,28 @@ func (r *InstrumentRepository) Upsert(ctx context.Context, instrument *model.Ins
 		instrument.CreatedAt = now
 	}
 	instrument.UpdatedAt = now
-	_, err := r.db.NewInsert().
+
+	existing, err := r.GetBySymbolAndExchange(ctx, instrument.NormalizedSymbol, instrument.Exchange, instrument.AssetType)
+	if err != nil && !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+
+	if existing != nil {
+		instrument.ID = existing.ID
+		instrument.CreatedAt = existing.CreatedAt
+		_, err = r.db.NewUpdate().
+			Model(instrument).
+			WherePK().
+			Returning("*").
+			Exec(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return instrument, nil
+	}
+
+	_, err = r.db.NewInsert().
 		Model(instrument).
-		ModelTableExpr("sigma_finance.instruments AS instruments").
-		On("CONFLICT (normalized_symbol, exchange, asset_type) DO UPDATE").
-		Set("symbol = CASE WHEN EXCLUDED.symbol <> '' THEN EXCLUDED.symbol ELSE instruments.symbol END").
-		Set("normalized_symbol = EXCLUDED.normalized_symbol").
-		Set("name = CASE WHEN EXCLUDED.name <> '' THEN EXCLUDED.name ELSE instruments.name END").
-		Set("normalized_name = CASE WHEN EXCLUDED.normalized_name <> '' THEN EXCLUDED.normalized_name ELSE instruments.normalized_name END").
-		Set("exchange_code = COALESCE(EXCLUDED.exchange_code, instruments.exchange_code)").
-		Set("country = COALESCE(EXCLUDED.country, instruments.country)").
-		Set("currency = COALESCE(EXCLUDED.currency, instruments.currency)").
-		Set("summary = COALESCE(NULLIF(EXCLUDED.summary, ''), instruments.summary)").
-		Set("sector = COALESCE(NULLIF(EXCLUDED.sector, ''), instruments.sector)").
-		Set("industry_group = COALESCE(NULLIF(EXCLUDED.industry_group, ''), instruments.industry_group)").
-		Set("industry = COALESCE(NULLIF(EXCLUDED.industry, ''), instruments.industry)").
-		Set("category_group = COALESCE(NULLIF(EXCLUDED.category_group, ''), instruments.category_group)").
-		Set("category = COALESCE(NULLIF(EXCLUDED.category, ''), instruments.category)").
-		Set("family = COALESCE(NULLIF(EXCLUDED.family, ''), instruments.family)").
-		Set("website = COALESCE(NULLIF(EXCLUDED.website, ''), instruments.website)").
-		Set("market_cap = COALESCE(NULLIF(EXCLUDED.market_cap, ''), instruments.market_cap)").
-		Set("state = COALESCE(NULLIF(EXCLUDED.state, ''), instruments.state)").
-		Set("city = COALESCE(NULLIF(EXCLUDED.city, ''), instruments.city)").
-		Set("zipcode = COALESCE(NULLIF(EXCLUDED.zipcode, ''), instruments.zipcode)").
-		Set("base_currency = COALESCE(NULLIF(EXCLUDED.base_currency, ''), instruments.base_currency)").
-		Set("quote_currency = COALESCE(NULLIF(EXCLUDED.quote_currency, ''), instruments.quote_currency)").
-		Set("underlying_symbol = COALESCE(NULLIF(EXCLUDED.underlying_symbol, ''), instruments.underlying_symbol)").
-		Set("status = EXCLUDED.status").
-		Set("provider_source = CASE WHEN EXCLUDED.provider_source <> '' THEN EXCLUDED.provider_source ELSE instruments.provider_source END").
-		Set("provider_external_id = COALESCE(EXCLUDED.provider_external_id, instruments.provider_external_id)").
-		Set("owner_user_id = COALESCE(EXCLUDED.owner_user_id, instruments.owner_user_id)").
-		Set("isin = COALESCE(EXCLUDED.isin, instruments.isin)").
-		Set("figi = COALESCE(EXCLUDED.figi, instruments.figi)").
-		Set("cusip = COALESCE(EXCLUDED.cusip, instruments.cusip)").
-		Set("metadata = COALESCE(EXCLUDED.metadata, instruments.metadata)").
-		Set("last_verified_at = COALESCE(EXCLUDED.last_verified_at, instruments.last_verified_at)").
-		Set("last_used_at = COALESCE(EXCLUDED.last_used_at, instruments.last_used_at)").
-		Set("updated_at = EXCLUDED.updated_at").
 		Returning("*").
 		Exec(ctx)
 	if err != nil {
@@ -474,6 +637,12 @@ func scoreInstrumentMatch(symbolQuery, textQuery string, instrument model.Instru
 	switch {
 	case instrument.NormalizedSymbol == symbolQuery:
 		score += 1000
+	case instrument.ISIN != nil && strings.EqualFold(*instrument.ISIN, symbolQuery):
+		score += 1000
+	case instrument.CUSIP != nil && strings.EqualFold(*instrument.CUSIP, symbolQuery):
+		score += 1000
+	case instrument.FIGI != nil && strings.EqualFold(*instrument.FIGI, symbolQuery):
+		score += 1000
 	case isNearSymbolMatch(symbolQuery, instrument.NormalizedSymbol):
 		score += 925
 	case instrument.NormalizedName == textQuery:
@@ -494,6 +663,23 @@ func scoreInstrumentMatch(symbolQuery, textQuery string, instrument model.Instru
 		score += similarityScore(textQuery, *alias) * 100
 	}
 
+	// Multi-word query boost: rewards instruments whose name contains multiple query words.
+	// E.g. "apple tech" boosts "Apple Inc." (matches "apple") even if "tech" doesn't match exactly.
+	if textQuery != "" {
+		score += multiWordMatchBoost(textQuery, instrument.NormalizedName)
+		if alias != nil {
+			score += multiWordMatchBoost(textQuery, *alias) * 0.5
+		}
+	}
+
+	// Market-cap rank boost: popular/large-cap instruments surface higher.
+	// Lower rank number = more popular (rank 1 = Bitcoin, rank 2 = Ethereum, etc.)
+	if instrument.MarketCapRank != nil {
+		score += marketCapRankBoost(*instrument.MarketCapRank)
+	} else {
+		score += 5 // neutral for unranked instruments
+	}
+
 	switch instrument.Status {
 	case model.InstrumentStatusActive:
 		score += 50
@@ -511,6 +697,53 @@ func scoreInstrumentMatch(symbolQuery, textQuery string, instrument model.Instru
 	}
 
 	return score
+}
+
+// multiWordMatchBoost rewards instruments whose normalized name contains
+// multiple words from a multi-word query tokenized by whitespace.
+// Returns up to 150 points, scaled by the proportion of query words matched.
+func multiWordMatchBoost(query, name string) float64 {
+	queryWords := strings.Fields(query)
+	if len(queryWords) <= 1 || name == "" {
+		return 0
+	}
+	nameWords := strings.Fields(name)
+	if len(nameWords) == 0 {
+		return 0
+	}
+
+	matchCount := 0
+	for _, qw := range queryWords {
+		if len(qw) < 2 {
+			continue // skip single-char noise words
+		}
+		for _, nw := range nameWords {
+			if strings.HasPrefix(nw, qw) {
+				matchCount++
+				break
+			}
+		}
+	}
+
+	if matchCount == 0 {
+		return 0
+	}
+	return (float64(matchCount) / float64(len(queryWords))) * 150
+}
+
+// marketCapRankBoost returns a score boost based on market-cap rank.
+// Lower rank = more popular/valuable (rank 1 = largest by market cap).
+func marketCapRankBoost(rank int) float64 {
+	switch {
+	case rank <= 10:
+		return 80
+	case rank <= 100:
+		return 40
+	case rank <= 1000:
+		return 15
+	default:
+		return 5
+	}
 }
 
 func similarityScore(a, b string) float64 {
@@ -559,7 +792,7 @@ func buildTickerCandidates(query string) []string {
 		return nil
 	}
 
-	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	seen := map[string]struct{}{
 		query: {},
 	}
@@ -585,6 +818,24 @@ func buildTickerCandidates(query string) []string {
 		candidates = append(candidates, strings.ToUpper(candidate))
 	}
 	sort.Strings(candidates)
+
+	// Cap to prevent massive IN clauses that force SeqScan,
+	// but always keep the original query first so exact symbol
+	// searches (e.g. "AAPL") aren't lost to random map iteration.
+	const maxTickerCandidates = 12
+	if len(candidates) > maxTickerCandidates {
+		original := strings.ToUpper(query)
+		kept := []string{original}
+		for _, c := range candidates {
+			if c != original {
+				kept = append(kept, c)
+			}
+			if len(kept) >= maxTickerCandidates {
+				break
+			}
+		}
+		candidates = kept
+	}
 	return candidates
 }
 
@@ -663,6 +914,19 @@ func absInt(value int) int {
 func sortInstrumentRows(rows []InstrumentSearchRow) {
 	sort.SliceStable(rows, func(i, j int) bool {
 		if rows[i].Score == rows[j].Score {
+			// Prefer recently used instruments when scores tie
+			iUsed := rows[i].Instrument.LastUsedAt
+			jUsed := rows[j].Instrument.LastUsedAt
+			if iUsed != nil && jUsed != nil && !iUsed.Equal(*jUsed) {
+				return iUsed.After(*jUsed)
+			}
+			// One has usage history, the other doesn't
+			if iUsed != nil && jUsed == nil {
+				return true
+			}
+			if iUsed == nil && jUsed != nil {
+				return false
+			}
 			if rows[i].Instrument.Status != rows[j].Instrument.Status {
 				return rows[i].Instrument.Status < rows[j].Instrument.Status
 			}

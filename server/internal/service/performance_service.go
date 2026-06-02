@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"time"
@@ -27,6 +28,7 @@ func NewPerformanceService(
 	positionRepo repository.IPositionRepository,
 	fxRateService ...IFXRateService, // variadic for backward compatibility
 ) *PerformanceService {
+	log.Printf("[PerformanceService] NewPerformanceService: started")
 	var fxSvc IFXRateService
 	if len(fxRateService) > 0 {
 		fxSvc = fxRateService[0]

@@ -15,6 +15,7 @@ import (
 
 	"github.com/parquet-go/parquet-go"
 	"github.com/shopspring/decimal"
+	"sigma_finance/internal/marketdata/packs/sources"
 )
 
 const (
@@ -302,4 +303,204 @@ func parseDownloadURLPayload(raw []byte) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("marketparquet download payload missing download url")
+}
+
+const SourceName = "marketparquet"
+
+type Source struct {
+	importPath string
+}
+
+func NewSource(importPath string) *Source {
+	trimmed := strings.TrimSpace(importPath)
+	if trimmed == "" {
+		trimmed = "data/marketparquet"
+	}
+	return &Source{importPath: trimmed}
+}
+
+func (s *Source) FetchCandles(ctx context.Context, req sources.FetchCandlesRequest) (<-chan sources.NormalizedCandle, <-chan error) {
+	candlesCh := make(chan sources.NormalizedCandle)
+	errCh := make(chan error, 1)
+
+	go func() {
+		defer close(candlesCh)
+		defer close(errCh)
+
+		allowedSymbols := make(map[string]sources.UniverseSymbol, len(req.Symbols)*2)
+		for _, sym := range req.Symbols {
+			fullSym := strings.ToUpper(strings.TrimSpace(sym.Symbol))
+			allowedSymbols[fullSym] = sym
+			if parts := strings.Split(fullSym, "."); len(parts) > 1 {
+				allowedSymbols[parts[0]] = sym
+			}
+		}
+
+		seen := make(map[string]struct{}, len(req.Symbols)*365)
+
+		timeframes := []string{AssetTimeframeStockDaily, AssetTimeframeETFDaily}
+		for _, timeframe := range timeframes {
+			dates, err := listLocalMarketParquetDates(s.importPath, timeframe)
+			if err != nil {
+				continue
+			}
+
+			filteredDates := FilterByDateRange(dates, req.StartDate, req.EndDate)
+			for _, day := range filteredDates {
+				filePath, err := findLocalMarketParquetFile(s.importPath, timeframe, day)
+				if err != nil {
+					continue
+				}
+
+				rows, err := ReadRows(filePath)
+				if err != nil {
+					errCh <- err
+					return
+				}
+
+				for _, row := range rows {
+					rowSymbol := strings.ToUpper(strings.TrimSpace(row.Symbol))
+					if rowSymbol == "" {
+						continue
+					}
+
+					target, exists := allowedSymbols[rowSymbol]
+					if !exists {
+						continue
+					}
+
+					rowAssetType, ok := NormalizeAssetType(row.AssetType)
+					if !ok {
+						continue
+					}
+					if timeframe == AssetTimeframeStockDaily && rowAssetType != "STOCK" {
+						continue
+					}
+					if timeframe == AssetTimeframeETFDaily && rowAssetType != "FUND" {
+						continue
+					}
+
+					openPrice, err := DecimalFromFloat64(row.Open)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					highPrice, err := DecimalFromFloat64(row.High)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					lowPrice, err := DecimalFromFloat64(row.Low)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					closePrice, err := DecimalFromFloat64(row.Close)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					volume, err := DecimalFromFloat64(row.Volume)
+					if err != nil {
+						errCh <- err
+						return
+					}
+					volume = volume.Round(8)
+
+					ts := NormalizeUTCDailyTimestamp(row.Timestamp)
+					adjustedClose := closePrice
+
+					assetType := strings.ToUpper(strings.TrimSpace(target.AssetType))
+					if assetType == "" {
+						assetType = rowAssetType
+					}
+
+					candle := sources.NormalizedCandle{
+						InstrumentID:  target.InstrumentID,
+						Symbol:        target.Symbol,
+						AssetType:     assetType,
+						Interval:      "1d",
+						Timestamp:     ts,
+						Open:          openPrice,
+						High:          highPrice,
+						Low:           lowPrice,
+						Close:         closePrice,
+						AdjustedClose: &adjustedClose,
+						Volume:        volume,
+						QuoteCurrency: target.QuoteAsset,
+						Source:        SourceName,
+					}
+
+					canonKey := sources.CanonicalKey(candle)
+					if _, dup := seen[canonKey]; dup {
+						continue
+					}
+					seen[canonKey] = struct{}{}
+
+					select {
+					case <-ctx.Done():
+						errCh <- ctx.Err()
+						return
+					case candlesCh <- candle:
+					}
+				}
+			}
+		}
+	}()
+
+	return candlesCh, errCh
+}
+
+func listLocalMarketParquetDates(importPath string, assetTimeframe string) ([]time.Time, error) {
+	dirCandidates := []string{
+		filepath.Join(importPath, "by_date", assetTimeframe),
+		filepath.Join(importPath, assetTimeframe),
+	}
+	seen := make(map[string]struct{}, 512)
+	out := make([]time.Time, 0, 512)
+	for _, dir := range dirCandidates {
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			name := strings.TrimSpace(entry.Name())
+			if !strings.HasSuffix(strings.ToLower(name), ".parquet") {
+				continue
+			}
+			datePart := strings.TrimSuffix(name, filepath.Ext(name))
+			day, err := time.Parse(time.DateOnly, datePart)
+			if err != nil {
+				continue
+			}
+			key := day.UTC().Format(time.DateOnly)
+			if _, ok := seen[key]; ok {
+				continue
+			}
+			seen[key] = struct{}{}
+			out = append(out, day.UTC())
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("no marketparquet files found for %s in %s", assetTimeframe, importPath)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Before(out[j]) })
+	return out, nil
+}
+
+func findLocalMarketParquetFile(importPath string, assetTimeframe string, day time.Time) (string, error) {
+	name := day.UTC().Format(time.DateOnly) + ".parquet"
+	candidates := []string{
+		filepath.Join(importPath, "by_date", assetTimeframe, name),
+		filepath.Join(importPath, assetTimeframe, name),
+	}
+	for _, candidate := range candidates {
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate, nil
+		}
+	}
+	return "", fmt.Errorf("marketparquet file not found for %s on %s", assetTimeframe, day.UTC().Format(time.DateOnly))
 }

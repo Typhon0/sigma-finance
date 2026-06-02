@@ -1,23 +1,11 @@
-import { format } from "date-fns";
-import {
-	Bitcoin,
-	Building,
-	CalendarIcon,
-	Landmark,
-	Package,
-	Shield,
-	TrendingUp,
-	Watch,
-} from "lucide-react";
+import { Bitcoin, Building, Landmark, Package, Shield, TrendingUp, Watch } from "lucide-react";
 import { useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
-import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
-import { Calendar } from "./ui/calendar";
 import { Card, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { DatePicker } from "./ui/date-picker";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
-import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Textarea } from "./ui/textarea";
 
@@ -168,33 +156,11 @@ export function AddAssetForm({ onClose }: { onClose: () => void }) {
 				</div>
 				<div className="space-y-2">
 					<Label htmlFor="purchaseDate">Purchase Date</Label>
-					<Popover>
-						<PopoverTrigger asChild>
-							<Button
-								variant="outline"
-								className={cn(
-									"w-full pl-3 text-left font-normal",
-									!formData.purchaseDate && "text-muted-foreground",
-								)}
-							>
-								<CalendarIcon className="mr-2 h-4 w-4" />
-								{formData.purchaseDate ? (
-									format(new Date(formData.purchaseDate), "PPP")
-								) : (
-									<span>Pick a date</span>
-								)}
-							</Button>
-						</PopoverTrigger>
-						<PopoverContent className="w-auto p-0" align="start">
-							<Calendar
-								mode="single"
-								selected={formData.purchaseDate ? new Date(formData.purchaseDate) : undefined}
-								onSelect={(date) => updateFormData("purchaseDate", date ? date.toISOString() : "")}
-								disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-								autoFocus
-							/>
-						</PopoverContent>
-					</Popover>
+					<DatePicker
+						date={formData.purchaseDate ? new Date(formData.purchaseDate as string) : undefined}
+						onChange={(date) => updateFormData("purchaseDate", date ? date.toISOString() : "")}
+						disabledDates={(date) => date > new Date() || date < new Date("1900-01-01")}
+					/>
 				</div>
 			</div>
 		</div>

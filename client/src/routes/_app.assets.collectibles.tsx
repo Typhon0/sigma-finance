@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CollectiblesList } from "@/components/assets/collectibles/CollectiblesList";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { CollectiblesList } from "@/components/CollectiblesList";
 
 export const Route = createFileRoute("/_app/assets/collectibles")({
 	component: () => (

@@ -13,6 +13,7 @@ import (
 	providersource "sigma_finance/internal/marketdata/packs/sources/provider"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service/providers"
+	"sigma_finance/internal/util"
 	"strings"
 	"time"
 
@@ -188,9 +189,9 @@ func (s *packService) StartLocalPackBuild(ctx context.Context, userID string, in
 		return nil, err
 	}
 
-	go func() {
-		_ = s.runLocalBuildJob(context.Background(), job.ID)
-	}()
+	util.RunTask(context.Background(), "runLocalBuildJob", func(ctx context.Context) {
+		_ = s.runLocalBuildJob(ctx, job.ID)
+	})
 	return job, nil
 }
 
@@ -360,9 +361,9 @@ func (s *packService) RetryFailedLocalPackBuild(ctx context.Context, userID stri
 	if err := s.repo.UpdateBuildJob(ctx, job); err != nil {
 		return nil, err
 	}
-	go func() {
-		_ = s.runLocalBuildJob(context.Background(), job.ID)
-	}()
+	util.RunTask(context.Background(), "runLocalBuildJob", func(ctx context.Context) {
+		_ = s.runLocalBuildJob(ctx, job.ID)
+	})
 	return job, nil
 }
 

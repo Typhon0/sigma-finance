@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "yfinance gRPC sidecar service for Sigma Finance"
 requires-python = ">=3.11"
 dependencies = [
-    "yfinance>=0.2.31",
+    "yfinance==1.3.0",
     "grpcio>=1.60.0",
     "grpcio-tools>=1.60.0",
     "fastapi>=0.109.0",

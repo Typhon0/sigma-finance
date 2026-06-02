@@ -1,0 +1,21 @@
+pack_id: us-europe-starter-daily
+name: US & Europe Starter Daily
+version: 2026.05.26
+format_version: 1
+distribution: local
+asset_type: STOCK
+interval: 1d
+quote_currency: USD
+source_provider: marketparquet
+license_policy: marketparquet-local-only
+history:
+  start: 2017-01-01
+  end: auto
+universe:
+  file: packs/universes/us-europe-starter.yaml
+output:
+  compression: zstd
+  partition_by:
+    - asset_type
+    - quote_currency
+    - year

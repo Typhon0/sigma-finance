@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"sigma_finance/internal/domain/catalog"
 	"sigma_finance/internal/domain/model"
@@ -49,6 +50,10 @@ type InstrumentCatalogService interface {
 	ImportInstrumentFromSource(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
 	ImportInstrumentFromCatalog(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
 	GetCatalogSyncStatus(ctx context.Context, source string) (*model.CatalogSyncRun, error)
+	GetHistoricalDataBackfillJob(ctx context.Context, id string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error)
+	GetLatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error)
+	ListHistoricalDataBackfillJobs(ctx context.Context, filter repository.HistoricalDataBackfillJobFilter, userID *string, includeAll bool) ([]model.HistoricalDataBackfillJob, error)
+	RetryHistoricalDataBackfillJob(ctx context.Context, id string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error)
 }
 
 type InstrumentSyncService interface {
@@ -203,17 +208,43 @@ type instrumentService struct {
 	catalogSyncRunRepo             repository.ICatalogSyncRunRepository
 	financeDatabaseSyncSettingRepo repository.IFinanceDatabaseSyncSettingRepository
 	financeDatabaseSyncHistoryRepo repository.IFinanceDatabaseSyncHistoryRepository
+	historicalBackfillJobRepo      repository.IHistoricalDataBackfillJobRepository
 	equityDiscoveryClient          InstrumentDiscoveryClient
 	cryptoDiscoveryClient          InstrumentDiscoveryClient
 	marketData                     MarketDataService
+	searchCache                    *SearchCache
 	financeDatabaseSyncMu          sync.Mutex
 	financeDatabaseSyncRunning     bool
+	backfillWorkerStartOnce        sync.Once
+	backfillWorkerID               string
 }
+
+const (
+	backfillJobProvider              = "YFINANCE"
+	backfillJobDefaultMaxAttempts    = 4
+	backfillJobLeaseDuration         = 90 * time.Second
+	backfillJobWorkerTick            = 2 * time.Second
+	backfillJobStaleRunningThreshold = 20 * time.Minute
+	backfillJobBaseRetryDelay        = 30 * time.Second
+	backfillJobMaxRetryDelay         = 15 * time.Minute
+)
 
 func NewInstrumentService(
 	uow repository.IUnitOfWork,
 	equityDiscoveryClient InstrumentDiscoveryClient,
 	cryptoDiscoveryClient InstrumentDiscoveryClient,
+	marketData ...MarketDataService,
+) *instrumentService {
+	return NewInstrumentServiceWithCache(uow, equityDiscoveryClient, cryptoDiscoveryClient, nil, marketData...)
+}
+
+// NewInstrumentServiceWithCache creates an instrument service with an optional search cache.
+// Pass nil for searchCache to disable caching.
+func NewInstrumentServiceWithCache(
+	uow repository.IUnitOfWork,
+	equityDiscoveryClient InstrumentDiscoveryClient,
+	cryptoDiscoveryClient InstrumentDiscoveryClient,
+	searchCache *SearchCache,
 	marketData ...MarketDataService,
 ) *instrumentService {
 	var md MarketDataService
@@ -231,9 +262,12 @@ func NewInstrumentService(
 		catalogSyncRunRepo:             uow.CatalogSyncRun(),
 		financeDatabaseSyncSettingRepo: uow.FinanceDatabaseSyncSetting(),
 		financeDatabaseSyncHistoryRepo: uow.FinanceDatabaseSyncHistory(),
+		historicalBackfillJobRepo:      uow.HistoricalDataBackfillJob(),
 		equityDiscoveryClient:          equityDiscoveryClient,
 		cryptoDiscoveryClient:          cryptoDiscoveryClient,
 		marketData:                     md,
+		searchCache:                    searchCache,
+		backfillWorkerID:               fmt.Sprintf("instrument-worker-%d", time.Now().UnixNano()),
 	}
 }
 
@@ -337,7 +371,7 @@ func (s *instrumentService) SearchOnline(ctx context.Context, query string, filt
 		return payload, nil
 	}
 
-	results, providerUsed, err := s.searchOnlineCandidates(ctx, query, availableAssetTypes, safeLimit(filter.Limit, 10))
+	results, providerUsed, err := s.searchOnlineWithCache(ctx, query, availableAssetTypes, safeLimit(filter.Limit, 10))
 	if err != nil {
 		return nil, err
 	}
@@ -546,74 +580,474 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 
 			parsedAssetID, parseErr := uuid.Parse(assetID)
 			if parseErr != nil {
-				fmt.Printf("[AddInstrumentToPortfolio] async price refresh skipped for asset %s: invalid uuid: %v\n", assetID, parseErr)
+				log.Printf("[AddInstrumentToPortfolio] async price refresh skipped for asset %s: invalid uuid: %v", assetID, parseErr)
 				return
 			}
 
 			if _, refreshErr := s.marketData.UpdateAssetPrice(updateCtx, parsedAssetID); refreshErr != nil {
-				fmt.Printf("[AddInstrumentToPortfolio] async price refresh failed for asset %s: %v\n", assetID, refreshErr)
+				log.Printf("[AddInstrumentToPortfolio] async price refresh failed for asset %s: %v", assetID, refreshErr)
 			}
 		}()
 	}
 	if !backfillFrom.IsZero() {
-		portfolioIDCopy := portfolioID
-		backfillFromCopy := backfillFrom
-		userIDCopy := userID
-		instrumentIDCopy := instrumentID
 		var assetIDStr string
 		if created != nil {
 			assetIDStr = created.AssetID
 		}
-		
-		go func() {
-			// First backfill historical prices for the asset
-			if s.marketData != nil && assetIDStr != "" {
-				parsedAssetID, parseErr := uuid.Parse(assetIDStr)
-				if parseErr == nil {
-					backfillCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-					defer cancel()
-					now := time.Now()
-					userIDStr := ""
-					if userIDCopy != nil {
-						userIDStr = *userIDCopy
-					}
-					if err := s.marketData.BackfillAssetPrices(backfillCtx, userIDStr, parsedAssetID, instrumentIDCopy, backfillFromCopy, now); err != nil {
-						fmt.Printf("[AddInstrumentToPortfolio] BackfillAssetPrices failed for asset %s: %v\n", assetIDStr, err)
-					}
-				}
+		if s.marketData != nil && s.historicalBackfillJobRepo != nil && assetIDStr != "" {
+			if _, enqueueErr := s.enqueueHistoricalBackfillJob(context.Background(), portfolioID, assetIDStr, instrumentID, backfillFrom, userID); enqueueErr != nil {
+				log.Printf("[AddInstrumentToPortfolio] enqueueHistoricalBackfillJob failed for asset %s: %v", assetIDStr, enqueueErr)
 			}
-			
-			// Then compute performance snapshots using the backfilled data
-			s.backfillPortfolioPerformanceSnapshots(portfolioIDCopy, backfillFromCopy)
-		}()
+		}
 	}
 
 	return created, nil
 }
 
-func (s *instrumentService) backfillPortfolioPerformanceSnapshots(portfolioID string, from time.Time) {
-	if strings.TrimSpace(portfolioID) == "" || from.IsZero() {
+func (s *instrumentService) enqueueHistoricalBackfillJob(ctx context.Context, portfolioID string, assetID string, instrumentID string, from time.Time, userID *string) (*model.HistoricalDataBackfillJob, error) {
+	if s.historicalBackfillJobRepo == nil {
+		return nil, fmt.Errorf("historical backfill job repository is not configured")
+	}
+
+	requestedFrom := from.UTC()
+	now := time.Now().UTC()
+	requestedTo := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	existing, existingErr := s.historicalBackfillJobRepo.GetActiveByRequest(
+		ctx,
+		portfolioID,
+		assetID,
+		instrumentID,
+		backfillJobProvider,
+		requestedFrom,
+		requestedTo,
+	)
+	if existingErr == nil && existing != nil {
+		return existing, nil
+	}
+
+	job := &model.HistoricalDataBackfillJob{
+		PortfolioID:   portfolioID,
+		AssetID:       assetID,
+		InstrumentID:  instrumentID,
+		Provider:      backfillJobProvider,
+		Status:        string(model.HistoricalDataBackfillStatusQueued),
+		Step:          string(model.HistoricalDataBackfillStepQueued),
+		Progress:      0,
+		RequestedFrom: requestedFrom,
+		RequestedTo:   requestedTo,
+		NextRunAt:     now,
+		MaxAttempts:   backfillJobDefaultMaxAttempts,
+	}
+	if userID != nil && *userID != "" {
+		job.UserID = userID
+	}
+	created, err := s.historicalBackfillJobRepo.Create(ctx, job)
+	if err != nil {
+		return nil, err
+	}
+	log.Printf("[enqueueHistoricalBackfillJob] created job=%s portfolio=%s asset=%s instrument=%s from=%s to=%s",
+		created.ID, portfolioID, assetID, instrumentID, requestedFrom.Format(time.RFC3339), now.Format(time.RFC3339))
+	return created, nil
+}
+
+func (s *instrumentService) StartHistoricalBackfillWorker() {
+	s.backfillWorkerStartOnce.Do(func() {
+		go s.runHistoricalBackfillWorker()
+	})
+}
+
+func (s *instrumentService) runHistoricalBackfillWorker() {
+	if s.marketData == nil || s.historicalBackfillJobRepo == nil {
 		return
 	}
 
-	now := time.Now().UTC()
+	ticker := time.NewTicker(backfillJobWorkerTick)
+	defer ticker.Stop()
+
+	for {
+		s.requeueStaleBackfillJobs()
+		s.processBackfillQueueBatch(6)
+		<-ticker.C
+	}
+}
+
+func (s *instrumentService) processBackfillQueueBatch(maxJobs int) {
+	if maxJobs <= 0 {
+		maxJobs = 1
+	}
+	for i := 0; i < maxJobs; i++ {
+		claimCtx, cancelClaim := context.WithTimeout(context.Background(), 15*time.Second)
+		job, err := s.historicalBackfillJobRepo.ClaimNextRunnable(claimCtx, s.backfillWorkerID, backfillJobLeaseDuration)
+		cancelClaim()
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return
+			}
+			log.Printf("[HistoricalBackfillWorker] claim failed: %v", err)
+			return
+		}
+		if job == nil {
+			return
+		}
+		s.runHistoricalBackfillJob(job)
+	}
+}
+
+func (s *instrumentService) requeueStaleBackfillJobs() {
+	staleBefore := time.Now().UTC().Add(-backfillJobStaleRunningThreshold)
+	rows, err := s.historicalBackfillJobRepo.RequeueStaleRunning(context.Background(), staleBefore)
+	if err != nil {
+		log.Printf("[HistoricalBackfillWorker] requeue stale running jobs failed: %v", err)
+		return
+	}
+	if rows > 0 {
+		log.Printf("[HistoricalBackfillWorker] requeued stale running jobs rows=%d", rows)
+	}
+}
+
+func (s *instrumentService) runHistoricalBackfillJob(job *model.HistoricalDataBackfillJob) {
+	if job == nil {
+		return
+	}
+
+	jobCtx, cancel := context.WithTimeout(context.Background(), 8*time.Minute)
+	defer cancel()
+
+	asset, err := s.uow.Asset().GetByID(jobCtx, job.AssetID)
+	if err != nil || asset == nil || !asset.IsTradeable {
+		msg := "asset is not tradeable for yfinance historical backfill"
+		s.failBackfillJob(jobCtx, job, "ASSET_UNSUPPORTED", msg, false)
+		return
+	}
+
+	userID := ""
+	if job.UserID != nil {
+		userID = *job.UserID
+	}
+	parsedAssetID, parseErr := uuid.Parse(job.AssetID)
+	if parseErr != nil {
+		msg := "invalid asset id"
+		s.failBackfillJob(jobCtx, job, "INVALID_ASSET_ID", msg, false)
+		return
+	}
+
+	outcome, err := s.marketData.BackfillAssetPrices(jobCtx, userID, parsedAssetID, job.InstrumentID, job.RequestedFrom, job.RequestedTo)
+	if err != nil {
+		code, msg, retryable := classifyBackfillFailure(err)
+		s.failBackfillJob(jobCtx, job, code, msg, retryable)
+		return
+	}
+	if outcome == nil {
+		outcome = &HistoricalBackfillOutcome{}
+	}
+	job.RowsWritten = outcome.RowsTouched
+	job.RowsInserted = outcome.RowsInserted
+	job.RowsUpdated = outcome.RowsUpdated
+	job.RowsSkipped = outcome.RowsSkipped
+	job.ProviderSymbol = nil
+	if strings.TrimSpace(outcome.ProviderSymbol) != "" {
+		job.ProviderSymbol = ptrString(outcome.ProviderSymbol)
+	}
+	job.CoverageFrom = outcome.AffectedFrom
+	job.CoverageTo = outcome.AffectedTo
+
+	if outcome.RowsTouched == 0 {
+		s.completeBackfillJob(jobCtx, job)
+		return
+	}
+
+	job.Step = string(model.HistoricalDataBackfillStepCalcPerf)
+	job.Progress = 70
+	_ = s.historicalBackfillJobRepo.Update(jobCtx, job)
+
+	rebuildFrom := job.RequestedFrom
+	if outcome.AffectedFrom != nil {
+		rebuildFrom = *outcome.AffectedFrom
+	}
+	rebuildTo := job.RequestedTo
+	if outcome.AffectedTo != nil {
+		rebuildTo = *outcome.AffectedTo
+	}
+
+	if err := s.backfillPortfolioPerformanceSnapshots(job.PortfolioID, rebuildFrom, rebuildTo); err != nil {
+		msg := fmt.Sprintf("failed to rebuild portfolio performance snapshots: %v", err)
+		s.failBackfillJob(jobCtx, job, "PERFORMANCE_RECALC_FAILED", msg, true)
+		return
+	}
+
+	s.completeBackfillJob(jobCtx, job)
+}
+
+func (s *instrumentService) backfillPortfolioPerformanceSnapshots(portfolioID string, from time.Time, to time.Time) error {
+	if strings.TrimSpace(portfolioID) == "" || from.IsZero() {
+		return nil
+	}
+
 	startDay := time.Date(from.UTC().Year(), from.UTC().Month(), from.UTC().Day(), 0, 0, 0, 0, time.UTC)
-	endDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endSource := to
+	if endSource.IsZero() {
+		endSource = time.Now().UTC()
+	}
+	endDay := time.Date(endSource.UTC().Year(), endSource.UTC().Month(), endSource.UTC().Day(), 0, 0, 0, 0, time.UTC)
 
 	if startDay.After(endDay) {
 		startDay = endDay
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Minute)
 	defer cancel()
 
 	if err := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); err != nil {
-		fmt.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill failed portfolio=%s from=%s to=%s err=%v\n",
+		log.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill failed portfolio=%s from=%s to=%s err=%v",
 			portfolioID, startDay.Format("2006-01-02"), endDay.Format("2006-01-02"), err)
+		return err
 	} else {
-		fmt.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill complete portfolio=%s days=%d\n",
+		log.Printf("[backfillPortfolioPerformanceSnapshots] vectorized backfill complete portfolio=%s days=%d",
 			portfolioID, int(endDay.Sub(startDay).Hours()/24)+1)
 	}
+	return nil
+}
+
+func classifyBackfillFailure(err error) (code string, msg string, retryable bool) {
+	msg = err.Error()
+	code = "HISTORY_FETCH_FAILED"
+	retryable = true
+
+	var backfillErr *HistoricalBackfillError
+	if errors.As(err, &backfillErr) && backfillErr.Code != "" {
+		code = backfillErr.Code
+		msg = backfillErr.Error()
+	}
+
+	if isLikelySymbolLookupFailure(err) {
+		code = "YFINANCE_SYMBOL_NOT_FOUND"
+	}
+
+	switch code {
+	case "YFINANCE_SYMBOL_NOT_FOUND", "ASSET_UNSUPPORTED", "INVALID_ASSET_ID", "INSTRUMENT_NOT_FOUND":
+		retryable = false
+	}
+	return code, msg, retryable
+}
+
+func nextBackfillRetryDelay(attempt int) time.Duration {
+	if attempt < 1 {
+		attempt = 1
+	}
+	delay := backfillJobBaseRetryDelay * time.Duration(1<<(attempt-1))
+	if delay > backfillJobMaxRetryDelay {
+		return backfillJobMaxRetryDelay
+	}
+	return delay
+}
+
+func (s *instrumentService) failBackfillJob(ctx context.Context, job *model.HistoricalDataBackfillJob, code string, message string, retryable bool) {
+	now := time.Now().UTC()
+
+	job.ErrorCode = ptrString(code)
+	job.ErrorMessage = &message
+	job.LockedAt = nil
+	job.LockedBy = nil
+	job.HeartbeatAt = nil
+
+	maxAttempts := job.MaxAttempts
+	if maxAttempts <= 0 {
+		maxAttempts = backfillJobDefaultMaxAttempts
+		job.MaxAttempts = maxAttempts
+	}
+
+	if retryable && job.Attempts < maxAttempts {
+		job.Status = string(model.HistoricalDataBackfillStatusQueued)
+		job.Step = string(model.HistoricalDataBackfillStepQueued)
+		job.Progress = 0
+		nextRun := now.Add(nextBackfillRetryDelay(job.Attempts))
+		job.NextRunAt = nextRun
+		job.FinishedAt = nil
+	} else {
+		job.Status = string(model.HistoricalDataBackfillStatusError)
+		job.Step = string(model.HistoricalDataBackfillStepFailed)
+		job.Progress = 100
+		job.FinishedAt = &now
+	}
+
+	_ = s.historicalBackfillJobRepo.Update(ctx, job)
+}
+
+func (s *instrumentService) completeBackfillJob(ctx context.Context, job *model.HistoricalDataBackfillJob) {
+	now := time.Now().UTC()
+	job.Status = string(model.HistoricalDataBackfillStatusComplete)
+	job.Step = string(model.HistoricalDataBackfillStepDone)
+	job.Progress = 100
+	job.NextRunAt = now
+	job.LockedAt = nil
+	job.LockedBy = nil
+	job.HeartbeatAt = nil
+	job.FinishedAt = &now
+	_ = s.historicalBackfillJobRepo.Update(ctx, job)
+}
+
+func (s *instrumentService) GetHistoricalDataBackfillJob(ctx context.Context, id string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error) {
+	job, err := s.historicalBackfillJobRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureBackfillJobAccess(job, userID, includeAll); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+func (s *instrumentService) GetLatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error) {
+	job, err := s.historicalBackfillJobRepo.GetLatestByPortfolioAsset(ctx, portfolioID, assetID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureBackfillJobAccess(job, userID, includeAll); err != nil {
+		return nil, err
+	}
+	return job, nil
+}
+
+func (s *instrumentService) ListHistoricalDataBackfillJobs(ctx context.Context, filter repository.HistoricalDataBackfillJobFilter, userID *string, includeAll bool) ([]model.HistoricalDataBackfillJob, error) {
+	if !includeAll {
+		filter.UserID = userID
+	}
+	return s.historicalBackfillJobRepo.List(ctx, filter)
+}
+
+func (s *instrumentService) RetryHistoricalDataBackfillJob(ctx context.Context, id string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error) {
+	job, err := s.historicalBackfillJobRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.ensureBackfillJobAccess(job, userID, includeAll); err != nil {
+		return nil, err
+	}
+	if job.Status == string(model.HistoricalDataBackfillStatusRunning) || job.Status == string(model.HistoricalDataBackfillStatusQueued) {
+		return job, nil
+	}
+	now := time.Now().UTC()
+	job.Status = string(model.HistoricalDataBackfillStatusQueued)
+	job.Step = string(model.HistoricalDataBackfillStepQueued)
+	job.Progress = 0
+	job.Attempts = 0
+	job.NextRunAt = now
+	job.ErrorCode = nil
+	job.ErrorMessage = nil
+	job.LockedAt = nil
+	job.LockedBy = nil
+	job.HeartbeatAt = nil
+	job.FinishedAt = nil
+	job.RowsSkipped = 0
+	job.RowsUpdated = 0
+	job.RowsInserted = 0
+	job.RowsWritten = 0
+	job.RequestedTo = time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	if userID != nil && *userID != "" {
+		job.UserID = userID
+	}
+	if updateErr := s.historicalBackfillJobRepo.Update(ctx, job); updateErr != nil {
+		return nil, updateErr
+	}
+	return job, nil
+}
+
+func (s *instrumentService) ensureBackfillJobAccess(job *model.HistoricalDataBackfillJob, userID *string, includeAll bool) error {
+	if includeAll {
+		return nil
+	}
+	if job == nil || userID == nil || *userID == "" || job.UserID == nil || *job.UserID != *userID {
+		return fmt.Errorf("unauthorized: backfill job access denied")
+	}
+	return nil
+}
+
+func isLikelySymbolLookupFailure(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "asset_not_found") ||
+		strings.Contains(msg, "not found") ||
+		strings.Contains(msg, "mapping_unresolved") ||
+		strings.Contains(msg, "verified mapping unavailable") ||
+		strings.Contains(msg, "no mapped provider succeeded")
+}
+
+func (s *instrumentService) suggestLikelyTicker(ctx context.Context, attempted string) string {
+	trimmed := strings.ToUpper(strings.TrimSpace(attempted))
+	if trimmed == "" {
+		return ""
+	}
+	rows, err := s.instrumentRepo.Search(ctx, trimmed, repository.InstrumentSearchFilter{
+		Limit: 20,
+	})
+	if err != nil || len(rows) == 0 {
+		return ""
+	}
+	for i := range rows {
+		candidate := strings.ToUpper(strings.TrimSpace(rows[i].Instrument.Symbol))
+		if candidate == trimmed {
+			// Exact symbol exists in catalog; do not propose a typo alternative.
+			return ""
+		}
+	}
+	best := ""
+	bestScore := 1 << 30
+	for i := range rows {
+		candidate := strings.ToUpper(strings.TrimSpace(rows[i].Instrument.Symbol))
+		if candidate == "" || candidate == trimmed {
+			continue
+		}
+		score := levenshteinDistance(trimmed, candidate)
+		if score < bestScore {
+			best = candidate
+			bestScore = score
+		}
+	}
+	if bestScore <= 2 {
+		return best
+	}
+	return ""
+}
+
+func levenshteinDistance(a string, b string) int {
+	if a == b {
+		return 0
+	}
+	if len(a) == 0 {
+		return len(b)
+	}
+	if len(b) == 0 {
+		return len(a)
+	}
+	prev := make([]int, len(b)+1)
+	curr := make([]int, len(b)+1)
+	for j := 0; j <= len(b); j++ {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		curr[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 0
+			if a[i-1] != b[j-1] {
+				cost = 1
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			curr[j] = minInt(del, minInt(ins, sub))
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(b)]
+}
+
+func minInt(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (s *instrumentService) ListManualInstruments(ctx context.Context, filter ManualInstrumentFilter, userID *string) (*ManualInstrumentPage, error) {
@@ -1917,36 +2351,80 @@ func (s *instrumentService) hasOnlineCapability(assetTypes []model.InstrumentAss
 	return len(s.onlineSearchAvailableAssetTypes(searchAssetTypes)) > 0
 }
 
-func (s *instrumentService) searchOnlineCandidates(ctx context.Context, query string, assetTypes []model.InstrumentAssetType, limit int) ([]DiscoveryInstrument, string, error) {
-	results := make([]DiscoveryInstrument, 0, limit)
-	providersUsed := make([]string, 0, 2)
-	seen := make(map[string]struct{})
-	var lastErr error
+// searchOnlineWithCache wraps searchOnlineCandidates with an optional in-memory LRU cache.
+// Cache hits skip the expensive external API calls entirely; cache misses populate the cache
+// for subsequent identical queries.
+func (s *instrumentService) searchOnlineWithCache(ctx context.Context, query string, assetTypes []model.InstrumentAssetType, limit int) ([]DiscoveryInstrument, string, error) {
+	if s.searchCache != nil {
+		if results, provider, ok := s.searchCache.Get(query, assetTypes, limit); ok {
+			return results, provider, nil
+		}
+	}
 
-	remaining := limit
+	results, provider, err := s.searchOnlineCandidates(ctx, query, assetTypes, limit)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if s.searchCache != nil {
+		s.searchCache.Set(query, assetTypes, limit, results, provider)
+	}
+
+	return results, provider, nil
+}
+
+func (s *instrumentService) searchOnlineCandidates(ctx context.Context, query string, assetTypes []model.InstrumentAssetType, limit int) ([]DiscoveryInstrument, string, error) {
+	// Run equity and crypto discovery clients in parallel to halve search latency.
+	// Each client is independent: CoinGecko hits an HTTP API, yfinance hits a gRPC sidecar.
+	type clientResult struct {
+		rows         []DiscoveryInstrument
+		providerName string
+		err          error
+	}
+
+	// Collect up to 2 clients (equity + crypto) for parallel dispatch
+	type clientTask struct {
+		client       InstrumentDiscoveryClient
+		providerName string
+		assetType    model.InstrumentAssetType
+	}
+	tasks := make([]clientTask, 0, 2)
 	for _, assetType := range assetTypes {
 		client, providerName := s.discoveryClientForAssetType(assetType)
 		if client == nil {
 			continue
 		}
+		tasks = append(tasks, clientTask{client, providerName, assetType})
+	}
 
-		rows, err := client.SearchInstruments(ctx, query, string(assetType), remaining)
-		if err != nil {
-			lastErr = err
+	if len(tasks) == 0 {
+		return []DiscoveryInstrument{}, "", nil
+	}
+
+	ch := make(chan clientResult, len(tasks))
+	for _, task := range tasks {
+		go func(t clientTask) {
+			rows, err := t.client.SearchInstruments(ctx, query, string(t.assetType), limit)
+			ch <- clientResult{rows, t.providerName, err}
+		}(task)
+	}
+
+	// Merge results from all clients, deduplicating by symbol+exchange+assetType
+	results := make([]DiscoveryInstrument, 0, limit)
+	providersUsed := make([]string, 0, len(tasks))
+	seen := make(map[string]struct{})
+	errors := make([]error, 0, len(tasks))
+
+	for i := 0; i < len(tasks); i++ {
+		res := <-ch
+		if res.err != nil {
+			errors = append(errors, res.err)
 			continue
 		}
-		if len(rows) == 0 {
-			if providerName != "" && !stringSliceContains(providersUsed, providerName) {
-				providersUsed = append(providersUsed, providerName)
-			}
-			continue
+		if res.providerName != "" && !stringSliceContains(providersUsed, res.providerName) {
+			providersUsed = append(providersUsed, res.providerName)
 		}
-
-		if providerName != "" && !stringSliceContains(providersUsed, providerName) {
-			providersUsed = append(providersUsed, providerName)
-		}
-
-		for _, row := range rows {
+		for _, row := range res.rows {
 			key := strings.ToUpper(strings.TrimSpace(row.Symbol)) + "|" + strings.ToUpper(strings.TrimSpace(row.Exchange)) + "|" + string(row.AssetType)
 			if strings.TrimSpace(row.Source) != "" && row.ExternalID != nil && strings.TrimSpace(*row.ExternalID) != "" {
 				key = strings.ToUpper(strings.TrimSpace(row.Source)) + "|" + strings.TrimSpace(*row.ExternalID)
@@ -1960,14 +2438,10 @@ func (s *instrumentService) searchOnlineCandidates(ctx context.Context, query st
 				break
 			}
 		}
-		remaining = limit - len(results)
-		if remaining <= 0 {
-			break
-		}
 	}
 
-	if len(results) == 0 && lastErr != nil {
-		return nil, "", lastErr
+	if len(results) == 0 && len(errors) > 0 && len(errors) == len(tasks) {
+		return nil, "", fmt.Errorf("all online search providers failed: %v", errors)
 	}
 
 	return results, strings.Join(providersUsed, ","), nil

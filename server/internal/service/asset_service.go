@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"strings"
@@ -82,6 +83,8 @@ func (s *AssetService) CreateAsset(ctx context.Context, req CreateAssetRequest) 
 		return nil, errors.New("asset name is required")
 	}
 
+	log.Printf("[AssetService] CreateAsset: started type=%s name=%s", req.Type, req.Name)
+
 	// Create asset model
 	asset := &model.Asset{
 		Type:        req.Type,
@@ -141,9 +144,11 @@ func (s *AssetService) CreateAsset(ctx context.Context, req CreateAssetRequest) 
 	// Create in repository
 	createdAsset, err := s.assetRepo.Create(ctx, asset)
 	if err != nil {
+		log.Printf("[AssetService] CreateAsset: ERROR: creation failed type=%s name=%s: %v", req.Type, req.Name, err)
 		return nil, fmt.Errorf("failed to create asset: %w", err)
 	}
 
+	log.Printf("[AssetService] CreateAsset: completed asset=%s type=%s", createdAsset.ID, createdAsset.Type)
 	return createdAsset, nil
 }
 
@@ -170,8 +175,11 @@ func (s *AssetService) UpdateAsset(ctx context.Context, id string, req UpdateAss
 	// Get existing asset
 	asset, err := s.assetRepo.GetByID(ctx, id)
 	if err != nil {
+		log.Printf("[AssetService] UpdateAsset: ERROR: asset not found id=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to get asset: %w", err)
 	}
+
+	log.Printf("[AssetService] UpdateAsset: started asset=%s type=%s", id, asset.Type)
 
 	// Update fields if provided
 	if req.Name != nil {
@@ -240,9 +248,11 @@ func (s *AssetService) UpdateAsset(ctx context.Context, id string, req UpdateAss
 
 	// Update in repository
 	if err := s.assetRepo.Update(ctx, asset); err != nil {
+		log.Printf("[AssetService] UpdateAsset: ERROR: update failed asset=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to update asset: %w", err)
 	}
 
+	log.Printf("[AssetService] UpdateAsset: completed asset=%s", id)
 	return asset, nil
 }
 
@@ -253,10 +263,13 @@ func (s *AssetService) DeleteAsset(ctx context.Context, id string) error {
 	}
 
 	// Check if asset exists
-	_, err := s.assetRepo.GetByID(ctx, id)
+	asset, err := s.assetRepo.GetByID(ctx, id)
 	if err != nil {
+		log.Printf("[AssetService] DeleteAsset: asset not found id=%s", id)
 		return fmt.Errorf("failed to get asset: %w", err)
 	}
+
+	log.Printf("[AssetService] DeleteAsset: started asset=%s type=%s", id, asset.Type)
 
 	// TODO: Check if asset is used in any positions before deletion
 	// This would require a position repository dependency
@@ -268,9 +281,11 @@ func (s *AssetService) DeleteAsset(ctx context.Context, id string) error {
 		Where("id = ?", id).
 		Exec(ctx)
 	if err != nil {
+		log.Printf("[AssetService] DeleteAsset: ERROR: deletion failed asset=%s: %v", id, err)
 		return fmt.Errorf("failed to delete asset: %w", err)
 	}
 
+	log.Printf("[AssetService] DeleteAsset: completed asset=%s", id)
 	return nil
 }
 
@@ -310,10 +325,15 @@ func (s *AssetService) SearchAssets(ctx context.Context, searchTerm string, limi
 		limit = 50 // Default limit
 	}
 
+	log.Printf("[AssetService] SearchAssets: searching term=%s limit=%d", searchTerm, limit)
+
 	assets, err := s.assetRepo.SearchAssetsByName(ctx, strings.TrimSpace(searchTerm), limit)
 	if err != nil {
+		log.Printf("[AssetService] SearchAssets: ERROR: search failed term=%s: %v", searchTerm, err)
 		return nil, fmt.Errorf("failed to search assets: %w", err)
 	}
+
+	log.Printf("[AssetService] SearchAssets: found %d results term=%s", len(assets), searchTerm)
 
 	// Convert to pointers
 	result := make([]*model.Asset, len(assets))

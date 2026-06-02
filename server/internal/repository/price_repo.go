@@ -19,10 +19,10 @@ type TimeRange struct {
 type PriceFilter struct {
 	AssetID   *string    `json:"asset_id,omitempty"`
 	AssetIDs  []string   `json:"asset_ids,omitempty"`
-	Source    *string     `json:"source,omitempty"`
-	TimeRange *TimeRange  `json:"time_range,omitempty"`
-	Limit     *int        `json:"limit,omitempty"`
-	Offset    *int        `json:"offset,omitempty"`
+	Source    *string    `json:"source,omitempty"`
+	TimeRange *TimeRange `json:"time_range,omitempty"`
+	Limit     *int       `json:"limit,omitempty"`
+	Offset    *int       `json:"offset,omitempty"`
 }
 
 // PriceAggregation represents aggregated price data
@@ -97,6 +97,20 @@ func NewPriceRepository(db bun.IDB) *PriceRepository {
 	return &PriceRepository{
 		Repository: NewRepository[model.AssetPrice](db),
 	}
+}
+
+// Create overrides the base Repository.Create to add ON CONFLICT DO NOTHING.
+// This prevents duplicate key errors when two goroutines concurrently fetch
+// and store the same asset price at the same timestamp.
+// Uses Exec instead of Scan because the base Create's Returning("*") would
+// fail with sql.ErrNoRows on conflict, and all callers discard the returned entity.
+func (r *PriceRepository) Create(ctx context.Context, entity *model.AssetPrice) (*model.AssetPrice, error) {
+	_, err := r.db.NewInsert().
+		Model(entity).
+		ExcludeColumn("id").
+		On("CONFLICT (asset_id, timestamp) DO NOTHING").
+		Exec(ctx)
+	return entity, err
 }
 
 // GetLatestPrice retrieves the most recent price for an asset
@@ -449,7 +463,9 @@ func (r *PriceRepository) UpsertPrices(ctx context.Context, prices []model.Asset
 		Set("market_cap = EXCLUDED.market_cap").
 		Set("source = EXCLUDED.source").
 		Exec(ctx)
-
+	if err == nil {
+		return nil
+	}
 	return err
 }
 

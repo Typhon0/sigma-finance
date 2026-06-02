@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"strings"
@@ -118,8 +119,17 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, e
 
 // CreatePortfolio is the resolver for the createPortfolio field.
 func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.CreatePortfolioInput) (*gqlModel.Portfolio, error) {
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.UserID != authUser.ID {
+		return nil, fmt.Errorf("unauthorized: cannot create portfolio for another user")
+	}
+
 	portfolioInput := service.CreatePortfolioInput{
-		UserID:      input.UserID,
+		UserID:      authUser.ID, // Override with authenticated user ID
 		Name:        input.Name,
 		Description: input.Description,
 	}
@@ -132,6 +142,15 @@ func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.C
 
 // UpdatePortfolio is the resolver for the updatePortfolio field.
 func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input gqlModel.UpdatePortfolioInput) (*gqlModel.Portfolio, error) {
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, id, authUser.ID); err != nil {
+		return nil, err
+	}
+
 	var sortOrder *int
 	if input.SortOrder != nil {
 		val := int(*input.SortOrder)
@@ -151,7 +170,16 @@ func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input
 
 // DeletePortfolio is the resolver for the deletePortfolio field.
 func (r *mutationResolver) DeletePortfolio(ctx context.Context, id string) (string, error) {
-	err := r.PortfolioService.DeletePortfolio(ctx, id)
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, id, authUser.ID); err != nil {
+		return "", err
+	}
+
+	err = r.PortfolioService.DeletePortfolio(ctx, id)
 	if err != nil {
 		return "", err
 	}
@@ -160,6 +188,14 @@ func (r *mutationResolver) DeletePortfolio(ctx context.Context, id string) (stri
 
 // AddAssetToPortfolio is the resolver for the addAssetToPortfolio field.
 func (r *mutationResolver) AddAssetToPortfolio(ctx context.Context, input gqlModel.PortfolioAssetInput) (*gqlModel.PortfolioAsset, error) {
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, input.PortfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
 	pa, err := r.PortfolioService.AddAssetToPortfolio(ctx, input.PortfolioID, input.AssetID, input.Quantity, getFloat64(input.AveragePurchasePrice))
 	if err != nil {
 		return nil, err
@@ -170,6 +206,14 @@ func (r *mutationResolver) AddAssetToPortfolio(ctx context.Context, input gqlMod
 
 // UpdateAssetInPortfolio is the resolver for the updateAssetInPortfolio field.
 func (r *mutationResolver) UpdateAssetInPortfolio(ctx context.Context, input gqlModel.PortfolioAssetInput) (*gqlModel.PortfolioAsset, error) {
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, input.PortfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
 	pa, err := r.PortfolioService.UpdateAssetInPortfolio(ctx, input.PortfolioID, input.AssetID, input.Quantity, getFloat64(input.AveragePurchasePrice))
 	if err != nil {
 		return nil, err
@@ -180,7 +224,15 @@ func (r *mutationResolver) UpdateAssetInPortfolio(ctx context.Context, input gql
 
 // RemoveAssetFromPortfolio is the resolver for the removeAssetFromPortfolio field.
 func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string) (string, error) {
-	err := r.PortfolioService.RemoveAssetFromPortfolio(ctx, portfolioID, assetID)
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, portfolioID, authUser.ID); err != nil {
+		return "", err
+	}
+
+	err = r.PortfolioService.RemoveAssetFromPortfolio(ctx, portfolioID, assetID)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +241,15 @@ func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfol
 
 // TagPortfolio is the resolver for the tagPortfolio field.
 func (r *mutationResolver) TagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error) {
-	err := r.TagService.TagPortfolio(ctx, portfolioID, tagID)
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, portfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
+	err = r.TagService.TagPortfolio(ctx, portfolioID, tagID)
 	if err != nil {
 		return nil, err
 	}
@@ -202,7 +262,15 @@ func (r *mutationResolver) TagPortfolio(ctx context.Context, portfolioID string,
 
 // UntagPortfolio is the resolver for the untagPortfolio field.
 func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error) {
-	err := r.TagService.UntagPortfolio(ctx, portfolioID, tagID)
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, portfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
+	err = r.TagService.UntagPortfolio(ctx, portfolioID, tagID)
 	if err != nil {
 		return nil, err
 	}
@@ -215,6 +283,14 @@ func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID strin
 
 // DuplicatePortfolio is the resolver for the duplicatePortfolio field.
 func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlModel.DuplicatePortfolioInput) (*gqlModel.Portfolio, error) {
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, input.SourcePortfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
 	p, err := r.PortfolioService.DuplicatePortfolio(ctx, service.DuplicatePortfolioInput{
 		SourcePortfolioID: input.SourcePortfolioID,
 		NewName:           input.NewName,
@@ -268,6 +344,11 @@ func (r *mutationResolver) ExportPortfolio(ctx context.Context, input gqlModel.E
 func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.CreateStockInput) (*gqlModel.Stock, error) {
 	var asset *model.Asset
 	var err error
+	userID, _ := getUserIDFromContext(ctx)
+	ownerPtr := (*string)(nil)
+	if strings.TrimSpace(userID) != "" {
+		ownerPtr = &userID
+	}
 
 	quoteCurrency := model.Currency(strings.ToUpper(strings.TrimSpace(input.QuoteCurrency)))
 	if !quoteCurrency.IsValid() {
@@ -282,12 +363,71 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 	}
 
 	err = r.UOW.Do(ctx, func(uow repository.IUnitOfWork) error {
+		normalizedTicker := strings.ToUpper(strings.TrimSpace(input.Ticker))
+		var linkedInstrumentID *string
+		rows, searchErr := uow.Instrument().Search(ctx, normalizedTicker, repository.InstrumentSearchFilter{
+			AssetTypes: []model.InstrumentAssetType{
+				model.InstrumentAssetTypeStock,
+				model.InstrumentAssetTypeETF,
+				model.InstrumentAssetTypeFund,
+			},
+			OwnerUserID: ownerPtr,
+			Limit:       5,
+		})
+		if searchErr != nil {
+			return fmt.Errorf("failed to search instrument: %w", searchErr)
+		}
+		for _, row := range rows {
+			if strings.EqualFold(strings.TrimSpace(row.Instrument.Symbol), normalizedTicker) {
+				instrumentID := row.Instrument.ID
+				linkedInstrumentID = &instrumentID
+				break
+			}
+		}
+		if linkedInstrumentID == nil {
+			now := time.Now().UTC()
+			manualInstrument := &model.Instrument{
+				Symbol:           normalizedTicker,
+				NormalizedSymbol: normalizedTicker,
+				Name:             strings.TrimSpace(input.Name),
+				NormalizedName:   strings.ToLower(strings.TrimSpace(input.Name)),
+				Exchange:         "MANUAL",
+				AssetType:        model.InstrumentAssetTypeStock,
+				Status:           model.InstrumentStatusUnknown,
+				ProviderSource:   "manual",
+				OwnerUserID:      ownerPtr,
+				FirstSeenAt:      now,
+			}
+			if manualInstrument.NormalizedName == "" {
+				manualInstrument.NormalizedName = strings.ToLower(normalizedTicker)
+			}
+			createdInstrument, createInstrumentErr := uow.Instrument().Upsert(ctx, manualInstrument)
+			if createInstrumentErr != nil {
+				return fmt.Errorf("failed to create manual instrument for ticker %s: %w", normalizedTicker, createInstrumentErr)
+			}
+			if createdInstrument != nil && strings.TrimSpace(createdInstrument.ID) != "" {
+				instrumentID := strings.TrimSpace(createdInstrument.ID)
+				linkedInstrumentID = &instrumentID
+
+				_, _ = uow.InstrumentProviderMapping().Upsert(ctx, &model.InstrumentProviderMapping{
+					InstrumentID:    instrumentID,
+					Provider:        "YFINANCE",
+					ProviderAssetID: normalizedTicker,
+					ProviderSymbol:  &normalizedTicker,
+					QuoteCurrency:   stringPtr(quoteCurrency.String()),
+					MappingStatus:   model.InstrumentProviderMappingStatusVerified,
+					LastVerifiedAt:  &now,
+				})
+			}
+		}
+
 		asset, err = uow.Asset().Create(ctx, &model.Asset{
-			Name:        input.Name,
-			Symbol:      &input.Ticker,
-			Type:        model.AssetTypeStock,
-			IsTradeable: true,
-			Metadata:    metadata,
+			InstrumentID: linkedInstrumentID,
+			Name:         input.Name,
+			Symbol:       &input.Ticker,
+			Type:         model.AssetTypeStock,
+			IsTradeable:  true,
+			Metadata:     metadata,
 		})
 		if err != nil {
 			return err
@@ -954,7 +1094,11 @@ func (r *queryResolver) Tag(ctx context.Context, id string) (*gqlModel.Tag, erro
 
 // Tags is the resolver for the tags field.
 func (r *queryResolver) Tags(ctx context.Context) ([]*gqlModel.Tag, error) {
-	tags, err := r.TagService.FindAll(ctx)
+	user, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	tags, err := r.TagService.FindAllByUserID(ctx, user.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -1010,7 +1154,11 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.T
 	if err != nil {
 		return nil, err
 	}
-	return mapTransactionToGQL(*t), nil
+	mapped := r.buildGraphQLTransaction(ctx, t)
+	if mapped == nil {
+		return nil, nil
+	}
+	return mapped, nil
 }
 
 // Transactions is the resolver for the transactions field.
@@ -1041,9 +1189,13 @@ func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.Trans
 		return nil, err
 	}
 
-	res := make([]*gqlModel.Transaction, len(transactions))
-	for i, t := range transactions {
-		res[i] = mapTransactionToGQL(*t)
+	res := make([]*gqlModel.Transaction, 0, len(transactions))
+	for _, t := range transactions {
+		mapped := r.buildGraphQLTransaction(ctx, t)
+		if mapped == nil {
+			continue
+		}
+		res = append(res, mapped)
 	}
 	return res, nil
 }

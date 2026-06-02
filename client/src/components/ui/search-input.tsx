@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
  * Replaces the repeated `<div relative><Search/><Input/><X button/></div>`
  * pattern that was copy-pasted across 20+ list/screener components.
  */
-interface SearchInputProps {
+interface SearchInputProps extends Omit<React.ComponentPropsWithoutRef<"input">, "size"> {
 	/** Current search value — controls clear-button visibility. */
 	value: string;
 	/** Fires on every keystroke. */

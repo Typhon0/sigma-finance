@@ -22,6 +22,7 @@ import (
 
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"sigma_finance/internal/util"
 
 	"github.com/google/uuid"
 	"github.com/klauspost/compress/zstd"
@@ -211,12 +212,12 @@ func (s *packService) InstallPack(ctx context.Context, packID string) (*model.Ma
 	if err != nil {
 		return nil, err
 	}
-	go func() {
-		if err := s.runInstall(context.Background(), job.ID, packID); err != nil {
+	util.RunTask(context.Background(), "installPack", func(ctx context.Context) {
+		if err := s.runInstall(ctx, job.ID, packID); err != nil {
 			// runInstall persists failure state.
 			return
 		}
-	}()
+	})
 	return job, nil
 }
 

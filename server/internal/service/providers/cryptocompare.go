@@ -17,13 +17,15 @@ import (
 type CryptoCompareProvider struct {
 	client  *http.Client
 	baseURL string
+	CooldownMixin
 }
 
 // NewCryptoCompareProvider creates a new CryptoCompare provider
 func NewCryptoCompareProvider() Provider {
 	return &CryptoCompareProvider{
-		client:  &http.Client{Timeout: 30 * time.Second},
-		baseURL: "https://min-api.cryptocompare.com/data",
+		client:        &http.Client{Timeout: 30 * time.Second},
+		baseURL:       "https://min-api.cryptocompare.com/data",
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -87,6 +89,10 @@ func (c *CryptoCompareProvider) GetCandles(ctx context.Context, req CandleReques
 		return nil, fmt.Errorf("cryptocompare requires API key")
 	}
 
+	if c.IsInCooldown() {
+		return nil, c.CooldownError(c.ID(), c.Name())
+	}
+
 	symbol, err := c.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
 		return nil, err
@@ -127,6 +133,20 @@ func (c *CryptoCompareProvider) GetCandles(ctx context.Context, req CandleReques
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		c.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          c.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "CryptoCompare rate limit exceeded",
+			HTTPCode:          http.StatusTooManyRequests,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("cryptocompare API error: %d", resp.StatusCode)
@@ -285,6 +305,10 @@ func (c *CryptoCompareProvider) GetQuote(ctx context.Context, req QuoteRequest) 
 		}
 	}
 
+	if c.IsInCooldown() {
+		return nil, c.CooldownError(c.ID(), c.Name())
+	}
+
 	base, quote, err := c.parseSymbolPair(req.Symbol)
 	if err != nil {
 		return nil, err
@@ -309,13 +333,16 @@ func (c *CryptoCompareProvider) GetQuote(ctx context.Context, req QuoteRequest) 
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		c.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  c.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "CryptoCompare rate limit exceeded",
-			HTTPCode:  http.StatusTooManyRequests,
-			Retryable: true,
-			Fallback:  true,
+			Provider:          c.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "CryptoCompare rate limit exceeded",
+			HTTPCode:          http.StatusTooManyRequests,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 

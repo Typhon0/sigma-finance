@@ -1,5 +1,7 @@
 import { useApolloClient, useMutation } from "@apollo/client";
 import { useCallback } from "react";
+import { toast } from "sonner";
+import { InstrumentAssetType } from "@/gql/graphql";
 import {
 	ADD_ASSET_TO_PORTFOLIO,
 	CREATE_BANK_ACCOUNT_ASSET,
@@ -12,6 +14,10 @@ import {
 	REFRESH_SINGLE_ASSET_PRICE,
 } from "@/graphql/mutations/asset";
 import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
+import {
+	LATEST_HISTORICAL_DATA_BACKFILL_JOB,
+	SEARCH_INSTRUMENTS,
+} from "@/graphql/queries/instruments";
 
 export type AssetType = "stock" | "fund" | "etf";
 
@@ -153,6 +159,30 @@ interface AddInstrumentToPortfolioResult {
 	} | null;
 }
 
+interface LatestBackfillJobQueryResult {
+	latestHistoricalDataBackfillJob?: {
+		id: string;
+		status: string;
+		step: string;
+		progress: number;
+		rowsWritten: number;
+		errorCode?: string | null;
+		errorMessage?: string | null;
+	} | null;
+}
+
+interface SearchInstrumentsQueryResult {
+	searchInstruments?: {
+		localResults?: Array<{
+			instrument?: {
+				id: string;
+				symbol: string;
+				assetType: InstrumentAssetType;
+			} | null;
+		}> | null;
+	} | null;
+}
+
 export const useAssetMutations = () => {
 	const apolloClient = useApolloClient();
 	const [createStockAsset, { loading: creatingStock }] = useMutation(CREATE_STOCK_ASSET);
@@ -168,6 +198,63 @@ export const useAssetMutations = () => {
 	const [createLoanAsset, { loading: creatingLoan }] = useMutation(CREATE_LOAN_ASSET);
 	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(ADD_ASSET_TO_PORTFOLIO);
 	const [refreshSingleAssetPrice] = useMutation(REFRESH_SINGLE_ASSET_PRICE);
+
+	const monitorHistoricalBackfill = useCallback(
+		(portfolioId: string, assetId?: string) => {
+			if (!assetId) {
+				return;
+			}
+			const loadingToast = toast.loading("Fetching historical data and calculating performance...");
+			let attempts = 0;
+			const maxAttempts = 48;
+			const poll = async () => {
+				attempts += 1;
+				try {
+					const result = await apolloClient.query<LatestBackfillJobQueryResult>({
+						query: LATEST_HISTORICAL_DATA_BACKFILL_JOB,
+						variables: { portfolioId, assetId },
+						fetchPolicy: "network-only",
+					});
+					const job = result.data?.latestHistoricalDataBackfillJob;
+					if (!job) {
+						if (attempts < maxAttempts) {
+							setTimeout(poll, 2500);
+							return;
+						}
+						toast.dismiss(loadingToast);
+						return;
+					}
+					if (job.status === "QUEUED" || job.status === "RUNNING") {
+						if (attempts < maxAttempts) {
+							setTimeout(poll, 2500);
+							return;
+						}
+						toast.dismiss(loadingToast);
+						return;
+					}
+					toast.dismiss(loadingToast);
+					if (job.status === "COMPLETE") {
+						void apolloClient.reFetchObservableQueries();
+						toast.success("Historical data synced. Performance updated.");
+						return;
+					}
+					if (job.status === "SKIPPED_UNSUPPORTED") {
+						toast.error("Historical data unavailable from yfinance for this asset.");
+						return;
+					}
+					toast.error(job.errorMessage || "Historical data backfill failed.");
+				} catch {
+					if (attempts < maxAttempts) {
+						setTimeout(poll, 2500);
+						return;
+					}
+					toast.dismiss(loadingToast);
+				}
+			};
+			void poll();
+		},
+		[apolloClient],
+	);
 
 	const refreshAssetPriceBestEffort = useCallback(
 		async (assetId?: string) => {
@@ -188,16 +275,53 @@ export const useAssetMutations = () => {
 
 	const addAsset = useCallback(
 		async (input: AddAssetInput) => {
-			if (input.instrumentID) {
+			let resolvedInstrumentID = input.instrumentID;
+			if (!resolvedInstrumentID) {
+				const normalizedSymbol = input.symbol.trim().toUpperCase();
+				const assetTypes =
+					input.type === "fund"
+						? [InstrumentAssetType.Fund, InstrumentAssetType.Etf]
+						: input.type === "etf"
+							? [InstrumentAssetType.Etf, InstrumentAssetType.Fund]
+							: [InstrumentAssetType.Stock];
+				try {
+					const searchResult = await apolloClient.query<SearchInstrumentsQueryResult>({
+						query: SEARCH_INSTRUMENTS,
+						variables: {
+							input: {
+								query: normalizedSymbol,
+								assetTypes,
+								limit: 5,
+								offset: 0,
+							},
+						},
+						fetchPolicy: "network-only",
+					});
+					const exactMatch =
+						searchResult.data?.searchInstruments?.localResults?.find((row) => {
+							const instrument = row.instrument;
+							if (!instrument) return false;
+							if (instrument.symbol.trim().toUpperCase() !== normalizedSymbol) return false;
+							return assetTypes.includes(instrument.assetType);
+						})?.instrument ?? null;
+					resolvedInstrumentID = exactMatch?.id;
+				} catch {
+					// Keep manual fallback path.
+				}
+			}
+
+			if (resolvedInstrumentID) {
+				const unitPriceCurrency = (input.unitPriceCurrency || "").toUpperCase();
 				const instrumentResult = await apolloClient.mutate<AddInstrumentToPortfolioResult>({
 					mutation: ADD_INSTRUMENT_TO_PORTFOLIO,
 					variables: {
 						input: {
 							portfolioID: input.portfolioId,
-							instrumentID: input.instrumentID,
+							instrumentID: resolvedInstrumentID,
 							quantity: input.quantity,
 							averagePurchasePrice: input.purchasePrice,
-							unitPriceCurrency: input.unitPriceCurrency,
+							unitPriceCurrency: unitPriceCurrency || undefined,
+							purchaseDate: input.purchaseDate || undefined,
 						},
 					},
 				});
@@ -207,6 +331,10 @@ export const useAssetMutations = () => {
 				}
 
 				await refreshAssetPriceBestEffort(
+					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
+				);
+				monitorHistoricalBackfill(
+					input.portfolioId,
 					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
 				);
 
@@ -253,13 +381,23 @@ export const useAssetMutations = () => {
 				variables: { input: portfolioInput },
 			});
 			await refreshAssetPriceBestEffort(portfolioResult.data?.addAssetToPortfolio?.asset?.id);
+			monitorHistoricalBackfill(
+				input.portfolioId,
+				portfolioResult.data?.addAssetToPortfolio?.asset?.id ?? undefined,
+			);
 
 			return {
 				asset: stockResult.data?.createStockAsset,
 				portfolioAsset: portfolioResult.data?.addAssetToPortfolio,
 			};
 		},
-		[createStockAsset, addAssetToPortfolio, apolloClient, refreshAssetPriceBestEffort],
+		[
+			createStockAsset,
+			addAssetToPortfolio,
+			apolloClient,
+			refreshAssetPriceBestEffort,
+			monitorHistoricalBackfill,
+		],
 	);
 
 	const addBankAccount = useCallback(
@@ -334,6 +472,10 @@ export const useAssetMutations = () => {
 				await refreshAssetPriceBestEffort(
 					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
 				);
+				monitorHistoricalBackfill(
+					input.portfolioId,
+					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
+				);
 
 				return {
 					asset: undefined,
@@ -376,13 +518,23 @@ export const useAssetMutations = () => {
 				variables: { input: portfolioInput },
 			});
 			await refreshAssetPriceBestEffort(portfolioResult.data?.addAssetToPortfolio?.asset?.id);
+			monitorHistoricalBackfill(
+				input.portfolioId,
+				portfolioResult.data?.addAssetToPortfolio?.asset?.id ?? undefined,
+			);
 
 			return {
 				asset: cryptoResult.data?.createCryptoAsset,
 				portfolioAsset: portfolioResult.data?.addAssetToPortfolio,
 			};
 		},
-		[createCryptoAsset, addAssetToPortfolio, apolloClient, refreshAssetPriceBestEffort],
+		[
+			createCryptoAsset,
+			addAssetToPortfolio,
+			apolloClient,
+			refreshAssetPriceBestEffort,
+			monitorHistoricalBackfill,
+		],
 	);
 
 	const addRealEstate = useCallback(

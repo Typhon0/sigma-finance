@@ -3,6 +3,7 @@ import { createRootRoute, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
 import { PortfolioProvider } from "@/components/PortfolioProvider";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
 import { apolloClient } from "@/lib/apollo/apollo-client";
 import { AuthProvider } from "@/lib/auth-context";
 import { THEME_STORAGE_KEY } from "@/lib/theme/shadcn-theme";
@@ -16,6 +17,7 @@ export const Route = createRootRoute({
 					<AuthProvider>
 						<PortfolioProvider>
 							<Outlet />
+							<Toaster />
 						</PortfolioProvider>
 						<TanStackRouterDevtools />
 					</AuthProvider>

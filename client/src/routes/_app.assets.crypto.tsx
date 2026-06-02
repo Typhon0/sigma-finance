@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { CryptoList } from "@/components/assets/crypto/CryptoList";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { CryptoList } from "@/components/CryptoList";
 
 export const Route = createFileRoute("/_app/assets/crypto")({
 	component: () => (

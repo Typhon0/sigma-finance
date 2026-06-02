@@ -187,3 +187,19 @@ export const RESTORE_MANUAL_INSTRUMENT = graphql(/* GraphQL */ `
 		}
 	}
 `);
+
+export const RETRY_HISTORICAL_DATA_BACKFILL_JOB = graphql(/* GraphQL */ `
+	mutation RetryHistoricalDataBackfillJob($id: ID!) {
+		retryHistoricalDataBackfillJob(id: $id) {
+			id
+			status
+			step
+			progress
+			errorCode
+			errorMessage
+			createdAt
+			startedAt
+			finishedAt
+		}
+	}
+`);

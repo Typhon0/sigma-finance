@@ -7,6 +7,7 @@ import (
 	"time"
 
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"sigma_finance/internal/testutil"
@@ -207,6 +208,11 @@ func TestGraphQLIntegration_ComprehensivePortfolioOperations(t *testing.T) {
 	}
 	testUser, err := mutResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
+
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
 
 	t.Run("CreatePortfolio_Success", func(t *testing.T) {
 		input := gqlModel.CreatePortfolioInput{
@@ -775,7 +781,11 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 			UserID: testUser.ID,
 			Name:   "User1 Portfolio",
 		}
-		portfolio1, err := mutResolver.CreatePortfolio(ctx, portfolio1Input)
+		ctx1 := context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+			ID:    testUser.ID,
+			Email: testUser.Email,
+		})
+		portfolio1, err := mutResolver.CreatePortfolio(ctx1, portfolio1Input)
 		require.NoError(t, err)
 
 		// Create another user
@@ -791,17 +801,21 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 			UserID: testUser2.ID,
 			Name:   "User2 Portfolio",
 		}
-		portfolio2, err := mutResolver.CreatePortfolio(ctx, portfolio2Input)
+		ctx2 := context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+			ID:    testUser2.ID,
+			Email: testUser2.Email,
+		})
+		portfolio2, err := mutResolver.CreatePortfolio(ctx2, portfolio2Input)
 		require.NoError(t, err)
 
 		// Test filtering portfolios by user
 		filter1 := &gqlModel.PortfolioFilter{UserID: &testUser.ID}
-		user1Portfolios, err := queryResolver.Portfolios(ctx, filter1, nil, nil)
+		user1Portfolios, err := queryResolver.Portfolios(ctx1, filter1, nil, nil)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(user1Portfolios), 1)
 
 		filter2 := &gqlModel.PortfolioFilter{UserID: &testUser2.ID}
-		user2Portfolios, err := queryResolver.Portfolios(ctx, filter2, nil, nil)
+		user2Portfolios, err := queryResolver.Portfolios(ctx2, filter2, nil, nil)
 		require.NoError(t, err)
 		assert.GreaterOrEqual(t, len(user2Portfolios), 1)
 

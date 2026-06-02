@@ -13,7 +13,7 @@ import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 export const useCriticalDashboardData = (userId: string) => {
 	return useQuery(GET_DASHBOARD_CRITICAL, {
 		variables: { userID: userId },
-		fetchPolicy: "cache-first",
+		fetchPolicy: "cache-and-network",
 		errorPolicy: "all",
 		notifyOnNetworkStatusChange: true,
 		// Skip if no userID or userID is empty string
@@ -25,7 +25,7 @@ export const useCriticalDashboardData = (userId: string) => {
 export const useSecondaryDashboardData = (userId: string, enabled = true) => {
 	return useQuery(GET_DASHBOARD_SECONDARY, {
 		variables: { userID: userId },
-		fetchPolicy: "cache-first",
+		fetchPolicy: "cache-and-network",
 		errorPolicy: "all",
 		// Only fetch when enabled and userID exists and is not empty
 		skip: !userId || userId.trim() === "" || !enabled,

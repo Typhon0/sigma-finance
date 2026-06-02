@@ -1,6 +1,3 @@
-// TODO: This service layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until service layer task is implemented
-
 package service
 
 import (
@@ -323,12 +320,16 @@ func (s *PortfolioService) FindAll(ctx context.Context, opts ...repository.Query
 // CreatePortfolio creates a new portfolio for a user, ensuring the operation is atomic.
 // Returns ErrPortfolioNameExists if a portfolio with the same name already exists for the user.
 func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePortfolioInput) (*model.Portfolio, error) {
+	log.Printf("[PortfolioService] CreatePortfolio: started user=%s name=%s", input.UserID, input.Name)
+
 	// Input validation
 	if err := validateUserID(input.UserID); err != nil {
+		log.Printf("[PortfolioService] CreatePortfolio: invalid user ID user=%s: %v", input.UserID, err)
 		return nil, err
 	}
 
 	if err := validatePortfolioName(input.Name); err != nil {
+		log.Printf("[PortfolioService] CreatePortfolio: invalid name user=%s name=%s: %v", input.UserID, input.Name, err)
 		return nil, err
 	}
 
@@ -376,9 +377,11 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 	})
 
 	if err != nil {
+		log.Printf("[PortfolioService] CreatePortfolio: ERROR: user=%s name=%s: %v", input.UserID, input.Name, err)
 		return nil, err
 	}
 
+	log.Printf("[PortfolioService] CreatePortfolio: completed portfolio=%s user=%s name=%s", portfolio.ID, input.UserID, input.Name)
 	return portfolio, nil
 }
 
@@ -386,6 +389,8 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 // Returns ErrPortfolioNotFound if the portfolio doesn't exist.
 // Returns ErrPortfolioNameExists if the new name conflicts with another portfolio.
 func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input UpdatePortfolioInput) (*model.Portfolio, error) {
+	log.Printf("[PortfolioService] UpdatePortfolio: started portfolio=%s", id)
+
 	// Input validation
 	if err := validatePortfolioID(id); err != nil {
 		return nil, err
@@ -414,8 +419,10 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 		existing, err := uow.Portfolio().GetByID(ctx, id)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
+				log.Printf("[PortfolioService] UpdatePortfolio: portfolio not found id=%s", id)
 				return ErrPortfolioNotFound
 			}
+			log.Printf("[PortfolioService] UpdatePortfolio: ERROR: retrieve failed id=%s: %v", id, err)
 			return fmt.Errorf("failed to retrieve portfolio: %w", err)
 		}
 		portfolioToUpdate = existing
@@ -455,9 +462,11 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 	})
 
 	if err != nil {
+		log.Printf("[PortfolioService] UpdatePortfolio: ERROR: update failed portfolio=%s: %v", id, err)
 		return nil, err
 	}
 
+	log.Printf("[PortfolioService] UpdatePortfolio: completed portfolio=%s", id)
 	return portfolioToUpdate, nil
 }
 
@@ -465,6 +474,8 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 // Returns ErrPortfolioNotFound if the portfolio doesn't exist.
 // Returns ErrPortfolioHasPositions if the portfolio contains positions (optional check).
 func (s *PortfolioService) DeletePortfolio(ctx context.Context, id string) error {
+	log.Printf("[PortfolioService] DeletePortfolio: started portfolio=%s", id)
+
 	// Input validation
 	if err := validatePortfolioID(id); err != nil {
 		return err
@@ -505,12 +516,15 @@ func (s *PortfolioService) DeletePortfolio(ctx context.Context, id string) error
 			return fmt.Errorf("failed to delete portfolio: %w", err)
 		}
 
+		log.Printf("[PortfolioService] DeletePortfolio: completed portfolio=%s (deleted %d assets)", id, len(portfolioAssets))
 		return nil
 	})
 }
 
 // AddAssetToPortfolio handles adding an asset to a portfolio, creating the join table record.
 func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error) {
+	log.Printf("[PortfolioService] AddAssetToPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
+
 	// 1. --- Validation ---
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
@@ -519,18 +533,31 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 	var createdPortfolioAsset *model.PortfolioAsset
 	var assetForRefresh *model.Asset
 	var backfillFrom time.Time
+	var portfolioUserID string
+	var instrumentIDForBackfill string
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// 2. --- Check Existence of Portfolio and Asset ---
 		portfolio, err := uow.Portfolio().GetByID(ctx, portfolioID)
 		if err != nil {
 			return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 		}
+		portfolioUserID = portfolio.UserID
 		asset, err := uow.Asset().GetByID(ctx, assetID)
 		if err != nil {
 			return fmt.Errorf("asset with ID %s not found", assetID)
 		}
 		if asset.IsTradeable {
+			resolvedInstrumentID, resolveErr := s.ensureTradeableAssetInstrument(ctx, uow, asset, portfolio.UserID)
+			if resolveErr != nil {
+				return resolveErr
+			}
+			if resolvedInstrumentID != "" {
+				asset.InstrumentID = &resolvedInstrumentID
+			}
 			assetForRefresh = asset
+			if asset.InstrumentID != nil {
+				instrumentIDForBackfill = strings.TrimSpace(*asset.InstrumentID)
+			}
 		}
 
 		quoteCurrency, resolveErr := s.resolveAssetQuoteCurrency(ctx, uow, asset)
@@ -626,16 +653,249 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 
 	s.triggerAssetPriceRefresh(assetForRefresh)
 	if !backfillFrom.IsZero() {
-		portfolioIDCopy := portfolioID
-		backfillFromCopy := backfillFrom
-		go s.backfillPortfolioPerformanceSnapshots(portfolioIDCopy, backfillFromCopy)
+		if instrumentIDForBackfill != "" {
+			go s.enqueueHistoricalBackfillJob(portfolioID, assetID, instrumentIDForBackfill, backfillFrom, portfolioUserID)
+		}
 	}
 
+	log.Printf("[PortfolioService] AddAssetToPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return createdPortfolioAsset, nil
+}
+
+func (s *PortfolioService) ensureTradeableAssetInstrument(ctx context.Context, uow repository.IUnitOfWork, asset *model.Asset, ownerUserID string) (string, error) {
+	if asset == nil || !asset.IsTradeable {
+		return "", nil
+	}
+
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(ptrStringValue(asset.Symbol)))
+	if normalizedSymbol == "" {
+		return "", fmt.Errorf("tradeable asset %s has no symbol; cannot resolve instrument", asset.ID)
+	}
+	if isGenericTradeableSymbol(normalizedSymbol) {
+		return "", fmt.Errorf("tradeable asset %s has unsupported generic symbol %s", asset.ID, normalizedSymbol)
+	}
+
+	if asset.InstrumentID != nil && strings.TrimSpace(*asset.InstrumentID) != "" {
+		linked := strings.TrimSpace(*asset.InstrumentID)
+		if linkedInstrument, err := uow.Instrument().GetByID(ctx, linked); err == nil {
+			linkSymbol := normalizedSymbol
+			if linkedInstrument != nil && strings.TrimSpace(linkedInstrument.Symbol) != "" {
+				linkSymbol = strings.ToUpper(strings.TrimSpace(linkedInstrument.Symbol))
+			}
+			if err := s.ensureYFinanceMappingForInstrument(ctx, uow, linked, linkSymbol, asset.Type); err != nil {
+				return "", err
+			}
+			return linked, nil
+		}
+	}
+
+	assetTypes := mapAssetTypeToInstrumentCandidates(asset.Type)
+	ownerPtr := ptrString(strings.TrimSpace(ownerUserID))
+	rows, err := uow.Instrument().Search(ctx, normalizedSymbol, repository.InstrumentSearchFilter{
+		AssetTypes:  assetTypes,
+		OwnerUserID: ownerPtr,
+		Limit:       20,
+		Offset:      0,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to search instruments for asset %s: %w", asset.ID, err)
+	}
+
+	for i := range rows {
+		candidate := rows[i].Instrument
+		if strings.EqualFold(strings.TrimSpace(candidate.Symbol), normalizedSymbol) {
+			instrumentID := candidate.ID
+			asset.InstrumentID = &instrumentID
+			if err := uow.Asset().Update(ctx, asset); err != nil {
+				return "", fmt.Errorf("failed to attach instrument %s to asset %s: %w", instrumentID, asset.ID, err)
+			}
+			if err := s.ensureYFinanceMappingForInstrument(ctx, uow, instrumentID, normalizedSymbol, asset.Type); err != nil {
+				return "", err
+			}
+			return instrumentID, nil
+		}
+	}
+
+	instrumentType, typeErr := mapAssetTypeToInstrumentType(asset.Type)
+	if typeErr != nil {
+		return "", typeErr
+	}
+	exchange := "MANUAL"
+	now := time.Now().UTC()
+	createdInstrument := &model.Instrument{
+		Symbol:           normalizedSymbol,
+		NormalizedSymbol: normalizedSymbol,
+		Name:             strings.TrimSpace(asset.Name),
+		NormalizedName:   strings.ToLower(strings.TrimSpace(asset.Name)),
+		Exchange:         exchange,
+		AssetType:        instrumentType,
+		Status:           model.InstrumentStatusUnknown,
+		ProviderSource:   "manual",
+		OwnerUserID:      ownerPtr,
+		FirstSeenAt:      now,
+		LastVerifiedAt:   nil,
+	}
+	if createdInstrument.NormalizedName == "" {
+		createdInstrument.NormalizedName = strings.ToLower(normalizedSymbol)
+	}
+	created, createErr := uow.Instrument().Upsert(ctx, createdInstrument)
+	if createErr != nil {
+		return "", fmt.Errorf("failed to create manual instrument for asset %s: %w", asset.ID, createErr)
+	}
+	if created == nil || strings.TrimSpace(created.ID) == "" {
+		return "", fmt.Errorf("failed to create manual instrument for asset %s", asset.ID)
+	}
+
+	instrumentID := strings.TrimSpace(created.ID)
+	asset.InstrumentID = &instrumentID
+	if err := uow.Asset().Update(ctx, asset); err != nil {
+		return "", fmt.Errorf("failed to attach created instrument %s to asset %s: %w", instrumentID, asset.ID, err)
+	}
+
+	if err := s.ensureYFinanceMappingForInstrument(ctx, uow, instrumentID, normalizedSymbol, asset.Type); err != nil {
+		return "", err
+	}
+	return instrumentID, nil
+}
+
+func (s *PortfolioService) ensureYFinanceMappingForInstrument(ctx context.Context, uow repository.IUnitOfWork, instrumentID string, symbol string, assetType model.AssetType) error {
+	mappingRepo := uow.InstrumentProviderMapping()
+	if mappingRepo == nil {
+		return nil
+	}
+	if _, err := mappingRepo.GetVerifiedByInstrumentAndProvider(ctx, instrumentID, "YFINANCE"); err == nil {
+		return nil
+	}
+
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	if normalizedSymbol == "" {
+		return fmt.Errorf("cannot create yfinance mapping for instrument %s without symbol", instrumentID)
+	}
+
+	providerSymbol := normalizedSymbol
+	if assetType == model.AssetTypeCrypto && !strings.Contains(providerSymbol, "-") {
+		providerSymbol = providerSymbol + "-USD"
+	}
+	quoteCurrency := "USD"
+	if assetType == model.AssetTypeFund || assetType == model.AssetTypeStock {
+		quoteCurrency = "USD"
+	}
+	mapping := &model.InstrumentProviderMapping{
+		InstrumentID:    instrumentID,
+		Provider:        "YFINANCE",
+		ProviderAssetID: providerSymbol,
+		ProviderSymbol:  ptrString(providerSymbol),
+		QuoteCurrency:   ptrString(quoteCurrency),
+		MappingStatus:   model.InstrumentProviderMappingStatusVerified,
+		LastVerifiedAt:  ptrTime(time.Now().UTC()),
+		LastErrorText:   nil,
+	}
+	if _, err := mappingRepo.Upsert(ctx, mapping); err != nil {
+		return fmt.Errorf("failed to upsert yfinance mapping for instrument %s: %w", instrumentID, err)
+	}
+	return nil
+}
+
+func mapAssetTypeToInstrumentCandidates(assetType model.AssetType) []model.InstrumentAssetType {
+	switch assetType {
+	case model.AssetTypeFund:
+		return []model.InstrumentAssetType{model.InstrumentAssetTypeFund, model.InstrumentAssetTypeETF}
+	case model.AssetTypeCrypto:
+		return []model.InstrumentAssetType{model.InstrumentAssetTypeCrypto}
+	case model.AssetTypeStock:
+		return []model.InstrumentAssetType{model.InstrumentAssetTypeStock}
+	default:
+		return []model.InstrumentAssetType{}
+	}
+}
+
+func mapAssetTypeToInstrumentType(assetType model.AssetType) (model.InstrumentAssetType, error) {
+	switch assetType {
+	case model.AssetTypeFund:
+		return model.InstrumentAssetTypeFund, nil
+	case model.AssetTypeCrypto:
+		return model.InstrumentAssetTypeCrypto, nil
+	case model.AssetTypeStock:
+		return model.InstrumentAssetTypeStock, nil
+	default:
+		return "", fmt.Errorf("asset type %s cannot be mapped to tradeable instrument type", assetType)
+	}
+}
+
+func ptrStringValue(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
+}
+
+func ptrTime(value time.Time) *time.Time {
+	return &value
+}
+
+func isGenericTradeableSymbol(symbol string) bool {
+	switch strings.ToUpper(strings.TrimSpace(symbol)) {
+	case "", "EQUITIES", "EQUITY", "STOCK", "STOCKS", "FUND", "FUNDS", "ETF", "ETFS", "CRYPTO", "CRYPTOS":
+		return true
+	default:
+		return false
+	}
+}
+
+func (s *PortfolioService) enqueueHistoricalBackfillJob(portfolioID string, assetID string, instrumentID string, from time.Time, userID string) {
+	if strings.TrimSpace(portfolioID) == "" || strings.TrimSpace(assetID) == "" || strings.TrimSpace(instrumentID) == "" || from.IsZero() {
+		return
+	}
+
+	jobRepo := s.uow.HistoricalDataBackfillJob()
+	if jobRepo == nil {
+		return
+	}
+
+	now := time.Now().UTC()
+	requestedTo := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	activeJob, activeErr := jobRepo.GetActiveByRequest(
+		context.Background(),
+		portfolioID,
+		assetID,
+		instrumentID,
+		"YFINANCE",
+		from.UTC(),
+		requestedTo,
+	)
+	if activeErr == nil && activeJob != nil {
+		return
+	}
+
+	job := &model.HistoricalDataBackfillJob{
+		PortfolioID:   portfolioID,
+		AssetID:       assetID,
+		InstrumentID:  instrumentID,
+		Provider:      "YFINANCE",
+		Status:        string(model.HistoricalDataBackfillStatusQueued),
+		Step:          string(model.HistoricalDataBackfillStepQueued),
+		Progress:      0,
+		RequestedFrom: from.UTC(),
+		RequestedTo:   requestedTo,
+		NextRunAt:     now,
+		MaxAttempts:   4,
+	}
+	if strings.TrimSpace(userID) != "" {
+		job.UserID = &userID
+	}
+	created, err := jobRepo.Create(context.Background(), job)
+	if err != nil || created == nil {
+		log.Printf("[PortfolioService] enqueueHistoricalBackfillJob failed portfolio=%s asset=%s instrument=%s err=%v", portfolioID, assetID, instrumentID, err)
+		return
+	}
+
+	log.Printf("[PortfolioService] queued historical job=%s portfolio=%s asset=%s instrument=%s from=%s to=%s", created.ID, portfolioID, assetID, instrumentID, from.UTC().Format(time.RFC3339), requestedTo.Format(time.RFC3339))
 }
 
 // UpdateAssetInPortfolio handles updating an asset's quantity and price in a portfolio.
 func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error) {
+	log.Printf("[PortfolioService] UpdateAssetInPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
+
 	// 1. --- Validation ---
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
@@ -679,16 +939,20 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 	})
 
 	if err != nil {
+		log.Printf("[PortfolioService] UpdateAssetInPortfolio: ERROR: portfolio=%s asset=%s: %v", portfolioID, assetID, err)
 		return nil, err
 	}
 
 	s.triggerAssetPriceRefresh(assetForRefresh)
 
+	log.Printf("[PortfolioService] UpdateAssetInPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return updatedPortfolioAsset, nil
 }
 
 // RemoveAssetFromPortfolio handles removing an asset from a portfolio.
 func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string) error {
+	log.Printf("[PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s", portfolioID, assetID)
+
 	// 1. --- Check Existence of Portfolio and Asset ---
 	if _, err := s.uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
 		return fmt.Errorf("portfolio with ID %s not found", portfolioID)
@@ -703,6 +967,7 @@ func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfol
 		return fmt.Errorf("failed to remove asset from portfolio: %w", err)
 	}
 
+	log.Printf("[PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return nil
 }
 
@@ -861,7 +1126,7 @@ func (s *PortfolioService) DuplicatePortfolio(ctx context.Context, input Duplica
 			if err != nil {
 				// If asset copying fails, we should still return the created portfolio
 				// but log the error for debugging
-				fmt.Printf("Warning: failed to copy asset %s to new portfolio: %v\n", sourceAsset.AssetID, err)
+				log.Printf("[PortfolioService] DuplicatePortfolio: warning: failed to copy asset %s to new portfolio: %v", sourceAsset.AssetID, err)
 			}
 		}
 	}
@@ -963,6 +1228,8 @@ func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID strin
 // GetPortfolioAnalytics calculates comprehensive analytics for a portfolio using display currency.
 // It uses PortfolioValuationService to calculate native and display values with proper FX conversion.
 func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID string, displayCurrency model.Currency) (*PortfolioValuation, error) {
+	log.Printf("[PortfolioService] GetPortfolioAnalytics: started portfolio=%s currency=%s", portfolioID, displayCurrency)
+
 	// Input validation
 	if err := validatePortfolioID(portfolioID); err != nil {
 		return nil, err
@@ -984,6 +1251,7 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 	}
 
 	if len(positions) == 0 {
+		log.Printf("[PortfolioService] GetPortfolioAnalytics: empty portfolio portfolio=%s", portfolioID)
 		// Empty portfolio - return empty valuation
 		return &PortfolioValuation{
 			TotalDisplayValue:  0,
@@ -1000,10 +1268,12 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 	// 3. --- Calculate portfolio valuation using PortfolioValuationService ---
 	valuation, err := s.valuationService.CalculatePortfolioValue(ctx, positions, displayCurrency)
 	if err != nil {
+		log.Printf("[PortfolioService] GetPortfolioAnalytics: ERROR: valuation failed portfolio=%s: %v", portfolioID, err)
 		return nil, fmt.Errorf("failed to calculate portfolio valuation: %w", err)
 	}
 	valuation.PerformanceHistory = s.generatePerformanceHistory(ctx, portfolioID, float64(valuation.TotalDisplayValue)/100.0)
 
+	log.Printf("[PortfolioService] GetPortfolioAnalytics: completed portfolio=%s positions=%d totalValue=%d fxState=%s", portfolioID, len(positions), valuation.TotalDisplayValue, valuation.FXState)
 	return valuation, nil
 }
 
@@ -1098,21 +1368,28 @@ func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portf
 			startDate = time.Date(oldest.Year(), oldest.Month(), oldest.Day(), 0, 0, 0, 0, oldest.Location())
 		}
 	}
-
-	if materialized := s.getMaterializedPerformanceHistory(ctx, portfolioID, startDate, now); len(materialized) > 0 {
-		return materialized
+	if earliestSnapshot := s.getEarliestPerformanceSnapshotDate(ctx, portfolioID); !earliestSnapshot.IsZero() && earliestSnapshot.Before(startDate) {
+		startDate = earliestSnapshot
+	}
+	if earliestPrice := s.getEarliestPortfolioAssetPriceDate(ctx, portfolioID); !earliestPrice.IsZero() && earliestPrice.Before(startDate) {
+		startDate = earliestPrice
 	}
 
-	snapshots, err := s.uow.Performance().GetPerformanceSnapshots(ctx, portfolioID, startDate, now)
-	history := make([]PerformancePoint, 0, len(snapshots))
-
-	if err == nil && len(snapshots) > 0 {
-		for _, snap := range snapshots {
-			history = append(history, PerformancePoint{
-				Date:  snap.SnapshotDate,
-				Value: float64(snap.TotalValue) / 100.0,
-			})
+	if materialized := s.getMaterializedPerformanceHistory(ctx, portfolioID, startDate, now); len(materialized) > 0 {
+		if coversRange(materialized, startDate, now) {
+			return materialized
 		}
+	}
+
+	history := s.getPortfolioPerformanceHistory(ctx, portfolioID, startDate, now)
+	if !coversRange(history, startDate, now) {
+		if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDate, now); rebuildErr != nil {
+			log.Printf("[generatePerformanceHistory] snapshot rebuild failed portfolio=%s from=%s to=%s err=%v", portfolioID, startDate.Format("2006-01-02"), now.Format("2006-01-02"), rebuildErr)
+		} else {
+			history = s.getPortfolioPerformanceHistory(ctx, portfolioID, startDate, now)
+		}
+	}
+	if len(history) > 0 {
 		return history
 	}
 
@@ -1123,6 +1400,60 @@ func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portf
 	})
 
 	return history
+}
+
+func snapshotsToPerformancePoints(snapshots []repository.PerformanceSnapshot) []PerformancePoint {
+	history := make([]PerformancePoint, 0, len(snapshots))
+	for _, snap := range snapshots {
+		history = append(history, PerformancePoint{
+			Date:  snap.SnapshotDate,
+			Value: float64(snap.TotalValue) / 100.0,
+		})
+	}
+	return history
+}
+
+func (s *PortfolioService) getEarliestPerformanceSnapshotDate(ctx context.Context, portfolioID string) time.Time {
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if !ok || unit.GetDB() == nil {
+		return time.Time{}
+	}
+	var row struct {
+		Date *time.Time `bun:"date"`
+	}
+	if err := unit.GetDB().NewSelect().
+		TableExpr("sigma_finance.portfolio_performance").
+		ColumnExpr("MIN(snapshot_date) AS date").
+		Where("portfolio_id = ?", portfolioID).
+		Scan(ctx, &row); err != nil {
+		return time.Time{}
+	}
+	if row.Date == nil || row.Date.IsZero() {
+		return time.Time{}
+	}
+	return time.Date(row.Date.Year(), row.Date.Month(), row.Date.Day(), 0, 0, 0, 0, row.Date.Location())
+}
+
+func (s *PortfolioService) getEarliestPortfolioAssetPriceDate(ctx context.Context, portfolioID string) time.Time {
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if !ok || unit.GetDB() == nil {
+		return time.Time{}
+	}
+	var row struct {
+		Date *time.Time `bun:"date"`
+	}
+	if err := unit.GetDB().NewSelect().
+		TableExpr("sigma_finance.asset_prices ap").
+		ColumnExpr("MIN(ap.timestamp) AS date").
+		Join("JOIN sigma_finance.positions p ON p.asset_id = ap.asset_id").
+		Where("p.portfolio_id = ?", portfolioID).
+		Scan(ctx, &row); err != nil {
+		return time.Time{}
+	}
+	if row.Date == nil || row.Date.IsZero() {
+		return time.Time{}
+	}
+	return time.Date(row.Date.Year(), row.Date.Month(), row.Date.Day(), 0, 0, 0, 0, row.Date.Location())
 }
 
 func (s *PortfolioService) getMaterializedPerformanceHistory(ctx context.Context, portfolioID string, from, to time.Time) []PerformancePoint {
@@ -1149,6 +1480,52 @@ func (s *PortfolioService) getMaterializedPerformanceHistory(ctx context.Context
 		history = append(history, PerformancePoint{Date: row.Date, Value: value})
 	}
 	return history
+}
+
+func (s *PortfolioService) getPortfolioPerformanceHistory(ctx context.Context, portfolioID string, from, to time.Time) []PerformancePoint {
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if !ok || unit.GetDB() == nil {
+		return nil
+	}
+	var rows []struct {
+		Date       time.Time `bun:"snapshot_date"`
+		TotalValue int64     `bun:"total_value"`
+	}
+	if err := unit.GetDB().NewSelect().
+		TableExpr("sigma_finance.portfolio_performance").
+		ColumnExpr("snapshot_date, total_value").
+		Where("portfolio_id = ?", portfolioID).
+		Where("snapshot_date >= ?::date", from.Format(time.DateOnly)).
+		Where("snapshot_date <= ?::date", to.Format(time.DateOnly)).
+		OrderExpr("snapshot_date ASC").
+		Scan(ctx, &rows); err != nil {
+		log.Printf("[getPortfolioPerformanceHistory] query failed portfolio=%s from=%s to=%s err=%v", portfolioID, from.Format("2006-01-02"), to.Format("2006-01-02"), err)
+		return nil
+	}
+	history := make([]PerformancePoint, 0, len(rows))
+	for _, row := range rows {
+		history = append(history, PerformancePoint{
+			Date:  row.Date,
+			Value: float64(row.TotalValue) / 100.0,
+		})
+	}
+	return history
+}
+
+func coversRange(points []PerformancePoint, startDate, endDate time.Time) bool {
+	if len(points) == 0 {
+		return false
+	}
+	first := points[0].Date
+	last := points[len(points)-1].Date
+	startDay := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
+	endDay := time.Date(endDate.Year(), endDate.Month(), endDate.Day(), 0, 0, 0, 0, endDate.Location())
+	firstDay := time.Date(first.Year(), first.Month(), first.Day(), 0, 0, 0, 0, first.Location())
+	lastDay := time.Date(last.Year(), last.Month(), last.Day(), 0, 0, 0, 0, last.Location())
+
+	// Accept a small tolerance (2 days) for sparse weekends/holidays.
+	return !firstDay.After(startDay.AddDate(0, 0, 2)) &&
+		!lastDay.Before(endDay.AddDate(0, 0, -2))
 }
 
 // GetPerformanceVsBenchmark queries the performance repository

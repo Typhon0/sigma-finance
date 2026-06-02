@@ -65,7 +65,13 @@ func newMarketDataCommand(db *bun.DB) *cli.Command {
 									return err
 								}
 							}
-							fmt.Printf("spec valid pack=%s version=%s distribution=%s symbols=%d\n", plan.Spec.PackID, plan.Spec.Version, plan.Spec.Distribution, len(plan.Universe.Symbols))
+							symbolCount := 0
+							if plan.Universe != nil {
+								symbolCount = len(plan.Universe.Symbols)
+							} else {
+								symbolCount = plan.Spec.Universe.Discover
+							}
+							fmt.Printf("spec valid pack=%s version=%s distribution=%s symbols=%d\n", plan.Spec.PackID, plan.Spec.Version, plan.Spec.Distribution, symbolCount)
 							for _, warning := range plan.LicenseGate.Warnings {
 								fmt.Printf("warning: %s\n", warning)
 							}

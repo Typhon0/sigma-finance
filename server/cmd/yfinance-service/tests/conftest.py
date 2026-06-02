@@ -181,6 +181,18 @@ def _make_search_quotes(query: str):
         return []
     if normalized == "EMPTY":
         return []
+    if normalized == "FR0011871128":
+        return [
+            {
+                "symbol": "LYXIB.PA",
+                "longname": "Lyxor ETF Paris",
+                "exchDisp": "Paris",
+                "exchange": "PAR",
+                "quoteType": "EQUITY",
+                "currency": "USD",  # simulate yfinance returning USD
+                "isin": "FR0011871128",
+            }
+        ]
     return [
         {
             "symbol": "AAPL",

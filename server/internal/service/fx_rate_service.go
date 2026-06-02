@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"sigma_finance/internal/domain/model"
@@ -69,6 +70,7 @@ func NewFXRateService(uow repository.IUnitOfWork, cacheTTLSeconds int) IFXRateSe
 
 // Convert converts amount from one currency to another using direct/inverse/USD bridge resolution.
 func (s *fxRateService) Convert(ctx context.Context, amount model.Money, from, to model.Currency) (*ConversionResult, error) {
+	log.Printf("[FXRateService] Convert: started amount=%d from=%s to=%s", amount, from, to)
 	if !from.IsValid() {
 		return nil, fmt.Errorf("invalid source currency: %s", from)
 	}
@@ -105,9 +107,10 @@ func (s *fxRateService) Convert(ctx context.Context, amount model.Money, from, t
 	// Bridge via USD as fallback.
 	bridgeResult, bridgeErr := s.tryBridgeConversion(ctx, amount, from, to)
 	if bridgeErr != nil {
+		log.Printf("[FXRateService] Convert: ERROR bridge failed from=%s to=%s: %v", from, to, bridgeErr)
 		return nil, fmt.Errorf("no direct/inverse rate for %s->%s and bridge failed: %w", from, to, bridgeErr)
 	}
-
+	log.Printf("[FXRateService] Convert: SUCCESS bridged from=%s to=%s converted=%d rate=%s", from, to, bridgeResult.ConvertedAmount, bridgeResult.Rate.String())
 	return bridgeResult, nil
 }
 
@@ -139,6 +142,7 @@ func (s *fxRateService) GetLatestRate(ctx context.Context, base, quote model.Cur
 		return directRate, nil
 	}
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Printf("[FXRateService] GetLatestRate: ERROR direct lookup failed base=%s quote=%s: %v", base, quote, err)
 		return nil, err
 	}
 
@@ -146,6 +150,7 @@ func (s *fxRateService) GetLatestRate(ctx context.Context, base, quote model.Cur
 	inverseRate, inverseErr := rateRepo.GetLatestRate(ctx, quote, base)
 	if inverseErr != nil {
 		if errors.Is(inverseErr, sql.ErrNoRows) {
+			log.Printf("[FXRateService] GetLatestRate: NOT_FOUND base=%s quote=%s", base, quote)
 			return nil, ErrFXRateNotFound
 		}
 		return nil, inverseErr

@@ -17,13 +17,15 @@ import (
 type TwelveDataProvider struct {
 	client  *http.Client
 	baseURL string
+	CooldownMixin
 }
 
 // NewTwelveDataProvider creates a new Twelve Data provider
-func NewTwelveDataProvider() Provider {
+func NewTwelveDataProvider() *TwelveDataProvider {
 	return &TwelveDataProvider{
-		client:  &http.Client{Timeout: 30 * time.Second},
-		baseURL: "https://api.twelvedata.com",
+		client:        &http.Client{Timeout: 30 * time.Second},
+		baseURL:       "https://api.twelvedata.com",
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -91,6 +93,10 @@ func (t *TwelveDataProvider) NormalizeSymbol(providerSymbol, assetType string) (
 }
 
 func (t *TwelveDataProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
+	if t.IsInCooldown() {
+		return nil, t.CooldownError(t.ID(), t.Name())
+	}
+
 	if req.APIKey == "" {
 		return nil, fmt.Errorf("twelve data requires API key")
 	}
@@ -134,6 +140,20 @@ func (t *TwelveDataProvider) GetCandles(ctx context.Context, req CandleRequest) 
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		t.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Twelve Data rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("twelve data API error: %d", resp.StatusCode)
 	}
@@ -152,7 +172,9 @@ func (t *TwelveDataProvider) GetCandles(ctx context.Context, req CandleRequest) 
 			Close    string `json:"close"`
 			Volume   string `json:"volume"`
 		} `json:"values"`
-		Status string `json:"status"`
+		Status  string `json:"status"`
+		Code    int    `json:"code"`
+		Message string `json:"message"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -160,7 +182,20 @@ func (t *TwelveDataProvider) GetCandles(ctx context.Context, req CandleRequest) 
 	}
 
 	if response.Status == "error" {
-		return nil, fmt.Errorf("twelve data API error in response")
+		// Text-based rate limit detection (Twelve Data returns code 429 in body)
+		if response.Code == 429 {
+			t.EnterCooldown(DefaultRetryAfterMax)
+			return nil, &ProviderError{
+				Provider:          t.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           fmt.Sprintf("Twelve Data rate limit exceeded: %s", response.Message),
+				HTTPCode:          429,
+				Retryable:         true,
+				Fallback:          true,
+				RetryAfterSeconds: int(DefaultRetryAfterMax.Seconds()),
+			}
+		}
+		return nil, fmt.Errorf("twelve data API error: %s (code: %d)", response.Message, response.Code)
 	}
 
 	if len(response.Values) == 0 {
@@ -314,10 +349,17 @@ func (t *TwelveDataProvider) parseDateTime(datetime string, interval model.Candl
 }
 
 func (t *TwelveDataProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	if t.IsInCooldown() {
+		return nil, t.CooldownError(t.ID(), t.Name())
+	}
 	return nil, fmt.Errorf("technical indicators not supported by Twelve Data provider")
 }
 
 func (t *TwelveDataProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if t.IsInCooldown() {
+		return nil, t.CooldownError(t.ID(), t.Name())
+	}
+
 	if req.APIKey == "" {
 		return nil, fmt.Errorf("twelve data requires API key")
 	}
@@ -344,6 +386,20 @@ func (t *TwelveDataProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Q
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		t.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Twelve Data rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("twelve data API error: %d", resp.StatusCode)
 	}
@@ -366,6 +422,19 @@ func (t *TwelveDataProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Q
 	}
 
 	if response.Status == "error" {
+		// Text-based rate limit detection (Twelve Data returns code 429 in body)
+		if response.Code == 429 {
+			t.EnterCooldown(DefaultRetryAfterMax)
+			return nil, &ProviderError{
+				Provider:          t.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           fmt.Sprintf("Twelve Data rate limit exceeded: %s", response.Message),
+				HTTPCode:          429,
+				Retryable:         true,
+				Fallback:          true,
+				RetryAfterSeconds: int(DefaultRetryAfterMax.Seconds()),
+			}
+		}
 		return nil, fmt.Errorf("twelve data API error: %s (code: %d)", response.Message, response.Code)
 	}
 
@@ -376,7 +445,8 @@ func (t *TwelveDataProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Q
 
 	var volume int64
 	if response.Volume != "" {
-		volume, _ = strconv.ParseInt(response.Volume, 10, 64)
+		fvol, _ := strconv.ParseFloat(response.Volume, 64)
+		volume = int64(fvol)
 	}
 
 	var timestamp time.Time

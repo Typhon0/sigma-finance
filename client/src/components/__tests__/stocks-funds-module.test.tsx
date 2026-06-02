@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { StocksFundsModule } from "../StocksFundsModule";
+import { StocksFundsModule } from "../assets/stocks-funds/StocksFundsModule";
 
 // Mock sonner toast
 vi.mock("sonner", () => ({
@@ -52,11 +52,11 @@ vi.mock("@/components/PortfolioProvider", () => ({
 }));
 
 // Mock child components
-vi.mock("@/components/StocksFundsPositions", () => ({
+vi.mock("@/components/assets/stocks-funds/StocksFundsPositions", () => ({
 	StocksFundsPositions: () => <div data-testid="stocks-positions">Positions</div>,
 }));
 
-vi.mock("@/components/StocksFundsTransactions", () => ({
+vi.mock("@/components/assets/stocks-funds/StocksFundsTransactions", () => ({
 	StocksFundsTransactions: () => <div data-testid="stocks-transactions">Transactions</div>,
 }));
 
@@ -95,7 +95,7 @@ vi.mock("@/components/ui/tabs", () => ({
 
 // Mock AddStockForm to capture the onSubmit handler
 let capturedHandleAddPosition: ((formData: Record<string, unknown>) => Promise<void>) | null = null;
-vi.mock("@/components/AddStockForm", () => ({
+vi.mock("@/components/assets/stocks-funds/AddStockForm", () => ({
 	AddStockForm: ({
 		open,
 		_onClose,

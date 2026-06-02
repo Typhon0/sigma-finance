@@ -17,13 +17,15 @@ import (
 type FinnhubProvider struct {
 	client  *http.Client
 	baseURL string
+	CooldownMixin
 }
 
 // NewFinnhubProvider creates a new Finnhub provider
 func NewFinnhubProvider() Provider {
 	return &FinnhubProvider{
-		client:  &http.Client{Timeout: 30 * time.Second},
-		baseURL: "https://finnhub.io/api/v1",
+		client:        &http.Client{Timeout: 30 * time.Second},
+		baseURL:       "https://finnhub.io/api/v1",
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -86,6 +88,10 @@ func (f *FinnhubProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 		return nil, fmt.Errorf("finnhub requires API key")
 	}
 
+	if f.IsInCooldown() {
+		return nil, f.CooldownError(f.ID(), f.Name())
+	}
+
 	symbol, err := f.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
 		return nil, err
@@ -116,6 +122,20 @@ func (f *FinnhubProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Finnhub rate limit exceeded",
+			HTTPCode:          http.StatusTooManyRequests,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("finnhub API error: %d", resp.StatusCode)
@@ -272,6 +292,10 @@ func (f *FinnhubProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 		}
 	}
 
+	if f.IsInCooldown() {
+		return nil, f.CooldownError(f.ID(), f.Name())
+	}
+
 	symbol, err := f.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
 		return nil, err
@@ -296,13 +320,16 @@ func (f *FinnhubProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 
 	// Handle rate limiting (429 Too Many Requests)
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  f.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Finnhub rate limit exceeded",
-			HTTPCode:  http.StatusTooManyRequests,
-			Retryable: true,
-			Fallback:  true,
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Finnhub rate limit exceeded",
+			HTTPCode:          http.StatusTooManyRequests,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 

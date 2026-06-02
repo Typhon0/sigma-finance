@@ -256,10 +256,6 @@ export function useChartLibrary(library: "lightweight-charts" | "echarts") {
 			return;
 		}
 
-		if (loader.isLoading(library)) {
-			return;
-		}
-
 		setIsLoading(true);
 		setError(null);
 

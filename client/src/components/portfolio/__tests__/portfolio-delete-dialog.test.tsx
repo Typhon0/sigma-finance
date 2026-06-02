@@ -1,7 +1,12 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Portfolio } from "@/gql/graphql";
+import { useAuth } from "@/lib/auth-context";
 import { PortfolioDeleteDialog } from "../portfolio-delete-dialog";
+
+vi.mock("@/lib/auth-context", () => ({
+	useAuth: vi.fn(),
+}));
 
 // Mock portfolio data
 const mockPortfolioEmpty: Portfolio = {
@@ -96,6 +101,9 @@ describe("PortfolioDeleteDialog", () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(useAuth).mockReturnValue({
+			user: { displayCurrency: "USD" },
+		} as any);
 	});
 
 	it("should not render when portfolio is null", () => {

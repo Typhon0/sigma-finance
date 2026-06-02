@@ -8,6 +8,7 @@ import (
 	"sigma_finance/internal/marketdata/packs/sources"
 	binancesource "sigma_finance/internal/marketdata/packs/sources/binance"
 	ecbsource "sigma_finance/internal/marketdata/packs/sources/ecb"
+	"sigma_finance/internal/marketdata/packs/sources/marketparquet"
 )
 
 func newSourceForProvider(provider string, baseURL string) (sources.CandleSource, error) {
@@ -21,6 +22,8 @@ func newSourceForProvider(provider string, baseURL string) (sources.CandleSource
 		return ecbsource.NewSource(ecbsource.Config{
 			BaseURL: strings.TrimSpace(baseURL),
 		}), nil
+	case marketparquet.SourceName:
+		return marketparquet.NewSource(strings.TrimSpace(baseURL)), nil
 	default:
 		return nil, fmt.Errorf("unsupported source_provider=%s", strings.TrimSpace(provider))
 	}

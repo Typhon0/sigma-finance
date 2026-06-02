@@ -9,8 +9,9 @@ import (
 type Tag struct {
 	bun.BaseModel `bun:"table:sigma_finance.tag"`
 
-	ID   string `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	Name string `bun:"name,unique,notnull"`
+	ID     string `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID string `bun:"user_id,notnull,type:uuid,unique:user_id_name"`
+	Name   string `bun:"name,notnull,unique:user_id_name"`
 }
 
 // Implement Entity interface

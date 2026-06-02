@@ -91,6 +91,7 @@ func (r *FXRateRepository) GetRateForDate(ctx context.Context, base, quote model
 func (r *FXRateRepository) SaveRate(ctx context.Context, rate *model.FXRate) error {
 	_, err := r.db.NewInsert().
 		Model(rate).
+		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO NOTHING").
 		Returning("*").
 		Exec(ctx)
 	return err
@@ -104,6 +105,7 @@ func (r *FXRateRepository) SaveRates(ctx context.Context, rates []*model.FXRate)
 
 	_, err := r.db.NewInsert().
 		Model(&rates).
+		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO NOTHING").
 		Returning("*").
 		Exec(ctx)
 	return err

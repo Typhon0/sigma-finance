@@ -6,6 +6,7 @@ import (
 	"time"
 
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"sigma_finance/internal/testutil"
@@ -138,6 +139,11 @@ func TestGraphQLIntegration_SimplePortfolioOperations(t *testing.T) {
 	}
 	testUser, err := mutationResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
+
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
 
 	t.Run("PortfolioCRUDOperations", func(t *testing.T) {
 		// Create portfolio
@@ -483,6 +489,11 @@ func TestGraphQLIntegration_PaginationAndFiltering(t *testing.T) {
 		}
 		testUser, err := mutationResolver.CreateUser(ctx, userInput)
 		require.NoError(t, err)
+
+		ctx := context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+			ID:    testUser.ID,
+			Email: testUser.Email,
+		})
 
 		// Create multiple portfolios
 		portfolios := make([]*gqlModel.Portfolio, 0, 5)

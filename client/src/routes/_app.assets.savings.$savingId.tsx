@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, useParams } from "@tanstack/react-router";
+import { SavingDetail } from "@/components/assets/savings/SavingDetail";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { SavingDetail } from "@/components/SavingDetail";
 
 function SavingDetailPage() {
 	const { savingId } = useParams({ from: "/_app/assets/savings/$savingId" });

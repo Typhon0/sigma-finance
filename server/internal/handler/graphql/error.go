@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	"strings"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/gofiber/fiber/v2"
@@ -26,8 +27,25 @@ func NewErrorPresenter() graphql.ErrorPresenterFunc {
 		// Check for a specific custom error type if needed
 		var gqlErr *gqlerror.Error
 		if errors.As(err, &gqlErr) {
-			// Return the original GraphQL error
+			// Check if message indicates authentication required
+			msg := strings.ToLower(gqlErr.Message)
+			if strings.Contains(msg, "authentication required") || strings.Contains(msg, "unauthorized") {
+				if gqlErr.Extensions == nil {
+					gqlErr.Extensions = make(map[string]interface{})
+				}
+				gqlErr.Extensions["code"] = "UNAUTHENTICATED"
+			}
 			return gqlErr
+		}
+
+		// Check if the unwrapped raw error message contains authentication required or unauthorized
+		msg := strings.ToLower(err.Error())
+		if strings.Contains(msg, "authentication required") || strings.Contains(msg, "unauthorized") {
+			return &gqlerror.Error{
+				Message:    err.Error(),
+				Path:       graphql.GetPath(ctx),
+				Extensions: map[string]interface{}{"code": "UNAUTHENTICATED"},
+			}
 		}
 
 		// For other errors, log it and create a new GraphQL error

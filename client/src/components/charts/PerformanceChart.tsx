@@ -81,6 +81,42 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 			Object.assign(baseConfig, EChartsPerformanceManager.getPerformanceOptions());
 		}
 
+		// Apply timeRange formatting to xAxis if timeRange is provided
+		if (
+			timeRange &&
+			typeof baseConfig.xAxis === "object" &&
+			baseConfig.xAxis &&
+			!Array.isArray(baseConfig.xAxis)
+		) {
+			const xAxis = baseConfig.xAxis as any;
+			const isShortTimeframe = ["24h", "24H", "1d", "1D"].includes(timeRange);
+
+			xAxis.axisLabel = {
+				...(xAxis.axisLabel || {}),
+				formatter: (value: string) => {
+					try {
+						const date = new Date(value);
+						if (isNaN(date.getTime())) return value;
+
+						if (isShortTimeframe) {
+							return date.toLocaleTimeString("en-US", {
+								hour: "numeric",
+								minute: "2-digit",
+							});
+						}
+
+						// Default to local date string for longer timeframes
+						return date.toLocaleDateString("en-US", {
+							month: "short",
+							day: "numeric",
+						});
+					} catch (e) {
+						return value;
+					}
+				},
+			};
+		}
+
 		// Compact mode adjustments
 		if (compact) {
 			const grid = typeof baseConfig.grid === "object" && baseConfig.grid ? baseConfig.grid : {};

@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"fmt"
+	"log"
 
 	"sigma_finance/internal/domain/model"
 
@@ -77,7 +77,7 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 		user.IncrementFailedLoginCount()
 		if updateErr := p.userRepo.Update(ctx, user); updateErr != nil {
 			// Log error but don't expose it to user
-			fmt.Printf("Failed to update user failed login count: %v\n", updateErr)
+			log.Printf("[LocalAuthProvider] ValidateCredentials: failed to update user failed login count: %v", updateErr)
 		}
 
 		// Check if the account was just locked by this failed attempt
@@ -93,7 +93,7 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 	user.UpdateLastLogin()
 	if err := p.userRepo.Update(ctx, user); err != nil {
 		// Log error but don't fail authentication
-		fmt.Printf("Failed to update user login info: %v\n", err)
+		log.Printf("[LocalAuthProvider] ValidateCredentials: failed to update user login info: %v", err)
 	}
 
 	// Return user info

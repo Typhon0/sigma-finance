@@ -116,6 +116,7 @@ type Instrument struct {
 	FIGI                   *string             `bun:"figi"`
 	CUSIP                  *string             `bun:"cusip"`
 	Metadata               json.RawMessage     `bun:"metadata,type:jsonb"`
+	SearchVector           *string             `bun:"search_vector" json:"-"`
 	FirstSeenAt            time.Time           `bun:"first_seen_at,notnull,default:current_timestamp"`
 	LastVerifiedAt         *time.Time          `bun:"last_verified_at"`
 	LastUsedAt             *time.Time          `bun:"last_used_at"`

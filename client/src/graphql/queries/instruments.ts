@@ -16,6 +16,15 @@ export const SEARCH_INSTRUMENTS = graphql(/* GraphQL */ `
 					assetType
 					providerSource
 					providerExternalId
+					isin
+					figi
+					cusip
+					industry
+					website
+					family
+					category
+					city
+					state
 				}
 				score
 				matchedAlias
@@ -128,6 +137,50 @@ export const MANUAL_INSTRUMENTS = graphql(/* GraphQL */ `
 			hasMore
 			limit
 			offset
+		}
+	}
+`);
+
+export const LATEST_HISTORICAL_DATA_BACKFILL_JOB = graphql(/* GraphQL */ `
+	query LatestHistoricalDataBackfillJob($portfolioId: ID!, $assetId: ID!) {
+		latestHistoricalDataBackfillJob(portfolioId: $portfolioId, assetId: $assetId) {
+			id
+			status
+			step
+			progress
+			rowsWritten
+			errorCode
+			errorMessage
+			createdAt
+			startedAt
+			finishedAt
+		}
+	}
+`);
+
+export const HISTORICAL_DATA_BACKFILL_JOBS = graphql(/* GraphQL */ `
+	query HistoricalDataBackfillJobs(
+		$filter: HistoricalDataBackfillJobFilterInput
+		$pagination: PaginationInput
+	) {
+		historicalDataBackfillJobs(filter: $filter, pagination: $pagination) {
+			id
+			userId
+			portfolioId
+			assetId
+			instrumentId
+			provider
+			status
+			step
+			progress
+			rowsWritten
+			errorCode
+			errorMessage
+			requestedFrom
+			requestedTo
+			createdAt
+			startedAt
+			finishedAt
 		}
 	}
 `);

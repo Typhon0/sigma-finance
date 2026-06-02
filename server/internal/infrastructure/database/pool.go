@@ -109,6 +109,7 @@ func (pm *PoolManager) GetReadDB() *bun.DB {
 		pm.stats.ReplicaQueries++
 		return replica
 	}
+	pm.stats.TotalQueries++
 	return pm.primary
 }
 

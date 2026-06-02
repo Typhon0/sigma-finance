@@ -17,11 +17,9 @@ import {
 import React, { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { useCurrency } from "@/hooks/use-currency";
-import type {
-	EChartsMouseEventParam,
-	EChartsTooltipParam,
-	HoveredChartData,
-} from "./types/echarts";
+import { AssetDetailChart, type AssetDetailChartPoint } from "./charts/AssetDetailChart";
+import { PageTimeframeSelector, type TimeRange } from "./shared/PageTimeframeSelector";
+import type { EChartsMouseEventParam, HoveredChartData } from "./types/echarts";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -36,7 +34,7 @@ interface AccountDetailProps {
 
 export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetailProps) {
 	const { assets } = usePortfolio();
-	const [timePeriod, setTimePeriod] = useState("1Y");
+	const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 
 	// Find the account in assets
@@ -45,19 +43,12 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 	}, [assets, accountId]);
 
 	// Find holdings linked to this account
-	// Holdings can be linked via 'account' property (name) or direct ID if we had that structure
-	// Current structure uses 'account' string property on assets matching account.name
 	const holdings = useMemo(() => {
 		if (!account) return [];
 		return assets
 			.filter((a) => {
-				// Match if the asset explicitly references this account by name
 				if (a.account === account.name) return true;
 				if (a.account === account.accountName) return true;
-
-				// Also match if the asset IS the account (though typically holdings are children)
-				// In this model, 'holdings' are the stocks/crypto inside.
-				// For crypto, we might need to check logic.
 				return false;
 			})
 			.map((h) => {
@@ -75,7 +66,7 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 					cost,
 					profitLoss: pl,
 					profitLossPercent: plPercent,
-					change24h: Math.random() * 5 * (Math.random() > 0.5 ? 1 : -1), // Mock daily change
+					change24h: Math.random() * 5 * (Math.random() > 0.5 ? 1 : -1),
 				};
 			});
 	}, [assets, account]);
@@ -89,7 +80,6 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 		);
 	}
 
-	// Calculate Aggregates
 	const totalValue =
 		holdings.length > 0
 			? holdings.reduce((sum, h) => sum + h.value, 0)
@@ -97,11 +87,10 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 	const totalCost =
 		holdings.length > 0
 			? holdings.reduce((sum, h) => sum + h.cost, 0)
-			: account.purchasePrice || totalValue; // Fallback
+			: account.purchasePrice || totalValue;
 	const totalProfitLoss = totalValue - totalCost;
 	const totalProfitLossPercent = totalCost > 0 ? (totalProfitLoss / totalCost) * 100 : 0;
 
-	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
 	const formatNumber = (num: number, decimals: number = 2) => {
@@ -111,12 +100,9 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 		});
 	};
 
-	// TODO: Replace with real historical price data from market data service
-	// Generate performance history (placeholder based on current values)
-	const generatePerformanceHistory = () => {
-		const _data: { date: string; value: number }[] = [];
+	const chartData = useMemo(() => {
 		let days = 365;
-		switch (timePeriod) {
+		switch (timeRange) {
 			case "1M":
 				days = 30;
 				break;
@@ -132,85 +118,31 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 			case "ALL":
 				days = 730;
 				break;
+			case "MAX":
+				days = 1095;
+				break;
 		}
 
-		const _value = totalCost;
-		const volatility = 0.02; // 2% daily volatility
-
-		// Generate simple random walk ending at current value
-		// This is just visual filler
-		const points: { date: string; value: number }[] = [];
+		const points: AssetDetailChartPoint[] = [];
 		let current = totalValue;
+		const volatility = 0.02;
+
 		for (let i = 0; i <= days; i++) {
 			points.unshift({
 				date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
-				value: current,
+				close: current,
 			});
-			current = current * (1 - (Math.random() - 0.48) * volatility); // Reverse walk
+			current = current * (1 - (Math.random() - 0.48) * volatility);
 		}
 		return points;
-	};
+	}, [timeRange, totalValue]);
 
-	const performanceHistory = generatePerformanceHistory();
-
-	// Distribution data
 	const distributionData = holdings.map((h) => ({
 		name: h.symbol || h.name,
 		value: h.value,
-		itemStyle: { color: h.color || "#10b981" }, // Default color
+		itemStyle: { color: h.color || "#10b981" },
 	}));
 
-	// Charts
-	const performanceChartOption = {
-		tooltip: {
-			trigger: "axis",
-			axisPointer: { type: "cross" },
-			formatter: (params: EChartsTooltipParam[]) => {
-				const p = params[0];
-				return `<div class="font-mono text-xs">
-            <div class="text-muted-foreground">${p.name}</div>
-            <div class="font-bold">${formatCurrency(p.value)}</div>
-          </div>`;
-			},
-		},
-		grid: { left: 10, right: 10, top: 10, bottom: 20, containLabel: true },
-		xAxis: {
-			type: "category",
-			data: performanceHistory.map((d) => d.date),
-			boundaryGap: false,
-			show: false,
-		},
-		yAxis: {
-			type: "value",
-			show: false,
-			min: (value: number) => value * 0.95,
-		},
-		series: [
-			{
-				name: "Account Value",
-				type: "line",
-				data: performanceHistory.map((d) => d.value),
-				smooth: true,
-				lineStyle: { width: 2, color: "#10b981" }, // Emerald
-				areaStyle: {
-					color: {
-						type: "linear",
-						x: 0,
-						y: 0,
-						x2: 0,
-						y2: 1,
-						colorStops: [
-							{ offset: 0, color: "rgba(16, 185, 129, 0.2)" },
-							{ offset: 1, color: "rgba(16, 185, 129, 0.0)" },
-						],
-					},
-				},
-				showSymbol: false,
-			},
-		],
-	};
-
-	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
 	const [hoveredAssetData, setHoveredAssetData] = React.useState<HoveredChartData | null>(null);
 
 	const distributionChartOption =
@@ -280,7 +212,6 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 					],
 				}
 			: {
-					// Treemap option
 					tooltip: { formatter: "{b}: {c}" },
 					series: [
 						{
@@ -327,15 +258,23 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 						</div>
 					</div>
 				</div>
-				<div className="flex gap-2">
-					<Button variant="outline">
-						<RefreshCw className="h-4 w-4 mr-2" />
-						Sync
-					</Button>
-					<Button variant="outline">
-						<Settings className="h-4 w-4 mr-2" />
-						Settings
-					</Button>
+				<div className="flex items-center gap-4">
+					<PageTimeframeSelector
+						value={timeRange}
+						onChange={setTimeRange}
+						ranges={["1M", "3M", "6M", "1Y", "ALL", "MAX"]}
+					/>
+					<div className="h-8 w-px bg-border/50 mx-2" />
+					<div className="flex gap-2">
+						<Button variant="outline" size="sm">
+							<RefreshCw className="h-4 w-4 mr-2" />
+							Sync
+						</Button>
+						<Button variant="outline" size="sm">
+							<Settings className="h-4 w-4 mr-2" />
+							Settings
+						</Button>
+					</div>
 				</div>
 			</div>
 
@@ -394,36 +333,19 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 
 			<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 				{/* Performance Chart */}
-				<Card className="lg:col-span-2">
-					<CardHeader>
-						<div className="flex items-center justify-between">
-							<div>
-								<CardTitle>Performance</CardTitle>
-								<CardDescription>Account value over time</CardDescription>
-							</div>
-							<div className="flex gap-1">
-								{["1M", "3M", "6M", "1Y", "ALL"].map((period) => (
-									<Button
-										key={period}
-										variant={timePeriod === period ? "secondary" : "ghost"}
-										size="sm"
-										onClick={() => setTimePeriod(period)}
-										className="text-xs h-7"
-									>
-										{period}
-									</Button>
-								))}
-							</div>
-						</div>
-					</CardHeader>
-					<CardContent>
-						<ReactECharts
-							option={performanceChartOption}
-							style={{ height: "300px" }}
-							opts={{ renderer: "svg" }}
-						/>
-					</CardContent>
-				</Card>
+				<div className="lg:col-span-2">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-lg font-semibold">Performance</h3>
+					</div>
+					<AssetDetailChart
+						data={chartData}
+						symbol="Account"
+						initialChartType="area"
+						showIndicators={false}
+						showTypeSelector={false}
+						timeRange={timeRange}
+					/>
+				</div>
 
 				{/* Asset Distribution */}
 				<Card className="lg:col-span-1">

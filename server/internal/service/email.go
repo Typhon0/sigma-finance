@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net/smtp"
 	"sigma_finance/internal/config"
 	"time"
@@ -114,6 +115,7 @@ func NewSMTPEmailService(cfg *config.EmailConfig) *SMTPEmailService {
 
 // SendVerificationEmail sends an email verification email
 func (s *SMTPEmailService) SendVerificationEmail(ctx context.Context, email, name, token string) error {
+	log.Printf("[EmailService] SendVerificationEmail: started email=%s", email)
 	subject := "Verify Your Email Address"
 	verificationURL := fmt.Sprintf("%s/verify-email?token=%s", s.config.BaseURL, token)
 
@@ -129,6 +131,7 @@ func (s *SMTPEmailService) SendVerificationEmail(ctx context.Context, email, nam
 
 // SendPasswordResetEmail sends a password reset email
 func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, email, name, token string) error {
+	log.Printf("[EmailService] SendPasswordResetEmail: started email=%s", email)
 	subject := "Reset Your Password"
 	resetURL := fmt.Sprintf("%s/reset-password?token=%s", s.config.BaseURL, token)
 
@@ -144,6 +147,7 @@ func (s *SMTPEmailService) SendPasswordResetEmail(ctx context.Context, email, na
 
 // SendWelcomeEmail sends a welcome email after successful registration
 func (s *SMTPEmailService) SendWelcomeEmail(ctx context.Context, email, name string) error {
+	log.Printf("[EmailService] SendWelcomeEmail: started email=%s", email)
 	subject := "Welcome to Sigma Finance!"
 
 	htmlBody, err := s.renderWelcomeEmailTemplate(name)
@@ -180,6 +184,7 @@ func (s *SMTPEmailService) sendEmail(to, subject, textBody, htmlBody string) err
 	// Connect to server
 	conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", s.config.SMTPHost, s.config.SMTPPort), tlsConfig)
 	if err != nil {
+		log.Printf("[EmailService] sendEmail: ERROR SMTP connection failed to=%s: %v", to, err)
 		return fmt.Errorf("failed to connect to SMTP server: %w", err)
 	}
 	defer conn.Close()
@@ -187,12 +192,14 @@ func (s *SMTPEmailService) sendEmail(to, subject, textBody, htmlBody string) err
 	// Create SMTP client
 	client, err := smtp.NewClient(conn, s.config.SMTPHost)
 	if err != nil {
+		log.Printf("[EmailService] sendEmail: ERROR SMTP client creation failed to=%s: %v", to, err)
 		return fmt.Errorf("failed to create SMTP client: %w", err)
 	}
 	defer client.Quit()
 
 	// Authenticate
 	if err := client.Auth(auth); err != nil {
+		log.Printf("[EmailService] sendEmail: ERROR SMTP auth failed to=%s: %v", to, err)
 		return fmt.Errorf("failed to authenticate with SMTP server: %w", err)
 	}
 
@@ -214,10 +221,16 @@ func (s *SMTPEmailService) sendEmail(to, subject, textBody, htmlBody string) err
 
 	_, err = writer.Write([]byte(message))
 	if err != nil {
+		log.Printf("[EmailService] sendEmail: ERROR write failed to=%s: %v", to, err)
 		return fmt.Errorf("failed to write message: %w", err)
 	}
 
-	return writer.Close()
+	if err := writer.Close(); err != nil {
+		log.Printf("[EmailService] sendEmail: ERROR close failed to=%s: %v", to, err)
+		return err
+	}
+	log.Printf("[EmailService] sendEmail: SUCCESS to=%s subject=%s", to, subject)
+	return nil
 }
 
 // createMIMEMessage creates a MIME message with both text and HTML parts

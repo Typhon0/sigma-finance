@@ -19,14 +19,16 @@ type FXProvider struct {
 	client    *http.Client
 	tdBaseURL string
 	fkBaseURL string
+	CooldownMixin
 }
 
 // NewFXProvider creates a new FX provider
-func NewFXProvider() Provider {
+func NewFXProvider() *FXProvider {
 	return &FXProvider{
-		client:    &http.Client{Timeout: 30 * time.Second},
-		tdBaseURL: "https://api.twelvedata.com",
-		fkBaseURL: "https://api.frankfurter.dev",
+		client:        &http.Client{Timeout: 30 * time.Second},
+		tdBaseURL:     "https://api.twelvedata.com",
+		fkBaseURL:     "https://api.frankfurter.dev",
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -84,6 +86,10 @@ func (f *FXProvider) NormalizeSymbol(providerSymbol, assetType string) (string, 
 
 // GetCandles fetches historical FX rates for charting
 func (f *FXProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
+	if f.IsInCooldown() {
+		return nil, f.CooldownError(f.ID(), f.Name())
+	}
+
 	if req.APIKey != "" {
 		return f.getTwelveDataCandles(ctx, req)
 	}
@@ -130,6 +136,20 @@ func (f *FXProvider) getTwelveDataCandles(ctx context.Context, req CandleRequest
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Twelve Data rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("twelve data API error: %d", resp.StatusCode)
 	}
@@ -148,7 +168,9 @@ func (f *FXProvider) getTwelveDataCandles(ctx context.Context, req CandleRequest
 			Close    string `json:"close"`
 			Volume   string `json:"volume"`
 		} `json:"values"`
-		Status string `json:"status"`
+		Status  string `json:"status"`
+		Code    int    `json:"code"`
+		Message string `json:"message"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -156,7 +178,20 @@ func (f *FXProvider) getTwelveDataCandles(ctx context.Context, req CandleRequest
 	}
 
 	if response.Status == "error" {
-		return nil, fmt.Errorf("twelve data API error in response")
+		// Text-based rate limit detection (Twelve Data returns code 429 in body)
+		if response.Code == 429 {
+			f.EnterCooldown(DefaultRetryAfterMax)
+			return nil, &ProviderError{
+				Provider:          f.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           fmt.Sprintf("Twelve Data rate limit exceeded: %s", response.Message),
+				HTTPCode:          429,
+				Retryable:         true,
+				Fallback:          true,
+				RetryAfterSeconds: int(DefaultRetryAfterMax.Seconds()),
+			}
+		}
+		return nil, fmt.Errorf("twelve data API error: %s (code: %d)", response.Message, response.Code)
 	}
 
 	if len(response.Values) == 0 {
@@ -247,15 +282,29 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Frankfurter rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("frankfurter API error: %d", resp.StatusCode)
 	}
 
 	var response struct {
-		Base      string                       `json:"base"`
-		StartDate string                       `json:"start_date"`
-		EndDate   string                       `json:"end_date"`
-		Rates     map[string]map[string]string `json:"rates"`
+		Base      string                         `json:"base"`
+		StartDate string                         `json:"start_date"`
+		EndDate   string                         `json:"end_date"`
+		Rates     map[string]map[string]float64 `json:"rates"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
@@ -270,15 +319,12 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 			continue
 		}
 
-		rateStr, ok := rateMap[toCurrency]
+		rateVal, ok := rateMap[toCurrency]
 		if !ok {
 			continue
 		}
 
-		closePrice, err := decimal.NewFromString(rateStr)
-		if err != nil {
-			continue
-		}
+		closePrice := decimal.NewFromFloat(rateVal)
 
 		// Frankfurter only provides close rate, use same for open/high/low
 		candles = append(candles, model.Candle{
@@ -305,6 +351,10 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 
 // GetQuote fetches the latest FX rate for a single pair
 func (f *FXProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if f.IsInCooldown() {
+		return nil, f.CooldownError(f.ID(), f.Name())
+	}
+
 	if req.APIKey != "" {
 		return f.getTwelveDataQuote(ctx, req)
 	}
@@ -335,6 +385,20 @@ func (f *FXProvider) getTwelveDataQuote(ctx context.Context, req QuoteRequest) (
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Twelve Data rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("twelve data API error: %d", resp.StatusCode)
 	}
@@ -357,6 +421,19 @@ func (f *FXProvider) getTwelveDataQuote(ctx context.Context, req QuoteRequest) (
 	}
 
 	if response.Status == "error" {
+		// Text-based rate limit detection (Twelve Data returns code 429 in body)
+		if response.Code == 429 {
+			f.EnterCooldown(DefaultRetryAfterMax)
+			return nil, &ProviderError{
+				Provider:          f.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           fmt.Sprintf("Twelve Data rate limit exceeded: %s", response.Message),
+				HTTPCode:          429,
+				Retryable:         true,
+				Fallback:          true,
+				RetryAfterSeconds: int(DefaultRetryAfterMax.Seconds()),
+			}
+		}
 		return nil, fmt.Errorf("twelve data API error: %s (code: %d)", response.Message, response.Code)
 	}
 
@@ -367,7 +444,8 @@ func (f *FXProvider) getTwelveDataQuote(ctx context.Context, req QuoteRequest) (
 
 	var volume int64
 	if response.Volume != "" {
-		volume, _ = strconv.ParseInt(response.Volume, 10, 64)
+		fvol, _ := strconv.ParseFloat(response.Volume, 64)
+		volume = int64(fvol)
 	}
 
 	var timestamp time.Time
@@ -410,21 +488,35 @@ func (f *FXProvider) getFrankfurterQuote(ctx context.Context, req QuoteRequest) 
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		f.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          f.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Frankfurter rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("frankfurter API error: %d", resp.StatusCode)
 	}
 
 	var response struct {
-		Base  string            `json:"base"`
-		Date  string            `json:"date"`
-		Rates map[string]string `json:"rates"`
+		Base  string             `json:"base"`
+		Date  string             `json:"date"`
+		Rates map[string]float64 `json:"rates"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
 		return nil, err
 	}
 
-	rateStr, ok := response.Rates[toCurrency]
+	rateVal, ok := response.Rates[toCurrency]
 	if !ok {
 		return nil, &ProviderError{
 			Provider: f.ID(),
@@ -435,10 +527,7 @@ func (f *FXProvider) getFrankfurterQuote(ctx context.Context, req QuoteRequest) 
 		}
 	}
 
-	lastPrice, err := decimal.NewFromString(rateStr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse rate: %w", err)
-	}
+	lastPrice := decimal.NewFromFloat(rateVal)
 
 	timestamp := time.Now()
 	if response.Date != "" {
@@ -560,5 +649,8 @@ func (f *FXProvider) parseDateTime(datetime string, interval model.CandleInterva
 
 // GetTechnicalIndicator returns nil - FX technical indicators not supported
 func (f *FXProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	if f.IsInCooldown() {
+		return nil, f.CooldownError(f.ID(), f.Name())
+	}
 	return nil, fmt.Errorf("technical indicators not supported for FX")
 }

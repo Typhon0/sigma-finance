@@ -792,6 +792,31 @@ type GenerateReportInput struct {
 	BenchmarkAssetIds  []string                   `json:"benchmarkAssetIds,omitempty"`
 }
 
+type HistoricalDataBackfillJob struct {
+	ID            string     `json:"id"`
+	UserID        *string    `json:"userId,omitempty"`
+	PortfolioID   string     `json:"portfolioId"`
+	AssetID       string     `json:"assetId"`
+	InstrumentID  string     `json:"instrumentId"`
+	Provider      string     `json:"provider"`
+	Status        string     `json:"status"`
+	Step          string     `json:"step"`
+	Progress      int32      `json:"progress"`
+	RowsWritten   int32      `json:"rowsWritten"`
+	ErrorCode     *string    `json:"errorCode,omitempty"`
+	ErrorMessage  *string    `json:"errorMessage,omitempty"`
+	RequestedFrom time.Time  `json:"requestedFrom"`
+	RequestedTo   time.Time  `json:"requestedTo"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	StartedAt     *time.Time `json:"startedAt,omitempty"`
+	FinishedAt    *time.Time `json:"finishedAt,omitempty"`
+}
+
+type HistoricalDataBackfillJobFilterInput struct {
+	Status   *string `json:"status,omitempty"`
+	Provider *string `json:"provider,omitempty"`
+}
+
 type ImportFinanceDatabaseAssetsPayload struct {
 	Success       bool     `json:"success"`
 	ImportedCount int32    `json:"importedCount"`

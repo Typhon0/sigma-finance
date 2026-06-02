@@ -19,14 +19,16 @@ type BinanceProvider struct {
 	client    *http.Client
 	baseURL   string
 	wsBaseURL string
+	CooldownMixin
 }
 
 // NewBinanceProvider creates a new Binance provider
-func NewBinanceProvider() Provider {
+func NewBinanceProvider() *BinanceProvider {
 	return &BinanceProvider{
-		client:    &http.Client{Timeout: 30 * time.Second},
-		baseURL:   "https://api.binance.com",
-		wsBaseURL: "wss://stream.binance.com:9443",
+		client:        &http.Client{Timeout: 30 * time.Second},
+		baseURL:       "https://api.binance.com",
+		wsBaseURL:     "wss://stream.binance.com:9443",
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -100,6 +102,10 @@ func (b *BinanceProvider) NormalizeSymbol(providerSymbol, assetType string) (str
 }
 
 func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
+	if b.IsInCooldown() {
+		return nil, b.CooldownError(b.ID(), b.Name())
+	}
+
 	log.Printf("[Binance.GetCandles] symbol=%s assetType=%s interval=%s from=%v to=%v limit=%d",
 		req.Symbol, req.AssetType, req.Interval, req.From, req.To, req.Limit)
 
@@ -147,6 +153,20 @@ func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 	defer resp.Body.Close()
 
 	log.Printf("[Binance.GetCandles] response status=%d", resp.StatusCode)
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		b.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          b.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Binance rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[Binance.GetCandles] binance API error: %d", resp.StatusCode)
@@ -269,6 +289,9 @@ func (b *BinanceProvider) parseFloat(v interface{}) float64 {
 }
 
 func (b *BinanceProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	if b.IsInCooldown() {
+		return nil, b.CooldownError(b.ID(), b.Name())
+	}
 	return nil, fmt.Errorf("technical indicators not supported by Binance provider")
 }
 
@@ -295,6 +318,10 @@ type binance24hrTicker struct {
 }
 
 func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if b.IsInCooldown() {
+		return nil, b.CooldownError(b.ID(), b.Name())
+	}
+
 	log.Printf("[Binance.GetQuote] symbol=%s assetType=%s", req.Symbol, req.AssetType)
 
 	symbol, err := b.MapSymbol(req.Symbol, req.AssetType)
@@ -319,6 +346,20 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 	defer resp.Body.Close()
 
 	log.Printf("[Binance.GetQuote] response status=%d", resp.StatusCode)
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+		b.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          b.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Binance rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
 
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("[Binance.GetQuote] Binance API error: %d", resp.StatusCode)
@@ -349,10 +390,14 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 		askPrice = decimal.Zero
 	}
 
-	volume, err := strconv.ParseInt(ticker.Volume, 10, 64)
-	if err != nil {
-		log.Printf("[Binance.GetQuote] parse volume error: %v", err)
-		volume = 0
+	var volume int64
+	if ticker.Volume != "" {
+		fvol, err := strconv.ParseFloat(ticker.Volume, 64)
+		if err != nil {
+			log.Printf("[Binance.GetQuote] parse volume error: %v", err)
+		} else {
+			volume = int64(fvol)
+		}
 	}
 
 	log.Printf("[Binance.GetQuote] quote: last=%s bid=%s ask=%s volume=%d",

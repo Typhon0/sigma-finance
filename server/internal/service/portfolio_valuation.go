@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 	"time"
 
@@ -90,6 +91,7 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 	if !position.QuoteCurrency.IsValid() {
 		valuation.IsExcluded = true
 		valuation.ExclusionReason = "missing_or_invalid_quote_currency"
+		log.Printf("[PortfolioValuation] CalculatePositionValue: SKIPPED position=%s reason=missing_quote_currency", position.ID)
 		return valuation, nil
 	}
 
@@ -97,6 +99,7 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 	if err != nil {
 		valuation.IsExcluded = true
 		valuation.ExclusionReason = "missing_market_price"
+		log.Printf("[PortfolioValuation] CalculatePositionValue: SKIPPED position=%s asset=%s reason=missing_market_price: %v", position.ID, position.AssetID, err)
 		return valuation, nil
 	}
 
@@ -169,6 +172,7 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 	if err != nil {
 		valuation.IsExcluded = true
 		valuation.ExclusionReason = "missing_fx_rate"
+		log.Printf("[PortfolioValuation] CalculatePositionValue: ERROR FX conversion failed position=%s from=%s to=%s: %v", position.ID, position.QuoteCurrency, displayCurrency, err)
 		return valuation, fmt.Errorf("FX conversion failed for position %s: %w", position.ID, err)
 	}
 
@@ -188,6 +192,7 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 
 // CalculatePortfolioValue computes aggregated native and display currency values for positions.
 func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context, positions []model.Position, displayCurrency model.Currency) (*PortfolioValuation, error) {
+	log.Printf("[PortfolioValuation] CalculatePortfolioValue: started positions=%d displayCurrency=%s", len(positions), displayCurrency)
 	if len(positions) == 0 {
 		return &PortfolioValuation{
 			DisplayCurrency:    displayCurrency,
@@ -306,6 +311,8 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 	}
 	totalDisplayGainLoss := totalDisplayValue - totalDisplayCostBasis
 	totalDisplayGainLossPct := calculateGainLossPercent(totalDisplayGainLoss, totalDisplayCostBasis, totalDisplayValue, costBasisCoveredDisplayValue)
+
+	log.Printf("[PortfolioValuation] CalculatePortfolioValue: SUCCESS positions=%d excluded=%d totalDisplay=%d fxState=%s displayCurrency=%s", len(positions), excludedPositionCount, totalDisplayValue, fxState, displayCurrency)
 
 	return &PortfolioValuation{
 		TotalNativeValue:        totalNativeValue,

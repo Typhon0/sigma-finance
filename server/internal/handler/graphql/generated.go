@@ -435,6 +435,26 @@ type ComplexityRoot struct {
 		Ticker           func(childComplexity int) int
 	}
 
+	HistoricalDataBackfillJob struct {
+		AssetID       func(childComplexity int) int
+		CreatedAt     func(childComplexity int) int
+		ErrorCode     func(childComplexity int) int
+		ErrorMessage  func(childComplexity int) int
+		FinishedAt    func(childComplexity int) int
+		ID            func(childComplexity int) int
+		InstrumentID  func(childComplexity int) int
+		PortfolioID   func(childComplexity int) int
+		Progress      func(childComplexity int) int
+		Provider      func(childComplexity int) int
+		RequestedFrom func(childComplexity int) int
+		RequestedTo   func(childComplexity int) int
+		RowsWritten   func(childComplexity int) int
+		StartedAt     func(childComplexity int) int
+		Status        func(childComplexity int) int
+		Step          func(childComplexity int) int
+		UserID        func(childComplexity int) int
+	}
+
 	ImportFinanceDatabaseAssetsPayload struct {
 		Errors        func(childComplexity int) int
 		ImportedCount func(childComplexity int) int
@@ -807,6 +827,7 @@ type ComplexityRoot struct {
 		ResendVerification               func(childComplexity int, input gqlModel.ResendVerificationInput) int
 		ResetPassword                    func(childComplexity int, input gqlModel.PasswordResetInput) int
 		RestoreManualInstrument          func(childComplexity int, id string) int
+		RetryHistoricalDataBackfillJob   func(childComplexity int, id string) int
 		StartLocalPackBuild              func(childComplexity int, input gqlModel.StartLocalPackBuildInput) int
 		TagAsset                         func(childComplexity int, assetID string, tagID string) int
 		TagPortfolio                     func(childComplexity int, portfolioID string, tagID string) int
@@ -1058,69 +1079,72 @@ type ComplexityRoot struct {
 	}
 
 	Query struct {
-		Alert                      func(childComplexity int, id string) int
-		AlertHistory               func(childComplexity int, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) int
-		Alerts                     func(childComplexity int, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) int
-		AllocationChartData        func(childComplexity int, portfolioID string, timeRange *gqlModel.PerformanceTimeRangeInput) int
-		Asset                      func(childComplexity int, id string) int
-		AssetChartData             func(childComplexity int, input gqlModel.ChartDataInput) int
-		AssetPriceHistory          func(childComplexity int, assetID string, from time.Time, to time.Time, limit *int32) int
-		AssetPriceStatistics       func(childComplexity int, assetID string) int
-		AssetTypes                 func(childComplexity int) int
-		Assets                     func(childComplexity int, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) int
-		AvailableMarketDataPacks   func(childComplexity int) int
-		AvailableProviders         func(childComplexity int, instrumentID string, dataType string) int
-		BenchmarkComparison        func(childComplexity int, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) int
-		Candles                    func(childComplexity int, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) int
-		CandlesByInstrument        func(childComplexity int, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) int
-		CatalogSyncStatus          func(childComplexity int, source gqlModel.CatalogSource) int
-		ComparePortfolios          func(childComplexity int, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) int
-		ExportPortfolioData        func(childComplexity int, input gqlModel.ExportDataInput) int
-		FinanceDatabasePreview     func(childComplexity int, assetType gqlModel.AssetSyncType, search *string, limit *int32) int
-		FinanceDatabaseSyncHistory func(childComplexity int, limit *int32) int
-		FinanceDatabaseSyncStatus  func(childComplexity int) int
-		GeneratePerformanceReport  func(childComplexity int, input gqlModel.GenerateReportInput) int
-		GetPortfoliosWithAnalytics func(childComplexity int, userID string) int
-		InstalledMarketDataPacks   func(childComplexity int) int
-		Instrument                 func(childComplexity int, id string) int
-		LatestPerformanceSnapshot  func(childComplexity int, portfolioID string) int
-		ManualInstruments          func(childComplexity int, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) int
-		MarketDataCoverage         func(childComplexity int, instrumentID string) int
-		MarketDataCredentials      func(childComplexity int) int
-		MarketDataPackJob          func(childComplexity int, id string) int
-		Me                         func(childComplexity int) int
-		Metric                     func(childComplexity int, name string) int
-		Metrics                    func(childComplexity int) int
-		PackBuildJob               func(childComplexity int, id string) int
-		PackBuildJobs              func(childComplexity int, limit *int32) int
-		PerformanceMetrics         func(childComplexity int, timeRange *string) int
-		PerformanceSnapshots       func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
-		Portfolio                  func(childComplexity int, id string) int
-		PortfolioAllocation        func(childComplexity int, portfolioID string, asOfDate *time.Time) int
-		PortfolioChartData         func(childComplexity int, input gqlModel.ChartDataInput) int
-		PortfolioPerformance       func(childComplexity int, portfolioID string, asOfDate *time.Time) int
-		PortfolioRiskMetrics       func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
-		Portfolios                 func(childComplexity int, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) int
-		ProviderHealth             func(childComplexity int) int
-		ProviderRoutingPreferences func(childComplexity int) int
-		RealTimePrice              func(childComplexity int, symbol string, assetType string) int
-		RealTimePriceByInstrument  func(childComplexity int, instrumentID string, preferredProvider *string) int
-		SearchInstruments          func(childComplexity int, input gqlModel.InstrumentSearchInput) int
-		SearchInstrumentsOnline    func(childComplexity int, input gqlModel.InstrumentSearchInput) int
-		SupportedProviders         func(childComplexity int, assetType *string) int
-		SystemHealth               func(childComplexity int) int
-		Tag                        func(childComplexity int, id string) int
-		Tags                       func(childComplexity int) int
-		TechnicalIndicator         func(childComplexity int, symbol string, assetType string, indicator string, interval string, timePeriod int32, seriesType string, from *time.Time, to *time.Time) int
-		TopPerformingAssets        func(childComplexity int, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) int
-		Transaction                func(childComplexity int, id string) int
-		Transactions               func(childComplexity int, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) int
-		User                       func(childComplexity int, id string) int
-		UserEngagementMetrics      func(childComplexity int, timeRange *string) int
-		Users                      func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
-		Watchlist                  func(childComplexity int, id string) int
-		Watchlists                 func(childComplexity int, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) int
-		WorstPerformingAssets      func(childComplexity int, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) int
+		Alert                           func(childComplexity int, id string) int
+		AlertHistory                    func(childComplexity int, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) int
+		Alerts                          func(childComplexity int, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) int
+		AllocationChartData             func(childComplexity int, portfolioID string, timeRange *gqlModel.PerformanceTimeRangeInput) int
+		Asset                           func(childComplexity int, id string) int
+		AssetChartData                  func(childComplexity int, input gqlModel.ChartDataInput) int
+		AssetPriceHistory               func(childComplexity int, assetID string, from time.Time, to time.Time, limit *int32) int
+		AssetPriceStatistics            func(childComplexity int, assetID string) int
+		AssetTypes                      func(childComplexity int) int
+		Assets                          func(childComplexity int, filter *gqlModel.AssetFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.AssetOrder) int
+		AvailableMarketDataPacks        func(childComplexity int) int
+		AvailableProviders              func(childComplexity int, instrumentID string, dataType string) int
+		BenchmarkComparison             func(childComplexity int, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) int
+		Candles                         func(childComplexity int, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) int
+		CandlesByInstrument             func(childComplexity int, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) int
+		CatalogSyncStatus               func(childComplexity int, source gqlModel.CatalogSource) int
+		ComparePortfolios               func(childComplexity int, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) int
+		ExportPortfolioData             func(childComplexity int, input gqlModel.ExportDataInput) int
+		FinanceDatabasePreview          func(childComplexity int, assetType gqlModel.AssetSyncType, search *string, limit *int32) int
+		FinanceDatabaseSyncHistory      func(childComplexity int, limit *int32) int
+		FinanceDatabaseSyncStatus       func(childComplexity int) int
+		GeneratePerformanceReport       func(childComplexity int, input gqlModel.GenerateReportInput) int
+		GetPortfoliosWithAnalytics      func(childComplexity int, userID string) int
+		HistoricalDataBackfillJob       func(childComplexity int, id string) int
+		HistoricalDataBackfillJobs      func(childComplexity int, filter *gqlModel.HistoricalDataBackfillJobFilterInput, pagination *gqlModel.PaginationInput) int
+		InstalledMarketDataPacks        func(childComplexity int) int
+		Instrument                      func(childComplexity int, id string) int
+		LatestHistoricalDataBackfillJob func(childComplexity int, portfolioID string, assetID string) int
+		LatestPerformanceSnapshot       func(childComplexity int, portfolioID string) int
+		ManualInstruments               func(childComplexity int, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) int
+		MarketDataCoverage              func(childComplexity int, instrumentID string) int
+		MarketDataCredentials           func(childComplexity int) int
+		MarketDataPackJob               func(childComplexity int, id string) int
+		Me                              func(childComplexity int) int
+		Metric                          func(childComplexity int, name string) int
+		Metrics                         func(childComplexity int) int
+		PackBuildJob                    func(childComplexity int, id string) int
+		PackBuildJobs                   func(childComplexity int, limit *int32) int
+		PerformanceMetrics              func(childComplexity int, timeRange *string) int
+		PerformanceSnapshots            func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
+		Portfolio                       func(childComplexity int, id string) int
+		PortfolioAllocation             func(childComplexity int, portfolioID string, asOfDate *time.Time) int
+		PortfolioChartData              func(childComplexity int, input gqlModel.ChartDataInput) int
+		PortfolioPerformance            func(childComplexity int, portfolioID string, asOfDate *time.Time) int
+		PortfolioRiskMetrics            func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
+		Portfolios                      func(childComplexity int, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) int
+		ProviderHealth                  func(childComplexity int) int
+		ProviderRoutingPreferences      func(childComplexity int) int
+		RealTimePrice                   func(childComplexity int, symbol string, assetType string) int
+		RealTimePriceByInstrument       func(childComplexity int, instrumentID string, preferredProvider *string) int
+		SearchInstruments               func(childComplexity int, input gqlModel.InstrumentSearchInput) int
+		SearchInstrumentsOnline         func(childComplexity int, input gqlModel.InstrumentSearchInput) int
+		SupportedProviders              func(childComplexity int, assetType *string) int
+		SystemHealth                    func(childComplexity int) int
+		Tag                             func(childComplexity int, id string) int
+		Tags                            func(childComplexity int) int
+		TechnicalIndicator              func(childComplexity int, symbol string, assetType string, indicator string, interval string, timePeriod int32, seriesType string, from *time.Time, to *time.Time) int
+		TopPerformingAssets             func(childComplexity int, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) int
+		Transaction                     func(childComplexity int, id string) int
+		Transactions                    func(childComplexity int, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) int
+		User                            func(childComplexity int, id string) int
+		UserEngagementMetrics           func(childComplexity int, timeRange *string) int
+		Users                           func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
+		Watchlist                       func(childComplexity int, id string) int
+		Watchlists                      func(childComplexity int, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) int
+		WorstPerformingAssets           func(childComplexity int, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) int
 	}
 
 	RateLimit struct {
@@ -1402,6 +1426,7 @@ type MutationResolver interface {
 	UpdateManualInstrument(ctx context.Context, id string, input gqlModel.UpdateManualInstrumentInput) (*gqlModel.Instrument, error)
 	ArchiveManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error)
 	RestoreManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error)
+	RetryHistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error)
 	UpsertMarketDataCredential(ctx context.Context, provider string, apiKey string, isEnabled *bool, priority *int32) (*gqlModel.MarketDataCredential, error)
 	DeleteMarketDataCredential(ctx context.Context, provider string) (string, error)
 	ValidateProviderCredentials(ctx context.Context, provider string, apiKey string) (*gqlModel.ValidationResult, error)
@@ -1450,6 +1475,9 @@ type QueryResolver interface {
 	SearchInstruments(ctx context.Context, input gqlModel.InstrumentSearchInput) (*gqlModel.InstrumentSearchPayload, error)
 	SearchInstrumentsOnline(ctx context.Context, input gqlModel.InstrumentSearchInput) (*gqlModel.OnlineInstrumentSearchPayload, error)
 	ManualInstruments(ctx context.Context, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) (*gqlModel.ManualInstrumentPayload, error)
+	HistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error)
+	LatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string) (*gqlModel.HistoricalDataBackfillJob, error)
+	HistoricalDataBackfillJobs(ctx context.Context, filter *gqlModel.HistoricalDataBackfillJobFilterInput, pagination *gqlModel.PaginationInput) ([]*gqlModel.HistoricalDataBackfillJob, error)
 	Candles(ctx context.Context, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) ([]*gqlModel.Candle, error)
 	CandlesByInstrument(ctx context.Context, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) (*gqlModel.MarketDataCandlesPayload, error)
 	MarketDataCredentials(ctx context.Context) ([]*gqlModel.MarketDataCredential, error)
@@ -3184,6 +3212,109 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Fund.Ticker(childComplexity), true
+
+	case "HistoricalDataBackfillJob.assetId":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.AssetID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.AssetID(childComplexity), true
+	case "HistoricalDataBackfillJob.createdAt":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.CreatedAt(childComplexity), true
+	case "HistoricalDataBackfillJob.errorCode":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.ErrorCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.ErrorCode(childComplexity), true
+	case "HistoricalDataBackfillJob.errorMessage":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.ErrorMessage(childComplexity), true
+	case "HistoricalDataBackfillJob.finishedAt":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.FinishedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.FinishedAt(childComplexity), true
+	case "HistoricalDataBackfillJob.id":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.ID(childComplexity), true
+	case "HistoricalDataBackfillJob.instrumentId":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.InstrumentID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.InstrumentID(childComplexity), true
+	case "HistoricalDataBackfillJob.portfolioId":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.PortfolioID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.PortfolioID(childComplexity), true
+	case "HistoricalDataBackfillJob.progress":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.Progress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.Progress(childComplexity), true
+	case "HistoricalDataBackfillJob.provider":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.Provider(childComplexity), true
+	case "HistoricalDataBackfillJob.requestedFrom":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.RequestedFrom == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.RequestedFrom(childComplexity), true
+	case "HistoricalDataBackfillJob.requestedTo":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.RequestedTo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.RequestedTo(childComplexity), true
+	case "HistoricalDataBackfillJob.rowsWritten":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.RowsWritten == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.RowsWritten(childComplexity), true
+	case "HistoricalDataBackfillJob.startedAt":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.StartedAt(childComplexity), true
+	case "HistoricalDataBackfillJob.status":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.Status(childComplexity), true
+	case "HistoricalDataBackfillJob.step":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.Step == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.Step(childComplexity), true
+	case "HistoricalDataBackfillJob.userId":
+		if e.ComplexityRoot.HistoricalDataBackfillJob.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.HistoricalDataBackfillJob.UserID(childComplexity), true
 
 	case "ImportFinanceDatabaseAssetsPayload.errors":
 		if e.ComplexityRoot.ImportFinanceDatabaseAssetsPayload.Errors == nil {
@@ -5258,6 +5389,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RestoreManualInstrument(childComplexity, args["id"].(string)), true
+	case "Mutation.retryHistoricalDataBackfillJob":
+		if e.ComplexityRoot.Mutation.RetryHistoricalDataBackfillJob == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_retryHistoricalDataBackfillJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RetryHistoricalDataBackfillJob(childComplexity, args["id"].(string)), true
 	case "Mutation.startLocalPackBuild":
 		if e.ComplexityRoot.Mutation.StartLocalPackBuild == nil {
 			break
@@ -6721,6 +6863,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GetPortfoliosWithAnalytics(childComplexity, args["userID"].(string)), true
+	case "Query.historicalDataBackfillJob":
+		if e.ComplexityRoot.Query.HistoricalDataBackfillJob == nil {
+			break
+		}
+
+		args, err := ec.field_Query_historicalDataBackfillJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.HistoricalDataBackfillJob(childComplexity, args["id"].(string)), true
+	case "Query.historicalDataBackfillJobs":
+		if e.ComplexityRoot.Query.HistoricalDataBackfillJobs == nil {
+			break
+		}
+
+		args, err := ec.field_Query_historicalDataBackfillJobs_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.HistoricalDataBackfillJobs(childComplexity, args["filter"].(*gqlModel.HistoricalDataBackfillJobFilterInput), args["pagination"].(*gqlModel.PaginationInput)), true
 	case "Query.installedMarketDataPacks":
 		if e.ComplexityRoot.Query.InstalledMarketDataPacks == nil {
 			break
@@ -6739,6 +6903,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Query.Instrument(childComplexity, args["id"].(string)), true
 
+	case "Query.latestHistoricalDataBackfillJob":
+		if e.ComplexityRoot.Query.LatestHistoricalDataBackfillJob == nil {
+			break
+		}
+
+		args, err := ec.field_Query_latestHistoricalDataBackfillJob_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.LatestHistoricalDataBackfillJob(childComplexity, args["portfolioId"].(string), args["assetId"].(string)), true
 	case "Query.latestPerformanceSnapshot":
 		if e.ComplexityRoot.Query.LatestPerformanceSnapshot == nil {
 			break
@@ -8171,6 +8346,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExportDataInput,
 		ec.unmarshalInputExportPortfolioInput,
 		ec.unmarshalInputGenerateReportInput,
+		ec.unmarshalInputHistoricalDataBackfillJobFilterInput,
 		ec.unmarshalInputImportInstrumentFromSourceInput,
 		ec.unmarshalInputInstrumentSearchInput,
 		ec.unmarshalInputLoginInput,
@@ -8929,6 +9105,17 @@ func (ec *executionContext) field_Mutation_restoreManualInstrument_args(ctx cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_retryHistoricalDataBackfillJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_startLocalPackBuild_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9607,6 +9794,33 @@ func (ec *executionContext) field_Query_generatePerformanceReport_args(ctx conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_historicalDataBackfillJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_historicalDataBackfillJobs_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOHistoricalDataBackfillJobFilterInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJobFilterInput)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPaginationInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPaginationInput)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_instrument_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9615,6 +9829,22 @@ func (ec *executionContext) field_Query_instrument_args(ctx context.Context, raw
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_latestHistoricalDataBackfillJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "assetId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg1
 	return args, nil
 }
 
@@ -18450,6 +18680,499 @@ func (ec *executionContext) fieldContext_Fund_positions(_ context.Context, field
 				return ec.fieldContext_Position_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_userId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_userId,
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_portfolioId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_portfolioId,
+		func(ctx context.Context) (any, error) {
+			return obj.PortfolioID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_portfolioId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_assetId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_assetId,
+		func(ctx context.Context) (any, error) {
+			return obj.AssetID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_assetId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_instrumentId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_instrumentId,
+		func(ctx context.Context) (any, error) {
+			return obj.InstrumentID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_instrumentId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_step(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_step,
+		func(ctx context.Context) (any, error) {
+			return obj.Step, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_step(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_progress(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_progress,
+		func(ctx context.Context) (any, error) {
+			return obj.Progress, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_progress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_rowsWritten(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_rowsWritten,
+		func(ctx context.Context) (any, error) {
+			return obj.RowsWritten, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_rowsWritten(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_errorCode(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_errorCode,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorCode, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_errorCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_requestedFrom(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_requestedFrom,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedFrom, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_requestedFrom(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_requestedTo(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_requestedTo,
+		func(ctx context.Context) (any, error) {
+			return obj.RequestedTo, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_requestedTo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _HistoricalDataBackfillJob_finishedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.HistoricalDataBackfillJob) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_HistoricalDataBackfillJob_finishedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_HistoricalDataBackfillJob_finishedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "HistoricalDataBackfillJob",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30173,6 +30896,96 @@ func (ec *executionContext) fieldContext_Mutation_restoreManualInstrument(ctx co
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_retryHistoricalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_retryHistoricalDataBackfillJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RetryHistoricalDataBackfillJob(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.HistoricalDataBackfillJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_retryHistoricalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HistoricalDataBackfillJob_id(ctx, field)
+			case "userId":
+				return ec.fieldContext_HistoricalDataBackfillJob_userId(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_HistoricalDataBackfillJob_portfolioId(ctx, field)
+			case "assetId":
+				return ec.fieldContext_HistoricalDataBackfillJob_assetId(ctx, field)
+			case "instrumentId":
+				return ec.fieldContext_HistoricalDataBackfillJob_instrumentId(ctx, field)
+			case "provider":
+				return ec.fieldContext_HistoricalDataBackfillJob_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_HistoricalDataBackfillJob_status(ctx, field)
+			case "step":
+				return ec.fieldContext_HistoricalDataBackfillJob_step(ctx, field)
+			case "progress":
+				return ec.fieldContext_HistoricalDataBackfillJob_progress(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_HistoricalDataBackfillJob_rowsWritten(ctx, field)
+			case "errorCode":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorCode(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorMessage(ctx, field)
+			case "requestedFrom":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedFrom(ctx, field)
+			case "requestedTo":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedTo(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HistoricalDataBackfillJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_retryHistoricalDataBackfillJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_upsertMarketDataCredential(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -38587,6 +39400,276 @@ func (ec *executionContext) fieldContext_Query_manualInstruments(ctx context.Con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_manualInstruments_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_historicalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_historicalDataBackfillJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().HistoricalDataBackfillJob(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.HistoricalDataBackfillJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_historicalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HistoricalDataBackfillJob_id(ctx, field)
+			case "userId":
+				return ec.fieldContext_HistoricalDataBackfillJob_userId(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_HistoricalDataBackfillJob_portfolioId(ctx, field)
+			case "assetId":
+				return ec.fieldContext_HistoricalDataBackfillJob_assetId(ctx, field)
+			case "instrumentId":
+				return ec.fieldContext_HistoricalDataBackfillJob_instrumentId(ctx, field)
+			case "provider":
+				return ec.fieldContext_HistoricalDataBackfillJob_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_HistoricalDataBackfillJob_status(ctx, field)
+			case "step":
+				return ec.fieldContext_HistoricalDataBackfillJob_step(ctx, field)
+			case "progress":
+				return ec.fieldContext_HistoricalDataBackfillJob_progress(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_HistoricalDataBackfillJob_rowsWritten(ctx, field)
+			case "errorCode":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorCode(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorMessage(ctx, field)
+			case "requestedFrom":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedFrom(ctx, field)
+			case "requestedTo":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedTo(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HistoricalDataBackfillJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_historicalDataBackfillJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_latestHistoricalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_latestHistoricalDataBackfillJob,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().LatestHistoricalDataBackfillJob(ctx, fc.Args["portfolioId"].(string), fc.Args["assetId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.HistoricalDataBackfillJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_latestHistoricalDataBackfillJob(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HistoricalDataBackfillJob_id(ctx, field)
+			case "userId":
+				return ec.fieldContext_HistoricalDataBackfillJob_userId(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_HistoricalDataBackfillJob_portfolioId(ctx, field)
+			case "assetId":
+				return ec.fieldContext_HistoricalDataBackfillJob_assetId(ctx, field)
+			case "instrumentId":
+				return ec.fieldContext_HistoricalDataBackfillJob_instrumentId(ctx, field)
+			case "provider":
+				return ec.fieldContext_HistoricalDataBackfillJob_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_HistoricalDataBackfillJob_status(ctx, field)
+			case "step":
+				return ec.fieldContext_HistoricalDataBackfillJob_step(ctx, field)
+			case "progress":
+				return ec.fieldContext_HistoricalDataBackfillJob_progress(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_HistoricalDataBackfillJob_rowsWritten(ctx, field)
+			case "errorCode":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorCode(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorMessage(ctx, field)
+			case "requestedFrom":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedFrom(ctx, field)
+			case "requestedTo":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedTo(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HistoricalDataBackfillJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_latestHistoricalDataBackfillJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_historicalDataBackfillJobs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_historicalDataBackfillJobs,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().HistoricalDataBackfillJobs(ctx, fc.Args["filter"].(*gqlModel.HistoricalDataBackfillJobFilterInput), fc.Args["pagination"].(*gqlModel.PaginationInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.HistoricalDataBackfillJob
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNHistoricalDataBackfillJob2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJobᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_historicalDataBackfillJobs(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_HistoricalDataBackfillJob_id(ctx, field)
+			case "userId":
+				return ec.fieldContext_HistoricalDataBackfillJob_userId(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_HistoricalDataBackfillJob_portfolioId(ctx, field)
+			case "assetId":
+				return ec.fieldContext_HistoricalDataBackfillJob_assetId(ctx, field)
+			case "instrumentId":
+				return ec.fieldContext_HistoricalDataBackfillJob_instrumentId(ctx, field)
+			case "provider":
+				return ec.fieldContext_HistoricalDataBackfillJob_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_HistoricalDataBackfillJob_status(ctx, field)
+			case "step":
+				return ec.fieldContext_HistoricalDataBackfillJob_step(ctx, field)
+			case "progress":
+				return ec.fieldContext_HistoricalDataBackfillJob_progress(ctx, field)
+			case "rowsWritten":
+				return ec.fieldContext_HistoricalDataBackfillJob_rowsWritten(ctx, field)
+			case "errorCode":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorCode(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_HistoricalDataBackfillJob_errorMessage(ctx, field)
+			case "requestedFrom":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedFrom(ctx, field)
+			case "requestedTo":
+				return ec.fieldContext_HistoricalDataBackfillJob_requestedTo(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_startedAt(ctx, field)
+			case "finishedAt":
+				return ec.fieldContext_HistoricalDataBackfillJob_finishedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type HistoricalDataBackfillJob", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_historicalDataBackfillJobs_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -49779,6 +50862,43 @@ func (ec *executionContext) unmarshalInputGenerateReportInput(ctx context.Contex
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputHistoricalDataBackfillJobFilterInput(ctx context.Context, obj any) (gqlModel.HistoricalDataBackfillJobFilterInput, error) {
+	var it gqlModel.HistoricalDataBackfillJobFilterInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"status", "provider"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "status":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("status"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Status = data
+		case "provider":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("provider"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Provider = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputImportInstrumentFromSourceInput(ctx context.Context, obj any) (gqlModel.ImportInstrumentFromSourceInput, error) {
 	var it gqlModel.ImportInstrumentFromSourceInput
 	if obj == nil {
@@ -54179,6 +55299,110 @@ func (ec *executionContext) _Fund(ctx context.Context, sel ast.SelectionSet, obj
 	return out
 }
 
+var historicalDataBackfillJobImplementors = []string{"HistoricalDataBackfillJob"}
+
+func (ec *executionContext) _HistoricalDataBackfillJob(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.HistoricalDataBackfillJob) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, historicalDataBackfillJobImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("HistoricalDataBackfillJob")
+		case "id":
+			out.Values[i] = ec._HistoricalDataBackfillJob_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "userId":
+			out.Values[i] = ec._HistoricalDataBackfillJob_userId(ctx, field, obj)
+		case "portfolioId":
+			out.Values[i] = ec._HistoricalDataBackfillJob_portfolioId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assetId":
+			out.Values[i] = ec._HistoricalDataBackfillJob_assetId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "instrumentId":
+			out.Values[i] = ec._HistoricalDataBackfillJob_instrumentId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._HistoricalDataBackfillJob_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._HistoricalDataBackfillJob_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "step":
+			out.Values[i] = ec._HistoricalDataBackfillJob_step(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "progress":
+			out.Values[i] = ec._HistoricalDataBackfillJob_progress(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rowsWritten":
+			out.Values[i] = ec._HistoricalDataBackfillJob_rowsWritten(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorCode":
+			out.Values[i] = ec._HistoricalDataBackfillJob_errorCode(ctx, field, obj)
+		case "errorMessage":
+			out.Values[i] = ec._HistoricalDataBackfillJob_errorMessage(ctx, field, obj)
+		case "requestedFrom":
+			out.Values[i] = ec._HistoricalDataBackfillJob_requestedFrom(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "requestedTo":
+			out.Values[i] = ec._HistoricalDataBackfillJob_requestedTo(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._HistoricalDataBackfillJob_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "startedAt":
+			out.Values[i] = ec._HistoricalDataBackfillJob_startedAt(ctx, field, obj)
+		case "finishedAt":
+			out.Values[i] = ec._HistoricalDataBackfillJob_finishedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var importFinanceDatabaseAssetsPayloadImplementors = []string{"ImportFinanceDatabaseAssetsPayload"}
 
 func (ec *executionContext) _ImportFinanceDatabaseAssetsPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.ImportFinanceDatabaseAssetsPayload) graphql.Marshaler {
@@ -56373,6 +57597,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "retryHistoricalDataBackfillJob":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_retryHistoricalDataBackfillJob(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "upsertMarketDataCredential":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_upsertMarketDataCredential(ctx, field)
@@ -58507,6 +59738,66 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_manualInstruments(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "historicalDataBackfillJob":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_historicalDataBackfillJob(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "latestHistoricalDataBackfillJob":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_latestHistoricalDataBackfillJob(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "historicalDataBackfillJobs":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_historicalDataBackfillJobs(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -62105,6 +63396,36 @@ func (ec *executionContext) unmarshalNGenerateReportInput2sigma_financeᚋintern
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) marshalNHistoricalDataBackfillJob2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob(ctx context.Context, sel ast.SelectionSet, v gqlModel.HistoricalDataBackfillJob) graphql.Marshaler {
+	return ec._HistoricalDataBackfillJob(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNHistoricalDataBackfillJob2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJobᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.HistoricalDataBackfillJob) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.HistoricalDataBackfillJob) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._HistoricalDataBackfillJob(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v any) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -64134,6 +65455,21 @@ func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel as
 	_ = sel
 	res := graphql.MarshalFloatContext(*v)
 	return graphql.WrapContextMarshaler(ctx, res)
+}
+
+func (ec *executionContext) marshalOHistoricalDataBackfillJob2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJob(ctx context.Context, sel ast.SelectionSet, v *gqlModel.HistoricalDataBackfillJob) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._HistoricalDataBackfillJob(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOHistoricalDataBackfillJobFilterInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐHistoricalDataBackfillJobFilterInput(ctx context.Context, v any) (*gqlModel.HistoricalDataBackfillJobFilterInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputHistoricalDataBackfillJobFilterInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalOID2ᚕstringᚄ(ctx context.Context, v any) ([]string, error) {

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { LoansList } from "@/components/assets/loans/LoansList";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { LoansList } from "@/components/LoansList";
 
 export const Route = createFileRoute("/_app/assets/loans")({
 	component: () => (

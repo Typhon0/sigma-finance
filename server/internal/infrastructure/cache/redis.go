@@ -143,7 +143,7 @@ func (r *RedisCache) SetMultiple(ctx context.Context, items map[string]CacheItem
 }
 
 // GetMultiple retrieves multiple values in a single pipeline operation
-func (r *RedisCache) GetMultiple(ctx context.Context, keys []CacheRequest) (map[string]interface{}, error) {
+func (r *RedisCache) GetMultiple(ctx context.Context, keys []CacheRequest) (map[string][]byte, error) {
 	pipe := r.client.Pipeline()
 	cmds := make(map[string]*redis.StringCmd)
 
@@ -157,7 +157,7 @@ func (r *RedisCache) GetMultiple(ctx context.Context, keys []CacheRequest) (map[
 		return nil, fmt.Errorf("pipeline execution failed: %w", err)
 	}
 
-	results := make(map[string]interface{})
+	results := make(map[string][]byte)
 	for key, cmd := range cmds {
 		data, err := cmd.Result()
 		if err == redis.Nil {
@@ -168,13 +168,7 @@ func (r *RedisCache) GetMultiple(ctx context.Context, keys []CacheRequest) (map[
 			continue
 		}
 
-		var value interface{}
-		if err := json.Unmarshal([]byte(data), &value); err != nil {
-			log.Printf("Warning: Failed to unmarshal key %s: %v", key, err)
-			continue
-		}
-
-		results[key] = value
+		results[key] = []byte(data)
 	}
 
 	return results, nil

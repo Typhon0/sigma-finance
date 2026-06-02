@@ -238,6 +238,61 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 		CREATE INDEX IF NOT EXISTS idx_auth_event_action ON sigma_finance.auth_event(action);
 		CREATE INDEX IF NOT EXISTS idx_auth_event_created_at ON sigma_finance.auth_event(created_at);
 
+		-- Create instrument_provider_mappings table for tests
+		CREATE TABLE IF NOT EXISTS sigma_finance.instrument_provider_mappings (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			instrument_id UUID NOT NULL REFERENCES sigma_finance.instruments(id) ON DELETE CASCADE,
+			provider VARCHAR(64) NOT NULL,
+			provider_asset_id VARCHAR(255) NOT NULL,
+			provider_symbol VARCHAR(255),
+			provider_market VARCHAR(64),
+			quote_currency VARCHAR(16),
+			mapping_status VARCHAR(32) NOT NULL DEFAULT 'UNMAPPED',
+			last_verified_at TIMESTAMPTZ,
+			last_error_text TEXT,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			UNIQUE(instrument_id, provider, provider_asset_id)
+		);
+		CREATE INDEX IF NOT EXISTS instrument_provider_mappings_lookup_idx 
+			ON sigma_finance.instrument_provider_mappings(instrument_id, provider, mapping_status);
+
+		-- Create historical_data_backfill_jobs table for tests
+		CREATE TABLE IF NOT EXISTS sigma_finance.historical_data_backfill_jobs (
+			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+			user_id UUID,
+			portfolio_id UUID NOT NULL,
+			asset_id UUID NOT NULL,
+			instrument_id UUID NOT NULL,
+			provider TEXT NOT NULL DEFAULT 'YFINANCE',
+			status TEXT NOT NULL,
+			step TEXT NOT NULL DEFAULT 'QUEUED',
+			progress INTEGER NOT NULL DEFAULT 0,
+			rows_written INTEGER NOT NULL DEFAULT 0,
+			error_code TEXT,
+			error_message TEXT,
+			requested_from TIMESTAMPTZ NOT NULL,
+			requested_to TIMESTAMPTZ NOT NULL,
+			created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			started_at TIMESTAMPTZ,
+			finished_at TIMESTAMPTZ,
+			rows_inserted INTEGER NOT NULL DEFAULT 0,
+			rows_updated INTEGER NOT NULL DEFAULT 0,
+			rows_skipped INTEGER NOT NULL DEFAULT 0,
+			attempts INTEGER NOT NULL DEFAULT 0,
+			max_attempts INTEGER NOT NULL DEFAULT 4,
+			next_run_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			locked_at TIMESTAMPTZ,
+			locked_by TEXT,
+			heartbeat_at TIMESTAMPTZ,
+			coverage_from TIMESTAMPTZ,
+			coverage_to TIMESTAMPTZ,
+			provider_symbol TEXT,
+			UNIQUE(portfolio_id, asset_id, instrument_id, provider, requested_from, requested_to)
+		);
+		CREATE INDEX IF NOT EXISTS idx_hdbj_locked_at ON sigma_finance.historical_data_backfill_jobs(locked_at);
+		CREATE INDEX IF NOT EXISTS idx_hdbj_status_next_run ON sigma_finance.historical_data_backfill_jobs(status, next_run_at, created_at);
+
 		-- Create transactions table for GraphQL and service integration tests
 		CREATE TABLE IF NOT EXISTS sigma_finance.transactions (
 			id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -321,14 +376,40 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 			ADD COLUMN IF NOT EXISTS theme_radius NUMERIC(3,2) NOT NULL DEFAULT 0.625,
 			ADD COLUMN IF NOT EXISTS theme_rtl BOOLEAN NOT NULL DEFAULT FALSE;
 
-		ALTER TABLE IF EXISTS sigma_finance.assets
-			ADD COLUMN IF NOT EXISTS instrument_id UUID;
-		ALTER TABLE IF EXISTS sigma_finance.portfolio_asset
-			ADD COLUMN IF NOT EXISTS instrument_id UUID,
-			ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
-		ALTER TABLE IF EXISTS sigma_finance.positions
-			ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
-	`)
+	ALTER TABLE IF EXISTS sigma_finance.assets
+		ADD COLUMN IF NOT EXISTS instrument_id UUID;
+	ALTER TABLE IF EXISTS sigma_finance.portfolio_asset
+		ADD COLUMN IF NOT EXISTS instrument_id UUID,
+		ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
+	ALTER TABLE IF EXISTS sigma_finance.positions
+		ADD COLUMN IF NOT EXISTS quote_currency VARCHAR(3);
+
+	-- Add user_id to tag table (migration 52052026)
+	ALTER TABLE IF EXISTS sigma_finance.tag
+		ADD COLUMN IF NOT EXISTS user_id UUID;
+	UPDATE sigma_finance.tag
+		SET user_id = '00000000-0000-0000-0000-000000000000'
+		WHERE user_id IS NULL;
+	ALTER TABLE IF EXISTS sigma_finance.tag
+		ALTER COLUMN user_id SET NOT NULL;
+	ALTER TABLE IF EXISTS sigma_finance.tag
+		DROP CONSTRAINT IF EXISTS tag_name_key;
+	DO $$
+	BEGIN
+		IF NOT EXISTS (
+			SELECT 1 FROM pg_constraint
+			WHERE conname = 'tag_user_id_name_key'
+				AND conrelid = 'sigma_finance.tag'::regclass
+		) THEN
+			ALTER TABLE sigma_finance.tag
+				ADD CONSTRAINT tag_user_id_name_key UNIQUE (user_id, name);
+		END IF;
+	END $$;
+
+	-- Add search_vector to instruments (migration 51052026)
+	ALTER TABLE IF EXISTS sigma_finance.instruments
+		ADD COLUMN IF NOT EXISTS search_vector tsvector;
+`)
 
 	return err
 }
@@ -399,6 +480,9 @@ func (tdb *TestDB) CleanupTables(ctx context.Context) {
 			"sigma_finance.crypto",
 			"sigma_finance.report",
 			"sigma_finance.ownership",
+			"sigma_finance.instruments",
+			"sigma_finance.instrument_provider_mappings",
+			"sigma_finance.historical_data_backfill_jobs",
 		}
 
 		for _, table := range tables {
@@ -458,12 +542,14 @@ func (tdb *TestDB) SeedTestData(ctx context.Context) *TestData {
 	err = tdb.DB.NewInsert().Model(asset2).Returning("*").Scan(ctx, asset2)
 	require.NoError(tdb.t, err)
 
-	// Create test tags
+	// Create test tags (use sentinel user_id to match migration 52052026)
 	tag1 := &model.Tag{
-		Name: "Technology",
+		Name:   "Technology",
+		UserID: "00000000-0000-0000-0000-000000000000",
 	}
 	tag2 := &model.Tag{
-		Name: "High Risk",
+		Name:   "High Risk",
+		UserID: "00000000-0000-0000-0000-000000000000",
 	}
 
 	err = tdb.DB.NewInsert().Model(tag1).Returning("*").Scan(ctx, tag1)

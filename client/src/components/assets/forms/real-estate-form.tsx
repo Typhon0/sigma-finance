@@ -1,12 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { CalendarIcon, Home, MapPin } from "lucide-react";
+import { Home, MapPin } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
 	Form,
 	FormControl,
@@ -16,7 +15,6 @@ import {
 	FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
 	Select,
 	SelectContent,
@@ -25,7 +23,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 
 const realEstateSchema = z.object({
 	name: z.string().min(1, "Property name is required"),
@@ -282,31 +279,13 @@ export function RealEstateForm({
 							render={({ field }) => (
 								<FormItem className="flex flex-col">
 									<FormLabel>Purchase Date (Optional)</FormLabel>
-									<Popover>
-										<PopoverTrigger asChild>
-											<FormControl>
-												<Button
-													variant="outline"
-													className={cn(
-														"w-full pl-3 text-left font-normal",
-														!field.value && "text-muted-foreground",
-													)}
-												>
-													<CalendarIcon className="mr-2 h-4 w-4" />
-													{field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-												</Button>
-											</FormControl>
-										</PopoverTrigger>
-										<PopoverContent className="w-auto p-0" align="start">
-											<Calendar
-												mode="single"
-												selected={field.value}
-												onSelect={field.onChange}
-												disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-												autoFocus
-											/>
-										</PopoverContent>
-									</Popover>
+									<FormControl>
+										<DatePicker
+											date={field.value}
+											onChange={field.onChange}
+											disabledDates={(date) => date > new Date() || date < new Date("1900-01-01")}
+										/>
+									</FormControl>
 									<FormMessage />
 								</FormItem>
 							)}

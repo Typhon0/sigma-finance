@@ -275,16 +275,12 @@ func (mdm *MarketDataMonitor) runUptimeMonitoring() {
 
 // checkSourceUptime checks if sources are responding
 func (mdm *MarketDataMonitor) checkSourceUptime() {
-	mdm.mu.RLock()
-	sources := make(map[string]*DataSourceMetrics)
-	for k, v := range mdm.sources {
-		sources[k] = v
-	}
-	mdm.mu.RUnlock()
+	mdm.mu.Lock()
+	defer mdm.mu.Unlock()
 
 	now := time.Now()
 
-	for sourceName, source := range sources {
+	for sourceName, source := range mdm.sources {
 		// Check if source has been inactive for too long
 		if now.Sub(source.LastUpdate) > 10*time.Minute {
 			// Mark as potentially down

@@ -552,8 +552,13 @@ func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel
 		TotalGainLoss:        float64(valuation.TotalDisplayGainLoss) / 100.0,
 		TotalGainLossPercent: valuation.TotalDisplayGainLossPct.InexactFloat64(),
 		AssetAllocation:      []*gqlModel.AssetAllocation{}, // Not computed in valuation
-		RiskMetrics:          nil,                           // Not available in PortfolioValuation
-		PerformanceHistory:   history,
+		RiskMetrics: &gqlModel.RiskMetrics{
+			Volatility:      0,
+			SharpeRatio:     0,
+			MaxDrawdown:     0,
+			Diversification: 0,
+		},
+		PerformanceHistory: history,
 		// Multi-currency fields
 		TotalNativeValue:      float64Ptr(float64(valuation.TotalNativeValue) / 100.0),
 		TotalDisplayValue:     float64Ptr(float64(valuation.TotalDisplayValue) / 100.0),

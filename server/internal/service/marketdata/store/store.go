@@ -142,7 +142,9 @@ func (s *PackCandleStore) GetRange(ctx context.Context, query CandleRangeQuery) 
 			return nil, err
 		}
 		for _, relPath := range paths {
-			candles, err := s.readPackFile(pack.FilePath, relPath, query)
+			reqQuery := query
+			reqQuery.InstrumentID = cov.InstrumentID
+			candles, err := s.readPackFile(pack.FilePath, relPath, reqQuery)
 			if err != nil {
 				return nil, err
 			}

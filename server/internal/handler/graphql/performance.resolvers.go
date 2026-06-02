@@ -14,90 +14,90 @@ import (
 
 // CreatePerformanceSnapshot is the resolver for the createPerformanceSnapshot field.
 func (r *mutationResolver) CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error) {
-	panic(fmt.Errorf("not implemented: CreatePerformanceSnapshot - createPerformanceSnapshot"))
+	return nil, fmt.Errorf("not implemented: CreatePerformanceSnapshot - createPerformanceSnapshot")
 }
 
 // UpdatePerformanceSnapshots is the resolver for the updatePerformanceSnapshots field.
 func (r *mutationResolver) UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error) {
-	panic(fmt.Errorf("not implemented: UpdatePerformanceSnapshots - updatePerformanceSnapshots"))
+	return false, fmt.Errorf("not implemented: UpdatePerformanceSnapshots - updatePerformanceSnapshots")
 }
 
 // PortfolioPerformance is the resolver for the portfolioPerformance field.
 func (r *queryResolver) PortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.PerformanceMetrics, error) {
-	panic(fmt.Errorf("not implemented: PortfolioPerformance - portfolioPerformance"))
+	return nil, fmt.Errorf("not implemented: PortfolioPerformance - portfolioPerformance")
 }
 
 // PortfolioAllocation is the resolver for the portfolioAllocation field.
 func (r *queryResolver) PortfolioAllocation(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.AllocationBreakdown, error) {
-	panic(fmt.Errorf("not implemented: PortfolioAllocation - portfolioAllocation"))
+	return nil, fmt.Errorf("not implemented: PortfolioAllocation - portfolioAllocation")
 }
 
 // PortfolioRiskMetrics is the resolver for the portfolioRiskMetrics field.
 func (r *queryResolver) PortfolioRiskMetrics(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.RiskMetrics, error) {
-	panic(fmt.Errorf("not implemented: PortfolioRiskMetrics - portfolioRiskMetrics"))
+	return nil, fmt.Errorf("not implemented: PortfolioRiskMetrics - portfolioRiskMetrics")
 }
 
 // PerformanceSnapshots is the resolver for the performanceSnapshots field.
 func (r *queryResolver) PerformanceSnapshots(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceSnapshot, error) {
-	panic(fmt.Errorf("not implemented: PerformanceSnapshots - performanceSnapshots"))
+	return nil, fmt.Errorf("not implemented: PerformanceSnapshots - performanceSnapshots")
 }
 
 // LatestPerformanceSnapshot is the resolver for the latestPerformanceSnapshot field.
 func (r *queryResolver) LatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*gqlModel.PerformanceSnapshot, error) {
-	panic(fmt.Errorf("not implemented: LatestPerformanceSnapshot - latestPerformanceSnapshot"))
+	return nil, fmt.Errorf("not implemented: LatestPerformanceSnapshot - latestPerformanceSnapshot")
 }
 
 // PortfolioChartData is the resolver for the portfolioChartData field.
 func (r *queryResolver) PortfolioChartData(ctx context.Context, input gqlModel.ChartDataInput) (*gqlModel.TimeSeriesData, error) {
-	panic(fmt.Errorf("not implemented: PortfolioChartData - portfolioChartData"))
+	return nil, fmt.Errorf("not implemented: PortfolioChartData - portfolioChartData")
 }
 
 // AssetChartData is the resolver for the assetChartData field.
 func (r *queryResolver) AssetChartData(ctx context.Context, input gqlModel.ChartDataInput) (*gqlModel.TimeSeriesData, error) {
-	panic(fmt.Errorf("not implemented: AssetChartData - assetChartData"))
+	return nil, fmt.Errorf("not implemented: AssetChartData - assetChartData")
 }
 
 // AllocationChartData is the resolver for the allocationChartData field.
 func (r *queryResolver) AllocationChartData(ctx context.Context, portfolioID string, timeRange *gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.ChartDataPoint, error) {
-	panic(fmt.Errorf("not implemented: AllocationChartData - allocationChartData"))
+	return nil, fmt.Errorf("not implemented: AllocationChartData - allocationChartData")
 }
 
 // ComparePortfolios is the resolver for the comparePortfolios field.
 func (r *queryResolver) ComparePortfolios(ctx context.Context, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceMetrics, error) {
-	panic(fmt.Errorf("not implemented: ComparePortfolios - comparePortfolios"))
+	return nil, fmt.Errorf("not implemented: ComparePortfolios - comparePortfolios")
 }
 
 // BenchmarkComparison is the resolver for the benchmarkComparison field.
 func (r *queryResolver) BenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.BenchmarkComparison, error) {
-	panic(fmt.Errorf("not implemented: BenchmarkComparison - benchmarkComparison"))
+	return nil, fmt.Errorf("not implemented: BenchmarkComparison - benchmarkComparison")
 }
 
 // TopPerformingAssets is the resolver for the topPerformingAssets field.
 func (r *queryResolver) TopPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
-	panic(fmt.Errorf("not implemented: TopPerformingAssets - topPerformingAssets"))
+	return nil, fmt.Errorf("not implemented: TopPerformingAssets - topPerformingAssets")
 }
 
 // WorstPerformingAssets is the resolver for the worstPerformingAssets field.
 func (r *queryResolver) WorstPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
-	panic(fmt.Errorf("not implemented: WorstPerformingAssets - worstPerformingAssets"))
+	return nil, fmt.Errorf("not implemented: WorstPerformingAssets - worstPerformingAssets")
 }
 
 // GeneratePerformanceReport is the resolver for the generatePerformanceReport field.
 func (r *queryResolver) GeneratePerformanceReport(ctx context.Context, input gqlModel.GenerateReportInput) (*gqlModel.PerformanceReport, error) {
-	panic(fmt.Errorf("not implemented: GeneratePerformanceReport - generatePerformanceReport"))
+	return nil, fmt.Errorf("not implemented: GeneratePerformanceReport - generatePerformanceReport")
 }
 
 // ExportPortfolioData is the resolver for the exportPortfolioData field.
 func (r *queryResolver) ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error) {
-	panic(fmt.Errorf("not implemented: ExportPortfolioData - exportPortfolioData"))
+	return nil, fmt.Errorf("not implemented: ExportPortfolioData - exportPortfolioData")
 }
 
 // PortfolioPerformanceUpdates is the resolver for the portfolioPerformanceUpdates field.
 func (r *subscriptionResolver) PortfolioPerformanceUpdates(ctx context.Context, portfolioID string) (<-chan *gqlModel.PerformanceMetrics, error) {
-	panic(fmt.Errorf("not implemented: PortfolioPerformanceUpdates - portfolioPerformanceUpdates"))
+	return nil, fmt.Errorf("not implemented: PortfolioPerformanceUpdates - portfolioPerformanceUpdates")
 }
 
 // PriceUpdates is the resolver for the priceUpdates field.
 func (r *subscriptionResolver) PriceUpdates(ctx context.Context, assetIds []string) (<-chan *gqlModel.ChartDataPoint, error) {
-	panic(fmt.Errorf("not implemented: PriceUpdates - priceUpdates"))
+	return nil, fmt.Errorf("not implemented: PriceUpdates - priceUpdates")
 }

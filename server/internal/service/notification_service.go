@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"sigma_finance/internal/config"
 	"sigma_finance/internal/repository"
@@ -113,6 +114,7 @@ type NotificationHistoryFilter struct {
 
 // SendAlertNotification sends notifications through specified methods
 func (s *NotificationService) SendAlertNotification(ctx context.Context, event repository.AlertTriggerEvent, methods []AlertNotificationMethod) error {
+	log.Printf("[NotificationService] SendAlertNotification: started user=%s alert=%s type=%s", event.UserID, event.AlertID, event.AlertType)
 	// Get user notification preferences
 	prefs, err := s.GetUserNotificationPreferences(ctx, event.UserID)
 	if err != nil {
@@ -126,6 +128,7 @@ func (s *NotificationService) SendAlertNotification(ctx context.Context, event r
 
 	// Check quiet hours
 	if s.isQuietHours(prefs) {
+		log.Printf("[NotificationService] SendAlertNotification: SKIPPED quiet hours active user=%s", event.UserID)
 		return nil
 	}
 
@@ -191,6 +194,7 @@ func (s *NotificationService) SendInAppNotification(ctx context.Context, event r
 
 // SendPushNotification sends a push notification
 func (s *NotificationService) SendPushNotification(ctx context.Context, event repository.AlertTriggerEvent) error {
+	log.Printf("[NotificationService] SendPushNotification: started user=%s alert=%s", event.UserID, event.AlertID)
 	subs := s.getUserPushSubscriptions(ctx, event.UserID)
 	if len(subs) == 0 {
 		return nil
@@ -258,6 +262,7 @@ func (s *NotificationService) getUserPushSubscriptions(ctx context.Context, user
 
 // SendWebhookNotification sends a webhook notification
 func (s *NotificationService) SendWebhookNotification(ctx context.Context, event repository.AlertTriggerEvent, webhookURL string) error {
+	log.Printf("[NotificationService] SendWebhookNotification: started user=%s alert=%s url=%s", event.UserID, event.AlertID, webhookURL)
 	payload := map[string]interface{}{
 		"event_id":      event.AlertID,
 		"user_id":       event.UserID,
@@ -303,6 +308,8 @@ func (s *NotificationService) SendWebhookNotification(ctx context.Context, event
 			time.Sleep(time.Duration(attempt) * 500 * time.Millisecond)
 		}
 	}
+
+	log.Printf("[NotificationService] SendWebhookNotification: ERROR all retries exhausted user=%s: %v", event.UserID, lastErr)
 
 	return fmt.Errorf("webhook notification failed after %d attempts: %w", maxRetries, lastErr)
 }

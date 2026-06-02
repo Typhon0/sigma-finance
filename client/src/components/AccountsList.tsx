@@ -19,7 +19,7 @@ import { type PortfolioAssetItem, usePortfolio } from "@/components/PortfolioPro
 import { SearchInput } from "@/components/ui/search-input";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
-import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
+import { AddSavingForm, type SavingsFormData } from "./assets/savings/AddSavingForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";

@@ -13,50 +13,50 @@ import (
 
 // CreateAlert is the resolver for the createAlert field.
 func (r *mutationResolver) CreateAlert(ctx context.Context, input gqlModel.CreateAlertInput) (*gqlModel.Alert, error) {
-	panic(fmt.Errorf("not implemented: CreateAlert - createAlert"))
+	return nil, fmt.Errorf("not implemented: CreateAlert - createAlert")
 }
 
 // UpdateAlert is the resolver for the updateAlert field.
 func (r *mutationResolver) UpdateAlert(ctx context.Context, id string, input gqlModel.UpdateAlertInput) (*gqlModel.Alert, error) {
-	panic(fmt.Errorf("not implemented: UpdateAlert - updateAlert"))
+	return nil, fmt.Errorf("not implemented: UpdateAlert - updateAlert")
 }
 
 // DeleteAlert is the resolver for the deleteAlert field.
 func (r *mutationResolver) DeleteAlert(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: DeleteAlert - deleteAlert"))
+	return false, fmt.Errorf("not implemented: DeleteAlert - deleteAlert")
 }
 
 // AcknowledgeAlert is the resolver for the acknowledgeAlert field.
 func (r *mutationResolver) AcknowledgeAlert(ctx context.Context, alertID string) (bool, error) {
-	panic(fmt.Errorf("not implemented: AcknowledgeAlert - acknowledgeAlert"))
+	return false, fmt.Errorf("not implemented: AcknowledgeAlert - acknowledgeAlert")
 }
 
 // CreateBatchAlerts is the resolver for the createBatchAlerts field.
 func (r *mutationResolver) CreateBatchAlerts(ctx context.Context, input gqlModel.BatchAlertInput) (*gqlModel.BatchAlertResult, error) {
-	panic(fmt.Errorf("not implemented: CreateBatchAlerts - createBatchAlerts"))
+	return nil, fmt.Errorf("not implemented: CreateBatchAlerts - createBatchAlerts")
 }
 
 // DeactivateBatchAlerts is the resolver for the deactivateBatchAlerts field.
 func (r *mutationResolver) DeactivateBatchAlerts(ctx context.Context, input gqlModel.BatchDeactivateInput) (*gqlModel.BatchDeactivateResult, error) {
-	panic(fmt.Errorf("not implemented: DeactivateBatchAlerts - deactivateBatchAlerts"))
+	return nil, fmt.Errorf("not implemented: DeactivateBatchAlerts - deactivateBatchAlerts")
 }
 
 // Alerts is the resolver for the alerts field.
 func (r *queryResolver) Alerts(ctx context.Context, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Alert, error) {
-	panic(fmt.Errorf("not implemented: Alerts - alerts"))
+	return nil, fmt.Errorf("not implemented: Alerts - alerts")
 }
 
 // Alert is the resolver for the alert field.
 func (r *queryResolver) Alert(ctx context.Context, id string) (*gqlModel.Alert, error) {
-	panic(fmt.Errorf("not implemented: Alert - alert"))
+	return nil, fmt.Errorf("not implemented: Alert - alert")
 }
 
 // AlertHistory is the resolver for the alertHistory field.
 func (r *queryResolver) AlertHistory(ctx context.Context, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.AlertTriggerEvent, error) {
-	panic(fmt.Errorf("not implemented: AlertHistory - alertHistory"))
+	return nil, fmt.Errorf("not implemented: AlertHistory - alertHistory")
 }
 
 // AlertTriggered is the resolver for the alertTriggered field.
 func (r *subscriptionResolver) AlertTriggered(ctx context.Context, userID string) (<-chan *gqlModel.AlertTriggerEvent, error) {
-	panic(fmt.Errorf("not implemented: AlertTriggered - alertTriggered"))
+	return nil, fmt.Errorf("not implemented: AlertTriggered - alertTriggered")
 }

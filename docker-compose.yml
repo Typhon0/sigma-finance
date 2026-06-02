@@ -6,9 +6,11 @@ services:
     environment:
       - YFINANCE_HOST=0.0.0.0
       - YFINANCE_PORT=50051
+      - YFINANCE_HTTP_PORT=50052
       - YFINANCE_RATE_LIMIT=10
     ports:
       - "50051:50051"
+      - "50052:50052"
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('localhost', 50051)); s.close()\" || exit 1"]
       interval: 30s
@@ -37,6 +39,7 @@ services:
     environment:
       - YFINANCE_HOST=yfinance-service
       - YFINANCE_PORT=50051
+      - YFINANCE_HTTP_PORT=50052
       - DB_HOST=192.168.1.170
       - DB_PORT=5432
       - DB_USER=sigma_finance
@@ -44,7 +47,7 @@ services:
       - DB_NAME=sigma_finance
       - DB_SSLMODE=disable
       - MARKET_DATA_PACK_STORAGE_PATH=/data/market-data/packs
-      - MARKET_DATA_PACK_REGISTRY_URL=https://github.com/Typhon0/sigma-finance/releases/latest/download/registry.json
+      - MARKET_DATA_PACK_REGISTRY_URL=file:///data/market-data/dist/registry.json
       - MARKET_DATA_AUTO_INSTALL=false
       - MARKET_DATA_DEFAULT_PACKS=core-daily
     volumes:

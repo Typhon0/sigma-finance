@@ -9,8 +9,28 @@ import (
 )
 
 // International stock exchange suffixes that Tiingo doesn't support well.
-// Alpha Vantage should be preferred for these.
+// YFinance or Alpha Vantage should be preferred for these.
+// Suffixes follow Yahoo Finance ticker conventions (e.g., ABEA.F, PSP5.PA).
 var internationalSuffixes = []string{
+	// European exchanges (Yahoo Finance format)
+	".F",   // Frankfurt/Xetra
+	".DE",  // Xetra (alternate)
+	".PA",  // Euronext Paris
+	".MI",  // Borsa Italiana (Milan)
+	".AS",  // Euronext Amsterdam
+	".BR",  // Euronext Brussels
+	".LS",  // Euronext Lisbon
+	".MC",  // Madrid (Bolsa de Madrid)
+	".SW",  // Swiss Exchange (SIX)
+	".VI",  // Vienna
+	".HE",  // Helsinki (Nasdaq Helsinki)
+	".OL",  // Oslo
+	".ST",  // Stockholm (Nasdaq Stockholm)
+	".CO",  // Copenhagen (Nasdaq Copenhagen)
+	".IR",  // Ireland (Euronext Dublin)
+	".L",   // London Stock Exchange
+	".IL",  // Tel Aviv
+	// Legacy European exchange suffixes (older providers)
 	".LON", // London Stock Exchange
 	".DEX", // Germany XETRA
 	".EPA", // Euronext Paris
@@ -18,8 +38,9 @@ var internationalSuffixes = []string{
 	".AMS", // Amsterdam
 	".BRU", // Brussels
 	".LIS", // Lisbon
+	// Other international exchanges
 	".TOR", // Toronto
-	".TRT", // Toronto
+	".TRT", // Toronto (alternate)
 	".BSE", // Bombay
 	".NSE", // National Stock Exchange India
 	".SHH", // Shanghai
@@ -148,14 +169,16 @@ func (pm *providerManager) SelectBestProvider(assetType, symbol string, interval
 					break
 				}
 			}
-			if supportsInterval {
-				// Check API key requirement
-				if caps.RequiresAPIKey && !requiresKey {
-					// No key available, skip learned route
-				} else {
-					return provider, nil
-				}
+		if supportsInterval {
+			// Skip learned provider if currently in rate-limit cooldown
+			if provider.IsInCooldown() {
+				// Fall through to scoring-based routing
+			} else if caps.RequiresAPIKey && !requiresKey {
+				// No key available, skip learned route
+			} else {
+				return provider, nil
 			}
+		}
 		}
 	}
 
@@ -170,6 +193,10 @@ func (pm *providerManager) SelectBestProvider(assetType, symbol string, interval
 	scored := make([]scoredProvider, 0, len(routedProviders))
 
 	for _, provider := range routedProviders {
+		// Skip providers currently in rate-limit cooldown
+		if provider.IsInCooldown() {
+			continue
+		}
 		caps := provider.Capabilities()
 		score := 0
 
@@ -267,7 +294,7 @@ func (pm *providerManager) getRoutedProviders(assetType, symbol string) []Provid
 	// Default: use rankings as-is
 	providers := make([]Provider, 0, len(providerIDs))
 	for _, id := range providerIDs {
-		if provider, ok := pm.providers[id]; ok {
+		if provider, ok := pm.providers[id]; ok && !provider.IsInCooldown() {
 			providers = append(providers, provider)
 		}
 	}
@@ -297,20 +324,25 @@ func (pm *providerManager) reorderForForex(providerIDs []string) []Provider {
 	return providers
 }
 
-// reorderForInternational puts Alpha Vantage first for international stocks.
+// reorderForInternational puts YFinance and Alpha Vantage first for international stocks,
+// and excludes Tiingo which only supports US equities.
 func (pm *providerManager) reorderForInternational(providerIDs []string) []Provider {
-	var alphaVantageFirst []string
-	others := []string{}
+	var first []string
+	var others []string
 
 	for _, id := range providerIDs {
-		if id == "ALPHAVANTAGE" || id == "ALPHA_VANTAGE" {
-			alphaVantageFirst = append(alphaVantageFirst, id)
+		// Tiingo does not support international stocks; skip it entirely
+		if id == "TIINGO" {
+			continue
+		}
+		if id == "YFINANCE" || id == "ALPHAVANTAGE" || id == "ALPHA_VANTAGE" {
+			first = append(first, id)
 		} else {
 			others = append(others, id)
 		}
 	}
 
-	ordered := append(alphaVantageFirst, others...)
+	ordered := append(first, others...)
 	providers := make([]Provider, 0, len(ordered))
 	for _, id := range ordered {
 		if provider, ok := pm.providers[id]; ok {

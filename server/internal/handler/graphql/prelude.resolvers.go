@@ -1,7 +1,3 @@
-// TODO: This GraphQL layer needs to be updated for the new asset management schema
-// Temporarily excluded from build until GraphQL layer task is implemented
-//go:build ignore
-
 package graphql
 
 // This file will be automatically regenerated based on the schema, any resolver implementations
@@ -17,17 +13,17 @@ import (
 
 // IsDeprecated is the resolver for the isDeprecated field.
 func (r *__InputValueResolver) IsDeprecated(ctx context.Context, obj *introspection.InputValue) (bool, error) {
-	panic(fmt.Errorf("not implemented: IsDeprecated - isDeprecated"))
+	return false, fmt.Errorf("not implemented: IsDeprecated - isDeprecated")
 }
 
 // DeprecationReason is the resolver for the deprecationReason field.
 func (r *__InputValueResolver) DeprecationReason(ctx context.Context, obj *introspection.InputValue) (*string, error) {
-	panic(fmt.Errorf("not implemented: DeprecationReason - deprecationReason"))
+	return nil, fmt.Errorf("not implemented: DeprecationReason - deprecationReason")
 }
 
 // IsOneOf is the resolver for the isOneOf field.
 func (r *__TypeResolver) IsOneOf(ctx context.Context, obj *introspection.Type) (*bool, error) {
-	panic(fmt.Errorf("not implemented: IsOneOf - isOneOf"))
+	return nil, fmt.Errorf("not implemented: IsOneOf - isOneOf")
 }
 
 // __InputValue returns __InputValueResolver implementation.

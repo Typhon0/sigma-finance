@@ -3,6 +3,7 @@ package grpc
 import (
 	"context"
 	"os"
+	pb "sigma_finance/internal/handler/grpc/pb"
 	"testing"
 	"time"
 
@@ -82,7 +83,9 @@ func TestMarketDataClient_GetHistory_Integration(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	resp, err := client.GetHistory(ctx, "AAPL", "1mo", "1d")
+	from := time.Now().AddDate(0, -1, 0).UnixMilli()
+	to := time.Now().UnixMilli()
+	resp, err := client.GetHistory(ctx, "AAPL", pb.AssetType_ASSET_TYPE_STOCK, pb.Interval_INTERVAL_1D, from, to, 100)
 	require.NoError(t, err)
 
 	assert.True(t, len(resp.Bars) > 0, "should return at least one bar")

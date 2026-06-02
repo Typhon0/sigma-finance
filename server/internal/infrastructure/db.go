@@ -23,8 +23,8 @@ func NewDB() (*bun.DB, error) {
 	return NewDBWithConfig(DBConfig{
 		Host:     getEnv("DB_HOST", "localhost"),
 		Port:     getEnv("DB_PORT", "5432"),
-		User:     getEnv("DB_USER", "postgres"),
-		Password: getEnv("DB_PASSWORD", "postgres"),
+		User:     getEnv("DB_USER", ""),
+		Password: getEnv("DB_PASSWORD", ""),
 		DBName:   getEnv("DB_NAME", "sigma_finance"),
 		SSLMode:  getEnv("DB_SSLMODE", "disable"),
 	})
@@ -38,10 +38,10 @@ func NewDBWithConfig(cfg DBConfig) (*bun.DB, error) {
 		cfg.Port = "5432"
 	}
 	if cfg.User == "" {
-		cfg.User = "postgres"
+		return nil, fmt.Errorf("database user is required but not provided in DB_USER environment variable")
 	}
 	if cfg.Password == "" {
-		cfg.Password = "postgres"
+		return nil, fmt.Errorf("database password is required but not provided in DB_PASSWORD environment variable")
 	}
 	if cfg.DBName == "" {
 		cfg.DBName = "sigma_finance"

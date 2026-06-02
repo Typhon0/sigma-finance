@@ -7,6 +7,7 @@ import (
 	"time"
 
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	"sigma_finance/internal/testutil"
@@ -41,6 +42,11 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 	testData := testDB.SeedTestData(ctx)
 	stockAssetType := testData.AssetTypes[0] // Should be "Stock"
 	testUser := testData.Users[0]
+
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
 
 	t.Run("CreateStockAsset accepts ticker/quantity/purchasePrice/currentValue/purchaseDate", func(t *testing.T) {
 		currentValue := 1500.0 // 150 * 10 shares
@@ -265,6 +271,12 @@ func TestStockAssetInputValidation(t *testing.T) {
 	mutationResolver := &mutationResolver{resolver}
 	testData := testDB.SeedTestData(ctx)
 	stockAssetType := testData.AssetTypes[0]
+	testUser := testData.Users[0]
+
+	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
+		ID:    testUser.ID,
+		Email: testUser.Email,
+	})
 
 	t.Run("accepts zero for optional CurrentValue", func(t *testing.T) {
 		input := gqlModel.CreateStockInput{

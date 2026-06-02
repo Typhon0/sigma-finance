@@ -134,6 +134,12 @@ func EnsureTestSchemaPermissions(ctx context.Context, adminDB *bun.DB) error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
+	// Create pg_trgm extension in the schema
+	_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA %s", schemaName))
+	if err != nil {
+		return fmt.Errorf("failed to create pg_trgm extension: %w", err)
+	}
+
 	// Grant schema-level privileges
 	if err := grant(fmt.Sprintf("GRANT USAGE, CREATE ON SCHEMA %s TO %s", schemaName, testUser),
 		"grant schema privileges"); err != nil {

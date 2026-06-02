@@ -333,6 +333,15 @@ class TestSearchInstruments:
         assert "VTSAX" in symbols
         assert all(result.provider_source == "yfinance" for result in resp.results)
 
+    def test_search_instruments_deduces_european_currency(self, grpc_stub, mock_yfinance):
+        req = market_data_pb2.SearchRequest(query="FR0011871128", max_results=5)
+        resp = grpc_stub.SearchInstruments(req, timeout=10)
+
+        assert len(resp.results) >= 1
+        result = resp.results[0]
+        assert result.symbol == "LYXIB.PA"
+        assert result.currency == "EUR"
+
 
 # ---------------------------------------------------------------------------
 # Error handling

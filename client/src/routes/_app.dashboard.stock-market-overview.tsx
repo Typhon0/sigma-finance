@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { StockMarketOverview } from "@/components/assets/stocks-funds/StockMarketOverview";
 import { ProtectedRoute } from "@/components/auth/protected-route";
-import { StockMarketOverview } from "@/components/StockMarketOverview";
 
 export const Route = createFileRoute("/_app/dashboard/stock-market-overview")({
 	component: () => (

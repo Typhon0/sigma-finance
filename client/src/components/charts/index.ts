@@ -47,5 +47,12 @@ export type {
 	PortfolioPerformanceData,
 } from "./PortfolioComparisonChart";
 export { default as PortfolioComparisonChart } from "./PortfolioComparisonChart";
+export type {
+	BenchmarkMode,
+	PerformancePoint,
+	PortfolioHeroChartProps,
+	TimeRange,
+} from "./PortfolioHeroChart";
+export { buildBenchmarkSeries, filterByRange, PortfolioHeroChart } from "./PortfolioHeroChart";
 export { default as SimpleChart } from "./SimpleChart";
 export { default as TradingViewChart } from "./TradingViewChart";

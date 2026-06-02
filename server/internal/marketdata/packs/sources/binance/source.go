@@ -817,7 +817,7 @@ func (s *Source) RankSymbols(_ context.Context, symbols []sources.UniverseSymbol
 // Used for HEAD-request probing to verify a symbol has historical data.
 func (s *Source) probeArchiveURL(symbol string, month time.Time) string {
 	fileName := fmt.Sprintf("%s-%s-%04d-%02d.zip", symbol, Interval1D, month.Year(), int(month.Month()))
-	return DefaultBaseURL + "/" + path.Join("data", DefaultMarket, "monthly", "klines", symbol, Interval1D, fileName)
+	return s.url(path.Join("data", s.market, "monthly", "klines", symbol, Interval1D, fileName))
 }
 
 func topN(symbols []sources.UniverseSymbol, n int) string {

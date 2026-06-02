@@ -1,0 +1,24 @@
+pack_id: uk-stooq-daily
+name: Uk Stooq Daily
+version: 2026.05.26
+format_version: 1
+distribution: local
+asset_type: STOCK
+interval: 1d
+quote_currency: GBP
+source_provider: marketparquet
+license_policy: marketparquet-local-only
+upload_forbidden: true
+generated_by_user: true
+install_mode: build_local
+history:
+  start: 1800-01-01
+  end: auto
+universe:
+  file: packs/universes/uk-stooq.yaml
+output:
+  compression: zstd
+  partition_by:
+    - asset_type
+    - quote_currency
+    - year

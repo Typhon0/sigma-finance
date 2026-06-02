@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -157,10 +158,13 @@ func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.
 	for _, portfolioID := range portfolioIDs {
 		cacheKey := fmt.Sprintf("portfolio:%s", portfolioID)
 		if data, exists := cached[cacheKey]; exists {
-			if metrics, ok := data.(*CachedPerformanceMetrics); ok {
-				results[portfolioID] = metrics
+			var metrics CachedPerformanceMetrics
+			if err := json.Unmarshal(data, &metrics); err == nil {
+				results[portfolioID] = &metrics
 				pcs.incrementCacheHits()
 				continue
+			} else {
+				log.Printf("Warning: Failed to unmarshal cached performance for %s: %v", portfolioID, err)
 			}
 		}
 		
@@ -303,7 +307,7 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 
 	switch req.Type {
 	case "portfolio_performance":
-		_, err := pcs.computePortfolioPerformance(ctx, req.Key)
+		metrics, err := pcs.computePortfolioPerformance(ctx, req.Key)
 		if err != nil {
 			log.Printf("Worker %d failed to refresh portfolio performance %s: %v", workerID, req.Key, err)
 			
@@ -317,6 +321,12 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 				default:
 					log.Printf("Refresh queue full, dropping retry for %s", req.Key)
 				}
+			}
+		} else {
+			// Write the fresh data back to the cache!
+			cacheKey := fmt.Sprintf("portfolio:%s", req.Key)
+			if err := pcs.cache.Set(ctx, cache.PerformanceKey, cacheKey, metrics); err != nil {
+				log.Printf("Worker %d failed to cache refreshed portfolio performance for %s: %v", workerID, req.Key, err)
 			}
 		}
 	default:

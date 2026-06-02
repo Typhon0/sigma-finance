@@ -280,6 +280,16 @@
 	@apply shrink-0 bg-border data-[orientation=horizontal]:h-px data-[orientation=horizontal]:w-full data-[orientation=vertical]:h-full data-[orientation=vertical]:w-px;
 }
 
+/* MARK: Dialog */
+:root[data-style] .ui-dialog-content {
+	@apply sm:max-w-3xl;
+}
+
+/* MARK: Popover */
+:root[data-style] .ui-popover-content {
+	width: min(90vw, 56rem);
+}
+
 /* MARK: Drawer */
 .ui-drawer-overlay {
 	@apply fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0;

@@ -123,7 +123,7 @@ func (m *MarketDataClient) GetPrice(ctx context.Context, symbol string) (*pb.Pri
 //   - interval: Data interval (e.g., "1m", "1h", "1d")
 //
 // Uses a 30 second context timeout for history requests.
-func (m *MarketDataClient) GetHistory(ctx context.Context, symbol, period, interval string) (*pb.HistoryResponse, error) {
+func (m *MarketDataClient) GetHistory(ctx context.Context, symbol string, assetType pb.AssetType, interval pb.Interval, fromMs int64, toMs int64, limit int32) (*pb.HistoryResponse, error) {
 	if err := m.ensureConnected(); err != nil {
 		return nil, fmt.Errorf("market data client not connected: %w", err)
 	}
@@ -132,7 +132,12 @@ func (m *MarketDataClient) GetHistory(ctx context.Context, symbol, period, inter
 	defer cancel()
 
 	req := &pb.HistoryRequest{
-		Symbol: symbol,
+		Symbol:    symbol,
+		AssetType: assetType,
+		Interval:  interval,
+		From:      fromMs,
+		To:        toMs,
+		Limit:     limit,
 	}
 	resp, err := m.client.GetHistory(ctx, req)
 	if err != nil {

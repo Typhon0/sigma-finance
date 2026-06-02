@@ -5,7 +5,8 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"errors"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -13,12 +14,50 @@ import (
 	"github.com/uptrace/bun"
 )
 
-func getEncryptionKey() string {
-	key := os.Getenv("ENCRYPTION_KEY")
-	if key == "" {
-		key = "0123456789abcdef0123456789abcdef"
+// encryptionKey holds the raw key material set at startup via SetEncryptionKey.
+// The value may be hex-encoded, base64-encoded, or raw 32-byte ASCII.
+// getEncryptionKey() decodes it to the 32-byte AES-256 key.
+var encryptionKey string
+
+// SetEncryptionKey sets the AES-256 encryption key used by MarketDataCredential.Encrypt/Decrypt.
+// Must be called during application startup. The key must be exactly 32 bytes.
+func SetEncryptionKey(key string) {
+	encryptionKey = key
+}
+
+// getEncryptionKey returns the decoded 32-byte AES-256 key.
+// It tries hex, base64 (std & URL), then raw 32-byte ASCII for backward compatibility.
+func getEncryptionKey() ([]byte, error) {
+	raw := encryptionKey
+	if raw == "" {
+		raw = os.Getenv("ENCRYPTION_KEY")
 	}
-	return key
+	if raw == "" {
+		return nil, fmt.Errorf("ENCRYPTION_KEY is not set; call SetEncryptionKey during startup or set the ENCRYPTION_KEY environment variable")
+	}
+	return decodeEncryptionKey(raw)
+}
+
+// decodeEncryptionKey decodes a key string using the same algorithm as SecurityService:
+// hex → base64 std → base64 URL → raw 32-byte ASCII.
+func decodeEncryptionKey(raw string) ([]byte, error) {
+	// Try hex first (most common for AES-256 keys)
+	if decoded, err := hex.DecodeString(raw); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+	// Try standard base64
+	if decoded, err := base64.StdEncoding.DecodeString(raw); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+	// Try URL-safe base64
+	if decoded, err := base64.URLEncoding.DecodeString(raw); err == nil && len(decoded) == 32 {
+		return decoded, nil
+	}
+	// Backward compatibility: raw 32-byte ASCII string
+	if len(raw) == 32 {
+		return []byte(raw), nil
+	}
+	return nil, fmt.Errorf("encryption key must decode to 32 bytes (got %d raw chars)", len(raw))
 }
 
 // MarketDataCredential stores a user-provided API key for a market data provider.
@@ -50,13 +89,12 @@ func (m *MarketDataCredential) Encrypt() error {
 		return nil
 	}
 
-	key := getEncryptionKey()
-
-	if len(key) != 32 {
-		return errors.New("encryption key must be exactly 32 bytes for AES-256")
+	key, err := getEncryptionKey()
+	if err != nil {
+		return err
 	}
 
-	block, err := aes.NewCipher([]byte(key))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return err
 	}
@@ -82,10 +120,9 @@ func (m *MarketDataCredential) Decrypt() error {
 		return nil
 	}
 
-	key := getEncryptionKey()
-
-	if len(key) != 32 {
-		return errors.New("encryption key must be exactly 32 bytes for AES-256")
+	key, err := getEncryptionKey()
+	if err != nil {
+		return err
 	}
 
 	data, err := base64.StdEncoding.DecodeString(m.APIKey)
@@ -94,7 +131,7 @@ func (m *MarketDataCredential) Decrypt() error {
 		return nil
 	}
 
-	block, err := aes.NewCipher([]byte(key))
+	block, err := aes.NewCipher(key)
 	if err != nil {
 		return err
 	}
