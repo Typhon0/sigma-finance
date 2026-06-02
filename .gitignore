@@ -18,3 +18,20 @@
 
 # Log files
 *.log
+node_modules
+data/
+dist/
+
+# IDE/Agent specific tool directories
+.antigravitycli/
+.sisyphus/
+
+# Python compiled files and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.venv/
+venv/
+env/
