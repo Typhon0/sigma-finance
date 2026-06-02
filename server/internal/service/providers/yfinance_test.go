@@ -2,6 +2,8 @@ package providers
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -13,12 +15,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
+	gcodes "google.golang.org/grpc/codes"
+	gstatus "google.golang.org/grpc/status"
 )
 
 type mockMarketDataClient struct {
 	mu           sync.Mutex
 	getPriceFn   func(ctx context.Context, symbol string) (*pb.PriceResponse, error)
-	getHistoryFn func(ctx context.Context, symbol, period, interval string) (*pb.HistoryResponse, error)
+	getHistoryFn func(ctx context.Context, symbol string, assetType pb.AssetType, interval pb.Interval, fromMs int64, toMs int64, limit int32) (*pb.HistoryResponse, error)
 	getInfoFn    func(ctx context.Context, symbol string) (*pb.InfoResponse, error)
 	closeFn      func() error
 	callCount    int
@@ -41,12 +45,12 @@ func (m *mockMarketDataClient) GetPrice(ctx context.Context, symbol string) (*pb
 	}, nil
 }
 
-func (m *mockMarketDataClient) GetHistory(ctx context.Context, symbol, period, interval string) (*pb.HistoryResponse, error) {
+func (m *mockMarketDataClient) GetHistory(ctx context.Context, symbol string, assetType pb.AssetType, interval pb.Interval, fromMs int64, toMs int64, limit int32) (*pb.HistoryResponse, error) {
 	m.mu.Lock()
 	m.callCount++
 	m.mu.Unlock()
 	if m.getHistoryFn != nil {
-		return m.getHistoryFn(ctx, symbol, period, interval)
+		return m.getHistoryFn(ctx, symbol, assetType, interval, fromMs, toMs, limit)
 	}
 	return &pb.HistoryResponse{
 		Bars: []*pb.OHLCVBar{
@@ -94,14 +98,15 @@ func (m *mockMarketDataClient) Close() error {
 
 func newTestProvider() *YFinanceProvider {
 	return &YFinanceProvider{
-		host:         "localhost",
-		port:         "50051",
-		cb:           newTestCircuitBreaker(),
-		limiter:      newTestRateLimiter(),
-		priceCache:   newCache(),
-		historyCache: newCache(),
-		infoCache:    newCache(),
-		stopCleanup:  make(chan struct{}),
+		host:          "localhost",
+		port:          "50051",
+		cb:            newTestCircuitBreaker(),
+		limiter:       newTestRateLimiter(),
+		priceCache:    newCache(),
+		historyCache:  newCache(),
+		infoCache:     newCache(),
+		stopCleanup:   make(chan struct{}),
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 }
 
@@ -477,4 +482,106 @@ func TestInfoCacheKey(t *testing.T) {
 	key := provider.infoCacheKey("AAPL", "STOCK")
 	assert.Contains(t, key, "AAPL")
 	assert.Contains(t, key, "STOCK")
+}
+
+func TestIsPermanentGRPCError(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		expected bool
+	}{
+		{
+			name:     "not_found_is_permanent",
+			err:      gstatus.Error(gcodes.NotFound, "not found"),
+			expected: true,
+		},
+		{
+			name:     "invalid_argument_is_permanent",
+			err:      gstatus.Error(gcodes.InvalidArgument, "invalid"),
+			expected: true,
+		},
+		{
+			name:     "permission_denied_is_permanent",
+			err:      gstatus.Error(gcodes.PermissionDenied, "denied"),
+			expected: true,
+		},
+		{
+			name:     "unavailable_is_transient",
+			err:      gstatus.Error(gcodes.Unavailable, "down"),
+			expected: false,
+		},
+		{
+			name:     "deadline_exceeded_is_transient",
+			err:      gstatus.Error(gcodes.DeadlineExceeded, "timeout"),
+			expected: false,
+		},
+		{
+			name:     "wrapped_not_found_is_permanent",
+			err:      fmt.Errorf("failed: %w", gstatus.Error(gcodes.NotFound, "not found")),
+			expected: true,
+		},
+		{
+			name:     "nil_is_not_permanent",
+			err:      nil,
+			expected: false,
+		},
+		{
+			name:     "plain_error_is_not_permanent",
+			err:      errors.New("some error"),
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, isPermanentGRPCError(tt.err))
+		})
+	}
+}
+
+func TestGRPCProviderError_NotFoundIsNotRetryable(t *testing.T) {
+	err := gstatus.Error(gcodes.NotFound, "no history data found for symbol: ABEA.F")
+	provider := newTestProvider()
+	providerErr := provider.grpcProviderError("ABEA.F", "get history", err)
+
+	assert.Equal(t, "TICKER_NOT_FOUND", providerErr.Code)
+	assert.False(t, providerErr.Retryable)
+	assert.Contains(t, providerErr.Message, "ABEA.F")
+}
+
+func TestGRPCProviderError_UnavailableIsRetryable(t *testing.T) {
+	err := gstatus.Error(gcodes.Unavailable, "connection refused")
+	provider := newTestProvider()
+	providerErr := provider.grpcProviderError("AAPL", "get price", err)
+
+	assert.Equal(t, "GRPC_ERROR", providerErr.Code)
+	assert.True(t, providerErr.Retryable)
+}
+
+func TestGRPCProviderError_CanceledIsRetryable(t *testing.T) {
+	err := gstatus.Error(gcodes.Canceled, "context canceled")
+	provider := newTestProvider()
+	providerErr := provider.grpcProviderError("MSFT", "get info", err)
+
+	assert.Equal(t, "GRPC_ERROR", providerErr.Code)
+	assert.True(t, providerErr.Retryable)
+}
+
+func TestGRPCProviderError_ResourceExhaustedEntersCooldown(t *testing.T) {
+	err := gstatus.Error(gcodes.ResourceExhausted, "rate limit exceeded")
+	provider := newTestProvider()
+
+	// Should not be in cooldown before
+	assert.False(t, provider.IsInCooldown())
+
+	providerErr := provider.grpcProviderError("AAPL", "get price", err)
+
+	// Should be in cooldown after
+	assert.True(t, provider.IsInCooldown())
+
+	// Error should indicate rate limiting
+	assert.Equal(t, "RATE_LIMITED", providerErr.Code)
+	assert.True(t, providerErr.Retryable)
+	assert.True(t, providerErr.Fallback)
+	assert.Equal(t, int(DefaultRetryAfterMax.Seconds()), providerErr.RetryAfterSeconds)
 }

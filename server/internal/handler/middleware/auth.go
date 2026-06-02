@@ -60,23 +60,24 @@ func AuthMiddleware(sessionService service.SessionService) fiber.Handler {
 			return c.Next()
 		}
 
-		// Get token from header
+		// Get token from header or query param (query param needed for EventSource SSE)
+		token := ""
 		authHeader := c.Get("Authorization")
-		if authHeader == "" {
+		if authHeader != "" {
+			tokenParts := strings.Split(authHeader, " ")
+			if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
+				return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+					"error": "Invalid authorization header format",
+				})
+			}
+			token = tokenParts[1]
+		} else if qToken := c.Query("token"); qToken != "" {
+			token = qToken
+		} else {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Authorization header required",
 			})
 		}
-
-		// Extract token (assuming "Bearer <token>")
-		tokenParts := strings.Split(authHeader, " ")
-		if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
-			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid authorization header format",
-			})
-		}
-
-		token := tokenParts[1]
 
 		// Validate session
 		session, err := sessionService.ValidateSession(c.Context(), token)
@@ -118,16 +119,6 @@ func (a *authExtension) Validate(schema graphql.ExecutableSchema) error {
 }
 
 func (a *authExtension) InterceptOperation(ctx context.Context, next graphql.OperationHandler) graphql.ResponseHandler {
-	// Try to extract the authorization header at the operation level
-	// This might have better access to the HTTP request
-	fmt.Printf("DEBUG: InterceptOperation called\n")
-
-	// Check if we can access the HTTP request through the operation context
-	if opCtx := graphql.GetOperationContext(ctx); opCtx != nil {
-		fmt.Printf("DEBUG: Found operation context in operation interceptor\n")
-		// The operation context might have access to HTTP headers
-	}
-
 	return next(ctx)
 }
 
@@ -142,28 +133,20 @@ func (a *authExtension) InterceptField(ctx context.Context, next graphql.Resolve
 		return next(ctx)
 	}
 
-	fmt.Printf("DEBUG: InterceptField called for: %s\n", fieldCtx.Field.Name)
-
 	// Only check authentication for root-level operations (Query/Mutation fields)
 	// Skip authentication for nested fields in responses
 	if fieldCtx != nil && fieldCtx.Parent != nil && fieldCtx.Parent.Parent != nil {
 		// This is a nested field, skip auth check
-		fmt.Printf("DEBUG: Skipping nested field: %s\n", fieldCtx.Field.Name)
 		return next(ctx)
 	}
 
 	// Skip authentication for public operations (like login, register)
 	if isPublicOperation(fieldCtx) {
-		fmt.Printf("DEBUG: Skipping public operation: %s\n", fieldCtx.Field.Name)
 		return next(ctx)
 	}
 
-	fmt.Printf("DEBUG: Checking auth for operation: %s\n", fieldCtx.Field.Name)
-
 	// Check if user was already authenticated at the HTTP level
 	if user := getUserFromHTTPContext(ctx); user != nil {
-		fmt.Printf("DEBUG: Found authenticated user from HTTP context: %s\n", user.Email)
-
 		// Add user to GraphQL context
 		userCtx := context.WithValue(ctx, UserKey, user)
 		if session := getSessionFromHTTPContext(ctx); session != nil {
@@ -173,7 +156,6 @@ func (a *authExtension) InterceptField(ctx context.Context, next graphql.Resolve
 		return next(userCtx)
 	}
 
-	fmt.Printf("DEBUG: No authenticated user found for operation: %s\n", fieldCtx.Field.Name)
 	return nil, fmt.Errorf("authentication required")
 }
 
@@ -202,31 +184,14 @@ func isPublicOperation(fieldCtx *graphql.FieldContext) bool {
 
 // extractTokenFromContext extracts the JWT token from the GraphQL context
 func extractTokenFromContext(ctx context.Context) string {
-	// The GraphQL context should contain the HTTP request context
-	// Let's try to access it through the standard GraphQL way
-
-	// Check if we can get the operation context from GraphQL
-	// graphql.GetOperationContext panics if not in a GraphQL context, so we recover
-	func() {
-		defer func() { recover() }()
-		if opCtx := graphql.GetOperationContext(ctx); opCtx != nil {
-			// Try to get the Authorization header from the HTTP request
-			if req := opCtx.RawQuery; req != "" {
-				fmt.Printf("DEBUG: Found GraphQL operation context\n")
-			}
-		}
-	}()
-
 	// Try to get from fasthttp context user values (set by Fiber handler)
 	// The GraphQL execution context might have the fasthttp request context
 	if v := ctx.Value("RequestContext"); v != nil {
 		if reqCtx, ok := v.(*fasthttp.RequestCtx); ok {
 			if authHeader := reqCtx.UserValue("Authorization"); authHeader != nil {
 				if authStr, ok := authHeader.(string); ok {
-					fmt.Printf("DEBUG: Auth header from fasthttp user values: '%s'\n", authStr)
 					tokenParts := strings.Split(authStr, " ")
 					if len(tokenParts) == 2 && strings.ToLower(tokenParts[0]) == "bearer" {
-						fmt.Printf("DEBUG: Extracted token: '%s...'\n", tokenParts[1][:min(10, len(tokenParts[1]))])
 						return tokenParts[1]
 					}
 				}
@@ -237,16 +202,12 @@ func extractTokenFromContext(ctx context.Context) string {
 	// Try to get from HTTP headers via Fiber context
 	if fiberCtx, ok := ctx.Value("fiber").(*fiber.Ctx); ok {
 		authHeader := fiberCtx.Get("Authorization")
-		fmt.Printf("DEBUG: Auth header from Fiber: '%s'\n", authHeader)
 		if authHeader != "" {
 			tokenParts := strings.Split(authHeader, " ")
 			if len(tokenParts) == 2 && strings.ToLower(tokenParts[0]) == "bearer" {
-				fmt.Printf("DEBUG: Extracted token: '%s...'\n", tokenParts[1][:min(10, len(tokenParts[1]))])
 				return tokenParts[1]
 			}
 		}
-	} else {
-		fmt.Printf("DEBUG: Failed to get Fiber context from GraphQL context\n")
 	}
 
 	// Try to get from GraphQL context (for WebSocket connections)
@@ -259,7 +220,6 @@ func extractTokenFromContext(ctx context.Context) string {
 		}
 	}
 
-	fmt.Printf("DEBUG: No token found in context\n")
 	return ""
 }
 
@@ -295,15 +255,10 @@ func parseUserID(userID string) uint {
 
 // getUserFromHTTPContext extracts authenticated user from HTTP context
 func getUserFromHTTPContext(ctx context.Context) *AuthenticatedUser {
-	fmt.Printf("DEBUG: getUserFromHTTPContext called\n")
-
 	// Try to get the user directly from context using our middleware key
 	if user, ok := ctx.Value(UserKey).(*AuthenticatedUser); ok && user != nil {
-		fmt.Printf("DEBUG: Found authenticated user in context: %s\n", user.Email)
 		return user
 	}
-
-	fmt.Printf("DEBUG: No authenticated user found in context\n")
 	return nil
 }
 
@@ -311,11 +266,8 @@ func getUserFromHTTPContext(ctx context.Context) *AuthenticatedUser {
 func getSessionFromHTTPContext(ctx context.Context) *SessionInfo {
 	// Try to get the session directly from context using our middleware key
 	if session, ok := ctx.Value(SessionKey).(*SessionInfo); ok && session != nil {
-		fmt.Printf("DEBUG: Found session in context: %s\n", session.ID)
 		return session
 	}
-
-	fmt.Printf("DEBUG: No session found in context\n")
 	return nil
 }
 

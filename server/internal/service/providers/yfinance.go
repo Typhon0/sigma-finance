@@ -3,6 +3,7 @@ package providers
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,8 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/sony/gobreaker"
 	"golang.org/x/time/rate"
+	gcodes "google.golang.org/grpc/codes"
+	gstatus "google.golang.org/grpc/status"
 )
 
 // Cache TTLs
@@ -102,6 +105,7 @@ type YFinanceProvider struct {
 	historyCache *cache
 	infoCache    *cache
 	stopCleanup  chan struct{}
+	CooldownMixin
 }
 
 // NewYFinanceProvider creates a new YFinance provider with lazy gRPC connection.
@@ -124,7 +128,7 @@ func NewYFinanceProvider(cfg YFinanceConfig) (*YFinanceProvider, error) {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			fmt.Printf("YFinance circuit breaker: %s -> %s\n", from, to)
+			log.Printf("YFinance circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -137,15 +141,16 @@ func NewYFinanceProvider(cfg YFinanceConfig) (*YFinanceProvider, error) {
 	}
 
 	provider := &YFinanceProvider{
-		client:       client,
-		host:         cfg.Host,
-		port:         cfg.Port,
-		cb:           cb,
-		limiter:      limiter,
-		priceCache:   newCache(),
-		historyCache: newCache(),
-		infoCache:    newCache(),
-		stopCleanup:  make(chan struct{}),
+		client:        client,
+		host:          cfg.Host,
+		port:          cfg.Port,
+		cb:            cb,
+		limiter:       limiter,
+		priceCache:    newCache(),
+		historyCache:  newCache(),
+		infoCache:     newCache(),
+		stopCleanup:   make(chan struct{}),
+		CooldownMixin: NewCooldownMixin(DefaultRetryAfterMax),
 	}
 
 	// Start background cache cleanup goroutine
@@ -294,6 +299,10 @@ func (y *YFinanceProvider) infoCacheKey(symbol, assetType string) string {
 }
 
 func (y *YFinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
+	if y.IsInCooldown() {
+		return nil, y.CooldownError(y.ID(), y.Name())
+	}
+
 	// Rate limit check
 	if err := y.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("yfinance rate limit exceeded: %w", err)
@@ -307,6 +316,56 @@ func (y *YFinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*
 		return nil, fmt.Errorf("yfinance provider error: %w", err)
 	}
 	return result.(*CandleResponse), nil
+}
+
+// isPermanentGRPCError returns true if the gRPC error code indicates a
+// permanent failure that will not succeed on retry (e.g., NOT_FOUND).
+func isPermanentGRPCError(err error) bool {
+	s, ok := gstatus.FromError(err)
+	if !ok {
+		return false
+	}
+	return isPermanentGRPCStatus(s)
+}
+
+// isPermanentGRPCStatus returns true if the gRPC status code is permanent.
+func isPermanentGRPCStatus(s *gstatus.Status) bool {
+	switch s.Code() {
+	case gcodes.NotFound, gcodes.InvalidArgument, gcodes.PermissionDenied:
+		return true
+	default:
+		return false
+	}
+}
+
+// grpcProviderError builds a ProviderError from a gRPC error, classifying
+// permanent failures (NOT_FOUND, etc.) as non-retryable and transient
+// failures (UNAVAILABLE, DEADLINE_EXCEEDED, etc.) as retryable.
+func (y *YFinanceProvider) grpcProviderError(symbol, operation string, err error) *ProviderError {
+	code := "GRPC_ERROR"
+	retryable := true
+	s, ok := gstatus.FromError(err)
+	if ok && s.Code() == gcodes.ResourceExhausted {
+		y.EnterCooldown(DefaultRetryAfterMax)
+		return &ProviderError{
+			Provider:          y.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           fmt.Sprintf("YFinance rate limit exceeded: %v", err),
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(DefaultRetryAfterMax.Seconds()),
+		}
+	}
+	if ok && isPermanentGRPCStatus(s) {
+		code = "TICKER_NOT_FOUND"
+		retryable = false
+	}
+	return &ProviderError{
+		Provider:  y.ID(),
+		Code:      code,
+		Message:   fmt.Sprintf("failed to %s for %s: %v", operation, symbol, err),
+		Retryable: retryable,
+	}
 }
 
 func (y *YFinanceProvider) doGetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
@@ -325,14 +384,15 @@ func (y *YFinanceProvider) doGetCandles(ctx context.Context, req CandleRequest) 
 		return nil, fmt.Errorf("unsupported interval: %s", req.Interval)
 	}
 
-	historyResp, err := y.client.GetHistory(ctx, symbol, y.periodFromInterval(req.Interval), y.intervalToString(req.Interval))
+	fromMs := req.From.UTC().UnixMilli()
+	toMs := req.To.UTC().UnixMilli()
+	limit := int32(req.Limit)
+	if limit <= 0 {
+		limit = 500
+	}
+	historyResp, err := y.client.GetHistory(ctx, symbol, y.mapAssetType(req.AssetType), pbInterval, fromMs, toMs, limit)
 	if err != nil {
-		return nil, &ProviderError{
-			Provider:  y.ID(),
-			Code:      "GRPC_ERROR",
-			Message:   fmt.Sprintf("failed to get history for %s: %v", symbol, err),
-			Retryable: true,
-		}
+		return nil, y.grpcProviderError(symbol, "get history", err)
 	}
 
 	candles := make([]model.Candle, 0, len(historyResp.Bars))
@@ -373,6 +433,10 @@ func (y *YFinanceProvider) doGetCandles(ctx context.Context, req CandleRequest) 
 }
 
 func (y *YFinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*QuoteResponse, error) {
+	if y.IsInCooldown() {
+		return nil, y.CooldownError(y.ID(), y.Name())
+	}
+
 	if err := y.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("yfinance rate limit exceeded: %w", err)
 	}
@@ -399,12 +463,7 @@ func (y *YFinanceProvider) doGetQuote(ctx context.Context, req QuoteRequest) (*Q
 
 	priceResp, err := y.client.GetPrice(ctx, symbol)
 	if err != nil {
-		return nil, &ProviderError{
-			Provider:  y.ID(),
-			Code:      "GRPC_ERROR",
-			Message:   fmt.Sprintf("failed to get price for %s: %v", symbol, err),
-			Retryable: true,
-		}
+		return nil, y.grpcProviderError(symbol, "get price", err)
 	}
 
 	resp := &QuoteResponse{
@@ -422,6 +481,10 @@ func (y *YFinanceProvider) doGetQuote(ctx context.Context, req QuoteRequest) (*Q
 }
 
 func (y *YFinanceProvider) GetTechnicalIndicator(ctx context.Context, req TechnicalIndicatorRequest) (*TechnicalIndicatorResponse, error) {
+	if y.IsInCooldown() {
+		return nil, y.CooldownError(y.ID(), y.Name())
+	}
+
 	// Rate limit check
 	if err := y.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("yfinance rate limit exceeded: %w", err)
@@ -452,12 +515,7 @@ func (y *YFinanceProvider) doGetTechnicalIndicator(ctx context.Context, req Tech
 	// Fetch info from gRPC sidecar
 	infoResp, err := y.client.GetInfo(ctx, symbol)
 	if err != nil {
-		return nil, &ProviderError{
-			Provider:  y.ID(),
-			Code:      "GRPC_ERROR",
-			Message:   fmt.Sprintf("failed to get info for %s: %v", symbol, err),
-			Retryable: true,
-		}
+		return nil, y.grpcProviderError(symbol, "get info", err)
 	}
 
 	y.infoCache.set(cacheKey, infoResp, infoCacheTTL)

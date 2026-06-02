@@ -3,7 +3,10 @@ package providers
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sigma_finance/internal/domain/model"
+	"strconv"
+	"sync"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -101,6 +104,55 @@ type Provider interface {
 
 	// Health check
 	IsHealthy(ctx context.Context) bool
+
+	// Cooldown / rate-limit tracking
+	IsInCooldown() bool
+}
+
+// CooldownMixin provides reusable rate-limit cooldown tracking for providers.
+// Embed this in provider structs to get EnterCooldown, IsInCooldown, and
+// CooldownError without duplicating the mutex/timer logic.
+// Zero value is safe; call NewCooldownMixin to set the max cooldown.
+type CooldownMixin struct {
+	rateLimitedUntil time.Time
+	mu               sync.RWMutex
+	maxCooldown      time.Duration
+}
+
+// NewCooldownMixin creates a CooldownMixin with the given max cooldown duration.
+func NewCooldownMixin(maxCooldown time.Duration) CooldownMixin {
+	return CooldownMixin{maxCooldown: maxCooldown}
+}
+
+// IsInCooldown returns true if the provider is currently in a rate-limit cooldown window.
+func (c *CooldownMixin) IsInCooldown() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return time.Now().Before(c.rateLimitedUntil)
+}
+
+// EnterCooldown puts the provider into a cooldown state for duration d.
+// Zero/negative values default to maxCooldown; values exceeding maxCooldown are clamped.
+func (c *CooldownMixin) EnterCooldown(d time.Duration) {
+	if d <= 0 || d > c.maxCooldown {
+		d = c.maxCooldown
+	}
+	c.mu.Lock()
+	c.rateLimitedUntil = time.Now().Add(d)
+	c.mu.Unlock()
+}
+
+// CooldownError returns a RATE_LIMITED ProviderError indicating the provider
+// is blocked by a rate-limit cooldown and downstream code should fall back.
+func (c *CooldownMixin) CooldownError(providerID, providerName string) *ProviderError {
+	return &ProviderError{
+		Provider:  providerID,
+		Code:      "RATE_LIMITED",
+		Message:   fmt.Sprintf("%s rate limit exceeded (in cooldown)", providerName),
+		HTTPCode:  429,
+		Retryable: true,
+		Fallback:  true,
+	}
 }
 
 // ProviderError represents an error from a market data provider with metadata
@@ -186,6 +238,49 @@ type CircuitBreaker interface {
 
 // RateLimiterFunc is a function that blocks until the rate limit allows a request.
 type RateLimiterFunc func() error
+
+// DefaultRetryAfterMax is the maximum Retry-After duration for providers without
+// their own cooldown tracking. Providers with custom cooldown (e.g. Tiingo) use their own max.
+const DefaultRetryAfterMax = 5 * time.Minute
+
+// ParseRetryAfter extracts the Retry-After duration from an HTTP response header.
+// Returns the server-specified duration clamped between 1s and maxDuration,
+// or the defaultDuration if the header is missing, invalid, or in the past.
+func ParseRetryAfter(resp *http.Response, defaultDuration, maxDuration time.Duration) time.Duration {
+	if resp == nil {
+		return defaultDuration
+	}
+	header := resp.Header.Get("Retry-After")
+	if header == "" {
+		return defaultDuration
+	}
+	// Try delta-seconds format
+	if seconds, err := strconv.Atoi(header); err == nil && seconds > 0 {
+		d := time.Duration(seconds) * time.Second
+		if d > maxDuration {
+			return maxDuration
+		}
+		return d
+	}
+	// Try HTTP-date format (RFC 1123 or RFC 850)
+	if t, err := time.Parse(time.RFC1123, header); err == nil {
+		if d := time.Until(t); d > 0 {
+			if d > maxDuration {
+				return maxDuration
+			}
+			return d
+		}
+	}
+	if t, err := time.Parse(time.RFC850, header); err == nil {
+		if d := time.Until(t); d > 0 {
+			if d > maxDuration {
+				return maxDuration
+			}
+			return d
+		}
+	}
+	return defaultDuration
+}
 
 // AssetTypeHealthChecker is an optional interface that providers can implement
 // to provide per-asset-type health checks. If a provider supports multiple

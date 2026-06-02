@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
@@ -110,9 +111,10 @@ func (s *strictCredentialRepo) Delete(ctx context.Context, id string) error {
 }
 
 type captureSymbolProvider struct {
-	id           string
-	quoteSymbols []string
-	candleSymbol []string
+	id                     string
+	quoteSymbols           []string
+	candleSymbol           []string
+	techIndicatorCalled    int
 }
 
 func (p *captureSymbolProvider) ID() string                   { return p.id }
@@ -141,8 +143,10 @@ func (p *captureSymbolProvider) GetQuote(ctx context.Context, req providers.Quot
 	return nil, fmt.Errorf("no quote")
 }
 func (p *captureSymbolProvider) GetTechnicalIndicator(ctx context.Context, req providers.TechnicalIndicatorRequest) (*providers.TechnicalIndicatorResponse, error) {
+	p.techIndicatorCalled++
 	return nil, fmt.Errorf("not implemented")
 }
+func (p *captureSymbolProvider) IsInCooldown() bool               { return false }
 func (p *captureSymbolProvider) ValidateCredentials(ctx context.Context, apiKey string) error {
 	return nil
 }
@@ -227,6 +231,89 @@ func TestResolveProviderQuoteSymbolForInstrument_ErrorsWithoutVerifiedMapping(t 
 	_, _, err := service.resolveProviderQuoteSymbolForInstrument(context.Background(), instrument, "BINANCE")
 	if err == nil {
 		t.Fatal("expected error when no mapping is available")
+	}
+}
+
+func TestResolveYFinanceBackfillSymbol_UsesVerifiedMapping(t *testing.T) {
+	service := &marketDataService{
+		mappingService: &stubInstrumentProviderMappingService{
+			getVerifiedFn: func(ctx context.Context, instrumentID string, provider string) (*model.InstrumentProviderMapping, error) {
+				return &model.InstrumentProviderMapping{
+					InstrumentID:    instrumentID,
+					Provider:        provider,
+					ProviderAssetID: "AAPL",
+					ProviderSymbol:  ptrString("AAPL"),
+					MappingStatus:   model.InstrumentProviderMappingStatusVerified,
+				}, nil
+			},
+		},
+	}
+	provider := &captureSymbolProvider{id: "YFINANCE"}
+	instrument := &model.Instrument{ID: "inst-aapl", Symbol: "SHOULD_NOT_USE", AssetType: model.InstrumentAssetTypeStock}
+
+	symbol, err := service.resolveYFinanceBackfillSymbol(context.Background(), provider, instrument)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if symbol != "AAPL" {
+		t.Fatalf("expected mapped yfinance symbol AAPL, got %s", symbol)
+	}
+}
+
+func TestResolveYFinanceBackfillSymbol_FallsBackToRawInstrumentSymbol(t *testing.T) {
+	service := &marketDataService{
+		mappingService: &stubInstrumentProviderMappingService{
+			getVerifiedFn: func(ctx context.Context, instrumentID string, provider string) (*model.InstrumentProviderMapping, error) {
+				return nil, repository.ErrNotFound
+			},
+		},
+	}
+	provider := &captureSymbolProvider{id: "YFINANCE"}
+	instrument := &model.Instrument{ID: "inst-appl", Symbol: "APPL", AssetType: model.InstrumentAssetTypeStock}
+
+	symbol, err := service.resolveYFinanceBackfillSymbol(context.Background(), provider, instrument)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if symbol != "APPL" {
+		t.Fatalf("expected raw yfinance symbol APPL, got %s", symbol)
+	}
+}
+
+func TestResolveYFinanceBackfillSymbol_IgnoresGenericProviderExternalID(t *testing.T) {
+	service := &marketDataService{
+		mappingService: &stubInstrumentProviderMappingService{
+			getVerifiedFn: func(ctx context.Context, instrumentID string, provider string) (*model.InstrumentProviderMapping, error) {
+				return nil, repository.ErrNotFound
+			},
+		},
+	}
+	provider := &captureSymbolProvider{id: "YFINANCE"}
+	generic := "EQUITIES"
+	instrument := &model.Instrument{
+		ID:                 "inst-gme",
+		Symbol:             "GME",
+		ProviderExternalID: &generic,
+		AssetType:          model.InstrumentAssetTypeStock,
+	}
+
+	symbol, err := service.resolveYFinanceBackfillSymbol(context.Background(), provider, instrument)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if symbol != "GME" {
+		t.Fatalf("expected fallback symbol GME, got %s", symbol)
+	}
+}
+
+func TestIsYFinanceSymbolNotFound_DetectsWrappedProviderError(t *testing.T) {
+	err := fmt.Errorf("yfinance provider error: %w", &providers.ProviderError{
+		Provider: "YFINANCE",
+		Code:     "GRPC_ERROR",
+		Message:  "rpc error: code = NotFound desc = No history data found for symbol: AAPL",
+	})
+	if !isYFinanceSymbolNotFound(err) {
+		t.Fatal("expected wrapped yfinance not found error to be detected")
 	}
 }
 
@@ -350,6 +437,7 @@ func (p *keyRequiredCaptureProvider) GetQuote(ctx context.Context, req providers
 func (p *keyRequiredCaptureProvider) GetTechnicalIndicator(ctx context.Context, req providers.TechnicalIndicatorRequest) (*providers.TechnicalIndicatorResponse, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (p *keyRequiredCaptureProvider) IsInCooldown() bool            { return false }
 func (p *keyRequiredCaptureProvider) ValidateCredentials(ctx context.Context, apiKey string) error {
 	return nil
 }
@@ -388,5 +476,81 @@ func TestFetchAndStoreAssetPriceFromProvider_DoesNotUseListAllFallback(t *testin
 	}
 	if keyProvider.quoteCount != 0 {
 		t.Fatalf("expected key-required provider to be skipped without key, got quoteCount=%d", keyProvider.quoteCount)
+	}
+}
+
+type cooldownCaptureProvider struct {
+	captureSymbolProvider
+	inCooldown bool
+}
+
+func (p *cooldownCaptureProvider) IsInCooldown() bool {
+	return p.inCooldown
+}
+
+func TestFetchAndStoreAssetPriceFromProvider_SkipsProviderInCooldown(t *testing.T) {
+	providerManager := providers.NewProviderManager()
+	cooldownProvider := &cooldownCaptureProvider{
+		captureSymbolProvider: captureSymbolProvider{id: "BINANCE"},
+		inCooldown:            true,
+	}
+	providerManager.RegisterProvider(cooldownProvider)
+
+	service := &marketDataService{
+		providerManager: providerManager,
+		credRepo:        &stubCredentialRepo{},
+		mappingService:  &stubInstrumentProviderMappingService{},
+		runtimeCache:    make(map[string]*instrumentCandlesCacheEntry),
+	}
+
+	asset := &model.Asset{
+		ID:          "asset-cooldown",
+		Name:        "Cooldown Test",
+		Type:        model.AssetTypeCrypto,
+		Symbol:      ptrString("BTCUSDT"),
+		IsTradeable: true,
+	}
+
+	_, err := service.fetchAndStoreAssetPriceFromProvider(context.Background(), asset, nil)
+	if err == nil {
+		t.Fatal("expected error due to all providers failing")
+	}
+
+	if len(cooldownProvider.quoteSymbols) != 0 {
+		t.Fatal("expected quote request to be skipped because provider is in cooldown")
+	}
+}
+
+func TestGetTechnicalIndicator_SkipsProviderInCooldown(t *testing.T) {
+	providerManager := providers.NewProviderManager()
+	cooldownProvider := &cooldownCaptureProvider{
+		captureSymbolProvider: captureSymbolProvider{id: "ALPHAVANTAGE"},
+		inCooldown:            true,
+	}
+	providerManager.RegisterProvider(cooldownProvider)
+
+	service := &marketDataService{
+		providerManager: providerManager,
+		credRepo:        &stubCredentialRepo{},
+	}
+
+	_, err := service.GetTechnicalIndicator(
+		context.Background(),
+		"user-1",
+		"AAPL",
+		"STOCK",
+		"SMA",
+		model.Interval1d,
+		14,
+		"close",
+		time.Now().Add(-30*24*time.Hour),
+		time.Now(),
+	)
+	if err == nil {
+		t.Fatal("expected error due to all providers being in cooldown")
+	}
+
+	if cooldownProvider.techIndicatorCalled != 0 {
+		t.Fatalf("expected GetTechnicalIndicator to be skipped because provider is in cooldown, but it was called %d times", cooldownProvider.techIndicatorCalled)
 	}
 }

@@ -5,8 +5,14 @@ import os
 import time
 import logging
 import math
+import json
+import threading
+import collections
+from datetime import datetime, timezone
 from concurrent import futures
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from typing import Any, Callable, Optional
+from unittest.mock import MagicMock
 
 import grpc
 import pandas as pd
@@ -21,6 +27,87 @@ from rate_limiter import TokenBucketRateLimiter, RATE_LIMIT_REQUESTS, RATE_LIMIT
 from validation import price_to_cents, interval_to_yf_interval, symbol_with_suffix
 
 logger = logging.getLogger(__name__)
+
+# Ring buffer for captured HTTP-accessible logs (up to 10 000 entries)
+LOG_BUFFER: collections.deque[dict[str, Any]] = collections.deque(maxlen=10000)
+LOG_BUFFER_LOCK = threading.Lock()
+
+
+class _LogCaptureHandler(logging.Handler):
+    """Handler that captures log records into the in-memory ring buffer."""
+
+    def emit(self, record: logging.LogRecord) -> None:
+        entry = {
+            "timestamp": datetime.utcfromtimestamp(record.created).isoformat() + "Z",
+            "level": record.levelname,
+            "message": self.format(record),
+            "service": "yfinance",
+        }
+        with LOG_BUFFER_LOCK:
+            LOG_BUFFER.append(entry)
+
+
+class _LogHTTPHandler(BaseHTTPRequestHandler):
+    """Simple HTTP handler that exposes log entries."""
+
+    def do_GET(self) -> None:
+        if self.path.startswith("/logs"):
+            self._handle_logs()
+        elif self.path.startswith("/health"):
+            self._handle_health()
+        else:
+            self.send_response(404)
+            self.end_headers()
+            self.wfile.write(b"not found")
+
+    def _handle_health(self) -> None:
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"status": "healthy"}).encode())
+
+    def _handle_logs(self) -> None:
+        from urllib.parse import urlparse, parse_qs
+
+        parsed = urlparse(self.path)
+        params = parse_qs(parsed.query)
+        limit = int(params.get("limit", [200])[0])
+        filter_text = params.get("filter", [""])[0].lower()
+        level = params.get("level", [""])[0].upper()
+
+        with LOG_BUFFER_LOCK:
+            entries = list(LOG_BUFFER)
+
+        # Apply filters
+        if filter_text:
+            entries = [e for e in entries if filter_text in e["message"].lower()]
+        if level:
+            entries = [e for e in entries if e["level"] == level]
+
+        # Return most recent
+        entries = entries[-limit:]
+
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.end_headers()
+        self.wfile.write(json.dumps({"logs": entries, "total": len(entries)}).encode())
+
+    def log_message(self, format: str, *args: Any) -> None:
+        # Suppress HTTP server access logs unless they are important
+        logger.debug("%s - %s", self.address_string(), format % args)
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    normalized = raw.strip().lower()
+    return normalized in {"1", "true", "yes", "on"}
+
+HISTORY_TIMEOUT_SECONDS: float = float(os.getenv("YFINANCE_HISTORY_TIMEOUT", "10"))
+HISTORY_AUTO_ADJUST: bool = _env_bool("YFINANCE_HISTORY_AUTO_ADJUST", False)
+HISTORY_REPAIR: bool = _env_bool("YFINANCE_HISTORY_REPAIR", False)
+HISTORY_RAISE_ERRORS: bool = _env_bool("YFINANCE_HISTORY_RAISE_ERRORS", True)
 
 
 class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
@@ -38,6 +125,37 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
             "MarketDataServicer initialized with rate limiter: %d req/%ds",
             RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW,
         )
+
+    @staticmethod
+    def _is_connectivity_error(err: Exception) -> bool:
+        msg = str(err).lower()
+        indicators = (
+            "curl: (6)",
+            "curl: (7)",
+            "could not connect",
+            "failed to connect",
+            "name or service not known",
+            "temporary failure in name resolution",
+            "network is unreachable",
+            "connection reset",
+            "timed out",
+            "timeout",
+            "ssl",
+            "tls",
+        )
+        return any(token in msg for token in indicators)
+
+    @staticmethod
+    def _is_likely_missing_symbol_error(err: Exception) -> bool:
+        msg = str(err).lower()
+        indicators = (
+            "possibly delisted",
+            "no timezone found",
+            "no price data found",
+            "symbol may be delisted",
+            "not found",
+        )
+        return any(token in msg for token in indicators)
 
     def _apply_rate_limit(self) -> None:
         """Apply rate limiting with blocking wait."""
@@ -70,6 +188,15 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
                     logger.warning(
                         "Rate limited for %s (attempt %d/%d), waiting %.2fs",
                         symbol, attempt + 1, max_retries, delay,
+                    )
+                    time.sleep(delay)
+                    last_error = e
+                    continue
+                if self._is_connectivity_error(e):
+                    delay = min(base_delay * (2 ** attempt), 8.0)
+                    logger.warning(
+                        "Connectivity issue for %s (attempt %d/%d), waiting %.2fs: %s",
+                        symbol, attempt + 1, max_retries, delay, e,
                     )
                     time.sleep(delay)
                     last_error = e
@@ -190,12 +317,12 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
         def fetch_history(sym: str) -> pd.DataFrame:
             ticker = yf.Ticker(sym, session=self._session)
             # yfinance expects from/to as datetime or pandas Timestamp
-            from_dt: Optional[float] = None
-            to_dt: Optional[float] = None
+            from_dt: Optional[datetime] = None
+            to_dt: Optional[datetime] = None
             if req_from > 0:
-                from_dt = req_from / 1000  # ms to seconds
+                from_dt = datetime.fromtimestamp(req_from / 1000, tz=timezone.utc)
             if req_to > 0:
-                to_dt = req_to / 1000
+                to_dt = datetime.fromtimestamp(req_to / 1000, tz=timezone.utc)
 
             try:
                 hist: pd.DataFrame = ticker.history(
@@ -203,10 +330,31 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
                     start=from_dt,
                     end=to_dt,
                     period="1mo" if from_dt is None and to_dt is None else None,
+                    auto_adjust=HISTORY_AUTO_ADJUST,
+                    repair=HISTORY_REPAIR,
+                    timeout=HISTORY_TIMEOUT_SECONDS,
+                    raise_errors=HISTORY_RAISE_ERRORS,
                 )
             except (KeyError, ValueError):
                 logger.debug("history() unavailable for %s, returning empty", sym)
                 return pd.DataFrame()
+            except Exception as e:
+                if self._is_connectivity_error(e):
+                    raise
+                if self._is_likely_missing_symbol_error(e):
+                    logger.debug("history() indicates missing symbol for %s: %s", sym, e)
+                    return pd.DataFrame()
+                raise
+
+            # Some yfinance failures can return empty history for a valid symbol
+            # during transient connectivity issues; probe once to classify.
+            if hist.empty:
+                try:
+                    _ = ticker.fast_info
+                except Exception as e:
+                    if self._is_connectivity_error(e):
+                        raise
+
             # Limit results if requested (history() has no limit param)
             limit: int = request.limit or 100
             if len(hist) > limit:
@@ -218,8 +366,22 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
 
             # Detect unknown/invalid symbols: yfinance returns empty DataFrame
             if hist.empty:
-                logger.warning("No history data returned for symbol: %s", symbol)
-                context.abort(grpc.StatusCode.NOT_FOUND, f"No history data found for symbol: {request.symbol}")
+                ticker = yf.Ticker(symbol, session=self._session)
+                is_valid = False
+                try:
+                    fast = ticker.fast_info
+                    if fast is not None:
+                        lp = getattr(fast, "last_price", None)
+                        if lp is not None and not isinstance(lp, MagicMock) and lp > 0:
+                            is_valid = True
+                except Exception:
+                    pass
+
+                if not is_valid:
+                    logger.warning("No history data returned for symbol: %s", symbol)
+                    context.abort(grpc.StatusCode.NOT_FOUND, f"No history data found for symbol: {request.symbol}")
+                else:
+                    logger.info("Symbol %s is valid but has no historical bars for the requested range", symbol)
 
             bars: list[market_data_pb2.OHLCVBar] = []
             for _, row in hist.iterrows():
@@ -452,23 +614,62 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
             if not asset_type:
                 continue
 
+            exchange_val = str(quote.get("exchDisp") or quote.get("exchange") or "").strip()
+            isin_val = str(quote.get("isin") or "").strip()
+            raw_curr = str(quote.get("currency") or "").strip()
+            deduced_curr = self._deduce_currency(symbol, exchange_val, isin_val, raw_curr)
+
             results.append(
                 market_data_pb2.SearchResult(
                     symbol=symbol,
                     name=name,
-                    exchange=str(quote.get("exchDisp") or quote.get("exchange") or "").strip(),
+                    exchange=exchange_val,
                     exchange_code=str(quote.get("exchange") or quote.get("exchDisp") or "").strip(),
                     country=str(quote.get("country") or quote.get("region") or "").strip(),
-                    currency=str(quote.get("currency") or "").strip(),
+                    currency=deduced_curr,
                     asset_type=asset_type,
                     provider_source="yfinance",
                     provider_external_id=symbol,
-                    isin=str(quote.get("isin") or "").strip(),
+                    isin=isin_val,
                     figi=str(quote.get("figi") or "").strip(),
                     cusip=str(quote.get("cusip") or "").strip(),
                 )
             )
         return results
+
+    def _deduce_currency(self, symbol: str, exchange: str, isin: str, currency: str) -> str:
+        curr = (currency or "").strip().upper()
+        if curr and curr != "USD":
+            return curr
+
+        # Check ISIN country prefix
+        is_code = (isin or "").strip().upper()
+        if len(is_code) >= 2:
+            country_prefix = is_code[:2]
+            if country_prefix in {
+                "FR", "DE", "IT", "ES", "NL", "BE", "PT", "IE", "FI", "AT", "GR", "LU", "EE", "LV", "LT", "SK", "SI", "CY", "MT"
+            }:
+                return "EUR"
+            if country_prefix == "GB":
+                return "GBP"
+            if country_prefix == "US":
+                return "USD"
+
+        # Check symbol exchange suffix
+        sym = symbol.strip().upper()
+        if sym.endswith(".PA") or sym.endswith(".DE") or sym.endswith(".AS") or sym.endswith(".BR") or sym.endswith(".MI") or sym.endswith(".MC") or sym.endswith(".LS") or sym.endswith(".AT") or sym.endswith(".IR"):
+            return "EUR"
+        if sym.endswith(".L") or sym.endswith(".IL"):
+            return "GBP"
+
+        # Check exchange description / name
+        exch = exchange.strip().upper()
+        if any(x in exch for x in ["PARIS", "FRANKFURT", "EURONEXT", "XETRA", "AMSTERDAM", "BRUSSELS", "MILAN", "MADRID", "LISBON"]):
+            return "EUR"
+        if any(x in exch for x in ["LONDON", "LSE"]):
+            return "GBP"
+
+        return curr or "USD"
 
     def _normalize_lookup_results(self, lookup: Any, max_results: int) -> list[market_data_pb2.SearchResult]:
         frames = []
@@ -526,7 +727,12 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
             exchange=exchange,
             exchange_code=str(payload.get("exchangeCode", "")).strip(),
             country=str(payload.get("country", "")).strip(),
-            currency=str(payload.get("currency", "")).strip(),
+            currency=self._deduce_currency(
+                symbol,
+                exchange,
+                str(payload.get("isin", "")).strip(),
+                str(payload.get("currency", "")).strip()
+            ),
             asset_type=asset_type,
             provider_source=str(payload.get("providerSource", "yfinance")).strip() or "yfinance",
             provider_external_id=str(payload.get("providerExternalId", symbol)).strip() or symbol,
@@ -567,8 +773,9 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
         return ""
 
 
-def serve(host: str = "0.0.0.0", port: int = 50051) -> None:
-    """Start the gRPC server with TCP transport."""
+def serve(host: str = "0.0.0.0", port: int = 50051, http_port: int = 50052) -> None:
+    """Start the gRPC server and HTTP log server."""
+    # Start gRPC server
     server: grpc.Server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     market_data_pb2_grpc.add_MarketDataServiceServicer_to_server(
         MarketDataServicer(),
@@ -580,11 +787,18 @@ def serve(host: str = "0.0.0.0", port: int = 50051) -> None:
     server.start()
     logger.info("MarketDataServicer listening on %s", address)
 
+    # Start HTTP log server in a daemon thread
+    http_server = HTTPServer((host, http_port), _LogHTTPHandler)
+    http_thread = threading.Thread(target=http_server.serve_forever, daemon=True)
+    http_thread.start()
+    logger.info("Log HTTP server listening on %s:%d", host, http_port)
+
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
         logger.info("Shutting down MarketDataServicer")
         server.stop(grace=5)
+        http_server.shutdown()
 
 
 if __name__ == "__main__":
@@ -592,6 +806,13 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
+
+    # Attach ring-buffer capture handler
+    capture = _LogCaptureHandler()
+    capture.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+    logging.getLogger().addHandler(capture)
+
     host: str = os.environ.get("YFINANCE_HOST", "0.0.0.0")
     port: int = int(os.environ.get("YFINANCE_PORT", "50051"))
-    serve(host=host, port=port)
+    http_port: int = int(os.environ.get("YFINANCE_HTTP_PORT", "50052"))
+    serve(host=host, port=port, http_port=http_port)

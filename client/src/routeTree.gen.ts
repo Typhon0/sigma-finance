@@ -24,6 +24,8 @@ import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
 import { Route as AppSettingsMarketDataRouteImport } from './routes/_app.settings.market-data'
 import { Route as AppSettingsManualInstrumentsRouteImport } from './routes/_app.settings.manual-instruments'
+import { Route as AppSettingsLogsRouteImport } from './routes/_app.settings.logs'
+import { Route as AppSettingsHistoricalDataJobsRouteImport } from './routes/_app.settings.historical-data-jobs'
 import { Route as AppSettingsFinanceDatabaseRouteImport } from './routes/_app.settings.finance-database'
 import { Route as AppSettingsDisplayRouteImport } from './routes/_app.settings.display'
 import { Route as AppSettingsDataRouteImport } from './routes/_app.settings.data'
@@ -123,6 +125,17 @@ const AppSettingsManualInstrumentsRoute =
   AppSettingsManualInstrumentsRouteImport.update({
     id: '/manual-instruments',
     path: '/manual-instruments',
+    getParentRoute: () => AppSettingsRoute,
+  } as any)
+const AppSettingsLogsRoute = AppSettingsLogsRouteImport.update({
+  id: '/logs',
+  path: '/logs',
+  getParentRoute: () => AppSettingsRoute,
+} as any)
+const AppSettingsHistoricalDataJobsRoute =
+  AppSettingsHistoricalDataJobsRouteImport.update({
+    id: '/historical-data-jobs',
+    path: '/historical-data-jobs',
     getParentRoute: () => AppSettingsRoute,
   } as any)
 const AppSettingsFinanceDatabaseRoute =
@@ -289,6 +302,8 @@ export interface FileRoutesByFullPath {
   '/settings/data': typeof AppSettingsDataRoute
   '/settings/display': typeof AppSettingsDisplayRoute
   '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/settings/historical-data-jobs': typeof AppSettingsHistoricalDataJobsRoute
+  '/settings/logs': typeof AppSettingsLogsRoute
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
@@ -329,6 +344,8 @@ export interface FileRoutesByTo {
   '/settings/data': typeof AppSettingsDataRoute
   '/settings/display': typeof AppSettingsDisplayRoute
   '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/settings/historical-data-jobs': typeof AppSettingsHistoricalDataJobsRoute
+  '/settings/logs': typeof AppSettingsLogsRoute
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
@@ -371,6 +388,8 @@ export interface FileRoutesById {
   '/_app/settings/data': typeof AppSettingsDataRoute
   '/_app/settings/display': typeof AppSettingsDisplayRoute
   '/_app/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
+  '/_app/settings/historical-data-jobs': typeof AppSettingsHistoricalDataJobsRoute
+  '/_app/settings/logs': typeof AppSettingsLogsRoute
   '/_app/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/_app/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
@@ -413,6 +432,8 @@ export interface FileRouteTypes {
     | '/settings/data'
     | '/settings/display'
     | '/settings/finance-database'
+    | '/settings/historical-data-jobs'
+    | '/settings/logs'
     | '/settings/manual-instruments'
     | '/settings/market-data'
     | '/auth/reset-password/confirm'
@@ -453,6 +474,8 @@ export interface FileRouteTypes {
     | '/settings/data'
     | '/settings/display'
     | '/settings/finance-database'
+    | '/settings/historical-data-jobs'
+    | '/settings/logs'
     | '/settings/manual-instruments'
     | '/settings/market-data'
     | '/auth/reset-password/confirm'
@@ -494,6 +517,8 @@ export interface FileRouteTypes {
     | '/_app/settings/data'
     | '/_app/settings/display'
     | '/_app/settings/finance-database'
+    | '/_app/settings/historical-data-jobs'
+    | '/_app/settings/logs'
     | '/_app/settings/manual-instruments'
     | '/_app/settings/market-data'
     | '/auth/reset-password/confirm'
@@ -617,6 +642,20 @@ declare module '@tanstack/react-router' {
       path: '/manual-instruments'
       fullPath: '/settings/manual-instruments'
       preLoaderRoute: typeof AppSettingsManualInstrumentsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/logs': {
+      id: '/_app/settings/logs'
+      path: '/logs'
+      fullPath: '/settings/logs'
+      preLoaderRoute: typeof AppSettingsLogsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/historical-data-jobs': {
+      id: '/_app/settings/historical-data-jobs'
+      path: '/historical-data-jobs'
+      fullPath: '/settings/historical-data-jobs'
+      preLoaderRoute: typeof AppSettingsHistoricalDataJobsRouteImport
       parentRoute: typeof AppSettingsRoute
     }
     '/_app/settings/finance-database': {
@@ -886,6 +925,8 @@ interface AppSettingsRouteChildren {
   AppSettingsDataRoute: typeof AppSettingsDataRoute
   AppSettingsDisplayRoute: typeof AppSettingsDisplayRoute
   AppSettingsFinanceDatabaseRoute: typeof AppSettingsFinanceDatabaseRoute
+  AppSettingsHistoricalDataJobsRoute: typeof AppSettingsHistoricalDataJobsRoute
+  AppSettingsLogsRoute: typeof AppSettingsLogsRoute
   AppSettingsManualInstrumentsRoute: typeof AppSettingsManualInstrumentsRoute
   AppSettingsMarketDataRoute: typeof AppSettingsMarketDataRoute
 }
@@ -895,6 +936,8 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsDataRoute: AppSettingsDataRoute,
   AppSettingsDisplayRoute: AppSettingsDisplayRoute,
   AppSettingsFinanceDatabaseRoute: AppSettingsFinanceDatabaseRoute,
+  AppSettingsHistoricalDataJobsRoute: AppSettingsHistoricalDataJobsRoute,
+  AppSettingsLogsRoute: AppSettingsLogsRoute,
   AppSettingsManualInstrumentsRoute: AppSettingsManualInstrumentsRoute,
   AppSettingsMarketDataRoute: AppSettingsMarketDataRoute,
 }

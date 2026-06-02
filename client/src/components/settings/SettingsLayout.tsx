@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { CloudDownload, Database, Key, NotebookPen, Palette, User } from "lucide-react";
+import { CloudDownload, Database, Key, NotebookPen, Palette, ScrollText, User } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -7,14 +7,17 @@ import { cn } from "@/lib/utils";
 type SettingsSection =
 	| "account"
 	| "market-data"
+	| "historical-data-jobs"
 	| "display"
 	| "finance-database"
 	| "manual-instruments"
-	| "data";
+	| "data"
+	| "logs";
 
 interface SettingsLayoutProps {
 	children: React.ReactNode;
 	activeSection: SettingsSection;
+	fullWidth?: boolean;
 }
 
 const sections: {
@@ -34,6 +37,12 @@ const sections: {
 		label: "Market Data",
 		icon: Key,
 		href: "/settings/market-data",
+	},
+	{
+		id: "historical-data-jobs",
+		label: "Historical Data Jobs",
+		icon: CloudDownload,
+		href: "/settings/historical-data-jobs",
 	},
 	{
 		id: "display",
@@ -59,11 +68,17 @@ const sections: {
 		icon: Database,
 		href: "/settings/data",
 	},
+	{
+		id: "logs",
+		label: "System Logs",
+		icon: ScrollText,
+		href: "/settings/logs",
+	},
 ];
 
-export function SettingsLayout({ children, activeSection }: SettingsLayoutProps) {
+export function SettingsLayout({ children, activeSection, fullWidth }: SettingsLayoutProps) {
 	return (
-		<div className="flex h-full">
+		<div className="flex h-full w-full">
 			<aside className="w-64 border-r bg-card/50 flex flex-col shrink-0">
 				<div className="p-4">
 					<h2 className="text-lg font-semibold">Settings</h2>
@@ -93,9 +108,13 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
 					</nav>
 				</ScrollArea>
 			</aside>
-			<ScrollArea className="flex-1 p-6">
-				<div className="max-w-4xl mx-auto">{children}</div>
-			</ScrollArea>
+			<div className="flex-1 min-w-0 flex flex-col h-full bg-background">
+				<ScrollArea className="flex-1 p-6">
+					<div className={cn("mx-auto w-full", fullWidth ? "max-w-full" : "max-w-4xl")}>
+						{children}
+					</div>
+				</ScrollArea>
+			</div>
 		</div>
 	);
 }

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"sigma_finance/cmd/bun/migrations"
 	"sigma_finance/internal/config"
@@ -66,6 +69,9 @@ func NewApp() (*AppContainer, error) {
 
 	// Load configuration
 	cfg := config.LoadConfig()
+
+	// Set encryption key for MarketDataCredential model (must happen before any Encrypt/Decrypt calls)
+	model.SetEncryptionKey(cfg.MarketData.EncryptionKey)
 
 	// Initialize database
 	db, err := infrastructure.NewDB()
@@ -133,8 +139,14 @@ func NewApp() (*AppContainer, error) {
 
 	// Initialize Fiber app
 	app := fiber.New()
+	
+	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "http://localhost:5173"
+	}
+
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     "https://d7g9j7jl-5173.uks1.devtunnels.ms,https://d7g9j7jl-8080.uks1.devtunnels.ms,http://localhost:5173",
+		AllowOrigins:     allowedOrigins,
 		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
 		AllowCredentials: true,
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
@@ -249,6 +261,70 @@ func NewApp() (*AppContainer, error) {
 		return c.JSON(mapLocalBuildJobDTO(job))
 	})
 
+	// Admin log streaming endpoint (auth + admin role required)
+	adminGroup := app.Group("/admin",
+		middleware.AuthMiddleware(serviceContainer.Session),
+		middleware.AdminMiddleware(serviceContainer.User),
+	)
+	adminGroup.Get("/logs/go", func(c *fiber.Ctx) error {
+		// Check for SSE stream vs initial fetch
+		if c.Get("Accept") == "text/event-stream" || c.Query("stream") == "true" {
+			return handleLogSSE(c, serviceContainer.LogBuffer)
+		}
+
+		// Return recent logs
+		limit := c.QueryInt("limit", 200)
+		filter := c.Query("filter", "")
+		level := c.Query("level", "")
+
+		entries := serviceContainer.LogBuffer.Recent(limit)
+		filtered := filterLogEntries(entries, filter, level)
+
+		return c.JSON(fiber.Map{
+			"logs":       filtered,
+			"total":      len(filtered),
+			"bufferSize": len(entries),
+		})
+	})
+
+	// Proxy yfinance logs
+	adminGroup.Get("/logs/yfinance", func(c *fiber.Ctx) error {
+		yfinanceHost := os.Getenv("YFINANCE_HOST")
+		yfinanceHTTPPort := os.Getenv("YFINANCE_HTTP_PORT")
+		if yfinanceHTTPPort == "" {
+			yfinanceHTTPPort = "50052"
+		}
+		if yfinanceHost == "" {
+			yfinanceHost = "localhost"
+		}
+
+		limit := c.Query("limit", "200")
+		filter := c.Query("filter", "")
+		level := c.Query("level", "")
+
+		yfURL := fmt.Sprintf("http://%s:%s/logs?limit=%s&filter=%s&level=%s",
+			yfinanceHost, yfinanceHTTPPort,
+			url.QueryEscape(limit), url.QueryEscape(filter), url.QueryEscape(level))
+
+		// Use a custom HTTP client to proxy the request
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Get(yfURL)
+		if err != nil {
+			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to reach yfinance service: %v", err),
+			})
+		}
+		defer resp.Body.Close()
+
+		c.Set("Content-Type", "application/json")
+		c.Status(resp.StatusCode)
+
+		var result interface{}
+		decoder := json.NewDecoder(resp.Body)
+		decoder.Decode(&result)
+		return c.JSON(result)
+	})
+
 	// Setup GraphQL endpoint with authentication middleware and directives
 	config := graphql.Config{
 		Resolvers: resolver,
@@ -268,7 +344,6 @@ func NewApp() (*AppContainer, error) {
 	app.All("/graphql", func(c *fiber.Ctx) error {
 		// Handle authentication at the HTTP level before passing to GraphQL
 		authHeader := c.Get("Authorization")
-		fmt.Printf("DEBUG: Fiber handler - Auth header: '%s'\n", authHeader)
 
 		// Create a custom handler that includes authentication context
 		customHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -280,22 +355,13 @@ func NewApp() (*AppContainer, error) {
 				tokenParts := strings.Split(authHeader, " ")
 				if len(tokenParts) == 2 && strings.ToLower(tokenParts[0]) == "bearer" {
 					token := tokenParts[1]
-					fmt.Printf("DEBUG: Fiber handler - Extracted token: '%s...'\n", token[:min(10, len(token))])
 
 					// Validate the session
 					session, err := serviceContainer.Session.ValidateSession(context.Background(), token)
-					if err != nil {
-						fmt.Printf("DEBUG: Fiber handler - Session validation failed: %v\n", err)
-					} else {
-						fmt.Printf("DEBUG: Fiber handler - Session valid for user: %s\n", session.UserID)
-
+					if err == nil {
 						// Get user information using ID
 						user, err := serviceContainer.User.GetByID(context.Background(), session.UserID)
-						if err != nil {
-							fmt.Printf("DEBUG: Fiber handler - User lookup failed: %v\n", err)
-						} else {
-							fmt.Printf("DEBUG: Fiber handler - User found: %s\n", user.Email)
-
+						if err == nil {
 							// Add authenticated user to context
 							authenticatedUser := &middleware.AuthenticatedUser{
 								ID:            session.UserID,
@@ -316,15 +382,9 @@ func NewApp() (*AppContainer, error) {
 							// Add to context using the middleware keys
 							ctx = context.WithValue(ctx, middleware.UserKey, authenticatedUser)
 							ctx = context.WithValue(ctx, middleware.SessionKey, sessionInfo)
-
-							fmt.Printf("DEBUG: Fiber handler - Added user to context: %s\n", authenticatedUser.Email)
 						}
 					}
-				} else {
-					fmt.Printf("DEBUG: Fiber handler - Invalid auth header format\n")
 				}
-			} else {
-				fmt.Printf("DEBUG: Fiber handler - No auth header found\n")
 			}
 
 			// Create a new request with the enhanced context
@@ -532,4 +592,80 @@ func mapLocalBuildItemsDTO(items []model.MarketDataPackBuildJobItem) []fiber.Map
 		})
 	}
 	return out
+}
+
+// handleLogSSE streams log entries via Server-Sent Events.
+func handleLogSSE(c *fiber.Ctx, lb *service.LogBuffer) error {
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("Transfer-Encoding", "chunked")
+
+	filter := c.Query("filter", "")
+	level := c.Query("level", "")
+
+	ch, unsubscribe := lb.Subscribe()
+
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		defer unsubscribe()
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case entries, ok := <-ch:
+				if !ok {
+					return
+				}
+				for _, entry := range entries {
+					if !logEntryMatches(entry, filter, level) {
+						continue
+					}
+					data, _ := json.Marshal(entry)
+					if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+						return
+					}
+					if err := w.Flush(); err != nil {
+						return
+					}
+				}
+			case <-ticker.C:
+				// Send keepalive comment
+				if _, err := fmt.Fprintf(w, ": keepalive\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			}
+		}
+	})
+
+	return nil
+}
+
+// filterLogEntries filters log entries by keyword and level.
+func filterLogEntries(entries []service.LogEntry, filter, level string) []service.LogEntry {
+	if filter == "" && level == "" {
+		return entries
+	}
+
+	result := make([]service.LogEntry, 0, len(entries))
+	for _, entry := range entries {
+		if logEntryMatches(entry, filter, level) {
+			result = append(result, entry)
+		}
+	}
+	return result
+}
+
+// logEntryMatches checks if a single entry matches filter criteria.
+func logEntryMatches(entry service.LogEntry, filter, level string) bool {
+	if filter != "" && !strings.Contains(strings.ToLower(entry.Message), strings.ToLower(filter)) {
+		return false
+	}
+	if level != "" && string(entry.Level) != strings.ToUpper(level) {
+		return false
+	}
+	return true
 }

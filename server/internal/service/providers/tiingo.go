@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"sigma_finance/internal/domain/model"
 	"strconv"
@@ -16,6 +17,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+const tiingoMaxCooldown = 5 * time.Minute
+
 // TiingoProvider implements Provider for Tiingo REST API.
 // Tiingo is the primary provider for US equities, ETFs, and mutual funds.
 // It offers 500 requests/hour on the free tier and excellent dividend/split
@@ -25,6 +28,7 @@ type TiingoProvider struct {
 	baseURL string
 	cb      *gobreaker.CircuitBreaker
 	limiter *rate.Limiter
+	CooldownMixin
 }
 
 // NewTiingoProvider creates a new Tiingo provider with circuit breaker and rate limiter.
@@ -39,7 +43,7 @@ func NewTiingoProvider() Provider {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			fmt.Printf("Tiingo circuit breaker: %s -> %s", from, to)
+			log.Printf("Tiingo circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -55,9 +59,10 @@ func NewTiingoProvider() Provider {
 				IdleConnTimeout:     90 * time.Second,
 			},
 		},
-		baseURL: "https://api.tiingo.com",
-		cb:      cb,
-		limiter: limiter,
+		baseURL:       "https://api.tiingo.com",
+		cb:            cb,
+		limiter:       limiter,
+		CooldownMixin: NewCooldownMixin(tiingoMaxCooldown),
 	}
 }
 
@@ -210,9 +215,15 @@ type tiingoErrorResponse struct {
 	Error  string `json:"error"`
 }
 
+
+
 func (t *TiingoProvider) GetCandles(ctx context.Context, req CandleRequest) (*CandleResponse, error) {
 	if req.APIKey == "" {
 		return nil, fmt.Errorf("tiingo requires API key")
+	}
+
+	if t.IsInCooldown() {
+		return nil, t.CooldownError(t.ID(), t.Name())
 	}
 
 	// Rate limit check
@@ -293,12 +304,16 @@ func (t *TiingoProvider) getEODCandles(ctx context.Context, symbol string, req C
 	}
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  t.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Tiingo rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -409,12 +424,16 @@ func (t *TiingoProvider) getIntradayCandles(ctx context.Context, symbol string, 
 	}
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  t.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Tiingo rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -513,6 +532,20 @@ func (t *TiingoProvider) getCryptoCandles(ctx context.Context, symbol string, re
 		}
 	}
 
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		return nil, fmt.Errorf("tiingo crypto API error: status %d, body: %s", resp.StatusCode, string(body))
@@ -596,6 +629,20 @@ func (t *TiingoProvider) getForexCandles(ctx context.Context, symbol string, req
 			Message:  fmt.Sprintf("forex pair %s not found on Tiingo", symbol),
 			HTTPCode: resp.StatusCode,
 			Fallback: true,
+		}
+	}
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -788,6 +835,10 @@ func (t *TiingoProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quote
 		}
 	}
 
+	if t.IsInCooldown() {
+		return nil, t.CooldownError(t.ID(), t.Name())
+	}
+
 	if err := t.limiter.Wait(ctx); err != nil {
 		return nil, fmt.Errorf("tiingo rate limit exceeded: %w", err)
 	}
@@ -799,6 +850,9 @@ func (t *TiingoProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quote
 
 	resp, err := t.doGetIEXQuote(ctx, symbol, req.APIKey)
 	if err != nil {
+		if	t.IsInCooldown() {
+			return nil, err
+		}
 		return t.doGetEODQuote(ctx, symbol, req)
 	}
 
@@ -836,13 +890,16 @@ func (t *TiingoProvider) doGetIEXQuote(ctx context.Context, symbol, apiKey strin
 	}
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  t.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Tiingo rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
-			Fallback:  true,
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
@@ -931,13 +988,16 @@ func (t *TiingoProvider) doGetEODQuote(ctx context.Context, symbol string, req Q
 	}
 
 	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
 		return nil, &ProviderError{
-			Provider:  t.ID(),
-			Code:      "RATE_LIMITED",
-			Message:   "Tiingo rate limit exceeded",
-			HTTPCode:  resp.StatusCode,
-			Retryable: true,
-			Fallback:  true,
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
 	}
 
