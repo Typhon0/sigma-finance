@@ -221,6 +221,20 @@ func (s *stubPriceRepo) GetLatestPrice(_ context.Context, _ string) (*model.Asse
 func (s *stubPriceRepo) GetPriceStatistics(_ context.Context, _ string) (*repository.PriceStatistics, error) {
 	return s.statistics, s.statsErr
 }
+func (s *stubPriceRepo) GetPriceStatisticsBatch(_ context.Context, assetIDs []string) (map[string]*repository.PriceStatistics, error) {
+	if s.statsErr != nil {
+		return nil, s.statsErr
+	}
+	res := make(map[string]*repository.PriceStatistics, len(assetIDs))
+	if s.statistics != nil {
+		for _, id := range assetIDs {
+			st := *s.statistics
+			st.AssetID = id
+			res[id] = &st
+		}
+	}
+	return res, nil
+}
 func (s *stubPriceRepo) Create(_ context.Context, _ *model.AssetPrice) (*model.AssetPrice, error) {
 	panic("not implemented")
 }

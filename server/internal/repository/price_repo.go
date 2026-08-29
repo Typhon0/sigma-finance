@@ -72,6 +72,7 @@ type IPriceRepository interface {
 	GetPricesByTimeRange(ctx context.Context, assetIDs []string, timeRange TimeRange) ([]model.AssetPrice, error)
 	GetOHLCData(ctx context.Context, assetID string, timeRange TimeRange, interval string) ([]PriceAggregation, error)
 	GetPriceStatistics(ctx context.Context, assetID string) (*PriceStatistics, error)
+	GetPriceStatisticsBatch(ctx context.Context, assetIDs []string) (map[string]*PriceStatistics, error)
 
 	// Performance and analytics
 	GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]string, error)
@@ -380,6 +381,152 @@ func (r *PriceRepository) GetPriceStatistics(ctx context.Context, assetID string
 		AverageVolume: stats.AvgVolume,
 		LastUpdated:   lastUpdated,
 	}, nil
+}
+
+// GetPriceStatisticsBatch calculates price statistics for multiple assets in batch
+func (r *PriceRepository) GetPriceStatisticsBatch(ctx context.Context, assetIDs []string) (map[string]*PriceStatistics, error) {
+	if len(assetIDs) == 0 {
+		return make(map[string]*PriceStatistics), nil
+	}
+
+	now := time.Now()
+	dayAgo := now.AddDate(0, 0, -1)
+	weekAgo := now.AddDate(0, 0, -7)
+	monthAgo := now.AddDate(0, -1, 0)
+	yearAgo := now.AddDate(-1, 0, 0)
+
+	// 1. Get latest prices for all requested assets
+	latestPrices, err := r.GetLatestPrices(ctx, assetIDs)
+	if err != nil {
+		return nil, err
+	}
+	if len(latestPrices) == 0 {
+		return make(map[string]*PriceStatistics), nil
+	}
+
+	latestPriceMap := make(map[string]model.AssetPrice, len(latestPrices))
+	validAssetIDs := make([]string, 0, len(latestPrices))
+	for _, lp := range latestPrices {
+		latestPriceMap[lp.AssetID] = lp
+		validAssetIDs = append(validAssetIDs, lp.AssetID)
+	}
+
+	// 2. Get previous day's price for change calculation across all assets
+	var prevPrices []model.AssetPrice
+	_ = r.db.NewSelect().
+		Model(&prevPrices).
+		Where("asset_id IN (?)", bun.In(validAssetIDs)).
+		Where("timestamp <= ?", dayAgo).
+		Order("asset_id", "timestamp DESC").
+		DistinctOn("asset_id").
+		Scan(ctx)
+
+	prevPriceMap := make(map[string]decimal.Decimal, len(prevPrices))
+	for _, pp := range prevPrices {
+		prevPriceMap[pp.AssetID] = pp.Price
+	}
+
+	// 3. Get period aggregated high/low/volume stats across all assets
+	var statsRows []struct {
+		AssetID   string           `bun:"asset_id"`
+		DayHigh   decimal.Decimal  `bun:"day_high"`
+		DayLow    decimal.Decimal  `bun:"day_low"`
+		WeekHigh  decimal.Decimal  `bun:"week_high"`
+		WeekLow   decimal.Decimal  `bun:"week_low"`
+		MonthHigh decimal.Decimal  `bun:"month_high"`
+		MonthLow  decimal.Decimal  `bun:"month_low"`
+		YearHigh  decimal.Decimal  `bun:"year_high"`
+		YearLow   decimal.Decimal  `bun:"year_low"`
+		AvgVolume *decimal.Decimal `bun:"avg_volume"`
+	}
+	_ = r.db.NewSelect().
+		Column("asset_id").
+		ColumnExpr("MAX(CASE WHEN timestamp >= ? THEN price END) as day_high", dayAgo).
+		ColumnExpr("MIN(CASE WHEN timestamp >= ? THEN price END) as day_low", dayAgo).
+		ColumnExpr("MAX(CASE WHEN timestamp >= ? THEN price END) as week_high", weekAgo).
+		ColumnExpr("MIN(CASE WHEN timestamp >= ? THEN price END) as week_low", weekAgo).
+		ColumnExpr("MAX(CASE WHEN timestamp >= ? THEN price END) as month_high", monthAgo).
+		ColumnExpr("MIN(CASE WHEN timestamp >= ? THEN price END) as month_low", monthAgo).
+		ColumnExpr("MAX(CASE WHEN timestamp >= ? THEN price END) as year_high", yearAgo).
+		ColumnExpr("MIN(CASE WHEN timestamp >= ? THEN price END) as year_low", yearAgo).
+		ColumnExpr("AVG(CASE WHEN timestamp >= ? AND volume IS NOT NULL THEN volume END) as avg_volume", monthAgo).
+		Model((*model.AssetPrice)(nil)).
+		Where("asset_id IN (?)", bun.In(validAssetIDs)).
+		Group("asset_id").
+		Scan(ctx, &statsRows)
+
+	periodStatsMap := make(map[string]struct {
+		DayHigh   decimal.Decimal
+		DayLow    decimal.Decimal
+		WeekHigh  decimal.Decimal
+		WeekLow   decimal.Decimal
+		MonthHigh decimal.Decimal
+		MonthLow  decimal.Decimal
+		YearHigh  decimal.Decimal
+		YearLow   decimal.Decimal
+		AvgVolume *decimal.Decimal
+	}, len(statsRows))
+
+	for _, s := range statsRows {
+		periodStatsMap[s.AssetID] = struct {
+			DayHigh   decimal.Decimal
+			DayLow    decimal.Decimal
+			WeekHigh  decimal.Decimal
+			WeekLow   decimal.Decimal
+			MonthHigh decimal.Decimal
+			MonthLow  decimal.Decimal
+			YearHigh  decimal.Decimal
+			YearLow   decimal.Decimal
+			AvgVolume *decimal.Decimal
+		}{
+			DayHigh:   s.DayHigh,
+			DayLow:    s.DayLow,
+			WeekHigh:  s.WeekHigh,
+			WeekLow:   s.WeekLow,
+			MonthHigh: s.MonthHigh,
+			MonthLow:  s.MonthLow,
+			YearHigh:  s.YearHigh,
+			YearLow:   s.YearLow,
+			AvgVolume: s.AvgVolume,
+		}
+	}
+
+	result := make(map[string]*PriceStatistics, len(validAssetIDs))
+	for _, assetID := range validAssetIDs {
+		lp := latestPriceMap[assetID]
+		currentPrice := lp.Price
+		previousPrice, ok := prevPriceMap[assetID]
+		if !ok || previousPrice.IsZero() {
+			previousPrice = currentPrice
+		}
+
+		change := currentPrice.Sub(previousPrice)
+		var changePercent decimal.Decimal
+		if !previousPrice.IsZero() {
+			changePercent = change.Div(previousPrice).Mul(decimal.NewFromInt(100))
+		}
+
+		stats := periodStatsMap[assetID]
+		result[assetID] = &PriceStatistics{
+			AssetID:       assetID,
+			CurrentPrice:  currentPrice,
+			PreviousPrice: previousPrice,
+			Change:        change,
+			ChangePercent: changePercent,
+			DayHigh:       stats.DayHigh,
+			DayLow:        stats.DayLow,
+			WeekHigh:      stats.WeekHigh,
+			WeekLow:       stats.WeekLow,
+			MonthHigh:     stats.MonthHigh,
+			MonthLow:      stats.MonthLow,
+			YearHigh:      stats.YearHigh,
+			YearLow:       stats.YearLow,
+			AverageVolume: stats.AvgVolume,
+			LastUpdated:   lp.Timestamp,
+		}
+	}
+
+	return result, nil
 }
 
 // GetStaleAssets retrieves assets that haven't been updated within the specified duration

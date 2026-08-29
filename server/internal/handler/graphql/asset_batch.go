@@ -5,6 +5,7 @@ import (
 	"log"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/repository"
 
 	"github.com/uptrace/bun"
 )
@@ -79,7 +80,7 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 		}
 	}
 
-	// 3. Fetch latest prices
+	// 3. Fetch latest prices and price statistics in batch
 	latestPrices, priceErr := r.UOW.AssetPrice().GetLatestPrices(ctx, assetIDs)
 	if priceErr != nil {
 		log.Printf("[ERROR] [getAssetsWithDetailsBatch] GetLatestPrices failed for %d assets: %v", len(assetIDs), priceErr)
@@ -92,6 +93,22 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 		log.Printf("[WARN] [getAssetsWithDetailsBatch] WARNING: No prices found in asset_prices for %d assets (priceErr=%v)", len(assetIDs), priceErr)
 	} else if len(assetIDs) > 0 {
 		log.Printf("[INFO] [getAssetsWithDetailsBatch] Loaded %d prices for %d assets", len(priceMap), len(assetIDs))
+	}
+
+	// 4. Batch fetch price statistics for all tradeable assets
+	tradeableAssetIDs := []string{}
+	for _, a := range assets {
+		if a.Type.IsTradeable() {
+			tradeableAssetIDs = append(tradeableAssetIDs, a.ID)
+		}
+	}
+	var statsMap map[string]*repository.PriceStatistics
+	if len(tradeableAssetIDs) > 0 {
+		var statsErr error
+		statsMap, statsErr = r.UOW.AssetPrice().GetPriceStatisticsBatch(ctx, tradeableAssetIDs)
+		if statsErr != nil {
+			log.Printf("[ERROR] [getAssetsWithDetailsBatch] GetPriceStatisticsBatch failed for %d assets: %v", len(tradeableAssetIDs), statsErr)
+		}
 	}
 
 	// Build map
@@ -107,14 +124,11 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 		// We use empty slices for tags in batch context to optimize perf.
 		tags := []model.Tag{}
 		var dayChange, dayChangePercent *float64
-		if a.Type.IsTradeable() {
-			stats, err := r.UOW.AssetPrice().GetPriceStatistics(ctx, a.ID)
-			if err == nil && stats != nil {
-				dc, _ := stats.Change.Float64()
-				dcp, _ := stats.ChangePercent.Float64()
-				dayChange = &dc
-				dayChangePercent = &dcp
-			}
+		if stats, ok := statsMap[a.ID]; ok && stats != nil {
+			dc, _ := stats.Change.Float64()
+			dcp, _ := stats.ChangePercent.Float64()
+			dayChange = &dc
+			dayChangePercent = &dcp
 		}
 
 		switch a.Type {

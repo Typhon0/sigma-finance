@@ -86,7 +86,7 @@ export function StocksFundsPositions({
 
 	// Debounced search (150ms) to avoid filtering on every keystroke
 	const [searchQuery, setSearchQuery] = useState("");
-	const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+	const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
 	const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
 		const value = e.target.value;
@@ -780,7 +780,6 @@ function PositionsTable({
 	}
 
 	// Virtualized rendering for tables with > 20 rows
-	const ESTIMATED_ROW_HEIGHT = 56;
 	return (
 		<div ref={tableContainerRef} style={{ overflow: "auto", maxHeight: "600px" }}>
 			<Table>
@@ -842,6 +841,18 @@ function PositionsTable({
 					</TableHeader>
 				)}
 				<TableBody>
+					{rowVirtualizer.getVirtualItems().length > 0 &&
+						rowVirtualizer.getVirtualItems()[0].start > 0 && (
+							<tr>
+								<td
+									colSpan={9}
+									style={{
+										padding: 0,
+										height: `${rowVirtualizer.getVirtualItems()[0].start}px`,
+									}}
+								/>
+							</tr>
+						)}
 					{rowVirtualizer.getVirtualItems().map((virtualRow) => {
 						const pos = positions[virtualRow.index];
 						return (
@@ -856,16 +867,22 @@ function PositionsTable({
 							/>
 						);
 					})}
-					{/* Spacer row to drive scroll height */}
-					<tr>
-						<td
-							colSpan={9}
-							style={{
-								padding: 0,
-								height: `${Math.max(0, rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, v) => s + v.size, 0))}px`,
-							}}
-						/>
-					</tr>
+					{rowVirtualizer.getVirtualItems().length > 0 && (
+						<tr>
+							<td
+								colSpan={9}
+								style={{
+									padding: 0,
+									height: `${Math.max(
+										0,
+										rowVirtualizer.getTotalSize() -
+											rowVirtualizer.getVirtualItems()[rowVirtualizer.getVirtualItems().length - 1]
+												.end,
+									)}px`,
+								}}
+							/>
+						</tr>
+					)}
 				</TableBody>
 			</Table>
 		</div>

@@ -859,6 +859,20 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 			// the portfolio finish vs. the benchmark?").
 			cumulativeAlpha := portfolioReturn.Sub(benchmarkReturn)
 
+			repoComparison = &repository.BenchmarkComparison{
+				PortfolioID:      portfolioID,
+				BenchmarkAssetID: benchmarkAssetID,
+				PortfolioReturn:  portfolioReturn,
+				BenchmarkReturn:  benchmarkReturn,
+				Alpha:            cumulativeAlpha,
+				Beta:             decimal.NewFromFloat(1),
+				TrackingError:    decimal.Zero,
+				InformationRatio: decimal.Zero,
+				CorrelationCoeff: decimal.NewFromFloat(1),
+				StartDate:        timeRange.Start,
+				EndDate:          timeRange.End,
+			}
+
 			// Real Beta / TrackingError / InformationRatio / Correlation /
 			// Jensen alpha from aligned daily returns. Snapshots and candles
 			// are floored to UTC midnight, collapsed to one-sample-per-day
@@ -884,19 +898,10 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 				alignedPortReturns := benchmark.DailyMoneyReturns(portVals)
 				alignedBenchReturns := benchmark.DailyPriceReturns(priceVals)
 				if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
-					repoComparison = &repository.BenchmarkComparison{
-						PortfolioID:      portfolioID,
-						BenchmarkAssetID: benchmarkAssetID,
-						PortfolioReturn:  portfolioReturn,
-						BenchmarkReturn:  benchmarkReturn,
-						Alpha:            cumulativeAlpha,
-						Beta:             benchmark.Beta(alignedPortReturns, alignedBenchReturns),
-						TrackingError:    benchmark.TrackingError(alignedPortReturns, alignedBenchReturns),
-						InformationRatio: benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns),
-						CorrelationCoeff: benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns),
-						StartDate:        timeRange.Start,
-						EndDate:          timeRange.End,
-					}
+					repoComparison.Beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
+					repoComparison.TrackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
+					repoComparison.InformationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
+					repoComparison.CorrelationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
 					jensenAlpha = benchmark.JensenAlpha(alignedPortReturns, alignedBenchReturns)
 				}
 			}

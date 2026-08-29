@@ -144,6 +144,11 @@ func (m *MockPriceRepository) GetPriceStatistics(ctx context.Context, assetID st
 	return args.Get(0).(*repository.PriceStatistics), args.Error(1)
 }
 
+func (m *MockPriceRepository) GetPriceStatisticsBatch(ctx context.Context, assetIDs []string) (map[string]*repository.PriceStatistics, error) {
+	args := m.Called(ctx, assetIDs)
+	return args.Get(0).(map[string]*repository.PriceStatistics), args.Error(1)
+}
+
 func (m *MockPriceRepository) GetStaleAssets(ctx context.Context, maxAge time.Duration) ([]string, error) {
 	args := m.Called(ctx, maxAge)
 	return args.Get(0).([]string), args.Error(1)

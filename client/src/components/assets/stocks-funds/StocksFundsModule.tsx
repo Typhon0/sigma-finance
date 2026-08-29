@@ -147,11 +147,17 @@ function normalizeStockAssets(assets: RawAsset[], fallbackPortfolioId: string): 
 			asset.currentValue,
 			toFiniteNumber(asset.currentPrice, 0) * quantity,
 		);
+		const nativeUnitPrice = toFiniteNumber(asset.currentPrice, 0);
+		const nativeTotalValue = nativeUnitPrice * quantity;
+		const fxMultiplier =
+			nativeTotalValue > 0 && totalPositionValue > 0 ? totalPositionValue / nativeTotalValue : 1;
+
 		const currentPrice =
 			quantity > 0
 				? toFiniteNumber(asset.currentPrice, totalPositionValue / quantity)
 				: toFiniteNumber(asset.currentPrice, 0);
-		const avgCost = toFiniteNumber(asset.purchasePrice, currentPrice);
+		const rawAvgCost = toFiniteNumber(asset.purchasePrice, currentPrice);
+		const avgCost = rawAvgCost * fxMultiplier;
 		const costBasis = avgCost * quantity;
 		const totalReturn = totalPositionValue - costBasis;
 		const totalReturnPercentage = costBasis > 0 ? (totalReturn / costBasis) * 100 : 0;
@@ -1006,7 +1012,10 @@ export function StocksFundsModule({
 						<Button
 							variant="outline"
 							size="sm"
-							className="h-8 text-xs bg-secondary/20 hover:bg-secondary/40 border-border/40"
+							className="h-8 text-xs bg-secondary/20 hover:bg-secondary/40 border-border/40 cursor-pointer"
+							onClick={() =>
+								toast.info("Brokerage / CSV position import is available in Settings > Data Import")
+							}
 						>
 							<Upload className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
 							Import
@@ -1374,7 +1383,7 @@ export function StocksFundsModule({
 									: "text-muted-foreground hover:text-foreground border border-transparent",
 							)}
 						>
-							Accounts
+							Holdings
 						</button>
 						<button
 							type="button"
@@ -1423,6 +1432,10 @@ export function StocksFundsModule({
 						<StockDetail
 							symbol={selectedStockSymbol}
 							onBack={() => setSelectedStockSymbol(null)}
+							onTrade={() => {
+								setSelectedStockSymbol(null);
+								setIsAddOpen(true);
+							}}
 							isPanel={true}
 						/>
 					)}

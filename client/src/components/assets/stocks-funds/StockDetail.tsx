@@ -78,6 +78,7 @@ function LazyWidget({ children, height = 400 }: { children: React.ReactNode; hei
 interface StockDetailProps {
 	symbol: string;
 	onBack?: () => void;
+	onTrade?: () => void;
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onNavigateToScreener?: (filters: any) => void;
 	isPanel?: boolean;
@@ -86,42 +87,32 @@ interface StockDetailProps {
 export function StockDetail({
 	symbol,
 	onBack,
+	onTrade,
 	onNavigateToScreener: _onNavigateToScreener,
 	isPanel = false,
 }: StockDetailProps) {
-	const { resolvedTheme } = useTheme();
-
-	// Resolve the dynamic symbol in the EXCHANGE:SYMBOL format for TradingView widgets
-	const resolvedSymbol = resolveTradingViewSymbol({
-		symbol,
-		assetType: "STOCK",
-	});
-
-	// Background and container styles matching the application's background colors
-	const containerBg = "bg-background text-foreground";
+	const { theme } = useTheme();
+	const resolvedTheme = theme === "dark" ? "dark" : "light";
+	const resolvedSymbol = resolveTradingViewSymbol({ symbol, assetType: "STOCK" });
+	const containerBg = resolvedTheme === "dark" ? "bg-[#0b0e14]" : "bg-card";
 
 	return (
-		<div className={cn("space-y-6 min-h-screen p-6", containerBg)}>
-			<div
-				className={cn(
-					"space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500",
-					isPanel ? "px-4 pb-4" : "px-6 pb-6",
-				)}
-			>
-				{/* 2. Top Actions & Navigation Row */}
-				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card/20 p-3 rounded-lg border border-border/40 backdrop-blur-sm">
+		<div className="space-y-6 animate-fade-in p-2 sm:p-4 max-w-7xl mx-auto">
+			{/* 1. Header & Navigation */}
+			<div className="flex flex-col gap-4">
+				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
 					<div className="flex items-center gap-3">
-						{!isPanel && onBack && (
+						{onBack && (
 							<Button
 								variant="ghost"
 								size="sm"
+								className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
 								onClick={onBack}
-								className="h-8 w-8 p-0 rounded-full border border-border/50"
 							>
 								<ArrowLeft className="h-4 w-4" />
 							</Button>
 						)}
-						<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+						<div className="flex items-center gap-1.5 text-xs text-muted-foreground">
 							<span>Dashboard</span>
 							<ChevronRight className="h-3 w-3" />
 							<span>Stocks</span>
@@ -134,7 +125,7 @@ export function StockDetail({
 						<Button
 							size="sm"
 							variant="outline"
-							className="h-8 text-xs flex-1 sm:flex-initial"
+							className="h-8 text-xs flex-1 sm:flex-initial cursor-pointer"
 							onClick={() => toast.success(`Added ${symbol} to watchlist`)}
 						>
 							<Star className="h-3.5 w-3.5 mr-2" /> Watch
@@ -142,15 +133,22 @@ export function StockDetail({
 						<Button
 							size="sm"
 							variant="outline"
-							className="h-8 text-xs flex-1 sm:flex-initial"
-							onClick={() => toast.success("Alert created")}
+							className="h-8 text-xs flex-1 sm:flex-initial cursor-pointer"
+							onClick={() => toast.success(`Price alert created for ${symbol}`)}
 						>
 							<Bell className="h-3.5 w-3.5 mr-2" /> Alert
 						</Button>
 						<div className="h-4 w-px bg-border/50 mx-1 hidden sm:block" />
 						<Button
 							size="sm"
-							className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0 flex-1 sm:flex-initial"
+							className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0 flex-1 sm:flex-initial cursor-pointer"
+							onClick={() => {
+								if (onTrade) {
+									onTrade();
+								} else {
+									toast.info(`Trade action triggered for ${symbol}`);
+								}
+							}}
 						>
 							<Zap className="h-3.5 w-3.5 mr-2" /> Trade
 						</Button>

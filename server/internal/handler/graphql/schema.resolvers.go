@@ -1301,15 +1301,7 @@ func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.Trans
 		return nil, err
 	}
 
-	res := make([]*gqlModel.Transaction, 0, len(transactions))
-	for _, t := range transactions {
-		mapped := r.buildGraphQLTransaction(ctx, t)
-		if mapped == nil {
-			continue
-		}
-		res = append(res, mapped)
-	}
-	return res, nil
+	return r.buildGraphQLTransactionsBatch(ctx, transactions), nil
 }
 
 // Mutation returns MutationResolver implementation.

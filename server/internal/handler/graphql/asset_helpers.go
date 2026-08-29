@@ -11,6 +11,8 @@ import (
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
+
+	"github.com/uptrace/bun"
 )
 
 // getAssetWithDetails is a helper method to get asset with type-specific details
@@ -188,35 +190,115 @@ func (r *Resolver) safeGetPortfolioAnalytics(ctx context.Context, portfolioID st
 	return r.PortfolioService.GetPortfolioAnalytics(ctx, portfolioID, displayCurrency)
 }
 
+func (r *Resolver) buildGraphQLTransactionsBatch(ctx context.Context, txs []*model.Transaction) []*gqlModel.Transaction {
+	if len(txs) == 0 {
+		return []*gqlModel.Transaction{}
+	}
+
+	// 1. Collect unique position IDs
+	positionIDMap := make(map[string]struct{})
+	for _, tx := range txs {
+		if tx != nil && tx.PositionID != nil && strings.TrimSpace(*tx.PositionID) != "" {
+			positionIDMap[strings.TrimSpace(*tx.PositionID)] = struct{}{}
+		}
+	}
+
+	if len(positionIDMap) == 0 {
+		return []*gqlModel.Transaction{}
+	}
+
+	positionIDs := make([]string, 0, len(positionIDMap))
+	for id := range positionIDMap {
+		positionIDs = append(positionIDs, id)
+	}
+
+	// 2. Batch fetch positions
+	positions, err := r.UOW.Position().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("id IN (?)", bun.In(positionIDs))
+	})
+	if err != nil {
+		log.Printf("[ERROR] buildGraphQLTransactionsBatch: position batch lookup failed: %v", err)
+		return []*gqlModel.Transaction{}
+	}
+
+	posMap := make(map[string]model.Position, len(positions))
+	assetIDMap := make(map[string]struct{})
+	portfolioIDMap := make(map[string]struct{})
+	for _, pos := range positions {
+		posMap[pos.ID] = pos
+		if strings.TrimSpace(pos.AssetID) != "" {
+			assetIDMap[strings.TrimSpace(pos.AssetID)] = struct{}{}
+		}
+		if strings.TrimSpace(pos.PortfolioID) != "" {
+			portfolioIDMap[strings.TrimSpace(pos.PortfolioID)] = struct{}{}
+		}
+	}
+
+	// 3. Batch fetch assets with details (using optimized getAssetsWithDetailsBatch)
+	assetIDs := make([]string, 0, len(assetIDMap))
+	for id := range assetIDMap {
+		assetIDs = append(assetIDs, id)
+	}
+	prefetchedAssets, batchErr := r.getAssetsWithDetailsBatch(ctx, assetIDs)
+	if batchErr != nil {
+		log.Printf("[ERROR] buildGraphQLTransactionsBatch: asset batch lookup failed: %v", batchErr)
+		prefetchedAssets = make(map[string]gqlModel.Asset)
+	}
+
+	// 4. Batch fetch portfolios
+	portfolioIDs := make([]string, 0, len(portfolioIDMap))
+	for id := range portfolioIDMap {
+		portfolioIDs = append(portfolioIDs, id)
+	}
+	portfolios, portErr := r.UOW.Portfolio().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		return q.Where("id IN (?)", bun.In(portfolioIDs))
+	})
+	if portErr != nil {
+		log.Printf("[ERROR] buildGraphQLTransactionsBatch: portfolio batch lookup failed: %v", portErr)
+		portfolios = []model.Portfolio{}
+	}
+
+	portfolioMap := make(map[string]model.Portfolio, len(portfolios))
+	for _, port := range portfolios {
+		portfolioMap[port.ID] = port
+	}
+
+	// 5. Map all transactions in memory
+	res := make([]*gqlModel.Transaction, 0, len(txs))
+	for _, tx := range txs {
+		if tx == nil || tx.PositionID == nil {
+			continue
+		}
+		posID := strings.TrimSpace(*tx.PositionID)
+		pos, posFound := posMap[posID]
+		if !posFound {
+			continue
+		}
+		gqlAsset, assetFound := prefetchedAssets[pos.AssetID]
+		if !assetFound || gqlAsset == nil {
+			continue
+		}
+		port, portFound := portfolioMap[pos.PortfolioID]
+		if !portFound {
+			continue
+		}
+
+		mapped := mapTransactionToGQL(*tx)
+		mapped.Asset = gqlAsset
+		mapped.Portfolio = mapPortfolioToGQL(port)
+		res = append(res, mapped)
+	}
+
+	return res
+}
+
 func (r *Resolver) buildGraphQLTransaction(ctx context.Context, tx *model.Transaction) *gqlModel.Transaction {
-	if tx == nil || tx.PositionID == nil || strings.TrimSpace(*tx.PositionID) == "" {
+	if tx == nil {
 		return nil
 	}
-
-	position, err := r.UOW.Position().GetByID(ctx, *tx.PositionID)
-	if err != nil || position == nil {
-		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: position lookup failed err=%v", tx.ID, err)
-		return nil
+	batch := r.buildGraphQLTransactionsBatch(ctx, []*model.Transaction{tx})
+	if len(batch) > 0 {
+		return batch[0]
 	}
-	if strings.TrimSpace(position.PortfolioID) == "" || strings.TrimSpace(position.AssetID) == "" {
-		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: invalid position links portfolio=%q asset=%q", tx.ID, position.PortfolioID, position.AssetID)
-		return nil
-	}
-
-	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, position.AssetID)
-	if gqlErr != nil || gqlAsset == nil {
-		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: asset lookup failed asset=%s err=%v", tx.ID, position.AssetID, gqlErr)
-		return nil
-	}
-
-	portfolio, portfolioErr := r.UOW.Portfolio().GetByID(ctx, position.PortfolioID)
-	if portfolioErr != nil || portfolio == nil {
-		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: portfolio lookup failed portfolio=%s err=%v", tx.ID, position.PortfolioID, portfolioErr)
-		return nil
-	}
-
-	mapped := mapTransactionToGQL(*tx)
-	mapped.Asset = gqlAsset
-	mapped.Portfolio = mapPortfolioToGQL(*portfolio)
-	return mapped
+	return nil
 }

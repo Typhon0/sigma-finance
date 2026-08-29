@@ -1,7 +1,6 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
 	ArrowRight,
-	DollarSign,
 	Download,
 	Filter,
 	MoreHorizontal,
@@ -13,7 +12,6 @@ import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
