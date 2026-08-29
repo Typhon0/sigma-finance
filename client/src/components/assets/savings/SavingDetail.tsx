@@ -26,7 +26,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CURRENCY_SYMBOLS } from "@/lib/utils";
+import { CURRENCY_SYMBOLS, cn } from "@/lib/utils";
 
 interface TransactionRowData {
 	id: string;
@@ -94,9 +94,10 @@ function TransactionTable({
 interface SavingDetailProps {
 	savingId: string;
 	onBack: () => void;
+	isPanel?: boolean;
 }
 
-export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
+export function SavingDetail({ savingId, onBack, isPanel = false }: SavingDetailProps) {
 	const { assets, transactions } = usePortfolio();
 	const [timePeriod, setTimePeriod] = useState("1Y");
 
@@ -443,17 +444,21 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 	return (
 		<ScrollArea className="h-full">
-			<div className="p-6 space-y-6">
+			<div className={cn("space-y-6", isPanel ? "p-4" : "p-6")}>
 				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-4">
-						<Button variant="ghost" size="sm" onClick={onBack}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back
-						</Button>
+						{!isPanel && (
+							<Button variant="ghost" size="sm" onClick={onBack}>
+								<ArrowLeft className="h-4 w-4 mr-2" />
+								Back
+							</Button>
+						)}
 						<div>
 							<div className="flex items-center gap-3">
-								<h1 className="text-3xl">{saving.accountName}</h1>
+								<h1 className={cn("text-3xl", isPanel && "text-xl font-bold")}>
+									{saving.accountName}
+								</h1>
 								{getOwnershipBadge()}
 								<Badge variant="default" className="capitalize">
 									{saving.accountType || "Savings"}
@@ -467,7 +472,12 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 				</div>
 
 				{/* Key Metrics */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div
+					className={cn(
+						"grid gap-4",
+						isPanel ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+					)}
+				>
 					<Card>
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
@@ -556,7 +566,9 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 					{/* Overview Tab */}
 					<TabsContent value="overview" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Balance Evolution Chart */}
 							<Card>
 								<CardHeader>
@@ -597,7 +609,9 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 						</div>
 
 						{/* Summary Cards */}
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3")}
+						>
 							<Card>
 								<CardHeader>
 									<CardTitle className="text-sm">Account Age</CardTitle>
@@ -672,7 +686,9 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 					{/* Analytics Tab */}
 					<TabsContent value="analytics" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Monthly Interest Chart */}
 							<Card>
 								<CardHeader>
@@ -781,7 +797,9 @@ export function SavingDetail({ savingId, onBack }: SavingDetailProps) {
 
 					{/* Details Tab */}
 					<TabsContent value="details" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Account Information */}
 							<Card>
 								<CardHeader>

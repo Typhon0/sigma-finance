@@ -745,6 +745,7 @@ export const useAssetMutations = () => {
 		addLifeInsurance,
 		addWatch,
 		addLoan,
+		refreshAssetPrice: refreshAssetPriceBestEffort,
 		loading:
 			creatingStock ||
 			creatingCrypto ||

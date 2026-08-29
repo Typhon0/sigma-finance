@@ -8,6 +8,8 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"log"
+	"strings"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
@@ -16,7 +18,9 @@ import (
 
 // Register is the resolver for the register field.
 func (r *mutationResolver) Register(ctx context.Context, input gqlModel.RegisterInput) (*gqlModel.AuthResponse, error) {
+	log.Printf("[INFO] [graphql] Register: started email=%s", maskEmail(input.Email))
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] Register: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
@@ -26,14 +30,18 @@ func (r *mutationResolver) Register(ctx context.Context, input gqlModel.Register
 		Name:     input.Name,
 	})
 	if err != nil {
+		log.Printf("[WARN] [graphql] Register: registration failed email=%s: %v", maskEmail(input.Email), err)
 		return convertAuthErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] Register: completed user=%s", resp.User.ID)
 	return mapAuthResponseToGQL(resp), nil
 }
 
 // Login is the resolver for the login field.
 func (r *mutationResolver) Login(ctx context.Context, input gqlModel.LoginInput) (*gqlModel.AuthResponse, error) {
+	log.Printf("[INFO] [graphql] Login: started email=%s", maskEmail(input.Email))
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] Login: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
@@ -44,14 +52,18 @@ func (r *mutationResolver) Login(ctx context.Context, input gqlModel.LoginInput)
 		UserAgent: extractUserAgentFromContext(ctx),
 	})
 	if err != nil {
+		log.Printf("[WARN] [graphql] Login: login failed email=%s: %v", maskEmail(input.Email), err)
 		return convertAuthErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] Login: completed user=%s", resp.User.ID)
 	return mapAuthResponseToGQL(resp), nil
 }
 
 // Logout is the resolver for the logout field.
 func (r *mutationResolver) Logout(ctx context.Context, input gqlModel.LogoutInput) (*gqlModel.LogoutResponse, error) {
+	log.Printf("[INFO] [graphql] Logout: started")
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] Logout: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
@@ -61,76 +73,100 @@ func (r *mutationResolver) Logout(ctx context.Context, input gqlModel.LogoutInpu
 	}
 
 	if err := r.AuthenticationService.Logout(ctx, userID, input.Token); err != nil {
+		log.Printf("[WARN] [graphql] Logout: logout failed user=%s: %v", userID, err)
 		return convertLogoutErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] Logout: completed user=%s", userID)
 	return &gqlModel.LogoutResponse{Success: true}, nil
 }
 
 // ResetPassword is the resolver for the resetPassword field.
 func (r *mutationResolver) ResetPassword(ctx context.Context, input gqlModel.PasswordResetInput) (*gqlModel.PasswordResetResponse, error) {
+	log.Printf("[INFO] [graphql] ResetPassword: started email=%s", maskEmail(input.Email))
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] ResetPassword: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
 	if err := r.AuthenticationService.ResetPassword(ctx, input.Email); err != nil {
+		log.Printf("[WARN] [graphql] ResetPassword: reset failed email=%s: %v", maskEmail(input.Email), err)
 		return convertPasswordResetErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] ResetPassword: completed email=%s", maskEmail(input.Email))
 	return &gqlModel.PasswordResetResponse{Success: true}, nil
 }
 
 // ConfirmPasswordReset is the resolver for the confirmPasswordReset field.
 func (r *mutationResolver) ConfirmPasswordReset(ctx context.Context, input gqlModel.PasswordResetConfirmInput) (*gqlModel.PasswordResetResponse, error) {
+	log.Printf("[INFO] [graphql] ConfirmPasswordReset: started")
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] ConfirmPasswordReset: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
 	if err := r.AuthenticationService.ConfirmPasswordReset(ctx, input.Token, input.NewPassword); err != nil {
+		log.Printf("[WARN] [graphql] ConfirmPasswordReset: reset failed: %v", err)
 		return convertPasswordResetErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] ConfirmPasswordReset: completed")
 	return &gqlModel.PasswordResetResponse{Success: true}, nil
 }
 
 // VerifyEmail is the resolver for the verifyEmail field.
 func (r *mutationResolver) VerifyEmail(ctx context.Context, input gqlModel.EmailVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
+	log.Printf("[INFO] [graphql] VerifyEmail: started")
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] VerifyEmail: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
 	if err := r.AuthenticationService.VerifyEmail(ctx, input.Token); err != nil {
+		log.Printf("[WARN] [graphql] VerifyEmail: verification failed: %v", err)
 		return convertEmailVerificationErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] VerifyEmail: completed")
 	return &gqlModel.EmailVerificationResponse{Success: true}, nil
 }
 
 // ResendVerification is the resolver for the resendVerification field.
 func (r *mutationResolver) ResendVerification(ctx context.Context, input gqlModel.ResendVerificationInput) (*gqlModel.EmailVerificationResponse, error) {
+	log.Printf("[INFO] [graphql] ResendVerification: started email=%s", maskEmail(input.Email))
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] ResendVerification: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
 	if err := r.AuthenticationService.ResendVerification(ctx, input.Email); err != nil {
+		log.Printf("[WARN] [graphql] ResendVerification: resend failed email=%s: %v", maskEmail(input.Email), err)
 		return convertEmailVerificationErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] ResendVerification: completed email=%s", maskEmail(input.Email))
 	return &gqlModel.EmailVerificationResponse{Success: true}, nil
 }
 
 // RefreshToken is the resolver for the refreshToken field.
 func (r *mutationResolver) RefreshToken(ctx context.Context, input gqlModel.RefreshTokenInput) (*gqlModel.AuthResponse, error) {
+	log.Printf("[INFO] [graphql] RefreshToken: started")
 	if r.AuthenticationService == nil {
+		log.Printf("[ERROR] [graphql] RefreshToken: authentication service not configured")
 		return nil, fmt.Errorf("authentication service not configured")
 	}
 
 	resp, err := r.AuthenticationService.RefreshToken(ctx, input.RefreshToken)
 	if err != nil {
+		log.Printf("[WARN] [graphql] RefreshToken: refresh failed: %v", err)
 		return convertAuthErrorToGraphQL(err), nil
 	}
+	log.Printf("[INFO] [graphql] RefreshToken: completed user=%s", resp.User.ID)
 	return mapAuthResponseToGQL(resp), nil
 }
 
 // Me is the resolver for the me field.
 func (r *queryResolver) Me(ctx context.Context) (*gqlModel.AuthUser, error) {
+	log.Printf("[INFO] [graphql] Me: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
+		log.Printf("[WARN] [graphql] Me: auth required failed: %v", err)
 		return nil, err
 	}
 
@@ -186,4 +222,12 @@ func (r *queryResolver) Me(ctx context.Context) (*gqlModel.AuthUser, error) {
 		ThemeRadius:         themeRadius,
 		ThemeRtl:            themeRTL,
 	}, nil
+}
+
+// maskEmail masks an email address for logging purposes.
+func maskEmail(email string) string {
+	if len(email) < 8 {
+		return "***"
+	}
+	return email[:3] + "***@" + email[strings.LastIndex(email, "@")+1:]
 }

@@ -253,21 +253,40 @@ func parseUserID(userID string) uint {
 	return uint(id)
 }
 
-// getUserFromHTTPContext extracts authenticated user from HTTP context
+// getUserFromHTTPContext extracts authenticated user from HTTP context.
+// It checks in order:
+//  1. Go context value (set if already injected into GraphQL context)
+//  2. Fiber locals (set by AuthMiddleware before GraphQL handler)
 func getUserFromHTTPContext(ctx context.Context) *AuthenticatedUser {
-	// Try to get the user directly from context using our middleware key
+	// 1. Try Go context value (already injected)
 	if user, ok := ctx.Value(UserKey).(*AuthenticatedUser); ok && user != nil {
 		return user
 	}
+
+	// 2. Try Fiber locals (set by AuthMiddleware on the HTTP request)
+	if fiberCtx, ok := ctx.Value("fiber").(*fiber.Ctx); ok && fiberCtx != nil {
+		if user, ok := fiberCtx.Locals("user").(*AuthenticatedUser); ok && user != nil {
+			return user
+		}
+	}
+
 	return nil
 }
 
-// getSessionFromHTTPContext extracts session info from HTTP context
+// getSessionFromHTTPContext extracts session info from HTTP context.
 func getSessionFromHTTPContext(ctx context.Context) *SessionInfo {
-	// Try to get the session directly from context using our middleware key
+	// 1. Try Go context value (already injected)
 	if session, ok := ctx.Value(SessionKey).(*SessionInfo); ok && session != nil {
 		return session
 	}
+
+	// 2. Try Fiber locals (set by AuthMiddleware on the HTTP request)
+	if fiberCtx, ok := ctx.Value("fiber").(*fiber.Ctx); ok && fiberCtx != nil {
+		if session, ok := fiberCtx.Locals("session").(*SessionInfo); ok && session != nil {
+			return session
+		}
+	}
+
 	return nil
 }
 

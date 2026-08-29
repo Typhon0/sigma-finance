@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { formatCurrency } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils";
 import type { TransactionFormData } from "@/lib/validations/transaction.schemas";
 import { transactionErrorMessages } from "@/lib/validations/transaction.schemas";
 

@@ -1,12 +1,19 @@
-# -*- coding: utf-8 -*-
-"""Validation and conversion helpers for the yfinance service."""
-
+import math
+from typing import Any
 from proto import market_data_pb2
 
 
-def price_to_cents(price: float) -> int:
+def price_to_cents(price: Any) -> int:
     """Convert float price to cents (int64)."""
-    return int(round(price * 100))
+    if price is None:
+        return 0
+    try:
+        f = float(price)
+        if math.isnan(f) or math.isinf(f):
+            return 0
+        return int(round(f * 100))
+    except (ValueError, TypeError):
+        return 0
 
 
 def cents_to_price(cents: int) -> float:

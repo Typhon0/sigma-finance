@@ -20,6 +20,7 @@ import {
 import React, { useState } from "react";
 import { toast } from "sonner";
 import exampleImage from "@/assets/placeholder.svg";
+import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -42,17 +44,35 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AssetPageHeader } from "../AssetPageHeader";
 import { AddRealEstateForm } from "./AddRealEstateForm";
 import { RealEstateAnalytics } from "./RealEstateAnalytics";
+import { RealEstateDetail } from "./RealEstateDetail";
 
 interface RealEstateListProps {
-	onSelectProperty: (propertyId: string) => void;
+	onSelectProperty?: (propertyId: string) => void;
+	detailMode?: "external" | "panel";
+	onBack?: () => void;
 }
 
 type ViewMode = "grid" | "list";
 
-export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
-	const { assets, addRealEstate, currentPortfolio, refetch } = usePortfolio();
+export function RealEstateList({
+	onSelectProperty,
+	detailMode = "panel",
+	onBack,
+}: RealEstateListProps) {
+	const { assets, addRealEstate, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
+	const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
+
+	const handleSelectProperty = (propertyId: string) => {
+		if (detailMode === "panel") {
+			setSelectedPropertyId(propertyId);
+		} else {
+			onSelectProperty?.(propertyId);
+		}
+	};
+
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState("value");
 	const [filterType, setFilterType] = useState("all");
@@ -160,18 +180,22 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 	}, []);
 
 	return (
-		<div className="space-y-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl">Real Estate Portfolio</h1>
-					<p className="text-muted-foreground">Manage your property investments</p>
-				</div>
-				<Button onClick={() => setIsAddFormOpen(true)}>
-					<Plus className="h-4 w-4 mr-2" />
-					Add Property
-				</Button>
-			</div>
+		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			<AssetPageHeader
+				title="Real Estate"
+				description="Manage your property investments, valuations, yields, and geographic distribution."
+				onBack={onBack}
+				actions={
+					<Button
+						size="sm"
+						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+						onClick={() => setIsAddFormOpen(true)}
+					>
+						<Plus className="mr-1.5 h-3.5 w-3.5" />
+						Add Property
+					</Button>
+				}
+			/>
 
 			{/* Main Tabs */}
 			<Tabs defaultValue="properties" className="space-y-6">
@@ -188,6 +212,9 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 
 				{/* Properties Tab */}
 				<TabsContent value="properties" className="space-y-6">
+					{/* Benchmark metrics */}
+					<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
+
 					{/* Help Banner for empty state */}
 					{realEstateAssets.length === 0 && (
 						<Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900">
@@ -745,7 +772,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 									<Card
 										key={property.id}
 										className="cursor-pointer hover:shadow-lg transition-all group"
-										onClick={() => onSelectProperty(property.id)}
+										onClick={() => handleSelectProperty(property.id)}
 									>
 										<CardContent className="p-0">
 											{/* Property Image */}
@@ -840,7 +867,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 											<TableRow
 												key={property.id}
 												className="cursor-pointer hover:bg-muted/50"
-												onClick={() => onSelectProperty(property.id)}
+												onClick={() => handleSelectProperty(property.id)}
 											>
 												<TableCell>
 													<div className="relative w-12 h-12 overflow-hidden rounded">
@@ -1016,7 +1043,7 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 
 				{/* Analytics Tab */}
 				<TabsContent value="analytics">
-					<RealEstateAnalytics onSelectProperty={onSelectProperty} />
+					<RealEstateAnalytics onSelectProperty={handleSelectProperty} />
 				</TabsContent>
 			</Tabs>
 
@@ -1026,6 +1053,24 @@ export function RealEstateList({ onSelectProperty }: RealEstateListProps) {
 				onClose={() => setIsAddFormOpen(false)}
 				onSubmit={handleAddProperty}
 			/>
+
+			{/* Real Estate Detail Panel */}
+			<Sheet
+				open={detailMode === "panel" && selectedPropertyId !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedPropertyId(null);
+				}}
+			>
+				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+					{selectedPropertyId && (
+						<RealEstateDetail
+							propertyId={selectedPropertyId}
+							onBack={() => setSelectedPropertyId(null)}
+							isPanel={true}
+						/>
+					)}
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

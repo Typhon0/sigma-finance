@@ -147,11 +147,10 @@ var (
 
 // CreateAlert creates a new alert with validation
 func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) (*repository.UserAlert, error) {
-	log.Printf("[AlertService] CreateAlert: started user=%s type=%s", req.UserID, req.AlertType)
-
+	log.Printf("[INFO] [AlertService] CreateAlert: started user=%s type=%s", req.UserID, req.AlertType)
 	// Validate the alert configuration
 	if err := s.validateAlertConfiguration(ctx, req); err != nil {
-		log.Printf("[AlertService] CreateAlert: config validation failed user=%s: %v", req.UserID, err)
+		log.Printf("[WARN] [AlertService] CreateAlert: config validation failed user=%s: %v", req.UserID, err)
 		return nil, fmt.Errorf("validation failed: %w", err)
 	}
 
@@ -175,11 +174,11 @@ func (s *AlertService) CreateAlert(ctx context.Context, req CreateAlertRequest) 
 
 	createdAlert, err := s.alertRepo.Create(ctx, &alert)
 	if err != nil {
-		log.Printf("[AlertService] CreateAlert: ERROR: creation failed user=%s: %v", req.UserID, err)
+		log.Printf("[ERROR] [AlertService] CreateAlert: ERROR: creation failed user=%s: %v", req.UserID, err)
 		return nil, fmt.Errorf("failed to create alert: %w", err)
 	}
 
-	log.Printf("[AlertService] CreateAlert: completed alert=%s user=%s type=%s", createdAlert.ID, req.UserID, req.AlertType)
+	log.Printf("[INFO] [AlertService] CreateAlert: completed alert=%s user=%s type=%s", createdAlert.ID, req.UserID, req.AlertType)
 	return createdAlert, nil
 }
 
@@ -194,12 +193,11 @@ func (s *AlertService) GetAlert(ctx context.Context, id string) (*repository.Use
 
 // UpdateAlert updates an existing alert
 func (s *AlertService) UpdateAlert(ctx context.Context, id string, req UpdateAlertRequest) (*repository.UserAlert, error) {
-	log.Printf("[AlertService] UpdateAlert: started alert=%s", id)
-
+	log.Printf("[INFO] [AlertService] UpdateAlert: started alert=%s", id)
 	// Get existing alert
 	existingAlert, err := s.alertRepo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[AlertService] UpdateAlert: alert not found id=%s: %v", id, err)
+		log.Printf("[WARN] [AlertService] UpdateAlert: alert not found id=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to get existing alert: %w", err)
 	}
 
@@ -227,23 +225,23 @@ func (s *AlertService) UpdateAlert(ctx context.Context, id string, req UpdateAle
 
 	err = s.alertRepo.Update(ctx, existingAlert)
 	if err != nil {
-		log.Printf("[AlertService] UpdateAlert: ERROR: update failed alert=%s: %v", id, err)
+		log.Printf("[ERROR] [AlertService] UpdateAlert: ERROR: update failed alert=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to update alert: %w", err)
 	}
 
-	log.Printf("[AlertService] UpdateAlert: completed alert=%s", id)
+	log.Printf("[INFO] [AlertService] UpdateAlert: completed alert=%s", id)
 	return existingAlert, nil
 }
 
 // DeleteAlert deletes an alert
 func (s *AlertService) DeleteAlert(ctx context.Context, id string) error {
-	log.Printf("[AlertService] DeleteAlert: started alert=%s", id)
+	log.Printf("[INFO] [AlertService] DeleteAlert: started alert=%s", id)
 	err := s.alertRepo.Delete(ctx, id)
 	if err != nil {
-		log.Printf("[AlertService] DeleteAlert: ERROR: delete failed alert=%s: %v", id, err)
+		log.Printf("[ERROR] [AlertService] DeleteAlert: ERROR: delete failed alert=%s: %v", id, err)
 		return fmt.Errorf("failed to delete alert: %w", err)
 	}
-	log.Printf("[AlertService] DeleteAlert: completed alert=%s", id)
+	log.Printf("[INFO] [AlertService] DeleteAlert: completed alert=%s", id)
 	return nil
 }
 
@@ -478,8 +476,7 @@ func (s *AlertService) ProcessAlerts(ctx context.Context) error {
 		return fmt.Errorf("failed to get alerts to process: %w", err)
 	}
 
-	log.Printf("[AlertService] ProcessAlerts: started processing %d active alerts", len(alerts))
-
+	log.Printf("[INFO] [AlertService] ProcessAlerts: started processing %d active alerts", len(alerts))
 	var triggered int
 	for _, alert := range alerts {
 		// Group by alert type to determine how to process
@@ -488,7 +485,7 @@ func (s *AlertService) ProcessAlerts(ctx context.Context) error {
 			priceInfo, err := s.priceRepo.GetLatestPrice(ctx, *alert.AssetID)
 			if err != nil {
 				// Log but continue to next alert
-				log.Printf("[AlertService] ProcessAlerts: failed to get latest price for asset %s: %v", *alert.AssetID, err)
+				log.Printf("[ERROR] [AlertService] ProcessAlerts: failed to get latest price for asset %s: %v", *alert.AssetID, err)
 				continue
 			}
 
@@ -506,7 +503,7 @@ func (s *AlertService) ProcessAlerts(ctx context.Context) error {
 			}
 
 			if evalErr != nil {
-				log.Printf("[AlertService] ProcessAlerts: error evaluating alert %s: %v", alert.ID, evalErr)
+				log.Printf("[INFO] [AlertService] ProcessAlerts: error evaluating alert %s: %v", alert.ID, evalErr)
 				continue
 			}
 
@@ -527,7 +524,7 @@ func (s *AlertService) ProcessAlerts(ctx context.Context) error {
 
 			events, evalErr = s.alertRepo.EvaluatePortfolioValueAlerts(ctx, *alert.PortfolioID, decimal.Zero)
 			if evalErr != nil {
-				log.Printf("[AlertService] ProcessAlerts: error evaluating portfolio alert %s: %v", alert.ID, evalErr)
+				log.Printf("[INFO] [AlertService] ProcessAlerts: error evaluating portfolio alert %s: %v", alert.ID, evalErr)
 				continue
 			}
 
@@ -540,7 +537,7 @@ func (s *AlertService) ProcessAlerts(ctx context.Context) error {
 		}
 	}
 
-	log.Printf("[AlertService] ProcessAlerts: completed total=%d triggered=%d", len(alerts), triggered)
+	log.Printf("[INFO] [AlertService] ProcessAlerts: completed total=%d triggered=%d", len(alerts), triggered)
 	return nil
 }
 
@@ -569,7 +566,7 @@ func (s *AlertService) TriggerAlert(ctx context.Context, event repository.AlertT
 
 	// 3. Send notifications through the notification service
 	if err := s.notificationService.SendAlertNotification(ctx, event, methods); err != nil {
-		log.Printf("[AlertService] TriggerAlert: failed to send notifications for alert %s: %v", event.AlertID, err)
+		log.Printf("[ERROR] [AlertService] TriggerAlert: failed to send notifications for alert %s: %v", event.AlertID, err)
 	}
 
 	// 4. Log alert history entry
@@ -588,12 +585,11 @@ func (s *AlertService) TriggerAlert(ctx context.Context, event repository.AlertT
 	}
 
 	// 5. Log it out (since History repo isn't fully implemented per CODEBASE_ISSUES.md)
-	log.Printf("[AlertService] TriggerAlert: ALERT TRIGGERED: [%s] %s", historyEntry.AlertType, historyEntry.Message)
-
+	log.Printf("[INFO] [AlertService] TriggerAlert: ALERT TRIGGERED: [%s] %s", historyEntry.AlertType, historyEntry.Message)
 	// 6. Update the alert's last triggered timestamp
 	err = s.alertRepo.UpdateLastTriggered(ctx, event.AlertID, event.TriggeredAt)
 	if err != nil {
-		log.Printf("[AlertService] TriggerAlert: failed to update last triggered time for alert %s: %v", event.AlertID, err)
+		log.Printf("[ERROR] [AlertService] TriggerAlert: failed to update last triggered time for alert %s: %v", event.AlertID, err)
 	}
 
 	return nil

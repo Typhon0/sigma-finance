@@ -74,7 +74,7 @@ func (s *WatchlistService) FindWithAssets(ctx context.Context, watchlistID strin
 
 // CreateWatchlist creates a new watchlist with validation
 func (s *WatchlistService) CreateWatchlist(ctx context.Context, input CreateWatchlistInput) (*model.Watchlist, error) {
-	log.Printf("[WatchlistService] CreateWatchlist: started user=%s name=%s", input.UserID, input.Name)
+	log.Printf("[INFO] [WatchlistService] CreateWatchlist: started user=%s name=%s", input.UserID, input.Name)
 	// Validate input
 	if err := s.validateCreateWatchlistInput(input); err != nil {
 		return nil, err
@@ -109,10 +109,10 @@ func (s *WatchlistService) CreateWatchlist(ctx context.Context, input CreateWatc
 
 	createdWatchlist, err := s.uow.Watchlist().Create(ctx, &newWatchlist)
 	if err != nil {
-		log.Printf("[WatchlistService] CreateWatchlist: ERROR creation failed user=%s name=%s: %v", input.UserID, input.Name, err)
+		log.Printf("[ERROR] [WatchlistService] CreateWatchlist: ERROR creation failed user=%s name=%s: %v", input.UserID, input.Name, err)
 		return nil, fmt.Errorf("failed to create watchlist: %w", err)
 	}
-	log.Printf("[WatchlistService] CreateWatchlist: SUCCESS id=%s user=%s name=%s", createdWatchlist.ID, input.UserID, input.Name)
+	log.Printf("[INFO] [WatchlistService] CreateWatchlist: SUCCESS id=%s user=%s name=%s", createdWatchlist.ID, input.UserID, input.Name)
 	return createdWatchlist, nil
 }
 
@@ -155,7 +155,7 @@ func (s *WatchlistService) UpdateWatchlist(ctx context.Context, id string, input
 
 // DeleteWatchlist removes a watchlist and all its asset associations
 func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id string) error {
-	log.Printf("[WatchlistService] DeleteWatchlist: started id=%s", id)
+	log.Printf("[INFO] [WatchlistService] DeleteWatchlist: started id=%s", id)
 	// Use Unit of Work to ensure atomicity
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify watchlist exists
@@ -182,16 +182,16 @@ func (s *WatchlistService) DeleteWatchlist(ctx context.Context, id string) error
 		return uow.Watchlist().Delete(ctx, id)
 	})
 	if err != nil {
-		log.Printf("[WatchlistService] DeleteWatchlist: ERROR id=%s: %v", id, err)
+		log.Printf("[ERROR] [WatchlistService] DeleteWatchlist: ERROR id=%s: %v", id, err)
 	} else {
-		log.Printf("[WatchlistService] DeleteWatchlist: SUCCESS id=%s", id)
+		log.Printf("[INFO] [WatchlistService] DeleteWatchlist: SUCCESS id=%s", id)
 	}
 	return err
 }
 
 // AddAssetToWatchlist adds an asset to a watchlist with validation
 func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID, assetID string) error {
-	log.Printf("[WatchlistService] AddAssetToWatchlist: started watchlist=%s asset=%s", watchlistID, assetID)
+	log.Printf("[INFO] [WatchlistService] AddAssetToWatchlist: started watchlist=%s asset=%s", watchlistID, assetID)
 	// Validate inputs
 	if watchlistID == "" {
 		return errors.New("watchlist ID must not be empty")
@@ -222,16 +222,16 @@ func (s *WatchlistService) AddAssetToWatchlist(ctx context.Context, watchlistID,
 		return uow.Watchlist().AddAssetToWatchlist(ctx, watchlistID, assetID)
 	})
 	if err != nil {
-		log.Printf("[WatchlistService] AddAssetToWatchlist: ERROR watchlist=%s asset=%s: %v", watchlistID, assetID, err)
+		log.Printf("[ERROR] [WatchlistService] AddAssetToWatchlist: ERROR watchlist=%s asset=%s: %v", watchlistID, assetID, err)
 	} else {
-		log.Printf("[WatchlistService] AddAssetToWatchlist: SUCCESS watchlist=%s asset=%s", watchlistID, assetID)
+		log.Printf("[INFO] [WatchlistService] AddAssetToWatchlist: SUCCESS watchlist=%s asset=%s", watchlistID, assetID)
 	}
 	return err
 }
 
 // RemoveAssetFromWatchlist removes an asset from a watchlist with validation
 func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchlistID, assetID string) error {
-	log.Printf("[WatchlistService] RemoveAssetFromWatchlist: started watchlist=%s asset=%s", watchlistID, assetID)
+	log.Printf("[INFO] [WatchlistService] RemoveAssetFromWatchlist: started watchlist=%s asset=%s", watchlistID, assetID)
 	// Validate inputs
 	if watchlistID == "" {
 		return errors.New("watchlist ID must not be empty")
@@ -271,9 +271,9 @@ func (s *WatchlistService) RemoveAssetFromWatchlist(ctx context.Context, watchli
 		return uow.Watchlist().RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
 	})
 	if err != nil {
-		log.Printf("[WatchlistService] RemoveAssetFromWatchlist: ERROR watchlist=%s asset=%s: %v", watchlistID, assetID, err)
+		log.Printf("[ERROR] [WatchlistService] RemoveAssetFromWatchlist: ERROR watchlist=%s asset=%s: %v", watchlistID, assetID, err)
 	} else {
-		log.Printf("[WatchlistService] RemoveAssetFromWatchlist: SUCCESS watchlist=%s asset=%s", watchlistID, assetID)
+		log.Printf("[INFO] [WatchlistService] RemoveAssetFromWatchlist: SUCCESS watchlist=%s asset=%s", watchlistID, assetID)
 	}
 	return err
 }

@@ -111,113 +111,149 @@ func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 
 	symbol, err := b.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
-		log.Printf("[Binance.GetCandles] MapSymbol error: %v", err)
+		log.Printf("[ERROR] [Binance.GetCandles] MapSymbol error: %v", err)
 		return nil, err
 	}
-	log.Printf("[Binance.GetCandles] mapped symbol=%s", symbol)
-
+	log.Printf("[INFO] [Binance.GetCandles] mapped symbol=%s", symbol)
 	interval := b.mapInterval(req.Interval)
 	if interval == "" {
-		log.Printf("[Binance.GetCandles] unsupported interval: %s", req.Interval)
+		log.Printf("[ERROR] [Binance.GetCandles] unsupported interval: %s", req.Interval)
 		return nil, fmt.Errorf("unsupported interval: %s", req.Interval)
 	}
-	log.Printf("[Binance.GetCandles] mapped interval=%s", interval)
-
+	log.Printf("[INFO] [Binance.GetCandles] mapped interval=%s", interval)
 	url := fmt.Sprintf("%s/api/v3/klines", b.baseURL)
-	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
-	if err != nil {
-		log.Printf("[Binance.GetCandles] NewRequest error: %v", err)
-		return nil, err
+	maxLimit := req.Limit
+	if maxLimit <= 0 {
+		maxLimit = 5000
 	}
 
-	q := httpReq.URL.Query()
-	q.Set("symbol", symbol)
-	q.Set("interval", interval)
-	q.Set("limit", strconv.Itoa(req.Limit))
+	var candles []model.Candle
+	currentFrom := req.From
 
-	if !req.From.IsZero() {
-		q.Set("startTime", strconv.FormatInt(req.From.UnixMilli(), 10))
-	}
-	if !req.To.IsZero() {
-		q.Set("endTime", strconv.FormatInt(req.To.UnixMilli(), 10))
-	}
-
-	httpReq.URL.RawQuery = q.Encode()
-	log.Printf("[Binance.GetCandles] URL=%s", httpReq.URL.String())
-
-	resp, err := b.client.Do(httpReq)
-	if err != nil {
-		log.Printf("[Binance.GetCandles] HTTP error: %v", err)
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	log.Printf("[Binance.GetCandles] response status=%d", resp.StatusCode)
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
-		b.EnterCooldown(cooldownDuration)
-		return nil, &ProviderError{
-			Provider:          b.ID(),
-			Code:              "RATE_LIMITED",
-			Message:           "Binance rate limit exceeded",
-			HTTPCode:          resp.StatusCode,
-			Retryable:         true,
-			Fallback:          true,
-			RetryAfterSeconds: int(cooldownDuration.Seconds()),
-		}
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[Binance.GetCandles] binance API error: %d", resp.StatusCode)
-		return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
-	}
-
-	var rawKlines [][]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&rawKlines); err != nil {
-		log.Printf("[Binance.GetCandles] decode error: %v", err)
-		return nil, err
-	}
-
-	log.Printf("[Binance.GetCandles] received %d klines from Binance", len(rawKlines))
-
-	candles := make([]model.Candle, 0, len(rawKlines))
-
-	for _, kline := range rawKlines {
-		if len(kline) < 12 {
-			continue
+	for len(candles) < maxLimit {
+		batchLimit := maxLimit - len(candles)
+		if batchLimit > 1000 {
+			batchLimit = 1000
 		}
 
-		timestamp := time.UnixMilli(int64(kline[0].(float64)))
-		open := b.parseFloat(kline[1])
-		high := b.parseFloat(kline[2])
-		low := b.parseFloat(kline[3])
-		close := b.parseFloat(kline[4])
-		volume := b.parseFloat(kline[5])
-
-		// Filter by time range if specified
-		if !req.From.IsZero() && timestamp.Before(req.From) {
-			continue
-		}
-		if !req.To.IsZero() && timestamp.After(req.To) {
-			continue
+		httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			log.Printf("[ERROR] [Binance.GetCandles] NewRequest error: %v", err)
+			if len(candles) > 0 {
+				break
+			}
+			return nil, err
 		}
 
-		candle := model.Candle{
-			Symbol:    req.Symbol,
-			AssetType: req.AssetType,
-			Interval:  req.Interval,
-			Open:      decimal.NewFromFloat(open),
-			High:      decimal.NewFromFloat(high),
-			Low:       decimal.NewFromFloat(low),
-			Close:     decimal.NewFromFloat(close),
-			Volume:    decimal.NewFromFloat(volume),
-			Timestamp: timestamp,
-			Source:    b.ID(),
+		q := httpReq.URL.Query()
+		q.Set("symbol", symbol)
+		q.Set("interval", interval)
+		q.Set("limit", strconv.Itoa(batchLimit))
+
+		if !currentFrom.IsZero() {
+			q.Set("startTime", strconv.FormatInt(currentFrom.UnixMilli(), 10))
+		}
+		if !req.To.IsZero() {
+			q.Set("endTime", strconv.FormatInt(req.To.UnixMilli(), 10))
 		}
 
-		candles = append(candles, candle)
+		httpReq.URL.RawQuery = q.Encode()
+		resp, err := b.client.Do(httpReq)
+		if err != nil {
+			log.Printf("[ERROR] [Binance.GetCandles] HTTP error: %v", err)
+			if len(candles) > 0 {
+				break
+			}
+			return nil, err
+		}
+
+		if resp.StatusCode == http.StatusTooManyRequests {
+			resp.Body.Close()
+			cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
+			b.EnterCooldown(cooldownDuration)
+			if len(candles) > 0 {
+				break
+			}
+			return nil, &ProviderError{
+				Provider:          b.ID(),
+				Code:              "RATE_LIMITED",
+				Message:           "Binance rate limit exceeded",
+				HTTPCode:          resp.StatusCode,
+				Retryable:         true,
+				Fallback:          true,
+				RetryAfterSeconds: int(cooldownDuration.Seconds()),
+			}
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			resp.Body.Close()
+			log.Printf("[ERROR] [Binance.GetCandles] binance API error: %d", resp.StatusCode)
+			if len(candles) > 0 {
+				break
+			}
+			return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
+		}
+
+		var rawKlines [][]interface{}
+		if err := json.NewDecoder(resp.Body).Decode(&rawKlines); err != nil {
+			resp.Body.Close()
+			log.Printf("[ERROR] [Binance.GetCandles] decode error: %v", err)
+			if len(candles) > 0 {
+				break
+			}
+			return nil, err
+		}
+		resp.Body.Close()
+
+		if len(rawKlines) == 0 {
+			break
+		}
+
+		var lastTime time.Time
+		for _, kline := range rawKlines {
+			if len(kline) < 12 {
+				continue
+			}
+
+			timestamp := time.UnixMilli(int64(kline[0].(float64)))
+			lastTime = timestamp
+			open := b.parseFloat(kline[1])
+			high := b.parseFloat(kline[2])
+			low := b.parseFloat(kline[3])
+			close := b.parseFloat(kline[4])
+			volume := b.parseFloat(kline[5])
+
+			// Filter by time range if specified
+			if !req.From.IsZero() && timestamp.Before(req.From) {
+				continue
+			}
+			if !req.To.IsZero() && timestamp.After(req.To) {
+				continue
+			}
+
+			candle := model.Candle{
+				Symbol:    req.Symbol,
+				AssetType: req.AssetType,
+				Interval:  req.Interval,
+				Open:      decimal.NewFromFloat(open),
+				High:      decimal.NewFromFloat(high),
+				Low:       decimal.NewFromFloat(low),
+				Close:     decimal.NewFromFloat(close),
+				Volume:    decimal.NewFromFloat(volume),
+				Timestamp: timestamp,
+				Source:    b.ID(),
+			}
+
+			candles = append(candles, candle)
+		}
+
+		if len(rawKlines) < batchLimit || lastTime.IsZero() || (!req.To.IsZero() && !lastTime.Before(req.To)) {
+			break
+		}
+		currentFrom = lastTime.Add(time.Millisecond)
 	}
+
+	log.Printf("[INFO] [Binance.GetCandles] returning total %d klines from Binance", len(candles))
 
 	return &CandleResponse{
 		Candles:   candles,
@@ -322,31 +358,28 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 		return nil, b.CooldownError(b.ID(), b.Name())
 	}
 
-	log.Printf("[Binance.GetQuote] symbol=%s assetType=%s", req.Symbol, req.AssetType)
-
+	log.Printf("[INFO] [Binance.GetQuote] symbol=%s assetType=%s", req.Symbol, req.AssetType)
 	symbol, err := b.MapSymbol(req.Symbol, req.AssetType)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] MapSymbol error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] MapSymbol error: %v", err)
 		return nil, err
 	}
-	log.Printf("[Binance.GetQuote] mapped symbol=%s", symbol)
-
+	log.Printf("[INFO] [Binance.GetQuote] mapped symbol=%s", symbol)
 	url := fmt.Sprintf("%s/api/v3/ticker/24hr?symbol=%s", b.baseURL, symbol)
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] NewRequest error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] NewRequest error: %v", err)
 		return nil, err
 	}
 
 	resp, err := b.client.Do(httpReq)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] HTTP error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] HTTP error: %v", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
 
-	log.Printf("[Binance.GetQuote] response status=%d", resp.StatusCode)
-
+	log.Printf("[INFO] [Binance.GetQuote] response status=%d", resp.StatusCode)
 	if resp.StatusCode == http.StatusTooManyRequests {
 		cooldownDuration := ParseRetryAfter(resp, DefaultRetryAfterMax, DefaultRetryAfterMax)
 		b.EnterCooldown(cooldownDuration)
@@ -362,31 +395,31 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("[Binance.GetQuote] Binance API error: %d", resp.StatusCode)
+		log.Printf("[ERROR] [Binance.GetQuote] Binance API error: %d", resp.StatusCode)
 		return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
 	}
 
 	var ticker binance24hrTicker
 	if err := json.NewDecoder(resp.Body).Decode(&ticker); err != nil {
-		log.Printf("[Binance.GetQuote] decode error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] decode error: %v", err)
 		return nil, err
 	}
 
 	lastPrice, err := decimal.NewFromString(ticker.LastPrice)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] parse lastPrice error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] parse lastPrice error: %v", err)
 		lastPrice = decimal.Zero
 	}
 
 	bidPrice, err := decimal.NewFromString(ticker.BidPrice)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] parse bidPrice error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] parse bidPrice error: %v", err)
 		bidPrice = decimal.Zero
 	}
 
 	askPrice, err := decimal.NewFromString(ticker.AskPrice)
 	if err != nil {
-		log.Printf("[Binance.GetQuote] parse askPrice error: %v", err)
+		log.Printf("[ERROR] [Binance.GetQuote] parse askPrice error: %v", err)
 		askPrice = decimal.Zero
 	}
 
@@ -394,7 +427,7 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 	if ticker.Volume != "" {
 		fvol, err := strconv.ParseFloat(ticker.Volume, 64)
 		if err != nil {
-			log.Printf("[Binance.GetQuote] parse volume error: %v", err)
+			log.Printf("[ERROR] [Binance.GetQuote] parse volume error: %v", err)
 		} else {
 			volume = int64(fvol)
 		}

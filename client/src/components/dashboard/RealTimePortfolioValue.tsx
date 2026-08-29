@@ -67,15 +67,15 @@ export function RealTimePortfolioValue({
 	};
 
 	const getValueChangeColor = (value: number) => {
-		if (value > 0) return "text-green-600";
-		if (value < 0) return "text-red-600";
-		return "text-gray-600";
+		if (value > 0) return "text-emerald-500";
+		if (value < 0) return "text-rose-500";
+		return "text-muted-foreground";
 	};
 
 	const getValueChangeBackground = (value: number) => {
-		if (value > 0) return "bg-green-50 border-green-200";
-		if (value < 0) return "bg-red-50 border-red-200";
-		return "bg-gray-50 border-gray-200";
+		if (value > 0) return "bg-emerald-500/10 border-emerald-500/20";
+		if (value < 0) return "bg-rose-500/10 border-rose-500/20";
+		return "bg-muted/30 border-border/40";
 	};
 
 	const getTrendIcon = () => {
@@ -139,8 +139,8 @@ export function RealTimePortfolioValue({
 						{/* Total Value */}
 						<div className="space-y-1">
 							<div className="flex items-center justify-between">
-								<span className="text-sm text-gray-600">Total Value</span>
-								<span className="text-xs text-gray-500">{getLastUpdateText()}</span>
+								<span className="text-sm text-muted-foreground">Total Value</span>
+								<span className="text-xs text-muted-foreground">{getLastUpdateText()}</span>
 							</div>
 							<div
 								className={cn(
@@ -155,7 +155,7 @@ export function RealTimePortfolioValue({
 						{/* Gain/Loss */}
 						<div className="flex items-center justify-between">
 							<div className="space-y-1">
-								<span className="text-sm text-gray-600">Gain/Loss</span>
+								<span className="text-sm text-muted-foreground">Gain/Loss</span>
 								<div
 									className={cn(
 										"font-semibold transition-all duration-300",
@@ -181,11 +181,11 @@ export function RealTimePortfolioValue({
 						{showDetailedMetrics && (
 							<div className="grid grid-cols-2 gap-4 pt-2 border-t">
 								<div className="space-y-1">
-									<span className="text-xs text-gray-500">Cost Basis</span>
+									<span className="text-xs text-muted-foreground">Cost Basis</span>
 									<div className="text-sm font-medium">{formatCurrency(currentData.totalCost)}</div>
 								</div>
 								<div className="space-y-1">
-									<span className="text-xs text-gray-500">Return</span>
+									<span className="text-xs text-muted-foreground">Return</span>
 									<div
 										className={cn(
 											"text-sm font-medium",
@@ -201,15 +201,15 @@ export function RealTimePortfolioValue({
 				) : (
 					<div className="flex items-center justify-center py-8">
 						<div className="text-center">
-							<Loader2 className="h-6 w-6 animate-spin text-gray-400 mx-auto mb-2" />
-							<p className="text-sm text-gray-600">Loading portfolio data...</p>
+							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground mx-auto mb-2" />
+							<p className="text-sm text-muted-foreground">Loading portfolio data...</p>
 						</div>
 					</div>
 				)}
 
 				{/* Connection Status */}
 				{!state.isConnected && currentData && (
-					<div className="flex items-center gap-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+					<div className="flex items-center gap-2 p-2 bg-amber-500/10 border border-amber-500/20 rounded text-xs text-amber-500">
 						<WifiOff className="h-3 w-3" />
 						<span>Showing cached data - reconnecting...</span>
 					</div>

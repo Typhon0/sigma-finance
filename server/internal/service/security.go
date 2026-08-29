@@ -95,7 +95,7 @@ func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (Securit
 	if keyStr != "" {
 		keyStr = strings.TrimSpace(keyStr)
 		var decoded []byte
-		log.Printf("[DEBUG] Loading symmetric key, input length: %d", len(keyStr))
+		log.Printf("[INFO] [DEBUG] Loading symmetric key, input length: %d", len(keyStr))
 		// Try hex first (most common for AES-256)
 		decoded, err := hex.DecodeString(keyStr)
 		if err != nil {
@@ -110,7 +110,7 @@ func NewSecurityService(config SecurityConfig, rateLimiter RateLimiter) (Securit
 				}
 			}
 		}
-		log.Printf("[DEBUG] Decoded key length: %d", len(decoded))
+		log.Printf("[INFO] [DEBUG] Decoded key length: %d", len(decoded))
 		if len(decoded) != 32 {
 			return nil, fmt.Errorf("symmetric key must be 32 bytes after decoding, got %d", len(decoded))
 		}

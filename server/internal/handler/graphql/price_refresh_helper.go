@@ -16,7 +16,7 @@ func (r *mutationResolver) triggerAssetPriceRefresh(asset *model.Asset) {
 
 	assetID, err := uuid.Parse(asset.ID)
 	if err != nil {
-		log.Printf("[graphql] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
+		log.Printf("[WARN] [graphql] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
 		return
 	}
 
@@ -25,7 +25,7 @@ func (r *mutationResolver) triggerAssetPriceRefresh(asset *model.Asset) {
 		defer cancel()
 
 		if _, refreshErr := r.MarketDataService.UpdateAssetPrice(ctx, id); refreshErr != nil {
-			log.Printf("[graphql] async price refresh failed for asset %s: %v", assetName, refreshErr)
+			log.Printf("[ERROR] [graphql] async price refresh failed for asset %s: %v", assetName, refreshErr)
 		}
 	}(assetID, asset.Name)
 }

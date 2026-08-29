@@ -98,15 +98,15 @@ export function AlertNotifications({
 	const getPriorityColor = (type: string) => {
 		switch (type) {
 			case "PRICE":
-				return "text-blue-600 bg-blue-50 border-blue-200";
+				return "text-blue-500 bg-blue-500/10 border-blue-500/20";
 			case "PERCENTAGE_CHANGE":
-				return "text-orange-600 bg-orange-50 border-orange-200";
+				return "text-amber-500 bg-amber-500/10 border-amber-500/20";
 			case "PORTFOLIO_VALUE":
-				return "text-green-600 bg-green-50 border-green-200";
+				return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
 			case "ALLOCATION":
-				return "text-purple-600 bg-purple-50 border-purple-200";
+				return "text-purple-500 bg-purple-500/10 border-purple-500/20";
 			default:
-				return "text-gray-600 bg-gray-50 border-gray-200";
+				return "text-muted-foreground bg-muted/50 border-border/40";
 		}
 	};
 

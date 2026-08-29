@@ -11,8 +11,8 @@ import type React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { formatCurrency, formatPercentage, getPerformanceColorClass } from "@/lib/utils/formatters";
+import { cn, formatCurrency } from "@/lib/utils";
+import { formatPercentage, getPerformanceColorClass } from "@/lib/utils/formatters";
 
 export interface PerformanceMetric {
 	label: string;

@@ -1,5 +1,14 @@
 import { Link } from "@tanstack/react-router";
-import { CloudDownload, Database, Key, NotebookPen, Palette, ScrollText, User } from "lucide-react";
+import {
+	Activity,
+	CloudDownload,
+	Database,
+	Key,
+	NotebookPen,
+	Palette,
+	ScrollText,
+	User,
+} from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
@@ -12,7 +21,8 @@ type SettingsSection =
 	| "finance-database"
 	| "manual-instruments"
 	| "data"
-	| "logs";
+	| "logs"
+	| "metrics";
 
 interface SettingsLayoutProps {
 	children: React.ReactNode;
@@ -73,6 +83,12 @@ const sections: {
 		label: "System Logs",
 		icon: ScrollText,
 		href: "/settings/logs",
+	},
+	{
+		id: "metrics",
+		label: "Background Metrics",
+		icon: Activity,
+		href: "/settings/metrics",
 	},
 ];
 

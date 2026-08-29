@@ -1,115 +1,117 @@
-import { ArrowLeft, Bell, ExternalLink, Star, TrendingDown, TrendingUp, Zap } from "lucide-react";
-import { useMemo, useState } from "react";
-import { AssetDetailChart, type AssetDetailChartPoint } from "@/components/charts/AssetDetailChart";
-import { PageTimeframeSelector, type TimeRange } from "@/components/shared/PageTimeframeSelector";
-import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Bell, ChevronRight, Star, Zap } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { useCurrency } from "@/hooks/use-currency";
+import { resolveTradingViewSymbol } from "@/lib/resolve-trading-view-symbol";
 import { cn } from "@/lib/utils";
+
+// Lazy-load heavy TradingView widgets only when they scroll into view.
+const AdvancedRealTimeChart = lazy(() =>
+	import("@/components/tradingview").then((m) => ({ default: m.AdvancedRealTimeChart })),
+);
+const CompanyProfile = lazy(() =>
+	import("@/components/tradingview").then((m) => ({ default: m.CompanyProfile })),
+);
+const FundamentalData = lazy(() =>
+	import("@/components/tradingview").then((m) => ({ default: m.FundamentalData })),
+);
+const TechnicalAnalysis = lazy(() =>
+	import("@/components/tradingview").then((m) => ({ default: m.TechnicalAnalysis })),
+);
+const Timeline = lazy(() =>
+	import("@/components/tradingview").then((m) => ({ default: m.Timeline })),
+);
+
+// SymbolInfo is lightweight — keep it eager
+import { SymbolInfo } from "@/components/tradingview";
+
+/** Wraps a lazy TradingView widget with intersection observer to defer loading. */
+function LazyWidget({ children, height = 400 }: { children: React.ReactNode; height?: number }) {
+	const ref = useRef<HTMLDivElement>(null);
+	const [visible, setVisible] = useState(false);
+
+	useEffect(() => {
+		const el = ref.current;
+		if (!el) return;
+		const observer = new IntersectionObserver(
+			([entry]) => {
+				if (entry.isIntersecting) {
+					setVisible(true);
+					observer.disconnect();
+				}
+			},
+			{ rootMargin: "200px" }, // preload 200px before visible
+		);
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, []);
+
+	return (
+		<div ref={ref} style={{ minHeight: height }}>
+			{visible ? (
+				<Suspense
+					fallback={
+						<div
+							className="flex items-center justify-center bg-muted/20 rounded-lg border border-border/30"
+							style={{ height }}
+						>
+							<div className="flex flex-col items-center gap-3">
+								<div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+								<p className="text-xs text-muted-foreground">Loading widget…</p>
+							</div>
+						</div>
+					}
+				>
+					{children}
+				</Suspense>
+			) : (
+				<div
+					className="flex items-center justify-center bg-muted/10 rounded-lg border border-border/20"
+					style={{ height }}
+				/>
+			)}
+		</div>
+	);
+}
 
 interface StockDetailProps {
 	symbol: string;
 	onBack?: () => void;
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onNavigateToScreener?: (filters: any) => void;
+	isPanel?: boolean;
 }
 
 export function StockDetail({
 	symbol,
 	onBack,
 	onNavigateToScreener: _onNavigateToScreener,
+	isPanel = false,
 }: StockDetailProps) {
-	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
+	const { resolvedTheme } = useTheme();
 
-	// Mock stock data
-	const stockData = {
-		symbol: symbol,
-		name: "Apple Inc.",
-		exchange: "NASDAQ",
-		price: 192.53,
-		change: 2.37,
-		changePercent: 1.25,
-		open: 190.16,
-		high: 193.24,
-		low: 189.85,
-		close: 192.53,
-		previousClose: 190.16,
-		bid: 192.52,
-		ask: 192.54,
-		bidSize: 800,
-		askSize: 1200,
-		dayRange: { low: 189.85, high: 193.24 },
-		week52Range: { low: 164.08, high: 199.62 },
-		volume: 52340000,
-		avgVolume: 58200000,
-		marketCap: 3000000000000,
-		beta: 1.24,
-		pe: 31.2,
-		eps: 6.17,
-		dividendYield: 0.5,
-		targetPrice: 205.0,
-		sector: "Technology",
-		industry: "Consumer Electronics",
-	};
+	// Resolve the dynamic symbol in the EXCHANGE:SYMBOL format for TradingView widgets
+	const resolvedSymbol = resolveTradingViewSymbol({
+		symbol,
+		assetType: "STOCK",
+	});
 
-	const chartData = useMemo(() => {
-		const days =
-			timeRange === "1D"
-				? 1
-				: timeRange === "5D"
-					? 5
-					: timeRange === "1M"
-						? 30
-						: timeRange === "3M"
-							? 90
-							: timeRange === "6M"
-								? 180
-								: timeRange === "1Y"
-									? 365
-									: 730;
-		const data: AssetDetailChartPoint[] = [];
-		let currentPrice = stockData.price - Math.random() * 20;
-
-		for (let i = days; i >= 0; i--) {
-			const date = new Date();
-			date.setDate(date.getDate() - i);
-			const open = currentPrice;
-			const close = currentPrice + (Math.random() - 0.5) * 5;
-			const high = Math.max(open, close) + Math.random() * 2;
-			const low = Math.min(open, close) - Math.random() * 2;
-			const volume = Math.floor((Math.random() * 0.5 + 0.75) * stockData.avgVolume);
-
-			data.push({
-				date: date.toISOString().split("T")[0],
-				open,
-				close,
-				low,
-				high,
-				volume,
-			});
-			currentPrice = close;
-		}
-		return data;
-	}, [timeRange, stockData.price, stockData.avgVolume]);
-
-	const { formatCurrency, currencySymbol } = useCurrency();
-	const formatLargeNumber = (num: number) =>
-		num >= 1e12
-			? `${currencySymbol}${(num / 1e12).toFixed(2)}T`
-			: num >= 1e9
-				? `${currencySymbol}${(num / 1e9).toFixed(2)}B`
-				: num >= 1e6
-					? `${currencySymbol}${(num / 1e6).toFixed(2)}M`
-					: formatCurrency(num);
+	// Background and container styles matching the application's background colors
+	const containerBg = "bg-background text-foreground";
 
 	return (
-		<div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-			{/* Navigation & Header */}
-			<div className="flex flex-col gap-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						{onBack && (
+		<div className={cn("space-y-6 min-h-screen p-6", containerBg)}>
+			<div
+				className={cn(
+					"space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500",
+					isPanel ? "px-4 pb-4" : "px-6 pb-6",
+				)}
+			>
+				{/* 2. Top Actions & Navigation Row */}
+				<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card/20 p-3 rounded-lg border border-border/40 backdrop-blur-sm">
+					<div className="flex items-center gap-3">
+						{!isPanel && onBack && (
 							<Button
 								variant="ghost"
 								size="sm"
@@ -119,150 +121,142 @@ export function StockDetail({
 								<ArrowLeft className="h-4 w-4" />
 							</Button>
 						)}
-						<div className="flex items-baseline gap-3">
-							<h1 className="text-2xl font-bold tracking-tight">{stockData.symbol}</h1>
-							<span className="text-sm text-muted-foreground">{stockData.name}</span>
-							<Badge variant="outline" className="text-[10px] h-5 border-border/50 font-normal">
-								{stockData.exchange}
-							</Badge>
+						<div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
+							<span>Dashboard</span>
+							<ChevronRight className="h-3 w-3" />
+							<span>Stocks</span>
+							<ChevronRight className="h-3 w-3" />
+							<span className="text-foreground font-semibold font-mono">{symbol}</span>
 						</div>
 					</div>
 
-					<div className="flex items-center gap-2">
-						<PageTimeframeSelector
-							value={timeRange}
-							onChange={setTimeRange}
-							ranges={["1D", "5D", "1M", "3M", "YTD", "1Y", "MAX"]}
-							className="mr-2"
-						/>
-						<div className="h-8 w-px bg-border/50 mx-2 hidden sm:block" />
-						<Button size="sm" variant="outline" className="h-8 text-xs">
+					<div className="flex items-center gap-2 self-stretch sm:self-auto justify-end">
+						<Button
+							size="sm"
+							variant="outline"
+							className="h-8 text-xs flex-1 sm:flex-initial"
+							onClick={() => toast.success(`Added ${symbol} to watchlist`)}
+						>
 							<Star className="h-3.5 w-3.5 mr-2" /> Watch
 						</Button>
-						<Button size="sm" variant="outline" className="h-8 text-xs">
+						<Button
+							size="sm"
+							variant="outline"
+							className="h-8 text-xs flex-1 sm:flex-initial"
+							onClick={() => toast.success("Alert created")}
+						>
 							<Bell className="h-3.5 w-3.5 mr-2" /> Alert
 						</Button>
-						<div className="h-4 w-px bg-border/50 mx-1" />
-						<Button size="sm" className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0">
+						<div className="h-4 w-px bg-border/50 mx-1 hidden sm:block" />
+						<Button
+							size="sm"
+							className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 border-0 flex-1 sm:flex-initial"
+						>
 							<Zap className="h-3.5 w-3.5 mr-2" /> Trade
 						</Button>
 					</div>
 				</div>
 
-				{/* Price Hero */}
-				<div className="flex items-end gap-6 pb-4 border-b border-border/40">
-					<div className="flex items-baseline gap-4">
-						<span className="text-4xl font-mono font-bold tracking-tighter text-foreground">
-							{formatCurrency(stockData.price)}
-						</span>
-						<span
-							className={cn(
-								"text-lg font-mono font-medium flex items-center gap-1",
-								stockData.change >= 0 ? "text-emerald-500" : "text-rose-500",
-							)}
-						>
-							{stockData.change >= 0 ? (
-								<TrendingUp className="h-5 w-5" />
-							) : (
-								<TrendingDown className="h-5 w-5" />
-							)}
-							{stockData.change >= 0 ? "+" : ""}
-							{stockData.change.toFixed(2)} ({stockData.changePercent.toFixed(2)}%)
-						</span>
+				{/* 3. Main Widgets Unified Page (reproducing the TradingView demo page layout as one page) */}
+				<div
+					className={cn(
+						"max-w-5xl mx-auto rounded-2xl shadow-md divide-y divide-border/10 space-y-6",
+						containerBg,
+					)}
+				>
+					{" "}
+					{/* Symbol Info Widget — lightweight, keep eager */}
+					<div className="pb-4 border-none">
+						<SymbolInfo symbol={resolvedSymbol} colorTheme={resolvedTheme} autosize isTransparent />
 					</div>
-					<div className="flex gap-6 text-xs text-muted-foreground pb-1.5 font-mono">
-						<div>
-							<span className="opacity-50 mr-2">O</span>
-							{formatCurrency(stockData.open)}
-						</div>
-						<div>
-							<span className="opacity-50 mr-2">H</span>
-							{formatCurrency(stockData.high)}
-						</div>
-						<div>
-							<span className="opacity-50 mr-2">L</span>
-							{formatCurrency(stockData.low)}
-						</div>
-						<div>
-							<span className="opacity-50 mr-2">Vol</span>
-							{(stockData.volume / 1e6).toFixed(2)}M
-						</div>
+					{/* Advanced Chart Widget — lazy loaded */}
+					<div className="pt-4 pb-4">
+						<LazyWidget height={500}>
+							<AdvancedRealTimeChart
+								symbol={resolvedSymbol}
+								theme={resolvedTheme}
+								width="100%"
+								height={500}
+								interval="D"
+								timezone="Etc/UTC"
+								style="1"
+								locale="en"
+								allow_symbol_change={true}
+								calendar={false}
+								backgroundColor={resolvedTheme === "dark" ? "#09090b" : "#ffffff"}
+							/>
+						</LazyWidget>
 					</div>
-				</div>
-			</div>
-
-			<div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-				{/* Main Chart Section */}
-				<div className="lg:col-span-2">
-					<AssetDetailChart
-						data={chartData}
-						symbol={stockData.symbol}
-						height={450}
-						timeRange={timeRange}
-					/>
-				</div>
-
-				{/* Key Stats Sidebar */}
-				<div className="space-y-4">
-					{/* Fundamentals Card */}
-					<Card className="border-border/40 shadow-none bg-card/40">
-						<div className="p-3 border-b border-border/40 bg-muted/5">
-							<h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-								Fundamentals
-							</h3>
+					{/* Company Profile Widget — lazy loaded */}
+					<div className="pt-4 pb-4">
+						<LazyWidget height={390}>
+							<CompanyProfile
+								symbol={resolvedSymbol}
+								colorTheme={resolvedTheme}
+								width="100%"
+								height={390}
+								isTransparent
+							/>
+						</LazyWidget>
+					</div>
+					{/* Fundamental Financials Widget — lazy loaded */}
+					<div className="pt-4 pb-4">
+						<LazyWidget height={490}>
+							<FundamentalData
+								symbol={resolvedSymbol}
+								colorTheme={resolvedTheme}
+								width="100%"
+								height={490}
+								isTransparent
+							/>
+						</LazyWidget>
+					</div>
+					{/* Technical Analysis — lazy loaded */}
+					<div>
+						<LazyWidget height={425}>
+							<TechnicalAnalysis
+								symbol={resolvedSymbol}
+								colorTheme={resolvedTheme}
+								width="100%"
+								height={425}
+								interval="1D"
+								isTransparent
+							/>
+						</LazyWidget>
+					</div>
+					{/* Timeline/News — lazy loaded */}
+					<div>
+						<LazyWidget height={425}>
+							<Timeline
+								feedMode="symbol"
+								symbol={resolvedSymbol}
+								colorTheme={resolvedTheme}
+								width="100%"
+								height={425}
+								isTransparent
+							/>
+						</LazyWidget>
+					</div>
+					{/* Powered by TradingView Attribution (Integrated cleanly at the bottom) */}
+					<div className="pt-6 flex flex-col gap-2 justify-center items-center text-center">
+						<div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+							<svg
+								className="h-5 w-5 fill-blue-500"
+								viewBox="0 0 28 28"
+								xmlns="http://www.w3.org/2000/svg"
+								role="img"
+							>
+								<title>TradingView Logo</title>
+								<path d="M0 0h28v28H0z" fill="none" />
+								<path d="M12.3 8.3c-.3-.3-.8-.3-1.1 0L6.7 12.8c-.3.3-.3.8 0 1.1l4.5 4.5c.3.3.8.3 1.1 0l4.5-4.5c.3-.3.3-.8 0-1.1L12.3 8.3zm0 7.8l-3.3-3.3 3.3-3.3 3.3 3.3-3.3 3.3zM19.1 11.2h4.5v1.6h-4.5v-1.6zm0 4h4.5v1.6h-4.5v-1.6z" />
+							</svg>
+							<span>Powered by TradingView</span>
 						</div>
-						<CardContent className="p-0">
-							<div className="divide-y divide-border/40">
-								{[
-									{
-										l: "Market Cap",
-										v: formatLargeNumber(stockData.marketCap),
-									},
-									{ l: "P/E Ratio", v: stockData.pe.toFixed(2) },
-									{ l: "Beta", v: stockData.beta.toFixed(2) },
-									{
-										l: "Div Yield",
-										v: `${stockData.dividendYield.toFixed(2)}%`,
-									},
-									{ l: "EPS (TTM)", v: `$${stockData.eps}` },
-									{
-										l: "Target Price",
-										v: formatCurrency(stockData.targetPrice),
-									},
-									{
-										l: "52W High",
-										v: formatCurrency(stockData.week52Range.high),
-									},
-									{
-										l: "52W Low",
-										v: formatCurrency(stockData.week52Range.low),
-									},
-								].map((item) => (
-									<div key={item.l} className="flex items-center justify-between p-3 text-xs">
-										<span className="text-muted-foreground">{item.l}</span>
-										<span className="font-mono font-medium">{item.v}</span>
-									</div>
-								))}
-							</div>
-						</CardContent>
-					</Card>
-
-					{/* About / Profile */}
-					<Card className="border-border/40 shadow-none bg-card/40">
-						<div className="p-3 border-b border-border/40 bg-muted/5 flex justify-between items-center">
-							<h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-								Profile
-							</h3>
-							<ExternalLink className="h-3 w-3 text-muted-foreground cursor-pointer hover:text-foreground" />
-						</div>
-						<CardContent className="p-3 text-xs text-muted-foreground leading-relaxed">
-							<p>{stockData.industry}</p>
-							<p className="mt-1">
-								Apple Inc. designs, manufactures, and markets smartphones, personal computers,
-								tablets, wearables, and accessories worldwide.
-							</p>
-						</CardContent>
-					</Card>
+						<p className="text-xs text-muted-foreground max-w-md">
+							Charts, financial data, company profiles, and technical analysis are powered by
+							TradingView’s interactive, real-time widgets.
+						</p>
+					</div>
 				</div>
 			</div>
 		</div>

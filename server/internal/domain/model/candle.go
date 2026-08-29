@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -21,14 +22,14 @@ const (
 )
 
 func NormalizeInterval(s string) string {
-	switch s {
-	case "1min", "1minute", "1minutes":
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "1min", "1minute", "1minutes", "1m":
 		return "1m"
-	case "5min", "5minute", "5minutes":
+	case "5min", "5minute", "5minutes", "5m":
 		return "5m"
-	case "15min", "15minute", "15minutes":
+	case "15min", "15minute", "15minutes", "15m":
 		return "15m"
-	case "30min", "30minute", "30minutes":
+	case "30min", "30minute", "30minutes", "30m":
 		return "30m"
 	case "1hour", "1hr", "1h":
 		return "1h"

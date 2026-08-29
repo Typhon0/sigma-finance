@@ -128,7 +128,8 @@ func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID string) (*
 	return &price, nil
 }
 
-// GetLatestPrices retrieves the most recent prices for multiple assets
+// GetLatestPrices retrieves the most recent prices for multiple assets.
+// Uses DISTINCT ON to avoid correlated subquery issues with partitioned tables.
 func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []string) ([]model.AssetPrice, error) {
 	if len(assetIDs) == 0 {
 		return []model.AssetPrice{}, nil
@@ -138,8 +139,8 @@ func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []string
 	err := r.db.NewSelect().
 		Model(&prices).
 		Where("asset_id IN (?)", bun.In(assetIDs)).
-		Where("timestamp = (SELECT MAX(timestamp) FROM sigma_finance.asset_prices ap2 WHERE ap2.asset_id = asset_price.asset_id)").
-		Order("asset_id, timestamp DESC").
+		Order("asset_id", "timestamp DESC").
+		DistinctOn("asset_id").
 		Scan(ctx)
 
 	return prices, err

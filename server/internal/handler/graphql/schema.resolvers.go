@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
@@ -21,6 +22,7 @@ import (
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.CreateUserInput) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] CreateUser: started")
 	userInput := service.CreateUserInput{
 		Username: input.Username,
 		Email:    input.Email,
@@ -28,6 +30,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.Create
 	}
 	user, err := r.UserService.CreateUser(ctx, userInput)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] CreateUser: failed: %v", err)
 		return nil, err
 	}
 	return mapUserToGQL(*user), nil
@@ -35,6 +38,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.Create
 
 // UpdateUser is the resolver for the updateUser field.
 func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlModel.UpdateUserInput) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] UpdateUser: started")
 	userInput := service.UpdateUserInput{
 		Username: input.Username,
 		Email:    input.Email,
@@ -42,6 +46,7 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlM
 	}
 	user, err := r.UserService.UpdateUser(ctx, id, userInput)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateUser: failed: %v", err)
 		return nil, err
 	}
 	return mapUserToGQL(*user), nil
@@ -49,6 +54,7 @@ func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlM
 
 // UpdateUserDisplayCurrency is the resolver for the updateUserDisplayCurrency field.
 func (r *mutationResolver) UpdateUserDisplayCurrency(ctx context.Context, input gqlModel.UpdateUserDisplayCurrencyInput) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] UpdateUserDisplayCurrency: started")
 	userID, err := getUserIDFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -61,12 +67,14 @@ func (r *mutationResolver) UpdateUserDisplayCurrency(ctx context.Context, input 
 	// Update user's display currency via repository
 	err = r.UOW.User().UpdateDisplayCurrency(ctx, userID, displayCurrency)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateUserDisplayCurrency: update failed: %v", err)
 		return nil, err
 	}
 
 	// Return updated user
 	user, err := r.UserService.GetByID(ctx, userID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateUserDisplayCurrency: user lookup failed: %v", err)
 		return nil, err
 	}
 	return mapUserToGQL(*user), nil
@@ -74,6 +82,7 @@ func (r *mutationResolver) UpdateUserDisplayCurrency(ctx context.Context, input 
 
 // UpdateUserThemePreferences is the resolver for the updateUserThemePreferences field.
 func (r *mutationResolver) UpdateUserThemePreferences(ctx context.Context, input gqlModel.UpdateUserThemePreferencesInput) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] UpdateUserThemePreferences: started")
 	userID, err := getUserIDFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -110,8 +119,10 @@ func (r *mutationResolver) UpdateUserThemePreferences(ctx context.Context, input
 
 // DeleteUser is the resolver for the deleteUser field.
 func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, error) {
+	log.Printf("[INFO] [graphql] DeleteUser: started")
 	err := r.UserService.DeleteUser(ctx, id)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] DeleteUser: failed: %v", err)
 		return "", err
 	}
 	return id, nil
@@ -119,6 +130,7 @@ func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, e
 
 // CreatePortfolio is the resolver for the createPortfolio field.
 func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.CreatePortfolioInput) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] CreatePortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -135,6 +147,7 @@ func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.C
 	}
 	portfolio, err := r.PortfolioService.CreatePortfolio(ctx, portfolioInput)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] CreatePortfolio: failed: %v", err)
 		return nil, err
 	}
 	return mapPortfolioToGQL(*portfolio), nil
@@ -142,6 +155,7 @@ func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.C
 
 // UpdatePortfolio is the resolver for the updatePortfolio field.
 func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input gqlModel.UpdatePortfolioInput) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] UpdatePortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -163,6 +177,7 @@ func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input
 		SortOrder:   sortOrder,
 	})
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdatePortfolio: failed: %v", err)
 		return nil, err
 	}
 	return mapPortfolioToGQL(*portfolio), nil
@@ -170,6 +185,7 @@ func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input
 
 // DeletePortfolio is the resolver for the deletePortfolio field.
 func (r *mutationResolver) DeletePortfolio(ctx context.Context, id string) (string, error) {
+	log.Printf("[INFO] [graphql] DeletePortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return "", err
@@ -181,6 +197,7 @@ func (r *mutationResolver) DeletePortfolio(ctx context.Context, id string) (stri
 
 	err = r.PortfolioService.DeletePortfolio(ctx, id)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] DeletePortfolio: failed: %v", err)
 		return "", err
 	}
 	return id, nil
@@ -198,9 +215,13 @@ func (r *mutationResolver) AddAssetToPortfolio(ctx context.Context, input gqlMod
 
 	pa, err := r.PortfolioService.AddAssetToPortfolio(ctx, input.PortfolioID, input.AssetID, input.Quantity, getFloat64(input.AveragePurchasePrice))
 	if err != nil {
+		log.Printf("[ERROR] [graphql] AddAssetToPortfolio: failed: %v", err)
 		return nil, err
 	}
-	gqlAsset, _ := r.getAssetWithDetails(ctx, pa.AssetID)
+	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, pa.AssetID)
+	if gqlErr != nil {
+		log.Printf("[ERROR] [AddAssetToPortfolio] getAssetWithDetails failed for asset %s: %v", pa.AssetID, gqlErr)
+	}
 	return mapPortfolioAssetToGQLWithAsset(*pa, gqlAsset), nil
 }
 
@@ -216,14 +237,19 @@ func (r *mutationResolver) UpdateAssetInPortfolio(ctx context.Context, input gql
 
 	pa, err := r.PortfolioService.UpdateAssetInPortfolio(ctx, input.PortfolioID, input.AssetID, input.Quantity, getFloat64(input.AveragePurchasePrice))
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateAssetInPortfolio: failed: %v", err)
 		return nil, err
 	}
-	gqlAsset, _ := r.getAssetWithDetails(ctx, pa.AssetID)
+	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, pa.AssetID)
+	if gqlErr != nil {
+		log.Printf("[ERROR] [UpdateAssetInPortfolio] getAssetWithDetails failed for asset %s: %v", pa.AssetID, gqlErr)
+	}
 	return mapPortfolioAssetToGQLWithAsset(*pa, gqlAsset), nil
 }
 
 // RemoveAssetFromPortfolio is the resolver for the removeAssetFromPortfolio field.
 func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string) (string, error) {
+	log.Printf("[INFO] [graphql] RemoveAssetFromPortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return "", err
@@ -234,6 +260,7 @@ func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfol
 
 	err = r.PortfolioService.RemoveAssetFromPortfolio(ctx, portfolioID, assetID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] RemoveAssetFromPortfolio: failed: %v", err)
 		return "", err
 	}
 	return assetID, nil
@@ -241,6 +268,7 @@ func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfol
 
 // TagPortfolio is the resolver for the tagPortfolio field.
 func (r *mutationResolver) TagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] TagPortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -251,10 +279,12 @@ func (r *mutationResolver) TagPortfolio(ctx context.Context, portfolioID string,
 
 	err = r.TagService.TagPortfolio(ctx, portfolioID, tagID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] TagPortfolio: failed: %v", err)
 		return nil, err
 	}
 	p, err := r.PortfolioService.GetByID(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] TagPortfolio: portfolio lookup failed: %v", err)
 		return nil, err
 	}
 	return mapPortfolioToGQL(*p), nil
@@ -262,6 +292,7 @@ func (r *mutationResolver) TagPortfolio(ctx context.Context, portfolioID string,
 
 // UntagPortfolio is the resolver for the untagPortfolio field.
 func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] UntagPortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -272,10 +303,12 @@ func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID strin
 
 	err = r.TagService.UntagPortfolio(ctx, portfolioID, tagID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UntagPortfolio: failed: %v", err)
 		return nil, err
 	}
 	p, err := r.PortfolioService.GetByID(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UntagPortfolio: portfolio lookup failed: %v", err)
 		return nil, err
 	}
 	return mapPortfolioToGQL(*p), nil
@@ -283,6 +316,7 @@ func (r *mutationResolver) UntagPortfolio(ctx context.Context, portfolioID strin
 
 // DuplicatePortfolio is the resolver for the duplicatePortfolio field.
 func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlModel.DuplicatePortfolioInput) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] DuplicatePortfolio: started")
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -305,6 +339,7 @@ func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlMode
 
 // ReorderPortfolios is the resolver for the reorderPortfolios field.
 func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel.ReorderPortfoliosInput) ([]*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] ReorderPortfolios: started")
 	// ReorderPortfolios Input parsing might need loop
 	orders := make([]service.PortfolioOrderInput, len(input.PortfolioOrders))
 	for i, o := range input.PortfolioOrders {
@@ -316,12 +351,14 @@ func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel
 
 	_, err := r.PortfolioService.ReorderPortfolios(ctx, input.UserID, orders)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] ReorderPortfolios: reorder failed: %v", err)
 		return nil, err
 	}
 
 	// Fetch all user portfolios to return updated list
 	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, input.UserID, "sort_order")
 	if err != nil {
+		log.Printf("[ERROR] [graphql] ReorderPortfolios: fetch failed: %v", err)
 		return nil, err
 	}
 
@@ -344,7 +381,10 @@ func (r *mutationResolver) ExportPortfolio(ctx context.Context, input gqlModel.E
 func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.CreateStockInput) (*gqlModel.Stock, error) {
 	var asset *model.Asset
 	var err error
-	userID, _ := getUserIDFromContext(ctx)
+	userID, userIDErr := getUserIDFromContext(ctx)
+	if userIDErr != nil {
+		log.Printf("[ERROR] [CreateStockAsset] getUserIDFromContext failed: %v", userIDErr)
+	}
 	ownerPtr := (*string)(nil)
 	if strings.TrimSpace(userID) != "" {
 		ownerPtr = &userID
@@ -446,9 +486,15 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateStockAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 	// We need to load the stock details for mapping
-	stockDetails, _ := r.UOW.Stock().GetByID(ctx, asset.ID)
+	stockDetails, stockErr := r.UOW.Stock().GetByID(ctx, asset.ID)
+	if stockErr != nil {
+		log.Printf("[ERROR] [CreateStockAsset] Stock.GetByID failed for asset %s: %v", asset.ID, stockErr)
+	}
 
 	result := mapStockToGQL(*asset, stockDetails, tags, nil, nil, nil)
 	// Set fields that come from input but aren't persisted in the assets table
@@ -463,6 +509,7 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 
 // CreateCryptoAsset is the resolver for the createCryptoAsset field.
 func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel.CreateCryptoInput) (*gqlModel.Crypto, error) {
+	log.Printf("[INFO] [graphql] ExportPortfolio: started")
 	var asset *model.Asset
 	var err error
 
@@ -514,8 +561,14 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
-	cryptoDetails, _ := r.UOW.Crypto().GetByID(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateCryptoAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
+	cryptoDetails, cryptoErr := r.UOW.Crypto().GetByID(ctx, asset.ID)
+	if cryptoErr != nil {
+		log.Printf("[ERROR] [CreateCryptoAsset] Crypto.GetByID failed for asset %s: %v", asset.ID, cryptoErr)
+	}
 
 	result := mapCryptoToGQL(*asset, cryptoDetails, tags, nil, nil, nil)
 	// Set fields that come from input but aren't persisted in the assets table
@@ -528,6 +581,7 @@ func (r *mutationResolver) CreateCryptoAsset(ctx context.Context, input gqlModel
 
 // CreateBankAccountAsset is the resolver for the createBankAccountAsset field.
 func (r *mutationResolver) CreateBankAccountAsset(ctx context.Context, input gqlModel.CreateBankAccountInput) (*gqlModel.BankAccount, error) {
+	log.Printf("[INFO] [graphql] CreateBankAccountAsset: started")
 	var asset *model.Asset
 	var err error
 
@@ -559,7 +613,10 @@ func (r *mutationResolver) CreateBankAccountAsset(ctx context.Context, input gql
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateBankAccountAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	result := mapBankAccountToGQL(*asset, tags, nil, nil, nil)
 	// Set fields that come from input but aren't persisted in the assets table
@@ -573,6 +630,7 @@ func (r *mutationResolver) CreateBankAccountAsset(ctx context.Context, input gql
 
 // CreateRealEstateAsset is the resolver for the createRealEstateAsset field.
 func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlModel.CreateRealEstateInput) (*gqlModel.RealEstate, error) {
+	log.Printf("[INFO] [graphql] CreateRealEstateAsset: started")
 	var asset *model.Asset
 	var err error
 
@@ -609,7 +667,10 @@ func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlM
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateRealEstateAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	result := mapRealEstateToGQL(*asset, tags, nil, nil, nil)
 	result.CurrentValue = input.CurrentValue
@@ -621,6 +682,7 @@ func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlM
 
 // CreateLifeInsuranceAsset is the resolver for the createLifeInsuranceAsset field.
 func (r *mutationResolver) CreateLifeInsuranceAsset(ctx context.Context, input gqlModel.CreateLifeInsuranceInput) (*gqlModel.LifeInsurance, error) {
+	log.Printf("[INFO] [graphql] CreateLifeInsuranceAsset: started")
 	var asset *model.Asset
 	var err error
 
@@ -655,7 +717,10 @@ func (r *mutationResolver) CreateLifeInsuranceAsset(ctx context.Context, input g
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateLifeInsuranceAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	result := mapLifeInsuranceToGQL(*asset, tags, nil, nil, nil)
 	result.CurrentValue = input.CurrentValue
@@ -667,6 +732,7 @@ func (r *mutationResolver) CreateLifeInsuranceAsset(ctx context.Context, input g
 
 // CreateWatchAsset is the resolver for the createWatchAsset field.
 func (r *mutationResolver) CreateWatchAsset(ctx context.Context, input gqlModel.CreateWatchInput) (*gqlModel.Watch, error) {
+	log.Printf("[INFO] [graphql] CreateWatchAsset: started")
 	var asset *model.Asset
 	var err error
 
@@ -703,7 +769,10 @@ func (r *mutationResolver) CreateWatchAsset(ctx context.Context, input gqlModel.
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateWatchAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	result := mapWatchToGQL(*asset, tags, nil, nil, nil)
 	result.CurrentValue = input.CurrentValue
@@ -715,6 +784,7 @@ func (r *mutationResolver) CreateWatchAsset(ctx context.Context, input gqlModel.
 
 // CreateLoanAsset is the resolver for the createLoanAsset field.
 func (r *mutationResolver) CreateLoanAsset(ctx context.Context, input gqlModel.CreateLoanInput) (*gqlModel.Loan, error) {
+	log.Printf("[INFO] [graphql] CreateLoanAsset: started")
 	var asset *model.Asset
 	var err error
 
@@ -782,7 +852,10 @@ func (r *mutationResolver) CreateLoanAsset(ctx context.Context, input gqlModel.C
 		return nil, err
 	}
 
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [CreateLoanAsset] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	result := mapLoanToGQL(*asset, tags, nil, nil, nil)
 	result.CurrentValue = input.CurrentValue
@@ -794,8 +867,10 @@ func (r *mutationResolver) CreateLoanAsset(ctx context.Context, input gqlModel.C
 
 // TagAsset is the resolver for the tagAsset field.
 func (r *mutationResolver) TagAsset(ctx context.Context, assetID string, tagID string) (gqlModel.Asset, error) {
+	log.Printf("[INFO] [graphql] TagAsset: started")
 	err := r.TagService.TagAsset(ctx, assetID, tagID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] TagAsset: failed: %v", err)
 		return nil, err
 	}
 	return r.getAssetWithDetails(ctx, assetID)
@@ -803,8 +878,10 @@ func (r *mutationResolver) TagAsset(ctx context.Context, assetID string, tagID s
 
 // UntagAsset is the resolver for the untagAsset field.
 func (r *mutationResolver) UntagAsset(ctx context.Context, assetID string, tagID string) (gqlModel.Asset, error) {
+	log.Printf("[INFO] [graphql] UntagAsset: started")
 	err := r.TagService.UntagAsset(ctx, assetID, tagID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UntagAsset: failed: %v", err)
 		return nil, err
 	}
 	return r.getAssetWithDetails(ctx, assetID)
@@ -812,12 +889,14 @@ func (r *mutationResolver) UntagAsset(ctx context.Context, assetID string, tagID
 
 // CreateWatchlist is the resolver for the createWatchlist field.
 func (r *mutationResolver) CreateWatchlist(ctx context.Context, input gqlModel.CreateWatchlistInput) (*gqlModel.Watchlist, error) {
+	log.Printf("[INFO] [graphql] CreateWatchlist: started")
 	wlInput := service.CreateWatchlistInput{
 		UserID: input.UserID,
 		Name:   input.Name,
 	}
 	wl, err := r.WatchlistService.CreateWatchlist(ctx, wlInput)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] CreateWatchlist: failed: %v", err)
 		return nil, err
 	}
 	return mapWatchlistToGQL(*wl), nil
@@ -825,8 +904,10 @@ func (r *mutationResolver) CreateWatchlist(ctx context.Context, input gqlModel.C
 
 // DeleteWatchlist is the resolver for the deleteWatchlist field.
 func (r *mutationResolver) DeleteWatchlist(ctx context.Context, id string) (string, error) {
+	log.Printf("[INFO] [graphql] DeleteWatchlist: started")
 	err := r.WatchlistService.DeleteWatchlist(ctx, id)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] DeleteWatchlist: failed: %v", err)
 		return "", err
 	}
 	return id, nil
@@ -834,12 +915,15 @@ func (r *mutationResolver) DeleteWatchlist(ctx context.Context, id string) (stri
 
 // AddAssetToWatchlist is the resolver for the addAssetToWatchlist field.
 func (r *mutationResolver) AddAssetToWatchlist(ctx context.Context, watchlistID string, assetID string) (*gqlModel.Watchlist, error) {
+	log.Printf("[INFO] [graphql] AddAssetToWatchlist: started")
 	err := r.WatchlistService.AddAssetToWatchlist(ctx, watchlistID, assetID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] AddAssetToWatchlist: failed: %v", err)
 		return nil, err
 	}
 	wl, err := r.WatchlistService.GetByID(ctx, watchlistID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] AddAssetToWatchlist: watchlist lookup failed: %v", err)
 		return nil, err
 	}
 	return mapWatchlistToGQL(*wl), nil
@@ -847,12 +931,15 @@ func (r *mutationResolver) AddAssetToWatchlist(ctx context.Context, watchlistID 
 
 // RemoveAssetFromWatchlist is the resolver for the removeAssetFromWatchlist field.
 func (r *mutationResolver) RemoveAssetFromWatchlist(ctx context.Context, watchlistID string, assetID string) (*gqlModel.Watchlist, error) {
+	log.Printf("[INFO] [graphql] RemoveAssetFromWatchlist: started")
 	err := r.WatchlistService.RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] RemoveAssetFromWatchlist: failed: %v", err)
 		return nil, err
 	}
 	wl, err := r.WatchlistService.GetByID(ctx, watchlistID)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] RemoveAssetFromWatchlist: watchlist lookup failed: %v", err)
 		return nil, err
 	}
 	return mapWatchlistToGQL(*wl), nil
@@ -860,6 +947,7 @@ func (r *mutationResolver) RemoveAssetFromWatchlist(ctx context.Context, watchli
 
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] User: started")
 	user, err := r.UserService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -872,6 +960,7 @@ func (r *queryResolver) User(ctx context.Context, id string) (*gqlModel.User, er
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) ([]*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] Users: started")
 	opts := []repository.QueryOption{}
 	if filter != nil {
 		if filter.Email != nil {
@@ -907,6 +996,7 @@ func (r *queryResolver) Users(ctx context.Context, filter *gqlModel.UserFilter, 
 
 // Portfolio is the resolver for the portfolio field.
 func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] Portfolio: started")
 	p, err := r.PortfolioService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) || errors.Is(err, service.ErrPortfolioNotFound) {
@@ -934,6 +1024,7 @@ func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Por
 
 // GetPortfoliosWithAnalytics is the resolver for the GetPortfoliosWithAnalytics field.
 func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID string) ([]*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] GetPortfoliosWithAnalytics: started")
 	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, userID, "sort_order")
 	if err != nil {
 		return nil, err
@@ -963,6 +1054,7 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 
 // Portfolios is the resolver for the portfolios field.
 func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) ([]*gqlModel.Portfolio, error) {
+	log.Printf("[INFO] [graphql] Portfolios: started")
 	opts := []repository.QueryOption{}
 	if filter != nil {
 		if filter.UserID != nil {
@@ -1014,6 +1106,7 @@ func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.Portfol
 
 // Asset is the resolver for the asset field.
 func (r *queryResolver) Asset(ctx context.Context, id string) (gqlModel.Asset, error) {
+	log.Printf("[INFO] [graphql] Asset: started")
 	return r.getAssetWithDetails(ctx, id)
 }
 
@@ -1045,15 +1138,27 @@ func (r *queryResolver) Assets(ctx context.Context, filter *gqlModel.AssetFilter
 
 	res := make([]gqlModel.Asset, len(assets))
 	for i, a := range assets {
-		tags, _ := r.TagService.GetAssetTags(ctx, a.ID)
+		tags, tagErr := r.TagService.GetAssetTags(ctx, a.ID)
+		if tagErr != nil {
+			log.Printf("[ERROR] [Assets] TagService.GetAssetTags failed for asset %s: %v", a.ID, tagErr)
+		}
 		if a.Type == model.AssetTypeStock {
-			stockDetails, _ := r.UOW.Stock().GetByID(ctx, a.ID)
+			stockDetails, stockErr := r.UOW.Stock().GetByID(ctx, a.ID)
+			if stockErr != nil {
+				log.Printf("[ERROR] [Assets] Stock.GetByID failed for asset %s: %v", a.ID, stockErr)
+			}
 			res[i] = mapStockToGQL(*a, stockDetails, tags, nil, nil, nil)
 		} else if a.Type == model.AssetTypeCrypto {
-			cryptoDetails, _ := r.UOW.Crypto().GetByID(ctx, a.ID)
+			cryptoDetails, cryptoErr := r.UOW.Crypto().GetByID(ctx, a.ID)
+			if cryptoErr != nil {
+				log.Printf("[ERROR] [Assets] Crypto.GetByID failed for asset %s: %v", a.ID, cryptoErr)
+			}
 			res[i] = mapCryptoToGQL(*a, cryptoDetails, tags, nil, nil, nil)
 		} else if a.Type == model.AssetTypeFund {
-			fundDetails, _ := r.UOW.Fund().GetByID(ctx, a.ID)
+			fundDetails, fundErr := r.UOW.Fund().GetByID(ctx, a.ID)
+			if fundErr != nil {
+				log.Printf("[ERROR] [Assets] Fund.GetByID failed for asset %s: %v", a.ID, fundErr)
+			}
 			res[i] = mapFundToGQL(*a, fundDetails, tags, nil, nil, nil)
 		} else if a.Type == model.AssetTypeBankAccount {
 			res[i] = mapBankAccountToGQL(*a, tags, nil, nil, nil)
@@ -1075,6 +1180,7 @@ func (r *queryResolver) Assets(ctx context.Context, filter *gqlModel.AssetFilter
 
 // AssetTypes is the resolver for the assetTypes field.
 func (r *queryResolver) AssetTypes(ctx context.Context) ([]*gqlModel.AssetType, error) {
+	log.Printf("[INFO] [graphql] Assets: started")
 	types := []model.AssetType{model.AssetTypeStock, model.AssetTypeCrypto, model.AssetTypeBankAccount, model.AssetTypeRealEstate, model.AssetTypeLifeInsurance, model.AssetTypeWatch, model.AssetTypeLoan}
 	res := make([]*gqlModel.AssetType, len(types))
 	for i, t := range types {
@@ -1085,6 +1191,7 @@ func (r *queryResolver) AssetTypes(ctx context.Context) ([]*gqlModel.AssetType, 
 
 // Tag is the resolver for the tag field.
 func (r *queryResolver) Tag(ctx context.Context, id string) (*gqlModel.Tag, error) {
+	log.Printf("[INFO] [graphql] Tag: started")
 	tag, err := r.TagService.GetByID(ctx, id)
 	if err != nil {
 		return nil, err
@@ -1094,6 +1201,7 @@ func (r *queryResolver) Tag(ctx context.Context, id string) (*gqlModel.Tag, erro
 
 // Tags is the resolver for the tags field.
 func (r *queryResolver) Tags(ctx context.Context) ([]*gqlModel.Tag, error) {
+	log.Printf("[INFO] [graphql] Tags: started")
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -1111,6 +1219,7 @@ func (r *queryResolver) Tags(ctx context.Context) ([]*gqlModel.Tag, error) {
 
 // Watchlist is the resolver for the watchlist field.
 func (r *queryResolver) Watchlist(ctx context.Context, id string) (*gqlModel.Watchlist, error) {
+	log.Printf("[INFO] [graphql] Watchlist: started")
 	wl, err := r.WatchlistService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -1123,6 +1232,7 @@ func (r *queryResolver) Watchlist(ctx context.Context, id string) (*gqlModel.Wat
 
 // Watchlists is the resolver for the watchlists field.
 func (r *queryResolver) Watchlists(ctx context.Context, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Watchlist, error) {
+	log.Printf("[INFO] [graphql] Watchlists: started")
 	opts := []repository.QueryOption{}
 	if filter != nil {
 		opts = append(opts, repository.ByColumn("user_id", filter.UserID))
@@ -1150,6 +1260,7 @@ func (r *queryResolver) Watchlists(ctx context.Context, filter *gqlModel.Watchli
 
 // Transaction is the resolver for the transaction field.
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.Transaction, error) {
+	log.Printf("[INFO] [graphql] Transaction: started")
 	t, err := r.TransactionService.GetTransaction(ctx, id)
 	if err != nil {
 		return nil, err
@@ -1163,6 +1274,7 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.T
 
 // Transactions is the resolver for the transactions field.
 func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) ([]*gqlModel.Transaction, error) {
+	log.Printf("[INFO] [graphql] Transactions: started")
 	serviceFilter := service.TransactionFilter{}
 	if filter != nil {
 		serviceFilter.UserID = filter.UserID
@@ -1223,7 +1335,7 @@ type queryResolver struct{ *Resolver }
 
 	assetID, err := uuid.Parse(asset.ID)
 	if err != nil {
-		log.Printf("[graphql] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
+		log.Printf("[WARN] [graphql] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
 		return
 	}
 
@@ -1232,7 +1344,7 @@ type queryResolver struct{ *Resolver }
 		defer cancel()
 
 		if _, refreshErr := r.MarketDataService.UpdateAssetPrice(ctx, assetID); refreshErr != nil {
-			log.Printf("[graphql] async price refresh failed for asset %s: %v", assetName, refreshErr)
+			log.Printf("[ERROR] [graphql] async price refresh failed for asset %s: %v", assetName, refreshErr)
 		}
 	}(assetID, asset.Name)
 }

@@ -31,18 +31,16 @@ func DemoMarketDataAssetPriceFeatures() {
 
 	// Set price in cache
 	cache.Set(assetUUID, priceData, 5*time.Minute)
-	log.Printf("✓ Cached price for asset %s: $%.2f", assetUUID.String()[:8], priceData.Price.InexactFloat64())
-
+	log.Printf("[INFO] ✓ Cached price for asset %s: $%.2f", assetUUID.String()[:8], priceData.Price.InexactFloat64())
 	// Get price from cache
 	cached := cache.Get(assetUUID)
 	if cached != nil {
-		log.Printf("✓ Retrieved cached price: $%.2f (Source: %s)", cached.Price.InexactFloat64(), cached.Source)
+		log.Printf("[INFO] ✓ Retrieved cached price: $%.2f (Source: %s)", cached.Price.InexactFloat64(), cached.Source)
 	}
 
 	// Get cache stats
 	stats := cache.GetStats()
-	log.Printf("✓ Cache stats: %d entries, avg age: %v", stats.TotalEntries, stats.AvgAge)
-
+	log.Printf("[INFO] ✓ Cache stats: %d entries, avg age: %v", stats.TotalEntries, stats.AvgAge)
 	// 2. Demonstrate price validation
 	log.Println("\n2. Price Validation Demo:")
 	service := &marketDataService{}
@@ -57,9 +55,9 @@ func DemoMarketDataAssetPriceFeatures() {
 	}
 
 	if err := service.ValidateAssetPriceData(ctx, validPrice); err == nil {
-		log.Printf("✓ Valid price data passed validation")
+		log.Printf("[INFO] ✓ Valid price data passed validation")
 	} else {
-		log.Printf("✗ Validation failed: %v", err)
+		log.Printf("[ERROR] ✗ Validation failed: %v", err)
 	}
 
 	// Invalid price (negative)
@@ -71,7 +69,7 @@ func DemoMarketDataAssetPriceFeatures() {
 	}
 
 	if err := service.ValidateAssetPriceData(ctx, invalidPrice); err != nil {
-		log.Printf("✓ Invalid price correctly rejected: %v", err)
+		log.Printf("[INFO] ✓ Invalid price correctly rejected: %v", err)
 	}
 
 	// 3. Demonstrate staleness detection
@@ -86,7 +84,7 @@ func DemoMarketDataAssetPriceFeatures() {
 
 	for _, assetType := range assetTypes {
 		maxAge := service.getMaxAgeForAssetType(assetType)
-		log.Printf("✓ %s max age: %v", assetType, maxAge)
+		log.Printf("[INFO] ✓ %s max age: %v", assetType, maxAge)
 	}
 
 	// 4. Demonstrate scheduler operations
@@ -99,16 +97,15 @@ func DemoMarketDataAssetPriceFeatures() {
 
 	// Start scheduler
 	if err := service.SchedulePriceUpdates(ctx, 1*time.Second); err == nil {
-		log.Printf("✓ Price update scheduler started")
-
+		log.Printf("[INFO] ✓ Price update scheduler started")
 		// Wait a moment
 		time.Sleep(100 * time.Millisecond)
 
 		// Stop scheduler
 		service.StopPriceUpdates()
-		log.Printf("✓ Price update scheduler stopped")
+		log.Printf("[INFO] ✓ Price update scheduler stopped")
 	} else {
-		log.Printf("✗ Failed to start scheduler: %v", err)
+		log.Printf("[ERROR] ✗ Failed to start scheduler: %v", err)
 	}
 
 	log.Println("\n=== Demo Complete ===")

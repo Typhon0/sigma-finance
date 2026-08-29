@@ -258,19 +258,7 @@ export function calculatePortfolioAllocation(portfolios: Readonly<Portfolio[]>):
 }
 
 /**
- * Utility function to format currency values
- */
-export function formatCurrency(value: number, currency = "USD"): string {
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency,
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	}).format(value);
-}
-
-/**
- * Utility function to format percentage values
+ * Utility function to format percentage values (takes percent in major units, e.g. 25.5 -> "+25.50%")
  */
 export function formatPercentage(value: number, decimals = 2): string {
 	return `${value >= 0 ? "+" : ""}${value.toFixed(decimals)}%`;

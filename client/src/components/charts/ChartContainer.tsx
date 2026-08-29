@@ -11,6 +11,10 @@ interface ChartContainerProps {
 	showHeader?: boolean;
 	fallbackToSimpleChart?: boolean;
 	useLightweightCharts?: boolean;
+	exchange?: string | null;
+	exchangeCode?: string | null;
+	baseCurrency?: string | null;
+	quoteCurrency?: string | null;
 }
 
 const ChartContainer: React.FC<ChartContainerProps> = ({
@@ -22,6 +26,10 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
 	showHeader = true,
 	fallbackToSimpleChart = true,
 	useLightweightCharts = true,
+	exchange,
+	exchangeCode,
+	baseCurrency,
+	quoteCurrency,
 }) => {
 	const chartTitle = title || `${symbol} Chart`;
 
@@ -35,6 +43,10 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
 					fallbackToSimpleChart={fallbackToSimpleChart}
 					useLightweightCharts={useLightweightCharts}
 					height={parseInt(height, 10)}
+					exchange={exchange}
+					exchangeCode={exchangeCode}
+					baseCurrency={baseCurrency}
+					quoteCurrency={quoteCurrency}
 				/>
 			</div>
 		);
@@ -57,6 +69,10 @@ const ChartContainer: React.FC<ChartContainerProps> = ({
 						fallbackToSimpleChart={fallbackToSimpleChart}
 						useLightweightCharts={useLightweightCharts}
 						height={parseInt(height, 10)}
+						exchange={exchange}
+						exchangeCode={exchangeCode}
+						baseCurrency={baseCurrency}
+						quoteCurrency={quoteCurrency}
 					/>
 				</div>
 			</CardContent>

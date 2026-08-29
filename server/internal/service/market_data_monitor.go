@@ -168,14 +168,14 @@ func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, updat
 	// Check for negative prices
 	if update.Price.IsNegative() {
 		source.PriceValidation.NegativePriceCount++
-		log.Printf("Warning: Negative price detected from %s for asset %s: %s", 
+		log.Printf("[WARN] Warning: Negative price detected from %s for asset %s: %s", 
 			update.Source, update.AssetID, update.Price.String())
 	}
 
 	// Check for zero prices
 	if update.Price.IsZero() {
 		source.PriceValidation.ZeroPriceCount++
-		log.Printf("Warning: Zero price detected from %s for asset %s", 
+		log.Printf("[WARN] Warning: Zero price detected from %s for asset %s", 
 			update.Source, update.AssetID)
 	}
 
@@ -183,7 +183,7 @@ func (mdm *MarketDataMonitor) validatePriceData(source *DataSourceMetrics, updat
 	// This would require storing previous prices - simplified for now
 	if update.Price.GreaterThan(decimal.NewFromFloat(1000000)) {
 		source.PriceValidation.OutlierCount++
-		log.Printf("Warning: Potential outlier price from %s for asset %s: %s", 
+		log.Printf("[WARN] Warning: Potential outlier price from %s for asset %s: %s", 
 			update.Source, update.AssetID, update.Price.String())
 	}
 
@@ -378,7 +378,7 @@ func (mdm *MarketDataMonitor) triggerAlert(alertType, sourceName string, data ma
 		},
 	})
 
-	log.Printf("Market Data Alert: %s for source %s - %+v", alertType, sourceName, data)
+	log.Printf("[WARN] Market Data Alert: %s for source %s - %+v", alertType, sourceName, data)
 }
 
 // GetSourceMetrics returns metrics for a specific source

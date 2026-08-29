@@ -3135,18 +3135,34 @@ func (e TransactionOrderField) MarshalJSON() ([]byte, error) {
 type TransactionType string
 
 const (
-	TransactionTypeBuy  TransactionType = "BUY"
-	TransactionTypeSell TransactionType = "SELL"
+	TransactionTypeBuy         TransactionType = "BUY"
+	TransactionTypeSell        TransactionType = "SELL"
+	TransactionTypeDeposit     TransactionType = "DEPOSIT"
+	TransactionTypeWithdrawal  TransactionType = "WITHDRAWAL"
+	TransactionTypeTransferIn  TransactionType = "TRANSFER_IN"
+	TransactionTypeTransferOut TransactionType = "TRANSFER_OUT"
+	TransactionTypeDividend    TransactionType = "DIVIDEND"
+	TransactionTypeInterest    TransactionType = "INTEREST"
+	TransactionTypeFee         TransactionType = "FEE"
+	TransactionTypeAdjustment  TransactionType = "ADJUSTMENT"
 )
 
 var AllTransactionType = []TransactionType{
 	TransactionTypeBuy,
 	TransactionTypeSell,
+	TransactionTypeDeposit,
+	TransactionTypeWithdrawal,
+	TransactionTypeTransferIn,
+	TransactionTypeTransferOut,
+	TransactionTypeDividend,
+	TransactionTypeInterest,
+	TransactionTypeFee,
+	TransactionTypeAdjustment,
 }
 
 func (e TransactionType) IsValid() bool {
 	switch e {
-	case TransactionTypeBuy, TransactionTypeSell:
+	case TransactionTypeBuy, TransactionTypeSell, TransactionTypeDeposit, TransactionTypeWithdrawal, TransactionTypeTransferIn, TransactionTypeTransferOut, TransactionTypeDividend, TransactionTypeInterest, TransactionTypeFee, TransactionTypeAdjustment:
 		return true
 	}
 	return false

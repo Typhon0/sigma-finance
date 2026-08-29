@@ -71,7 +71,7 @@ export function ProShell({ onNavigate, onLogout, children }: ProShellProps) {
 			</header>
 
 			<main className="flex-1 overflow-y-auto p-4 md:p-6 bg-secondary/5 scrollbar-hide">
-				<div className="mx-auto max-w-[1800px] space-y-6 h-full pb-20 md:pl-6">{children}</div>
+				<div className="mx-auto max-w-[1800px] space-y-6 min-h-full pb-20 md:pl-6">{children}</div>
 			</main>
 		</div>
 	);

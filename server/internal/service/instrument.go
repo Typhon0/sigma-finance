@@ -580,12 +580,12 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 
 			parsedAssetID, parseErr := uuid.Parse(assetID)
 			if parseErr != nil {
-				log.Printf("[AddInstrumentToPortfolio] async price refresh skipped for asset %s: invalid uuid: %v", assetID, parseErr)
+				log.Printf("[INFO] [AddInstrumentToPortfolio] async price refresh skipped for asset %s: invalid uuid: %v", assetID, parseErr)
 				return
 			}
 
 			if _, refreshErr := s.marketData.UpdateAssetPrice(updateCtx, parsedAssetID); refreshErr != nil {
-				log.Printf("[AddInstrumentToPortfolio] async price refresh failed for asset %s: %v", assetID, refreshErr)
+				log.Printf("[ERROR] [AddInstrumentToPortfolio] async price refresh failed for asset %s: %v", assetID, refreshErr)
 			}
 		}()
 	}
@@ -596,7 +596,7 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 		}
 		if s.marketData != nil && s.historicalBackfillJobRepo != nil && assetIDStr != "" {
 			if _, enqueueErr := s.enqueueHistoricalBackfillJob(context.Background(), portfolioID, assetIDStr, instrumentID, backfillFrom, userID); enqueueErr != nil {
-				log.Printf("[AddInstrumentToPortfolio] enqueueHistoricalBackfillJob failed for asset %s: %v", assetIDStr, enqueueErr)
+				log.Printf("[ERROR] [AddInstrumentToPortfolio] enqueueHistoricalBackfillJob failed for asset %s: %v", assetIDStr, enqueueErr)
 			}
 		}
 	}
@@ -683,7 +683,7 @@ func (s *instrumentService) processBackfillQueueBatch(maxJobs int) {
 			if errors.Is(err, repository.ErrNotFound) {
 				return
 			}
-			log.Printf("[HistoricalBackfillWorker] claim failed: %v", err)
+			log.Printf("[ERROR] [HistoricalBackfillWorker] claim failed: %v", err)
 			return
 		}
 		if job == nil {
@@ -697,11 +697,11 @@ func (s *instrumentService) requeueStaleBackfillJobs() {
 	staleBefore := time.Now().UTC().Add(-backfillJobStaleRunningThreshold)
 	rows, err := s.historicalBackfillJobRepo.RequeueStaleRunning(context.Background(), staleBefore)
 	if err != nil {
-		log.Printf("[HistoricalBackfillWorker] requeue stale running jobs failed: %v", err)
+		log.Printf("[WARN] [HistoricalBackfillWorker] requeue stale running jobs failed: %v", err)
 		return
 	}
 	if rows > 0 {
-		log.Printf("[HistoricalBackfillWorker] requeued stale running jobs rows=%d", rows)
+		log.Printf("[WARN] [HistoricalBackfillWorker] requeued stale running jobs rows=%d", rows)
 	}
 }
 
@@ -2215,7 +2215,7 @@ func defaultProvidersForInstrumentType(assetType model.InstrumentAssetType) []st
 	case model.InstrumentAssetTypeCrypto:
 		return []string{"BINANCE", "CRYPTOCOMPARE", "TWELVEDATA"}
 	case model.InstrumentAssetTypeStock, model.InstrumentAssetTypeETF, model.InstrumentAssetTypeFund:
-		return []string{"TIINGO", "ALPHAVANTAGE", "TWELVEDATA", "FINNHUB"}
+		return []string{"TIINGO", "ALPHAVANTAGE", "TWELVEDATA", "FINNHUB", "YFINANCE"}
 	case model.InstrumentAssetTypeCurrency:
 		return []string{"ALPHAVANTAGE", "TWELVEDATA"}
 	default:

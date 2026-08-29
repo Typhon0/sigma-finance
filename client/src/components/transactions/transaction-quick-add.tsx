@@ -36,7 +36,7 @@ type ExtendedTransactionType =
 // Legacy alias for backward compatibility
 type _ExtendedTransactionTypeLegacy = GqlTransactionType | "DEPOSIT" | "WITHDRAWAL";
 
-import { formatCurrency } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils";
 
 interface QuickAddTransaction {
 	assetId: string;

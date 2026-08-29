@@ -418,6 +418,14 @@ func (s *packService) runInstall(ctx context.Context, jobID, packID string) erro
 		return s.failJob(ctx, job, err)
 	}
 
+	// Bridge pack-generated instrument IDs to DB instrument IDs.
+	// Dynamic ListCoverage resolution handles this at query time,
+	// but pre-bridging gives faster exact-ID lookups for hot paths.
+	if bridgeErr := s.repo.BridgeCoverage(ctx, manifest.PackID); bridgeErr != nil {
+		// Non-fatal — dynamic resolution will handle it.
+		fmt.Printf("pack install: coverage bridging skipped for %s: %v\n", manifest.PackID, bridgeErr)
+	}
+
 	job.Status = "succeeded"
 	job.ProgressPercent = decimal.NewFromInt(100)
 	job.ImportedRows = 0
@@ -484,6 +492,9 @@ func (s *packService) runRepair(ctx context.Context, jobID, packID string) error
 	}
 	if err := s.repo.ReplaceCoverage(ctx, packID, coverage); err != nil {
 		return s.failJob(ctx, job, err)
+	}
+	if bridgeErr := s.repo.BridgeCoverage(ctx, packID); bridgeErr != nil {
+		fmt.Printf("pack repair: coverage bridging skipped for %s: %v\n", packID, bridgeErr)
 	}
 	finished := time.Now()
 	job.Status = "succeeded"

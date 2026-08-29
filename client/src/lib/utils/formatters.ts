@@ -1,21 +1,3 @@
-import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-export function cn(...inputs: ClassValue[]) {
-	return twMerge(clsx(inputs));
-}
-
-export function formatCurrency(amount: number, currency: string = "USD"): string {
-	const normalizedAmount = Number.isFinite(amount) ? amount : 0;
-
-	return new Intl.NumberFormat("en-US", {
-		style: "currency",
-		currency,
-		minimumFractionDigits: 2,
-		maximumFractionDigits: 2,
-	}).format(normalizedAmount);
-}
-
 export function formatPercentage(percent: number, decimals = 2): string {
 	const normalizedPercent = Number.isFinite(percent) ? percent : 0;
 	const clampedDecimals = Math.max(0, Math.min(6, decimals));

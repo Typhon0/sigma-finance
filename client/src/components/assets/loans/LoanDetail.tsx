@@ -39,13 +39,15 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
+import { cn } from "@/lib/utils";
 
 interface LoanDetailProps {
 	loanId: string;
 	onBack: () => void;
+	isPanel?: boolean;
 }
 
-export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
+export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps) {
 	const { assets, loading } = usePortfolio();
 	const [_timePeriod, _setTimePeriod] = useState("ALL");
 
@@ -386,17 +388,19 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 
 	return (
 		<ScrollArea className="h-full">
-			<div className="p-6 space-y-6">
+			<div className={cn("space-y-6", isPanel ? "p-4" : "p-6")}>
 				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-4">
-						<Button variant="ghost" size="sm" onClick={onBack}>
-							<ArrowLeft className="h-4 w-4 mr-2" />
-							Back
-						</Button>
+						{!isPanel && (
+							<Button variant="ghost" size="sm" onClick={onBack}>
+								<ArrowLeft className="h-4 w-4 mr-2" />
+								Back
+							</Button>
+						)}
 						<div>
 							<div className="flex items-center gap-3">
-								<h1 className="text-3xl">{loan.name}</h1>
+								<h1 className={cn("text-3xl", isPanel && "text-xl font-bold")}>{loan.name}</h1>
 								<Badge variant={getLoanTypeBadgeVariant(loan.type)}>
 									{getLoanTypeLabel(loan.type)}
 								</Badge>
@@ -434,7 +438,12 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 				</div>
 
 				{/* Key Metrics */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+				<div
+					className={cn(
+						"grid gap-4",
+						isPanel ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+					)}
+				>
 					<Card>
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
@@ -510,7 +519,9 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 
 					{/* Overview Tab */}
 					<TabsContent value="overview" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Balance Evolution Chart */}
 							<Card>
 								<CardHeader>
@@ -549,7 +560,9 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 						</div>
 
 						{/* Summary Cards */}
-						<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3")}
+						>
 							<Card>
 								<CardHeader>
 									<CardTitle className="text-sm">Total Paid</CardTitle>
@@ -680,7 +693,9 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 
 					{/* Analytics Tab */}
 					<TabsContent value="analytics" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Interest vs Principal Pie */}
 							<Card>
 								<CardHeader>
@@ -785,7 +800,9 @@ export function LoanDetail({ loanId, onBack }: LoanDetailProps) {
 
 					{/* Details Tab */}
 					<TabsContent value="details" className="space-y-4">
-						<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+						<div
+							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+						>
 							{/* Loan Information */}
 							<Card>
 								<CardHeader>

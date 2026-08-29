@@ -8,6 +8,8 @@
 // You should NOT make any changes in this file as it will be overwritten.
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
+import { createFileRoute } from '@tanstack/react-router'
+
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as MarketDataTestRouteImport } from './routes/market-data-test'
 import { Route as ChartsRouteImport } from './routes/charts'
@@ -51,16 +53,22 @@ import { Route as AppAssetsAccountsRouteImport } from './routes/_app.assets.acco
 import { Route as AppPortfoliosPortfolioIdEditRouteImport } from './routes/_app.portfolios.$portfolioId.edit'
 import { Route as AppAssetsSavingsSavingIdRouteImport } from './routes/_app.assets.savings.$savingId'
 
+const AppSettingsMetricsLazyRouteImport = createFileRoute(
+  '/_app/settings/metrics',
+)()
+
 const MarketDataTestRoute = MarketDataTestRouteImport.update({
   id: '/market-data-test',
   path: '/market-data-test',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/market-data-test.lazy').then((d) => d.Route),
+)
 const ChartsRoute = ChartsRouteImport.update({
   id: '/charts',
   path: '/charts',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/charts.lazy').then((d) => d.Route))
 const AppRoute = AppRouteImport.update({
   id: '/_app',
   getParentRoute: () => rootRouteImport,
@@ -74,22 +82,26 @@ const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   id: '/auth/verify-email',
   path: '/auth/verify-email',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/auth.verify-email.lazy').then((d) => d.Route),
+)
 const AuthResetPasswordRoute = AuthResetPasswordRouteImport.update({
   id: '/auth/reset-password',
   path: '/auth/reset-password',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/auth.reset-password.lazy').then((d) => d.Route),
+)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/auth/register',
   path: '/auth/register',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/auth.register.lazy').then((d) => d.Route))
 const AuthLoginRoute = AuthLoginRouteImport.update({
   id: '/auth/login',
   path: '/auth/login',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/auth.login.lazy').then((d) => d.Route))
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -110,60 +122,91 @@ const AppAssetsRoute = AppAssetsRouteImport.update({
   path: '/assets',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSettingsMetricsLazyRoute = AppSettingsMetricsLazyRouteImport.update({
+  id: '/metrics',
+  path: '/metrics',
+  getParentRoute: () => AppSettingsRoute,
+} as any).lazy(() =>
+  import('./routes/_app.settings.metrics.lazy').then((d) => d.Route),
+)
 const AuthResetPasswordConfirmRoute =
   AuthResetPasswordConfirmRouteImport.update({
     id: '/confirm',
     path: '/confirm',
     getParentRoute: () => AuthResetPasswordRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/auth.reset-password.confirm.lazy').then((d) => d.Route),
+  )
 const AppSettingsMarketDataRoute = AppSettingsMarketDataRouteImport.update({
   id: '/market-data',
   path: '/market-data',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.settings.market-data.lazy').then((d) => d.Route),
+)
 const AppSettingsManualInstrumentsRoute =
   AppSettingsManualInstrumentsRouteImport.update({
     id: '/manual-instruments',
     path: '/manual-instruments',
     getParentRoute: () => AppSettingsRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.settings.manual-instruments.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppSettingsLogsRoute = AppSettingsLogsRouteImport.update({
   id: '/logs',
   path: '/logs',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.settings.logs.lazy').then((d) => d.Route),
+)
 const AppSettingsHistoricalDataJobsRoute =
   AppSettingsHistoricalDataJobsRouteImport.update({
     id: '/historical-data-jobs',
     path: '/historical-data-jobs',
     getParentRoute: () => AppSettingsRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.settings.historical-data-jobs.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppSettingsFinanceDatabaseRoute =
   AppSettingsFinanceDatabaseRouteImport.update({
     id: '/finance-database',
     path: '/finance-database',
     getParentRoute: () => AppSettingsRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.settings.finance-database.lazy').then((d) => d.Route),
+  )
 const AppSettingsDisplayRoute = AppSettingsDisplayRouteImport.update({
   id: '/display',
   path: '/display',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.settings.display.lazy').then((d) => d.Route),
+)
 const AppSettingsDataRoute = AppSettingsDataRouteImport.update({
   id: '/data',
   path: '/data',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.settings.data.lazy').then((d) => d.Route),
+)
 const AppSettingsAccountRoute = AppSettingsAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => AppSettingsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.settings.account.lazy').then((d) => d.Route),
+)
 const AppPortfoliosCreateRoute = AppPortfoliosCreateRouteImport.update({
   id: '/create',
   path: '/create',
   getParentRoute: () => AppPortfoliosRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.portfolios.create.lazy').then((d) => d.Route),
+)
 const AppPortfoliosPortfolioIdRoute =
   AppPortfoliosPortfolioIdRouteImport.update({
     id: '/$portfolioId',
@@ -174,99 +217,141 @@ const AppDashboardWatchlistRoute = AppDashboardWatchlistRouteImport.update({
   id: '/watchlist',
   path: '/watchlist',
   getParentRoute: () => AppDashboardRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.dashboard.watchlist.lazy').then((d) => d.Route),
+)
 const AppDashboardTransactionsRoute =
   AppDashboardTransactionsRouteImport.update({
     id: '/transactions',
     path: '/transactions',
     getParentRoute: () => AppDashboardRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.dashboard.transactions.lazy').then((d) => d.Route),
+  )
 const AppDashboardStockMarketOverviewRoute =
   AppDashboardStockMarketOverviewRouteImport.update({
     id: '/stock-market-overview',
     path: '/stock-market-overview',
     getParentRoute: () => AppDashboardRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.dashboard.stock-market-overview.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppDashboardOverviewRoute = AppDashboardOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
   getParentRoute: () => AppDashboardRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.dashboard.overview.lazy').then((d) => d.Route),
+)
 const AppDashboardMarketHeatmapsRoute =
   AppDashboardMarketHeatmapsRouteImport.update({
     id: '/market-heatmaps',
     path: '/market-heatmaps',
     getParentRoute: () => AppDashboardRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.dashboard.market-heatmaps.lazy').then((d) => d.Route),
+  )
 const AppDashboardMarketCalendarRoute =
   AppDashboardMarketCalendarRouteImport.update({
     id: '/market-calendar',
     path: '/market-calendar',
     getParentRoute: () => AppDashboardRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.dashboard.market-calendar.lazy').then((d) => d.Route),
+  )
 const AppDashboardCryptoMarketOverviewRoute =
   AppDashboardCryptoMarketOverviewRouteImport.update({
     id: '/crypto-market-overview',
     path: '/crypto-market-overview',
     getParentRoute: () => AppDashboardRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.dashboard.crypto-market-overview.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppDashboardAnalyticsRoute = AppDashboardAnalyticsRouteImport.update({
   id: '/analytics',
   path: '/analytics',
   getParentRoute: () => AppDashboardRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.dashboard.analytics.lazy').then((d) => d.Route),
+)
 const AppAssetsStocksRoute = AppAssetsStocksRouteImport.update({
   id: '/stocks',
   path: '/stocks',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.stocks.lazy').then((d) => d.Route),
+)
 const AppAssetsSavingsRoute = AppAssetsSavingsRouteImport.update({
   id: '/savings',
   path: '/savings',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.savings.lazy').then((d) => d.Route),
+)
 const AppAssetsRealEstateRoute = AppAssetsRealEstateRouteImport.update({
   id: '/real-estate',
   path: '/real-estate',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.real-estate.lazy').then((d) => d.Route),
+)
 const AppAssetsLoansRoute = AppAssetsLoansRouteImport.update({
   id: '/loans',
   path: '/loans',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.loans.lazy').then((d) => d.Route),
+)
 const AppAssetsInsuranceRoute = AppAssetsInsuranceRouteImport.update({
   id: '/insurance',
   path: '/insurance',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.insurance.lazy').then((d) => d.Route),
+)
 const AppAssetsCryptoRoute = AppAssetsCryptoRouteImport.update({
   id: '/crypto',
   path: '/crypto',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.crypto.lazy').then((d) => d.Route),
+)
 const AppAssetsCollectiblesRoute = AppAssetsCollectiblesRouteImport.update({
   id: '/collectibles',
   path: '/collectibles',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.collectibles.lazy').then((d) => d.Route),
+)
 const AppAssetsAccountsRoute = AppAssetsAccountsRouteImport.update({
   id: '/accounts',
   path: '/accounts',
   getParentRoute: () => AppAssetsRoute,
-} as any)
+} as any).lazy(() =>
+  import('./routes/_app.assets.accounts.lazy').then((d) => d.Route),
+)
 const AppPortfoliosPortfolioIdEditRoute =
   AppPortfoliosPortfolioIdEditRouteImport.update({
     id: '/edit',
     path: '/edit',
     getParentRoute: () => AppPortfoliosPortfolioIdRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.portfolios.$portfolioId.edit.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 const AppAssetsSavingsSavingIdRoute =
   AppAssetsSavingsSavingIdRouteImport.update({
     id: '/$savingId',
     path: '/$savingId',
     getParentRoute: () => AppAssetsSavingsRoute,
-  } as any)
+  } as any).lazy(() =>
+    import('./routes/_app.assets.savings.$savingId.lazy').then((d) => d.Route),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -307,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
   '/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
@@ -349,6 +435,7 @@ export interface FileRoutesByTo {
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
   '/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
@@ -393,6 +480,7 @@ export interface FileRoutesById {
   '/_app/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/_app/settings/market-data': typeof AppSettingsMarketDataRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
+  '/_app/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/_app/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
   '/_app/portfolios/$portfolioId/edit': typeof AppPortfoliosPortfolioIdEditRoute
 }
@@ -437,6 +525,7 @@ export interface FileRouteTypes {
     | '/settings/manual-instruments'
     | '/settings/market-data'
     | '/auth/reset-password/confirm'
+    | '/settings/metrics'
     | '/assets/savings/$savingId'
     | '/portfolios/$portfolioId/edit'
   fileRoutesByTo: FileRoutesByTo
@@ -479,6 +568,7 @@ export interface FileRouteTypes {
     | '/settings/manual-instruments'
     | '/settings/market-data'
     | '/auth/reset-password/confirm'
+    | '/settings/metrics'
     | '/assets/savings/$savingId'
     | '/portfolios/$portfolioId/edit'
   id:
@@ -522,6 +612,7 @@ export interface FileRouteTypes {
     | '/_app/settings/manual-instruments'
     | '/_app/settings/market-data'
     | '/auth/reset-password/confirm'
+    | '/_app/settings/metrics'
     | '/_app/assets/savings/$savingId'
     | '/_app/portfolios/$portfolioId/edit'
   fileRoutesById: FileRoutesById
@@ -622,6 +713,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/assets'
       preLoaderRoute: typeof AppAssetsRouteImport
       parentRoute: typeof AppRoute
+    }
+    '/_app/settings/metrics': {
+      id: '/_app/settings/metrics'
+      path: '/metrics'
+      fullPath: '/settings/metrics'
+      preLoaderRoute: typeof AppSettingsMetricsLazyRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
     '/auth/reset-password/confirm': {
       id: '/auth/reset-password/confirm'
@@ -929,6 +1027,7 @@ interface AppSettingsRouteChildren {
   AppSettingsLogsRoute: typeof AppSettingsLogsRoute
   AppSettingsManualInstrumentsRoute: typeof AppSettingsManualInstrumentsRoute
   AppSettingsMarketDataRoute: typeof AppSettingsMarketDataRoute
+  AppSettingsMetricsLazyRoute: typeof AppSettingsMetricsLazyRoute
 }
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
@@ -940,6 +1039,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsLogsRoute: AppSettingsLogsRoute,
   AppSettingsManualInstrumentsRoute: AppSettingsManualInstrumentsRoute,
   AppSettingsMarketDataRoute: AppSettingsMarketDataRoute,
+  AppSettingsMetricsLazyRoute: AppSettingsMetricsLazyRoute,
 }
 
 const AppSettingsRouteWithChildren = AppSettingsRoute._addFileChildren(

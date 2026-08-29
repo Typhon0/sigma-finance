@@ -8,6 +8,7 @@ interface SimpleChartProps {
 	symbol: string;
 	assetType: string;
 	height?: number;
+	autoRefresh?: boolean;
 }
 
 interface ChartPoint {
@@ -16,12 +17,18 @@ interface ChartPoint {
 	volume: number;
 }
 
-const SimpleChart: React.FC<SimpleChartProps> = ({ symbol, assetType, height = 400 }) => {
+const SimpleChart: React.FC<SimpleChartProps> = ({
+	symbol,
+	assetType,
+	height = 400,
+	autoRefresh,
+}) => {
+	const resolvedAutoRefresh = autoRefresh ?? assetType === "CRYPTO";
 	const { data, loading, error, currentPrice } = useMarketData({
 		symbol,
 		assetType,
 		interval: "1D",
-		autoRefresh: true,
+		autoRefresh: resolvedAutoRefresh,
 		refreshInterval: 30000,
 	});
 

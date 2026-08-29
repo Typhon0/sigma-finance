@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -65,11 +67,21 @@ type IPortfolioService interface {
 	GetPerformanceVsBenchmark(ctx context.Context, portfolioID string, benchmarkSymbol string) (PerformanceBenchmark, error)
 }
 
+// analyticsCacheEntry holds a cached analytics result with a timestamp.
+type analyticsCacheEntry struct {
+	valuation *PortfolioValuation
+	createdAt  time.Time
+}
+
 // PortfolioService is the concrete implementation of IPortfolioService.
 type PortfolioService struct {
 	uow              repository.IUnitOfWork
 	valuationService IPortfolioValuationService
 	marketData       MarketDataService
+
+	// Short-lived analytics cache to deduplicate concurrent requests.
+	analyticsMu    sync.Mutex
+	analyticsCache map[string]analyticsCacheEntry
 }
 
 // NewPortfolioService is the constructor for PortfolioService.
@@ -87,6 +99,7 @@ func NewPortfolioService(uow repository.IUnitOfWork, valuationService ...IPortfo
 	return &PortfolioService{
 		uow:              uow,
 		valuationService: vs,
+		analyticsCache:   make(map[string]analyticsCacheEntry),
 	}
 }
 
@@ -101,7 +114,7 @@ func (s *PortfolioService) triggerAssetPriceRefresh(asset *model.Asset) {
 
 	assetID, err := uuid.Parse(asset.ID)
 	if err != nil {
-		log.Printf("[PortfolioService] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
+		log.Printf("[WARN] [PortfolioService] skipping async price refresh for asset %s: invalid uuid: %v", asset.ID, err)
 		return
 	}
 
@@ -115,7 +128,7 @@ func (s *PortfolioService) triggerAssetPriceRefresh(asset *model.Asset) {
 		defer cancel()
 
 		if _, refreshErr := s.marketData.UpdateAssetPrice(ctx, assetID); refreshErr != nil {
-			log.Printf("[PortfolioService] async price refresh failed for asset %s (%s): %v", assetName, assetSymbol, refreshErr)
+			log.Printf("[ERROR] [PortfolioService] async price refresh failed for asset %s (%s): %v", assetName, assetSymbol, refreshErr)
 		}
 	}(assetID, assetSymbol, asset.Name)
 }
@@ -320,16 +333,15 @@ func (s *PortfolioService) FindAll(ctx context.Context, opts ...repository.Query
 // CreatePortfolio creates a new portfolio for a user, ensuring the operation is atomic.
 // Returns ErrPortfolioNameExists if a portfolio with the same name already exists for the user.
 func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePortfolioInput) (*model.Portfolio, error) {
-	log.Printf("[PortfolioService] CreatePortfolio: started user=%s name=%s", input.UserID, input.Name)
-
+	log.Printf("[INFO] [PortfolioService] CreatePortfolio: started user=%s name=%s", input.UserID, input.Name)
 	// Input validation
 	if err := validateUserID(input.UserID); err != nil {
-		log.Printf("[PortfolioService] CreatePortfolio: invalid user ID user=%s: %v", input.UserID, err)
+		log.Printf("[WARN] [PortfolioService] CreatePortfolio: invalid user ID user=%s: %v", input.UserID, err)
 		return nil, err
 	}
 
 	if err := validatePortfolioName(input.Name); err != nil {
-		log.Printf("[PortfolioService] CreatePortfolio: invalid name user=%s name=%s: %v", input.UserID, input.Name, err)
+		log.Printf("[WARN] [PortfolioService] CreatePortfolio: invalid name user=%s name=%s: %v", input.UserID, input.Name, err)
 		return nil, err
 	}
 
@@ -377,11 +389,11 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 	})
 
 	if err != nil {
-		log.Printf("[PortfolioService] CreatePortfolio: ERROR: user=%s name=%s: %v", input.UserID, input.Name, err)
+		log.Printf("[ERROR] [PortfolioService] CreatePortfolio: ERROR: user=%s name=%s: %v", input.UserID, input.Name, err)
 		return nil, err
 	}
 
-	log.Printf("[PortfolioService] CreatePortfolio: completed portfolio=%s user=%s name=%s", portfolio.ID, input.UserID, input.Name)
+	log.Printf("[INFO] [PortfolioService] CreatePortfolio: completed portfolio=%s user=%s name=%s", portfolio.ID, input.UserID, input.Name)
 	return portfolio, nil
 }
 
@@ -389,8 +401,7 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 // Returns ErrPortfolioNotFound if the portfolio doesn't exist.
 // Returns ErrPortfolioNameExists if the new name conflicts with another portfolio.
 func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input UpdatePortfolioInput) (*model.Portfolio, error) {
-	log.Printf("[PortfolioService] UpdatePortfolio: started portfolio=%s", id)
-
+	log.Printf("[INFO] [PortfolioService] UpdatePortfolio: started portfolio=%s", id)
 	// Input validation
 	if err := validatePortfolioID(id); err != nil {
 		return nil, err
@@ -419,10 +430,10 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 		existing, err := uow.Portfolio().GetByID(ctx, id)
 		if err != nil {
 			if errors.Is(err, repository.ErrNotFound) {
-				log.Printf("[PortfolioService] UpdatePortfolio: portfolio not found id=%s", id)
+				log.Printf("[WARN] [PortfolioService] UpdatePortfolio: portfolio not found id=%s", id)
 				return ErrPortfolioNotFound
 			}
-			log.Printf("[PortfolioService] UpdatePortfolio: ERROR: retrieve failed id=%s: %v", id, err)
+			log.Printf("[ERROR] [PortfolioService] UpdatePortfolio: ERROR: retrieve failed id=%s: %v", id, err)
 			return fmt.Errorf("failed to retrieve portfolio: %w", err)
 		}
 		portfolioToUpdate = existing
@@ -462,11 +473,11 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 	})
 
 	if err != nil {
-		log.Printf("[PortfolioService] UpdatePortfolio: ERROR: update failed portfolio=%s: %v", id, err)
+		log.Printf("[ERROR] [PortfolioService] UpdatePortfolio: ERROR: update failed portfolio=%s: %v", id, err)
 		return nil, err
 	}
 
-	log.Printf("[PortfolioService] UpdatePortfolio: completed portfolio=%s", id)
+	log.Printf("[INFO] [PortfolioService] UpdatePortfolio: completed portfolio=%s", id)
 	return portfolioToUpdate, nil
 }
 
@@ -474,8 +485,7 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 // Returns ErrPortfolioNotFound if the portfolio doesn't exist.
 // Returns ErrPortfolioHasPositions if the portfolio contains positions (optional check).
 func (s *PortfolioService) DeletePortfolio(ctx context.Context, id string) error {
-	log.Printf("[PortfolioService] DeletePortfolio: started portfolio=%s", id)
-
+	log.Printf("[INFO] [PortfolioService] DeletePortfolio: started portfolio=%s", id)
 	// Input validation
 	if err := validatePortfolioID(id); err != nil {
 		return err
@@ -516,15 +526,14 @@ func (s *PortfolioService) DeletePortfolio(ctx context.Context, id string) error
 			return fmt.Errorf("failed to delete portfolio: %w", err)
 		}
 
-		log.Printf("[PortfolioService] DeletePortfolio: completed portfolio=%s (deleted %d assets)", id, len(portfolioAssets))
+		log.Printf("[INFO] [PortfolioService] DeletePortfolio: completed portfolio=%s (deleted %d assets)", id, len(portfolioAssets))
 		return nil
 	})
 }
 
 // AddAssetToPortfolio handles adding an asset to a portfolio, creating the join table record.
 func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error) {
-	log.Printf("[PortfolioService] AddAssetToPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
-
+	log.Printf("[INFO] [PortfolioService] AddAssetToPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
 	// 1. --- Validation ---
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
@@ -658,7 +667,7 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 		}
 	}
 
-	log.Printf("[PortfolioService] AddAssetToPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
+	log.Printf("[INFO] [PortfolioService] AddAssetToPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return createdPortfolioAsset, nil
 }
 
@@ -885,17 +894,16 @@ func (s *PortfolioService) enqueueHistoricalBackfillJob(portfolioID string, asse
 	}
 	created, err := jobRepo.Create(context.Background(), job)
 	if err != nil || created == nil {
-		log.Printf("[PortfolioService] enqueueHistoricalBackfillJob failed portfolio=%s asset=%s instrument=%s err=%v", portfolioID, assetID, instrumentID, err)
+		log.Printf("[ERROR] [PortfolioService] enqueueHistoricalBackfillJob failed portfolio=%s asset=%s instrument=%s err=%v", portfolioID, assetID, instrumentID, err)
 		return
 	}
 
-	log.Printf("[PortfolioService] queued historical job=%s portfolio=%s asset=%s instrument=%s from=%s to=%s", created.ID, portfolioID, assetID, instrumentID, from.UTC().Format(time.RFC3339), requestedTo.Format(time.RFC3339))
+	log.Printf("[INFO] [PortfolioService] queued historical job=%s portfolio=%s asset=%s instrument=%s from=%s to=%s", created.ID, portfolioID, assetID, instrumentID, from.UTC().Format(time.RFC3339), requestedTo.Format(time.RFC3339))
 }
 
 // UpdateAssetInPortfolio handles updating an asset's quantity and price in a portfolio.
 func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error) {
-	log.Printf("[PortfolioService] UpdateAssetInPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
-
+	log.Printf("[INFO] [PortfolioService] UpdateAssetInPortfolio: started portfolio=%s asset=%s qty=%.4f price=%.2f", portfolioID, assetID, quantity, price)
 	// 1. --- Validation ---
 	if quantity <= 0 {
 		return nil, errors.New("quantity must be positive")
@@ -939,20 +947,19 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 	})
 
 	if err != nil {
-		log.Printf("[PortfolioService] UpdateAssetInPortfolio: ERROR: portfolio=%s asset=%s: %v", portfolioID, assetID, err)
+		log.Printf("[ERROR] [PortfolioService] UpdateAssetInPortfolio: ERROR: portfolio=%s asset=%s: %v", portfolioID, assetID, err)
 		return nil, err
 	}
 
 	s.triggerAssetPriceRefresh(assetForRefresh)
 
-	log.Printf("[PortfolioService] UpdateAssetInPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
+	log.Printf("[INFO] [PortfolioService] UpdateAssetInPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return updatedPortfolioAsset, nil
 }
 
 // RemoveAssetFromPortfolio handles removing an asset from a portfolio.
 func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string) error {
-	log.Printf("[PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s", portfolioID, assetID)
-
+	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s", portfolioID, assetID)
 	// 1. --- Check Existence of Portfolio and Asset ---
 	if _, err := s.uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
 		return fmt.Errorf("portfolio with ID %s not found", portfolioID)
@@ -967,7 +974,7 @@ func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfol
 		return fmt.Errorf("failed to remove asset from portfolio: %w", err)
 	}
 
-	log.Printf("[PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
+	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return nil
 }
 
@@ -1126,7 +1133,7 @@ func (s *PortfolioService) DuplicatePortfolio(ctx context.Context, input Duplica
 			if err != nil {
 				// If asset copying fails, we should still return the created portfolio
 				// but log the error for debugging
-				log.Printf("[PortfolioService] DuplicatePortfolio: warning: failed to copy asset %s to new portfolio: %v", sourceAsset.AssetID, err)
+				log.Printf("[WARN] [PortfolioService] DuplicatePortfolio: warning: failed to copy asset %s to new portfolio: %v", sourceAsset.AssetID, err)
 			}
 		}
 	}
@@ -1225,16 +1232,31 @@ func (s *PortfolioService) GetPortfoliosByUser(ctx context.Context, userID strin
 	return portfolios, nil
 }
 
+// analyticsCacheTTL is the duration a cached analytics result is considered fresh.
+const analyticsCacheTTL = 2 * time.Second
+
 // GetPortfolioAnalytics calculates comprehensive analytics for a portfolio using display currency.
 // It uses PortfolioValuationService to calculate native and display values with proper FX conversion.
+// Results are cached briefly to deduplicate concurrent requests for the same portfolio.
 func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioID string, displayCurrency model.Currency) (*PortfolioValuation, error) {
-	log.Printf("[PortfolioService] GetPortfolioAnalytics: started portfolio=%s currency=%s", portfolioID, displayCurrency)
-
 	// Input validation
 	if err := validatePortfolioID(portfolioID); err != nil {
 		return nil, err
 	}
 
+	// Check short-lived cache to deduplicate concurrent requests.
+	cacheKey := portfolioID + ":" + string(displayCurrency)
+	s.analyticsMu.Lock()
+	if entry, ok := s.analyticsCache[cacheKey]; ok {
+		if time.Since(entry.createdAt) < analyticsCacheTTL {
+			s.analyticsMu.Unlock()
+			return entry.valuation, nil
+		}
+		delete(s.analyticsCache, cacheKey)
+	}
+	s.analyticsMu.Unlock()
+
+	log.Printf("[INFO] [PortfolioService] GetPortfolioAnalytics: started portfolio=%s currency=%s", portfolioID, displayCurrency)
 	// 1. --- Verify Portfolio Exists ---
 	_, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
 	if err != nil {
@@ -1251,9 +1273,8 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 	}
 
 	if len(positions) == 0 {
-		log.Printf("[PortfolioService] GetPortfolioAnalytics: empty portfolio portfolio=%s", portfolioID)
-		// Empty portfolio - return empty valuation
-		return &PortfolioValuation{
+		log.Printf("[INFO] [PortfolioService] GetPortfolioAnalytics: empty portfolio portfolio=%s", portfolioID)
+		emptyVal := &PortfolioValuation{
 			TotalDisplayValue:  0,
 			TotalNativeValue:   0,
 			IsStale:            false,
@@ -1262,18 +1283,33 @@ func (s *PortfolioService) GetPortfolioAnalytics(ctx context.Context, portfolioI
 			PerformanceHistory: []PerformancePoint{},
 			PositionValuations: []PositionValuation{},
 			DisplayCurrency:    displayCurrency,
-		}, nil
+		}
+		s.analyticsMu.Lock()
+		s.analyticsCache[cacheKey] = analyticsCacheEntry{valuation: emptyVal, createdAt: time.Now()}
+		s.analyticsMu.Unlock()
+		return emptyVal, nil
 	}
 
 	// 3. --- Calculate portfolio valuation using PortfolioValuationService ---
 	valuation, err := s.valuationService.CalculatePortfolioValue(ctx, positions, displayCurrency)
 	if err != nil {
-		log.Printf("[PortfolioService] GetPortfolioAnalytics: ERROR: valuation failed portfolio=%s: %v", portfolioID, err)
+		log.Printf("[ERROR] [PortfolioService] GetPortfolioAnalytics: ERROR: valuation failed portfolio=%s: %v", portfolioID, err)
 		return nil, fmt.Errorf("failed to calculate portfolio valuation: %w", err)
 	}
 	valuation.PerformanceHistory = s.generatePerformanceHistory(ctx, portfolioID, float64(valuation.TotalDisplayValue)/100.0)
 
-	log.Printf("[PortfolioService] GetPortfolioAnalytics: completed portfolio=%s positions=%d totalValue=%d fxState=%s", portfolioID, len(positions), valuation.TotalDisplayValue, valuation.FXState)
+	log.Printf("[INFO] [PortfolioService] GetPortfolioAnalytics: completed portfolio=%s positions=%d totalValue=%d fxState=%s", portfolioID, len(positions), valuation.TotalDisplayValue, valuation.FXState)
+	// Cache the result and evict expired entries.
+	now := time.Now()
+	s.analyticsMu.Lock()
+	for k, e := range s.analyticsCache {
+		if now.Sub(e.createdAt) >= analyticsCacheTTL {
+			delete(s.analyticsCache, k)
+		}
+	}
+	s.analyticsCache[cacheKey] = analyticsCacheEntry{valuation: valuation, createdAt: now}
+	s.analyticsMu.Unlock()
+
 	return valuation, nil
 }
 
@@ -1346,9 +1382,16 @@ func (s *PortfolioService) calculateDiversificationScoreFromPositions(ctx contex
 	return math.Max(0, math.Min(100, diversificationScore))
 }
 
-// generatePerformanceHistory fetches actual performance history from snapshots
+// generatePerformanceHistory fetches actual performance history from snapshots.
+// When existing snapshots don't cover the requested range, this function
+// self-heals by calling Performance.CalculateAndSaveHistoricalSnapshots so the
+// UI never sees an empty chart.  Set DISABLE_AUTO_SNAPSHOT_REBUILD=true in the
+// server environment to short-circuit this self-heal (useful when an operator
+// is about to PURGE then rebuild manually and doesn't want the auto-rebuild
+// to clobber their state).
 func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portfolioID string, currentValue float64) []PerformancePoint {
 	now := time.Now()
+	autoSnapshotRebuildDisabled := isAutoSnapshotRebuildDisabled()
 	startDate := now.AddDate(0, 0, -30) // Default window
 
 	transactions, txErr := s.uow.Transaction().FindByPortfolioID(ctx, portfolioID)
@@ -1383,10 +1426,15 @@ func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portf
 
 	history := s.getPortfolioPerformanceHistory(ctx, portfolioID, startDate, now)
 	if !coversRange(history, startDate, now) {
-		if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDate, now); rebuildErr != nil {
-			log.Printf("[generatePerformanceHistory] snapshot rebuild failed portfolio=%s from=%s to=%s err=%v", portfolioID, startDate.Format("2006-01-02"), now.Format("2006-01-02"), rebuildErr)
+		if autoSnapshotRebuildDisabled {
+			log.Printf("[WARN] [generatePerformanceHistory] snapshot coverage incomplete portfolio=%s range=[%s..%s] but DISABLE_AUTO_SNAPSHOT_REBUILD=true; skipping self-heal (returning %d existing points)", portfolioID, startDate.Format("2006-01-02"), now.Format("2006-01-02"), len(history))
 		} else {
-			history = s.getPortfolioPerformanceHistory(ctx, portfolioID, startDate, now)
+			log.Printf("[INFO] [generatePerformanceHistory] auto-rebuild triggered portfolio=%s range=[%s..%s] reason=missing_or_partial_coverage existing_points=%d", portfolioID, startDate.Format("2006-01-02"), now.Format("2006-01-02"), len(history))
+			if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDate, now); rebuildErr != nil {
+				log.Printf("[ERROR] [generatePerformanceHistory] snapshot rebuild failed portfolio=%s from=%s to=%s err=%v", portfolioID, startDate.Format("2006-01-02"), now.Format("2006-01-02"), rebuildErr)
+			} else {
+				history = s.getPortfolioPerformanceHistory(ctx, portfolioID, startDate, now)
+			}
 		}
 	}
 	if len(history) > 0 {
@@ -1499,7 +1547,7 @@ func (s *PortfolioService) getPortfolioPerformanceHistory(ctx context.Context, p
 		Where("snapshot_date <= ?::date", to.Format(time.DateOnly)).
 		OrderExpr("snapshot_date ASC").
 		Scan(ctx, &rows); err != nil {
-		log.Printf("[getPortfolioPerformanceHistory] query failed portfolio=%s from=%s to=%s err=%v", portfolioID, from.Format("2006-01-02"), to.Format("2006-01-02"), err)
+		log.Printf("[ERROR] [getPortfolioPerformanceHistory] query failed portfolio=%s from=%s to=%s err=%v", portfolioID, from.Format("2006-01-02"), to.Format("2006-01-02"), err)
 		return nil
 	}
 	history := make([]PerformancePoint, 0, len(rows))
@@ -1746,6 +1794,15 @@ func extractPurchaseDateFromAssetMetadata(asset *model.Asset) time.Time {
 	return time.Time{}
 }
 
+// isAutoSnapshotRebuildDisabled reports whether the operator has asked the
+// server to skip the snapshot self-heal path in generatePerformanceHistory.
+// Set via env var DISABLE_AUTO_SNAPSHOT_REBUILD=true (case-insensitive).
+// Run a manual PURGE + rebuild under this flag so the auto-rebuild doesn't
+// silently clobber the new state.
+func isAutoSnapshotRebuildDisabled() bool {
+	return strings.EqualFold(strings.TrimSpace(os.Getenv("DISABLE_AUTO_SNAPSHOT_REBUILD")), "true")
+}
+
 func (s *PortfolioService) backfillPortfolioPerformanceSnapshots(portfolioID string, from time.Time) {
 	if strings.TrimSpace(portfolioID) == "" || from.IsZero() {
 		return
@@ -1769,7 +1826,7 @@ func (s *PortfolioService) backfillPortfolioPerformanceSnapshots(portfolioID str
 		}
 
 		if err := s.uow.Performance().UpdatePerformanceSnapshots(ctx, []string{portfolioID}, asOf); err != nil {
-			log.Printf("[PortfolioService] snapshot backfill failed portfolio=%s day=%s err=%v", portfolioID, day.Format("2006-01-02"), err)
+			log.Printf("[ERROR] [PortfolioService] snapshot backfill failed portfolio=%s day=%s err=%v", portfolioID, day.Format("2006-01-02"), err)
 			if ctx.Err() != nil {
 				return
 			}

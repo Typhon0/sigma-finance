@@ -4,31 +4,33 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"sync"
-	"time"
-
 	"sigma_finance/internal/config"
+	"sigma_finance/internal/repository"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // BackgroundProcessor handles background processing for performance calculations
 type BackgroundProcessor struct {
-	config           *config.PerformanceConfig
-	performanceCache *PerformanceCacheService
-	
+	config *config.PerformanceConfig
+	uow    repository.IUnitOfWork
+
 	// Worker pools
 	calculationWorkers *WorkerPool
 	refreshWorkers     *WorkerPool
-	
+
 	// Job queues
 	calculationQueue chan CalculationJob
 	refreshQueue     chan RefreshJob
-	
+
 	// State management
 	isRunning        bool
 	stopCh           chan struct{}
 	wg               sync.WaitGroup
 	mu               sync.RWMutex
-	
+
 	// Metrics
 	processedJobs    int64
 	failedJobs       int64
@@ -79,6 +81,13 @@ type WorkerPool struct {
 	stopCh     chan struct{}
 	wg         sync.WaitGroup
 	processor  JobProcessor
+
+	// droppedJobs counts the Submit() calls that hit a full queue.  Read
+	// via WorkerPool.GetDroppedJobs() and surfaced through
+	// BackgroundProcessor.GetMetrics() so ops can alert on sustained drop
+	// rates.  Atomic because Submit() is called from multiple goroutines
+	// (calculationDispatcher + the future refreshDispatcher).
+	droppedJobs atomic.Int64
 }
 
 // Job interface for background processing
@@ -106,14 +115,20 @@ type JobProcessor interface {
 	ProcessRefresh(ctx context.Context, job RefreshJob) (interface{}, error)
 }
 
-// NewBackgroundProcessor creates a new background processor
+// NewBackgroundProcessor creates a new background processor.
+// Calling without a uow keeps the ticker dormant; only callers that supply a
+// unit-of-work (the production wiring in cmd/app.go) actually drive the
+// per-portfolio refresh path.  The PerformanceCacheService parameter has
+// been removed: the ticker fan-outs through the calculation worker pool and
+// writes straight to the SQL snapshots table - there's nothing to invalidate
+// in the process-local cache from this side.
 func NewBackgroundProcessor(
 	config *config.PerformanceConfig,
-	performanceCache *PerformanceCacheService,
+	uow repository.IUnitOfWork,
 ) *BackgroundProcessor {
 	bp := &BackgroundProcessor{
 		config:           config,
-		performanceCache: performanceCache,
+		uow:              uow,
 		calculationQueue: make(chan CalculationJob, 1000),
 		refreshQueue:     make(chan RefreshJob, 500),
 		stopCh:           make(chan struct{}),
@@ -136,7 +151,7 @@ func (bp *BackgroundProcessor) Start(ctx context.Context) error {
 	}
 
 	bp.isRunning = true
-	log.Printf("Starting background processor with %d calculation workers and %d refresh workers",
+	log.Printf("[INFO] Starting background processor with %d calculation workers and %d refresh workers",
 		bp.calculationWorkers.workers, bp.refreshWorkers.workers)
 
 	// Start worker pools
@@ -168,8 +183,7 @@ func (bp *BackgroundProcessor) Stop() error {
 		return nil
 	}
 
-	log.Printf("Stopping background processor...")
-	
+	log.Printf("[INFO] Stopping background processor...")
 	close(bp.stopCh)
 	bp.isRunning = false
 
@@ -180,7 +194,7 @@ func (bp *BackgroundProcessor) Stop() error {
 	// Wait for all goroutines to finish
 	bp.wg.Wait()
 
-	log.Printf("Background processor stopped")
+	log.Printf("[INFO] Background processor stopped")
 	return nil
 }
 
@@ -240,7 +254,7 @@ func (bp *BackgroundProcessor) calculationDispatcher() {
 		case job := <-bp.calculationQueue:
 			// Check if job has expired
 			if time.Now().After(job.Deadline) {
-				log.Printf("Calculation job %s expired, skipping", job.ID)
+				log.Printf("[WARN] Calculation job %s expired, skipping", job.ID)
 				continue
 			}
 
@@ -304,21 +318,55 @@ func (bp *BackgroundProcessor) periodicTaskScheduler() {
 	}
 }
 
-// schedulePerformanceUpdates schedules performance calculation updates
+// schedulePerformanceUpdates enqueues one CalculationJob per active portfolio
+// so the worker pool can call CalculateAndSaveHistoricalSnapshots for each
+// one.  Callers that don't want this behaviour (operator about to PURGE +
+// rebuild manually) set DISABLE_AUTO_SNAPSHOT_REBUILD=true and the ticker
+// short-circuits.
 func (bp *BackgroundProcessor) schedulePerformanceUpdates() {
-	// This would query for active portfolios and schedule updates
-	// For now, create a sample job
-	job := CalculationJob{
-		ID:          fmt.Sprintf("perf_update_%d", time.Now().Unix()),
-		Type:        PortfolioPerformanceCalc,
-		Priority:    2,
-		CreatedAt:   time.Now(),
-		MaxRetries:  3,
+	if bp.uow == nil {
+		log.Printf("[WARN] [BackgroundProcessor.schedulePerformanceUpdates] skipped: uow not injected")
+		return
 	}
 
-	if err := bp.ScheduleCalculation(job); err != nil {
-		log.Printf("Failed to schedule performance update: %v", err)
+	if isAutoSnapshotRebuildDisabled() {
+		log.Printf("[INFO] [BackgroundProcessor.schedulePerformanceUpdates] skipped: DISABLE_AUTO_SNAPSHOT_REBUILD=true")
+		return
 	}
+
+	// Short query depth so the ticker doesn't hold a connection if the
+	// portfolio table is hot.  We only need IDs.
+	listCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	portfolios, err := bp.uow.Portfolio().FindAllBy(listCtx)
+	if err != nil {
+		log.Printf("[ERROR] [BackgroundProcessor.schedulePerformanceUpdates] find-all portfolios failed: %v", err)
+		return
+	}
+
+	enqueued := 0
+	for _, p := range portfolios {
+		id := strings.TrimSpace(p.ID)
+		if id == "" {
+			continue
+		}
+		job := CalculationJob{
+			ID:          fmt.Sprintf("perf_update_%s_%d", id, time.Now().UnixNano()),
+			Type:        PortfolioPerformanceCalc,
+			PortfolioID: id,
+			Priority:    2,
+			CreatedAt:   time.Now(),
+			MaxRetries:  3,
+		}
+		if scheduleErr := bp.ScheduleCalculation(job); scheduleErr != nil {
+			log.Printf("[INFO] [BackgroundProcessor.schedulePerformanceUpdates] schedule failed portfolio=%s err=%v", id, scheduleErr)
+			continue
+		}
+		enqueued++
+	}
+
+	log.Printf("[INFO] [BackgroundProcessor.schedulePerformanceUpdates] scheduled per-portfolio jobs portfolios_total=%d enqueued=%d", len(portfolios), enqueued)
 }
 
 // scheduleCacheCleanup schedules cache cleanup tasks
@@ -332,7 +380,7 @@ func (bp *BackgroundProcessor) scheduleCacheCleanup() {
 	}
 
 	if err := bp.ScheduleRefresh(job); err != nil {
-		log.Printf("Failed to schedule cache cleanup: %v", err)
+		log.Printf("[INFO] Failed to schedule cache cleanup: %v", err)
 	}
 }
 
@@ -347,7 +395,7 @@ func (bp *BackgroundProcessor) scheduleMarketDataUpdates() {
 	}
 
 	if err := bp.ScheduleCalculation(job); err != nil {
-		log.Printf("Failed to schedule market data update: %v", err)
+		log.Printf("[INFO] Failed to schedule market data update: %v", err)
 	}
 }
 
@@ -387,11 +435,11 @@ func (bp *BackgroundProcessor) logMetrics() {
 	avgProcessingTime := bp.avgProcessingTime
 	bp.mu.RUnlock()
 
-	log.Printf("Background Processor Metrics - Processed: %d, Failed: %d, Avg Time: %v",
+	log.Printf("[INFO] Background Processor Metrics - Processed: %d, Failed: %d, Avg Time: %v",
 		processedJobs, failedJobs, avgProcessingTime)
 
 	// Log queue sizes
-	log.Printf("Queue Sizes - Calculation: %d, Refresh: %d",
+	log.Printf("[INFO] Queue Sizes - Calculation: %d, Refresh: %d",
 		len(bp.calculationQueue), len(bp.refreshQueue))
 }
 
@@ -438,29 +486,64 @@ func (bp *BackgroundProcessor) ProcessRefresh(ctx context.Context, job RefreshJo
 }
 
 // Individual processing methods
+//
+// processPortfolioPerformance is the worker-pool entry point for the
+// PortfolioPerformanceCalc job type.  It used to be a 100ms sleep + fake map;
+// it now invokes the vectorized CalculateAndSaveHistoricalSnapshots SQL
+// against the real IPerformanceRepository.
+//
+// We pass a single-day window (today_00:00..today_23:59:59) so the SQL's
+// generate_series produces one snapshot_date row and the ON CONFLICT clause
+// upserts today's row in one bulk statement instead of looping per-portfolio
+// in Go.  Full-window rebuilds are still possible - just widen the start
+// argument here or invoke the manual tools/rebuild_portfolio_snapshots CLI.
 func (bp *BackgroundProcessor) processPortfolioPerformance(ctx context.Context, job CalculationJob) (interface{}, error) {
-	log.Printf("Processing portfolio performance calculation for job %s", job.ID)
-	
-	// Simulate calculation work
-	time.Sleep(100 * time.Millisecond)
-	
-	// In real implementation, this would:
-	// 1. Fetch portfolio data
-	// 2. Calculate performance metrics
-	// 3. Update cache
-	// 4. Notify subscribers
-	
+	start := time.Now()
+
+	portfolioID := strings.TrimSpace(job.PortfolioID)
+	if portfolioID == "" {
+		log.Printf("[WARN] [BackgroundProcessor.processPortfolioPerformance] skipping job %s: empty PortfolioID", job.ID)
+		return map[string]interface{}{
+			"job_id":        job.ID,
+			"status":        "skipped",
+			"reason":        "empty_portfolio_id",
+			"calculated_at": time.Now(),
+		}, nil
+	}
+
+	if bp.uow == nil || bp.uow.Performance() == nil {
+		return nil, fmt.Errorf("uow.Performance() not wired; cannot refresh portfolio %s", portfolioID)
+	}
+
+	// Use a single-day window (today 00:00..23:59:59 UTC) so the SQL
+	// produces one snapshot_date row and ON CONFLICT DO UPDATE upserts
+	// today's row in place.  This matches the semantics of the old
+	// UpdatePerformanceSnapshots(path) per-tick refresh while staying on the
+	// vectorized SQL function the user requested.
+	now := time.Now().UTC()
+	startDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+	if endDay.After(now) {
+		endDay = now
+	}
+
+	if err := bp.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); err != nil {
+		log.Printf("[ERROR] [BackgroundProcessor.processPortfolioPerformance] CalculateAndSaveHistoricalSnapshots failed portfolio=%s window=[%s..%s] err=%v", portfolioID, startDay.Format("2006-01-02"), endDay.Format("2006-01-02"), err)
+		return nil, err
+	}
+
+	log.Printf("[INFO] [BackgroundProcessor.processPortfolioPerformance] refresh ok portfolio=%s window=[%s..%s] duration=%v", portfolioID, startDay.Format("2006-01-02"), endDay.Format("2006-01-02"), time.Since(start))
 	return map[string]interface{}{
-		"portfolio_id": job.PortfolioID,
-		"total_return": 0.15,
-		"daily_change": 0.02,
+		"portfolio_id":  portfolioID,
+		"start":         startDay,
+		"end":           endDay,
 		"calculated_at": time.Now(),
+		"duration_ms":   time.Since(start).Milliseconds(),
 	}, nil
 }
 
 func (bp *BackgroundProcessor) processAssetAllocation(ctx context.Context, job CalculationJob) (interface{}, error) {
-	log.Printf("Processing asset allocation calculation for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing asset allocation calculation for job %s", job.ID)
 	// Simulate calculation work
 	time.Sleep(50 * time.Millisecond)
 	
@@ -476,8 +559,7 @@ func (bp *BackgroundProcessor) processAssetAllocation(ctx context.Context, job C
 }
 
 func (bp *BackgroundProcessor) processRiskMetrics(ctx context.Context, job CalculationJob) (interface{}, error) {
-	log.Printf("Processing risk metrics calculation for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing risk metrics calculation for job %s", job.ID)
 	// Simulate calculation work
 	time.Sleep(200 * time.Millisecond)
 	
@@ -491,8 +573,7 @@ func (bp *BackgroundProcessor) processRiskMetrics(ctx context.Context, job Calcu
 }
 
 func (bp *BackgroundProcessor) processChartData(ctx context.Context, job CalculationJob) (interface{}, error) {
-	log.Printf("Processing chart data calculation for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing chart data calculation for job %s", job.ID)
 	// Simulate data processing
 	time.Sleep(75 * time.Millisecond)
 	
@@ -505,8 +586,7 @@ func (bp *BackgroundProcessor) processChartData(ctx context.Context, job Calcula
 }
 
 func (bp *BackgroundProcessor) processMarketDataUpdate(ctx context.Context, job CalculationJob) (interface{}, error) {
-	log.Printf("Processing market data update for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing market data update for job %s", job.ID)
 	// Simulate market data fetch and update
 	time.Sleep(300 * time.Millisecond)
 	
@@ -517,8 +597,7 @@ func (bp *BackgroundProcessor) processMarketDataUpdate(ctx context.Context, job 
 }
 
 func (bp *BackgroundProcessor) processCacheCleanup(ctx context.Context, job RefreshJob) (interface{}, error) {
-	log.Printf("Processing cache cleanup for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing cache cleanup for job %s", job.ID)
 	// Simulate cache cleanup
 	time.Sleep(25 * time.Millisecond)
 	
@@ -529,8 +608,7 @@ func (bp *BackgroundProcessor) processCacheCleanup(ctx context.Context, job Refr
 }
 
 func (bp *BackgroundProcessor) processGenericRefresh(ctx context.Context, job RefreshJob) (interface{}, error) {
-	log.Printf("Processing generic refresh for job %s", job.ID)
-	
+	log.Printf("[INFO] Processing generic refresh for job %s", job.ID)
 	// Simulate refresh work
 	time.Sleep(50 * time.Millisecond)
 	

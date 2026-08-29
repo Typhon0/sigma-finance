@@ -1,14 +1,10 @@
-// Export types and interfaces
+// UI components for export/backup workflows
 
-export { CSVExporter } from "./csv-exporter";
-export { DashboardExportIntegration } from "./dashboard-export-integration";
-export { DataBackupRestore } from "./data-backup-restore";
-// Export UI components
-export { ExportDialog } from "./export-dialog";
-export { ExportQuickActions, QuickExportButton } from "./export-quick-actions";
-// Export services
-export { ExportService } from "./export-service";
-export { PDFGenerator } from "./pdf-generator";
+// Shared export services and types live in @/lib/export (the canonical home).
+// Re-exported here so existing `@/components/export` importers keep working.
+export { CSVExporter } from "@/lib/export/csv-exporter";
+export { ExportService } from "@/lib/export/export-service";
+export { PDFGenerator } from "@/lib/export/pdf-generator";
 export type {
 	AuditTrailData,
 	ExportFormat,
@@ -17,4 +13,8 @@ export type {
 	ExportType,
 	PortfolioExportData,
 	TaxReportData,
-} from "./types";
+} from "@/lib/export/types";
+export { DashboardExportIntegration } from "./dashboard-export-integration";
+export { DataBackupRestore } from "./data-backup-restore";
+export { ExportDialog } from "./export-dialog";
+export { ExportQuickActions, QuickExportButton } from "./export-quick-actions";

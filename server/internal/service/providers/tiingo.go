@@ -43,7 +43,7 @@ func NewTiingoProvider() Provider {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			log.Printf("Tiingo circuit breaker: %s -> %s", from, to)
+			log.Printf("[ERROR] Tiingo circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -725,6 +725,11 @@ func (t *TiingoProvider) ValidateCredentials(ctx context.Context, apiKey string)
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return fmt.Errorf("invalid Tiingo API key")
+	}
+
+	// 429 = rate limited; the key itself is valid.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {

@@ -339,7 +339,7 @@ func (s *service) runFullSeed(ctx context.Context) (SyncStats, error) {
 			if _, upsertErr := s.upsertCatalogRecord(ctx, record); upsertErr != nil {
 				stats.Failed++
 				if failureLogCount < maxFailureLogSamples {
-					log.Printf("[catalog-sync] mode=full_seed upsert failed external_id=%s symbol=%s err=%v", record.ExternalID, record.Symbol, upsertErr)
+					log.Printf("[ERROR] [catalog-sync] mode=full_seed upsert failed external_id=%s symbol=%s err=%v", record.ExternalID, record.Symbol, upsertErr)
 					failureLogCount++
 				}
 				continue
@@ -352,7 +352,7 @@ func (s *service) runFullSeed(ctx context.Context) (SyncStats, error) {
 		}
 	}
 	if stats.Failed > failureLogCount {
-		log.Printf("[catalog-sync] mode=full_seed additional failures suppressed=%d", stats.Failed-failureLogCount)
+		log.Printf("[WARN] [catalog-sync] mode=full_seed additional failures suppressed=%d", stats.Failed-failureLogCount)
 	}
 
 	return stats, nil
@@ -429,7 +429,7 @@ func (s *service) runSnapshotImport(ctx context.Context, snapshotPath string, ex
 		if _, upsertErr := s.upsertCatalogRecord(ctx, record); upsertErr != nil {
 			stats.Failed++
 			if failureLogCount < maxFailureLogSamples {
-				log.Printf("[catalog-sync] mode=snapshot_import upsert failed external_id=%s symbol=%s err=%v", record.ExternalID, record.Symbol, upsertErr)
+				log.Printf("[ERROR] [catalog-sync] mode=snapshot_import upsert failed external_id=%s symbol=%s err=%v", record.ExternalID, record.Symbol, upsertErr)
 				failureLogCount++
 			}
 			continue
@@ -437,7 +437,7 @@ func (s *service) runSnapshotImport(ctx context.Context, snapshotPath string, ex
 		stats.Upserted++
 	}
 	if stats.Failed > failureLogCount {
-		log.Printf("[catalog-sync] mode=snapshot_import additional failures suppressed=%d", stats.Failed-failureLogCount)
+		log.Printf("[WARN] [catalog-sync] mode=snapshot_import additional failures suppressed=%d", stats.Failed-failureLogCount)
 	}
 
 	return stats, nil

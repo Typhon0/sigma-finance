@@ -7,7 +7,9 @@ import (
 	"math/big"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -109,6 +111,8 @@ func NewPackCandleStore(repo PackRepository) *PackCandleStore {
 	return &PackCandleStore{repo: repo}
 }
 
+var yearRegex = regexp.MustCompile(`year=(\d{4})`)
+
 func (s *PackCandleStore) GetRange(ctx context.Context, query CandleRangeQuery) ([]model.Candle, error) {
 	if strings.TrimSpace(query.InstrumentID) == "" {
 		return []model.Candle{}, nil
@@ -141,9 +145,25 @@ func (s *PackCandleStore) GetRange(ctx context.Context, query CandleRangeQuery) 
 		if err != nil {
 			return nil, err
 		}
+		// Use the pack-level instrument ID for parquet filtering when the
+		// coverage row bridges a DB instrument to a pack-generated ID.
+		packFilterID := cov.InstrumentID
+		if cov.PackInstrumentID != nil && *cov.PackInstrumentID != "" {
+			packFilterID = *cov.PackInstrumentID
+		}
 		for _, relPath := range paths {
+			if match := yearRegex.FindStringSubmatch(relPath); len(match) > 1 {
+				if fileYear, err := strconv.Atoi(match[1]); err == nil {
+					if !query.From.IsZero() && fileYear < query.From.Year() {
+						continue
+					}
+					if !query.To.IsZero() && fileYear > query.To.Year() {
+						continue
+					}
+				}
+			}
 			reqQuery := query
-			reqQuery.InstrumentID = cov.InstrumentID
+			reqQuery.InstrumentID = packFilterID
 			candles, err := s.readPackFile(pack.FilePath, relPath, reqQuery)
 			if err != nil {
 				return nil, err
@@ -206,13 +226,22 @@ func (s *PackCandleStore) matchingCoverage(ctx context.Context, query CandleCove
 	}
 	out := make([]model.MarketDataPackCoverage, 0, len(rows))
 	for _, row := range rows {
-		if query.Interval != "" && row.Interval != query.Interval {
+		if query.Interval != "" && !strings.EqualFold(string(row.Interval), string(query.Interval)) {
 			continue
 		}
 		if query.QuoteCurrency != "" && !strings.EqualFold(row.QuoteCurrency, query.QuoteCurrency) {
 			continue
 		}
 		out = append(out, row)
+	}
+	// Fallback: match by interval if strict quote currency filtered out all coverage
+	if len(out) == 0 && len(rows) > 0 {
+		for _, row := range rows {
+			if query.Interval != "" && !strings.EqualFold(string(row.Interval), string(query.Interval)) {
+				continue
+			}
+			out = append(out, row)
+		}
 	}
 	return out, nil
 }
@@ -243,13 +272,10 @@ func (s *PackCandleStore) readPackFile(packPath, relPath string, query CandleRan
 
 	out := make([]model.Candle, 0, len(rows))
 	for _, row := range rows {
-		if row.InstrumentID != query.InstrumentID {
+		if query.InstrumentID != "" && row.InstrumentID != query.InstrumentID && (query.Symbol == "" || !strings.EqualFold(row.Symbol, query.Symbol)) {
 			continue
 		}
-		if query.Interval != "" && model.CandleInterval(row.Interval) != query.Interval {
-			continue
-		}
-		if query.QuoteCurrency != "" && !strings.EqualFold(row.QuoteCurrency, query.QuoteCurrency) {
+		if query.Interval != "" && !strings.EqualFold(row.Interval, string(query.Interval)) {
 			continue
 		}
 		if !query.From.IsZero() && row.Timestamp.Before(query.From) {
@@ -261,6 +287,9 @@ func (s *PackCandleStore) readPackFile(packPath, relPath string, query CandleRan
 		candle, err := row.toModel()
 		if err != nil {
 			return nil, err
+		}
+		if query.InstrumentID != "" {
+			candle.InstrumentID = &query.InstrumentID
 		}
 		out = append(out, candle)
 	}
@@ -370,6 +399,15 @@ func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
 	if len(raw) == 0 {
 		return decimal.Zero
 	}
+	if len(raw) == 16 && raw[15] == 0 && raw[0] != 0 {
+		reversed := make([]byte, len(raw))
+		for i := range raw {
+			reversed[len(raw)-1-i] = raw[i]
+		}
+		i := new(big.Int).SetBytes(reversed)
+		return decimal.NewFromBigInt(i, -scale)
+	}
+
 	i := new(big.Int).SetBytes(raw)
 	if raw[0]&0x80 != 0 {
 		max := new(big.Int).Lsh(big.NewInt(1), uint(len(raw))*8)

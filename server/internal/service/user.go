@@ -46,7 +46,7 @@ func (s *UserService) FindAll(ctx context.Context, opts ...repository.QueryOptio
 }
 
 func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*model.User, error) {
-	log.Printf("[UserService] CreateUser: started username=%s email=%s", input.Username, input.Email)
+	log.Printf("[INFO] [UserService] CreateUser: started username=%s email=%s", input.Username, input.Email)
 	if len(input.Username) < 3 {
 		return nil, errors.New("username must be at least 3 characters long")
 	}
@@ -60,18 +60,18 @@ func (s *UserService) CreateUser(ctx context.Context, input CreateUserInput) (*m
 	}
 	createdUser, err := s.uow.User().Create(ctx, &newUser)
 	if err != nil {
-		log.Printf("[UserService] CreateUser: ERROR: creation failed username=%s: %v", input.Username, err)
+		log.Printf("[ERROR] [UserService] CreateUser: ERROR: creation failed username=%s: %v", input.Username, err)
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
-	log.Printf("[UserService] CreateUser: SUCCESS id=%s username=%s", createdUser.ID, input.Username)
+	log.Printf("[INFO] [UserService] CreateUser: SUCCESS id=%s username=%s", createdUser.ID, input.Username)
 	return createdUser, nil
 }
 
 func (s *UserService) UpdateUser(ctx context.Context, id string, input UpdateUserInput) (*model.User, error) {
-	log.Printf("[UserService] UpdateUser: started id=%s", id)
+	log.Printf("[INFO] [UserService] UpdateUser: started id=%s", id)
 	userToUpdate, err := s.uow.User().GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[UserService] UpdateUser: ERROR not found id=%s: %v", id, err)
+		log.Printf("[WARN] [UserService] UpdateUser: ERROR not found id=%s: %v", id, err)
 		return nil, err
 	}
 
@@ -89,20 +89,20 @@ func (s *UserService) UpdateUser(ctx context.Context, id string, input UpdateUse
 
 	err = s.uow.User().Update(ctx, userToUpdate)
 	if err != nil {
-		log.Printf("[UserService] UpdateUser: ERROR update failed id=%s: %v", id, err)
+		log.Printf("[ERROR] [UserService] UpdateUser: ERROR update failed id=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
-	log.Printf("[UserService] UpdateUser: SUCCESS id=%s", id)
+	log.Printf("[INFO] [UserService] UpdateUser: SUCCESS id=%s", id)
 	return userToUpdate, nil
 }
 
 func (s *UserService) DeleteUser(ctx context.Context, id string) error {
-	log.Printf("[UserService] DeleteUser: started id=%s", id)
+	log.Printf("[INFO] [UserService] DeleteUser: started id=%s", id)
 	err := s.uow.User().Delete(ctx, id)
 	if err != nil {
-		log.Printf("[UserService] DeleteUser: ERROR id=%s: %v", id, err)
+		log.Printf("[ERROR] [UserService] DeleteUser: ERROR id=%s: %v", id, err)
 	} else {
-		log.Printf("[UserService] DeleteUser: SUCCESS id=%s", id)
+		log.Printf("[INFO] [UserService] DeleteUser: SUCCESS id=%s", id)
 	}
 	return err
 }

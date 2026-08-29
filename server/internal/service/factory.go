@@ -62,7 +62,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	if cfg != nil && cfg.MarketData.YFinance.Host != "" {
 		client, err := grpcclient.NewMarketDataClient(cfg.MarketData.YFinance.Host, cfg.MarketData.YFinance.Port)
 		if err != nil {
-			log.Printf("[ServiceContainer] WARNING: Failed to create instrument discovery client: %v", err)
+			log.Printf("[WARN] [ServiceContainer] WARNING: Failed to create instrument discovery client: %v", err)
 		} else {
 			discoveryClient = client
 		}
@@ -153,8 +153,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	// Initialize log buffer and capture standard log output
 	logBuffer := NewLogBuffer(10000)
 	logBuffer.CaptureStandardLog()
-	log.Printf("[ServiceContainer] log buffer initialized with capacity 10000")
-
+	log.Printf("[INFO] [ServiceContainer] log buffer initialized with capacity 10000")
 	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
@@ -171,6 +170,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 			uow.Performance(),
 			uow.AssetPrice(),
 			uow.Position(),
+			marketDataService,
 			fxRateService,
 		),
 		Notification: NewNotificationService(uow, emailService, cfg),
@@ -199,7 +199,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	startMarketDataPackAutoInstall(cfg, marketDataPackService)
 	go func() {
 		if err := marketDataPackService.ResumeQueuedLocalPackBuilds(context.Background()); err != nil {
-			log.Printf("[market-data-packs] local build resume failed: %v", err)
+			log.Printf("[ERROR] [market-data-packs] local build resume failed: %v", err)
 		}
 	}()
 
@@ -208,17 +208,17 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		defer cancel()
 
 		if err := ensureFXRatesTable(initCtx, db); err != nil {
-			log.Printf("[ServiceContainer] Failed to ensure FX table: %v", err)
+			log.Printf("[INFO] [ServiceContainer] Failed to ensure FX table: %v", err)
 		}
 
 		fxScheduler := NewFXScheduler(uow, fxRateService, "")
 		if err := fxScheduler.Start(FXSchedulerModeStandard); err != nil {
-			log.Printf("[ServiceContainer] Failed to start FX scheduler: %v", err)
+			log.Printf("[INFO] [ServiceContainer] Failed to start FX scheduler: %v", err)
 		} else {
 			if err := fxScheduler.RefreshNow(initCtx); err != nil {
-				log.Printf("[ServiceContainer] Initial FX refresh failed: %v", err)
+				log.Printf("[ERROR] [ServiceContainer] Initial FX refresh failed: %v", err)
 			} else {
-				log.Printf("[ServiceContainer] Initial FX refresh completed")
+				log.Printf("[INFO] [ServiceContainer] Initial FX refresh completed")
 			}
 		}
 	}()
@@ -240,7 +240,7 @@ func logMarketDataStartupSummary(uow repository.IUnitOfWork, cfg *config.Config)
 
 	creds, err := uow.MarketDataCredential().ListSystemWide(context.Background())
 	if err != nil {
-		log.Printf("[ServiceContainer] market_data_startup scheduler_enabled=%t scheduler_lock_id=%d yfinance_configured=%t system_creds_error=%v", schedulerEnabled, lockID, yfinanceConfigured, err)
+		log.Printf("[INFO] [ServiceContainer] market_data_startup scheduler_enabled=%t scheduler_lock_id=%d yfinance_configured=%t system_creds_error=%v", schedulerEnabled, lockID, yfinanceConfigured, err)
 		return
 	}
 
@@ -248,7 +248,7 @@ func logMarketDataStartupSummary(uow repository.IUnitOfWork, cfg *config.Config)
 	for _, cred := range creds {
 		countsByProvider[cred.Provider]++
 	}
-	log.Printf("[ServiceContainer] market_data_startup scheduler_enabled=%t scheduler_lock_id=%d yfinance_configured=%t system_creds_total=%d system_creds_by_provider=%v", schedulerEnabled, lockID, yfinanceConfigured, len(creds), countsByProvider)
+	log.Printf("[INFO] [ServiceContainer] market_data_startup scheduler_enabled=%t scheduler_lock_id=%d yfinance_configured=%t system_creds_total=%d system_creds_by_provider=%v", schedulerEnabled, lockID, yfinanceConfigured, len(creds), countsByProvider)
 }
 
 func startMarketDataPackAutoInstall(cfg *config.Config, packService marketdatapacks.Service) {
@@ -268,12 +268,12 @@ func startMarketDataPackAutoInstall(cfg *config.Config, packService marketdatapa
 			}
 			if cfg.MarketData.PackAutoInstallBlocking {
 				if _, err := packService.InstallPackBlocking(ctx, packID); err != nil {
-					log.Printf("[market-data-packs] blocking auto-install failed pack=%s err=%v", packID, err)
+					log.Printf("[ERROR] [market-data-packs] blocking auto-install failed pack=%s err=%v", packID, err)
 				}
 				continue
 			}
 			if _, err := packService.InstallPack(ctx, packID); err != nil {
-				log.Printf("[market-data-packs] auto-install enqueue failed pack=%s err=%v", packID, err)
+				log.Printf("[ERROR] [market-data-packs] auto-install enqueue failed pack=%s err=%v", packID, err)
 			}
 		}
 	}
@@ -293,45 +293,45 @@ func startPriceSchedulerWithAdvisoryLock(container *ServiceContainer, db *bun.DB
 	}
 
 	if !schedulerEnabled {
-		log.Printf("[ServiceContainer] market_data_scheduler status=disabled")
+		log.Printf("[INFO] [ServiceContainer] market_data_scheduler status=disabled")
 		return
 	}
 
 	lockCtx := context.Background()
 	lockConn, err := db.Conn(lockCtx)
 	if err != nil {
-		log.Printf("[ServiceContainer] market_data_scheduler status=lock_error lock_id=%d err=%v", lockID, err)
+		log.Printf("[INFO] [ServiceContainer] market_data_scheduler status=lock_error lock_id=%d err=%v", lockID, err)
 		return
 	}
 
 	acquired, err := tryAcquireAdvisoryLock(lockCtx, lockConn, lockID)
 	if err != nil {
 		_ = lockConn.Close()
-		log.Printf("[ServiceContainer] market_data_scheduler status=lock_error lock_id=%d err=%v", lockID, err)
+		log.Printf("[INFO] [ServiceContainer] market_data_scheduler status=lock_error lock_id=%d err=%v", lockID, err)
 		return
 	}
 	if !acquired {
 		_ = lockConn.Close()
-		log.Printf("[ServiceContainer] market_data_scheduler status=lock_skipped lock_id=%d", lockID)
+		log.Printf("[INFO] [ServiceContainer] market_data_scheduler status=lock_skipped lock_id=%d", lockID)
 		return
 	}
 
-	log.Printf("[ServiceContainer] market_data_scheduler status=lock_acquired lock_id=%d", lockID)
+	log.Printf("[INFO] [ServiceContainer] market_data_scheduler status=lock_acquired lock_id=%d", lockID)
 	initCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	log.Printf("[ServiceContainer] Starting initial price fetch...")
+	log.Printf("[INFO] [ServiceContainer] Starting initial price fetch...")
 	if err := container.MarketData.UpdateAssetPrices(initCtx); err != nil {
-		log.Printf("[ServiceContainer] Initial price fetch failed: %v", err)
+		log.Printf("[ERROR] [ServiceContainer] Initial price fetch failed: %v", err)
 	} else {
-		log.Printf("[ServiceContainer] Initial price fetch completed")
+		log.Printf("[INFO] [ServiceContainer] Initial price fetch completed")
 	}
 
-	log.Printf("[ServiceContainer] Starting periodic price update scheduler (every 5 minutes)...")
+	log.Printf("[INFO] [ServiceContainer] Starting periodic price update scheduler (every 5 minutes)...")
 	if err := container.MarketData.SchedulePriceUpdates(context.Background(), 5*time.Minute); err != nil {
 		_ = releaseAdvisoryLock(lockCtx, lockConn, lockID)
 		_ = lockConn.Close()
-		log.Printf("[ServiceContainer] Failed to start price scheduler: %v", err)
+		log.Printf("[INFO] [ServiceContainer] Failed to start price scheduler: %v", err)
 		return
 	}
 

@@ -803,6 +803,7 @@ type ComplexityRoot struct {
 		DeleteAlertRule                  func(childComplexity int, id string) int
 		DeleteMarketDataCredential       func(childComplexity int, provider string) int
 		DeletePortfolio                  func(childComplexity int, id string) int
+		DeleteTransaction                func(childComplexity int, id string) int
 		DeleteUser                       func(childComplexity int, id string) int
 		DeleteWatchlist                  func(childComplexity int, id string) int
 		DuplicatePortfolio               func(childComplexity int, input gqlModel.DuplicatePortfolioInput) int
@@ -1447,6 +1448,7 @@ type MutationResolver interface {
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error)
 	UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error)
+	DeleteTransaction(ctx context.Context, id string) (string, error)
 }
 type QueryResolver interface {
 	User(ctx context.Context, id string) (*gqlModel.User, error)
@@ -5125,6 +5127,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeletePortfolio(childComplexity, args["id"].(string)), true
+	case "Mutation.deleteTransaction":
+		if e.ComplexityRoot.Mutation.DeleteTransaction == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_deleteTransaction_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.DeleteTransaction(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteUser":
 		if e.ComplexityRoot.Mutation.DeleteUser == nil {
 			break
@@ -8806,6 +8819,17 @@ func (ec *executionContext) field_Mutation_deleteMarketDataCredential_args(ctx c
 }
 
 func (ec *executionContext) field_Mutation_deletePortfolio_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_deleteTransaction_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -32378,6 +32402,60 @@ func (ec *executionContext) fieldContext_Mutation_updateTransaction(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_deleteTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_deleteTransaction,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().DeleteTransaction(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal string
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_deleteTransaction(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_deleteTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -57740,6 +57818,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "updateTransaction":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deleteTransaction":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_deleteTransaction(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++

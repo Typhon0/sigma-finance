@@ -25,7 +25,10 @@ func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gql
 	}
 
 	// Get tags (non-fatal: continue with empty tags on error)
-	tags, _ := r.TagService.GetAssetTags(ctx, asset.ID)
+	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
+	if tagErr != nil {
+		log.Printf("[ERROR] [getAssetWithDetails] TagService.GetAssetTags failed for asset %s: %v", asset.ID, tagErr)
+	}
 
 	// Fetch latest price for CurrentValue
 	var currentValue *float64
@@ -50,15 +53,24 @@ func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gql
 	// Determine asset type and return appropriate concrete type
 	switch asset.Type {
 	case "STOCK":
-		stockDetails, _ := r.UOW.Stock().GetByID(ctx, asset.ID)
+		stockDetails, stockErr := r.UOW.Stock().GetByID(ctx, asset.ID)
+		if stockErr != nil {
+			log.Printf("[ERROR] [getAssetWithDetails] Stock.GetByID failed for asset %s: %v", asset.ID, stockErr)
+		}
 		return mapStockToGQL(*asset, stockDetails, tags, dayChange, dayChangePercent, currentValue), nil
 
 	case "CRYPTO":
-		cryptoDetails, _ := r.UOW.Crypto().GetByID(ctx, asset.ID)
+		cryptoDetails, cryptoErr := r.UOW.Crypto().GetByID(ctx, asset.ID)
+		if cryptoErr != nil {
+			log.Printf("[ERROR] [getAssetWithDetails] Crypto.GetByID failed for asset %s: %v", asset.ID, cryptoErr)
+		}
 		return mapCryptoToGQL(*asset, cryptoDetails, tags, dayChange, dayChangePercent, currentValue), nil
 
 	case "FUND":
-		fundDetails, _ := r.UOW.Fund().GetByID(ctx, asset.ID)
+		fundDetails, fundErr := r.UOW.Fund().GetByID(ctx, asset.ID)
+		if fundErr != nil {
+			log.Printf("[ERROR] [getAssetWithDetails] Fund.GetByID failed for asset %s: %v", asset.ID, fundErr)
+		}
 		return mapFundToGQL(*asset, fundDetails, tags, dayChange, dayChangePercent, currentValue), nil
 
 	case "BANK_ACCOUNT":
@@ -119,7 +131,7 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 
 	prefetchedAssets, batchErr := r.getAssetsWithDetailsBatch(ctx, assetIDs)
 	if batchErr != nil {
-		log.Printf("buildPortfolioAssets: batch fetch failed for portfolio %s: %v", portfolioID, batchErr)
+		log.Printf("[ERROR] buildPortfolioAssets: batch fetch failed for portfolio %s: %v", portfolioID, batchErr)
 		// Fallback to empty map on error to let loop skip gracefully
 		prefetchedAssets = make(map[string]gqlModel.Asset)
 	}
@@ -128,7 +140,7 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 	for _, domPa := range pa {
 		gqlAsset, ok := prefetchedAssets[domPa.AssetID]
 		if !ok || gqlAsset == nil {
-			log.Printf("buildPortfolioAssets: skipping asset %s in portfolio %s: not found in batch", domPa.AssetID, portfolioID)
+			log.Printf("[WARN] buildPortfolioAssets: skipping asset %s in portfolio %s: not found in batch", domPa.AssetID, portfolioID)
 			continue
 		}
 		avgPP := domPa.AveragePurchasePrice
@@ -183,23 +195,23 @@ func (r *Resolver) buildGraphQLTransaction(ctx context.Context, tx *model.Transa
 
 	position, err := r.UOW.Position().GetByID(ctx, *tx.PositionID)
 	if err != nil || position == nil {
-		log.Printf("buildGraphQLTransaction: skipping transaction %s: position lookup failed err=%v", tx.ID, err)
+		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: position lookup failed err=%v", tx.ID, err)
 		return nil
 	}
 	if strings.TrimSpace(position.PortfolioID) == "" || strings.TrimSpace(position.AssetID) == "" {
-		log.Printf("buildGraphQLTransaction: skipping transaction %s: invalid position links portfolio=%q asset=%q", tx.ID, position.PortfolioID, position.AssetID)
+		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: invalid position links portfolio=%q asset=%q", tx.ID, position.PortfolioID, position.AssetID)
 		return nil
 	}
 
 	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, position.AssetID)
 	if gqlErr != nil || gqlAsset == nil {
-		log.Printf("buildGraphQLTransaction: skipping transaction %s: asset lookup failed asset=%s err=%v", tx.ID, position.AssetID, gqlErr)
+		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: asset lookup failed asset=%s err=%v", tx.ID, position.AssetID, gqlErr)
 		return nil
 	}
 
 	portfolio, portfolioErr := r.UOW.Portfolio().GetByID(ctx, position.PortfolioID)
 	if portfolioErr != nil || portfolio == nil {
-		log.Printf("buildGraphQLTransaction: skipping transaction %s: portfolio lookup failed portfolio=%s err=%v", tx.ID, position.PortfolioID, portfolioErr)
+		log.Printf("[WARN] buildGraphQLTransaction: skipping transaction %s: portfolio lookup failed portfolio=%s err=%v", tx.ID, position.PortfolioID, portfolioErr)
 		return nil
 	}
 

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sigma_finance/internal/benchmark"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"time"
@@ -14,10 +15,11 @@ import (
 
 // PerformanceService provides business logic for performance calculation operations
 type PerformanceService struct {
-	performanceRepo repository.IPerformanceRepository
-	priceRepo       repository.IPriceRepository
-	positionRepo    repository.IPositionRepository
-	fxRateService   IFXRateService // nil unless display currency conversion is needed
+	performanceRepo   repository.IPerformanceRepository
+	priceRepo         repository.IPriceRepository
+	positionRepo      repository.IPositionRepository
+	marketDataService MarketDataService
+	fxRateService     IFXRateService // nil unless display currency conversion is needed
 }
 
 // NewPerformanceService creates a new PerformanceService instance.
@@ -26,18 +28,20 @@ func NewPerformanceService(
 	performanceRepo repository.IPerformanceRepository,
 	priceRepo repository.IPriceRepository,
 	positionRepo repository.IPositionRepository,
+	marketDataService MarketDataService,
 	fxRateService ...IFXRateService, // variadic for backward compatibility
 ) *PerformanceService {
-	log.Printf("[PerformanceService] NewPerformanceService: started")
+	log.Printf("[INFO] [PerformanceService] NewPerformanceService: started")
 	var fxSvc IFXRateService
 	if len(fxRateService) > 0 {
 		fxSvc = fxRateService[0]
 	}
 	return &PerformanceService{
-		performanceRepo: performanceRepo,
-		priceRepo:       priceRepo,
-		positionRepo:    positionRepo,
-		fxRateService:   fxSvc,
+		performanceRepo:   performanceRepo,
+		priceRepo:         priceRepo,
+		positionRepo:      positionRepo,
+		marketDataService: marketDataService,
+		fxRateService:     fxSvc,
 	}
 }
 
@@ -237,6 +241,7 @@ type PerformanceReport struct {
 // Optionally converts values to display currency if fxRateService is available and displayCurrency is provided.
 func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time, displayCurrency ...model.Currency) (*ServicePerformanceMetrics, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculatePortfolioPerformance: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -249,6 +254,7 @@ func (s *PerformanceService) CalculatePortfolioPerformance(ctx context.Context, 
 	// Get raw performance metrics from repository
 	repoMetrics, err := s.performanceRepo.CalculatePortfolioPerformance(ctx, portfolioID, calculationDate)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculatePortfolioPerformance: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate portfolio performance: %w", err)
 	}
 
@@ -354,15 +360,18 @@ func (s *PerformanceService) applyDisplayCurrencyMetrics(ctx context.Context, me
 // CalculateTimeWeightedReturn calculates the time-weighted return for a portfolio
 func (s *PerformanceService) CalculateTimeWeightedReturn(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) (decimal.Decimal, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateTimeWeightedReturn: ERROR portfolio ID is required")
 		return decimal.Zero, errors.New("portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateTimeWeightedReturn: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("invalid time range: %w", err)
 	}
 
 	twr, err := s.performanceRepo.CalculateTimeWeightedReturn(ctx, portfolioID, timeRange.Start, timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateTimeWeightedReturn: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("failed to calculate time-weighted return: %w", err)
 	}
 
@@ -372,15 +381,18 @@ func (s *PerformanceService) CalculateTimeWeightedReturn(ctx context.Context, po
 // CalculateVolatility calculates the volatility (standard deviation of returns) for a portfolio
 func (s *PerformanceService) CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateVolatility: ERROR portfolio ID is required")
 		return decimal.Zero, errors.New("portfolio ID is required")
 	}
 
 	if days <= 0 {
+		log.Printf("[ERROR] [PerformanceService] CalculateVolatility: ERROR days must be positive")
 		return decimal.Zero, errors.New("days must be positive")
 	}
 
 	volatility, err := s.performanceRepo.CalculateVolatility(ctx, portfolioID, days)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateVolatility: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("failed to calculate volatility: %w", err)
 	}
 
@@ -390,6 +402,7 @@ func (s *PerformanceService) CalculateVolatility(ctx context.Context, portfolioI
 // CalculateSharpeRatio calculates the Sharpe ratio for a portfolio
 func (s *PerformanceService) CalculateSharpeRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateSharpeRatio: ERROR portfolio ID is required")
 		return decimal.Zero, errors.New("portfolio ID is required")
 	}
 
@@ -398,12 +411,14 @@ func (s *PerformanceService) CalculateSharpeRatio(ctx context.Context, portfolio
 	startDate := endDate.AddDate(-1, 0, 0) // 1 year back
 	portfolioReturn, err := s.CalculateTimeWeightedReturn(ctx, portfolioID, PerformanceTimeRange{Start: startDate, End: endDate})
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateSharpeRatio: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("failed to get portfolio return: %w", err)
 	}
 
 	// Get volatility
 	volatility, err := s.CalculateVolatility(ctx, portfolioID, days)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateSharpeRatio: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("failed to get volatility: %w", err)
 	}
 
@@ -419,15 +434,18 @@ func (s *PerformanceService) CalculateSharpeRatio(ctx context.Context, portfolio
 // CalculateMaxDrawdown calculates the maximum drawdown for a portfolio
 func (s *PerformanceService) CalculateMaxDrawdown(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) (decimal.Decimal, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateMaxDrawdown: ERROR portfolio ID is required")
 		return decimal.Zero, errors.New("portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateMaxDrawdown: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("invalid time range: %w", err)
 	}
 
 	maxDrawdown, err := s.performanceRepo.CalculateMaxDrawdown(ctx, portfolioID, timeRange.Start, timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateMaxDrawdown: ERROR %v", err)
 		return decimal.Zero, fmt.Errorf("failed to calculate max drawdown: %w", err)
 	}
 
@@ -437,6 +455,7 @@ func (s *PerformanceService) CalculateMaxDrawdown(ctx context.Context, portfolio
 // CalculateAssetAllocation calculates the asset allocation for a portfolio with business insights
 func (s *PerformanceService) CalculateAssetAllocation(ctx context.Context, portfolioID string, asOfDate *time.Time) (*AllocationBreakdown, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateAssetAllocation: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -448,6 +467,7 @@ func (s *PerformanceService) CalculateAssetAllocation(ctx context.Context, portf
 	// Get raw allocation from repository
 	repoAllocation, err := s.performanceRepo.CalculateAssetAllocation(ctx, portfolioID, calculationDate)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateAssetAllocation: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate asset allocation: %w", err)
 	}
 
@@ -471,11 +491,13 @@ func (s *PerformanceService) CalculateAssetAllocation(ctx context.Context, portf
 // CalculateAllocationByType calculates allocation breakdown by asset type
 func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, portfolioID string) ([]ServiceAssetAllocation, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationByType: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	repoAllocations, err := s.performanceRepo.CalculateAllocationByType(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationByType: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate allocation by type: %w", err)
 	}
 
@@ -496,11 +518,13 @@ func (s *PerformanceService) CalculateAllocationByType(ctx context.Context, port
 // CalculateAllocationBySector calculates allocation breakdown by sector
 func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, portfolioID string) ([]ServiceAssetAllocation, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationBySector: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	repoAllocations, err := s.performanceRepo.CalculateAllocationBySector(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationBySector: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate allocation by sector: %w", err)
 	}
 
@@ -518,11 +542,13 @@ func (s *PerformanceService) CalculateAllocationBySector(ctx context.Context, po
 // CalculateAllocationByGeography calculates allocation breakdown by geography
 func (s *PerformanceService) CalculateAllocationByGeography(ctx context.Context, portfolioID string) ([]ServiceAssetAllocation, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationByGeography: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	repoAllocations, err := s.performanceRepo.CalculateAllocationByGeography(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateAllocationByGeography: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate allocation by geography: %w", err)
 	}
 
@@ -540,12 +566,14 @@ func (s *PerformanceService) CalculateAllocationByGeography(ctx context.Context,
 // CreatePerformanceSnapshot creates a new performance snapshot with validation
 func (s *PerformanceService) CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*PerformanceSnapshot, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CreatePerformanceSnapshot: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	// Calculate performance metrics for the snapshot
 	metrics, err := s.CalculatePortfolioPerformance(ctx, portfolioID, &asOfDate)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CreatePerformanceSnapshot: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate performance for snapshot: %w", err)
 	}
 
@@ -562,6 +590,7 @@ func (s *PerformanceService) CreatePerformanceSnapshot(ctx context.Context, port
 	}
 
 	if err := s.performanceRepo.CreatePerformanceSnapshot(ctx, repoSnapshot); err != nil {
+		log.Printf("[ERROR] [PerformanceService] CreatePerformanceSnapshot: ERROR %v", err)
 		return nil, fmt.Errorf("failed to create performance snapshot: %w", err)
 	}
 
@@ -574,15 +603,18 @@ func (s *PerformanceService) CreatePerformanceSnapshot(ctx context.Context, port
 // GetPerformanceSnapshots retrieves performance snapshots for a date range
 func (s *PerformanceService) GetPerformanceSnapshots(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) ([]PerformanceSnapshot, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] GetPerformanceSnapshots: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetPerformanceSnapshots: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
 	repoSnapshots, err := s.performanceRepo.GetPerformanceSnapshots(ctx, portfolioID, timeRange.Start, timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetPerformanceSnapshots: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get performance snapshots: %w", err)
 	}
 
@@ -602,11 +634,13 @@ func (s *PerformanceService) GetPerformanceSnapshots(ctx context.Context, portfo
 // GetLatestPerformanceSnapshot retrieves the most recent performance snapshot
 func (s *PerformanceService) GetLatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*PerformanceSnapshot, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] GetLatestPerformanceSnapshot: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	repoSnapshot, err := s.performanceRepo.GetLatestPerformanceSnapshot(ctx, portfolioID)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetLatestPerformanceSnapshot: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get latest performance snapshot: %w", err)
 	}
 
@@ -619,17 +653,20 @@ func (s *PerformanceService) GetLatestPerformanceSnapshot(ctx context.Context, p
 // UpdatePerformanceSnapshots updates performance snapshots for multiple portfolios
 func (s *PerformanceService) UpdatePerformanceSnapshots(ctx context.Context, portfolioIDs []string, asOfDate time.Time) error {
 	if len(portfolioIDs) == 0 {
+		log.Printf("[ERROR] [PerformanceService] UpdatePerformanceSnapshots: ERROR at least one portfolio ID is required")
 		return errors.New("at least one portfolio ID is required")
 	}
 
 	// Validate all portfolio IDs
 	for _, portfolioID := range portfolioIDs {
 		if portfolioID == "" {
+		log.Printf("[WARN] [PerformanceService] UpdatePerformanceSnapshots: ERROR invalid portfolio ID found")
 			return errors.New("invalid portfolio ID found")
 		}
 	}
 
 	if err := s.performanceRepo.UpdatePerformanceSnapshots(ctx, portfolioIDs, asOfDate); err != nil {
+		log.Printf("[ERROR] [PerformanceService] UpdatePerformanceSnapshots: ERROR %v", err)
 		return fmt.Errorf("failed to update performance snapshots: %w", err)
 	}
 
@@ -639,15 +676,18 @@ func (s *PerformanceService) UpdatePerformanceSnapshots(ctx context.Context, por
 // ComparePortfolioPerformance compares performance across multiple portfolios
 func (s *PerformanceService) ComparePortfolioPerformance(ctx context.Context, portfolioIDs []string, timeRange PerformanceTimeRange) (map[string]*ServicePerformanceMetrics, error) {
 	if len(portfolioIDs) == 0 {
+		log.Printf("[ERROR] [PerformanceService] ComparePortfolioPerformance: ERROR at least one portfolio ID is required")
 		return nil, errors.New("at least one portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] ComparePortfolioPerformance: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
 	repoMetrics, err := s.performanceRepo.ComparePortfolioPerformance(ctx, portfolioIDs, timeRange.Start, timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] ComparePortfolioPerformance: ERROR %v", err)
 		return nil, fmt.Errorf("failed to compare portfolio performance: %w", err)
 	}
 
@@ -677,6 +717,7 @@ func (s *PerformanceService) ComparePortfolioPerformance(ctx context.Context, po
 // GetTopPerformingAssets retrieves the best performing assets in a portfolio
 func (s *PerformanceService) GetTopPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange PerformanceTimeRange) ([]repository.PositionPerformanceResult, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] GetTopPerformingAssets: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -685,6 +726,7 @@ func (s *PerformanceService) GetTopPerformingAssets(ctx context.Context, portfol
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetTopPerformingAssets: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
@@ -695,6 +737,7 @@ func (s *PerformanceService) GetTopPerformingAssets(ctx context.Context, portfol
 
 	positions, err := s.performanceRepo.GetTopPerformingAssets(ctx, portfolioID, limit, repoTimeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetTopPerformingAssets: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get top performing assets: %w", err)
 	}
 
@@ -704,6 +747,7 @@ func (s *PerformanceService) GetTopPerformingAssets(ctx context.Context, portfol
 // GetWorstPerformingAssets retrieves the worst performing assets in a portfolio
 func (s *PerformanceService) GetWorstPerformingAssets(ctx context.Context, portfolioID string, limit int, timeRange PerformanceTimeRange) ([]repository.PositionPerformanceResult, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] GetWorstPerformingAssets: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
@@ -712,6 +756,7 @@ func (s *PerformanceService) GetWorstPerformingAssets(ctx context.Context, portf
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetWorstPerformingAssets: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
@@ -722,6 +767,7 @@ func (s *PerformanceService) GetWorstPerformingAssets(ctx context.Context, portf
 
 	positions, err := s.performanceRepo.GetWorstPerformingAssets(ctx, portfolioID, limit, repoTimeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GetWorstPerformingAssets: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get worst performing assets: %w", err)
 	}
 
@@ -732,14 +778,17 @@ func (s *PerformanceService) GetWorstPerformingAssets(ctx context.Context, portf
 // Optionally converts values to display currency if fxRateService is available and displayCurrency is provided.
 func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange PerformanceTimeRange, displayCurrency ...model.Currency) (*BenchmarkComparison, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateBenchmarkComparison: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	if benchmarkAssetID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateBenchmarkComparison: ERROR benchmark asset ID is required")
 		return nil, errors.New("benchmark asset ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateBenchmarkComparison: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
@@ -748,14 +797,131 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 		End:   timeRange.End,
 	}
 
-	repoComparison, err := s.performanceRepo.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, repoTimeRange)
-	if err != nil {
-		return nil, fmt.Errorf("failed to calculate benchmark comparison: %w", err)
+	var repoComparison *repository.BenchmarkComparison
+	var hasBenchmarkPrices bool
+	var benchmarkPrices []model.Candle
+	var jensenAlpha decimal.Decimal // populated when >=2 aligned daily returns are computable
+
+	if s.marketDataService != nil {
+		candlesResult, err := s.marketDataService.GetCandlesByInstrument(
+			ctx,
+			"", // userID is not needed for packs/hybrid store
+			benchmarkAssetID,
+			model.Interval1d,
+			timeRange.Start,
+			timeRange.End,
+			0, // limit (0 = retrieve all)
+			nil, // preferredProvider
+		)
+		if err == nil && candlesResult != nil && len(candlesResult.Candles) >= 2 {
+			benchmarkPrices = candlesResult.Candles
+			hasBenchmarkPrices = true
+		}
+	}
+
+	if hasBenchmarkPrices {
+		// Get portfolio performance snapshots
+		portfolioSnapshots, err := s.performanceRepo.GetPerformanceSnapshots(ctx, portfolioID, timeRange.Start, timeRange.End)
+		if err == nil && len(portfolioSnapshots) >= 2 {
+			// Skip leading snapshots where the portfolio was near-zero relative to
+			// the final value.  Without this, a portfolio that started at $21 and
+			// grew to $6,284 via cash deposits would report a 29,800% return and a
+			// meaningless alpha.  We use the first snapshot that has at least 1% of
+			// the final portfolio value as the start-of-period baseline.
+			endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
+			var effectiveStart model.Money
+			for _, snap := range portfolioSnapshots {
+				if snap.TotalValue >= endValue/100 {
+					effectiveStart = snap.TotalValue
+					break
+				}
+			}
+			if effectiveStart <= 0 {
+				effectiveStart = portfolioSnapshots[0].TotalValue
+			}
+
+			var portfolioReturn decimal.Decimal
+			if effectiveStart > 0 {
+				portfolioReturn = decimal.NewFromInt(int64(endValue - effectiveStart)).
+					Div(decimal.NewFromInt(int64(effectiveStart))).
+					Mul(decimal.NewFromInt(100))
+			}
+
+			startPrice := benchmarkPrices[0].Close
+			endPrice := benchmarkPrices[len(benchmarkPrices)-1].Close
+			var benchmarkReturn decimal.Decimal
+			if !startPrice.IsZero() {
+				benchmarkReturn = endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
+			}
+
+			// Cumulative alpha: end-of-period percentage-point difference. This
+			// preserves the existing service-level contract ("how much better did
+			// the portfolio finish vs. the benchmark?").
+			cumulativeAlpha := portfolioReturn.Sub(benchmarkReturn)
+
+			// Real Beta / TrackingError / InformationRatio / Correlation /
+			// Jensen alpha from aligned daily returns. Snapshots and candles
+			// are floored to UTC midnight, collapsed to one-sample-per-day
+			// (last-write-wins), then joined via LOCF on the portfolio
+			// calendar. Robust against intraday timestamps, sparse or
+			// duplicate-day observations, and uneven series lengths.
+			portSamples := make([]benchmark.PortfolioSample, len(portfolioSnapshots))
+			for i, snap := range portfolioSnapshots {
+				portSamples[i] = benchmark.PortfolioSample{
+					Timestamp: snap.SnapshotDate,
+					Value:     snap.TotalValue,
+				}
+			}
+			benchSamples := make([]benchmark.BenchmarkSample, len(benchmarkPrices))
+			for i, c := range benchmarkPrices {
+				benchSamples[i] = benchmark.BenchmarkSample{
+					Timestamp: c.Timestamp,
+					Price:     c.Close,
+				}
+			}
+			portVals, priceVals := benchmark.AlignDaily(portSamples, benchSamples)
+			if len(portVals) >= 2 && len(priceVals) >= 2 {
+				alignedPortReturns := benchmark.DailyMoneyReturns(portVals)
+				alignedBenchReturns := benchmark.DailyPriceReturns(priceVals)
+				if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
+					repoComparison = &repository.BenchmarkComparison{
+						PortfolioID:      portfolioID,
+						BenchmarkAssetID: benchmarkAssetID,
+						PortfolioReturn:  portfolioReturn,
+						BenchmarkReturn:  benchmarkReturn,
+						Alpha:            cumulativeAlpha,
+						Beta:             benchmark.Beta(alignedPortReturns, alignedBenchReturns),
+						TrackingError:    benchmark.TrackingError(alignedPortReturns, alignedBenchReturns),
+						InformationRatio: benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns),
+						CorrelationCoeff: benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns),
+						StartDate:        timeRange.Start,
+						EndDate:          timeRange.End,
+					}
+					jensenAlpha = benchmark.JensenAlpha(alignedPortReturns, alignedBenchReturns)
+				}
+			}
+		}
+	}
+
+	if repoComparison == nil {
+		var err error
+		repoComparison, err = s.performanceRepo.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, repoTimeRange)
+		if err != nil {
+			log.Printf("[ERROR] [PerformanceService] CalculateBenchmarkComparison: ERROR %v", err)
+			return nil, fmt.Errorf("failed to calculate benchmark comparison: %w", err)
+		}
 	}
 
 	// Calculate additional business metrics
 	outperformancePeriods := s.calculateOutperformancePeriods(ctx, portfolioID, benchmarkAssetID, timeRange)
-	riskAdjustedAlpha := s.calculateRiskAdjustedAlpha(repoComparison.Alpha, repoComparison.Beta)
+	var riskAdjustedAlpha decimal.Decimal
+	if !jensenAlpha.IsZero() {
+		// Prefer CAPM daily-mean intercept when the math path produced a
+		// meaningful value (i.e. >=2 aligned daily returns).
+		riskAdjustedAlpha = jensenAlpha
+	} else {
+		riskAdjustedAlpha = s.calculateRiskAdjustedAlpha(repoComparison.Alpha, repoComparison.Beta)
+	}
 
 	// Build result
 	result := &BenchmarkComparison{
@@ -840,10 +1006,12 @@ func (s *PerformanceService) derivePortfolioNativeCurrency(ctx context.Context, 
 // CalculateRiskMetrics calculates comprehensive risk metrics for a portfolio
 func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolioID string, timeRange PerformanceTimeRange) (*ServiceRiskMetrics, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] CalculateRiskMetrics: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateRiskMetrics: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
@@ -852,17 +1020,20 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 
 	volatility, err := s.CalculateVolatility(ctx, portfolioID, days)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateRiskMetrics: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate volatility: %w", err)
 	}
 
 	riskFreeRate := decimal.NewFromFloat(2.0) // 2% risk-free rate assumption
 	sharpeRatio, err := s.CalculateSharpeRatio(ctx, portfolioID, riskFreeRate, days)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateRiskMetrics: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate Sharpe ratio: %w", err)
 	}
 
 	maxDrawdown, err := s.CalculateMaxDrawdown(ctx, portfolioID, timeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] CalculateRiskMetrics: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate max drawdown: %w", err)
 	}
 
@@ -892,36 +1063,43 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 // GeneratePerformanceReport generates a comprehensive performance report
 func (s *PerformanceService) GeneratePerformanceReport(ctx context.Context, portfolioID string, reportType ReportType, timeRange PerformanceTimeRange) (*PerformanceReport, error) {
 	if portfolioID == "" {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR portfolio ID is required")
 		return nil, errors.New("portfolio ID is required")
 	}
 
 	if err := s.validateTimeRange(timeRange); err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("invalid time range: %w", err)
 	}
 
 	// Calculate all components of the report
 	metrics, err := s.CalculatePortfolioPerformance(ctx, portfolioID, &timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate performance metrics: %w", err)
 	}
 
 	allocation, err := s.CalculateAssetAllocation(ctx, portfolioID, &timeRange.End)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate asset allocation: %w", err)
 	}
 
 	riskMetrics, err := s.CalculateRiskMetrics(ctx, portfolioID, timeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("failed to calculate risk metrics: %w", err)
 	}
 
 	topPerformers, err := s.GetTopPerformingAssets(ctx, portfolioID, 5, timeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get top performers: %w", err)
 	}
 
 	worstPerformers, err := s.GetWorstPerformingAssets(ctx, portfolioID, 5, timeRange)
 	if err != nil {
+		log.Printf("[ERROR] [PerformanceService] GeneratePerformanceReport: ERROR %v", err)
 		return nil, fmt.Errorf("failed to get worst performers: %w", err)
 	}
 

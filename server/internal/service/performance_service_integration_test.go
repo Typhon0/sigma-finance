@@ -19,7 +19,7 @@ func TestPerformanceService_Integration(t *testing.T) {
 	mockPositionRepo := &MockPositionRepository{}
 
 	// Create service
-	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
+	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, nil)
 
 	// Test basic service creation
 	assert.NotNil(t, service)
@@ -35,7 +35,7 @@ func TestPerformanceService_CalculatePortfolioPerformance_Integration(t *testing
 	mockPositionRepo := &MockPositionRepository{}
 
 	// Create service
-	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
+	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, nil)
 
 	ctx := context.Background()
 	portfolioID := uuid.NewString()
@@ -88,7 +88,7 @@ func TestPerformanceService_TimeRangeValidation_Integration(t *testing.T) {
 	mockPositionRepo := &MockPositionRepository{}
 
 	// Create service
-	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
+	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, nil)
 
 	t.Run("valid time range", func(t *testing.T) {
 		timeRange := PerformanceTimeRange{
@@ -130,7 +130,7 @@ func TestPerformanceService_DiversificationScore_Integration(t *testing.T) {
 	mockPositionRepo := &MockPositionRepository{}
 
 	// Create service
-	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
+	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, nil)
 
 	t.Run("well diversified portfolio", func(t *testing.T) {
 		allocations := []repository.AssetAllocation{

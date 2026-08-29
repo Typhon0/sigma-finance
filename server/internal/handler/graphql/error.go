@@ -49,7 +49,7 @@ func NewErrorPresenter() graphql.ErrorPresenterFunc {
 		}
 
 		// For other errors, log it and create a new GraphQL error
-		log.Printf("[GraphQL Error] Unexpected error: %v (path: %v)", err, graphql.GetPath(ctx))
+		log.Printf("[INFO] [GraphQL Error] Unexpected error: %v (path: %v)", err, graphql.GetPath(ctx))
 		return &gqlerror.Error{
 			Message: "internal system error",
 			Path:    graphql.GetPath(ctx),

@@ -15,7 +15,7 @@ export function formatCurrency(
 	amount: number | null | undefined,
 	currency: string = "USD",
 ): string {
-	if (amount === null || amount === undefined) {
+	if (amount === null || amount === undefined || !Number.isFinite(amount)) {
 		const symbol = CURRENCY_SYMBOLS[currency] ?? "$";
 		return `${symbol}0.00`;
 	}

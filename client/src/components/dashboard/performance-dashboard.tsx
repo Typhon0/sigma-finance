@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
-import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
+import { cn, formatCurrency } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/formatters";
 import AssetAllocation, {
 	type AllocationItem,
 	type AllocationRecommendation,

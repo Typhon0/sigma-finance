@@ -16,12 +16,22 @@ enum Interval {
   INTERVAL_1D = 7;
 }
 
-// AssetType represents the type of asset
+// AssetType represents the type of asset.
+//
+// REGEN NOTE: Adding a new enum value here requires regenerating BOTH the
+// Go bindings (server/internal/handler/grpc/pb/) AND the Python yfinance
+// sidecar bindings. The two sides must stay byte-aligned so that the gRPC
+// payload semantics match ("ASSET_TYPE_INDEX=5" on Go must decode to the
+// same value on the Python sidecar). Until the Python sidecar is
+// regenerated, do NOT add new enum values here — Go will compile but the
+// sidecar will misclassify the asset type when routing candle fetches.
 enum AssetType {
   ASSET_TYPE_UNSPECIFIED = 0;
   ASSET_TYPE_STOCK = 1;
   ASSET_TYPE_FUND = 2;
   ASSET_TYPE_CRYPTO = 3;
+  ASSET_TYPE_ETF = 4;
+  ASSET_TYPE_INDEX = 5;
 }
 
 // OHLCVBar represents a single candlestick bar

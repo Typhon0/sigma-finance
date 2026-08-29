@@ -32,8 +32,8 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
-import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
+import { cn, formatCurrency } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/formatters";
 
 export interface PerformanceAlert {
 	id: string;

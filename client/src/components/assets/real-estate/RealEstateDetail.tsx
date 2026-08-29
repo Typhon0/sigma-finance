@@ -28,33 +28,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 
 interface RealEstateDetailProps {
 	propertyId: string;
 	onBack: () => void;
+	isPanel?: boolean;
 }
 
-export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) {
+export function RealEstateDetail({ propertyId, onBack, isPanel = false }: RealEstateDetailProps) {
 	const { assets } = usePortfolio();
 	const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
 
 	const property = assets.find((a) => a.id === propertyId && a.type === "real_estate");
 
-	if (!property) {
-		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="text-center space-y-4">
-					<p className="text-muted-foreground">Property not found</p>
-					<Button onClick={onBack}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back to Properties
-					</Button>
-				</div>
-			</div>
-		);
-	}
-
 	const chartData = useMemo(() => {
+		if (!property) return [];
 		const data: AssetDetailChartPoint[] = [];
 		let days: number;
 
@@ -84,7 +73,21 @@ export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) 
 		}
 
 		return data;
-	}, [timeRange, property.purchasePrice, property.currentValue]);
+	}, [timeRange, property]);
+
+	if (!property) {
+		return (
+			<div className="flex items-center justify-center h-full">
+				<div className="text-center space-y-4">
+					<p className="text-muted-foreground">Property not found</p>
+					<Button onClick={onBack}>
+						<ArrowLeft className="h-4 w-4 mr-2" />
+						Back to Properties
+					</Button>
+				</div>
+			</div>
+		);
+	}
 
 	const currentPrice = property.currentValue || 228930;
 	const purchasePrice = property.purchasePrice || 195000;
@@ -107,16 +110,20 @@ export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) 
 	return (
 		<div className="h-full flex flex-col">
 			{/* Header */}
-			<div className="border-b px-6 py-4">
+			<div className={cn("border-b", isPanel ? "px-4 py-3" : "px-6 py-4")}>
 				<div className="flex items-center justify-between">
 					<div className="flex items-center space-x-4">
-						<Button variant="ghost" size="icon" onClick={onBack}>
-							<ArrowLeft className="h-4 w-4" />
-						</Button>
+						{!isPanel && (
+							<Button variant="ghost" size="icon" onClick={onBack}>
+								<ArrowLeft className="h-4 w-4" />
+							</Button>
+						)}
 						<div>
 							<div className="flex items-center space-x-2">
 								<MapPin className="h-4 w-4 text-muted-foreground" />
-								<h1 className="text-2xl">{property.address || property.name}</h1>
+								<h1 className={cn("text-2xl", isPanel && "text-lg font-bold")}>
+									{property.address || property.name}
+								</h1>
 							</div>
 							<p className="text-sm text-muted-foreground mt-1">
 								{property.city || "Nivange"}, {property.country || "France"}
@@ -158,9 +165,9 @@ export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) 
 			</div>
 
 			<ScrollArea className="flex-1">
-				<div className="p-6 space-y-6">
+				<div className={cn("space-y-6", isPanel ? "p-4" : "p-6")}>
 					{/* Price and Chart */}
-					<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+					<div className={cn("grid gap-6", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3")}>
 						{/* Chart Card */}
 						<div className="lg:col-span-2">
 							<div className="mb-4">
@@ -224,7 +231,12 @@ export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) 
 					</div>
 
 					{/* Property Overview */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div
+						className={cn(
+							"grid gap-6",
+							isPanel ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 md:grid-cols-3",
+						)}
+					>
 						{/* P&L */}
 						<Card>
 							<CardHeader className="pb-3">
@@ -272,7 +284,7 @@ export function RealEstateDetail({ propertyId, onBack }: RealEstateDetailProps) 
 					</div>
 
 					{/* Specifications and Fees */}
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+					<div className={cn("grid gap-6", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}>
 						{/* Specifications */}
 						<Card>
 							<CardHeader>

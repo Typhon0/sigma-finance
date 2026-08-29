@@ -34,7 +34,7 @@ func (s *instrumentProviderMappingService) GetVerifiedMapping(ctx context.Contex
 }
 
 func (s *instrumentProviderMappingService) EnsureDeterministicMapping(ctx context.Context, instrumentID string, provider string) (*model.InstrumentProviderMapping, error) {
-	log.Printf("[InstrumentProviderMapping] EnsureDeterministicMapping: started instrument=%s provider=%s", instrumentID, provider)
+	log.Printf("[INFO] [InstrumentProviderMapping] EnsureDeterministicMapping: started instrument=%s provider=%s", instrumentID, provider)
 	normalizedProvider := strings.ToUpper(strings.TrimSpace(provider))
 	if normalizedProvider == "" {
 		return nil, fmt.Errorf("provider is required")
@@ -46,12 +46,12 @@ func (s *instrumentProviderMappingService) EnsureDeterministicMapping(ctx contex
 
 	instrument, err := s.instrumentRepo.GetByID(ctx, instrumentID)
 	if err != nil {
-		log.Printf("[InstrumentProviderMapping] EnsureDeterministicMapping: ERROR instrument not found instrument=%s: %v", instrumentID, err)
+		log.Printf("[WARN] [InstrumentProviderMapping] EnsureDeterministicMapping: ERROR instrument not found instrument=%s: %v", instrumentID, err)
 		return nil, err
 	}
 	providerAssetID, providerSymbol, providerMarket, quoteCurrency := deriveProviderIdentity(instrument, normalizedProvider)
 	if strings.TrimSpace(providerAssetID) == "" {
-		log.Printf("[InstrumentProviderMapping] EnsureDeterministicMapping: UNMAPPED instrument=%s provider=%s", instrumentID, normalizedProvider)
+		log.Printf("[INFO] [InstrumentProviderMapping] EnsureDeterministicMapping: UNMAPPED instrument=%s provider=%s", instrumentID, normalizedProvider)
 		mapping := &model.InstrumentProviderMapping{
 			InstrumentID:    instrumentID,
 			Provider:        normalizedProvider,
@@ -88,7 +88,7 @@ func (s *instrumentProviderMappingService) ListMappings(ctx context.Context, ins
 }
 
 func (s *instrumentProviderMappingService) InvalidateMapping(ctx context.Context, instrumentID string, provider string, reason string) error {
-	log.Printf("[InstrumentProviderMapping] InvalidateMapping: instrument=%s provider=%s reason=%s", instrumentID, provider, reason)
+	log.Printf("[INFO] [InstrumentProviderMapping] InvalidateMapping: instrument=%s provider=%s reason=%s", instrumentID, provider, reason)
 	return s.mappingRepo.Invalidate(ctx, instrumentID, provider, reason)
 }
 

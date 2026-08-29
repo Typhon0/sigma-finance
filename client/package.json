@@ -62,7 +62,7 @@
 		"framer-motion": "^12.23.12",
 		"graphql": "^16.11.0",
 		"input-otp": "^1.4.2",
-		"lightweight-charts": "^5.0.8",
+		"lightweight-charts": "^5.2.0",
 		"lodash-es": "^4.17.21",
 		"lucide-react": "latest",
 		"next-themes": "latest",

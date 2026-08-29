@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/catalog"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
@@ -42,9 +43,19 @@ func mapHistoricalBackfillJobToGraphQL(job *model.HistoricalDataBackfillJob) *gq
 	}
 }
 
+// safeUserIDFromContext returns the user ID from context, logging a warning on failure.
+func safeUserIDFromContext(ctx context.Context) string {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		log.Printf("[ERROR] [instrument] getUserIDFromContext failed: %v", err)
+	}
+	return userID
+}
+
 // PersistDiscoveredInstrument is the resolver for the persistDiscoveredInstrument field.
 func (r *mutationResolver) PersistDiscoveredInstrument(ctx context.Context, input gqlModel.PersistDiscoveredInstrumentInput) (*gqlModel.Instrument, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] PersistDiscoveredInstrument: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -76,7 +87,7 @@ func (r *mutationResolver) PersistDiscoveredInstrument(ctx context.Context, inpu
 
 // AddInstrumentToPortfolio is the resolver for the addInstrumentToPortfolio field.
 func (r *mutationResolver) AddInstrumentToPortfolio(ctx context.Context, input gqlModel.AddInstrumentHoldingInput) (*gqlModel.PortfolioAsset, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -90,13 +101,17 @@ func (r *mutationResolver) AddInstrumentToPortfolio(ctx context.Context, input g
 	if err != nil {
 		return nil, err
 	}
-	gqlAsset, _ := r.getAssetWithDetails(ctx, holding.AssetID)
+	gqlAsset, gqlErr := r.getAssetWithDetails(ctx, holding.AssetID)
+	if gqlErr != nil {
+		log.Printf("[ERROR] [AddInstrumentToPortfolio] getAssetWithDetails failed for asset %s: %v", holding.AssetID, gqlErr)
+	}
 	return mapPortfolioAssetToGQLWithAssetAndInstrument(*holding, gqlAsset, holding.InstrumentID), nil
 }
 
 // UpdateManualInstrument is the resolver for the updateManualInstrument field.
 func (r *mutationResolver) UpdateManualInstrument(ctx context.Context, id string, input gqlModel.UpdateManualInstrumentInput) (*gqlModel.Instrument, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] AddInstrumentToPortfolio: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -134,7 +149,8 @@ func (r *mutationResolver) UpdateManualInstrument(ctx context.Context, id string
 
 // ArchiveManualInstrument is the resolver for the archiveManualInstrument field.
 func (r *mutationResolver) ArchiveManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] ArchiveManualInstrument: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -149,7 +165,8 @@ func (r *mutationResolver) ArchiveManualInstrument(ctx context.Context, id strin
 
 // RestoreManualInstrument is the resolver for the restoreManualInstrument field.
 func (r *mutationResolver) RestoreManualInstrument(ctx context.Context, id string) (*gqlModel.Instrument, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] RestoreManualInstrument: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -164,7 +181,8 @@ func (r *mutationResolver) RestoreManualInstrument(ctx context.Context, id strin
 
 // RetryHistoricalDataBackfillJob is the resolver for the retryHistoricalDataBackfillJob field.
 func (r *mutationResolver) RetryHistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] RetryHistoricalDataBackfillJob: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -182,6 +200,7 @@ func (r *mutationResolver) RetryHistoricalDataBackfillJob(ctx context.Context, i
 
 // Instrument is the resolver for the instrument field.
 func (r *queryResolver) Instrument(ctx context.Context, id string) (*gqlModel.Instrument, error) {
+	log.Printf("[INFO] [graphql] Instrument: started")
 	if r.InstrumentService == nil {
 		return nil, fmt.Errorf("instrument service not configured")
 	}
@@ -193,7 +212,7 @@ func (r *queryResolver) Instrument(ctx context.Context, id string) (*gqlModel.In
 		}
 		return nil, err
 	}
-	userID, _ := getUserIDFromContext(ctx)
+	userID := safeUserIDFromContext(ctx)
 	if details.Instrument != nil && strings.EqualFold(details.Instrument.ProviderSource, "manual") {
 		if details.Instrument.OwnerUserID == nil || (userID != "" && *details.Instrument.OwnerUserID != userID) || userID == "" {
 			return nil, fmt.Errorf("unauthorized: access denied to manual instrument")
@@ -205,8 +224,9 @@ func (r *queryResolver) Instrument(ctx context.Context, id string) (*gqlModel.In
 
 // SearchInstruments is the resolver for the searchInstruments field.
 func (r *queryResolver) SearchInstruments(ctx context.Context, input gqlModel.InstrumentSearchInput) (*gqlModel.InstrumentSearchPayload, error) {
+	log.Printf("[INFO] [graphql] SearchInstruments: started")
 	filter := mapInstrumentSearchFilter(input)
-	userID, _ := getUserIDFromContext(ctx)
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -220,8 +240,9 @@ func (r *queryResolver) SearchInstruments(ctx context.Context, input gqlModel.In
 
 // SearchInstrumentsOnline is the resolver for the searchInstrumentsOnline field.
 func (r *queryResolver) SearchInstrumentsOnline(ctx context.Context, input gqlModel.InstrumentSearchInput) (*gqlModel.OnlineInstrumentSearchPayload, error) {
+	log.Printf("[INFO] [graphql] SearchInstrumentsOnline: started")
 	filter := mapInstrumentSearchFilter(input)
-	userID, _ := getUserIDFromContext(ctx)
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -236,6 +257,7 @@ func (r *queryResolver) SearchInstrumentsOnline(ctx context.Context, input gqlMo
 
 // ManualInstruments is the resolver for the manualInstruments field.
 func (r *queryResolver) ManualInstruments(ctx context.Context, filter *gqlModel.ManualInstrumentFilterInput, pagination *gqlModel.PaginationInput) (*gqlModel.ManualInstrumentPayload, error) {
+	log.Printf("[INFO] [graphql] ManualInstruments: started")
 	serviceFilter := service.ManualInstrumentFilter{}
 	if filter != nil {
 		serviceFilter.Query = ""
@@ -260,7 +282,7 @@ func (r *queryResolver) ManualInstruments(ctx context.Context, filter *gqlModel.
 		}
 	}
 
-	userID, _ := getUserIDFromContext(ctx)
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -287,7 +309,8 @@ func (r *queryResolver) ManualInstruments(ctx context.Context, filter *gqlModel.
 
 // HistoricalDataBackfillJob is the resolver for the historicalDataBackfillJob field.
 func (r *queryResolver) HistoricalDataBackfillJob(ctx context.Context, id string) (*gqlModel.HistoricalDataBackfillJob, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] HistoricalDataBackfillJob: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -308,7 +331,8 @@ func (r *queryResolver) HistoricalDataBackfillJob(ctx context.Context, id string
 
 // LatestHistoricalDataBackfillJob is the resolver for the latestHistoricalDataBackfillJob field.
 func (r *queryResolver) LatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string) (*gqlModel.HistoricalDataBackfillJob, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] LatestHistoricalDataBackfillJob: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID
@@ -329,7 +353,8 @@ func (r *queryResolver) LatestHistoricalDataBackfillJob(ctx context.Context, por
 
 // HistoricalDataBackfillJobs is the resolver for the historicalDataBackfillJobs field.
 func (r *queryResolver) HistoricalDataBackfillJobs(ctx context.Context, filter *gqlModel.HistoricalDataBackfillJobFilterInput, pagination *gqlModel.PaginationInput) ([]*gqlModel.HistoricalDataBackfillJob, error) {
-	userID, _ := getUserIDFromContext(ctx)
+	log.Printf("[INFO] [graphql] HistoricalDataBackfillJobs: started")
+	userID := safeUserIDFromContext(ctx)
 	var userPtr *string
 	if userID != "" {
 		userPtr = &userID

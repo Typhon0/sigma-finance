@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Asset, AssetType, Portfolio, PortfolioAsset as Position } from "@/gql/graphql";
+import { formatCurrency } from "@/lib/utils";
 import {
 	calculateAssetAllocation,
 	calculateAssetPerformance,
@@ -8,7 +9,6 @@ import {
 	calculatePortfolioMetrics,
 	calculatePositionCost,
 	calculatePositionValue,
-	formatCurrency,
 	formatPercentage,
 	getPerformanceColorClass,
 	getTopPerformingAssets,

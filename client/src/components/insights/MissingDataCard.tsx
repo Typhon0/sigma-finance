@@ -1,4 +1,5 @@
 import { Info } from "lucide-react";
+import { memo } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { DataQualityData } from "./types";
@@ -10,7 +11,7 @@ interface MissingDataCardProps {
 	setInsightFilter: (filter: { mode: "sector" | "asset-class"; value: string } | null) => void;
 }
 
-export function MissingDataCard({
+export const MissingDataCard = memo(function MissingDataCard({
 	cardId,
 	dataQuality,
 	isRecommended,
@@ -19,7 +20,7 @@ export function MissingDataCard({
 	return (
 		<Card
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-zinc-950/25 dark:bg-zinc-900/35 backdrop-blur-xs p-5 min-h-[220px] flex flex-col justify-between shadow-xs hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className="relative overflow-hidden border border-border/40 bg-card/25 backdrop-blur-xs p-5 min-h-[220px] flex flex-col justify-between shadow-xs hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
@@ -94,4 +95,4 @@ export function MissingDataCard({
 			</div>
 		</Card>
 	);
-}
+});

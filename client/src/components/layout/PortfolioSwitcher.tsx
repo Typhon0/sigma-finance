@@ -71,7 +71,7 @@ export function PortfolioSwitcher({
 	}
 
 	return (
-		<div className="px-2 space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+		<div className="px-2 space-y-2">
 			<Select
 				value={currentPortfolio}
 				onValueChange={setCurrentPortfolio}

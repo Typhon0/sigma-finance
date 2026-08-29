@@ -144,8 +144,7 @@ func (s *TransactionService) RecordTransaction(ctx context.Context, req Transact
 		return nil, errors.New("user ID is required")
 	}
 
-	log.Printf("[TransactionService] RecordTransaction: started user=%s type=%s", req.UserID, req.Type)
-
+	log.Printf("[INFO] [TransactionService] RecordTransaction: started user=%s type=%s", req.UserID, req.Type)
 	unitPriceCurrency := req.UnitPriceCurrency
 	if !unitPriceCurrency.IsValid() {
 		unitPriceCurrency = model.CurrencyUSD
@@ -187,11 +186,11 @@ func (s *TransactionService) RecordTransaction(ctx context.Context, req Transact
 	// Create in repository
 	createdTransaction, err := s.uow.Transaction().Create(ctx, transaction)
 	if err != nil {
-		log.Printf("[TransactionService] RecordTransaction: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
+		log.Printf("[ERROR] [TransactionService] RecordTransaction: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	log.Printf("[TransactionService] RecordTransaction: completed tx=%s user=%s type=%s amount=%d", createdTransaction.ID, req.UserID, req.Type, req.Amount)
+	log.Printf("[INFO] [TransactionService] RecordTransaction: completed tx=%s user=%s type=%s amount=%d", createdTransaction.ID, req.UserID, req.Type, req.Amount)
 	s.enqueueDirtyRecalculationForPosition(ctx, req.PositionID, req.ExecutedAt)
 	return createdTransaction, nil
 }
@@ -216,12 +215,11 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 		return nil, errors.New("transaction ID is required")
 	}
 
-	log.Printf("[TransactionService] UpdateTransaction: started tx=%s", id)
-
+	log.Printf("[INFO] [TransactionService] UpdateTransaction: started tx=%s", id)
 	// Get existing transaction
 	transaction, err := s.uow.Transaction().GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[TransactionService] UpdateTransaction: ERROR: transaction not found tx=%s: %v", id, err)
+		log.Printf("[WARN] [TransactionService] UpdateTransaction: ERROR: transaction not found tx=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to get transaction: %w", err)
 	}
 
@@ -269,12 +267,11 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 
 	// Update in repository
 	if err := s.uow.Transaction().Update(ctx, transaction); err != nil {
-		log.Printf("[TransactionService] UpdateTransaction: ERROR: update failed tx=%s: %v", id, err)
+		log.Printf("[ERROR] [TransactionService] UpdateTransaction: ERROR: update failed tx=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to update transaction: %w", err)
 	}
 
-	log.Printf("[TransactionService] UpdateTransaction: completed tx=%s", id)
-
+	log.Printf("[INFO] [TransactionService] UpdateTransaction: completed tx=%s", id)
 	if transaction.ExecutedAt.Before(dirtyFrom) {
 		dirtyFrom = transaction.ExecutedAt
 	}
@@ -293,12 +290,11 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 
 	tx, err := s.uow.Transaction().GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[TransactionService] DeleteTransaction: transaction not found tx=%s", id)
+		log.Printf("[WARN] [TransactionService] DeleteTransaction: transaction not found tx=%s", id)
 		return fmt.Errorf("failed to get transaction: %w", err)
 	}
 
-	log.Printf("[TransactionService] DeleteTransaction: started tx=%s user=%s type=%s", id, tx.UserID, tx.Type)
-
+	log.Printf("[INFO] [TransactionService] DeleteTransaction: started tx=%s user=%s type=%s", id, tx.UserID, tx.Type)
 	if tx.PositionID != nil {
 		return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 			pos, err := uow.Position().GetByID(ctx, *tx.PositionID)
@@ -335,11 +331,11 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 			}
 
 			if err := uow.Transaction().Delete(ctx, id); err != nil {
-				log.Printf("[TransactionService] DeleteTransaction: ERROR: delete failed tx=%s: %v", id, err)
+				log.Printf("[ERROR] [TransactionService] DeleteTransaction: ERROR: delete failed tx=%s: %v", id, err)
 				return err
 			}
 			s.enqueuePortfolioRecalculation(ctx, pos.PortfolioID, tx.ExecutedAt)
-			log.Printf("[TransactionService] DeleteTransaction: completed with position recalculation tx=%s", id)
+			log.Printf("[INFO] [TransactionService] DeleteTransaction: completed with position recalculation tx=%s", id)
 			return nil
 		})
 	}
@@ -480,7 +476,7 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 		return nil, errors.New("user ID is required")
 	}
 
-	log.Printf("[TransactionService] ProcessBuy: started user=%s portfolio=%s asset=%s qty=%s", req.UserID, req.PortfolioID, req.AssetID, req.Quantity.String())
+	log.Printf("[INFO] [TransactionService] ProcessBuy: started user=%s portfolio=%s asset=%s qty=%s", req.UserID, req.PortfolioID, req.AssetID, req.Quantity.String())
 	if req.PortfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -575,13 +571,13 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 		return nil
 	})
 	if err != nil {
-		log.Printf("[TransactionService] ProcessBuy: ERROR: user=%s asset=%s: %v", req.UserID, req.AssetID, err)
+		log.Printf("[ERROR] [TransactionService] ProcessBuy: ERROR: user=%s asset=%s: %v", req.UserID, req.AssetID, err)
 		return nil, err
 	}
 	if result != nil && result.Position != nil {
 		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
 	}
-	log.Printf("[TransactionService] ProcessBuy: completed tx=%s user=%s", result.Transaction.ID, req.UserID)
+	log.Printf("[INFO] [TransactionService] ProcessBuy: completed tx=%s user=%s", result.Transaction.ID, req.UserID)
 	return result, nil
 }
 
@@ -591,7 +587,7 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 		return nil, errors.New("user ID is required")
 	}
 
-	log.Printf("[TransactionService] ProcessSell: started user=%s position=%s qty=%s", req.UserID, req.PositionID, req.Quantity.String())
+	log.Printf("[INFO] [TransactionService] ProcessSell: started user=%s position=%s qty=%s", req.UserID, req.PositionID, req.Quantity.String())
 	if req.PositionID == "" {
 		return nil, errors.New("position ID is required")
 	}
@@ -671,13 +667,13 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 		return nil
 	})
 	if err != nil {
-		log.Printf("[TransactionService] ProcessSell: ERROR: user=%s position=%s: %v", req.UserID, req.PositionID, err)
+		log.Printf("[ERROR] [TransactionService] ProcessSell: ERROR: user=%s position=%s: %v", req.UserID, req.PositionID, err)
 		return nil, err
 	}
 	if result != nil && result.Position != nil {
 		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
 	}
-	log.Printf("[TransactionService] ProcessSell: completed tx=%s user=%s realized=%v", result.Transaction.ID, req.UserID, result.RealizedGains)
+	log.Printf("[INFO] [TransactionService] ProcessSell: completed tx=%s user=%s realized=%v", result.Transaction.ID, req.UserID, result.RealizedGains)
 	return result, nil
 }
 
@@ -687,7 +683,7 @@ func (s *TransactionService) enqueueDirtyRecalculationForPosition(ctx context.Co
 	}
 	position, err := s.uow.Position().GetByID(ctx, *positionID)
 	if err != nil {
-		log.Printf("[portfolio-materialization] position lookup failed for dirty enqueue position=%s err=%v", *positionID, err)
+		log.Printf("[ERROR] [portfolio-materialization] position lookup failed for dirty enqueue position=%s err=%v", *positionID, err)
 		return
 	}
 	s.enqueuePortfolioRecalculation(ctx, position.PortfolioID, dirtyFrom)
@@ -706,7 +702,7 @@ func (s *TransactionService) enqueuePortfolioRecalculation(ctx context.Context, 
 		VALUES (?, ?, 'queued')
 	`, portfolioID, dirtyFrom.Format(time.DateOnly))
 	if err != nil {
-		log.Printf("[portfolio-materialization] dirty enqueue failed portfolio=%s dirty_from=%s err=%v", portfolioID, dirtyFrom.Format(time.DateOnly), err)
+		log.Printf("[ERROR] [portfolio-materialization] dirty enqueue failed portfolio=%s dirty_from=%s err=%v", portfolioID, dirtyFrom.Format(time.DateOnly), err)
 	}
 }
 
@@ -717,7 +713,7 @@ func (s *TransactionService) ProcessCashTransaction(ctx context.Context, req Cas
 		return nil, errors.New("user ID is required")
 	}
 
-	log.Printf("[TransactionService] ProcessCash: started user=%s type=%s amount=%d", req.UserID, req.Type, req.Amount)
+	log.Printf("[INFO] [TransactionService] ProcessCash: started user=%s type=%s amount=%d", req.UserID, req.Type, req.Amount)
 	if !req.Currency.IsValid() {
 		return nil, errors.New("currency is required")
 	}
@@ -754,10 +750,10 @@ func (s *TransactionService) ProcessCashTransaction(ctx context.Context, req Cas
 
 	createdTransaction, err := s.uow.Transaction().Create(ctx, transaction)
 	if err != nil {
-		log.Printf("[TransactionService] ProcessCash: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
+		log.Printf("[ERROR] [TransactionService] ProcessCash: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
 		return nil, fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	log.Printf("[TransactionService] ProcessCash: completed tx=%s user=%s type=%s", createdTransaction.ID, req.UserID, req.Type)
+	log.Printf("[INFO] [TransactionService] ProcessCash: completed tx=%s user=%s type=%s", createdTransaction.ID, req.UserID, req.Type)
 	return createdTransaction, nil
 }

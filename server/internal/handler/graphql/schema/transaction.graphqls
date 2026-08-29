@@ -18,6 +18,14 @@ type Transaction {
 enum TransactionType {
     BUY
     SELL
+    DEPOSIT
+    WITHDRAWAL
+    TRANSFER_IN
+    TRANSFER_OUT
+    DIVIDEND
+    INTEREST
+    FEE
+    ADJUSTMENT
 }
 
 input TransactionFilter {
@@ -50,4 +58,5 @@ input UpdateTransactionInput {
 
 extend type Mutation {
     updateTransaction(id: ID!, input: UpdateTransactionInput!): Transaction! @auth
+    deleteTransaction(id: ID!): ID! @auth
 }

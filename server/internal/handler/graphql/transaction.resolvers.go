@@ -8,6 +8,7 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"log"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
@@ -17,16 +18,20 @@ import (
 
 // UpdateTransaction is the resolver for the updateTransaction field.
 func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error) {
+	log.Printf("[INFO] [graphql] UpdateTransaction: started tx=%s", id)
 	userID, err := getUserIDFromContext(ctx)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateTransaction: getUserIDFromContext failed: %v", err)
 		return nil, err
 	}
 
 	existing, err := r.TransactionService.GetTransaction(ctx, id)
 	if err != nil {
+		log.Printf("[WARN] [graphql] UpdateTransaction: transaction not found tx=%s: %v", id, err)
 		return nil, err
 	}
 	if existing.UserID != userID {
+		log.Printf("[WARN] [graphql] UpdateTransaction: unauthorized tx=%s user=%s owner=%s", id, userID, existing.UserID)
 		return nil, fmt.Errorf("transaction not found")
 	}
 
@@ -68,8 +73,39 @@ func (r *mutationResolver) UpdateTransaction(ctx context.Context, id string, inp
 
 	updated, err := r.TransactionService.UpdateTransaction(ctx, id, req)
 	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateTransaction: update failed tx=%s: %v", id, err)
 		return nil, err
 	}
 
+	log.Printf("[INFO] [graphql] UpdateTransaction: completed tx=%s", id)
 	return mapTransactionToGQL(*updated), nil
+}
+
+// DeleteTransaction is the resolver for the deleteTransaction field.
+func (r *mutationResolver) DeleteTransaction(ctx context.Context, id string) (string, error) {
+	log.Printf("[INFO] [graphql] DeleteTransaction: started tx=%s", id)
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] DeleteTransaction: getUserIDFromContext failed: %v", err)
+		return "", err
+	}
+
+	existing, err := r.TransactionService.GetTransaction(ctx, id)
+	if err != nil {
+		log.Printf("[WARN] [graphql] DeleteTransaction: transaction not found tx=%s: %v", id, err)
+		return "", err
+	}
+	if existing.UserID != userID {
+		log.Printf("[WARN] [graphql] DeleteTransaction: unauthorized tx=%s user=%s owner=%s", id, userID, existing.UserID)
+		return "", fmt.Errorf("transaction not found")
+	}
+
+	err = r.TransactionService.DeleteTransaction(ctx, id)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] DeleteTransaction: delete failed tx=%s: %v", id, err)
+		return "", err
+	}
+
+	log.Printf("[INFO] [graphql] DeleteTransaction: completed tx=%s", id)
+	return id, nil
 }

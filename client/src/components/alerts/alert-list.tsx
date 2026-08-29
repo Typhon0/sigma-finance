@@ -290,12 +290,18 @@ export function AlertList({
 										</div>
 
 										{alert.isActive ? (
-											<Badge variant="outline" className="text-green-600 border-green-600">
+											<Badge
+												variant="outline"
+												className="text-emerald-500 border-emerald-500/30 bg-emerald-500/10"
+											>
 												<Power className="h-3 w-3 mr-1" />
 												Active
 											</Badge>
 										) : (
-											<Badge variant="outline" className="text-gray-500 border-gray-500">
+											<Badge
+												variant="outline"
+												className="text-muted-foreground border-border/40 bg-muted/30"
+											>
 												<PowerOff className="h-3 w-3 mr-1" />
 												Inactive
 											</Badge>

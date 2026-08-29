@@ -1,7 +1,6 @@
 import { useCallback } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { CURRENCY_SYMBOLS } from "@/lib/utils";
-import { formatCurrency as formatCurrencyUtil } from "@/lib/utils/formatters";
+import { CURRENCY_SYMBOLS, formatCurrency as formatCurrencyUtil } from "@/lib/utils";
 
 /**
  * Hook that provides currency formatting functions bound to the

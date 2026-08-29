@@ -4,6 +4,7 @@
  */
 
 import type { ECharts, EChartsCoreOption } from "echarts";
+import { formatCurrency } from "@/lib/utils";
 import { getAssetTypeColor, getChartColors, getChartThemeColors } from "../chart-colors";
 
 // Re-export types for easier imports
@@ -580,12 +581,7 @@ export class EChartsDataFormatter {
 	 * Format currency values
 	 */
 	static formatCurrency(value: number, currency: string = "USD"): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency,
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(value);
+		return formatCurrency(value, currency);
 	}
 
 	/**

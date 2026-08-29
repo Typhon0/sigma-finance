@@ -2,6 +2,7 @@ package graphql
 
 import (
 	"context"
+	"log"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 
@@ -41,9 +42,12 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 	// 2. Fetch specific details
 	stocks := make(map[string]model.Stock)
 	if len(stockIDs) > 0 {
-		st, _ := r.UOW.Stock().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		st, stockErr := r.UOW.Stock().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("asset_id IN (?)", bun.In(stockIDs))
 		})
+		if stockErr != nil {
+			log.Printf("[ERROR] [getAssetsWithDetailsBatch] Stock.FindAllBy failed for %d stocks: %v", len(stockIDs), stockErr)
+		}
 		for _, s := range st {
 			stocks[s.AssetID] = s
 		}
@@ -51,9 +55,12 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 
 	cryptos := make(map[string]model.Crypto)
 	if len(cryptoIDs) > 0 {
-		cr, _ := r.UOW.Crypto().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		cr, cryptoErr := r.UOW.Crypto().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("asset_id IN (?)", bun.In(cryptoIDs))
 		})
+		if cryptoErr != nil {
+			log.Printf("[ERROR] [getAssetsWithDetailsBatch] Crypto.FindAllBy failed for %d cryptos: %v", len(cryptoIDs), cryptoErr)
+		}
 		for _, c := range cr {
 			cryptos[c.AssetID] = c
 		}
@@ -61,19 +68,30 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 
 	funds := make(map[string]model.Fund)
 	if len(fundIDs) > 0 {
-		fu, _ := r.UOW.Fund().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+		fu, fundErr := r.UOW.Fund().FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
 			return q.Where("asset_id IN (?)", bun.In(fundIDs))
 		})
+		if fundErr != nil {
+			log.Printf("[ERROR] [getAssetsWithDetailsBatch] Fund.FindAllBy failed for %d funds: %v", len(fundIDs), fundErr)
+		}
 		for _, f := range fu {
 			funds[f.AssetID] = f
 		}
 	}
 
 	// 3. Fetch latest prices
-	latestPrices, _ := r.UOW.AssetPrice().GetLatestPrices(ctx, assetIDs)
+	latestPrices, priceErr := r.UOW.AssetPrice().GetLatestPrices(ctx, assetIDs)
+	if priceErr != nil {
+		log.Printf("[ERROR] [getAssetsWithDetailsBatch] GetLatestPrices failed for %d assets: %v", len(assetIDs), priceErr)
+	}
 	priceMap := make(map[string]model.AssetPrice)
 	for _, p := range latestPrices {
 		priceMap[p.AssetID] = p
+	}
+	if len(priceMap) == 0 && len(assetIDs) > 0 {
+		log.Printf("[WARN] [getAssetsWithDetailsBatch] WARNING: No prices found in asset_prices for %d assets (priceErr=%v)", len(assetIDs), priceErr)
+	} else if len(assetIDs) > 0 {
+		log.Printf("[INFO] [getAssetsWithDetailsBatch] Loaded %d prices for %d assets", len(priceMap), len(assetIDs))
 	}
 
 	// Build map
@@ -85,10 +103,19 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 			currentValue = &cv
 		}
 
-		// (Tags and DayChange stats are skipped in this batch for simplicity but would be added here if critical)
+		// (Tags are skipped in this batch for simplicity but would be added here if critical)
 		// We use empty slices for tags in batch context to optimize perf.
 		tags := []model.Tag{}
 		var dayChange, dayChangePercent *float64
+		if a.Type.IsTradeable() {
+			stats, err := r.UOW.AssetPrice().GetPriceStatistics(ctx, a.ID)
+			if err == nil && stats != nil {
+				dc, _ := stats.Change.Float64()
+				dcp, _ := stats.ChangePercent.Float64()
+				dayChange = &dc
+				dayChangePercent = &dcp
+			}
+		}
 
 		switch a.Type {
 		case "STOCK":

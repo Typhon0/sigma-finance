@@ -125,6 +125,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		addRealEstate: addRealEstateMutation,
 		addLifeInsurance: addLifeInsuranceMutation,
 		addWatch: addWatchMutation,
+		refreshAssetPrice,
 		loading: addingAsset,
 	} = useAssetMutations();
 
@@ -494,6 +495,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			addWatch,
 			updateAsset,
 			deleteAsset,
+			refreshAssetPrice,
 			addTransaction,
 			addToWatchlist,
 			removeFromWatchlist,
@@ -519,6 +521,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			addLifeInsurance,
 			addWatch,
 			deleteAsset,
+			refreshAssetPrice,
 			user,
 			addingAsset,
 			refetch,

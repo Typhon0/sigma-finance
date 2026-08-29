@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withErrorBoundary } from "@/components/ui/error-boundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Transaction } from "@/gql/graphql";
-import { formatCurrency } from "@/lib/utils/portfolio-calculations";
+import { formatCurrency } from "@/lib/utils";
 
 interface RecentTransactionsProps {
 	transactions: Transaction[];

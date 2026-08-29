@@ -39,7 +39,7 @@ func NewAlphaVantageProvider() Provider {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			log.Printf("AlphaVantage circuit breaker: %s -> %s", from, to)
+			log.Printf("[ERROR] AlphaVantage circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -607,6 +607,11 @@ func (a *AlphaVantageProvider) ValidateCredentials(ctx context.Context, apiKey s
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return fmt.Errorf("invalid Alpha Vantage API key")
+	}
+
+	// 429 = rate limited; the key itself is valid.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {

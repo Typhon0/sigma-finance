@@ -5,6 +5,7 @@ import {
 	ArrowRight,
 	Building2,
 	CalendarDays,
+	ChevronLeft,
 	Coins,
 	Edit,
 	Eye,
@@ -20,6 +21,7 @@ import {
 } from "lucide-react";
 import { type ReactElement, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import {
 	Accordion,
@@ -71,6 +73,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UPDATE_TRANSACTION } from "@/graphql/mutations/transaction";
 import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
+import { AssetPageHeader } from "../AssetPageHeader";
 import { AddCryptoForm } from "./AddCryptoForm";
 
 /** Crypto holding derived from portfolio asset data */
@@ -114,6 +117,7 @@ interface CryptoListProps {
 	onSelectCrypto: (cryptoId: string) => void;
 	onSelectAccount?: (accountId: string) => void;
 	detailMode?: "external" | "panel";
+	onBack?: () => void;
 }
 
 type TimeRange = "24H" | "7D" | "1M" | "1Y" | "ALL";
@@ -310,6 +314,7 @@ export function CryptoList({
 	onSelectCrypto,
 	onSelectAccount,
 	detailMode = "external",
+	onBack,
 }: CryptoListProps) {
 	const {
 		assets,
@@ -1548,128 +1553,159 @@ export function CryptoList({
 
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
-			<div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-center">
-				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Portfolio</h1>
-					<div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-						<span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-						Dernière synchro : à l'instant
+			<AssetPageHeader
+				title="Crypto Assets"
+				description="Track cryptocurrency assets, portfolio allocation, wallet performance, and live market trends."
+				onBack={onBack}
+				actions={
+					<>
+						<Button
+							variant="outline"
+							size="sm"
+							className="h-8 text-xs bg-secondary/20 hover:bg-secondary/40 border-border/40"
+							onClick={() => toast.info("Bientot disponible")}
+						>
+							<Upload className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
+							Importer Wallet
+						</Button>
+
+						<Button
+							size="sm"
+							className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+							onClick={() => setShowAddForm(true)}
+						>
+							<Plus className="mr-1.5 h-3.5 w-3.5" />
+							Nouvelle Transaction
+						</Button>
+					</>
+				}
+			/>
+
+			{/* Benchmark metrics */}
+			<BenchmarkMetricsBar
+				portfolioID={selectedPortfolio?.id}
+				benchmarkMode="sp500"
+				dateStart={portfolioHistory.length > 0 ? portfolioHistory[0].date.toISOString() : undefined}
+				dateEnd={
+					portfolioHistory.length > 0
+						? portfolioHistory[portfolioHistory.length - 1].date.toISOString()
+						: undefined
+				}
+			/>
+
+			{/* Unified Dashboard Grid: Chart + Summary side by side with vertical separator */}
+			<div className="grid grid-cols-1 gap-6 lg:grid-cols-10 border-b border-border/30 pb-6">
+				{/* Unified Left Section: Chart */}
+				<div className="lg:col-span-7 pr-0 lg:pr-6 flex flex-col justify-between">
+					<div className="flex flex-col space-y-4">
+						{/* ECharts Header */}
+						<div className="flex flex-col justify-between gap-3 border-b border-border/10 pb-3 sm:flex-row sm:items-center">
+							<div className="flex flex-col">
+								<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+									Portfolio Value
+								</span>
+								<div className="flex items-baseline gap-2">
+									<span className="font-mono text-2xl font-bold tracking-tight text-foreground">
+										{totalValueParts.main}
+										<span className="text-lg font-medium text-muted-foreground">
+											{totalValueParts.cents}
+										</span>
+									</span>
+									<span className="font-mono text-xs text-emerald-500 font-semibold ml-1">
+										{periodChange >= 0 ? "+" : ""}
+										{formatCurrency(periodChange)} ({periodChange >= 0 ? "+" : ""}
+										{periodChangePercent.toFixed(2)}%)
+									</span>
+								</div>
+							</div>
+
+							<div className="flex items-center gap-2">
+								<div className="flex items-center rounded-full bg-secondary/35 border border-border/50 p-0.5 backdrop-blur-xs">
+									{TIME_RANGES.map((range) => (
+										<Button
+											key={range}
+											variant="ghost"
+											size="sm"
+											className={cn(
+												"h-6 rounded-full px-2.5 text-[10px] font-semibold transition-all duration-200",
+												timeRange === range
+													? "bg-secondary-foreground/15 text-foreground shadow-xs font-bold"
+													: "text-muted-foreground hover:text-foreground",
+											)}
+											onClick={() => setTimeRange(range)}
+										>
+											{range}
+										</Button>
+									))}
+								</div>
+							</div>
+						</div>
+
+						{/* ECharts view */}
+						<div className="h-[250px] w-full relative">
+							<ReactECharts
+								option={performanceChartOption}
+								notMerge={true}
+								lazyUpdate={true}
+								style={{ height: "250px", width: "100%" }}
+								opts={{ renderer: "svg" }}
+							/>
+						</div>
 					</div>
 				</div>
-				<div className="flex flex-wrap items-center gap-2">
-					<Button
-						variant="outline"
-						className="h-10 px-4 border-border/60 bg-transparent"
-						onClick={() => toast.info("Bientot disponible")}
-					>
-						<Upload className="mr-2 h-4 w-4" />
-						Importer Wallet
-					</Button>
-					<Button
-						className="h-10 px-4 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
-						onClick={() => setShowAddForm(true)}
-					>
-						<Plus className="mr-2 h-4 w-4" />
-						Nouvelle Transaction
-					</Button>
-				</div>
-			</div>
 
-			<div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-				<Card className="xl:col-span-2 border-border/60 bg-gradient-to-br from-card to-secondary/10">
-					<CardHeader className="space-y-4 pb-2">
-						<div className="flex flex-wrap items-start justify-between gap-4">
-							<div>
-								<CardDescription>Performance du portefeuille</CardDescription>
-								<h2 className="font-mono text-4xl font-bold tracking-tight">
-									{totalValueParts.main}
-									<span className="ml-0.5 text-[0.8em] font-medium text-muted-foreground">
-										{totalValueParts.cents}
-									</span>
-								</h2>
-								<p className="mt-1 font-mono text-sm text-emerald-500">
-									{periodChange >= 0 ? "+" : ""}
-									{formatCurrency(periodChange)} ({periodChange >= 0 ? "+" : ""}
-									{periodChangePercent.toFixed(2)}%)
-								</p>
-							</div>
-							<div className="inline-flex flex-wrap items-center gap-1 rounded-xl border border-border/60 bg-card/70 p-1.5">
-								{TIME_RANGES.map((range) => (
-									<Button
-										key={range}
-										variant={timeRange === range ? "secondary" : "ghost"}
-										size="sm"
-										className={cn(
-											"h-7 rounded-md px-2.5 text-[11px]",
-											timeRange === range
-												? "bg-slate-300 text-slate-900 hover:bg-slate-200 dark:bg-slate-600 dark:text-slate-100"
-												: "text-muted-foreground",
-										)}
-										onClick={() => setTimeRange(range)}
-									>
-										{range}
-									</Button>
-								))}
-							</div>
-						</div>
-					</CardHeader>
-					<CardContent className="pt-0">
-						<ReactECharts
-							option={performanceChartOption}
-							notMerge={true}
-							lazyUpdate={true}
-							style={{ height: "290px", width: "100%" }}
-							opts={{ renderer: "svg" }}
-						/>
-					</CardContent>
-				</Card>
-
-				<Card className="border-border/60 bg-card/90">
-					<CardHeader className="pb-3">
-						<CardTitle className="text-sm font-semibold tracking-tight">
-							Portfolio Summary
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-3 pt-0 text-sm">
+				{/* Unified Right Section: Summary */}
+				<div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-border/30 pt-6 lg:pt-0 pl-0 lg:pl-6 flex flex-col justify-between">
+					<div className="flex flex-col space-y-4">
+						{/* Summary Header */}
 						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">Capital investi</span>
-							<span className="font-mono font-semibold">
-								{hasReliableCostBasis ? formatCurrency(totalCost) : "--"}
+							<span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
+								Portfolio Summary
 							</span>
 						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">PnL Réalisé</span>
-							<span className="font-mono font-semibold text-emerald-500">
-								+{formatCurrency(realizedPnL)}
-							</span>
-						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">PnL Latent</span>
-							{latentPnL === null || latentPnLPercent === null ? (
-								<span className="font-mono text-muted-foreground">--</span>
-							) : (
-								<span
-									className={cn(
-										"font-mono font-semibold",
-										latentPnL >= 0 ? "text-emerald-500" : "text-rose-500",
-									)}
-								>
-									{latentPnL >= 0 ? "+" : ""}
-									{formatCurrency(latentPnL)} ({latentPnL >= 0 ? "+" : ""}
-									{latentPnLPercent.toFixed(2)}%)
+
+						{/* Summary Content */}
+						<div className="space-y-3 text-xs">
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Capital investi</span>
+								<span className="font-mono font-semibold">
+									{hasReliableCostBasis ? formatCurrency(totalCost) : "--"}
 								</span>
-							)}
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">PnL Réalisé</span>
+								<span className="font-mono font-semibold text-emerald-500">
+									+{formatCurrency(realizedPnL)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">PnL Latent</span>
+								{latentPnL === null || latentPnLPercent === null ? (
+									<span className="font-mono text-muted-foreground">--</span>
+								) : (
+									<span
+										className={cn(
+											"font-mono font-semibold",
+											latentPnL >= 0 ? "text-emerald-500" : "text-rose-500",
+										)}
+									>
+										{latentPnL >= 0 ? "+" : ""}
+										{formatCurrency(latentPnL)} ({latentPnL >= 0 ? "+" : ""}
+										{latentPnLPercent.toFixed(2)}%)
+									</span>
+								)}
+							</div>
+							<div className="flex items-center justify-between">
+								<span className="text-muted-foreground">Meilleur performeur</span>
+								<span className="font-mono font-semibold text-emerald-500">
+									{bestPerformer
+										? `${bestPerformer.symbol} (${bestPerformer.profitLossPercent >= 0 ? "+" : ""}${bestPerformer.profitLossPercent.toFixed(0)}%)`
+										: "-"}
+								</span>
+							</div>
 						</div>
-						<div className="flex items-center justify-between">
-							<span className="text-muted-foreground">Meilleur performeur</span>
-							<span className="font-mono font-semibold text-emerald-500">
-								{bestPerformer
-									? `${bestPerformer.symbol} (${bestPerformer.profitLossPercent >= 0 ? "+" : ""}${bestPerformer.profitLossPercent.toFixed(0)}%)`
-									: "-"}
-							</span>
-						</div>
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -1701,7 +1737,7 @@ export function CryptoList({
 							onChange={(event) => setSearchQuery(event.target.value)}
 							onClear={() => setSearchQuery("")}
 							containerClassName="w-full"
-							className="h-10 border-transparent bg-[#1E293B] text-slate-100 placeholder:text-slate-400 focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border"
+							className="h-10 border-transparent bg-muted text-foreground placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-1 focus-visible:ring-border"
 						/>
 						<Select value={filterExchange} onValueChange={setFilterExchange}>
 							<SelectTrigger className="h-10">
@@ -1840,7 +1876,7 @@ export function CryptoList({
 														{holdings.map((holding) => (
 															<TableRow
 																key={holding.id}
-																className="h-16 cursor-pointer border-border/40 transition-colors hover:bg-[#1E293B]/55"
+																className="h-16 cursor-pointer border-border/40 transition-colors hover:bg-muted/50"
 																onClick={() => selectCrypto(holding)}
 															>
 																<TableCell>
@@ -1979,7 +2015,7 @@ export function CryptoList({
 									{aggregatedByAsset.map((asset) => (
 										<TableRow
 											key={asset.symbol}
-											className="h-16 cursor-pointer border-border/40 transition-colors hover:bg-[#1E293B]/55"
+											className="h-16 cursor-pointer border-border/40 transition-colors hover:bg-muted/50"
 											onClick={() => {
 												const holding = filteredHoldings.find(
 													(item) => item.symbol === asset.symbol,

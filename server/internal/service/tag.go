@@ -85,7 +85,7 @@ func (s *TagService) FindAllByUserID(ctx context.Context, userID string) ([]mode
 
 // CreateTag creates a new tag with validation
 func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*model.Tag, error) {
-	log.Printf("[TagService] CreateTag: started user=%s name=%s", input.UserID, input.Name)
+	log.Printf("[INFO] [TagService] CreateTag: started user=%s name=%s", input.UserID, input.Name)
 	// Validate input
 	if err := s.validateCreateTagInput(input); err != nil {
 		return nil, err
@@ -111,10 +111,10 @@ func (s *TagService) CreateTag(ctx context.Context, input CreateTagInput) (*mode
 
 	createdTag, err := s.uow.Tag().Create(ctx, &newTag)
 	if err != nil {
-		log.Printf("[TagService] CreateTag: ERROR creation failed user=%s name=%s: %v", input.UserID, normalizedName, err)
+		log.Printf("[ERROR] [TagService] CreateTag: ERROR creation failed user=%s name=%s: %v", input.UserID, normalizedName, err)
 		return nil, fmt.Errorf("failed to create tag: %w", err)
 	}
-	log.Printf("[TagService] CreateTag: SUCCESS id=%s user=%s name=%s", createdTag.ID, input.UserID, normalizedName)
+	log.Printf("[INFO] [TagService] CreateTag: SUCCESS id=%s user=%s name=%s", createdTag.ID, input.UserID, normalizedName)
 	return createdTag, nil
 }
 
@@ -157,7 +157,7 @@ func (s *TagService) UpdateTag(ctx context.Context, id string, input UpdateTagIn
 
 // DeleteTag removes a tag and all its associations
 func (s *TagService) DeleteTag(ctx context.Context, id string) error {
-	log.Printf("[TagService] DeleteTag: started id=%s", id)
+	log.Printf("[INFO] [TagService] DeleteTag: started id=%s", id)
 	// Use Unit of Work to ensure atomicity
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// Verify tag exists
@@ -195,16 +195,16 @@ func (s *TagService) DeleteTag(ctx context.Context, id string) error {
 		return uow.Tag().Delete(ctx, id)
 	})
 	if err != nil {
-		log.Printf("[TagService] DeleteTag: ERROR id=%s: %v", id, err)
+		log.Printf("[ERROR] [TagService] DeleteTag: ERROR id=%s: %v", id, err)
 	} else {
-		log.Printf("[TagService] DeleteTag: SUCCESS id=%s", id)
+		log.Printf("[INFO] [TagService] DeleteTag: SUCCESS id=%s", id)
 	}
 	return err
 }
 
 // TagAsset associates a tag with an asset
 func (s *TagService) TagAsset(ctx context.Context, assetID, tagID string) error {
-	log.Printf("[TagService] TagAsset: started asset=%s tag=%s", assetID, tagID)
+	log.Printf("[INFO] [TagService] TagAsset: started asset=%s tag=%s", assetID, tagID)
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
@@ -242,16 +242,16 @@ func (s *TagService) TagAsset(ctx context.Context, assetID, tagID string) error 
 		return uow.AssetTag().Add(ctx, assetID, tagID)
 	})
 	if err != nil {
-		log.Printf("[TagService] TagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
+		log.Printf("[ERROR] [TagService] TagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
 	} else {
-		log.Printf("[TagService] TagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
+		log.Printf("[INFO] [TagService] TagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
 	}
 	return err
 }
 
 // UntagAsset removes a tag association from an asset
 func (s *TagService) UntagAsset(ctx context.Context, assetID, tagID string) error {
-	log.Printf("[TagService] UntagAsset: started asset=%s tag=%s", assetID, tagID)
+	log.Printf("[INFO] [TagService] UntagAsset: started asset=%s tag=%s", assetID, tagID)
 	// Validate inputs
 	if err := s.validateTagAssociation(assetID, tagID); err != nil {
 		return err
@@ -261,9 +261,9 @@ func (s *TagService) UntagAsset(ctx context.Context, assetID, tagID string) erro
 		return uow.AssetTag().Remove(ctx, assetID, tagID)
 	})
 	if err != nil {
-		log.Printf("[TagService] UntagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
+		log.Printf("[ERROR] [TagService] UntagAsset: ERROR asset=%s tag=%s: %v", assetID, tagID, err)
 	} else {
-		log.Printf("[TagService] UntagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
+		log.Printf("[INFO] [TagService] UntagAsset: SUCCESS asset=%s tag=%s", assetID, tagID)
 	}
 	return err
 }

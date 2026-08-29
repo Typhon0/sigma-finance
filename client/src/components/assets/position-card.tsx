@@ -46,13 +46,13 @@ const ASSET_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string 
 };
 
 const ASSET_TYPE_COLORS: Record<string, string> = {
-	STOCK: "bg-green-100 text-green-800 border-green-200",
-	CRYPTO: "bg-amber-100 text-amber-800 border-amber-200",
-	BANK_ACCOUNT: "bg-blue-100 text-blue-800 border-blue-200",
-	REAL_ESTATE: "bg-purple-100 text-purple-800 border-purple-200",
-	LIFE_INSURANCE: "bg-indigo-100 text-indigo-800 border-indigo-200",
-	WATCH: "bg-pink-100 text-pink-800 border-pink-200",
-	OTHER_VALUABLE: "bg-gray-100 text-gray-800 border-gray-200",
+	STOCK: "bg-green-500/10 text-green-500 border border-green-500/20",
+	CRYPTO: "bg-amber-500/10 text-amber-500 border border-amber-500/20",
+	BANK_ACCOUNT: "bg-blue-500/10 text-blue-500 border border-blue-500/20",
+	REAL_ESTATE: "bg-purple-500/10 text-purple-500 border border-purple-500/20",
+	LIFE_INSURANCE: "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20",
+	WATCH: "bg-pink-500/10 text-pink-500 border border-pink-500/20",
+	OTHER_VALUABLE: "bg-muted text-muted-foreground border border-border/40",
 };
 
 export function PositionCard({

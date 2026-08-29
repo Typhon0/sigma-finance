@@ -82,7 +82,7 @@ type PortfolioValue struct {
 
 // CreatePosition creates a new position with validation
 func (s *PositionService) CreatePosition(ctx context.Context, req CreatePositionRequest) (*model.Position, error) {
-	log.Printf("[PositionService] CreatePosition: started portfolio=%s asset=%s qty=%s", req.PortfolioID, req.AssetID, req.Quantity.String())
+	log.Printf("[INFO] [PositionService] CreatePosition: started portfolio=%s asset=%s qty=%s", req.PortfolioID, req.AssetID, req.Quantity.String())
 	// Validate required fields
 	if req.PortfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
@@ -97,18 +97,18 @@ func (s *PositionService) CreatePosition(ctx context.Context, req CreatePosition
 	// Verify asset exists
 	asset, err := s.assetRepo.GetByID(ctx, req.AssetID)
 	if err != nil {
-		log.Printf("[PositionService] CreatePosition: ERROR: asset not found asset=%s: %v", req.AssetID, err)
+		log.Printf("[WARN] [PositionService] CreatePosition: ERROR: asset not found asset=%s: %v", req.AssetID, err)
 		return nil, fmt.Errorf("asset not found: %w", err)
 	}
 
 	// Check if position already exists for this portfolio and asset
 	existing, err := s.positionRepo.GetByPortfolioAndAsset(ctx, req.PortfolioID, req.AssetID)
 	if err == nil && existing != nil {
-		log.Printf("[PositionService] CreatePosition: CONFLICT: position already exists portfolio=%s asset=%s", req.PortfolioID, req.AssetID)
+		log.Printf("[WARN] [PositionService] CreatePosition: CONFLICT: position already exists portfolio=%s asset=%s", req.PortfolioID, req.AssetID)
 		return nil, errors.New("position already exists for this asset in the portfolio")
 	}
 	if err != nil && !errors.Is(err, repository.ErrNotFound) {
-		log.Printf("[PositionService] CreatePosition: ERROR checking existing: %v", err)
+		log.Printf("[ERROR] [PositionService] CreatePosition: ERROR checking existing: %v", err)
 		return nil, fmt.Errorf("failed to check existing position: %w", err)
 	}
 
@@ -148,13 +148,13 @@ func (s *PositionService) CreatePosition(ctx context.Context, req CreatePosition
 	// Create in repository
 	createdPosition, err := s.positionRepo.Create(ctx, position)
 	if err != nil {
-		log.Printf("[PositionService] CreatePosition: ERROR: creation failed portfolio=%s asset=%s: %v", req.PortfolioID, req.AssetID, err)
+		log.Printf("[ERROR] [PositionService] CreatePosition: ERROR: creation failed portfolio=%s asset=%s: %v", req.PortfolioID, req.AssetID, err)
 		return nil, fmt.Errorf("failed to create position: %w", err)
 	}
 
 	// Load the asset relation
 	createdPosition.Asset = asset
-	log.Printf("[PositionService] CreatePosition: SUCCESS id=%s portfolio=%s asset=%s", createdPosition.ID, req.PortfolioID, req.AssetID)
+	log.Printf("[INFO] [PositionService] CreatePosition: SUCCESS id=%s portfolio=%s asset=%s", createdPosition.ID, req.PortfolioID, req.AssetID)
 	return createdPosition, nil
 }
 
@@ -166,7 +166,7 @@ func (s *PositionService) GetPosition(ctx context.Context, id string) (*model.Po
 
 	position, err := s.positionRepo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[PositionService] GetPosition: ERROR id=%s: %v", id, err)
+		log.Printf("[ERROR] [PositionService] GetPosition: ERROR id=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to get position: %w", err)
 	}
 
@@ -229,7 +229,7 @@ func (s *PositionService) UpdatePosition(ctx context.Context, id string, req Upd
 
 // DeletePosition removes a position
 func (s *PositionService) DeletePosition(ctx context.Context, id string) error {
-	log.Printf("[PositionService] DeletePosition: started id=%s", id)
+	log.Printf("[INFO] [PositionService] DeletePosition: started id=%s", id)
 	if id == "" {
 		return errors.New("position ID is required")
 	}
@@ -237,17 +237,17 @@ func (s *PositionService) DeletePosition(ctx context.Context, id string) error {
 	// Check if position exists
 	position, err := s.positionRepo.GetByID(ctx, id)
 	if err != nil {
-		log.Printf("[PositionService] DeletePosition: ERROR not found id=%s: %v", id, err)
+		log.Printf("[WARN] [PositionService] DeletePosition: ERROR not found id=%s: %v", id, err)
 		return fmt.Errorf("failed to get position: %w", err)
 	}
 
 	// Use generic Delete method
 	if err := s.positionRepo.Delete(ctx, position.ID); err != nil {
-		log.Printf("[PositionService] DeletePosition: ERROR delete failed id=%s: %v", id, err)
+		log.Printf("[ERROR] [PositionService] DeletePosition: ERROR delete failed id=%s: %v", id, err)
 		return fmt.Errorf("failed to delete position: %w", err)
 	}
 
-	log.Printf("[PositionService] DeletePosition: SUCCESS id=%s", id)
+	log.Printf("[INFO] [PositionService] DeletePosition: SUCCESS id=%s", id)
 	return nil
 }
 
@@ -259,7 +259,7 @@ func (s *PositionService) GetPortfolioPositions(ctx context.Context, portfolioID
 
 	positions, err := s.positionRepo.GetPortfolioPositions(ctx, portfolioID)
 	if err != nil {
-		log.Printf("[PositionService] GetPortfolioPositions: ERROR portfolio=%s: %v", portfolioID, err)
+		log.Printf("[ERROR] [PositionService] GetPortfolioPositions: ERROR portfolio=%s: %v", portfolioID, err)
 		return nil, fmt.Errorf("failed to get portfolio positions: %w", err)
 	}
 
@@ -269,7 +269,7 @@ func (s *PositionService) GetPortfolioPositions(ctx context.Context, portfolioID
 		result[i] = &positions[i]
 	}
 
-	log.Printf("[PositionService] GetPortfolioPositions: SUCCESS portfolio=%s count=%d", portfolioID, len(result))
+	log.Printf("[INFO] [PositionService] GetPortfolioPositions: SUCCESS portfolio=%s count=%d", portfolioID, len(result))
 	return result, nil
 }
 
@@ -324,7 +324,7 @@ func (s *PositionService) CalculatePositionValue(ctx context.Context, position *
 
 // CalculatePortfolioValue calculates the total value of a portfolio
 func (s *PositionService) CalculatePortfolioValue(ctx context.Context, portfolioID string, priceMap map[string]decimal.Decimal) (*PortfolioValue, error) {
-	log.Printf("[PositionService] CalculatePortfolioValue: started portfolio=%s", portfolioID)
+	log.Printf("[INFO] [PositionService] CalculatePortfolioValue: started portfolio=%s", portfolioID)
 	if portfolioID == "" {
 		return nil, errors.New("portfolio ID is required")
 	}
@@ -368,11 +368,11 @@ func (s *PositionService) CalculatePortfolioValue(ctx context.Context, portfolio
 	// Get asset allocation
 	allocation, err := s.GetAssetAllocation(ctx, portfolioID)
 	if err != nil {
-		log.Printf("[PositionService] CalculatePortfolioValue: ERROR getting allocation portfolio=%s: %v", portfolioID, err)
+		log.Printf("[ERROR] [PositionService] CalculatePortfolioValue: ERROR getting allocation portfolio=%s: %v", portfolioID, err)
 		return nil, fmt.Errorf("failed to get asset allocation: %w", err)
 	}
 	portfolioValue.AssetAllocation = allocation
-	log.Printf("[PositionService] CalculatePortfolioValue: SUCCESS portfolio=%s totalValue=%d positions=%d", portfolioID, totalValue, len(portfolioValue.PositionValues))
+	log.Printf("[INFO] [PositionService] CalculatePortfolioValue: SUCCESS portfolio=%s totalValue=%d positions=%d", portfolioID, totalValue, len(portfolioValue.PositionValues))
 	return portfolioValue, nil
 }
 
@@ -406,7 +406,7 @@ func (s *PositionService) GetAssetAllocation(ctx context.Context, portfolioID st
 
 // UpdatePositionFromTransaction updates a position based on a transaction
 func (s *PositionService) UpdatePositionFromTransaction(ctx context.Context, positionID string, quantity decimal.Decimal, price decimal.Decimal, amount model.Money) error {
-	log.Printf("[PositionService] UpdatePositionFromTransaction: started position=%s qty=%s price=%s amount=%d", positionID, quantity.String(), price.String(), amount)
+	log.Printf("[INFO] [PositionService] UpdatePositionFromTransaction: started position=%s qty=%s price=%s amount=%d", positionID, quantity.String(), price.String(), amount)
 	if positionID == "" {
 		return errors.New("position ID is required")
 	}

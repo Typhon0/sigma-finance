@@ -2,6 +2,11 @@ package repository
 
 import (
 	"context"
+	"log"
+	"runtime"
+	"strconv"
+	"strings"
+	"sigma_finance/internal/benchmark"
 	"sigma_finance/internal/domain/model"
 	"time"
 
@@ -36,15 +41,17 @@ type AllocationBreakdown struct {
 
 // PerformanceSnapshot represents a daily performance snapshot
 type PerformanceSnapshot struct {
-	ID                 int64           `json:"id"`
-	PortfolioID        string          `json:"portfolio_id"`
-	TotalValue         model.Money     `json:"total_value"`
-	TotalCostBasis     model.Money     `json:"total_cost_basis"`
-	UnrealizedGainLoss model.Money     `json:"unrealized_gain_loss"`
-	RealizedGainLoss   model.Money     `json:"realized_gain_loss"`
-	ReturnPercentage   decimal.Decimal `json:"return_percentage"`
-	SnapshotDate       time.Time       `json:"snapshot_date"`
-	CreatedAt          time.Time       `json:"created_at"`
+	bun.BaseModel `bun:"table:sigma_finance.portfolio_performance"`
+
+	ID                 int64           `json:"id" bun:"id,pk,autoincrement"`
+	PortfolioID        string          `json:"portfolio_id" bun:"portfolio_id,type:uuid,notnull"`
+	TotalValue         model.Money     `json:"total_value" bun:"total_value,notnull"`
+	TotalCostBasis     model.Money     `json:"total_cost_basis" bun:"total_cost_basis,notnull"`
+	UnrealizedGainLoss model.Money     `json:"unrealized_gain_loss" bun:"unrealized_gain_loss,notnull"`
+	RealizedGainLoss   model.Money     `json:"realized_gain_loss" bun:"realized_gain_loss,notnull"`
+	ReturnPercentage   decimal.Decimal `json:"return_percentage" bun:"return_percentage,type:numeric(10,4)"`
+	SnapshotDate       time.Time       `json:"snapshot_date" bun:"snapshot_date,notnull"`
+	CreatedAt          time.Time       `json:"created_at" bun:"created_at,nullzero,notnull,default:current_timestamp"`
 }
 
 // PositionPerformanceResult carries position data with calculated performance metrics
@@ -431,7 +438,6 @@ func (r *PerformanceRepository) CalculateAllocationByGeography(ctx context.Conte
 func (r *PerformanceRepository) CreatePerformanceSnapshot(ctx context.Context, snapshot *PerformanceSnapshot) error {
 	_, err := r.db.NewInsert().
 		Model(snapshot).
-		TableExpr("sigma_finance.portfolio_performance").
 		Exec(ctx)
 	return err
 }
@@ -441,7 +447,6 @@ func (r *PerformanceRepository) GetPerformanceSnapshots(ctx context.Context, por
 	var snapshots []PerformanceSnapshot
 	err := r.db.NewSelect().
 		Model(&snapshots).
-		TableExpr("sigma_finance.portfolio_performance").
 		Where("portfolio_id = ?", portfolioID).
 		Where("snapshot_date >= ? AND snapshot_date <= ?", startDate, endDate).
 		Order("snapshot_date ASC").
@@ -455,7 +460,6 @@ func (r *PerformanceRepository) GetLatestPerformanceSnapshot(ctx context.Context
 	var snapshot PerformanceSnapshot
 	err := r.db.NewSelect().
 		Model(&snapshot).
-		TableExpr("sigma_finance.portfolio_performance").
 		Where("portfolio_id = ?", portfolioID).
 		Order("snapshot_date DESC").
 		Limit(1).
@@ -489,7 +493,6 @@ func (r *PerformanceRepository) UpdatePerformanceSnapshots(ctx context.Context, 
 		// Upsert the snapshot
 		_, err = r.db.NewInsert().
 			Model(snapshot).
-			TableExpr("sigma_finance.portfolio_performance").
 			On("CONFLICT (portfolio_id, snapshot_date) DO UPDATE").
 			Set("total_value = EXCLUDED.total_value").
 			Set("total_cost_basis = EXCLUDED.total_cost_basis").
@@ -581,7 +584,12 @@ func (r *PerformanceRepository) GetWorstPerformingAssets(ctx context.Context, po
 	return results, err
 }
 
-// CalculateBenchmarkComparison compares portfolio performance against a benchmark
+// CalculateBenchmarkComparison compares portfolio performance against a benchmark.
+// Returns real Beta / TrackingError / InformationRatio / Correlation derived
+// from the aligned daily returns of portfolio snapshots and benchmark price
+// history. Falls back to portfolioReturn/benchmarkReturn/alpha only when
+// there are insufficient aligned points (n < 2) — the math helpers in
+// service package return zero in that case.
 func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange TimeRange) (*BenchmarkComparison, error) {
 	// Get portfolio performance snapshots
 	portfolioSnapshots, err := r.GetPerformanceSnapshots(ctx, portfolioID, timeRange.Start, timeRange.End)
@@ -595,7 +603,7 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 		return nil, err
 	}
 
-	// Calculate portfolio return
+	// Calculate portfolio return (cumulative, percentage)
 	startValue := portfolioSnapshots[0].TotalValue
 	endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
 	var portfolioReturn decimal.Decimal
@@ -605,16 +613,52 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 			Mul(decimal.NewFromInt(100))
 	}
 
-	// Calculate benchmark return
+	// Calculate benchmark return (cumulative, percentage)
 	startPrice := benchmarkPrices[0].Price
 	endPrice := benchmarkPrices[len(benchmarkPrices)-1].Price
 	benchmarkReturn := endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
 
-	// Calculate alpha (excess return over benchmark)
+	// Cumulative alpha: end-of-period percentage-point difference.
 	alpha := portfolioReturn.Sub(benchmarkReturn)
 
-	// For now, set beta to 1.0 (would require more sophisticated calculation)
-	beta := decimal.NewFromInt(1)
+	// Real Beta / TrackingError / InformationRatio / Correlation from
+	// aligned daily returns. Snapshots and prices are floored to UTC
+	// midnight, collapsed to one-sample-per-day (last-write-wins), and
+	// joined via LOCF on the portfolio calendar. Robust against intraday
+	// timestamps, sparse or duplicate-day observations, and uneven series
+	// lengths between snapshots and price rows.
+	portSamples := make([]benchmark.PortfolioSample, len(portfolioSnapshots))
+	for i, snap := range portfolioSnapshots {
+		portSamples[i] = benchmark.PortfolioSample{
+			Timestamp: snap.SnapshotDate,
+			Value:     snap.TotalValue,
+		}
+	}
+	benchSamples := make([]benchmark.BenchmarkSample, len(benchmarkPrices))
+	for i, p := range benchmarkPrices {
+		benchSamples[i] = benchmark.BenchmarkSample{
+			Timestamp: p.Timestamp,
+			Price:     p.Price,
+		}
+	}
+	portVals, priceVals := benchmark.AlignDaily(portSamples, benchSamples)
+
+	var (
+		beta             = decimal.NewFromInt(1) // safe default for insufficient data
+		trackingError    = decimal.Zero
+		informationRatio = decimal.Zero
+		correlationCoeff = decimal.Zero
+	)
+	if len(portVals) >= 2 && len(priceVals) >= 2 {
+		alignedPortReturns := benchmark.DailyMoneyReturns(portVals)
+		alignedBenchReturns := benchmark.DailyPriceReturns(priceVals)
+		if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
+			beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
+			trackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
+			informationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
+			correlationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
+		}
+	}
 
 	return &BenchmarkComparison{
 		PortfolioID:      portfolioID,
@@ -623,9 +667,9 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 		BenchmarkReturn:  benchmarkReturn,
 		Alpha:            alpha,
 		Beta:             beta,
-		TrackingError:    decimal.Zero, // Would require more data
-		InformationRatio: decimal.Zero, // Would require more data
-		CorrelationCoeff: decimal.Zero, // Would require more data
+		TrackingError:    trackingError,
+		InformationRatio: informationRatio,
+		CorrelationCoeff: correlationCoeff,
 		StartDate:        timeRange.Start,
 		EndDate:          timeRange.End,
 	}, nil
@@ -633,57 +677,141 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 
 // CalculateAndSaveHistoricalSnapshots calculates daily performance snapshots using a bulk vectorized SQL query.
 // This is significantly faster than calculating day-by-day in Go.
+//
+// Position-aware reconstruction: for each (snapshot_date, position_id) row we
+// compute quantity and cost basis using only what is actually true on that
+// calendar day, recovered from the transactions table:
+//
+//   - For positions with at least one transaction: net quantity at snapshot_date
+//     = SUM(quantity) for BUY/DEPOSIT/TRANSFER_IN minus SUM(quantity) for
+//     SELL/WITHDRAWAL/TRANSFER_OUT, filtered by executed_at <= snapshot_date.
+//     The signed-sum naturally produces 0 before the first BUY, eliminating the
+//     "orphan" -100% bad seed rows that the old CROSS-JOIN-on-current-positions
+//     SQL produced.
+//
+//   - For positions WITHOUT transactions (seeded positions like ABEA.F, MSFT,
+//     NVDA): quantity = positions.quantity if snapshot_date >=
+//     positions.created_at, else 0.  These are conceptually "you've always had
+//     them, just at their current cost basis".
+//
+// Cost basis: 0 when quantity is 0 (you don't hold it, so it can't have cost),
+// else positions.total_cost_basis as a static snapshot. Running AVCO would
+// require a recursive CTE and is intentionally out-of-scope here — the cost
+// basis at today's snapshot is what users see in the dashboard, so consistency
+// with positions.total_cost_basis at snapshot_date >= first-buy is preferred
+// over a half-baked in-flight AVCO for partially-sold positions.
+//
+// Realized gains: SUM(transactions.amount) where type='SELL' and executed_at <=
+// snapshot_date.  SELL amounts are stored negative (the model validates this
+// in validateAmountSign), so a realized P&L of +X shows up as a negative sum.
+// This matches the existing convention in CalculatePortfolioPerformance so
+// downstream callers see consistent numbers.
+//
+// Diagnostics: every invocation logs portfolio + range + caller function at
+// INFO level so ad-hoc deletes followed by automatic rebuilds leave an audit
+// trail. Ad-hoc operators who need to PURGE then rebuild should set
+// DISABLE_AUTO_SNAPSHOT_REBUILD=true before the purge so the auto-rebuild path
+// in generatePerformanceHistory skips its self-healing call.
 func (r *PerformanceRepository) CalculateAndSaveHistoricalSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) error {
+	logSnapshotRebuildCaller("CalculateAndSaveHistoricalSnapshots", portfolioID, startDate, endDate)
 	query := `
 WITH date_series AS (
-    SELECT generate_series(?::date, ?::date, '1 day'::interval) AS snapshot_date
+    SELECT generate_series(?::date, ?::date, '1 day'::interval)::date AS snapshot_date
 ),
-daily_metrics AS (
-    SELECT 
+positions_with_tx AS (
+    SELECT DISTINCT position_id
+    FROM sigma_finance.transactions
+    WHERE position_id IS NOT NULL
+),
+quantity_per_position_per_day AS (
+    SELECT
+        p.id AS position_id,
+        p.asset_id,
+        p.ownership_percentage,
+        p.created_at,
+        p.total_cost_basis AS current_total_cost_basis,
         ds.snapshot_date,
-        COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100 AS total_value,
-        COALESCE(SUM(p.total_cost_basis), 0) AS total_cost_basis,
-        (COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100) - COALESCE(SUM(p.total_cost_basis), 0) AS unrealized_gain_loss
-    FROM date_series ds
-    CROSS JOIN sigma_finance.positions p
-    LEFT JOIN sigma_finance.assets a ON a.id = p.asset_id
+        CASE
+            WHEN p.id IN (SELECT position_id FROM positions_with_tx) THEN
+                COALESCE((
+                    SELECT SUM(
+                        CASE
+                            WHEN t.type IN ('BUY','DEPOSIT','TRANSFER_IN') THEN  t.quantity
+                            WHEN t.type IN ('SELL','WITHDRAWAL','TRANSFER_OUT') THEN -t.quantity
+                            ELSE 0
+                        END
+                    )
+                    FROM sigma_finance.transactions t
+                    WHERE t.position_id = p.id
+                      AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+                ), 0)
+            WHEN ds.snapshot_date >= date_trunc('day', p.created_at)::date THEN p.quantity
+            ELSE 0
+        END AS quantity_at_date
+    FROM sigma_finance.positions p
+    CROSS JOIN date_series ds
+    WHERE p.portfolio_id = ?
+),
+priced_metrics AS (
+    SELECT
+        qppd.snapshot_date,
+        qppd.quantity_at_date,
+        CASE WHEN qppd.quantity_at_date > 0
+             THEN COALESCE(qppd.current_total_cost_basis, 0)
+             ELSE 0
+        END AS cost_basis_at_date,
+        COALESCE(ap.price, 0) AS price_at_date,
+        COALESCE(qppd.ownership_percentage, 100) AS ownership_pct
+    FROM quantity_per_position_per_day qppd
     LEFT JOIN LATERAL (
-        SELECT price 
-        FROM sigma_finance.asset_prices 
-        WHERE asset_id = a.id AND timestamp <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
-        ORDER BY timestamp DESC 
+        SELECT price
+        FROM sigma_finance.asset_prices
+        WHERE asset_id = qppd.asset_id
+          AND timestamp <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ORDER BY timestamp DESC
         LIMIT 1
     ) ap ON true
-    WHERE p.portfolio_id = ?
-    GROUP BY ds.snapshot_date
+),
+daily_metrics AS (
+    SELECT
+        pm.snapshot_date,
+        SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100 AS total_value,
+        SUM(pm.cost_basis_at_date) AS total_cost_basis,
+        SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100
+            - SUM(pm.cost_basis_at_date) AS unrealized_gain_loss
+    FROM priced_metrics pm
+    GROUP BY pm.snapshot_date
 ),
 realized_gains AS (
-    SELECT 
+    SELECT
         ds.snapshot_date,
         COALESCE(SUM(t.amount), 0) AS realized_gain_loss
     FROM date_series ds
     LEFT JOIN sigma_finance.positions p ON p.portfolio_id = ?
-    LEFT JOIN sigma_finance.transactions t ON t.position_id = p.id AND t.type = 'SELL' AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+    LEFT JOIN sigma_finance.transactions t
+        ON t.position_id = p.id
+        AND t.type = 'SELL'
+        AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
     GROUP BY ds.snapshot_date
 )
 INSERT INTO sigma_finance.portfolio_performance (
     portfolio_id, snapshot_date, total_value, total_cost_basis, unrealized_gain_loss, realized_gain_loss, return_percentage, created_at
 )
-SELECT 
-    ?, 
-    dm.snapshot_date, 
-    dm.total_value, 
-    dm.total_cost_basis, 
-    dm.unrealized_gain_loss, 
+SELECT
+    ?,
+    dm.snapshot_date,
+    dm.total_value,
+    dm.total_cost_basis,
+    dm.unrealized_gain_loss,
     rg.realized_gain_loss,
-    CASE 
-        WHEN dm.total_cost_basis > 0 THEN 
+    CASE
+        WHEN dm.total_cost_basis > 0 THEN
             ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / dm.total_cost_basis::numeric) * 100
-        ELSE 0 
+        ELSE 0
     END AS return_percentage,
     NOW()
 FROM daily_metrics dm
-JOIN realized_gains rg ON dm.snapshot_date = rg.snapshot_date
+JOIN realized_gains rg USING (snapshot_date)
 ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
     total_value = EXCLUDED.total_value,
     total_cost_basis = EXCLUDED.total_cost_basis,
@@ -694,4 +822,28 @@ ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
 `
 	_, err := r.db.ExecContext(ctx, query, startDate, endDate, portfolioID, portfolioID, portfolioID)
 	return err
+}
+
+// logSnapshotRebuildCaller emits a single INFO line at the entry of any
+// snapshot-rebuild path so ad-hoc operators can grep for unexpected rebuilds
+// after the fact. The caller is resolved via runtime.Caller(2) which lands in
+// the actual caller of CalculateAndSaveHistoricalSnapshots - typically
+// generatePerformanceHistory (auto-heal) or tools/rebuild_portfolio_snapshots
+// (ad-hoc tooling).
+//
+// Set DISABLE_AUTO_SNAPSHOT_REBUILD=true in the server process before
+// performing a manual PURGE so that the auto-rebuild path inside
+// generatePerformanceHistory short-circuits and lets the manual rebuild be
+// the source of truth.
+func logSnapshotRebuildCaller(selfName, portfolioID string, startDate, endDate time.Time) {
+	caller := "unknown"
+	if _, file, line, ok := runtime.Caller(2); ok {
+		if idx := strings.LastIndex(file, "/"); idx >= 0 {
+			file = file[idx+1:]
+		}
+		caller = file + ":" + strconv.Itoa(line)
+	}
+	log.Printf("[INFO] [PerformanceRepository.%s] caller=%s portfolio=%s range=[%s..%s]",
+		selfName, caller, portfolioID,
+		startDate.Format("2006-01-02"), endDate.Format("2006-01-02"))
 }

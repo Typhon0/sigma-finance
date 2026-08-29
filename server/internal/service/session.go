@@ -72,8 +72,7 @@ func NewSessionService(
 
 // CreateSession creates a new session for a user
 func (s *sessionService) CreateSession(ctx context.Context, userID string, ipAddress, userAgent string) (*model.Session, error) {
-	log.Printf("[SessionService] CreateSession: started user=%s", userID)
-
+	log.Printf("[INFO] [SessionService] CreateSession: started user=%s", userID)
 	if userID == "" {
 		return nil, fmt.Errorf("user ID is required")
 	}
@@ -81,7 +80,7 @@ func (s *sessionService) CreateSession(ctx context.Context, userID string, ipAdd
 	// Verify user exists
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		log.Printf("[SessionService] CreateSession: ERROR: user lookup failed user=%s: %v", userID, err)
+		log.Printf("[ERROR] [SessionService] CreateSession: ERROR: user lookup failed user=%s: %v", userID, err)
 		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
@@ -139,12 +138,12 @@ func (s *sessionService) CreateSession(ctx context.Context, userID string, ipAdd
 
 	createdSession, err := s.sessionRepo.Create(ctx, session)
 	if err != nil {
-		log.Printf("[SessionService] CreateSession: ERROR: session creation failed user=%s: %v", userID, err)
+		log.Printf("[ERROR] [SessionService] CreateSession: ERROR: session creation failed user=%s: %v", userID, err)
 		return nil, fmt.Errorf("failed to create session: %w", err)
 	}
 
 	// Log session creation
-	log.Printf("[SessionService] CreateSession: completed user=%s session=%s", userID, createdSession.ID)
+	log.Printf("[INFO] [SessionService] CreateSession: completed user=%s session=%s", userID, createdSession.ID)
 	event := model.NewAuthEvent(&userID, user.Email, model.AuthActionLogin, true, ipAddress, userAgent, map[string]interface{}{
 		"user_id":    userID,
 		"session_id": createdSession.ID,
@@ -163,7 +162,7 @@ func (s *sessionService) ValidateSession(ctx context.Context, token string) (*mo
 	// Validate JWT token
 	claims, err := s.securityService.ValidateJWT(token)
 	if err != nil {
-		log.Printf("[SessionService] ValidateSession: JWT validation failed: %v", err)
+		log.Printf("[WARN] [SessionService] ValidateSession: JWT validation failed: %v", err)
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
 
@@ -193,8 +192,7 @@ func (s *sessionService) ValidateSession(ctx context.Context, token string) (*mo
 
 // RefreshSession refreshes a session using a refresh token
 func (s *sessionService) RefreshSession(ctx context.Context, refreshToken string) (*model.Session, error) {
-	log.Printf("[SessionService] RefreshSession: started")
-
+	log.Printf("[INFO] [SessionService] RefreshSession: started")
 	if refreshToken == "" {
 		return nil, NewAuthError(ErrInvalidInput, "Refresh token is required", "refreshToken")
 	}
@@ -202,7 +200,7 @@ func (s *sessionService) RefreshSession(ctx context.Context, refreshToken string
 	// Get session by refresh token
 	session, err := s.sessionRepo.GetByRefreshToken(ctx, refreshToken)
 	if err != nil {
-		log.Printf("[SessionService] RefreshSession: invalid refresh token: %v", err)
+		log.Printf("[INFO] [SessionService] RefreshSession: invalid refresh token: %v", err)
 		return nil, NewAuthError(ErrInvalidToken, "Invalid refresh token", "refreshToken")
 	}
 
@@ -242,12 +240,12 @@ func (s *sessionService) RefreshSession(ctx context.Context, refreshToken string
 	// Get updated session
 	updatedSession, err := s.sessionRepo.GetByID(ctx, session.ID)
 	if err != nil {
-		log.Printf("[SessionService] RefreshSession: ERROR: get updated session failed session=%s: %v", session.ID, err)
+		log.Printf("[ERROR] [SessionService] RefreshSession: ERROR: get updated session failed session=%s: %v", session.ID, err)
 		return nil, fmt.Errorf("failed to get updated session: %w", err)
 	}
 
 	// Log token refresh
-	log.Printf("[SessionService] RefreshSession: completed user=%s session=%s", session.UserID, session.ID)
+	log.Printf("[INFO] [SessionService] RefreshSession: completed user=%s session=%s", session.UserID, session.ID)
 	event := model.NewAuthEvent(&session.UserID, user.Email, model.AuthActionTokenRefresh, true, session.IPAddress, session.UserAgent, map[string]interface{}{
 		"user_id":    session.UserID,
 		"session_id": session.ID,
@@ -267,18 +265,17 @@ func (s *sessionService) RevokeSession(ctx context.Context, token string) error 
 	session, err := s.sessionRepo.GetByToken(ctx, token)
 	if err != nil {
 		// Session might not exist, but that's okay for revocation
-		log.Printf("[SessionService] RevokeSession: session already gone or invalid")
+		log.Printf("[INFO] [SessionService] RevokeSession: session already gone or invalid")
 		return nil
 	}
 
 	// Revoke the session
 	if err := s.sessionRepo.RevokeSession(ctx, token); err != nil {
-		log.Printf("[SessionService] RevokeSession: ERROR: revoke failed user=%s session=%s: %v", session.UserID, session.ID, err)
+		log.Printf("[ERROR] [SessionService] RevokeSession: ERROR: revoke failed user=%s session=%s: %v", session.UserID, session.ID, err)
 		return fmt.Errorf("failed to revoke session: %w", err)
 	}
 
-	log.Printf("[SessionService] RevokeSession: completed user=%s session=%s", session.UserID, session.ID)
-
+	log.Printf("[INFO] [SessionService] RevokeSession: completed user=%s session=%s", session.UserID, session.ID)
 	// Get user for audit logging
 	user, err := s.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
@@ -303,8 +300,7 @@ func (s *sessionService) RevokeSession(ctx context.Context, token string) error 
 
 // RevokeAllUserSessions revokes all sessions for a user
 func (s *sessionService) RevokeAllUserSessions(ctx context.Context, userID string) error {
-	log.Printf("[SessionService] RevokeAllUserSessions: started user=%s", userID)
-
+	log.Printf("[INFO] [SessionService] RevokeAllUserSessions: started user=%s", userID)
 	if userID == "" {
 		return NewAuthError(ErrInvalidInput, "User ID is required", "userID")
 	}
@@ -312,18 +308,17 @@ func (s *sessionService) RevokeAllUserSessions(ctx context.Context, userID strin
 	// Get user for audit logging
 	user, err := s.userRepo.GetByID(ctx, userID)
 	if err != nil {
-		log.Printf("[SessionService] RevokeAllUserSessions: ERROR: user lookup failed user=%s: %v", userID, err)
+		log.Printf("[ERROR] [SessionService] RevokeAllUserSessions: ERROR: user lookup failed user=%s: %v", userID, err)
 		return fmt.Errorf("failed to get user: %w", err)
 	}
 
 	// Revoke all sessions
 	if err := s.sessionRepo.RevokeAllUserSessions(ctx, userID); err != nil {
-		log.Printf("[SessionService] RevokeAllUserSessions: ERROR: revoke failed user=%s: %v", userID, err)
+		log.Printf("[ERROR] [SessionService] RevokeAllUserSessions: ERROR: revoke failed user=%s: %v", userID, err)
 		return fmt.Errorf("failed to revoke user sessions: %w", err)
 	}
 
-	log.Printf("[SessionService] RevokeAllUserSessions: completed user=%s", userID)
-
+	log.Printf("[INFO] [SessionService] RevokeAllUserSessions: completed user=%s", userID)
 	// Log session revocation
 	event := model.NewAuthEvent(&userID, user.Email, "sessions_revoked", true, "", "", map[string]interface{}{
 		"user_id": userID,
@@ -363,16 +358,14 @@ func (s *sessionService) GetActiveUserSessions(ctx context.Context, userID strin
 
 // CleanupExpiredSessions removes expired sessions from the database
 func (s *sessionService) CleanupExpiredSessions(ctx context.Context) (int, error) {
-	log.Printf("[SessionService] CleanupExpiredSessions: started")
-
+	log.Printf("[INFO] [SessionService] CleanupExpiredSessions: started")
 	count, err := s.sessionRepo.RevokeExpiredSessions(ctx)
 	if err != nil {
-		log.Printf("[SessionService] CleanupExpiredSessions: ERROR: cleanup failed: %v", err)
+		log.Printf("[ERROR] [SessionService] CleanupExpiredSessions: ERROR: cleanup failed: %v", err)
 		return 0, fmt.Errorf("failed to cleanup expired sessions: %w", err)
 	}
 
-	log.Printf("[SessionService] CleanupExpiredSessions: completed cleaned=%d", count)
-
+	log.Printf("[INFO] [SessionService] CleanupExpiredSessions: completed cleaned=%d", count)
 	// Log cleanup operation
 	s.auditService.LogSecurityEvent(ctx, "session_cleanup", "", "", map[string]interface{}{
 		"expired_sessions_count": count,
@@ -394,7 +387,7 @@ func (s *sessionService) ExtendSession(ctx context.Context, sessionID string, du
 	// Get session to verify it exists
 	session, err := s.sessionRepo.GetByID(ctx, sessionID)
 	if err != nil {
-		log.Printf("[SessionService] ExtendSession: ERROR: session lookup failed session=%s: %v", sessionID, err)
+		log.Printf("[ERROR] [SessionService] ExtendSession: ERROR: session lookup failed session=%s: %v", sessionID, err)
 		return fmt.Errorf("failed to get session: %w", err)
 	}
 
@@ -403,12 +396,11 @@ func (s *sessionService) ExtendSession(ctx context.Context, sessionID string, du
 
 	// Update session expiry
 	if err := s.sessionRepo.UpdateSessionExpiry(ctx, sessionID, newExpiresAt); err != nil {
-		log.Printf("[SessionService] ExtendSession: ERROR: update expiry failed session=%s: %v", sessionID, err)
+		log.Printf("[ERROR] [SessionService] ExtendSession: ERROR: update expiry failed session=%s: %v", sessionID, err)
 		return fmt.Errorf("failed to extend session: %w", err)
 	}
 
-	log.Printf("[SessionService] ExtendSession: completed session=%s new_expiry=%s duration=%v", sessionID, newExpiresAt.Format(time.RFC3339), duration)
-
+	log.Printf("[INFO] [SessionService] ExtendSession: completed session=%s new_expiry=%s duration=%v", sessionID, newExpiresAt.Format(time.RFC3339), duration)
 	// Log session extension
 	event := model.NewAuthEvent(&session.UserID, "", "session_extended", true, session.IPAddress, session.UserAgent, map[string]interface{}{
 		"user_id":            session.UserID,

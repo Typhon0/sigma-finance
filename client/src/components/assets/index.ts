@@ -7,6 +7,7 @@ export type {
 	AssetFilter,
 	AssetType,
 } from "@/hooks/use-asset-management";
+export { AssetPageHeader } from "./AssetPageHeader";
 // Asset Management Dialog
 export { AssetManagementDialog } from "./asset-management-dialog";
 // Asset Search and Filtering

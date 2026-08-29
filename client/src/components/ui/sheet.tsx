@@ -53,7 +53,7 @@ function SheetContent({
 				data-slot="sheet-content"
 				data-side={side}
 				className={cn(
-					"ui-sheet-content",
+					"ui-sheet-content overflow-y-auto",
 					side === "right" &&
 						"inset-y-0 right-0 h-full w-3/4 border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",
 					side === "left" &&

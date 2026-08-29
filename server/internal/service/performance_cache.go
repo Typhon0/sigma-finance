@@ -110,7 +110,7 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 		}
 		
 		if err != cache.ErrCacheMiss {
-			log.Printf("Cache error for portfolio %s: %v", portfolioID, err)
+			log.Printf("[INFO] Cache error for portfolio %s: %v", portfolioID, err)
 		}
 		pcs.incrementCacheMisses()
 	}
@@ -127,7 +127,7 @@ func (pcs *PerformanceCacheService) GetPortfolioPerformance(ctx context.Context,
 		defer cancel()
 		
 		if err := pcs.cache.Set(ctx, cache.PerformanceKey, cacheKey, metrics); err != nil {
-			log.Printf("Failed to cache portfolio performance for %s: %v", portfolioID, err)
+			log.Printf("[INFO] Failed to cache portfolio performance for %s: %v", portfolioID, err)
 		}
 	}()
 
@@ -148,7 +148,7 @@ func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.
 	// Get cached data in batch
 	cached, err := pcs.cache.GetMultiple(ctx, requests)
 	if err != nil {
-		log.Printf("Batch cache retrieval error: %v", err)
+		log.Printf("[INFO] Batch cache retrieval error: %v", err)
 	}
 
 	results := make(map[string]*CachedPerformanceMetrics)
@@ -164,7 +164,7 @@ func (pcs *PerformanceCacheService) GetMultiplePortfolioPerformance(ctx context.
 				pcs.incrementCacheHits()
 				continue
 			} else {
-				log.Printf("Warning: Failed to unmarshal cached performance for %s: %v", portfolioID, err)
+				log.Printf("[WARN] Warning: Failed to unmarshal cached performance for %s: %v", portfolioID, err)
 			}
 		}
 		
@@ -204,7 +204,7 @@ func (pcs *PerformanceCacheService) GetChartData(ctx context.Context, portfolioI
 	}
 
 	if err != cache.ErrCacheMiss {
-		log.Printf("Chart cache error for portfolio %s: %v", portfolioID, err)
+		log.Printf("[INFO] Chart cache error for portfolio %s: %v", portfolioID, err)
 	}
 	pcs.incrementCacheMisses()
 
@@ -220,7 +220,7 @@ func (pcs *PerformanceCacheService) GetChartData(ctx context.Context, portfolioI
 		defer cancel()
 		
 		if err := pcs.cache.Set(ctx, cache.ChartDataKey, cacheKey, chartData); err != nil {
-			log.Printf("Failed to cache chart data for %s: %v", portfolioID, err)
+			log.Printf("[INFO] Failed to cache chart data for %s: %v", portfolioID, err)
 		}
 	}()
 
@@ -249,7 +249,7 @@ func (pcs *PerformanceCacheService) computeMultiplePortfolioPerformance(ctx cont
 	for _, id := range portfolioIDs {
 		metrics, err := pcs.computePortfolioPerformance(ctx, id)
 		if err != nil {
-			log.Printf("Failed to compute performance for portfolio %s: %v", id, err)
+			log.Printf("[INFO] Failed to compute performance for portfolio %s: %v", id, err)
 			continue
 		}
 		results[id] = metrics
@@ -285,14 +285,13 @@ type ChartDataPoint struct {
 func (pcs *PerformanceCacheService) backgroundWorker(workerID int) {
 	defer pcs.wg.Done()
 	
-	log.Printf("Performance cache worker %d started", workerID)
-	
+	log.Printf("[INFO] Performance cache worker %d started", workerID)
 	for {
 		select {
 		case req := <-pcs.refreshQueue:
 			pcs.processRefreshRequest(req, workerID)
 		case <-pcs.stopCh:
-			log.Printf("Performance cache worker %d stopping", workerID)
+			log.Printf("[INFO] Performance cache worker %d stopping", workerID)
 			return
 		}
 	}
@@ -303,14 +302,12 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	log.Printf("Worker %d processing refresh request: %s:%s", workerID, req.Type, req.Key)
-
+	log.Printf("[INFO] Worker %d processing refresh request: %s:%s", workerID, req.Type, req.Key)
 	switch req.Type {
 	case "portfolio_performance":
 		metrics, err := pcs.computePortfolioPerformance(ctx, req.Key)
 		if err != nil {
-			log.Printf("Worker %d failed to refresh portfolio performance %s: %v", workerID, req.Key, err)
-			
+			log.Printf("[ERROR] Worker %d failed to refresh portfolio performance %s: %v", workerID, req.Key, err)
 			// Retry logic
 			if req.RetryCount < 3 {
 				req.RetryCount++
@@ -319,18 +316,18 @@ func (pcs *PerformanceCacheService) processRefreshRequest(req RefreshRequest, wo
 				select {
 				case pcs.refreshQueue <- req:
 				default:
-					log.Printf("Refresh queue full, dropping retry for %s", req.Key)
+					log.Printf("[WARN] Refresh queue full, dropping retry for %s", req.Key)
 				}
 			}
 		} else {
 			// Write the fresh data back to the cache!
 			cacheKey := fmt.Sprintf("portfolio:%s", req.Key)
 			if err := pcs.cache.Set(ctx, cache.PerformanceKey, cacheKey, metrics); err != nil {
-				log.Printf("Worker %d failed to cache refreshed portfolio performance for %s: %v", workerID, req.Key, err)
+				log.Printf("[ERROR] Worker %d failed to cache refreshed portfolio performance for %s: %v", workerID, req.Key, err)
 			}
 		}
 	default:
-		log.Printf("Unknown refresh request type: %s", req.Type)
+		log.Printf("[INFO] Unknown refresh request type: %s", req.Type)
 	}
 }
 
@@ -346,7 +343,7 @@ func (pcs *PerformanceCacheService) refreshScheduler() {
 		case <-ticker.C:
 			// Schedule refresh for active portfolios
 			// This would be based on usage patterns
-			log.Printf("Scheduled cache refresh cycle")
+			log.Printf("[INFO] Scheduled cache refresh cycle")
 		case <-pcs.stopCh:
 			return
 		}
@@ -358,7 +355,7 @@ func (pcs *PerformanceCacheService) scheduleRefresh(req RefreshRequest) {
 	select {
 	case pcs.refreshQueue <- req:
 	default:
-		log.Printf("Refresh queue full, dropping request for %s", req.Key)
+		log.Printf("[WARN] Refresh queue full, dropping request for %s", req.Key)
 	}
 }
 
@@ -379,7 +376,7 @@ func (pcs *PerformanceCacheService) cacheMultipleResults(portfolioIDs []string, 
 	}
 
 	if err := pcs.cache.SetMultiple(ctx, items); err != nil {
-		log.Printf("Failed to batch cache portfolio results: %v", err)
+		log.Printf("[INFO] Failed to batch cache portfolio results: %v", err)
 	}
 }
 
@@ -415,5 +412,5 @@ func (pcs *PerformanceCacheService) GetCacheStats() (int64, int64, float64) {
 func (pcs *PerformanceCacheService) Stop() {
 	close(pcs.stopCh)
 	pcs.wg.Wait()
-	log.Printf("Performance cache service stopped")
+	log.Printf("[INFO] Performance cache service stopped")
 }

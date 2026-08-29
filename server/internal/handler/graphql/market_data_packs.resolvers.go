@@ -1,6 +1,7 @@
 package graphql
 
 import (
+	"log"
 	"context"
 	"encoding/json"
 	"strings"
@@ -13,6 +14,7 @@ import (
 )
 
 func (r *queryResolver) AvailableMarketDataPacks(ctx context.Context) ([]*gqlModel.MarketDataPackRegistryEntry, error) {
+	log.Printf("[INFO] [graphql] AvailableMarketDataPacks: started")
 	if _, err := middleware.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
@@ -28,6 +30,7 @@ func (r *queryResolver) AvailableMarketDataPacks(ctx context.Context) ([]*gqlMod
 }
 
 func (r *queryResolver) InstalledMarketDataPacks(ctx context.Context) ([]*gqlModel.MarketDataPack, error) {
+	log.Printf("[INFO] [graphql] InstalledMarketDataPacks: started")
 	if _, err := middleware.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
@@ -60,6 +63,7 @@ func (r *queryResolver) InstalledMarketDataPacks(ctx context.Context) ([]*gqlMod
 }
 
 func (r *queryResolver) MarketDataPackJob(ctx context.Context, id string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] MarketDataPackJob: started")
 	if _, err := middleware.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
@@ -71,6 +75,7 @@ func (r *queryResolver) MarketDataPackJob(ctx context.Context, id string) (*gqlM
 }
 
 func (r *queryResolver) MarketDataCoverage(ctx context.Context, instrumentID string) ([]*gqlModel.MarketDataPackCoverage, error) {
+	log.Printf("[INFO] [graphql] MarketDataCoverage: started")
 	if _, err := middleware.RequireAuth(ctx); err != nil {
 		return nil, err
 	}
@@ -99,6 +104,7 @@ func (r *queryResolver) MarketDataCoverage(ctx context.Context, instrumentID str
 }
 
 func (r *queryResolver) PackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error) {
+	log.Printf("[INFO] [graphql] PackBuildJob: started")
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -131,6 +137,7 @@ func (r *queryResolver) PackBuildJobs(ctx context.Context, limit *int32) ([]*gql
 }
 
 func (r *mutationResolver) InstallMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] PackBuildJobs: started")
 	if _, err := requireCatalogAdmin(ctx, r.Resolver); err != nil {
 		return nil, err
 	}
@@ -142,6 +149,7 @@ func (r *mutationResolver) InstallMarketDataPack(ctx context.Context, packID str
 }
 
 func (r *mutationResolver) UpdateMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] UpdateMarketDataPack: started")
 	if _, err := requireCatalogAdmin(ctx, r.Resolver); err != nil {
 		return nil, err
 	}
@@ -153,6 +161,7 @@ func (r *mutationResolver) UpdateMarketDataPack(ctx context.Context, packID stri
 }
 
 func (r *mutationResolver) RemoveMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] RemoveMarketDataPack: started")
 	if _, err := requireCatalogAdmin(ctx, r.Resolver); err != nil {
 		return nil, err
 	}
@@ -164,6 +173,7 @@ func (r *mutationResolver) RemoveMarketDataPack(ctx context.Context, packID stri
 }
 
 func (r *mutationResolver) RepairMarketDataPack(ctx context.Context, packID string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] RepairMarketDataPack: started")
 	if _, err := requireCatalogAdmin(ctx, r.Resolver); err != nil {
 		return nil, err
 	}
@@ -175,6 +185,7 @@ func (r *mutationResolver) RepairMarketDataPack(ctx context.Context, packID stri
 }
 
 func (r *mutationResolver) CancelMarketDataPackJob(ctx context.Context, jobID string) (*gqlModel.MarketDataPackJob, error) {
+	log.Printf("[INFO] [graphql] CancelMarketDataPackJob: started")
 	if _, err := requireCatalogAdmin(ctx, r.Resolver); err != nil {
 		return nil, err
 	}
@@ -186,6 +197,7 @@ func (r *mutationResolver) CancelMarketDataPackJob(ctx context.Context, jobID st
 }
 
 func (r *mutationResolver) StartLocalPackBuild(ctx context.Context, input gqlModel.StartLocalPackBuildInput) (*gqlModel.MarketDataPackBuildJob, error) {
+	log.Printf("[INFO] [graphql] StartLocalPackBuild: started")
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err
@@ -247,6 +259,7 @@ func (r *mutationResolver) StartLocalPackBuild(ctx context.Context, input gqlMod
 }
 
 func (r *mutationResolver) CancelPackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error) {
+	log.Printf("[INFO] [graphql] CancelPackBuildJob: started")
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, err

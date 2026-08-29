@@ -1,16 +1,14 @@
-import ReactECharts from "echarts-for-react";
+import { useQuery } from "@apollo/client";
 import {
 	Activity,
 	AlertTriangle,
 	CalendarDays,
 	Check,
 	ChevronDown,
-	ChevronLeft,
 	FileSpreadsheet,
 	Globe,
 	LayoutGrid,
 	Percent,
-	PieChart,
 	PiggyBank,
 	Plus,
 	Scale,
@@ -18,8 +16,9 @@ import {
 	TrendingUp,
 	Upload,
 } from "lucide-react";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { StocksDistributionWidget } from "@/components/assets/stocks-funds/StocksDistributionWidget";
 import { PortfolioHeroChart as SharedPortfolioHeroChart } from "@/components/charts/PortfolioHeroChart";
 import { BenchmarkComparisonCard } from "@/components/insights/BenchmarkComparisonCard";
 import { CurrencyExposureCard } from "@/components/insights/CurrencyExposureCard";
@@ -46,10 +45,22 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "@/components/ui/sheet";
+import type { BenchmarkComparisonQuery, BenchmarkComparisonQueryVariables } from "@/gql/graphql";
+import { BENCHMARK_COMPARISON } from "@/graphql/queries/benchmarks";
 import { useCurrency } from "@/hooks/use-currency";
+import { useBenchmarkInstrumentId } from "@/hooks/useBenchmarkInstrumentId";
 import { cn } from "@/lib/utils";
 import { formatPercentage } from "@/lib/utils/formatters";
+import { AssetPageHeader } from "../AssetPageHeader";
 import { AddStockForm } from "./AddStockForm";
+import { StockDetail } from "./StockDetail";
 import { StocksFundsPositions } from "./StocksFundsPositions";
 import { StocksFundsTransactions } from "./StocksFundsTransactions";
 
@@ -58,6 +69,7 @@ interface StocksFundsModuleProps {
 	onNavigateToTransactions?: () => void;
 	onSelectAccount?: (accountName: string) => void;
 	onSelectAsset?: (symbol: string) => void;
+	detailMode?: "external" | "panel";
 }
 
 type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
@@ -108,9 +120,10 @@ interface DividendSummaryProps {
 	formatCurrency: (value: number) => string;
 }
 
-interface InsightFilter {
-	mode: "sector" | "asset-class";
+export interface InsightFilter {
+	mode: "sector" | "asset-class" | "type" | "asset";
 	value: string;
+	label?: string;
 }
 
 function toFiniteNumber(value: unknown, fallback = 0): number {
@@ -186,89 +199,6 @@ function normalizeStockAssets(assets: RawAsset[], fallbackPortfolioId: string): 
 	});
 }
 
-function buildHistoryFromTransactions(
-	transactions: PortfolioTransaction[],
-	portfolioId: string,
-	totalValue: number,
-	totalCost: number,
-	portfolioCreatedAt?: string,
-): Array<{ date: string; value: number }> {
-	const now = new Date();
-	const createdAtDate = portfolioCreatedAt ? new Date(portfolioCreatedAt) : null;
-	const fallbackStartDate =
-		createdAtDate && Number.isFinite(createdAtDate.getTime())
-			? createdAtDate
-			: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
-
-	const relevantTransactions = transactions
-		.filter((tx) => tx.portfolioId === portfolioId)
-		.filter((tx) => Number.isFinite(tx.total) && tx.total > 0)
-		.filter((tx) => tx.date && Number.isFinite(new Date(tx.date).getTime()))
-		.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-	const points: Array<{ date: string; value: number }> = [
-		{
-			date: fallbackStartDate.toISOString(),
-			value: 0,
-		},
-	];
-
-	let runningValue = 0;
-	relevantTransactions.forEach((tx) => {
-		const txType = tx.type.toLowerCase();
-		const signedAmount =
-			txType.includes("sell") || txType.includes("withdraw")
-				? -Math.abs(tx.total)
-				: Math.abs(tx.total);
-		runningValue = Math.max(0, runningValue + signedAmount);
-		points.push({
-			date: tx.date,
-			value: Number(runningValue.toFixed(2)),
-		});
-	});
-
-	const baseline = Math.max(
-		1,
-		points[points.length - 1]?.value || 0,
-		totalCost > 0 ? totalCost : totalValue * 0.6,
-	);
-	const finalValue = totalValue > 0 ? totalValue : baseline;
-	const projectionStart = new Date(
-		points[points.length - 1]?.date || fallbackStartDate.toISOString(),
-	);
-	const projectionSteps = 36;
-
-	for (let i = 1; i <= projectionSteps; i += 1) {
-		const progress = i / projectionSteps;
-		// Base linear trend between baseline and finalValue
-		const baseTrend = baseline + (finalValue - baseline) * progress;
-
-		// Create stable, deterministic pseudo-random daily fluctuations
-		const sinVal = Math.sin(i * 12.34) * Math.cos(i * 5.67);
-		const dailyNoise = finalValue * 0.012 * sinVal; // up to 1.2% daily random movement
-
-		// Create mid-term macro-cycle waves (e.g. realistic 10-day trends)
-		const marketCycle = Math.sin(progress * Math.PI * 3.5 + 0.5) * (finalValue * 0.02);
-
-		const pointValue = Math.max(10, baseTrend + dailyNoise + marketCycle);
-		const pointDate = new Date(
-			projectionStart.getTime() +
-				((now.getTime() - projectionStart.getTime()) * i) / projectionSteps,
-		);
-		points.push({
-			date: pointDate.toISOString(),
-			value: Number(pointValue.toFixed(2)),
-		});
-	}
-
-	points.push({
-		date: now.toISOString(),
-		value: Number(finalValue.toFixed(2)),
-	});
-
-	return points.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-}
-
 function buildPerformanceSeries(
 	history: Array<{ date: string; value: number }>,
 	fallbackValue: number,
@@ -291,23 +221,11 @@ function buildPerformanceSeries(
 		}))
 		.sort((a, b) => a.date.getTime() - b.date.getTime());
 
-	const startValue = toFiniteNumber(points[0]?.portfolioValue, fallbackValue || 1);
-	const endValue = toFiniteNumber(
-		points[points.length - 1]?.portfolioValue,
-		fallbackValue || startValue,
-	);
-	const portfolioReturn = startValue > 0 ? (endValue - startValue) / startValue : 0;
-	const benchmarkReturn = portfolioReturn * 0.8;
-
-	return points.map((point, index) => {
-		const progress = points.length > 1 ? index / (points.length - 1) : 1;
-		const benchmarkValue = startValue * (1 + benchmarkReturn * progress);
-		return {
-			date: point.date,
-			portfolioValue: point.portfolioValue,
-			benchmarkValue,
-		};
-	});
+	return points.map((point) => ({
+		date: point.date,
+		portfolioValue: point.portfolioValue,
+		benchmarkValue: point.portfolioValue,
+	}));
 }
 
 interface PortfolioHeroChartProps {
@@ -316,6 +234,7 @@ interface PortfolioHeroChartProps {
 	formatCurrency: (value: number) => string;
 	timeRange: TimeRange;
 	onTimeRangeChange: (range: TimeRange) => void;
+	portfolioID?: string;
 }
 
 const PortfolioHeroChart = memo(function PortfolioHeroChart({
@@ -324,6 +243,7 @@ const PortfolioHeroChart = memo(function PortfolioHeroChart({
 	formatCurrency,
 	timeRange,
 	onTimeRangeChange,
+	portfolioID,
 }: PortfolioHeroChartProps) {
 	const [benchmarkMode, setBenchmarkMode] = useState<BenchmarkMode>("sp500");
 	const benchmarkName =
@@ -341,7 +261,7 @@ const PortfolioHeroChart = memo(function PortfolioHeroChart({
 			<div className="flex flex-col justify-between gap-3 border-b border-border/10 pb-3 sm:flex-row sm:items-center">
 				<div className="flex flex-col">
 					<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-						Portfolio Value
+						Stocks & Funds Value
 					</span>
 					<div className="flex items-baseline gap-2">
 						<span className="font-mono text-2xl font-bold tracking-tight text-foreground">
@@ -407,6 +327,7 @@ const PortfolioHeroChart = memo(function PortfolioHeroChart({
 					formatCurrency={formatCurrency}
 					timeRange={timeRange}
 					benchmarkMode={benchmarkMode}
+					portfolioID={portfolioID}
 				/>
 			</div>
 		</div>
@@ -562,52 +483,58 @@ const DividendSummary = memo(function DividendSummary({
 	);
 });
 
-const DONUT_COLORS = [
-	"#3b82f6", // Royal Blue
-	"#10b981", // Sophisticated Emerald
-	"#14b8a6", // Sleek Teal
-	"#6366f1", // Indigo
-	"#0ea5e9", // Sky Blue
-	"#f59e0b", // Amber
-	"#8b5cf6", // Violet
-	"#06b6d4", // Cyan
-	"#ec4899", // Rose Pink
-	"#10b981", // Emerald-500
-	"#a1a1aa", // Soft Zinc (for smaller tail-end slices)
-];
-
 export function StocksFundsModule({
 	onBack,
 	onNavigateToTransactions,
 	onSelectAccount,
 	onSelectAsset,
+	detailMode = "panel",
 }: StocksFundsModuleProps) {
 	const [activeTab, setActiveTab] = useState("positions");
 	const [isAddOpen, setIsAddOpen] = useState(false);
 	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
 	const [insightFilter, setInsightFilter] = useState<InsightFilter | null>(null);
+	// Defer the insight filter to prevent expensive positions table re-renders
+	// from blocking the insight card interaction (e.g. sector click animation).
+	const deferredInsightFilter = useDeferredValue(insightFilter);
+	const [selectedStockSymbol, setSelectedStockSymbol] = useState<string | null>(null);
 
-	const scrollToPositions = () => {
+	const scrollToPositions = useCallback(() => {
 		setTimeout(() => {
 			const element = document.getElementById("positions-section");
 			if (element) {
 				element.scrollIntoView({ behavior: "smooth", block: "start" });
 			}
 		}, 80);
-	};
+	}, []);
 
-	const handleSetActiveTab = (tab: string) => {
-		setActiveTab(tab);
-		scrollToPositions();
-	};
+	const handleSelectAsset = useCallback(
+		(symbol: string) => {
+			if (detailMode === "panel") {
+				setSelectedStockSymbol(symbol);
+			} else {
+				onSelectAsset?.(symbol);
+			}
+		},
+		[detailMode, onSelectAsset],
+	);
 
-	const handleSetInsightFilter = (filter: InsightFilter | null) => {
-		setInsightFilter(filter);
-		setActiveTab("positions");
-		scrollToPositions();
-	};
-	const [distributionMode, setDistributionMode] = useState<"asset" | "sector">("asset");
-	const [distributionChartType, setDistributionChartType] = useState<"donut" | "treemap">("donut");
+	const handleSetActiveTab = useCallback(
+		(tab: string) => {
+			setActiveTab(tab);
+			scrollToPositions();
+		},
+		[scrollToPositions],
+	);
+
+	const handleSetInsightFilter = useCallback(
+		(filter: InsightFilter | null) => {
+			setInsightFilter(filter);
+			setActiveTab("positions");
+			scrollToPositions();
+		},
+		[scrollToPositions],
+	);
 	const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
 	const [selectedCards, setSelectedCards] = useState<string[]>(() => {
 		try {
@@ -624,74 +551,173 @@ export function StocksFundsModule({
 			localStorage.setItem("sf_insight_selected_cards", JSON.stringify(selectedCards));
 		} catch {}
 	}, [selectedCards]);
-	const { assets, addAsset, selectedPortfolio, addingAsset, currentPortfolio, transactions } =
-		usePortfolio() as {
-			assets: RawAsset[];
-			addAsset: (input: {
-				name: string;
-				instrumentID?: string;
-				type: "stock" | "fund";
-				symbol: string;
-				quantity: number;
-				purchasePrice: number;
-				purchaseDate?: string;
-				sector?: string;
-				quoteCurrency?: string;
-				unitPriceCurrency?: string;
-				currentPrice?: number;
-			}) => Promise<unknown>;
-			selectedPortfolio: {
-				id: string;
-				createdAt?: string;
-				analytics?: {
-					totalValue?: number;
-					totalCost?: number;
-					performanceHistory?: Array<{ date: string; value: number }>;
-				};
-			} | null;
-			addingAsset: boolean;
-			currentPortfolio: string;
-			transactions: PortfolioTransaction[];
-		};
+	const { assets, addAsset, selectedPortfolio, addingAsset, currentPortfolio } = usePortfolio() as {
+		assets: RawAsset[];
+		addAsset: (input: {
+			name: string;
+			instrumentID?: string;
+			type: "stock" | "fund";
+			symbol: string;
+			quantity: number;
+			purchasePrice: number;
+			purchaseDate?: string;
+			sector?: string;
+			quoteCurrency?: string;
+			unitPriceCurrency?: string;
+			currentPrice?: number;
+		}) => Promise<unknown>;
+		selectedPortfolio: {
+			id: string;
+			createdAt?: string;
+			analytics?: {
+				totalValue?: number;
+				totalCost?: number;
+				performanceHistory?: Array<{ date: string; value: number }>;
+			};
+		} | null;
+		addingAsset: boolean;
+		currentPortfolio: string;
+		transactions: PortfolioTransaction[];
+	};
 
 	const normalizedAssets = useMemo(
 		() => normalizeStockAssets(assets, currentPortfolio),
 		[assets, currentPortfolio],
 	);
 
-	const totalValue = normalizedAssets.reduce((sum, asset) => sum + asset.totalValue, 0);
-	const totalCost = normalizedAssets.reduce(
-		(sum, asset) => sum + asset.avgCost * asset.quantity,
-		0,
-	);
-	const totalGain = totalValue - totalCost;
-	// biome-ignore lint/correctness/noUnusedVariables: used in template below
-	const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+	// ---- Single-pass precomputation for all derived insights ----
+	// Replaces 9+ separate useMemo hooks that each iterated over normalizedAssets.
+	const assetPrecomputed = useMemo(() => {
+		const assets = normalizedAssets;
+		const len = assets.length;
 
-	const distributionData = useMemo(() => {
-		const map = new Map<string, number>();
-		for (const asset of normalizedAssets) {
-			const key =
-				distributionMode === "asset" ? asset.symbol || asset.name : asset.sector || "Other";
-			map.set(key, (map.get(key) ?? 0) + asset.totalValue);
+		// Fast path: empty
+		if (len === 0) {
+			return {
+				totalValue: 0,
+				totalCost: 0,
+				totalGain: 0,
+				totalGainPercent: 0,
+				sortedByValue: [] as StockAsset[],
+				sectorValueMap: new Map<string, number>(),
+				currencyValueMap: new Map<string, number>(),
+				dividendAssets: [] as StockAsset[],
+				fundAssets: [] as StockAsset[],
+				missingCostCount: 0,
+				missingSectorCount: 0,
+				gainContributors: [] as Array<{ symbol: string; gain: number }>,
+			};
 		}
-		return Array.from(map.entries())
-			.map(([name, value]) => ({ name, value }))
-			.sort((a, b) => b.value - a.value);
-	}, [normalizedAssets, distributionMode]);
+
+		let totalValue = 0;
+		let totalCost = 0;
+		const sectorValueMap = new Map<string, number>();
+		const currencyValueMap = new Map<string, number>();
+		const dividendAssets: StockAsset[] = [];
+		const fundAssets: StockAsset[] = [];
+		let missingCostCount = 0;
+		let missingSectorCount = 0;
+		const gainContributors: Array<{ symbol: string; gain: number }> = [];
+
+		for (const asset of assets) {
+			totalValue += asset.totalValue;
+			const costBasis = asset.avgCost * asset.quantity;
+			totalCost += costBasis;
+
+			// Sector map
+			const sec = asset.sector || "Other";
+			sectorValueMap.set(sec, (sectorValueMap.get(sec) ?? 0) + asset.totalValue);
+
+			// Currency map
+			const cur = asset.currency || "USD";
+			currencyValueMap.set(cur, (currencyValueMap.get(cur) ?? 0) + asset.totalValue);
+
+			// Dividends
+			if ((asset.dividendYield ?? 0) > 0) {
+				dividendAssets.push(asset);
+			}
+
+			// Funds
+			if (
+				asset.type === "fund" ||
+				asset.name.toLowerCase().includes("etf") ||
+				asset.symbol.toLowerCase().includes("etf")
+			) {
+				fundAssets.push(asset);
+			}
+
+			// Data quality
+			if (asset.avgCost <= 0) missingCostCount++;
+			if (
+				!asset.sector ||
+				asset.sector === "Needs metadata" ||
+				asset.sector === "Unclassified" ||
+				asset.sector === "Unknown sector" ||
+				asset.sector === "Other"
+			) {
+				missingSectorCount++;
+			}
+
+			// Gain contributor
+			gainContributors.push({
+				symbol: asset.symbol || asset.name,
+				gain: asset.totalValue - costBasis,
+			});
+		}
+
+		gainContributors.sort((a, b) => b.gain - a.gain);
+
+		const sortedByValue = [...assets].sort((a, b) => b.totalValue - a.totalValue);
+		const totalGain = totalValue - totalCost;
+		const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+
+		return {
+			totalValue,
+			totalCost,
+			totalGain,
+			totalGainPercent,
+			sortedByValue,
+			sectorValueMap,
+			currencyValueMap,
+			dividendAssets,
+			fundAssets,
+			missingCostCount,
+			missingSectorCount,
+			gainContributors,
+		};
+	}, [normalizedAssets]);
+
+	// Destructure for convenience
+	const { totalValue, totalCost, totalGain } = assetPrecomputed;
+
+	// biome-ignore lint/correctness/noUnusedVariables: used by insight cards & template
+	const totalGainPercent = assetPrecomputed.totalGainPercent;
 
 	const performanceHistory = selectedPortfolio?.analytics?.performanceHistory ?? [];
 	const effectivePerformanceHistory = useMemo(() => {
-		if (performanceHistory.length >= 2) return performanceHistory;
+		if (performanceHistory.length >= 2) {
+			const lastHistoryValue = performanceHistory[performanceHistory.length - 1]?.value ?? 0;
+			const ratio = lastHistoryValue > 0 ? totalValue / lastHistoryValue : 1;
+			return performanceHistory.map((point) => ({
+				...point,
+				value: point.value * ratio,
+			}));
+		}
+		if (performanceHistory.length === 1) {
+			return [{ ...performanceHistory[0], value: totalValue }];
+		}
 		if (!selectedPortfolio) return performanceHistory;
-		return buildHistoryFromTransactions(
-			transactions,
-			selectedPortfolio.id,
-			totalValue,
-			totalCost,
-			selectedPortfolio.createdAt,
-		);
-	}, [performanceHistory, selectedPortfolio, totalValue, totalCost, transactions]);
+		const now = new Date();
+		const startD =
+			selectedPortfolio.createdAt &&
+			Number.isFinite(new Date(selectedPortfolio.createdAt).getTime())
+				? new Date(selectedPortfolio.createdAt)
+				: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+		return [
+			{ date: startD.toISOString(), value: totalCost > 0 ? totalCost : totalValue },
+			{ date: now.toISOString(), value: totalValue },
+		];
+	}, [performanceHistory, selectedPortfolio, totalValue, totalCost]);
 	const performanceData = useMemo(
 		() =>
 			buildPerformanceSeries(
@@ -702,78 +728,44 @@ export function StocksFundsModule({
 	);
 
 	const performanceDrivers = useMemo(() => {
-		if (normalizedAssets.length === 0 || totalCost === 0) {
-			return null;
-		}
-		const contributors = normalizedAssets
-			.map((asset) => {
-				const costBasis = asset.avgCost * asset.quantity;
-				const gain = asset.totalValue - costBasis;
-				return {
-					symbol: asset.symbol || asset.name,
-					gain,
-				};
-			})
-			.sort((a, b) => b.gain - a.gain);
-
-		const topContributors = contributors.filter((c) => c.gain > 0).slice(0, 3);
-		const worstDraggers = [...contributors]
+		if (assetPrecomputed.gainContributors.length === 0 || totalCost === 0) return null;
+		const topContributors = assetPrecomputed.gainContributors.filter((c) => c.gain > 0).slice(0, 3);
+		const worstDraggers = [...assetPrecomputed.gainContributors]
 			.reverse()
 			.filter((c) => c.gain < 0)
 			.slice(0, 2);
-
-		return {
-			totalGain,
-			topContributors,
-			worstDraggers,
-		};
-	}, [normalizedAssets, totalCost, totalGain]);
+		return { totalGain, topContributors, worstDraggers };
+	}, [assetPrecomputed, totalCost, totalGain]);
 
 	const portfolioHealth = useMemo(() => {
-		if (normalizedAssets.length === 0) {
-			return null;
-		}
-		const sorted = [...normalizedAssets].sort((a, b) => b.totalValue - a.totalValue);
+		const sorted = assetPrecomputed.sortedByValue;
+		if (sorted.length === 0) return null;
 		const topHolding = sorted[0];
 		const topHoldingPct = totalValue > 0 ? (topHolding.totalValue / totalValue) * 100 : 0;
-
 		const top3Value = sorted.slice(0, 3).reduce((sum, a) => sum + a.totalValue, 0);
 		const top3Pct = totalValue > 0 ? (top3Value / totalValue) * 100 : 0;
 
-		// Calculate largest sector excluding unclassified categories
-		const validSectorMap = new Map<string, number>();
-		let missingClassificationCount = 0;
-
-		for (const asset of normalizedAssets) {
-			const sector = asset.sector;
+		let largestSectorName = "None";
+		let largestSectorPct = 0;
+		for (const [sec, val] of assetPrecomputed.sectorValueMap) {
 			if (
-				!sector ||
-				sector === "Needs metadata" ||
-				sector === "Unclassified" ||
-				sector === "Unknown sector" ||
-				sector === "Other"
+				sec !== "Needs metadata" &&
+				sec !== "Unclassified" &&
+				sec !== "Unknown sector" &&
+				sec !== "Other" &&
+				sec
 			) {
-				missingClassificationCount++;
-			} else {
-				validSectorMap.set(sector, (validSectorMap.get(sector) || 0) + asset.totalValue);
+				const pct = totalValue > 0 ? (val / totalValue) * 100 : 0;
+				if (pct > largestSectorPct) {
+					largestSectorPct = pct;
+					largestSectorName = sec;
+				}
 			}
 		}
 
-		let largestSectorName = "None";
-		let largestSectorPct = 0;
-		if (validSectorMap.size > 0) {
-			const sortedSectors = Array.from(validSectorMap.entries()).sort((a, b) => b[1] - a[1]);
-			const [name, val] = sortedSectors[0];
-			largestSectorName = name;
-			largestSectorPct = totalValue > 0 ? (val / totalValue) * 100 : 0;
-		}
-
 		let risk: "Low" | "Medium" | "High" = "Low";
-		if (topHoldingPct > 25) {
-			risk = "High";
-		} else if (topHoldingPct > 15) {
-			risk = "Medium";
-		}
+		if (topHoldingPct > 25) risk = "High";
+		else if (topHoldingPct > 15) risk = "Medium";
 
 		return {
 			risk,
@@ -782,32 +774,28 @@ export function StocksFundsModule({
 			top3Pct,
 			largestSectorName,
 			largestSectorPct,
-			missingClassificationCount,
+			missingClassificationCount: assetPrecomputed.missingSectorCount,
 		};
-	}, [normalizedAssets, totalValue]);
+	}, [assetPrecomputed, totalValue]);
 
 	const incomeForecast = useMemo(() => {
-		const dividendAssets = normalizedAssets.filter((a) => (a.dividendYield ?? 0) > 0);
-		if (dividendAssets.length === 0 || totalValue === 0) {
-			return null;
-		}
+		const dlist = assetPrecomputed.dividendAssets;
+		if (dlist.length === 0 || totalValue === 0) return null;
 
-		const forwardAnnual = dividendAssets.reduce(
+		const forwardAnnual = dlist.reduce(
 			(sum, a) => sum + a.totalValue * ((a.dividendYield ?? 0) / 100),
 			0,
 		);
 		const overallYield = (forwardAnnual / totalValue) * 100;
 
-		// Find best payer
-		const bestPayerAsset = dividendAssets.reduce((prev, curr) => {
+		const bestPayerAsset = dlist.reduce((prev, curr) => {
 			const prevPay = prev.totalValue * ((prev.dividendYield ?? 0) / 100);
 			const currPay = curr.totalValue * ((curr.dividendYield ?? 0) / 100);
 			return currPay > prevPay ? curr : prev;
 		});
 		const bestPayerAnnual = bestPayerAsset.totalValue * ((bestPayerAsset.dividendYield ?? 0) / 100);
 
-		// Dynamic next payment (e.g. quarterly payment estimated next month)
-		const nextPayerAsset = dividendAssets[0];
+		const nextPayerAsset = dlist[0];
 		const nextPaymentEst =
 			(nextPayerAsset.totalValue * ((nextPayerAsset.dividendYield ?? 0) / 100)) / 4;
 		const nextMonthName = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(
@@ -824,28 +812,18 @@ export function StocksFundsModule({
 			nextPaymentEst,
 			nextMonthName,
 		};
-	}, [normalizedAssets, totalValue]);
+	}, [assetPrecomputed, totalValue]);
 
 	const feesTerData = useMemo(() => {
-		const fundAssets = normalizedAssets.filter(
-			(a) =>
-				a.type === "fund" ||
-				a.name.toLowerCase().includes("etf") ||
-				a.symbol.toLowerCase().includes("etf"),
-		);
-		if (fundAssets.length === 0) return null;
-
-		const totalFundValue = fundAssets.reduce((sum, a) => sum + a.totalValue, 0);
-		const avgTer = 0.18; // 0.18% average ETF expense ratio
-		const annualCost = totalFundValue * (avgTer / 100);
-
+		if (assetPrecomputed.fundAssets.length === 0) return null;
+		const totalFundValue = assetPrecomputed.fundAssets.reduce((sum, a) => sum + a.totalValue, 0);
 		return {
-			count: fundAssets.length,
+			count: assetPrecomputed.fundAssets.length,
 			totalValue: totalFundValue,
-			avgTer,
-			annualCost,
+			avgTer: 0.18,
+			annualCost: totalFundValue * 0.0018,
 		};
-	}, [normalizedAssets]);
+	}, [assetPrecomputed]);
 
 	const rebalancingData = useMemo(() => {
 		if (normalizedAssets.length === 0) return null;
@@ -894,86 +872,83 @@ export function StocksFundsModule({
 
 	const currencyExposure = useMemo(() => {
 		if (normalizedAssets.length === 0) return [];
-		const map = new Map<string, number>();
-		for (const asset of normalizedAssets) {
-			const cur = asset.currency || "USD";
-			map.set(cur, (map.get(cur) ?? 0) + asset.totalValue);
-		}
-		return Array.from(map.entries())
+		return Array.from(assetPrecomputed.currencyValueMap.entries())
 			.map(([currency, value]) => ({
 				currency,
 				value,
 				percentage: totalValue > 0 ? (value / totalValue) * 100 : 0,
 			}))
 			.sort((a, b) => b.percentage - a.percentage);
-	}, [normalizedAssets, totalValue]);
+	}, [normalizedAssets, totalValue, assetPrecomputed]);
 
 	const dataQuality = useMemo(() => {
 		if (normalizedAssets.length === 0) return null;
-		const missingCostCount = normalizedAssets.filter((a) => a.avgCost <= 0).length;
-		const missingSectorCount = normalizedAssets.filter(
-			(a) =>
-				!a.sector ||
-				a.sector === "Needs metadata" ||
-				a.sector === "Unclassified" ||
-				a.sector === "Other",
-		).length;
-
 		const totalPossibleChecks = normalizedAssets.length * 2;
-		const passedChecks = totalPossibleChecks - (missingCostCount + missingSectorCount);
+		const passedChecks =
+			totalPossibleChecks -
+			(assetPrecomputed.missingCostCount + assetPrecomputed.missingSectorCount);
 		const score = totalPossibleChecks > 0 ? (passedChecks / totalPossibleChecks) * 100 : 100;
-
 		return {
-			missingCostCount,
-			missingSectorCount,
+			missingCostCount: assetPrecomputed.missingCostCount,
+			missingSectorCount: assetPrecomputed.missingSectorCount,
 			score,
 		};
-	}, [normalizedAssets]);
+	}, [normalizedAssets, assetPrecomputed]);
+
+	const { id: sp500InstrumentId } = useBenchmarkInstrumentId("sp500");
+
+	const comparisonTimeRange = useMemo(() => {
+		const start = selectedPortfolio?.createdAt
+			? new Date(selectedPortfolio.createdAt).toISOString()
+			: new Date(
+					Math.floor((Date.now() - 365 * 24 * 60 * 60 * 1000) / 60000) * 60000,
+				).toISOString();
+		const end = new Date(Math.floor(Date.now() / 60000) * 60000).toISOString();
+		return { start, end };
+	}, [selectedPortfolio?.createdAt]);
+
+	const canQueryComparison = Boolean(selectedPortfolio?.id && sp500InstrumentId);
+
+	const { data: comparisonData } = useQuery<
+		BenchmarkComparisonQuery,
+		BenchmarkComparisonQueryVariables
+	>(BENCHMARK_COMPARISON, {
+		variables:
+			canQueryComparison && sp500InstrumentId && selectedPortfolio?.id
+				? {
+						portfolioId: selectedPortfolio.id ?? "",
+						benchmarkAssetId: sp500InstrumentId,
+						timeRange: comparisonTimeRange,
+					}
+				: undefined,
+		skip: !canQueryComparison || !sp500InstrumentId || !selectedPortfolio?.id,
+		fetchPolicy: "cache-first",
+	});
 
 	const benchmarkComparison = useMemo(() => {
-		if (normalizedAssets.length === 0) return null;
+		const c = comparisonData?.benchmarkComparison;
+		if (!c) return null;
 
-		const portfolioReturn = totalCost > 0 ? (totalGain / totalCost) * 100 : 0.0;
-		const sp500Return = portfolioReturn > 0 ? portfolioReturn * 0.8 : -5.4;
+		// Server returns percentage values (e.g. 5.2 for 5.2%); display directly.
+		const portfolioReturn = c.portfolioReturn;
+		const sp500Return = c.benchmarkReturn;
 		const outperformance = portfolioReturn - sp500Return;
 
-		return {
-			portfolioReturn,
-			sp500Return,
-			outperformance,
-		};
-	}, [normalizedAssets, totalCost, totalGain]);
+		return { portfolioReturn, sp500Return, outperformance };
+	}, [comparisonData]);
 
 	const smartRecommendedCards = useMemo(() => {
 		const list = ["performance-drivers", "portfolio-health"];
 
-		const hasFunds = normalizedAssets.some(
-			(a) =>
-				a.type === "fund" ||
-				a.name.toLowerCase().includes("etf") ||
-				a.symbol.toLowerCase().includes("etf"),
-		);
-		if (hasFunds) {
-			list.push("fees-ter");
-		}
-
-		const currencies = new Set(normalizedAssets.map((a) => a.currency || "USD"));
-		if (currencies.size > 1) {
-			list.push("currency-exposure");
-		}
-
-		const hasDividends = normalizedAssets.some((a) => (a.dividendYield ?? 0) > 0);
-		if (hasDividends && !list.includes("income-forecast")) {
+		if (assetPrecomputed.fundAssets.length > 0) list.push("fees-ter");
+		if (assetPrecomputed.currencyValueMap.size > 1) list.push("currency-exposure");
+		if (assetPrecomputed.dividendAssets.length > 0 && !list.includes("income-forecast"))
 			list.push("income-forecast");
-		}
-
-		const hasMissingMetadata = normalizedAssets.some(
-			(a) =>
-				a.avgCost <= 0 || !a.sector || a.sector === "Needs metadata" || a.sector === "Unclassified",
-		);
-		if (hasMissingMetadata && !list.includes("missing-data")) {
+		if (
+			(assetPrecomputed.missingCostCount > 0 || assetPrecomputed.missingSectorCount > 0) &&
+			!list.includes("missing-data")
+		)
 			list.push("missing-data");
-		}
 
 		if (list.length < 3) {
 			if (!list.includes("income-forecast")) list.push("income-forecast");
@@ -981,7 +956,7 @@ export function StocksFundsModule({
 		}
 
 		return list;
-	}, [normalizedAssets]);
+	}, [assetPrecomputed]);
 
 	const { formatCurrencyCompact: formatCurrency } = useCurrency();
 
@@ -1020,122 +995,14 @@ export function StocksFundsModule({
 		}
 	};
 
-	const donutOption = useMemo(() => {
-		return {
-			color: DONUT_COLORS,
-			tooltip: {
-				trigger: "item",
-				backgroundColor: "rgba(10,10,10,0.92)",
-				borderColor: "rgba(255,255,255,0.12)",
-				textStyle: { color: "#fff", fontSize: 11, fontFamily: "monospace" },
-				formatter: (params: unknown) => {
-					const p = params as { name?: string; value?: number; percent?: number };
-					return `${p.name ?? ""}: ${p.percent?.toFixed(1) ?? 0}% (${formatCurrency(p.value ?? 0)})`;
-				},
-			},
-			series: [
-				{
-					type: "pie",
-					radius: ["58%", "78%"],
-					center: ["50%", "50%"],
-					data: distributionData,
-					label: { show: false },
-					itemStyle: { borderColor: "rgba(0,0,0,0.4)", borderWidth: 2 },
-					emphasis: {
-						scaleSize: 3,
-						itemStyle: { shadowBlur: 10, shadowColor: "rgba(0,0,0,0.5)" },
-					},
-				},
-			],
-		};
-	}, [distributionData, totalValue, formatCurrency]);
-
-	const treemapOption = useMemo(() => {
-		const treemapData = distributionData.map((item, idx) => ({
-			name: item.name,
-			value: item.value,
-			itemStyle: {
-				color: DONUT_COLORS[idx % DONUT_COLORS.length],
-			},
-		}));
-
-		return {
-			tooltip: {
-				trigger: "item",
-				backgroundColor: "rgba(10,10,10,0.92)",
-				borderColor: "rgba(255,255,255,0.12)",
-				textStyle: { color: "#fff", fontSize: 11, fontFamily: "sans-serif" },
-				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-				formatter: (params: any) => {
-					const percent = totalValue > 0 ? ((params.value / totalValue) * 100).toFixed(1) : "0.0";
-					return `${params.name}: ${percent}% (${formatCurrency(params.value)})`;
-				},
-			},
-			series: [
-				{
-					name: "Distribution",
-					type: "treemap",
-					width: "100%",
-					height: "100%",
-					roam: false,
-					breadcrumb: { show: false },
-					nodeClick: false,
-					itemStyle: {
-						borderColor: "#0a0a0a",
-						borderWidth: 1,
-						gapWidth: 2,
-					},
-					label: {
-						show: true,
-						position: "inside",
-						// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-						formatter: (params: any) => {
-							const percent =
-								totalValue > 0 ? ((params.value / totalValue) * 100).toFixed(1) : "0.0";
-							return `{name|${params.name}}\n{percent|${percent}%}`;
-						},
-						rich: {
-							name: {
-								fontSize: 10,
-								fontWeight: "bold",
-								lineHeight: 14,
-								color: "#fff",
-							},
-							percent: {
-								fontSize: 9,
-								lineHeight: 12,
-								color: "rgba(255, 255, 255, 0.8)",
-							},
-						},
-					},
-					data: treemapData,
-				},
-			],
-		};
-	}, [distributionData, totalValue, formatCurrency]);
-
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
-			{/* Header Title with Back Arrow */}
-			<div className="flex flex-col space-y-2 border-b border-border/30 pb-4">
-				<button
-					type="button"
-					className="group inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition-colors focus:outline-hidden bg-transparent border-0 p-0 text-left w-fit"
-					onClick={onBack}
-				>
-					<ChevronLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-					<span>Back to Portfolios</span>
-				</button>
-
-				<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-1">
-					<div className="space-y-0.5">
-						<h1 className="text-2xl font-bold tracking-tight text-foreground">Stocks & Funds</h1>
-						<p className="text-xs text-muted-foreground">
-							Track stock assets, mutual funds, ETF performance, sector weightings, and real-time
-							insights.
-						</p>
-					</div>
-					<div className="flex items-center gap-2 shrink-0">
+			<AssetPageHeader
+				title="Stocks & Funds"
+				description="Track stock assets, mutual funds, ETF performance, sector weightings, and real-time insights."
+				onBack={onBack}
+				actions={
+					<>
 						<Button
 							variant="outline"
 							size="sm"
@@ -1154,15 +1021,15 @@ export function StocksFundsModule({
 							<Plus className="mr-1.5 h-3.5 w-3.5" />
 							{addingAsset ? "Adding..." : "Add Position"}
 						</Button>
+					</>
+				}
+			/>
 
-						<AddStockForm
-							open={isAddOpen}
-							onClose={() => setIsAddOpen(false)}
-							onSubmit={handleAddPosition}
-						/>
-					</div>
-				</div>
-			</div>
+			<AddStockForm
+				open={isAddOpen}
+				onClose={() => setIsAddOpen(false)}
+				onSubmit={handleAddPosition}
+			/>
 
 			{/* Unified Dashboard Grid: Chart + Distribution side by side with vertical separator */}
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-10 border-b border-border/30 pb-6">
@@ -1174,100 +1041,22 @@ export function StocksFundsModule({
 						formatCurrency={formatCurrency}
 						timeRange={timeRange}
 						onTimeRangeChange={setTimeRange}
+						portfolioID={selectedPortfolio?.id}
 					/>
 				</div>
 
 				{/* Unified Right Section: Distribution */}
 				<div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-border/30 pt-6 lg:pt-0 pl-0 lg:pl-6 flex flex-col justify-between">
-					<div className="flex flex-col space-y-4">
-						{/* Distribution Header */}
-						<div className="flex items-center justify-between">
-							<div className="flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity">
-								<span className="text-[11px] font-bold uppercase tracking-wider text-foreground">
-									Distribution
-								</span>
-								<ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-							</div>
-							<div className="flex items-center gap-2">
-								<DropdownMenu>
-									<DropdownMenuTrigger asChild>
-										<Button
-											variant="outline"
-											size="sm"
-											className="h-6 gap-1 rounded-full px-2.5 text-[10px] bg-secondary/35 border-border/50 text-muted-foreground hover:text-foreground"
-										>
-											By {distributionMode === "asset" ? "Asset" : "Sector"}
-											<ChevronDown className="h-2.5 w-2.5" />
-										</Button>
-									</DropdownMenuTrigger>
-									<DropdownMenuContent align="end">
-										<DropdownMenuItem onClick={() => setDistributionMode("asset")}>
-											By Asset
-										</DropdownMenuItem>
-										<DropdownMenuItem onClick={() => setDistributionMode("sector")}>
-											By Sector
-										</DropdownMenuItem>
-									</DropdownMenuContent>
-								</DropdownMenu>
-
-								<div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-secondary/20 p-0.5 backdrop-blur-xs">
-									<Button
-										variant={distributionChartType === "donut" ? "secondary" : "ghost"}
-										size="icon"
-										className={`h-5 w-5 rounded-full ${
-											distributionChartType === "donut"
-												? "bg-secondary/80 text-foreground shadow-xs"
-												: "text-muted-foreground hover:text-foreground"
-										}`}
-										onClick={() => setDistributionChartType("donut")}
-										title="Donut Chart"
-									>
-										<PieChart className="h-3 w-3" />
-									</Button>
-									<Button
-										variant={distributionChartType === "treemap" ? "secondary" : "ghost"}
-										size="icon"
-										className={`h-5 w-5 rounded-full ${
-											distributionChartType === "treemap"
-												? "bg-secondary/80 text-foreground shadow-xs"
-												: "text-muted-foreground hover:text-foreground"
-										}`}
-										onClick={() => setDistributionChartType("treemap")}
-										title="Treemap Chart"
-									>
-										<LayoutGrid className="h-3 w-3" />
-									</Button>
-								</div>
-							</div>
-						</div>
-
-						{/* Distribution Chart */}
-						<div className="flex items-center justify-center h-[300px] relative w-full">
-							{distributionData.length > 0 ? (
-								<>
-									<ReactECharts
-										option={distributionChartType === "treemap" ? treemapOption : donutOption}
-										notMerge={true}
-										lazyUpdate={true}
-										style={{ height: "100%", width: "100%" }}
-										opts={{ renderer: "svg" }}
-									/>
-									{distributionChartType === "donut" && (
-										<div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none">
-											<span className="font-mono text-lg font-bold tracking-tight text-foreground/90">
-												{formatCurrency(totalValue)}
-											</span>
-											<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 mt-0.5">
-												Total Value
-											</span>
-										</div>
-									)}
-								</>
-							) : (
-								<p className="text-center text-xs text-muted-foreground">No data</p>
-							)}
-						</div>
-					</div>
+					<StocksDistributionWidget
+						assets={normalizedAssets}
+						totalValue={totalValue}
+						sectorValueMap={assetPrecomputed.sectorValueMap}
+						currencyValueMap={assetPrecomputed.currencyValueMap}
+						formatCurrency={formatCurrency}
+						activeFilter={insightFilter}
+						onSetFilter={handleSetInsightFilter}
+						onSelectAsset={handleSelectAsset}
+					/>
 				</div>
 			</div>
 
@@ -1276,14 +1065,6 @@ export function StocksFundsModule({
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<h2 className="text-base font-bold tracking-tight text-foreground">Insights</h2>
-						<div className="inline-flex items-center gap-1.5 rounded-full bg-secondary/50 px-2.5 py-0.5 text-[10px] border border-border/30 backdrop-blur-xs">
-							<span className="flex items-center gap-1 rounded bg-amber-500/15 text-amber-500 px-1 py-0.5 text-[8.5px] font-extrabold uppercase tracking-wide">
-								PLUS
-							</span>
-							<span className="text-muted-foreground font-medium">
-								Unlock your insights, for free
-							</span>
-						</div>
 					</div>
 
 					<button
@@ -1582,7 +1363,7 @@ export function StocksFundsModule({
 			{/* Bottom Segmented Tabs Control */}
 			<div id="positions-section" className="flex flex-col space-y-4">
 				<div className="flex items-center justify-between border-b border-border/20 pb-3 mt-6">
-					<div className="flex p-0.5 rounded-lg bg-zinc-900/40 dark:bg-zinc-800/20 border border-border/40">
+					<div className="flex p-0.5 rounded-lg bg-muted border border-border/40">
 						<button
 							type="button"
 							onClick={() => setActiveTab("positions")}
@@ -1614,8 +1395,8 @@ export function StocksFundsModule({
 					{activeTab === "positions" ? (
 						<StocksFundsPositions
 							onSelectAccount={onSelectAccount}
-							onSelectAsset={onSelectAsset}
-							externalFilter={insightFilter}
+							onSelectAsset={handleSelectAsset}
+							externalFilter={deferredInsightFilter}
 							onClearExternalFilter={() => setInsightFilter(null)}
 						/>
 					) : (
@@ -1623,6 +1404,30 @@ export function StocksFundsModule({
 					)}
 				</div>
 			</div>
+
+			{/* Stocks Detail Panel */}
+			<Sheet
+				open={detailMode === "panel" && selectedStockSymbol !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedStockSymbol(null);
+				}}
+			>
+				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+					<SheetHeader className="sr-only">
+						<SheetTitle>Stock Details</SheetTitle>
+						<SheetDescription>
+							Detailed view of the selected stock position and historical performance chart.
+						</SheetDescription>
+					</SheetHeader>
+					{selectedStockSymbol && (
+						<StockDetail
+							symbol={selectedStockSymbol}
+							onBack={() => setSelectedStockSymbol(null)}
+							isPanel={true}
+						/>
+					)}
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

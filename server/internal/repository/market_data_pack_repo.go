@@ -16,6 +16,7 @@ type IMarketDataPackRepository interface {
 	DeletePack(ctx context.Context, packID string) error
 	ReplaceCoverage(ctx context.Context, packID string, coverage []model.MarketDataPackCoverage) error
 	ListCoverage(ctx context.Context, instrumentID string) ([]model.MarketDataPackCoverage, error)
+	BridgeCoverage(ctx context.Context, packID string) error
 	CreateJob(ctx context.Context, job *model.MarketDataPackJob) error
 	UpdateJob(ctx context.Context, job *model.MarketDataPackJob) error
 	GetJob(ctx context.Context, jobID string) (*model.MarketDataPackJob, error)
@@ -116,19 +117,62 @@ func (r *MarketDataPackRepository) ListCoverage(ctx context.Context, instrumentI
 	q := r.db.NewSelect().Model(&coverage).
 		Order("last_date DESC", "pack_id DESC")
 	if instrumentID != "" {
-		// Try to match coverage records dynamically by matching the symbol and suffix
+		// Resolve coverage dynamically: try exact instrument_id first
+		// (already-bridged rows), then fall back to symbol matching
+		// tailored to the instrument's asset type.
+		//
+		// This makes pack data accessible to every user immediately
+		// after pack install — no manual SQL bridging required.
 		var inst model.Instrument
 		err := r.db.NewSelect().Model(&inst).Where("id = ?", instrumentID).Scan(ctx)
 		if err == nil {
 			symbol := inst.Symbol
-			symbolWithSuffix := symbol
-			if inst.Exchange != "" {
-				symbolWithSuffix = symbol + "." + inst.Exchange
-			}
 			q = q.WhereGroup(" AND ", func(q *bun.SelectQuery) *bun.SelectQuery {
-				return q.Where("instrument_id = ?", instrumentID).
-					WhereOr("LOWER(symbol) = ?", strings.ToLower(symbol)).
-					WhereOr("LOWER(symbol) = ?", strings.ToLower(symbolWithSuffix))
+				q = q.Where("instrument_id = ?", instrumentID).
+					WhereOr("LOWER(symbol) = ?", strings.ToLower(symbol))
+
+				if len(symbol) > 0 {
+					switch inst.AssetType {
+					case model.InstrumentAssetTypeStock,
+						model.InstrumentAssetTypeETF,
+						model.InstrumentAssetTypeFund,
+						model.InstrumentAssetTypeIndex:
+						// STOOQ-style exchange suffix: AAPL.US, ^SPX.US, etc.
+						q = q.WhereOr("LOWER(symbol) LIKE ?", strings.ToLower(symbol)+".%")
+
+					case model.InstrumentAssetTypeCrypto:
+						// Binance-style concatenated pair: BTCUSDT, ETHUSDT.
+						// The instrument's base/quote currency fields give us
+						// the canonical pair, but packs may vary the quote
+						// (USDT vs USD).  Try both base+quote and base alone.
+						if inst.BaseCurrency != nil {
+							base := strings.ToLower(strings.TrimSpace(*inst.BaseCurrency))
+							if base != "" {
+								// Exact pair: base||quote (e.g. BTCUSDT)
+								if inst.QuoteCurrency != nil {
+									quote := strings.ToLower(strings.TrimSpace(*inst.QuoteCurrency))
+									if quote != "" {
+										q = q.WhereOr("LOWER(symbol) = ?", base+quote)
+									}
+								}
+								// Fallback: base followed by any quote (BTC%)
+								q = q.WhereOr("LOWER(symbol) LIKE ?", base+"%")
+							}
+						}
+
+					case model.InstrumentAssetTypeCurrency:
+						// FX pairs: try base+quote concatenation.
+						if inst.BaseCurrency != nil && inst.QuoteCurrency != nil {
+							base := strings.ToLower(strings.TrimSpace(*inst.BaseCurrency))
+							quote := strings.ToLower(strings.TrimSpace(*inst.QuoteCurrency))
+							if base != "" && quote != "" {
+								q = q.WhereOr("LOWER(symbol) = ?", base+quote)
+							}
+						}
+					}
+				}
+
+				return q
 			})
 		} else {
 			q = q.Where("instrument_id = ?", instrumentID)
@@ -284,7 +328,7 @@ func (r *MarketDataPackRepository) ListUserBuildUniverse(ctx context.Context, us
 			0 AS priority
 		FROM sigma_finance.positions p
 		JOIN sigma_finance.assets a ON a.id = p.asset_id
-		JOIN sigma_finance.portfolios pf ON pf.id = p.portfolio_id
+		JOIN sigma_finance.portfolio pf ON pf.id = p.portfolio_id
 		JOIN sigma_finance.instruments i ON i.id = a.instrument_id
 		WHERE pf.user_id = ?
 		  AND i.asset_type IN (?)
@@ -393,6 +437,73 @@ func normalizeAssetTypes(assetTypes []string) []string {
 		out = append(out, value)
 	}
 	return out
+}
+
+// BridgeCoverage bridges pack coverage instrument IDs to DB instrument IDs
+// for a given pack.  It matches coverage rows to instruments by symbol using
+// the same asset-type-aware patterns as ListCoverage, then updates
+// instrument_id → DB ID and pack_instrument_id → original pack ID.
+// Non-fatal: unmatched rows are left as-is (dynamic resolution handles them).
+func (r *MarketDataPackRepository) BridgeCoverage(ctx context.Context, packID string) error {
+	_, err := r.db.ExecContext(ctx, `
+		WITH coverage_syms AS (
+			SELECT instrument_id, symbol, asset_type
+			FROM sigma_finance.market_data_pack_coverage
+			WHERE pack_id = ? AND pack_instrument_id IS NULL
+		),
+		-- Stocks/ETFs/Funds/Indices: strip exchange suffix (.US, .HK, etc.)
+		stock_matched AS (
+			SELECT DISTINCT ON (cs.instrument_id)
+				cs.instrument_id AS old_pack_id,
+				i.id AS db_instrument_id
+			FROM coverage_syms cs
+			JOIN sigma_finance.instruments i
+			  ON i.normalized_symbol = UPPER(
+			       CASE WHEN cs.symbol LIKE '%.__%' AND cs.symbol LIKE '%.__' 
+			            THEN SUBSTRING(cs.symbol FROM 1 FOR LENGTH(cs.symbol)-3)
+			            ELSE cs.symbol END)
+			 AND i.asset_type = cs.asset_type
+			WHERE cs.asset_type IN ('STOCK','ETF','FUND','INDEX')
+			ORDER BY cs.instrument_id, i.name
+		),
+		-- Crypto: match by base+quote exact or base prefix
+		crypto_matched AS (
+			SELECT DISTINCT ON (cs.instrument_id)
+				cs.instrument_id AS old_pack_id,
+				i.id AS db_instrument_id
+			FROM coverage_syms cs
+			JOIN sigma_finance.instruments i
+			  ON i.asset_type = 'CRYPTO'
+			 AND (LOWER(cs.symbol) = LOWER(COALESCE(i.base_currency,'') || COALESCE(i.quote_currency,''))
+			   OR LOWER(cs.symbol) LIKE LOWER(COALESCE(i.base_currency,'')) || '%')
+			WHERE cs.asset_type = 'CRYPTO'
+			ORDER BY cs.instrument_id, i.name
+		),
+		-- Currency: match by base+quote exact
+		currency_matched AS (
+			SELECT DISTINCT ON (cs.instrument_id)
+				cs.instrument_id AS old_pack_id,
+				i.id AS db_instrument_id
+			FROM coverage_syms cs
+			JOIN sigma_finance.instruments i
+			  ON i.asset_type = 'CURRENCY'
+			 AND LOWER(cs.symbol) = LOWER(COALESCE(i.base_currency,'') || COALESCE(i.quote_currency,''))
+			WHERE cs.asset_type = 'CURRENCY'
+			ORDER BY cs.instrument_id, i.name
+		),
+		all_matched AS (
+			SELECT * FROM stock_matched
+			UNION ALL SELECT * FROM crypto_matched
+			UNION ALL SELECT * FROM currency_matched
+		)
+		UPDATE sigma_finance.market_data_pack_coverage mpc
+		SET instrument_id = am.db_instrument_id,
+		    pack_instrument_id = am.old_pack_id
+		FROM all_matched am
+		WHERE mpc.instrument_id = am.old_pack_id
+		  AND mpc.pack_id = ?
+	`, packID, packID)
+	return err
 }
 
 func (r *MarketDataPackRepository) GetUserCredentialForProvider(ctx context.Context, userID string, provider string) (*model.MarketDataCredential, error) {

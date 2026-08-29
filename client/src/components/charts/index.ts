@@ -5,11 +5,12 @@ export type {
 	AllocationDataPoint,
 } from "./AllocationChart";
 export { default as AllocationChart } from "./AllocationChart";
+export type { BenchmarkMetricsBarProps } from "./BenchmarkMetricsBar";
+export { BenchmarkMetricsBar } from "./BenchmarkMetricsBar";
 // Existing chart components
 export { default as ChartContainer } from "./ChartContainer";
 // Example/demo components
 export { default as ChartExamples } from "./ChartExamples";
-
 // Chart interaction utilities
 export * from "./ChartInteractions";
 export type {
@@ -53,6 +54,6 @@ export type {
 	PortfolioHeroChartProps,
 	TimeRange,
 } from "./PortfolioHeroChart";
-export { buildBenchmarkSeries, filterByRange, PortfolioHeroChart } from "./PortfolioHeroChart";
+export { filterByRange, PortfolioHeroChart } from "./PortfolioHeroChart";
 export { default as SimpleChart } from "./SimpleChart";
 export { default as TradingViewChart } from "./TradingViewChart";

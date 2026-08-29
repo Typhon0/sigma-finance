@@ -1,16 +1,18 @@
+import { useVirtualizer } from "@tanstack/react-virtual";
 import {
 	ExternalLink,
 	Eye,
 	Layers,
 	MoreHorizontal,
 	PieChart,
+	RefreshCw,
 	SlidersHorizontal,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import {
@@ -70,7 +72,7 @@ export function StocksFundsPositions({
 	externalFilter = null,
 	onClearExternalFilter,
 }: StocksFundsPositionsProps) {
-	const { assets, deleteAsset, currentPortfolio } = usePortfolio();
+	const { assets, deleteAsset, currentPortfolio, refreshAssetPrice, refetch } = usePortfolio();
 
 	const [deleteTarget, setDeleteTarget] = useState<{
 		id: string;
@@ -79,91 +81,124 @@ export function StocksFundsPositions({
 		name: string;
 	} | null>(null);
 	const [groupBy, setGroupBy] = useState<GroupByMode>("account");
-	const [searchQuery, setSearchQuery] = useState("");
+	const [rawSearchQuery, setRawSearchQuery] = useState("");
 	const [sortBy, setSortBy] = useState("value-desc");
+
+	// Debounced search (150ms) to avoid filtering on every keystroke
+	const [searchQuery, setSearchQuery] = useState("");
+	const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+	const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+		const value = e.target.value;
+		setRawSearchQuery(value);
+		if (debounceRef.current) clearTimeout(debounceRef.current);
+		debounceRef.current = setTimeout(() => setSearchQuery(value), 150);
+	}, []);
+
+	useEffect(() => {
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current);
+		};
+	}, []);
 
 	const { formatCurrency } = useCurrency();
 
-	const formatNumber = (num: number, decimals = 2) => {
+	const formatNumber = useCallback((num: number, decimals = 2) => {
 		return num.toLocaleString("en-US", {
 			minimumFractionDigits: decimals,
 			maximumFractionDigits: decimals,
 		});
-	};
+	}, []);
 
-	// Get stocks and funds from portfolio
-	const stocksAndFundsAssets = assets.filter(
-		(asset) => asset.type === "stock" || asset.type === "fund",
-	);
+	// Memoized positions transform — only recomputed when assets change
+	const positions = useMemo(() => {
+		const stocksAndFundsAssets = assets.filter(
+			(asset) => asset.type === "stock" || asset.type === "fund",
+		);
 
-	// Transform to standardized format
-	const positions = stocksAndFundsAssets.map((asset, index) => {
-		const quantity = Number.isFinite(asset.quantity) && asset.quantity > 0 ? asset.quantity : 0;
-		const currentPrice = Number.isFinite(asset.currentPrice) ? asset.currentPrice : 0;
-		const purchasePrice = Number.isFinite(asset.purchasePrice) ? asset.purchasePrice : 0;
-		const currentValue = Number.isFinite(asset.currentValue) ? asset.currentValue : 0;
-		const cost = purchasePrice * quantity;
-		const pl = currentValue - cost;
-		const plPercent = cost > 0 ? (pl / cost) * 100 : 0;
+		return stocksAndFundsAssets.map((asset, index) => {
+			const quantity = Number.isFinite(asset.quantity) && asset.quantity > 0 ? asset.quantity : 0;
+			const rawCurrentPrice = Number.isFinite(asset.currentPrice) ? asset.currentPrice : 0;
+			const purchasePrice = Number.isFinite(asset.purchasePrice) ? asset.purchasePrice : 0;
+			const currentValue = Number.isFinite(asset.currentValue) ? asset.currentValue : 0;
+			const currentPrice = rawCurrentPrice > 0 ? rawCurrentPrice : 0;
+			const resolvedValue =
+				currentValue > 0
+					? currentValue
+					: currentPrice > 0 && quantity > 0
+						? currentPrice * quantity
+						: 0;
+			const cost = purchasePrice * quantity;
+			const pl = resolvedValue - cost;
+			const plPercent = cost > 0 ? (pl / cost) * 100 : 0;
+			const isPriceResolved = currentPrice > 0;
+			const rawDayChange = (asset as any).dayChange;
+			const hasDayChange = typeof rawDayChange === "number" && Number.isFinite(rawDayChange);
 
-		return {
-			id: asset.id || `pos-${index}`,
-			portfolioId: asset.portfolioId || currentPortfolio,
-			symbol: asset.symbol || asset.name.substring(0, 4).toUpperCase(),
-			name: asset.name,
-			quantity,
-			avgPrice: purchasePrice,
-			currentPrice,
-			value: currentValue,
-			cost,
-			pl,
-			plPercent,
-			currency: asset.currency || "USD",
-			account: asset.account || "Manual Entry",
-			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-			sector: (asset as any).sector || "Needs metadata",
-			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-			dayChange: (asset as any).dayChange ?? 0,
-			assetClass: asset.type === "fund" ? "ETFs/Funds" : "Stocks",
-		};
-	});
+			return {
+				id: asset.id || `pos-${index}`,
+				portfolioId: asset.portfolioId || currentPortfolio,
+				symbol: asset.symbol || asset.name.substring(0, 4).toUpperCase(),
+				name: asset.name,
+				quantity,
+				avgPrice: purchasePrice,
+				currentPrice,
+				value: resolvedValue,
+				cost,
+				pl,
+				plPercent,
+				currency: asset.currency || "USD",
+				account: asset.account || "Manual Entry",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+				sector: (asset as any).sector || "Needs metadata",
+				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+				dayChange: (asset as any).dayChange ?? 0,
+				assetClass: asset.type === "fund" ? "ETFs/Funds" : "Stocks",
+				isPriceResolved,
+				hasDayChange,
+			};
+		});
+	}, [assets, currentPortfolio]);
 
-	const finalPositions = positions;
+	// Memoized filtered & sorted positions
+	const filteredPositions = useMemo(() => {
+		let result = positions;
 
-	// Filter & Sort
-	const filteredPositions = finalPositions
-		.filter((p) => {
-			if (!searchQuery) return true;
+		if (searchQuery) {
 			const q = searchQuery.toLowerCase();
-			return (
-				p.symbol.toLowerCase().includes(q) ||
-				p.name.toLowerCase().includes(q) ||
-				p.account.toLowerCase().includes(q)
+			result = result.filter(
+				(p) =>
+					p.symbol.toLowerCase().includes(q) ||
+					p.name.toLowerCase().includes(q) ||
+					p.account.toLowerCase().includes(q),
 			);
-		})
-		.filter((p) => {
-			if (!externalFilter) return true;
-			if (externalFilter.mode === "sector") {
-				if (externalFilter.value === "Needs metadata") {
-					return (
-						p.sector === "Needs metadata" ||
-						p.sector === "Other" ||
-						p.sector === "Unclassified" ||
-						p.sector === "Unknown sector" ||
-						!p.sector
-					);
+		}
+
+		if (externalFilter) {
+			result = result.filter((p) => {
+				if (externalFilter.mode === "sector") {
+					if (externalFilter.value === "Needs metadata") {
+						return (
+							p.sector === "Needs metadata" ||
+							p.sector === "Other" ||
+							p.sector === "Unclassified" ||
+							p.sector === "Unknown sector" ||
+							!p.sector
+						);
+					}
+					return p.sector === externalFilter.value;
 				}
-				return p.sector === externalFilter.value;
-			}
-			if (externalFilter.mode === "type") {
-				return p.assetClass === (externalFilter.value === "fund" ? "ETFs/Funds" : "Stocks");
-			}
-			if (externalFilter.mode === "asset") {
-				return p.symbol === externalFilter.value;
-			}
-			return p.assetClass === externalFilter.value;
-		})
-		.sort((a, b) => {
+				if (externalFilter.mode === "type") {
+					return p.assetClass === (externalFilter.value === "fund" ? "ETFs/Funds" : "Stocks");
+				}
+				if (externalFilter.mode === "asset") {
+					return p.symbol === externalFilter.value;
+				}
+				return p.assetClass === externalFilter.value;
+			});
+		}
+
+		return [...result].sort((a, b) => {
 			switch (sortBy) {
 				case "value-desc":
 					return b.value - a.value;
@@ -177,6 +212,7 @@ export function StocksFundsPositions({
 					return 0;
 			}
 		});
+	}, [positions, searchQuery, externalFilter, sortBy]);
 
 	// Grouping Logic
 	const groupedData = React.useMemo(() => {
@@ -202,15 +238,18 @@ export function StocksFundsPositions({
 	}, [filteredPositions, groupBy]);
 
 	return (
-		<div className="border border-white/10 rounded-lg overflow-hidden shadow-sm bg-[#131314]">
+		<div className="border border-border/60 rounded-lg overflow-hidden shadow-sm bg-card/80 backdrop-blur-xs">
 			{/* Toolbar */}
 			<div className="flex flex-col justify-between gap-3 border-b border-border/40 bg-muted/5 px-4 py-4 lg:flex-row lg:items-center">
 				<div className="flex w-full items-center gap-2 lg:w-auto">
 					<SearchInput
 						placeholder="Filter positions..."
-						value={searchQuery}
-						onChange={(e) => setSearchQuery(e.target.value)}
-						onClear={() => setSearchQuery("")}
+						value={rawSearchQuery}
+						onChange={handleSearchChange}
+						onClear={() => {
+							setRawSearchQuery("");
+							setSearchQuery("");
+						}}
 						size="sm"
 						containerClassName="w-full lg:w-72"
 						className="h-9 text-xs bg-background border-border/50 focus-visible:ring-1 focus-visible:ring-primary/20"
@@ -304,6 +343,11 @@ export function StocksFundsPositions({
 								name: pos.name,
 							})
 						}
+						onRefreshPrice={async (pos) => {
+							await refreshAssetPrice(pos.id);
+							await refetch();
+							toast.success(`Price refresh requested for ${pos.symbol}`);
+						}}
 					/>
 				) : (
 					<div className="divide-y divide-border/40">
@@ -361,8 +405,8 @@ export function StocksFundsPositions({
 														<ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-50" />
 													)}
 												</div>
-												<div className="flex items-center gap-6 text-sm">
-													<div className="text-right">
+												<div className="flex items-center gap-6 text-sm pr-6">
+													<div className="text-right w-[100px]">
 														<span className="mr-2 font-mono text-xs font-medium text-muted-foreground">
 															Value
 														</span>
@@ -370,7 +414,7 @@ export function StocksFundsPositions({
 															{formatCurrency(groupValue)}
 														</span>
 													</div>
-													<div className="text-right w-24">
+													<div className="text-right w-[110px]">
 														<span
 															className={cn(
 																"font-mono font-medium",
@@ -400,6 +444,11 @@ export function StocksFundsPositions({
 														name: pos.name,
 													})
 												}
+												onRefreshPrice={async (pos) => {
+													await refreshAssetPrice(pos.id);
+													await refetch();
+													toast.success(`Price refresh requested for ${pos.symbol}`);
+												}}
 											/>
 										</AccordionContent>
 									</AccordionItem>
@@ -413,7 +462,7 @@ export function StocksFundsPositions({
 			{/* Footer / Pagination Mock */}
 			<div className="flex items-center justify-between border-t border-border/40 bg-muted/5 px-4 py-3 text-[10px] text-muted-foreground">
 				<span>
-					Showing {filteredPositions.length} of {finalPositions.length} positions
+					Showing {filteredPositions.length} of {positions.length} positions
 				</span>
 				<div className="flex items-center gap-1.5">
 					<span className="cursor-pointer rounded-md px-2.5 py-1 hover:bg-muted">Prev</span>
@@ -458,6 +507,169 @@ export function StocksFundsPositions({
 	);
 }
 
+function PositionRow({
+	pos,
+	formatCurrency,
+	formatNumber,
+	onSelectAsset,
+	onDeletePosition,
+	onRefreshPrice,
+}: {
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+	pos: any;
+	formatCurrency: (val: number) => string;
+	formatNumber: (val: number, decimals?: number) => string;
+	onSelectAsset?: (symbol: string) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+	onDeletePosition?: (pos: any) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+	onRefreshPrice?: (pos: any) => void;
+}) {
+	return (
+		<TableRow
+			key={pos.id}
+			className="group hover:bg-muted/5 border-border/40 transition-colors data-[state=selected]:bg-muted"
+		>
+			<TableCell className="py-3 pl-3">
+				<div
+					className={cn(
+						"h-9 w-1 rounded-full",
+						!pos.isPriceResolved ? "bg-amber-500" : pos.pl >= 0 ? "bg-emerald-500" : "bg-rose-500",
+					)}
+				/>
+			</TableCell>
+			<TableCell className="py-3 w-[130px] sm:w-[210px]">
+				<div className="flex flex-col gap-1">
+					{/* biome-ignore lint/a11y/useKeyWithClickEvents: unavoidable */}
+					{/* biome-ignore lint/a11y/noStaticElementInteractions: unavoidable */}
+					<div
+						className="flex items-center gap-2 cursor-pointer hover:underline"
+						onClick={() => onSelectAsset?.(pos.symbol)}
+					>
+						<span className="text-sm font-bold tracking-tight">{pos.symbol}</span>
+						{!pos.isPriceResolved && (
+							<Badge
+								variant="outline"
+								className="h-4 px-1.5 py-0 text-[9px] font-semibold tracking-wide uppercase border-amber-500/30 bg-amber-500/10 text-amber-500"
+							>
+								Price Err
+							</Badge>
+						)}
+						{pos.isPriceResolved && pos.sector !== "Other" && (
+							<Badge
+								variant="outline"
+								className={cn(
+									"h-4 px-1.5 py-0 text-[9px] font-semibold tracking-wide uppercase transition-all duration-300",
+									pos.sector === "Needs metadata"
+										? "border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
+										: "border-border/40 text-muted-foreground",
+								)}
+							>
+								{pos.sector}
+							</Badge>
+						)}
+					</div>
+					<span className="max-w-[160px] truncate text-[10px] text-foreground/70" title={pos.name}>
+						{pos.name}
+					</span>
+				</div>
+			</TableCell>
+			<TableCell className="py-3 text-right font-mono text-sm">
+				{pos.isPriceResolved ? formatCurrency(pos.currentPrice) : "—"}
+			</TableCell>
+			<TableCell className="py-3 text-right">
+				{pos.isPriceResolved && pos.hasDayChange ? (
+					<div
+						className={cn(
+							"inline-flex items-center font-mono text-xs",
+							pos.dayChange >= 0 ? "text-emerald-500" : "text-rose-500",
+						)}
+					>
+						{pos.dayChange >= 0 ? (
+							<TrendingUp className="h-3 w-3 mr-1" />
+						) : (
+							<TrendingDown className="h-3 w-3 mr-1" />
+						)}
+						{Math.abs(pos.dayChange).toFixed(2)}%
+					</div>
+				) : (
+					<span className="text-muted-foreground/60">—</span>
+				)}
+			</TableCell>
+			<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground hidden sm:table-cell">
+				{formatNumber(pos.quantity, 0)}
+			</TableCell>
+			<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground hidden sm:table-cell">
+				{formatCurrency(pos.avgPrice)}
+			</TableCell>
+			<TableCell className="py-3 text-right font-mono text-sm font-medium">
+				{pos.isPriceResolved ? formatCurrency(pos.value) : "—"}
+			</TableCell>
+			<TableCell className="py-3 text-right">
+				{pos.isPriceResolved ? (
+					<div className="flex flex-col items-end">
+						<span
+							className={cn(
+								"font-mono font-medium text-sm",
+								pos.pl >= 0 ? "text-emerald-600" : "text-rose-600",
+							)}
+						>
+							{pos.pl >= 0 ? "+" : ""}
+							{formatCurrency(pos.pl)}
+						</span>
+						<span
+							className={cn(
+								"text-[10px] font-mono",
+								pos.plPercent >= 0 ? "text-emerald-600/80" : "text-rose-600/80",
+							)}
+						>
+							{pos.plPercent.toFixed(2)}%
+						</span>
+					</div>
+				) : (
+					<div className="flex flex-col items-end">
+						<span className="text-muted-foreground/60 font-mono text-sm">—</span>
+					</div>
+				)}
+			</TableCell>
+			<TableCell className="py-3 pr-3">
+				<DropdownMenu>
+					<DropdownMenuTrigger asChild>
+						<Button
+							variant="ghost"
+							size="sm"
+							className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100"
+						>
+							<MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+						</Button>
+					</DropdownMenuTrigger>
+					<DropdownMenuContent align="end">
+						<DropdownMenuItem onClick={() => onSelectAsset?.(pos.symbol)}>
+							<Eye className="h-4 w-4 mr-2" />
+							View Details
+						</DropdownMenuItem>
+						<DropdownMenuItem>Add Transaction</DropdownMenuItem>
+						{!pos.isPriceResolved && onRefreshPrice && (
+							<DropdownMenuItem onClick={() => onRefreshPrice(pos)}>
+								<RefreshCw className="h-4 w-4 mr-2" />
+								Refresh Price
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							className="text-rose-500 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/20"
+							onClick={() => onDeletePosition?.(pos)}
+						>
+							<Trash2 className="h-4 w-4 mr-2" />
+							Remove from Portfolio
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</TableCell>
+		</TableRow>
+	);
+}
+
 function PositionsTable({
 	positions,
 	formatCurrency,
@@ -466,6 +678,7 @@ function PositionsTable({
 	onSelectAsset,
 	onSelectAccount: _onSelectAccount,
 	onDeletePosition,
+	onRefreshPrice,
 }: {
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	positions: any[];
@@ -476,190 +689,185 @@ function PositionsTable({
 	onSelectAccount?: (name: string) => void;
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	onDeletePosition?: (pos: any) => void;
+	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
+	onRefreshPrice?: (pos: any) => void;
 }) {
+	const tableContainerRef = useRef<HTMLDivElement>(null);
+
+	const rowVirtualizer = useVirtualizer({
+		count: positions.length,
+		getScrollElement: () => tableContainerRef.current,
+		estimateSize: () => 56, // row height with padding + badges
+		overscan: 5,
+	});
+
+	// Only virtualize when > 20 rows; fall through to direct rendering for small tables
+	if (positions.length <= 20) {
+		return (
+			<Table>
+				{hideHeader ? (
+					<TableHeader className="bg-transparent/5">
+						<TableRow className="hover:bg-transparent border-b border-border/20">
+							<TableHead className="w-[30px] py-1"></TableHead>
+							<TableHead className="h-7 w-[130px] sm:w-[210px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Instrument
+							</TableHead>
+							<TableHead className="h-7 text-right w-[80px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Price
+							</TableHead>
+							<TableHead className="h-7 text-right w-[90px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Change (1D)
+							</TableHead>
+							<TableHead className="h-7 text-right w-[75px] hidden sm:table-cell text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Quantity
+							</TableHead>
+							<TableHead className="h-7 text-right w-[80px] hidden sm:table-cell text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Avg Cost
+							</TableHead>
+							<TableHead className="h-7 text-right w-[100px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Value
+							</TableHead>
+							<TableHead className="h-7 text-right w-[110px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Total P&L
+							</TableHead>
+							<TableHead className="h-7 w-[44px]"></TableHead>
+						</TableRow>
+					</TableHeader>
+				) : (
+					<TableHeader className="bg-muted/5">
+						<TableRow className="hover:bg-transparent border-border/50">
+							<TableHead className="w-[30px]"></TableHead>
+							<TableHead className="h-10 w-[130px] sm:w-[210px] text-xs font-semibold text-muted-foreground">
+								Instrument
+							</TableHead>
+							<TableHead className="h-10 text-right w-[80px] text-xs font-semibold text-muted-foreground">
+								Price
+							</TableHead>
+							<TableHead className="h-10 text-right w-[90px] text-xs font-semibold text-muted-foreground">
+								Change (1D)
+							</TableHead>
+							<TableHead className="h-10 text-right w-[75px] hidden sm:table-cell text-xs font-semibold text-muted-foreground">
+								Quantity
+							</TableHead>
+							<TableHead className="h-10 text-right w-[80px] hidden sm:table-cell text-xs font-semibold text-muted-foreground">
+								Avg Cost
+							</TableHead>
+							<TableHead className="h-10 text-right w-[100px] text-xs font-semibold text-muted-foreground">
+								Value
+							</TableHead>
+							<TableHead className="h-10 text-right w-[110px] text-xs font-semibold text-muted-foreground">
+								Total P&L
+							</TableHead>
+							<TableHead className="h-10 w-[44px]"></TableHead>
+						</TableRow>
+					</TableHeader>
+				)}
+				<TableBody>
+					{positions.map((pos) => (
+						<PositionRow
+							key={pos.id}
+							pos={pos}
+							formatCurrency={formatCurrency}
+							formatNumber={formatNumber}
+							onSelectAsset={onSelectAsset}
+							onDeletePosition={onDeletePosition}
+							onRefreshPrice={onRefreshPrice}
+						/>
+					))}
+				</TableBody>
+			</Table>
+		);
+	}
+
+	// Virtualized rendering for tables with > 20 rows
+	const ESTIMATED_ROW_HEIGHT = 56;
 	return (
-		<Table>
-			{hideHeader ? (
-				<TableHeader className="bg-transparent/5">
-					<TableRow className="hover:bg-transparent border-b border-border/20">
-						<TableHead className="w-[30px] py-1"></TableHead>
-						<TableHead className="h-7 w-[210px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Instrument
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Price
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Change (1D)
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Quantity
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Avg Cost
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Value
-						</TableHead>
-						<TableHead className="h-7 text-right text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
-							Total P&L
-						</TableHead>
-						<TableHead className="h-7 w-[44px]"></TableHead>
-					</TableRow>
-				</TableHeader>
-			) : (
-				<TableHeader className="bg-muted/5">
-					<TableRow className="hover:bg-transparent border-border/50">
-						<TableHead className="w-[30px]"></TableHead>
-						<TableHead className="h-10 w-[210px] text-xs font-semibold text-muted-foreground">
-							Instrument
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Price
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Change (1D)
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Quantity
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Avg Cost
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Value
-						</TableHead>
-						<TableHead className="h-10 text-right text-xs font-semibold text-muted-foreground">
-							Total P&L
-						</TableHead>
-						<TableHead className="h-10 w-[44px]"></TableHead>
-					</TableRow>
-				</TableHeader>
-			)}
-			<TableBody>
-				{positions.map((pos) => (
-					<TableRow
-						key={pos.id}
-						className="group hover:bg-muted/5 border-border/40 transition-colors data-[state=selected]:bg-muted"
-					>
-						<TableCell className="py-3 pl-3">
-							<div
-								className={cn(
-									"h-9 w-1 rounded-full",
-									pos.pl >= 0 ? "bg-emerald-500" : "bg-rose-500",
-								)}
+		<div ref={tableContainerRef} style={{ overflow: "auto", maxHeight: "600px" }}>
+			<Table>
+				{hideHeader ? (
+					<TableHeader className="bg-transparent/5">
+						<TableRow className="hover:bg-transparent border-b border-border/20">
+							<TableHead className="w-[30px] py-1"></TableHead>
+							<TableHead className="h-7 w-[130px] sm:w-[210px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Instrument
+							</TableHead>
+							<TableHead className="h-7 text-right w-[80px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Price
+							</TableHead>
+							<TableHead className="h-7 text-right w-[90px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Change (1D)
+							</TableHead>
+							<TableHead className="h-7 text-right w-[75px] hidden sm:table-cell text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Quantity
+							</TableHead>
+							<TableHead className="h-7 text-right w-[80px] hidden sm:table-cell text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Avg Cost
+							</TableHead>
+							<TableHead className="h-7 text-right w-[100px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Value
+							</TableHead>
+							<TableHead className="h-7 text-right w-[110px] text-[10px] font-medium text-muted-foreground/40 uppercase tracking-wider">
+								Total P&L
+							</TableHead>
+							<TableHead className="h-7 w-[44px]"></TableHead>
+						</TableRow>
+					</TableHeader>
+				) : (
+					<TableHeader className="bg-muted/5">
+						<TableRow className="hover:bg-transparent border-border/50">
+							<TableHead className="w-[30px]"></TableHead>
+							<TableHead className="h-10 w-[130px] sm:w-[210px] text-xs font-semibold text-muted-foreground">
+								Instrument
+							</TableHead>
+							<TableHead className="h-10 text-right w-[80px] text-xs font-semibold text-muted-foreground">
+								Price
+							</TableHead>
+							<TableHead className="h-10 text-right w-[90px] text-xs font-semibold text-muted-foreground">
+								Change (1D)
+							</TableHead>
+							<TableHead className="h-10 text-right w-[75px] hidden sm:table-cell text-xs font-semibold text-muted-foreground">
+								Quantity
+							</TableHead>
+							<TableHead className="h-10 text-right w-[80px] hidden sm:table-cell text-xs font-semibold text-muted-foreground">
+								Avg Cost
+							</TableHead>
+							<TableHead className="h-10 text-right w-[100px] text-xs font-semibold text-muted-foreground">
+								Value
+							</TableHead>
+							<TableHead className="h-10 text-right w-[110px] text-xs font-semibold text-muted-foreground">
+								Total P&L
+							</TableHead>
+							<TableHead className="h-10 w-[44px]"></TableHead>
+						</TableRow>
+					</TableHeader>
+				)}
+				<TableBody>
+					{rowVirtualizer.getVirtualItems().map((virtualRow) => {
+						const pos = positions[virtualRow.index];
+						return (
+							<PositionRow
+								key={pos.id}
+								pos={pos}
+								formatCurrency={formatCurrency}
+								formatNumber={formatNumber}
+								onSelectAsset={onSelectAsset}
+								onDeletePosition={onDeletePosition}
+								onRefreshPrice={onRefreshPrice}
 							/>
-						</TableCell>
-						<TableCell className="py-3">
-							<div className="flex flex-col gap-1">
-								{/* biome-ignore lint/a11y/useKeyWithClickEvents: unavoidable */}
-								{/* biome-ignore lint/a11y/noStaticElementInteractions: unavoidable */}
-								<div
-									className="flex items-center gap-2 cursor-pointer hover:underline"
-									onClick={() => onSelectAsset?.(pos.symbol)}
-								>
-									<span className="text-sm font-bold tracking-tight">{pos.symbol}</span>
-									{pos.sector !== "Other" && (
-										<Badge
-											variant="outline"
-											className={cn(
-												"h-4 px-1.5 py-0 text-[9px] font-semibold tracking-wide uppercase transition-all duration-300",
-												pos.sector === "Needs metadata"
-													? "border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20"
-													: "border-border/40 text-muted-foreground",
-											)}
-										>
-											{pos.sector}
-										</Badge>
-									)}
-								</div>
-								<span
-									className="max-w-[160px] truncate text-[10px] text-muted-foreground"
-									title={pos.name}
-								>
-									{pos.name}
-								</span>
-							</div>
-						</TableCell>
-						<TableCell className="py-3 text-right font-mono text-sm">
-							{formatCurrency(pos.currentPrice)}
-						</TableCell>
-						<TableCell className="py-3 text-right">
-							<div
-								className={cn(
-									"inline-flex items-center font-mono text-xs",
-									pos.dayChange >= 0 ? "text-emerald-500" : "text-rose-500",
-								)}
-							>
-								{pos.dayChange >= 0 ? (
-									<TrendingUp className="h-3 w-3 mr-1" />
-								) : (
-									<TrendingDown className="h-3 w-3 mr-1" />
-								)}
-								{Math.abs(pos.dayChange).toFixed(2)}%
-							</div>
-						</TableCell>
-						<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground">
-							{formatNumber(pos.quantity, 0)}
-						</TableCell>
-						<TableCell className="py-3 text-right font-mono text-sm text-muted-foreground">
-							{formatCurrency(pos.avgPrice)}
-						</TableCell>
-						<TableCell className="py-3 text-right font-mono text-sm font-medium">
-							{formatCurrency(pos.value)}
-						</TableCell>
-						<TableCell className="py-3 text-right">
-							<div className="flex flex-col items-end">
-								<span
-									className={cn(
-										"font-mono font-medium text-sm",
-										pos.pl >= 0 ? "text-emerald-600" : "text-rose-600",
-									)}
-								>
-									{pos.pl >= 0 ? "+" : ""}
-									{formatCurrency(pos.pl)}
-								</span>
-								<span
-									className={cn(
-										"text-[10px] font-mono",
-										pos.plPercent >= 0 ? "text-emerald-600/80" : "text-rose-600/80",
-									)}
-								>
-									{pos.plPercent.toFixed(2)}%
-								</span>
-							</div>
-						</TableCell>
-						<TableCell className="py-3 pr-3">
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button
-										variant="ghost"
-										size="sm"
-										className="h-7 w-7 p-0 opacity-0 transition-opacity group-hover:opacity-100"
-									>
-										<MoreHorizontal className="h-4 w-4 text-muted-foreground" />
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent align="end">
-									<DropdownMenuItem onClick={() => onSelectAsset?.(pos.symbol)}>
-										<Eye className="h-4 w-4 mr-2" />
-										View Details
-									</DropdownMenuItem>
-									<DropdownMenuItem>Add Transaction</DropdownMenuItem>
-									<DropdownMenuSeparator />
-									<DropdownMenuItem
-										className="text-rose-500 focus:text-rose-600 focus:bg-rose-50 dark:focus:bg-rose-950/20"
-										onClick={() => onDeletePosition?.(pos)}
-									>
-										<Trash2 className="h-4 w-4 mr-2" />
-										Remove from Portfolio
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
-						</TableCell>
-					</TableRow>
-				))}
-			</TableBody>
-		</Table>
+						);
+					})}
+					{/* Spacer row to drive scroll height */}
+					<tr>
+						<td
+							colSpan={9}
+							style={{
+								padding: 0,
+								height: `${Math.max(0, rowVirtualizer.getTotalSize() - rowVirtualizer.getVirtualItems().reduce((s, v) => s + v.size, 0))}px`,
+							}}
+						/>
+					</tr>
+				</TableBody>
+			</Table>
+		</div>
 	);
 }

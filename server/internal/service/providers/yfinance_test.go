@@ -186,6 +186,9 @@ func TestMapSymbol(t *testing.T) {
 		{"stock with exchange", "AAPL:US", "STOCK", "AAPL"},
 		{"fund", "VTI", "FUND", "VTI"},
 		{"crypto", "BTC/USD", "CRYPTO", "BTC-USD"},
+		{"index bare", "^SPX", "INDEX", "^SPX"},
+		{"index with exchange suffix", "^SPX:INDICES", "INDEX", "^SPX"},
+		{"etf", "SPY", "ETF", "SPY"},
 	}
 
 	for _, tt := range tests {
@@ -249,6 +252,8 @@ func TestAssetTypeMapping(t *testing.T) {
 		{"STOCK", pb.AssetType_ASSET_TYPE_STOCK},
 		{"FUND", pb.AssetType_ASSET_TYPE_FUND},
 		{"CRYPTO", pb.AssetType_ASSET_TYPE_CRYPTO},
+		{"ETF", pb.AssetType_ASSET_TYPE_ETF},
+		{"INDEX", pb.AssetType_ASSET_TYPE_INDEX},
 		{"UNKNOWN", pb.AssetType_ASSET_TYPE_UNSPECIFIED},
 	}
 

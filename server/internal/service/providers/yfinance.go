@@ -128,7 +128,7 @@ func NewYFinanceProvider(cfg YFinanceConfig) (*YFinanceProvider, error) {
 			return counts.TotalFailures >= 5 && failureRatio >= 0.6
 		},
 		OnStateChange: func(name string, from gobreaker.State, to gobreaker.State) {
-			log.Printf("YFinance circuit breaker: %s -> %s", from, to)
+			log.Printf("[ERROR] YFinance circuit breaker: %s -> %s", from, to)
 		},
 	})
 
@@ -184,7 +184,7 @@ func (y *YFinanceProvider) Capabilities() ProviderCapabilities {
 			RequestsPerDay:    -1, // No daily limit
 			BurstLimit:        5,
 		},
-		AssetTypes: []string{"STOCK", "FUND", "CRYPTO"},
+		AssetTypes: []string{"STOCK", "FUND", "CRYPTO", "ETF", "INDEX"},
 	}
 }
 
@@ -195,8 +195,8 @@ func (y *YFinanceProvider) MapSymbol(internalSymbol, assetType string) (string, 
 	symbol := strings.ToUpper(strings.TrimSpace(internalSymbol))
 
 	switch assetType {
-	case "STOCK", "FUND":
-		// Remove exchange suffixes (e.g., "AAPL:US" -> "AAPL")
+	case "STOCK", "FUND", "ETF", "INDEX":
+		// Remove exchange suffixes (e.g., "AAPL:US" -> "AAPL", "^SPX:INDICES" -> "^SPX")
 		if strings.Contains(symbol, ":") {
 			parts := strings.Split(symbol, ":")
 			symbol = parts[0]
@@ -204,7 +204,11 @@ func (y *YFinanceProvider) MapSymbol(internalSymbol, assetType string) (string, 
 		return symbol, nil
 	case "CRYPTO":
 		// YFinance uses "-" separator for crypto (e.g., "BTC-USD")
-		return strings.ReplaceAll(symbol, "/", "-"), nil
+		sym := strings.ReplaceAll(symbol, "/", "-")
+		if !strings.Contains(sym, "-") && !strings.HasSuffix(sym, "USD") && !strings.HasSuffix(sym, "USDT") && !strings.HasSuffix(sym, "EUR") {
+			sym = sym + "-USD"
+		}
+		return sym, nil
 	default:
 		return symbol, nil
 	}
@@ -218,35 +222,51 @@ func (y *YFinanceProvider) NormalizeSymbol(providerSymbol, assetType string) (st
 
 // mapInterval converts internal interval to YFinance format.
 func (y *YFinanceProvider) mapInterval(interval model.CandleInterval) pb.Interval {
-	switch interval {
-	case model.Interval1m:
+	switch strings.ToLower(string(interval)) {
+	case "1m":
 		return pb.Interval_INTERVAL_1M
-	case model.Interval5m:
+	case "5m":
 		return pb.Interval_INTERVAL_5M
-	case model.Interval15m:
+	case "15m":
 		return pb.Interval_INTERVAL_15M
-	case model.Interval30m:
+	case "30m":
 		return pb.Interval_INTERVAL_30M
-	case model.Interval1h:
+	case "1h":
 		return pb.Interval_INTERVAL_1H
-	case model.Interval4h:
+	case "4h":
 		return pb.Interval_INTERVAL_4H
-	case model.Interval1d:
+	case "1d", "1day", "d", "day":
+		return pb.Interval_INTERVAL_1D
+	case "1w", "1wk", "w", "week":
+		return pb.Interval_INTERVAL_1D
+	case "1mo", "1mth", "mo", "month":
 		return pb.Interval_INTERVAL_1D
 	default:
-		return pb.Interval_INTERVAL_UNSPECIFIED
+		return pb.Interval_INTERVAL_1D
 	}
 }
 
 // mapAssetType converts internal asset type to protobuf asset type.
+//
+// All asset types use dedicated enum values from proto/market_data.proto
+// (ASSET_TYPE_ETF = 4, ASSET_TYPE_INDEX = 5).  The Python yfinance sidecar
+// MUST be regenerated alongside the proto change — see the REGEN NOTE on
+// the AssetType enum in proto/market_data.proto.  Until the Python
+// sidecar is regenerated, ETF/INDEX fetches over gRPC will fall through
+// the sidecar's UNSPECIFIED path and may mis-classify the asset type on
+// the Python side.
 func (y *YFinanceProvider) mapAssetType(assetType string) pb.AssetType {
 	switch assetType {
 	case "STOCK":
 		return pb.AssetType_ASSET_TYPE_STOCK
+	case "ETF":
+		return pb.AssetType_ASSET_TYPE_ETF
 	case "FUND":
 		return pb.AssetType_ASSET_TYPE_FUND
 	case "CRYPTO":
 		return pb.AssetType_ASSET_TYPE_CRYPTO
+	case "INDEX":
+		return pb.AssetType_ASSET_TYPE_INDEX
 	default:
 		return pb.AssetType_ASSET_TYPE_UNSPECIFIED
 	}
@@ -291,7 +311,9 @@ func (y *YFinanceProvider) quoteCacheKey(symbol, assetType string) string {
 }
 
 func (y *YFinanceProvider) candlesCacheKey(symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) string {
-	return fmt.Sprintf("candles:%s:%s:%s:%d:%d:%d", symbol, assetType, interval, from.Unix(), to.Unix(), limit)
+	fromBucket := from.UTC().Truncate(5 * time.Minute).Unix()
+	toBucket := to.UTC().Truncate(5 * time.Minute).Unix()
+	return fmt.Sprintf("candles:%s:%s:%s:%d:%d:%d", symbol, assetType, interval, fromBucket, toBucket, limit)
 }
 
 func (y *YFinanceProvider) infoCacheKey(symbol, assetType string) string {
@@ -623,11 +645,15 @@ func (y *YFinanceProvider) IsHealthy(ctx context.Context) bool {
 }
 
 // IsHealthyForAssetType tests with an asset-type-appropriate symbol so that
-// the health status is accurate per type (e.g. BTC-USD for CRYPTO, AAPL for STOCK).
+// the health status is accurate per type (e.g. BTC-USD for CRYPTO, ^SPX for INDEX,
+// AAPL for STOCK/ETF/FUND).
 func (y *YFinanceProvider) IsHealthyForAssetType(ctx context.Context, assetType string) bool {
 	symbol := "AAPL" // default test symbol
-	if assetType == "CRYPTO" {
+	switch assetType {
+	case "CRYPTO":
 		symbol = "BTC-USD"
+	case "INDEX":
+		symbol = "^SPX"
 	}
 	return y.checkHealthWithSymbol(ctx, symbol)
 }

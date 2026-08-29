@@ -4,7 +4,6 @@ import {
 	GET_ASSET_PERFORMANCE_OPTIMIZED,
 	GET_DASHBOARD_CRITICAL,
 	GET_DASHBOARD_SECONDARY,
-	GET_PORTFOLIO_CARDS,
 	GET_RECENT_TRANSACTIONS_MINIMAL,
 } from "@/graphql/queries";
 import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
@@ -32,16 +31,39 @@ export const useSecondaryDashboardData = (userId: string, enabled = true) => {
 	});
 };
 
-// Hook for portfolio cards with optimized caching
+// Hook for portfolio cards — derives from GET_DASHBOARD_CRITICAL cache to avoid
+// duplicate backend analytics calculations.
 export const usePortfolioCards = (userId: string) => {
-	return useQuery(GET_PORTFOLIO_CARDS, {
+	const result = useQuery(GET_DASHBOARD_CRITICAL, {
 		variables: { userID: userId },
-		fetchPolicy: "cache-first",
+		// cache-only: never fires a network request; reads from the cache that
+		// useCriticalDashboardData already populated with cache-and-network.
+		fetchPolicy: "cache-only",
 		errorPolicy: "all",
-		// Poll every 5 minutes for portfolio updates
-		pollInterval: 5 * 60 * 1000,
 		skip: !userId || userId.trim() === "",
 	});
+
+	// Narrow the data to just the portfolio-card fields so callers get the same
+	// shape they would have received from the old GET_PORTFOLIO_CARDS query.
+	const cardData = useMemo(() => {
+		if (!result.data?.portfolios) return undefined;
+		return {
+			portfolios: result.data.portfolios.map((p) => ({
+				id: p.id,
+				name: p.name,
+				analytics: p.analytics
+					? {
+							totalValue: p.analytics.totalValue,
+							totalCost: p.analytics.totalCost,
+							totalGainLoss: p.analytics.totalGainLoss,
+							totalGainLossPercent: p.analytics.totalGainLossPercent,
+						}
+					: null,
+			})),
+		};
+	}, [result.data]);
+
+	return { ...result, data: cardData };
 };
 
 // Hook for recent transactions with lazy loading

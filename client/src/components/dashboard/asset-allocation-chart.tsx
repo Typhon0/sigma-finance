@@ -8,7 +8,8 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { withErrorBoundary } from "@/components/ui/error-boundary";
 import { getAssetTypeColor } from "@/lib/chart-colors";
-import { type AssetAllocationData, formatCurrency } from "@/lib/utils/portfolio-calculations";
+import { formatCurrency } from "@/lib/utils";
+import type { AssetAllocationData } from "@/lib/utils/portfolio-calculations";
 
 function formatAssetTypeName(assetType: string): string {
 	return assetType

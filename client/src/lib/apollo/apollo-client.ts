@@ -45,7 +45,6 @@ const cache = apolloCacheConfig;
 // Apollo Client configuration with enhanced caching and performance optimizations
 export const apolloClient = new ApolloClient({
 	link: from([authErrorLink, errorLink, retryLink, authLink, httpLink]),
-	credentials: "include",
 	cache: apolloCacheConfig,
 	defaultOptions: {
 		watchQuery: {

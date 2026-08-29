@@ -105,7 +105,7 @@ func (ms *MonitoringService) RecordEvent(event MonitoringEvent) {
 	select {
 	case ms.eventChannel <- event:
 	default:
-		log.Printf("Warning: Event channel full, dropping event: %s", event.Type)
+		log.Printf("[WARN] Warning: Event channel full, dropping event: %s", event.Type)
 	}
 }
 
@@ -161,7 +161,7 @@ func (ms *MonitoringService) handleEvent(event MonitoringEvent) {
 	case "performance_metric":
 		ms.handlePerformanceMetric(event)
 	default:
-		log.Printf("Unknown event type: %s", event.Type)
+		log.Printf("[WARN] Unknown event type: %s", event.Type)
 	}
 }
 
@@ -244,7 +244,7 @@ func (ms *MonitoringService) handleError(event MonitoringEvent) {
 	ms.RecordMetric("errors_total", 1, MetricTypeCounter, labels)
 
 	// Log error details
-	log.Printf("Error recorded: %s in %s (severity: %s) for user %s", 
+	log.Printf("[ERROR] Error recorded: %s in %s (severity: %s) for user %s", 
 		errorType, component, severity, event.UserID)
 }
 
@@ -429,7 +429,7 @@ func (ms *MonitoringService) fireAlert(alert domain.AlertRule, currentValue floa
 		ms.executeAlertAction(action, alert, currentValue)
 	}
 
-	log.Printf("Alert fired: %s (current value: %f, threshold: %f)", 
+	log.Printf("[WARN] Alert fired: %s (current value: %f, threshold: %f)", 
 		alert.Name, currentValue, alert.Threshold)
 }
 
@@ -437,7 +437,7 @@ func (ms *MonitoringService) fireAlert(alert domain.AlertRule, currentValue floa
 func (ms *MonitoringService) executeAlertAction(action domain.AlertAction, alert domain.AlertRule, currentValue float64) {
 	switch action.Type {
 	case "log":
-		log.Printf("ALERT: %s - Current value: %f, Threshold: %f", 
+		log.Printf("[WARN] ALERT: %s - Current value: %f, Threshold: %f", 
 			alert.Name, currentValue, alert.Threshold)
 	case "webhook":
 		// Implement webhook notification
@@ -451,13 +451,13 @@ func (ms *MonitoringService) executeAlertAction(action domain.AlertAction, alert
 // sendWebhookAlert sends a webhook alert (placeholder)
 func (ms *MonitoringService) sendWebhookAlert(config map[string]interface{}, alert domain.AlertRule, currentValue float64) {
 	// Implementation would send HTTP POST to webhook URL
-	log.Printf("Webhook alert would be sent for: %s", alert.Name)
+	log.Printf("[WARN] Webhook alert would be sent for: %s", alert.Name)
 }
 
 // sendEmailAlert sends an email alert (placeholder)
 func (ms *MonitoringService) sendEmailAlert(config map[string]interface{}, alert domain.AlertRule, currentValue float64) {
 	// Implementation would send email notification
-	log.Printf("Email alert would be sent for: %s", alert.Name)
+	log.Printf("[WARN] Email alert would be sent for: %s", alert.Name)
 }
 
 // GetHealthStatus returns system health status

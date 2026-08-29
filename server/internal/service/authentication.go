@@ -136,11 +136,10 @@ func NewAuthenticationService(
 
 // Register creates a new user account
 func (a *authenticationService) Register(ctx context.Context, req RegisterRequest) (*AuthResponse, error) {
-	log.Printf("[AuthenticationService] Register: started for email=%s", maskEmail(req.Email))
-
+	log.Printf("[INFO] [AuthenticationService] Register: started for email=%s", maskEmail(req.Email))
 	// Validate request first (before rate limiting) so invalid inputs don't consume quota
 	if err := req.Validate(); err != nil {
-		log.Printf("[AuthenticationService] Register: validation failed for email=%s: %v", maskEmail(req.Email), err)
+		log.Printf("[WARN] [AuthenticationService] Register: validation failed for email=%s: %v", maskEmail(req.Email), err)
 		return nil, err
 	}
 
@@ -158,7 +157,7 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 	existingUser, err := a.userRepo.GetByEmail(ctx, req.Email)
 	if err == nil && existingUser != nil {
 		// Log failed registration attempt
-		log.Printf("[AuthenticationService] Register: email already exists email=%s", maskEmail(req.Email))
+		log.Printf("[WARN] [AuthenticationService] Register: email already exists email=%s", maskEmail(req.Email))
 		event := CreateRegisterEvent(nil, req.Email, "", "", false, map[string]interface{}{
 			"reason": "email_already_exists",
 		})
@@ -169,14 +168,14 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 
 	// Validate password strength
 	if err := model.ValidatePassword(req.Password); err != nil {
-		log.Printf("[AuthenticationService] Register: weak password for email=%s", maskEmail(req.Email))
+		log.Printf("[WARN] [AuthenticationService] Register: weak password for email=%s", maskEmail(req.Email))
 		return nil, NewAuthError(ErrWeakPassword, err.Error(), "password")
 	}
 
 	// Hash password
 	passwordHash, err := a.securityService.HashPassword(req.Password)
 	if err != nil {
-		log.Printf("[AuthenticationService] Register: ERROR: password hashing failed email=%s: %v", maskEmail(req.Email), err)
+		log.Printf("[ERROR] [AuthenticationService] Register: ERROR: password hashing failed email=%s: %v", maskEmail(req.Email), err)
 		return nil, fmt.Errorf("failed to hash password: %w", err)
 	}
 
@@ -194,7 +193,7 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 
 	createdUser, err := a.userRepo.Create(ctx, user)
 	if err != nil {
-		log.Printf("[AuthenticationService] Register: ERROR: user creation failed email=%s: %v", maskEmail(req.Email), err)
+		log.Printf("[ERROR] [AuthenticationService] Register: ERROR: user creation failed email=%s: %v", maskEmail(req.Email), err)
 		// Log failed registration
 		event := CreateRegisterEvent(nil, req.Email, "", "", false, map[string]interface{}{
 			"reason": "database_error",
@@ -231,7 +230,7 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 	// Send verification email
 	if err := a.emailService.SendVerificationEmail(ctx, createdUser.Email, createdUser.Name, verificationToken); err != nil {
 		// Log but don't fail registration if email fails
-		log.Printf("[AuthenticationService] Register: WARN: verification email send failed user=%s email=%s: %v", createdUser.ID, maskEmail(createdUser.Email), err)
+		log.Printf("[WARN] [AuthenticationService] Register: WARN: verification email send failed user=%s email=%s: %v", createdUser.ID, maskEmail(createdUser.Email), err)
 		a.auditService.LogSecurityEvent(ctx, "email_send_failed", "", "", map[string]interface{}{
 			"email": createdUser.Email,
 			"type":  "verification",
@@ -239,7 +238,7 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 	}
 
 	// Log successful registration
-	log.Printf("[AuthenticationService] Register: completed successfully user=%s email=%s", createdUser.ID, maskEmail(createdUser.Email))
+	log.Printf("[INFO] [AuthenticationService] Register: completed successfully user=%s email=%s", createdUser.ID, maskEmail(createdUser.Email))
 	event := CreateRegisterEvent(&createdUser.ID, createdUser.Email, "", "", true, map[string]interface{}{
 		"user_id": createdUser.ID,
 	})
@@ -254,11 +253,10 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 
 // Login authenticates a user and creates a session
 func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*AuthResponse, error) {
-	log.Printf("[AuthenticationService] Login: started for email=%s", maskEmail(req.Email))
-
+	log.Printf("[INFO] [AuthenticationService] Login: started for email=%s", maskEmail(req.Email))
 	// Validate request
 	if err := req.Validate(); err != nil {
-		log.Printf("[AuthenticationService] Login: validation failed email=%s: %v", maskEmail(req.Email), err)
+		log.Printf("[WARN] [AuthenticationService] Login: validation failed email=%s: %v", maskEmail(req.Email), err)
 		return nil, err
 	}
 
@@ -272,7 +270,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 	if err != nil {
 		// User not found — if rate limit is also exceeded, report that;
 		// otherwise return generic invalid credentials (don't reveal if email exists).
-		log.Printf("[AuthenticationService] Login: user not found email=%s", maskEmail(req.Email))
+		log.Printf("[WARN] [AuthenticationService] Login: user not found email=%s", maskEmail(req.Email))
 		if rateLimitErr != nil {
 			a.auditService.LogSecurityEvent(ctx, "login_rate_limit", req.IPAddress, req.UserAgent, map[string]interface{}{
 				"email": req.Email,
@@ -295,7 +293,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 	// returns an error without incrementing, and we return ACCOUNT_LOCKED
 	// regardless.
 	if user.IsAccountLocked() {
-		log.Printf("[AuthenticationService] Login: account locked user=%s email=%s", user.ID, maskEmail(user.Email))
+		log.Printf("[WARN] [AuthenticationService] Login: account locked user=%s email=%s", user.ID, maskEmail(user.Email))
 		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
 			"reason": "account_locked",
 		})
@@ -314,7 +312,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 
 	// Verify password
 	if user.PasswordHash == nil {
-		log.Printf("[AuthenticationService] Login: no password set user=%s email=%s", user.ID, maskEmail(user.Email))
+		log.Printf("[WARN] [AuthenticationService] Login: no password set user=%s email=%s", user.ID, maskEmail(user.Email))
 		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
 			"reason": "no_password_set",
 		})
@@ -326,8 +324,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 	if err := a.securityService.VerifyPassword(req.Password, *user.PasswordHash); err != nil {
 		// Check if this attempt will lock the account
 		willLock := user.FailedLoginCount+1 >= a.maxFailedAttempts
-		log.Printf("[AuthenticationService] Login: invalid password user=%s email=%s willLock=%v", user.ID, maskEmail(user.Email), willLock)
-
+		log.Printf("[WARN] [AuthenticationService] Login: invalid password user=%s email=%s willLock=%v", user.ID, maskEmail(user.Email), willLock)
 		// Increment failed login count (this may lock the account when the threshold is reached)
 		if incErr := a.userRepo.IncrementFailedLoginCount(ctx, user.ID, a.maxFailedAttempts); incErr != nil {
 			// Log but continue — the lockout decision is based on the in-memory count,
@@ -357,7 +354,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 
 	// Check if email is verified (optional based on requirements)
 	if !user.EmailVerified {
-		log.Printf("[AuthenticationService] Login: email not verified user=%s email=%s", user.ID, maskEmail(user.Email))
+		log.Printf("[WARN] [AuthenticationService] Login: email not verified user=%s email=%s", user.ID, maskEmail(user.Email))
 		event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, false, map[string]interface{}{
 			"reason": "email_not_verified",
 		})
@@ -373,7 +370,7 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 	a.userRepo.UpdateLastLogin(ctx, user.ID, time.Now(), req.IPAddress)
 
 	// Log successful login
-	log.Printf("[AuthenticationService] Login: completed successfully user=%s email=%s", user.ID, maskEmail(user.Email))
+	log.Printf("[INFO] [AuthenticationService] Login: completed successfully user=%s email=%s", user.ID, maskEmail(user.Email))
 	event := CreateLoginEvent(&user.ID, user.Email, req.IPAddress, req.UserAgent, true, map[string]interface{}{
 		"user_id": user.ID,
 	})
@@ -385,22 +382,22 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 
 // Logout invalidates a user session
 func (a *authenticationService) Logout(ctx context.Context, userID string, token string) error {
-	log.Printf("[AuthenticationService] Logout: started user=%s", userID)
+	log.Printf("[INFO] [AuthenticationService] Logout: started user=%s", userID)
 	if strings.TrimSpace(token) == "" {
-		log.Printf("[AuthenticationService] Logout: empty token user=%s", userID)
+		log.Printf("[WARN] [AuthenticationService] Logout: empty token user=%s", userID)
 		return NewAuthError(ErrInvalidInput, "Token is required", "token")
 	}
 	// Logout is token-driven for API compatibility; reject invalid JWTs early.
 	if _, err := a.securityService.ValidateJWT(token); err != nil {
-		log.Printf("[AuthenticationService] Logout: invalid JWT user=%s: %v", userID, err)
+		log.Printf("[WARN] [AuthenticationService] Logout: invalid JWT user=%s: %v", userID, err)
 		return NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
 	// Revoke the session using SessionService
 	if err := a.sessionService.RevokeSession(ctx, token); err != nil {
-		log.Printf("[AuthenticationService] Logout: ERROR: session revoke failed user=%s: %v", userID, err)
+		log.Printf("[ERROR] [AuthenticationService] Logout: ERROR: session revoke failed user=%s: %v", userID, err)
 		return err
 	}
-	log.Printf("[AuthenticationService] Logout: completed successfully user=%s", userID)
+	log.Printf("[INFO] [AuthenticationService] Logout: completed successfully user=%s", userID)
 	return nil
 }
 
@@ -439,8 +436,7 @@ func (a *authenticationService) createUserSession(ctx context.Context, user *mod
 
 // ResetPassword initiates a password reset process
 func (a *authenticationService) ResetPassword(ctx context.Context, email string) error {
-	log.Printf("[AuthenticationService] ResetPassword: started for email=%s", maskEmail(email))
-
+	log.Printf("[INFO] [AuthenticationService] ResetPassword: started for email=%s", maskEmail(email))
 	if email == "" {
 		return NewAuthError(ErrInvalidInput, "Email is required", "email")
 	}
@@ -458,7 +454,7 @@ func (a *authenticationService) ResetPassword(ctx context.Context, email string)
 	user, err := a.userRepo.GetByEmail(ctx, email)
 	if err != nil {
 		// Don't reveal if email exists, but log the attempt
-		log.Printf("[AuthenticationService] ResetPassword: user not found email=%s", maskEmail(email))
+		log.Printf("[WARN] [AuthenticationService] ResetPassword: user not found email=%s", maskEmail(email))
 		event := CreatePasswordResetEvent(nil, email, "", "", false, map[string]interface{}{
 			"reason": "user_not_found",
 		})
@@ -484,7 +480,7 @@ func (a *authenticationService) ResetPassword(ctx context.Context, email string)
 	// Send password reset email
 	if err := a.emailService.SendPasswordResetEmail(ctx, user.Email, user.Name, resetToken); err != nil {
 		// Log but don't fail if email fails
-		log.Printf("[AuthenticationService] ResetPassword: WARN: password reset email send failed user=%s: %v", user.ID, err)
+		log.Printf("[WARN] [AuthenticationService] ResetPassword: WARN: password reset email send failed user=%s: %v", user.ID, err)
 		a.auditService.LogSecurityEvent(ctx, "email_send_failed", "", "", map[string]interface{}{
 			"email": user.Email,
 			"type":  "password_reset",
@@ -492,7 +488,7 @@ func (a *authenticationService) ResetPassword(ctx context.Context, email string)
 	}
 
 	// Log password reset request
-	log.Printf("[AuthenticationService] ResetPassword: reset email sent user=%s", user.ID)
+	log.Printf("[INFO] [AuthenticationService] ResetPassword: reset email sent user=%s", user.ID)
 	event := CreatePasswordResetEvent(&user.ID, user.Email, "", "", true, map[string]interface{}{
 		"user_id": user.ID,
 		"action":  "request",
@@ -504,8 +500,7 @@ func (a *authenticationService) ResetPassword(ctx context.Context, email string)
 
 // ConfirmPasswordReset completes the password reset process
 func (a *authenticationService) ConfirmPasswordReset(ctx context.Context, token, newPassword string) error {
-	log.Printf("[AuthenticationService] ConfirmPasswordReset: started")
-
+	log.Printf("[INFO] [AuthenticationService] ConfirmPasswordReset: started")
 	if token == "" {
 		return NewAuthError(ErrInvalidInput, "Token is required", "token")
 	}
@@ -561,14 +556,14 @@ func (a *authenticationService) ConfirmPasswordReset(ctx context.Context, token,
 	// Revoke all user sessions for security
 	if err := a.sessionService.RevokeAllUserSessions(ctx, user.ID); err != nil {
 		// Log but don't fail
-		log.Printf("[AuthenticationService] ConfirmPasswordReset: WARN: session revoke failed user=%s: %v", user.ID, err)
+		log.Printf("[WARN] [AuthenticationService] ConfirmPasswordReset: WARN: session revoke failed user=%s: %v", user.ID, err)
 		a.auditService.LogSecurityEvent(ctx, "session_revoke_failed", "", "", map[string]interface{}{
 			"user_id": user.ID,
 		})
 	}
 
 	// Log password reset completion
-	log.Printf("[AuthenticationService] ConfirmPasswordReset: completed successfully user=%s", user.ID)
+	log.Printf("[INFO] [AuthenticationService] ConfirmPasswordReset: completed successfully user=%s", user.ID)
 	event := CreatePasswordResetEvent(&user.ID, user.Email, "", "", true, map[string]interface{}{
 		"user_id": user.ID,
 		"action":  "confirm",
@@ -580,8 +575,7 @@ func (a *authenticationService) ConfirmPasswordReset(ctx context.Context, token,
 
 // VerifyEmail verifies a user's email address
 func (a *authenticationService) VerifyEmail(ctx context.Context, token string) error {
-	log.Printf("[AuthenticationService] VerifyEmail: started")
-
+	log.Printf("[INFO] [AuthenticationService] VerifyEmail: started")
 	if token == "" {
 		return NewAuthError(ErrInvalidInput, "Token is required", "token")
 	}
@@ -620,7 +614,7 @@ func (a *authenticationService) VerifyEmail(ctx context.Context, token string) e
 	}
 
 	// Log email verification
-	log.Printf("[AuthenticationService] VerifyEmail: completed successfully user=%s", user.ID)
+	log.Printf("[INFO] [AuthenticationService] VerifyEmail: completed successfully user=%s", user.ID)
 	event := CreateEmailVerifyEvent(&user.ID, user.Email, "", "", true, map[string]interface{}{
 		"user_id": user.ID,
 	})
@@ -671,7 +665,7 @@ func (a *authenticationService) ResendVerification(ctx context.Context, email st
 
 	// Send verification email
 	if err := a.emailService.SendVerificationEmail(ctx, user.Email, user.Name, verificationToken); err != nil {
-		log.Printf("[AuthenticationService] ResendVerification: WARN: verification email send failed user=%s: %v", user.ID, err)
+		log.Printf("[WARN] [AuthenticationService] ResendVerification: WARN: verification email send failed user=%s: %v", user.ID, err)
 		a.auditService.LogSecurityEvent(ctx, "email_send_failed", "", "", map[string]interface{}{
 			"email": user.Email,
 			"type":  "verification_resend",
@@ -691,12 +685,11 @@ func (a *authenticationService) ResendVerification(ctx context.Context, email st
 
 // RefreshToken refreshes an access token using a refresh token
 func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken string) (*AuthResponse, error) {
-	log.Printf("[AuthenticationService] RefreshToken: started")
-
+	log.Printf("[INFO] [AuthenticationService] RefreshToken: started")
 	// Refresh session using SessionService
 	session, err := a.sessionService.RefreshSession(ctx, refreshToken)
 	if err != nil {
-		log.Printf("[AuthenticationService] RefreshToken: session refresh failed: %v", err)
+		log.Printf("[ERROR] [AuthenticationService] RefreshToken: session refresh failed: %v", err)
 		return nil, err
 	}
 
@@ -712,7 +705,7 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 		return nil, fmt.Errorf("failed to validate refreshed token: %w", err)
 	}
 
-	log.Printf("[AuthenticationService] RefreshToken: completed successfully user=%s", user.ID)
+	log.Printf("[INFO] [AuthenticationService] RefreshToken: completed successfully user=%s", user.ID)
 	return &AuthResponse{
 		Token:        session.Token,
 		RefreshToken: session.RefreshToken,
@@ -734,30 +727,29 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 
 // ValidateSession validates a JWT token and returns session information
 func (a *authenticationService) ValidateSession(ctx context.Context, token string) (*SessionInfo, error) {
-	log.Printf("[AuthenticationService] ValidateSession: started")
-
+	log.Printf("[INFO] [AuthenticationService] ValidateSession: started")
 	// Validate session using SessionService
 	session, err := a.sessionService.ValidateSession(ctx, token)
 	if err != nil {
-		log.Printf("[AuthenticationService] ValidateSession: session validation failed: %v", err)
+		log.Printf("[WARN] [AuthenticationService] ValidateSession: session validation failed: %v", err)
 		return nil, err
 	}
 
 	// Get user for additional info
 	user, err := a.userRepo.GetByID(ctx, session.UserID)
 	if err != nil {
-		log.Printf("[AuthenticationService] ValidateSession: user lookup failed user=%s: %v", session.UserID, err)
+		log.Printf("[ERROR] [AuthenticationService] ValidateSession: user lookup failed user=%s: %v", session.UserID, err)
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
 
 	// Extract JWT expiration from token
 	claims, err := a.securityService.ValidateJWT(token)
 	if err != nil {
-		log.Printf("[AuthenticationService] ValidateSession: JWT validation failed user=%s: %v", session.UserID, err)
+		log.Printf("[WARN] [AuthenticationService] ValidateSession: JWT validation failed user=%s: %v", session.UserID, err)
 		return nil, NewAuthError(ErrInvalidToken, "Invalid token", "token")
 	}
 
-	log.Printf("[AuthenticationService] ValidateSession: completed successfully user=%s", user.ID)
+	log.Printf("[INFO] [AuthenticationService] ValidateSession: completed successfully user=%s", user.ID)
 	return &SessionInfo{
 		UserID:    user.ID,
 		Email:     user.Email,
@@ -768,13 +760,13 @@ func (a *authenticationService) ValidateSession(ctx context.Context, token strin
 
 // RevokeAllUserSessions revokes all sessions for a user
 func (a *authenticationService) RevokeAllUserSessions(ctx context.Context, userID string) error {
-	log.Printf("[AuthenticationService] RevokeAllUserSessions: started user=%s", userID)
+	log.Printf("[INFO] [AuthenticationService] RevokeAllUserSessions: started user=%s", userID)
 	// Revoke all sessions using SessionService
 	err := a.sessionService.RevokeAllUserSessions(ctx, userID)
 	if err != nil {
-		log.Printf("[AuthenticationService] RevokeAllUserSessions: ERROR: user=%s: %v", userID, err)
+		log.Printf("[ERROR] [AuthenticationService] RevokeAllUserSessions: ERROR: user=%s: %v", userID, err)
 	} else {
-		log.Printf("[AuthenticationService] RevokeAllUserSessions: completed successfully user=%s", userID)
+		log.Printf("[INFO] [AuthenticationService] RevokeAllUserSessions: completed successfully user=%s", userID)
 	}
 	return err
 }

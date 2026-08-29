@@ -18,14 +18,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 import { AddInsuranceForm } from "./AddInsuranceForm";
 
 interface InsuranceDetailProps {
 	insuranceId: string;
 	onBack: () => void;
+	isPanel?: boolean;
 }
 
-export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
+export function InsuranceDetail({ insuranceId, onBack, isPanel = false }: InsuranceDetailProps) {
 	const { assets, updateAsset, deleteAsset } = usePortfolio();
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -169,14 +171,16 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 	};
 
 	return (
-		<div className="p-6">
+		<div className={cn("p-6", isPanel && "p-4 space-y-4")}>
 			{/* Header */}
 			<div className="flex items-center justify-between mb-6">
 				<div className="flex items-center gap-4">
-					<Button variant="ghost" onClick={onBack}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back
-					</Button>
+					{!isPanel && (
+						<Button variant="ghost" onClick={onBack}>
+							<ArrowLeft className="h-4 w-4 mr-2" />
+							Back
+						</Button>
+					)}
 				</div>
 				<div className="flex gap-2">
 					<Button variant="outline" onClick={() => setIsEditDialogOpen(true)}>
@@ -212,7 +216,12 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 					</div>
 				</CardHeader>
 				<CardContent>
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+					<div
+						className={cn(
+							"grid gap-6",
+							isPanel ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-1 md:grid-cols-3",
+						)}
+					>
 						<div>
 							<p className="text-sm text-muted-foreground mb-1">Current Value</p>
 							<p className="text-2xl font-mono font-semibold">
@@ -244,7 +253,9 @@ export function InsuranceDetail({ insuranceId, onBack }: InsuranceDetailProps) {
 				</CardContent>
 			</Card>
 
-			<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+			<div
+				className={cn("grid gap-6 mb-6", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
+			>
 				{/* Performance Chart */}
 				<Card>
 					<CardHeader>

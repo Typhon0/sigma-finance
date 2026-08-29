@@ -14,3 +14,9 @@ export const UPDATE_TRANSACTION = graphql(/* GraphQL */ `
     }
   }
 `);
+
+export const DELETE_TRANSACTION = graphql(/* GraphQL */ `
+  mutation DeleteTransaction($id: ID!) {
+    deleteTransaction(id: $id)
+  }
+`);

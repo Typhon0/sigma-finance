@@ -576,6 +576,11 @@ func (f *FXProvider) ValidateCredentials(ctx context.Context, apiKey string) err
 		return fmt.Errorf("invalid Twelve Data API key")
 	}
 
+	// 429 = rate limited; the key itself is valid.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("API key validation failed with status: %d", resp.StatusCode)
 	}

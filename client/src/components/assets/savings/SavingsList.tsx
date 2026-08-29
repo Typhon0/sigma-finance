@@ -2,6 +2,7 @@ import ReactECharts from "echarts-for-react";
 import {
 	ArrowUpDown,
 	Building2,
+	ChevronLeft,
 	DollarSign,
 	Eye,
 	Filter,
@@ -17,6 +18,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -36,6 +38,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -47,25 +50,38 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
+import { AssetPageHeader } from "../AssetPageHeader";
 import { AddSavingForm, type SavingsFormData } from "./AddSavingForm";
+import { SavingDetail } from "./SavingDetail";
 
 interface SavingsListProps {
-	onSelectSaving: (savingId: string) => void;
+	onSelectSaving?: (savingId: string) => void;
+	detailMode?: "external" | "panel";
+	onBack?: () => void;
 }
 
 const BANK_ACCOUNT_ASSET_TYPE_ID = "3"; // Bank Account asset type ID from server
 
-export function SavingsList({ onSelectSaving }: SavingsListProps) {
-	const { assets, currentPortfolio, refetch } = usePortfolio();
+export function SavingsList({ onSelectSaving, detailMode = "panel", onBack }: SavingsListProps) {
+	const { assets, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
 	const { addBankAccount } = useAssetMutations();
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [viewMode, setViewMode] = useState<"list" | "grid">("list");
+	const [selectedSavingId, setSelectedSavingId] = useState<string | null>(null);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [ownershipFilter, setOwnershipFilter] = useState("all");
 	const [bankFilter, setBankFilter] = useState("all");
 	const [sortBy, setSortBy] = useState("balance-desc");
 	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [timePeriod, setTimePeriod] = useState("1Y");
+
+	const handleSelectSaving = (savingId: string) => {
+		if (detailMode === "panel") {
+			setSelectedSavingId(savingId);
+		} else {
+			onSelectSaving?.(savingId);
+		}
+	};
 
 	// Derive savings from assets with type 'bank' or 'savings'
 	const savings = useMemo(() => {
@@ -544,18 +560,25 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 	};
 
 	return (
-		<div className="p-6 space-y-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl">Savings Accounts</h1>
-					<p className="text-muted-foreground mt-1">Manage and track your savings accounts</p>
-				</div>
-				<Button onClick={() => setShowAddForm(true)} className="gap-2">
-					<Plus className="h-4 w-4" />
-					Add Account
-				</Button>
-			</div>
+		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			<AssetPageHeader
+				title="Savings Accounts"
+				description="Manage and track your savings accounts, interest yields, and cash allocations."
+				onBack={onBack}
+				actions={
+					<Button
+						size="sm"
+						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+						onClick={() => setShowAddForm(true)}
+					>
+						<Plus className="mr-1.5 h-3.5 w-3.5" />
+						Add Account
+					</Button>
+				}
+			/>
+
+			{/* Benchmark metrics */}
+			<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
 
 			{/* KPI Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -713,7 +736,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 											<TableRow
 												key={saving.id}
 												className="cursor-pointer hover:bg-muted/50"
-												onClick={() => onSelectSaving(saving.id)}
+												onClick={() => handleSelectSaving(saving.id)}
 											>
 												<TableCell>
 													<div className="flex flex-col">
@@ -747,7 +770,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 															<DropdownMenuItem
 																onClick={(e) => {
 																	e.stopPropagation();
-																	onSelectSaving(saving.id);
+																	handleSelectSaving(saving.id);
 																}}
 															>
 																<Eye className="h-4 w-4 mr-2" />
@@ -800,7 +823,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 								<Card
 									key={saving.id}
 									className="cursor-pointer hover:shadow-lg transition-shadow"
-									onClick={() => onSelectSaving(saving.id)}
+									onClick={() => handleSelectSaving(saving.id)}
 								>
 									<CardHeader>
 										<div className="flex items-start justify-between">
@@ -821,7 +844,7 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 													<DropdownMenuItem
 														onClick={(e) => {
 															e.stopPropagation();
-															onSelectSaving(saving.id);
+															handleSelectSaving(saving.id);
 														}}
 													>
 														<Eye className="h-4 w-4 mr-2" />
@@ -1009,6 +1032,24 @@ export function SavingsList({ onSelectSaving }: SavingsListProps) {
 				onClose={() => setShowAddForm(false)}
 				onSubmit={handleAddSaving}
 			/>
+
+			{/* Saving Detail Panel */}
+			<Sheet
+				open={detailMode === "panel" && selectedSavingId !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedSavingId(null);
+				}}
+			>
+				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+					{selectedSavingId && (
+						<SavingDetail
+							savingId={selectedSavingId}
+							onBack={() => setSelectedSavingId(null)}
+							isPanel={true}
+						/>
+					)}
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

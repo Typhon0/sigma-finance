@@ -1,6 +1,7 @@
 import {
 	ArrowRight,
 	Car,
+	ChevronLeft,
 	Coins,
 	Gem,
 	LayoutGrid,
@@ -16,6 +17,7 @@ import type React from "react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AddWatchForm } from "@/components/AddWatchForm";
+import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
@@ -30,11 +32,21 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
+import { AssetPageHeader } from "../AssetPageHeader";
+import { ArtDetail } from "./ArtDetail";
+import { JewelryDetail } from "./JewelryDetail";
+import { PreciousMetalsDetail } from "./PreciousMetalsDetail";
+import { VehicleDetail } from "./VehicleDetail";
+import { WatchDetail } from "./WatchDetail";
+import { WineDetail } from "./WineDetail";
 
 interface CollectiblesListProps {
-	onSelectCollectible: (collectibleId: string) => void;
+	onSelectCollectible?: (collectibleId: string) => void;
+	detailMode?: "external" | "panel";
+	onBack?: () => void;
 }
 
 type ViewMode = "grid" | "list";
@@ -48,8 +60,23 @@ type CollectibleType =
 	| "precious_metals"
 	| "other";
 
-export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps) {
-	const { assets, addWatch, currentPortfolio, refetch } = usePortfolio();
+export function CollectiblesList({
+	onSelectCollectible,
+	detailMode = "panel",
+	onBack,
+}: CollectiblesListProps) {
+	const { assets, addWatch, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
+	const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
+	const selectedCollectible = assets.find((a) => a.id === selectedCollectibleId);
+
+	const handleSelectCollectible = (collectibleId: string) => {
+		if (detailMode === "panel") {
+			setSelectedCollectibleId(collectibleId);
+		} else {
+			onSelectCollectible?.(collectibleId);
+		}
+	};
+
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState("value");
 	const [activeTab, setActiveTab] = useState<CollectibleType>("all");
@@ -184,19 +211,22 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 
 	if (collectibleAssets.length === 0) {
 		return (
-			<div className="p-6">
-				<div className="flex items-center justify-between mb-6">
-					<div>
-						<h2 className="mb-1">Collectibles & Valuables</h2>
-						<p className="text-sm text-muted-foreground">
-							Track watches, art, vehicles, and other valuable items
-						</p>
-					</div>
-					<Button onClick={() => handleOpenAddForm("watch")}>
-						<Plus className="h-4 w-4 mr-2" />
-						Add Collectible
-					</Button>
-				</div>
+			<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+				<AssetPageHeader
+					title="Collectibles & Valuables"
+					description="Track watches, art, vehicles, and other valuable items."
+					onBack={onBack}
+					actions={
+						<Button
+							size="sm"
+							className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+							onClick={() => handleOpenAddForm("watch")}
+						>
+							<Plus className="mr-1.5 h-3.5 w-3.5" />
+							Add Collectible
+						</Button>
+					}
+				/>
 
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-16">
@@ -245,20 +275,22 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 	}
 
 	return (
-		<div className="p-6">
-			{/* Header */}
-			<div className="flex items-center justify-between mb-6">
-				<div>
-					<h2 className="mb-1">Collectibles & Valuables</h2>
-					<p className="text-sm text-muted-foreground">
-						{collectibleAssets.length} {collectibleAssets.length === 1 ? "item" : "items"}
-					</p>
-				</div>
-				<Button onClick={() => handleOpenAddForm("watch")}>
-					<Plus className="h-4 w-4 mr-2" />
-					Add Collectible
-				</Button>
-			</div>
+		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			<AssetPageHeader
+				title="Collectibles & Valuables"
+				description="Manage your luxury watch collections, fine art investments, vehicles, and other valuables."
+				onBack={onBack}
+				actions={
+					<Button
+						size="sm"
+						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+						onClick={() => handleOpenAddForm("watch")}
+					>
+						<Plus className="mr-1.5 h-3.5 w-3.5" />
+						Add Collectible
+					</Button>
+				}
+			/>
 
 			{/* Info banner if collectibles are incomplete */}
 			{collectibleAssets.length < 15 && (
@@ -279,6 +311,9 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 					</div>
 				</div>
 			)}
+
+			{/* Benchmark metrics */}
+			<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
 
 			{/* Stats Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -416,7 +451,7 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 						<Card
 							key={item.id}
 							className="cursor-pointer hover:shadow-md transition-shadow"
-							onClick={() => onSelectCollectible(item.id)}
+							onClick={() => handleSelectCollectible(item.id)}
 						>
 							<CardHeader>
 								<div className="flex items-start justify-between mb-2">
@@ -504,6 +539,57 @@ export function CollectiblesList({ onSelectCollectible }: CollectiblesListProps)
 					)}
 				</DialogContent>
 			</Dialog>
+
+			{/* Collectibles Detail Panel */}
+			<Sheet
+				open={detailMode === "panel" && selectedCollectibleId !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedCollectibleId(null);
+				}}
+			>
+				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+					{selectedCollectibleId && selectedCollectible && (
+						<>
+							{selectedCollectible.type === "watch" && (
+								<WatchDetail
+									watchId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+							{selectedCollectible.type === "art" && (
+								<ArtDetail
+									artId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+							{selectedCollectible.type === "vehicle" && (
+								<VehicleDetail
+									vehicleId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+							{selectedCollectible.type === "jewelry" && (
+								<JewelryDetail
+									jewelryId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+							{selectedCollectible.type === "wine" && (
+								<WineDetail
+									wineId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+							{selectedCollectible.type === "precious_metals" && (
+								<PreciousMetalsDetail
+									metalId={selectedCollectibleId}
+									onBack={() => setSelectedCollectibleId(null)}
+								/>
+							)}
+						</>
+					)}
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

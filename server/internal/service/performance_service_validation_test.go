@@ -220,7 +220,7 @@ func TestPerformanceService_ServiceCreation(t *testing.T) {
 	t.Run("NewPerformanceService creates service correctly", func(t *testing.T) {
 		// This test verifies the constructor works without actual repository implementations
 		// We'll pass nil values since we're just testing the constructor
-		service := NewPerformanceService(nil, nil, nil)
+		service := NewPerformanceService(nil, nil, nil, nil)
 
 		assert.NotNil(t, service)
 		// The repositories will be nil, but the service structure should be created

@@ -55,8 +55,8 @@ func min(a, b int) int {
 
 // AppContainer holds all the dependencies for the application.
 type AppContainer struct {
-	FiberApp *fiber.App
-	// Add other dependencies here, e.g., DB, services
+	FiberApp            *fiber.App
+	BackgroundProcessor *service.BackgroundProcessor
 }
 
 // NewApp creates and wires the entire application.
@@ -121,6 +121,18 @@ func NewApp() (*AppContainer, error) {
 		return nil, fmt.Errorf("failed to bootstrap admin roles: %w", err)
 	}
 
+	// Wire the per-portfolio snapshot ticker.  The processor used to be a
+	// dead-code stub (100ms sleep + fake map); it now drives the real
+	// IPerformanceRepository.CalculateAndSaveHistoricalSnapshots for every
+	// portfolio on the existing 5-minute cadence.  Start returns immediately
+	// after goroutine fan-out, so we fire it inline.
+	backgroundProcessor := service.NewBackgroundProcessor(&cfg.Performance, uow)
+	if err := backgroundProcessor.Start(context.Background()); err != nil {
+		log.Printf("[ERROR] [app] failed to start background processor: %v", err)
+		return nil, fmt.Errorf("failed to start background processor: %w", err)
+	}
+	log.Printf("[INFO] [app] background processor wired (uow injected, tick=5m, snapshots use CalculateAndSaveHistoricalSnapshots)")
+
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{
 		PortfolioService:      serviceContainer.Portfolio,
@@ -134,6 +146,7 @@ func NewApp() (*AppContainer, error) {
 		MarketDataService:     serviceContainer.MarketData,
 		MarketDataPackService: serviceContainer.MarketDataPacks,
 		InstrumentService:     serviceContainer.Instrument,
+		PerformanceService:    serviceContainer.Performance,
 		UOW:                   uow,
 	}
 
@@ -325,6 +338,34 @@ func NewApp() (*AppContainer, error) {
 		return c.JSON(result)
 	})
 
+	// /admin/metrics surfaces BackgroundProcessor internals (drop counters,
+	// queue sizes, processed/failed job counts) as JSON so ops don't have to
+	// grep logs to spot queue backlogs.  Always returns 200 so dashboards
+	// render uniformly; a missing processor shows up as `running: false`
+	// with empty metrics rather than a 503 that flips the dashboard's error
+	// state.  The `snapshot_at` field lets consumers tell whether the
+	// counters are fresh.
+	//
+	// Keys returned inside `metrics` (see BackgroundProcessor.GetMetrics):
+	//   processed_jobs, failed_jobs, avg_processing_time,
+	//   calculation_queue_size, refresh_queue_size,
+	//   calculation_dropped_jobs, refresh_dropped_jobs, is_running
+	adminGroup.Get("/metrics", func(c *fiber.Ctx) error {
+		snapshotAt := time.Now().UTC().Format(time.RFC3339)
+		if backgroundProcessor == nil {
+			return c.JSON(fiber.Map{
+				"snapshot_at": snapshotAt,
+				"running":     false,
+				"metrics":     fiber.Map{},
+			})
+		}
+		return c.JSON(fiber.Map{
+			"snapshot_at": snapshotAt,
+			"running":     true,
+			"metrics":     backgroundProcessor.GetMetrics(),
+		})
+	})
+
 	// Setup GraphQL endpoint with authentication middleware and directives
 	config := graphql.Config{
 		Resolvers: resolver,
@@ -402,7 +443,8 @@ func NewApp() (*AppContainer, error) {
 	})
 
 	return &AppContainer{
-		FiberApp: app,
+		FiberApp:            app,
+		BackgroundProcessor: backgroundProcessor,
 	}, nil
 }
 

@@ -81,21 +81,6 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
   }
 `);
 
-export const GET_PORTFOLIO_CARDS = graphql(/* GraphQL */ `
-  query GetPortfolioCards($userID: ID!) {
-    portfolios(filter: { userID: $userID }) {
-      id
-      name
-      analytics {
-        totalValue
-        totalCost
-        totalGainLoss
-        totalGainLossPercent
-      }
-    }
-  }
-`);
-
 export const GET_RECENT_TRANSACTIONS_MINIMAL = graphql(/* GraphQL */ `
   query GetRecentTransactionsMinimal($userID: ID!, $limit: Int) {
     transactions(filter: { userID: $userID }, pagination: { limit: $limit }) {

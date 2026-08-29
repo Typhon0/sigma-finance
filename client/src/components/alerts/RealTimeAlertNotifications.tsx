@@ -40,13 +40,13 @@ const getAlertIcon = (type: string) => {
 const getAlertColor = (type: string) => {
 	switch (type) {
 		case "PRICE":
-			return "text-blue-600 bg-blue-50 border-blue-200";
+			return "text-blue-500 bg-blue-500/10 border-blue-500/20";
 		case "PERCENTAGE_CHANGE":
-			return "text-green-600 bg-green-50 border-green-200";
+			return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
 		case "PORTFOLIO_VALUE":
-			return "text-purple-600 bg-purple-50 border-purple-200";
+			return "text-purple-500 bg-purple-500/10 border-purple-500/20";
 		default:
-			return "text-orange-600 bg-orange-50 border-orange-200";
+			return "text-amber-500 bg-amber-500/10 border-amber-500/20";
 	}
 };
 
@@ -113,10 +113,10 @@ export function RealTimeAlertNotifications({
 										)}
 									</div>
 
-									<p className="text-sm text-gray-600 mb-2">{alert.message}</p>
+									<p className="text-sm text-muted-foreground mb-2">{alert.message}</p>
 
 									<div className="flex items-center justify-between">
-										<span className="text-xs text-gray-500 flex items-center gap-1">
+										<span className="text-xs text-muted-foreground flex items-center gap-1">
 											<Clock className="h-3 w-3" />
 											{formatTimestamp(alert.timestamp)}
 										</span>
@@ -213,15 +213,17 @@ export function RealTimeAlertNotifications({
 									className={cn(
 										"flex items-start gap-3 p-3 rounded-lg border transition-all duration-300",
 										alert.acknowledged
-											? "bg-gray-50 border-gray-200"
-											: "bg-white border-blue-200 shadow-sm",
+											? "bg-muted/30 border-border/40"
+											: "bg-card border-blue-500/30 shadow-sm",
 										index === 0 && newAlertCount > 0 && "ring-2 ring-blue-300 scale-105",
 									)}
 								>
 									<div
 										className={cn(
 											"p-2 rounded-full flex-shrink-0",
-											alert.acknowledged ? "bg-gray-100 text-gray-500" : getAlertColor(alert.type),
+											alert.acknowledged
+												? "bg-muted text-muted-foreground"
+												: getAlertColor(alert.type),
 										)}
 									>
 										{getAlertIcon(alert.type)}
@@ -232,7 +234,7 @@ export function RealTimeAlertNotifications({
 											<h4
 												className={cn(
 													"font-medium text-sm truncate",
-													alert.acknowledged ? "text-gray-600" : "text-gray-900",
+													alert.acknowledged ? "text-muted-foreground" : "text-foreground",
 												)}
 											>
 												{alert.title}
@@ -247,14 +249,14 @@ export function RealTimeAlertNotifications({
 										<p
 											className={cn(
 												"text-sm mb-2",
-												alert.acknowledged ? "text-gray-500" : "text-gray-600",
+												alert.acknowledged ? "text-muted-foreground/80" : "text-muted-foreground",
 											)}
 										>
 											{alert.message}
 										</p>
 
 										<div className="flex items-center justify-between">
-											<span className="text-xs text-gray-500 flex items-center gap-1">
+											<span className="text-xs text-muted-foreground flex items-center gap-1">
 												<Clock className="h-3 w-3" />
 												{formatTimestamp(alert.timestamp)}
 											</span>
@@ -264,7 +266,7 @@ export function RealTimeAlertNotifications({
 													size="sm"
 													variant="ghost"
 													onClick={() => actions.acknowledgeAlert(alert.id)}
-													className="h-6 px-2 text-xs hover:bg-blue-50"
+													className="h-6 px-2 text-xs"
 												>
 													<Check className="h-3 w-3 mr-1" />
 													Acknowledge

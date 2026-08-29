@@ -1,3 +1,4 @@
+import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -9,6 +10,15 @@ vi.mock("sonner", () => ({
 		error: vi.fn(),
 		success: vi.fn(),
 	},
+}));
+
+vi.mock("@apollo/client", () => ({
+	gql: vi.fn(),
+	useQuery: () => ({ data: undefined, loading: false }),
+}));
+
+vi.mock("@/hooks/useBenchmarkInstrumentId", () => ({
+	useBenchmarkInstrumentId: () => ({ id: "bench-1", loading: false }),
 }));
 
 // Mock PortfolioProvider
@@ -64,17 +74,30 @@ vi.mock("@/components/PieChartWithCenter", () => ({
 	PieChartWithCenter: () => <div data-testid="pie-chart">Chart</div>,
 }));
 
+vi.mock("@/components/charts/PortfolioHeroChart", () => ({
+	PortfolioHeroChart: () => <div data-testid="portfolio-hero-chart">Portfolio Hero Chart</div>,
+}));
+
 vi.mock("echarts-for-react", () => ({
 	default: () => <div data-testid="echarts">ECharts</div>,
 }));
 
-vi.mock("lucide-react", () => ({
-	Plus: () => <span>+</span>,
-	Upload: () => <span>Upload</span>,
-	TrendingUp: () => <span>TrendingUp</span>,
-	ArrowUpDown: () => <span>ArrowUpDown</span>,
-	Activity: () => <span>Activity</span>,
-	Package: () => <span>Package</span>,
+vi.mock("lucide-react", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("lucide-react")>();
+	return {
+		...actual,
+	};
+});
+
+vi.mock("@/hooks/use-currency", () => ({
+	useCurrency: () => ({
+		currency: "USD",
+		currencySymbol: "$",
+		formatCurrency: (val: number | null | undefined) =>
+			val !== null && val !== undefined ? `$${val.toFixed(2)}` : "$0.00",
+		formatCurrencyCompact: (val: number | null | undefined) =>
+			val !== null && val !== undefined ? `$${val.toFixed(0)}` : "$0",
+	}),
 }));
 
 vi.mock("@/components/ui/button", () => ({
@@ -98,7 +121,7 @@ let capturedHandleAddPosition: ((formData: Record<string, unknown>) => Promise<v
 vi.mock("@/components/assets/stocks-funds/AddStockForm", () => ({
 	AddStockForm: ({
 		open,
-		_onClose,
+		onClose: _onClose,
 		onSubmit,
 	}: {
 		open: boolean;

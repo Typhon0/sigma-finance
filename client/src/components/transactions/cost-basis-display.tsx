@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Position, Transaction } from "@/gql/graphql";
-import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/formatters";
 
 interface CostBasisData {
 	totalCostBasis: number;

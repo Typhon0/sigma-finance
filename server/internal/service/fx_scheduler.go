@@ -98,7 +98,7 @@ func (s *fxScheduler) Start(mode FXSchedulerMode) error {
 	// Start the refresh loop in a goroutine
 	go s.runRefreshLoop()
 
-	log.Printf("[FXScheduler] Started in %s mode with interval %v", mode, interval)
+	log.Printf("[INFO] [FXScheduler] Started in %s mode with interval %v", mode, interval)
 	return nil
 }
 
@@ -116,7 +116,7 @@ func (s *fxScheduler) Stop() error {
 	close(s.stopChan)
 	s.running = false
 
-	log.Printf("[FXScheduler] Stopped")
+	log.Printf("[INFO] [FXScheduler] Stopped")
 	return nil
 }
 
@@ -139,7 +139,7 @@ func (s *fxScheduler) SetMode(mode FXSchedulerMode) error {
 	s.ticker = time.NewTicker(interval)
 	oldTicker.Stop()
 
-	log.Printf("[FXScheduler] Switched to %s mode with interval %v", mode, interval)
+	log.Printf("[INFO] [FXScheduler] Switched to %s mode with interval %v", mode, interval)
 	return nil
 }
 
@@ -169,7 +169,7 @@ func (s *fxScheduler) runRefreshLoop() {
 		case <-s.ticker.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 			if err := s.refresh(ctx); err != nil {
-				log.Printf("[FXScheduler] Refresh failed: %v", err)
+				log.Printf("[ERROR] [FXScheduler] Refresh failed: %v", err)
 			}
 			cancel()
 
@@ -177,7 +177,7 @@ func (s *fxScheduler) runRefreshLoop() {
 			if s.shouldPerformDailyRefresh() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 				if err := s.refreshDaily(ctx); err != nil {
-					log.Printf("[FXScheduler] Daily refresh failed: %v", err)
+					log.Printf("[ERROR] [FXScheduler] Daily refresh failed: %v", err)
 				}
 				cancel()
 			}
@@ -205,7 +205,7 @@ func (s *fxScheduler) refresh(ctx context.Context) error {
 
 	// Mark existing rates as stale before fetching new ones
 	if err := s.markRatesStale(ctx, pairs); err != nil {
-		log.Printf("[FXScheduler] Warning: failed to mark rates stale: %v", err)
+		log.Printf("[WARN] [FXScheduler] Warning: failed to mark rates stale: %v", err)
 	}
 
 	// Fetch and store new rates
@@ -217,11 +217,10 @@ func (s *fxScheduler) refreshDaily(ctx context.Context) error {
 	// Use all supported pairs for daily refresh (historical record)
 	pairs := supportedPairs
 
-	log.Printf("[FXScheduler] Performing daily refresh for %d pairs", len(pairs))
-
+	log.Printf("[INFO] [FXScheduler] Performing daily refresh for %d pairs", len(pairs))
 	// Mark existing daily rates as stale
 	if err := s.markRatesStaleForGranularity(ctx, pairs, model.FXRateGranularityDay); err != nil {
-		log.Printf("[FXScheduler] Warning: failed to mark daily rates stale: %v", err)
+		log.Printf("[WARN] [FXScheduler] Warning: failed to mark daily rates stale: %v", err)
 	}
 
 	// Fetch and store new daily rates
@@ -230,7 +229,7 @@ func (s *fxScheduler) refreshDaily(ctx context.Context) error {
 	}
 
 	s.lastDailyRefresh = time.Now()
-	log.Printf("[FXScheduler] Daily refresh completed")
+	log.Printf("[INFO] [FXScheduler] Daily refresh completed")
 	return nil
 }
 
@@ -239,7 +238,7 @@ func (s *fxScheduler) markRatesStale(ctx context.Context, pairs []model.Currency
 	for _, pair := range pairs {
 		olderThan := time.Now().Add(-1 * time.Minute) // Rates older than 1 minute are stale
 		if err := s.uow.FXRate().MarkStale(ctx, pair.BaseCurrency, pair.QuoteCurrency, string(model.FXRateGranularityMinute), olderThan); err != nil {
-			log.Printf("[FXScheduler] Warning: failed to mark %s stale: %v", pair.String(), err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to mark %s stale: %v", pair.String(), err)
 		}
 	}
 	return nil
@@ -250,7 +249,7 @@ func (s *fxScheduler) markRatesStaleForGranularity(ctx context.Context, pairs []
 	for _, pair := range pairs {
 		olderThan := time.Now().Add(-24 * time.Hour) // Daily rates older than 24h are stale
 		if err := s.uow.FXRate().MarkStale(ctx, pair.BaseCurrency, pair.QuoteCurrency, string(granularity), olderThan); err != nil {
-			log.Printf("[FXScheduler] Warning: failed to mark %s (%s) stale: %v", pair.String(), granularity, err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to mark %s (%s) stale: %v", pair.String(), granularity, err)
 		}
 	}
 	return nil
@@ -261,7 +260,7 @@ func (s *fxScheduler) fetchAndStoreRates(ctx context.Context, pairs []model.Curr
 	for _, pair := range pairs {
 		quote, err := s.fetchRate(ctx, pair)
 		if err != nil {
-			log.Printf("[FXScheduler] Warning: failed to fetch %s: %v", pair.String(), err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to fetch %s: %v", pair.String(), err)
 			continue
 		}
 
@@ -276,11 +275,11 @@ func (s *fxScheduler) fetchAndStoreRates(ctx context.Context, pairs []model.Curr
 		}
 
 		if err := s.uow.FXRate().SaveRate(ctx, fxRate); err != nil {
-			log.Printf("[FXScheduler] Warning: failed to store %s: %v", pair.String(), err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to store %s: %v", pair.String(), err)
 			continue
 		}
 
-		log.Printf("[FXScheduler] Stored %s rate: %s (source: %s)", pair.String(), quote.Last.String(), quote.Source)
+		log.Printf("[INFO] [FXScheduler] Stored %s rate: %s (source: %s)", pair.String(), quote.Last.String(), quote.Source)
 	}
 
 	return nil
@@ -291,7 +290,7 @@ func (s *fxScheduler) fetchAndStoreRatesWithGranularity(ctx context.Context, pai
 	for _, pair := range pairs {
 		quote, err := s.fetchRate(ctx, pair)
 		if err != nil {
-			log.Printf("[FXScheduler] Warning: failed to fetch %s for daily: %v", pair.String(), err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to fetch %s for daily: %v", pair.String(), err)
 			continue
 		}
 
@@ -306,11 +305,11 @@ func (s *fxScheduler) fetchAndStoreRatesWithGranularity(ctx context.Context, pai
 		}
 
 		if err := s.uow.FXRate().SaveRate(ctx, fxRate); err != nil {
-			log.Printf("[FXScheduler] Warning: failed to store daily %s: %v", pair.String(), err)
+			log.Printf("[WARN] [FXScheduler] Warning: failed to store daily %s: %v", pair.String(), err)
 			continue
 		}
 
-		log.Printf("[FXScheduler] Stored daily %s rate: %s", pair.String(), quote.Last.String())
+		log.Printf("[INFO] [FXScheduler] Stored daily %s rate: %s", pair.String(), quote.Last.String())
 	}
 
 	return nil

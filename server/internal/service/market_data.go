@@ -288,10 +288,10 @@ func NewMarketDataService(
 			Port: cfg.MarketData.YFinance.Port,
 		})
 		if err != nil {
-			log.Printf("[NewMarketDataService] WARNING: Failed to create YFinance provider: %v", err)
+			log.Printf("[WARN] [NewMarketDataService] WARNING: Failed to create YFinance provider: %v", err)
 		} else {
 			providerManager.RegisterProvider(yfinanceProvider)
-			log.Printf("[NewMarketDataService] YFinance provider registered (tier 3 fallback)")
+			log.Printf("[INFO] [NewMarketDataService] YFinance provider registered (tier 3 fallback)")
 		}
 	}
 
@@ -364,6 +364,7 @@ func (s *marketDataService) GetCandlesByInstrument(ctx context.Context, userID s
 		return nil, err
 	}
 
+	interval = model.CandleInterval(model.NormalizeInterval(string(interval)))
 	if interval == "" {
 		interval = model.Interval1d
 	}
@@ -371,6 +372,13 @@ func (s *marketDataService) GetCandlesByInstrument(ctx context.Context, userID s
 		limit = 500
 	}
 
+	// Primary: fetch real market candles from active market data providers (yfinance, finnhub, twelvedata, binance)
+	result, err := s.fetchCandlesByInstrument(ctx, userID, instrument, interval, from, to, limit, preferredProvider)
+	if err == nil && result != nil && len(result.Candles) > 0 {
+		return result, nil
+	}
+
+	// Fallback: If live fetch fails or provider is unavailable, query candle store (local packs + DB)
 	if s.candleStore != nil {
 		quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
 			stringOrEmpty(instrument.QuoteCurrency),
@@ -395,20 +403,39 @@ func (s *marketDataService) GetCandlesByInstrument(ctx context.Context, userID s
 			return &InstrumentCandlesResult{
 				Candles:        candles,
 				SourceProvider: "HYBRID",
-				FallbackUsed:   false,
+				FallbackUsed:   true,
 				Failures:       nil,
 			}, nil
 		}
-		if storeErr != nil {
-			log.Printf("[fetchCandlesByInstrument] hybrid store lookup failed for instrument %s: %v", instrument.ID, storeErr)
+
+		// Try alternate candle interval (15m <-> 1d)
+		altInterval := model.Interval15m
+		if interval == model.Interval15m {
+			altInterval = model.Interval1d
+		}
+		altCandles, altErr := s.candleStore.GetRange(ctx, marketdatastore.CandleRangeQuery{
+			InstrumentID:  instrument.ID,
+			Symbol:        instrument.Symbol,
+			AssetType:     string(instrument.AssetType),
+			Interval:      altInterval,
+			From:          from,
+			To:            storeTo,
+			QuoteCurrency: quoteCurrency,
+			Limit:         limit,
+		})
+		if altErr == nil && len(altCandles) > 0 {
+			return &InstrumentCandlesResult{
+				Candles:        altCandles,
+				SourceProvider: "HYBRID",
+				FallbackUsed:   true,
+				Failures:       nil,
+			}, nil
 		}
 	}
 
-	result, err := s.fetchCandlesByInstrument(ctx, userID, instrument, interval, from, to, limit, preferredProvider)
 	if err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -417,15 +444,134 @@ func (s *marketDataService) GetRealTimePriceByInstrument(ctx context.Context, us
 	from := to.Add(-5 * time.Minute)
 
 	result, err := s.GetCandlesByInstrument(ctx, userID, instrumentID, model.Interval1m, from, to, 1, preferredProvider)
+	if err == nil && result != nil && len(result.Candles) > 0 {
+		result.Candles = []model.Candle{result.Candles[len(result.Candles)-1]}
+		return result, nil
+	}
+
+	// 1m candle fetch failed or returned no data (e.g. market closed, weekend, or provider issues).
+	// Try fallback paths. First, get the instrument.
+	instrument, instErr := s.instrumentRepo.GetByID(ctx, instrumentID)
+	if instErr != nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, instErr
+	}
+
+	var fallbackErr error
+
+	// Fallback Path 1: Check if there's a stored Asset linked to this Instrument, and retrieve its latest price from the database.
+	asset, assetErr := s.assetRepo.GetByInstrumentID(ctx, instrument.ID)
+	if assetErr == nil && asset != nil {
+		latestPrice, priceErr := s.priceRepo.GetLatestPrice(ctx, asset.ID)
+		if priceErr == nil && latestPrice != nil {
+			candle := model.Candle{
+				Timestamp:  latestPrice.Timestamp,
+				Open:       latestPrice.Price,
+				High:       latestPrice.Price,
+				Low:        latestPrice.Price,
+				Close:      latestPrice.Price,
+				Volume:     decimal.Zero,
+				Source:     latestPrice.Source,
+			}
+			if latestPrice.Volume != nil {
+				candle.Volume = decimal.NewFromInt(*latestPrice.Volume)
+			}
+			candle.InstrumentID = &instrument.ID
+			candle.Symbol = instrument.Symbol
+			candle.AssetType = string(instrument.AssetType)
+
+			quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+				stringOrEmpty(instrument.QuoteCurrency),
+				stringOrEmpty(instrument.Currency),
+				"USD",
+			)))
+			candle.QuoteCurrency = quoteCurrency
+
+			return &InstrumentCandlesResult{
+				Candles:        []model.Candle{candle},
+				SourceProvider: "DATABASE_LATEST",
+				FallbackUsed:   true,
+			}, nil
+		} else if priceErr != nil {
+			fallbackErr = priceErr
+		}
+	} else if assetErr != nil {
+		fallbackErr = assetErr
+	}
+
+	// Fallback Path 2: Fetch daily candles (Interval1d) for the last 7 days from providers.
+	dailyFrom := time.Now().AddDate(0, 0, -7)
+	dailyResult, dailyErr := s.GetCandlesByInstrument(ctx, userID, instrumentID, model.Interval1d, dailyFrom, time.Now(), 5, preferredProvider)
+	if dailyErr == nil && dailyResult != nil && len(dailyResult.Candles) > 0 {
+		lastCandle := dailyResult.Candles[len(dailyResult.Candles)-1]
+		return &InstrumentCandlesResult{
+			Candles:        []model.Candle{lastCandle},
+			SourceProvider: dailyResult.SourceProvider,
+			FallbackUsed:   true,
+			Failures:       dailyResult.Failures,
+		}, nil
+	}
+
+	// Fallback Path 3: Try to query a direct quote from the provider (Option B)
+	targets, _, planErr := s.buildProviderExecutionPlan(ctx, userID, instrument, model.Interval1d, preferredProvider)
+	if planErr == nil && len(targets) > 0 {
+		for _, target := range targets {
+			if target.provider.IsInCooldown() {
+				continue
+			}
+			symbol := strings.TrimSpace(firstNonEmpty(
+				stringOrEmpty(target.mapping.ProviderSymbol),
+				target.mapping.ProviderAssetID,
+				instrument.Symbol,
+			))
+			quoteResp, quoteErr := target.provider.GetQuote(ctx, providers.QuoteRequest{
+				Symbol:    symbol,
+				AssetType: string(instrument.AssetType),
+				APIKey:    target.apiKey,
+			})
+			if quoteErr == nil && quoteResp != nil && !quoteResp.Last.IsZero() {
+				candle := model.Candle{
+					Timestamp:  quoteResp.Timestamp,
+					Open:       quoteResp.Last,
+					High:       quoteResp.Last,
+					Low:        quoteResp.Last,
+					Close:      quoteResp.Last,
+					Volume:     decimal.NewFromInt(quoteResp.Volume),
+					Source:     quoteResp.Source,
+				}
+				candle.InstrumentID = &instrument.ID
+				candle.Symbol = instrument.Symbol
+				candle.AssetType = string(instrument.AssetType)
+
+				quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+					stringOrEmpty(instrument.QuoteCurrency),
+					stringOrEmpty(instrument.Currency),
+					"USD",
+				)))
+				candle.QuoteCurrency = quoteCurrency
+
+				return &InstrumentCandlesResult{
+					Candles:        []model.Candle{candle},
+					SourceProvider: strings.ToUpper(target.provider.ID()),
+					FallbackUsed:   true,
+				}, nil
+			}
+		}
+	}
+
+	// If all fallbacks failed, return the primary error or a relevant fallback/plan/database error.
 	if err != nil {
 		return nil, err
 	}
-	if len(result.Candles) == 0 {
-		return nil, fmt.Errorf("no recent price data available")
+	if fallbackErr != nil {
+		return nil, fallbackErr
 	}
-
-	result.Candles = []model.Candle{result.Candles[len(result.Candles)-1]}
-	return result, nil
+	if dailyErr != nil {
+		return nil, dailyErr
+	}
+	return nil, fmt.Errorf("no recent price data available and fallbacks failed")
 }
 
 func (s *marketDataService) GetAvailableProviders(ctx context.Context, userID string, instrumentID string, dataType string) ([]AvailableProviderStatus, error) {
@@ -818,27 +964,27 @@ func (s *marketDataService) UpdateAssetPrices(ctx context.Context) error {
 
 	// Ensure partitions exist before trying to insert
 	if err := s.ensurePricePartitions(ctx); err != nil {
-		log.Printf("[UpdateAssetPrices] WARNING: could not ensure partitions: %v", err)
+		log.Printf("[WARN] [UpdateAssetPrices] WARNING: could not ensure partitions: %v", err)
 	}
 
 	// Get all tradeable assets
 	tradeableAssets, err := s.assetRepo.GetTradeableAssets(ctx)
 	if err != nil {
-		log.Printf("[UpdateAssetPrices] ERROR: failed to get tradeable assets: %v", err)
+		log.Printf("[ERROR] [UpdateAssetPrices] ERROR: failed to get tradeable assets: %v", err)
 		return fmt.Errorf("failed to get tradeable assets: %w", err)
 	}
 
 	if len(tradeableAssets) == 0 {
-		log.Printf("[UpdateAssetPrices] WARNING: No tradeable assets found in database. Assets need is_tradeable=true to have prices fetched.")
+		log.Printf("[WARN] [UpdateAssetPrices] WARNING: No tradeable assets found in database. Assets need is_tradeable=true to have prices fetched.")
 		return nil // No tradeable assets to update
 	}
 
-	log.Printf("[UpdateAssetPrices] Found %d tradeable assets to update", len(tradeableAssets))
+	log.Printf("[INFO] [UpdateAssetPrices] Found %d tradeable assets to update", len(tradeableAssets))
 	staleAssetIDs, staleErr := s.GetStaleAssetPrices(ctx, s.getMaxAgeForAssetType(model.AssetTypeCrypto))
 	if staleErr != nil {
-		log.Printf("[UpdateAssetPrices] WARNING: failed to compute stale asset count: %v", staleErr)
+		log.Printf("[WARN] [UpdateAssetPrices] WARNING: failed to compute stale asset count: %v", staleErr)
 	} else {
-		log.Printf("[UpdateAssetPrices] stale_tradeable_assets=%d", len(staleAssetIDs))
+		log.Printf("[INFO] [UpdateAssetPrices] stale_tradeable_assets=%d", len(staleAssetIDs))
 	}
 
 	// Group assets by market data source
@@ -914,11 +1060,11 @@ func (s *marketDataService) SchedulePriceUpdates(ctx context.Context, interval t
 				updateCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 				if err := s.UpdateAssetPrices(updateCtx); err != nil {
 					// Log error but continue scheduling
-					log.Printf("[SchedulePriceUpdates] scheduled price update failed: %v", err)
+					log.Printf("[ERROR] [SchedulePriceUpdates] scheduled price update failed: %v", err)
 				}
 				cancel()
 			case <-ctx.Done():
-				log.Printf("[SchedulePriceUpdates] context canceled; stopping scheduler")
+				log.Printf("[INFO] [SchedulePriceUpdates] context canceled; stopping scheduler")
 				s.StopPriceUpdates()
 				return
 			case <-assetPriceScheduler.stopChan:
@@ -1036,8 +1182,57 @@ type providerExecutionTarget struct {
 	apiKey   string
 }
 
+func scoreCryptoMatch(symbol string, providerExternalID string) int {
+	extID := strings.ToLower(providerExternalID)
+	sym := strings.ToLower(symbol)
+	score := 0
+
+	// Native coins get highest priority
+	if strings.HasSuffix(extID, ":coin") {
+		score += 100
+		// Exact native match like "solana:coin" for SOL, or "bitcoin:coin" for BTC
+		prefix := strings.Split(extID, ":")[0]
+		if prefix == sym || 
+		   (sym == "btc" && prefix == "bitcoin") || 
+		   (sym == "eth" && prefix == "ethereum") ||
+		   (sym == "doge" && prefix == "dogecoin") {
+			score += 100
+		}
+	}
+
+	// Primary networks like Ethereum get priority over sidechains
+	if strings.HasPrefix(extID, "ethereum:") {
+		score += 50
+	} else if strings.HasPrefix(extID, "solana:") {
+		score += 40
+	} else if strings.HasPrefix(extID, "smartchain:") || strings.HasPrefix(extID, "binance:") {
+		score += 30
+	} else if strings.HasPrefix(extID, "polygon:") {
+		score += 25
+	} else if strings.HasPrefix(extID, "tron:") {
+		score += 20
+	}
+
+	// Shorter external IDs (e.g. without long hex addresses) are preferred
+	score -= len(providerExternalID)
+
+	return score
+}
+
 func (s *marketDataService) resolveInstrumentIDBySymbol(ctx context.Context, symbol string, assetType string) (string, error) {
-	normalizedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	cleanedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	// Strip asset type suffix if present (e.g. ":STOCK", ":CRYPTO", ":INDEX", etc.)
+	if idx := strings.Index(cleanedSymbol, ":"); idx != -1 {
+		cleanedSymbol = cleanedSymbol[:idx]
+	}
+	// Strip quotes/pairs for crypto (e.g. "BTC/USDT" -> "BTC", "BTC-USD" -> "BTC")
+	if strings.Contains(cleanedSymbol, "/") {
+		cleanedSymbol = strings.Split(cleanedSymbol, "/")[0]
+	} else if strings.Contains(cleanedSymbol, "-") && strings.ToUpper(strings.TrimSpace(assetType)) == "CRYPTO" {
+		cleanedSymbol = strings.Split(cleanedSymbol, "-")[0]
+	}
+	normalizedSymbol := strings.ToUpper(strings.TrimSpace(cleanedSymbol))
+
 	if normalizedSymbol == "" {
 		return "", NewSymbolCompatibilityError(
 			SymbolCompatibilityInvalidInput,
@@ -1049,7 +1244,7 @@ func (s *marketDataService) resolveInstrumentIDBySymbol(ctx context.Context, sym
 	}
 
 	filter := repository.InstrumentSearchFilter{
-		Limit:  3,
+		Limit:  100,
 		Offset: 0,
 	}
 	if strings.TrimSpace(assetType) != "" {
@@ -1061,17 +1256,36 @@ func (s *marketDataService) resolveInstrumentIDBySymbol(ctx context.Context, sym
 		return "", err
 	}
 
-	matches := make([]string, 0, len(rows))
+	var exactSymbolMatches []model.Instrument
+	var matches []string
 	for _, row := range rows {
 		if strings.EqualFold(strings.TrimSpace(row.Instrument.Symbol), normalizedSymbol) {
+			exactSymbolMatches = append(exactSymbolMatches, row.Instrument)
 			matches = append(matches, row.Instrument.ID)
 		}
 	}
 
-	if len(matches) == 1 {
-		return matches[0], nil
+	if len(exactSymbolMatches) == 1 {
+		return exactSymbolMatches[0].ID, nil
 	}
-	if len(matches) > 1 {
+	if len(exactSymbolMatches) > 1 {
+		var bestMatchID string
+		var bestScore = -999999
+		for _, inst := range exactSymbolMatches {
+			provExtID := ""
+			if inst.ProviderExternalID != nil {
+				provExtID = *inst.ProviderExternalID
+			}
+			score := scoreCryptoMatch(normalizedSymbol, provExtID)
+			if score > bestScore {
+				bestScore = score
+				bestMatchID = inst.ID
+			}
+		}
+		if bestMatchID != "" {
+			return bestMatchID, nil
+		}
+
 		return "", NewSymbolCompatibilityError(
 			SymbolCompatibilityAmbiguous,
 			fmt.Sprintf("symbol %s maps to multiple instruments; use instrumentId", normalizedSymbol),
@@ -1228,7 +1442,36 @@ func (s *marketDataService) fetchCandlesByInstrument(ctx context.Context, userID
 	}
 
 	targets, failures, err := s.buildProviderExecutionPlan(ctx, userID, instrument, interval, preferredProvider)
-	if err != nil {
+	if err != nil && len(targets) == 0 {
+		// INDEX asset type has no eligible providers in the provider registry.
+		// Resolve a canonical ETF proxy (e.g. ^SPX → SPY) so hero charts and
+		// performance benchmarks still render.  The proxy recursive call uses
+		// an ETF-typed instrument which is type-guarded against re-entering
+		// this proxy path, so recursion is bounded to one level.
+		if proxyInstrument := resolveBenchmarkProxyInstrument(ctx, instrument, s.instrumentRepo); proxyInstrument != nil {
+			log.Printf("[INFO] [fetchCandlesByInstrument] benchmark proxy: index %s (%s) → ETF proxy %s (%s)",
+				instrument.Symbol, instrument.ID, proxyInstrument.Symbol, proxyInstrument.ID)
+			proxyResult, proxyErr := s.fetchCandlesByInstrument(ctx, userID, proxyInstrument, interval, from, to, limit, preferredProvider)
+			if proxyErr == nil && proxyResult != nil && len(proxyResult.Candles) > 0 {
+				// Rewrite Candle.InstrumentID/Symbol/AssetType so the returned
+				// candles attribute to the originally requested index, not the
+				// ETF proxy that actually served the data.  This avoids Apollo
+				// Client cache poisoning (where the frontend would key ^SPX
+				// queries off SPY's identifier) and avoids the candle overlay
+				// store persisting SPY candles under SPY.  The rewrite operates
+				// on a deep copy so the proxy's cached candle slice is not
+				// mutated.
+				proxyResult.Candles = rewriteCandlesToInstrument(proxyResult.Candles, instrument)
+				proxyResult.FallbackUsed = true
+				proxyResult.Failures = append([]ProviderFailure{{
+					Provider: "INDEX_PROXY",
+					Reason:   fmt.Sprintf("index %s (%s) resolved via ETF proxy %s (%s)", instrument.Symbol, instrument.AssetType, proxyInstrument.Symbol, proxyInstrument.ID),
+				}}, proxyResult.Failures...)
+				s.setRuntimeCandlesCache(cacheKey, proxyResult, runtimeCandlesCacheTTL)
+				return proxyResult, nil
+			}
+			log.Printf("[INFO] [fetchCandlesByInstrument] benchmark proxy %s for index %s also failed: %v", proxyInstrument.Symbol, instrument.Symbol, proxyErr)
+		}
 		return nil, err
 	}
 
@@ -1237,7 +1480,7 @@ func (s *marketDataService) fetchCandlesByInstrument(ctx context.Context, userID
 		providerID := strings.ToUpper(strings.TrimSpace(target.provider.ID()))
 
 		if target.provider.IsInCooldown() {
-			log.Printf("[fetchCandlesByInstrument] SKIP: Provider %s is in cooldown", providerID)
+			log.Printf("[INFO] [fetchCandlesByInstrument] SKIP: Provider %s is in cooldown", providerID)
 			failures = append(failures, ProviderFailure{Provider: providerID, Reason: "provider_in_cooldown"})
 			continue
 		}
@@ -1266,10 +1509,7 @@ func (s *marketDataService) fetchCandlesByInstrument(ctx context.Context, userID
 			APIKey:    target.apiKey,
 		})
 		if providerErr != nil {
-			if !isTransientProviderError(providerErr) {
-				failures = append(failures, ProviderFailure{Provider: providerID, Reason: providerErr.Error()})
-				return nil, fmt.Errorf("provider %s failed: %w", providerID, providerErr)
-			}
+			log.Printf("[ERROR] [fetchCandlesByInstrument] provider %s failed for instrument %s: %v", providerID, instrument.ID, providerErr)
 			failures = append(failures, ProviderFailure{Provider: providerID, Reason: providerErr.Error()})
 			continue
 		}
@@ -1301,7 +1541,7 @@ func (s *marketDataService) fetchCandlesByInstrument(ctx context.Context, userID
 		}
 		if s.candleStore != nil {
 			if err := s.candleStore.BulkUpsert(ctx, candles); err != nil {
-				log.Printf("[fetchCandlesByInstrument] candle overlay upsert failed for instrument %s: %v", instrument.ID, err)
+				log.Printf("[ERROR] [fetchCandlesByInstrument] candle overlay upsert failed for instrument %s: %v", instrument.ID, err)
 			}
 		}
 
@@ -1322,6 +1562,29 @@ const (
 	runtimeCandlesCacheTTL        = 45 * time.Second
 	runtimeCandlesCacheMaxEntries = 2000
 )
+
+// indexBenchmarkEtfProxy maps well-known benchmark index tickers to
+// canonical ETF proxies whose asset_type=ETF is served by the market
+// data provider registry.  INDEX asset types have no eligible providers
+// in the registry, so without this mapping every index benchmark fetch
+// fails with "no mapped provider succeeded".  The ETF proxy's daily
+// candles track the underlying index closely enough for charting and
+// performance benchmarking (SPY ↔ S&P 500, QQQ ↔ NASDAQ-100, etc.).
+//
+// IMPORTANT: only symbols whose ASSET_TYPE is INDEX are eligible for
+// proxy resolution.  resolveBenchmarkProxyInstrument enforces the
+// type-guard so ETF proxies cannot recursively trigger another proxy
+// lookup (which would otherwise cause infinite recursion).
+var indexBenchmarkEtfProxy = map[string]string{
+	"^SPX":   "SPY",     // S&P 500            → SPDR S&P 500 ETF
+	"^NDX":   "QQQ",     // NASDAQ-100         → Invesco QQQ Trust
+	"^DJI":   "DIA",     // Dow Jones          → SPDR Dow Jones Industrial Average ETF
+	"^GDAXI": "EUNL.DE", // DAX 40             → iShares Core MSCI EMU
+	"^FTSE":  "VUKE.L",  // FTSE 100           → Vanguard FTSE 100
+	"^FCHI":  "CW8.PA",  // CAC 40             → Amundi MSCI France
+	"^N225":  "1321.T",  // Nikkei 225         → NEXT FUNDS Nikkei 225 ETF
+	"^HSI":   "2800.HK", // Hang Seng          → Tracker Fund of Hong Kong
+}
 
 func (s *marketDataService) runtimeMarketDataCacheKey(userID, instrumentID string, preferredProvider *string, dataType string, interval model.CandleInterval, from, to time.Time, limit int) string {
 	provider := "AUTO"
@@ -1532,6 +1795,151 @@ func (s *marketDataService) recordRuntimeCacheInvalidation(scope string, identif
 	)
 }
 
+// benchmarkProxyRepo is the small subset of repository.IInstrumentRepository
+// that resolveBenchmarkProxyInstrument actually uses.  Defined as a local
+// interface so tests can satisfy just these two methods with a stub (the
+// full repository interface embeds IRepository[model.Instrument] and adds
+// a dozen more methods) while still working with the real repository
+// through Go's structural typing.
+type benchmarkProxyRepo interface {
+	GetByID(ctx context.Context, id string) (*model.Instrument, error)
+	Search(ctx context.Context, query string, filter repository.InstrumentSearchFilter) ([]repository.InstrumentSearchRow, error)
+}
+
+// resolveBenchmarkProxyInstrument returns the canonical ETF-proxy
+// instrument for the given major-index instrument, or nil if the
+// instrument isn't an eligible major-index benchmark, the symbol
+// isn't in the alias map, or the proxy cannot be resolved in the
+// current database.
+//
+// INPUT GUARDS (do not skip without thinking through implications):
+//   - Only INDEX asset_type instruments are eligible; this breaks
+//     recursive proxy chains (ETF proxies return nil).
+//   - The proxy symbol must appear verbatim in indexBenchmarkEtfProxy;
+//     otherwise the catalog probably hasn't seeded the canonical
+//     ETF yet, so we defer to the original error.
+func resolveBenchmarkProxyInstrument(ctx context.Context, instrument *model.Instrument, repo benchmarkProxyRepo) *model.Instrument {
+	if instrument == nil || instrument.AssetType != model.InstrumentAssetTypeIndex {
+		return nil
+	}
+	proxySymbol, ok := indexBenchmarkEtfProxy[strings.ToUpper(strings.TrimSpace(instrument.Symbol))]
+	if !ok {
+		return nil
+	}
+	if repo == nil {
+		return nil
+	}
+	proxyID, err := resolveProxyInstrumentID(ctx, repo, proxySymbol, string(model.InstrumentAssetTypeETF))
+	if err != nil || strings.TrimSpace(proxyID) == "" {
+		log.Printf("[INFO] [benchmark-proxy] index %s has no eligible ETF proxy %s: %v", instrument.Symbol, proxySymbol, err)
+		return nil
+	}
+	proxyInstrument, err := repo.GetByID(ctx, proxyID)
+	if err != nil || proxyInstrument == nil {
+		log.Printf("[INFO] [benchmark-proxy] proxy instrument lookup failed for %s: %v", proxySymbol, err)
+		return nil
+	}
+	return proxyInstrument
+}
+
+// resolveProxyInstrumentID mirrors the resolution heuristic from
+// marketDataService.resolveInstrumentIDBySymbol but operates against
+// any benchmarkProxyRepo, so the proxy resolution path can be unit
+// tested without a real DB.
+func resolveProxyInstrumentID(ctx context.Context, repo benchmarkProxyRepo, symbol string, assetType string) (string, error) {
+	cleanedSymbol := strings.ToUpper(strings.TrimSpace(symbol))
+	if idx := strings.Index(cleanedSymbol, ":"); idx != -1 {
+		cleanedSymbol = cleanedSymbol[:idx]
+	}
+	if strings.Contains(cleanedSymbol, "/") {
+		cleanedSymbol = strings.Split(cleanedSymbol, "/")[0]
+	} else if strings.Contains(cleanedSymbol, "-") && strings.ToUpper(strings.TrimSpace(assetType)) == "CRYPTO" {
+		cleanedSymbol = strings.Split(cleanedSymbol, "-")[0]
+	}
+	if cleanedSymbol == "" {
+		return "", fmt.Errorf("proxy symbol is required")
+	}
+
+	filter := repository.InstrumentSearchFilter{
+		Limit:  100,
+		Offset: 0,
+	}
+	if strings.TrimSpace(assetType) != "" {
+		filter.AssetTypes = []model.InstrumentAssetType{model.InstrumentAssetType(strings.ToUpper(strings.TrimSpace(assetType)))}
+	}
+
+	rows, err := repo.Search(ctx, cleanedSymbol, filter)
+	if err != nil {
+		return "", err
+	}
+	var exactMatches []model.Instrument
+	var matches []string
+	for _, row := range rows {
+		if strings.EqualFold(strings.TrimSpace(row.Instrument.Symbol), cleanedSymbol) {
+			exactMatches = append(exactMatches, row.Instrument)
+			matches = append(matches, row.Instrument.ID)
+		}
+	}
+	if len(exactMatches) == 1 {
+		return exactMatches[0].ID, nil
+	}
+	if len(exactMatches) > 1 {
+		// Multiple ETFs with the same canonical symbol (across exchanges) — pick
+		// by shortest provider_external_id heuristic, mirroring the tie-break
+		// pattern in resolveInstrumentIDBySymbol.
+		var bestID string
+		bestExternalLen := -1
+		for _, inst := range exactMatches {
+			extLen := 0
+			if inst.ProviderExternalID != nil {
+				extLen = len(*inst.ProviderExternalID)
+			}
+			if bestExternalLen < 0 || extLen < bestExternalLen {
+				bestExternalLen = extLen
+				bestID = inst.ID
+			}
+		}
+		if bestID != "" {
+			return bestID, nil
+		}
+		return "", fmt.Errorf("ambiguous proxy symbol %s", cleanedSymbol)
+	}
+	return "", fmt.Errorf("no instrument found for proxy symbol %s", cleanedSymbol)
+}
+
+// rewriteCandlesToInstrument swaps InstrumentID, Symbol, AssetType, and
+// QuoteCurrency on each candle so they appear to belong to the requested
+// (originally failing) instrument instead of the ETF proxy that actually
+// served the data. Operates on a deep copy so the proxy's own cached
+// candle slice (keyed under the proxy's ID) is not mutated when we
+// insert the entry into the runtime cache under the original
+// instrument's ID.
+//
+// QuoteCurrency is rewritten because providers are looked up at the
+// instrument-instrument level, so an ^SPX fetch that resolves through
+// SPY would otherwise return USD-tagged candles labelled as ^SPX; the
+// frontend's per-quote-currency FX conversion would then silently apply
+// USD as if it were EUR, distorting the hero chart's benchmark line.
+func rewriteCandlesToInstrument(candles []model.Candle, originalInstrument *model.Instrument) []model.Candle {
+	if len(candles) == 0 || originalInstrument == nil {
+		return candles
+	}
+	quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+		stringOrEmpty(originalInstrument.QuoteCurrency),
+		stringOrEmpty(originalInstrument.Currency),
+		"USD",
+	)))
+	out := make([]model.Candle, len(candles))
+	for i, c := range candles {
+		c.InstrumentID = &originalInstrument.ID
+		c.Symbol = originalInstrument.Symbol
+		c.AssetType = string(originalInstrument.AssetType)
+		c.QuoteCurrency = quoteCurrency
+		out[i] = c
+	}
+	return out
+}
+
 func cloneInstrumentCandlesResult(input *InstrumentCandlesResult) *InstrumentCandlesResult {
 	if input == nil {
 		return nil
@@ -1577,7 +1985,7 @@ func supportsDataType(caps providers.ProviderCapabilities, dataType string) bool
 }
 
 func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userID string, symbol, assetType string, interval model.CandleInterval, from, to time.Time, limit int) ([]model.Candle, error) {
-	log.Printf("[fetchCandlesFromProviders] symbol=%s assetType=%s interval=%s", symbol, assetType, interval)
+	log.Printf("[INFO] [fetchCandlesFromProviders] symbol=%s assetType=%s interval=%s", symbol, assetType, interval)
 	// Get user's API keys
 	userCreds, err := s.credRepo.ListByUser(ctx, userID)
 	if err != nil {
@@ -1592,18 +2000,17 @@ func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userI
 			if decrypted, err := s.security.DecryptString(apiKey); err == nil {
 				apiKey = decrypted
 			} else {
-				log.Printf("[fetchCandlesFromProviders] decrypt failed %s: %v", cred.Provider, err)
+				log.Printf("[ERROR] [fetchCandlesFromProviders] decrypt failed %s: %v", cred.Provider, err)
 			}
 		}
 		credMap[cred.Provider] = apiKey
 	}
-	log.Printf("[fetchCandlesFromProviders] creds: %v", credMap)
-
+	log.Printf("[INFO] [fetchCandlesFromProviders] creds: %v", credMap)
 	// Try providers in order of preference
 	providerList := s.providerManager.GetProvidersForAssetType(assetType)
 
 	for _, provider := range providerList {
-		log.Printf("[fetchCandlesFromProviders] trying: %s", provider.ID())
+		log.Printf("[INFO] [fetchCandlesFromProviders] trying: %s", provider.ID())
 		// Check if provider supports the interval
 		caps := provider.Capabilities()
 		supportsInterval := false
@@ -1629,7 +2036,7 @@ func (s *marketDataService) fetchCandlesFromProviders(ctx context.Context, userI
 
 		// Check if provider is in cooldown
 		if provider.IsInCooldown() {
-			log.Printf("[fetchCandlesFromProviders] SKIP: Provider %s is in cooldown", provider.ID())
+			log.Printf("[INFO] [fetchCandlesFromProviders] SKIP: Provider %s is in cooldown", provider.ID())
 			continue
 		}
 
@@ -1759,24 +2166,23 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		assetSymbolForLogs = strings.TrimSpace(instrument.Symbol)
 	}
 	if !hasLinkedInstrument && rawSymbol == "" {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: Asset '%s' (ID: %s) has no symbol and no linked instrument mapping", asset.Name, asset.ID)
+		log.Printf("[ERROR] [fetchAndStoreAssetPriceFromProvider] ERROR: Asset '%s' (ID: %s) has no symbol and no linked instrument mapping", asset.Name, asset.ID)
 		return nil, fmt.Errorf("asset symbol is required for legacy assets without linked instrument mapping")
 	}
 
-	log.Printf("[fetchAndStoreAssetPriceFromProvider] Fetching price for asset '%s' (Symbol: %s, Type: %s, linked_instrument=%v)", asset.Name, rawSymbol, asset.Type, hasLinkedInstrument)
-
+	log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Fetching price for asset '%s' (Symbol: %s, Type: %s, linked_instrument=%v)", asset.Name, rawSymbol, asset.Type, hasLinkedInstrument)
 	// Try to get system-wide credentials first (admin-set for all users)
 	credMap := make(map[string]string)
 
 	systemCreds, err := s.credRepo.ListSystemWide(ctx)
 	if err != nil {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] WARNING: Failed to get system-wide credentials: %v", err)
+		log.Printf("[WARN] [fetchAndStoreAssetPriceFromProvider] WARNING: Failed to get system-wide credentials: %v", err)
 	}
 
 	if len(systemCreds) == 0 {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] No system-wide API keys configured; only no-key providers can be used.")
+		log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] No system-wide API keys configured; only no-key providers can be used.")
 	} else {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d credentials to try", len(systemCreds))
+		log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Found %d credentials to try", len(systemCreds))
 	}
 
 	decryptFailureCount := 0
@@ -1800,14 +2206,14 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		if isLikelyPlaintextAPIKey(decryptedKey) {
 			apiKey = decryptedKey
 			decryptionSuccess = true
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via SecurityService", cred.Provider)
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via SecurityService", cred.Provider)
 		} else if originalKey != "" {
 			// Try model.Decrypt() as fallback - use pointer to actually modify
 			if decryptErr := cred.Decrypt(); decryptErr == nil {
 				if isLikelyPlaintextAPIKey(cred.APIKey) {
 					apiKey = cred.APIKey
 					decryptionSuccess = true
-					log.Printf("[fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via model.Decrypt", cred.Provider)
+					log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Successfully decrypted API key for %s via model.Decrypt", cred.Provider)
 				}
 			}
 		}
@@ -1815,19 +2221,18 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		// Last resort: if still looks encrypted, DON'T use it
 		if !decryptionSuccess {
 			decryptFailureCount++
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] CRITICAL: Could not decrypt API key for %s (tried both methods). Key stored with different ENCRYPTION_KEY. Skipping provider.", cred.Provider)
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] CRITICAL: Could not decrypt API key for %s (tried both methods). Key stored with different ENCRYPTION_KEY. Skipping provider.", cred.Provider)
 			continue
 		}
 
 		credMap[cred.Provider] = apiKey
 		usableCredentialCount++
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] Using API key for provider: %s", cred.Provider)
+		log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Using API key for provider: %s", cred.Provider)
 	}
 	if decryptFailureCount > 0 {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] credential_decrypt_failures=%d", decryptFailureCount)
+		log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] credential_decrypt_failures=%d", decryptFailureCount)
 	}
-	log.Printf("[fetchAndStoreAssetPriceFromProvider] usable_system_credentials=%d", usableCredentialCount)
-
+	log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] usable_system_credentials=%d", usableCredentialCount)
 	// Determine canonical quote currency from instrument (or default to USD).
 	// This stays consistent across provider fallbacks so logs always show the
 	// instrument's native quote currency, not per-provider-mapping currencies.
@@ -1842,8 +2247,7 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 	// Get providers for this asset type
 	providerList := s.providerManager.GetProvidersForAssetType(string(asset.Type))
-	log.Printf("[fetchAndStoreAssetPriceFromProvider] Found %d providers for asset type %s", len(providerList), asset.Type)
-
+	log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Found %d providers for asset type %s", len(providerList), asset.Type)
 	var lastError error
 	providerSuccessCount := 0
 	providerFailureCount := 0
@@ -1853,7 +2257,7 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 		// Check if provider is in cooldown
 		if provider.IsInCooldown() {
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s is in cooldown", providerID)
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s is in cooldown", providerID)
 			lastError = fmt.Errorf("provider %s is in cooldown", providerID)
 			continue
 		}
@@ -1864,7 +2268,7 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 			var mappingErr error
 			requestSymbol, mapping, mappingErr = s.resolveProviderQuoteSymbolForInstrument(ctx, instrument, providerID)
 			if mappingErr != nil {
-				log.Printf("[fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s missing linked mapping for instrument %s: %v", providerID, instrument.ID, mappingErr)
+				log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s missing linked mapping for instrument %s: %v", providerID, instrument.ID, mappingErr)
 				lastError = mappingErr
 				continue
 			}
@@ -1875,11 +2279,11 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		if caps.RequiresAPIKey {
 			apiKey, _ = credMap[provider.ID()]
 			if apiKey == "" {
-				log.Printf("[fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s requires API key but none configured", provider.ID())
+				log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] SKIP: Provider %s requires API key but none configured", provider.ID())
 				lastError = fmt.Errorf("no API key for provider %s", provider.ID())
 				continue
 			}
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Using API key for provider %s", provider.ID())
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Using API key for provider %s", provider.ID())
 		}
 
 		quoteReq := providers.QuoteRequest{
@@ -1904,13 +2308,13 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 		quoteResp, err := provider.GetQuote(ctx, quoteReq)
 		if err != nil {
 			providerFailureCount++
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Provider %s GetQuote error: %v", provider.ID(), err)
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Provider %s GetQuote error: %v", provider.ID(), err)
 			lastError = err
 		} else if quoteResp != nil {
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Provider %s returned price: %s", provider.ID(), quoteResp.Last.String())
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Provider %s returned price: %s", provider.ID(), quoteResp.Last.String())
 		}
 		if err == nil && quoteResp != nil && !quoteResp.Last.IsZero() {
-			log.Printf("[fetchAndStoreAssetPriceFromProvider] Price timestamp from %s: %s", provider.ID(), quoteResp.Timestamp.String())
+			log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] Price timestamp from %s: %s", provider.ID(), quoteResp.Timestamp.String())
 			assetPrice := &model.AssetPrice{
 				AssetID:   asset.ID,
 				Price:     quoteResp.Last,
@@ -1925,14 +2329,14 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 			// Validate price data
 			if err := s.ValidateAssetPriceData(ctx, assetPrice); err != nil {
-				log.Printf("[fetchAndStoreAssetPriceFromProvider] Validation failed for %s: %v - trying other providers", requestSymbol, err)
+				log.Printf("[ERROR] [fetchAndStoreAssetPriceFromProvider] Validation failed for %s: %v - trying other providers", requestSymbol, err)
 			} else {
 				// Store in database
 				if _, err := s.priceRepo.Create(ctx, assetPrice); err != nil {
 					// Try direct insert into partition table
 					partitionErr := s.tryDirectPartitionInsert(ctx, assetPrice)
 					if partitionErr != nil {
-						log.Printf("[fetchAndStoreAssetPriceFromProvider] DB store failed for %s: %v, partition insert also failed: %v", requestSymbol, err, partitionErr)
+						log.Printf("[ERROR] [fetchAndStoreAssetPriceFromProvider] DB store failed for %s: %v, partition insert also failed: %v", requestSymbol, err, partitionErr)
 					} else {
 						// SUCCESS via partition insert
 						assetUUID, _ := uuid.Parse(asset.ID)
@@ -1944,10 +2348,10 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 							Source:    quoteResp.Source,
 							IsStale:   false,
 						}
-						log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s via partition", quoteResp.Last.String(), requestSymbol)
+						log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s via partition", quoteResp.Last.String(), requestSymbol)
 						s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
 						providerSuccessCount++
-						log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
+						log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 						return priceData, nil
 					}
 				} else {
@@ -1966,10 +2370,10 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 						IsStale:   false,
 					}
 
-					log.Printf("[fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s", quoteResp.Last.String(), requestSymbol)
+					log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] SUCCESS: Stored price %s for asset %s", quoteResp.Last.String(), requestSymbol)
 					s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
 					providerSuccessCount++
-					log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
+					log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 					return priceData, nil
 				}
 			}
@@ -2043,13 +2447,13 @@ func (s *marketDataService) fetchAndStoreAssetPriceFromProvider(ctx context.Cont
 
 		s.assetPriceCache.Set(assetUUID, priceData, 5*time.Minute)
 		providerSuccessCount++
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
+		log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 		return priceData, nil
 	}
 
-	log.Printf("[fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
+	log.Printf("[INFO] [fetchAndStoreAssetPriceFromProvider] provider_successes=%d provider_failures=%d", providerSuccessCount, providerFailureCount)
 	if lastError != nil {
-		log.Printf("[fetchAndStoreAssetPriceFromProvider] ERROR: All providers failed for %s %s. Last error: %v", asset.Type, assetSymbolForLogs, lastError)
+		log.Printf("[ERROR] [fetchAndStoreAssetPriceFromProvider] ERROR: All providers failed for %s %s. Last error: %v", asset.Type, assetSymbolForLogs, lastError)
 		return nil, fmt.Errorf("no providers returned data for %s %s: %w", asset.Type, assetSymbolForLogs, lastError)
 	}
 	return nil, fmt.Errorf("no providers returned data for %s %s", asset.Type, assetSymbolForLogs)
@@ -2065,7 +2469,7 @@ func (s *marketDataService) updateAssetsFromProvider(ctx context.Context, assets
 		if asset.InstrumentID != nil && strings.TrimSpace(*asset.InstrumentID) != "" && s.instrumentRepo != nil {
 			linkedInstrument, err := s.instrumentRepo.GetByID(ctx, strings.TrimSpace(*asset.InstrumentID))
 			if err != nil {
-				log.Printf("[updateAssetsFromProvider] SKIP: linked instrument lookup failed for asset %s: %v", asset.Name, err)
+				log.Printf("[ERROR] [updateAssetsFromProvider] SKIP: linked instrument lookup failed for asset %s: %v", asset.Name, err)
 				continue
 			}
 			instrument = linkedInstrument
@@ -2073,19 +2477,19 @@ func (s *marketDataService) updateAssetsFromProvider(ctx context.Context, assets
 
 		hasRawSymbol := asset.Symbol != nil && strings.TrimSpace(*asset.Symbol) != ""
 		if !hasRawSymbol && instrument == nil {
-			log.Printf("[updateAssetsFromProvider] SKIP: Asset '%s' has no symbol and no linked instrument", asset.Name)
+			log.Printf("[INFO] [updateAssetsFromProvider] SKIP: Asset '%s' has no symbol and no linked instrument", asset.Name)
 			continue
 		}
 
 		_, err := s.fetchAndStoreAssetPriceFromProvider(ctx, &asset, instrument)
 		if err != nil {
 			// Log error but continue with other assets
-			log.Printf("[updateAssetsFromProvider] Failed to update price for asset %s: %v", asset.Name, err)
+			log.Printf("[INFO] [updateAssetsFromProvider] Failed to update price for asset %s: %v", asset.Name, err)
 			continue
 		}
 		successCount++
 	}
-	log.Printf("[updateAssetsFromProvider] Updated prices for %d/%d assets from source %s", successCount, len(assets), sourceName)
+	log.Printf("[INFO] [updateAssetsFromProvider] Updated prices for %d/%d assets from source %s", successCount, len(assets), sourceName)
 	return nil
 }
 
@@ -2129,9 +2533,9 @@ func (s *marketDataService) ensurePricePartitions(ctx context.Context) error {
 
 		result, err := s.db.ExecContext(ctx, query)
 		if err != nil {
-			log.Printf("[ensurePricePartitions] ERROR creating partition %s: %v (result: %v)", partName, err, result)
+			log.Printf("[ERROR] [ensurePricePartitions] ERROR creating partition %s: %v (result: %v)", partName, err, result)
 		} else {
-			log.Printf("[ensurePricePartitions] Created/verified partition: %s", partName)
+			log.Printf("[INFO] [ensurePricePartitions] Created/verified partition: %s", partName)
 		}
 	}
 	return nil
@@ -2290,7 +2694,7 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 	}
 	if len(missingWindows) == 0 {
 		outcome.SkippedAsCovered = true
-		log.Printf("[BackfillAssetPrices] skipping fetch asset=%s instrument=%s symbol=%s from=%s to=%s reason=already_covered", assetID, instrumentID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly))
+		log.Printf("[WARN] [BackfillAssetPrices] skipping fetch asset=%s instrument=%s symbol=%s from=%s to=%s reason=already_covered", assetID, instrumentID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly))
 		return outcome, nil
 	}
 
@@ -2319,7 +2723,7 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 			if isYFinanceSymbolNotFound(fetchErr) {
 				code = "YFINANCE_SYMBOL_NOT_FOUND"
 			}
-			log.Printf("[BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
+			log.Printf("[ERROR] [BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
 			return nil, &HistoricalBackfillError{
 				Code:     code,
 				Provider: provider.ID(),
@@ -2335,10 +2739,10 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 		}
 		if len(candles) == 0 {
 			if fetchTo.Sub(fetchFrom) <= 72*time.Hour {
-				log.Printf("[BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
+				log.Printf("[INFO] [BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
 				continue
 			}
-			log.Printf("[BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
+			log.Printf("[INFO] [BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
 			continue
 		}
 		returnedAnyCandles = true
@@ -2399,7 +2803,7 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 	outcome.RowsTouched = len(toUpsert)
 	outcome.AffectedFrom = firstAffected
 	outcome.AffectedTo = lastAffected
-	log.Printf("[BackfillAssetPrices] Successfully backfilled %d changed prices for asset %s symbol=%s from %s to %s windows=%d", len(toUpsert), assetID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly), len(missingWindows))
+	log.Printf("[INFO] [BackfillAssetPrices] Successfully backfilled %d changed prices for asset %s symbol=%s from %s to %s windows=%d", len(toUpsert), assetID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly), len(missingWindows))
 	return outcome, nil
 }
 
@@ -2493,7 +2897,7 @@ func (s *marketDataService) resolveYFinanceBackfillSymbol(ctx context.Context, p
 		if mapping, err := s.mappingService.GetVerifiedMapping(ctx, instrument.ID, "YFINANCE"); err == nil && mapping != nil {
 			rawSymbol = resolveMappedQuoteSymbol(mapping, "")
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
-			log.Printf("[BackfillAssetPrices] yfinance mapping lookup failed instrument=%s err=%v", instrument.ID, err)
+			log.Printf("[ERROR] [BackfillAssetPrices] yfinance mapping lookup failed instrument=%s err=%v", instrument.ID, err)
 		}
 	}
 	if rawSymbol == "" && instrument.ProviderExternalID != nil {

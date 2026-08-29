@@ -23,6 +23,7 @@ import {
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AssetDetailChart, type AssetDetailChartPoint } from "@/components/charts/AssetDetailChart";
+import TradingViewChart from "@/components/charts/TradingViewChart";
 import { PageTimeframeSelector, type TimeRange } from "@/components/shared/PageTimeframeSelector";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -440,12 +441,16 @@ export function CryptoDetail({ symbol = "BTC", onBack, onNavigateToScreener }: C
 							</div>
 						</div>
 
-						<AssetDetailChart
-							data={chartData}
-							symbol={cryptoData.symbol}
-							height={500}
-							timeRange={timeRange}
-						/>
+						<div className="h-[500px]">
+							<TradingViewChart
+								symbol={cryptoData.symbol}
+								assetType="CRYPTO"
+								height={500}
+								interval={
+									(timeRange as string) === "24H" || (timeRange as string) === "1D" ? "60" : "1D"
+								}
+							/>
+						</div>
 					</div>
 
 					{/* Derivatives Signals */}

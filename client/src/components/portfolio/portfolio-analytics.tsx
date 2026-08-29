@@ -24,10 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { getAssetTypeColor, getChartColors } from "@/lib/chart-colors";
-import {
-	formatCurrency as formatCurrencyUtil,
-	formatPercentage,
-} from "@/lib/utils/portfolio-calculations";
+import { formatCurrency as formatCurrencyUtil } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/portfolio-calculations";
 
 // Types for portfolio analytics
 export interface PortfolioAnalytics {

@@ -281,6 +281,11 @@ func (t *TwelveDataProvider) ValidateCredentials(ctx context.Context, apiKey str
 		return fmt.Errorf("invalid API key")
 	}
 
+	// 429 = rate limited; the key itself is valid.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil
+	}
+
 	// Check for API key error in response
 	var errorResp struct {
 		Code    int    `json:"code"`

@@ -1,13 +1,11 @@
+import { formatCurrency } from "@/lib/utils";
 import type { PortfolioExportData, TaxReportData } from "./types";
 
 // Note: This is a simplified PDF generator interface
 // In a real implementation, you would use a library like jsPDF or Puppeteer
 export class PDFGenerator {
 	private static formatCurrency(amount: number): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: "USD",
-		}).format(amount / 100); // Convert from cents
+		return formatCurrency(amount);
 	}
 
 	private static formatPercentage(value: number): string {

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +38,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -49,11 +51,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { type AddLoanInput, useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { formatCurrency as formatCurrencyForCurrency } from "@/lib/utils";
+import { AssetPageHeader } from "../AssetPageHeader";
 import { AddLoanForm } from "./AddLoanForm";
+import { LoanDetail } from "./LoanDetail";
 import { LoansAnalytics } from "./LoansAnalytics";
 
 interface LoansListProps {
 	onSelectLoan?: (loanId: string) => void;
+	detailMode?: "external" | "panel";
+	onBack?: () => void;
 }
 
 type ViewMode = "grid" | "list";
@@ -79,8 +85,8 @@ interface Loan {
 
 const LOAN_ASSET_TYPE_ID = "7"; // Loan asset type ID from server
 
-export function LoansList({ onSelectLoan }: LoansListProps) {
-	const { assets, currentPortfolio, refetch } = usePortfolio();
+export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansListProps) {
+	const { assets, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
 	const { addLoan } = useAssetMutations();
 	const [searchTerm, setSearchTerm] = useState("");
 	const [sortBy, setSortBy] = useState("balance");
@@ -89,6 +95,15 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	const [viewMode, setViewMode] = useState<ViewMode>("list");
 	const [currentPage, setCurrentPage] = useState(1);
 	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+	const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+
+	const handleSelectLoan = (loanId: string) => {
+		if (detailMode === "panel") {
+			setSelectedLoanId(loanId);
+		} else {
+			onSelectLoan?.(loanId);
+		}
+	};
 	const itemsPerPage = viewMode === "grid" ? 9 : 15;
 
 	// Currency hook — must be called before useMemo that uses displayCurrency
@@ -271,17 +286,17 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	const getLoanTypeBadgeColor = (type: LoanType) => {
 		switch (type) {
 			case "amortizing":
-				return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300";
+				return "bg-blue-500/10 text-blue-500 border border-blue-500/20";
 			case "in-fine":
-				return "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300";
+				return "bg-purple-500/10 text-purple-500 border border-purple-500/20";
 			case "deferred-interest":
-				return "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300";
+				return "bg-amber-500/10 text-amber-500 border border-amber-500/20";
 			case "deferred-total":
-				return "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300";
+				return "bg-rose-500/10 text-rose-500 border border-rose-500/20";
 			case "step":
-				return "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300";
+				return "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20";
 			default:
-				return "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300";
+				return "bg-muted text-muted-foreground border border-border/40";
 		}
 	};
 
@@ -289,24 +304,33 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 		switch (status) {
 			case "active":
 				return (
-					<Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
+					<Badge
+						variant="outline"
+						className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
+					>
 						Active
 					</Badge>
 				);
 			case "paid-off":
 				return (
-					<Badge className="bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300">
+					<Badge
+						variant="outline"
+						className="bg-muted text-muted-foreground border border-border/40"
+					>
 						Paid Off
 					</Badge>
 				);
 			case "delinquent":
 				return (
-					<Badge className="bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+					<Badge
+						variant="outline"
+						className="bg-rose-500/10 text-rose-500 border border-rose-500/20"
+					>
 						Delinquent
 					</Badge>
 				);
 			default:
-				return <Badge>{status}</Badge>;
+				return <Badge variant="outline">{status}</Badge>;
 		}
 	};
 
@@ -328,18 +352,22 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 	};
 
 	return (
-		<div className="space-y-6">
-			{/* Header */}
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="text-3xl">Loans & Debt</h1>
-					<p className="text-muted-foreground">Manage your loans and track payments</p>
-				</div>
-				<Button onClick={() => setIsAddFormOpen(true)}>
-					<Plus className="h-4 w-4 mr-2" />
-					Add Loan
-				</Button>
-			</div>
+		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			<AssetPageHeader
+				title="Loans & Debt"
+				description="Manage your active loans, track outstanding debt, amortization, and payment schedules."
+				onBack={onBack}
+				actions={
+					<Button
+						size="sm"
+						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
+						onClick={() => setIsAddFormOpen(true)}
+					>
+						<Plus className="mr-1.5 h-3.5 w-3.5" />
+						Add Loan
+					</Button>
+				}
+			/>
 
 			{/* Main Tabs */}
 			<Tabs defaultValue="loans" className="space-y-6">
@@ -356,6 +384,9 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 
 				{/* Loans Tab */}
 				<TabsContent value="loans" className="space-y-6">
+					{/* Benchmark metrics */}
+					<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
+
 					{/* Summary Cards */}
 					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
 						<Card>
@@ -525,7 +556,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 												<TableRow
 													key={loan.id}
 													className="cursor-pointer hover:bg-accent/50"
-													onClick={() => onSelectLoan?.(loan.id)}
+													onClick={() => handleSelectLoan(loan.id)}
 												>
 													<TableCell>
 														<div className="flex items-center gap-2">
@@ -601,7 +632,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 																</Button>
 															</DropdownMenuTrigger>
 															<DropdownMenuContent align="end">
-																<DropdownMenuItem onClick={() => onSelectLoan?.(loan.id)}>
+																<DropdownMenuItem onClick={() => handleSelectLoan(loan.id)}>
 																	View Details
 																</DropdownMenuItem>
 																<DropdownMenuItem>Edit Loan</DropdownMenuItem>
@@ -628,7 +659,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 									<Card
 										key={loan.id}
 										className="hover:shadow-lg transition-shadow cursor-pointer"
-										onClick={() => onSelectLoan?.(loan.id)}
+										onClick={() => handleSelectLoan(loan.id)}
 									>
 										<CardHeader>
 											<div className="flex items-start justify-between">
@@ -656,7 +687,7 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 														</Button>
 													</DropdownMenuTrigger>
 													<DropdownMenuContent align="end">
-														<DropdownMenuItem onClick={() => onSelectLoan?.(loan.id)}>
+														<DropdownMenuItem onClick={() => handleSelectLoan(loan.id)}>
 															View Details
 														</DropdownMenuItem>
 														<DropdownMenuItem>Edit Loan</DropdownMenuItem>
@@ -780,6 +811,24 @@ export function LoansList({ onSelectLoan }: LoansListProps) {
 				onClose={() => setIsAddFormOpen(false)}
 				onSubmit={handleAddLoan}
 			/>
+
+			{/* Loan Detail Panel */}
+			<Sheet
+				open={detailMode === "panel" && selectedLoanId !== null}
+				onOpenChange={(open) => {
+					if (!open) setSelectedLoanId(null);
+				}}
+			>
+				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+					{selectedLoanId && (
+						<LoanDetail
+							loanId={selectedLoanId}
+							onBack={() => setSelectedLoanId(null)}
+							isPanel={true}
+						/>
+					)}
+				</SheetContent>
+			</Sheet>
 		</div>
 	);
 }

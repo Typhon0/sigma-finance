@@ -36,7 +36,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import type { Transaction, TransactionType } from "@/gql/graphql";
-import { formatCurrency } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils";
 import type { TransactionFilterData } from "@/lib/validations/transaction.schemas";
 import { transactionValidationHelpers } from "@/lib/validations/transaction.schemas";
 

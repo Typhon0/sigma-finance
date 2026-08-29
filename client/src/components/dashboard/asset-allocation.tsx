@@ -9,8 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getAssetTypeColor } from "@/lib/chart-colors";
-import { cn } from "@/lib/utils";
-import { formatCurrency } from "@/lib/utils/formatters";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export interface AllocationItem {
 	assetType: string;

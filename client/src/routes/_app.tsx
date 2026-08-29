@@ -205,13 +205,24 @@ const NAV_ITEMS: { group: string; items: NavItem[] }[] = [
 	},
 ];
 
+// Sidebar group: use CSS :hover for expand, data-pinned for click-toggle.
+// No React re-renders on hover — content is always rendered, visibility is CSS-only.
+const SIDEBAR_GROUP = "group/sb";
+// Show text labels on hover/pinned
+const SB_SHOW = `opacity-0 w-0 overflow-hidden group-hover/sb:opacity-100 group-hover/sb:w-auto group-data-[pinned]/sb:opacity-100 group-data-[pinned]/sb:w-auto`;
+// Spacer between icon and label
+const SB_LABEL_ML = `group-hover/sb:ml-2.5 group-data-[pinned]/sb:ml-2.5`;
+// Push count to the right
+const SB_COUNT = `opacity-0 w-0 overflow-hidden ml-auto group-hover/sb:opacity-100 group-hover/sb:w-auto group-data-[pinned]/sb:opacity-100 group-data-[pinned]/sb:w-auto`;
+
 function AppSidebar() {
 	const navigate = useNavigate();
 	const { user, logout } = useAuth();
+	// isCollapsed: click toggle. isInteracting: PortfolioSwitcher dropdown open.
+	// Hover expand is handled purely by CSS :hover on <aside> — no state change.
 	const [isCollapsed, setIsCollapsed] = useState(true);
-	const [isHovered, setIsHovered] = useState(false);
 	const [isInteracting, setIsInteracting] = useState(false);
-	const isExpanded = !isCollapsed || isHovered || isInteracting;
+	const isPinned = !isCollapsed || isInteracting;
 
 	const currentPath = window.location.pathname;
 	const currentSearch = window.location.search;
@@ -232,18 +243,21 @@ function AppSidebar() {
 
 	return (
 		<aside
-			className="relative flex flex-col border-r bg-card/50 backdrop-blur-xl transition-all duration-300 ease-in-out z-40"
-			style={{ width: isExpanded ? 240 : 60 }}
-			onMouseEnter={() => setIsHovered(true)}
-			onMouseLeave={() => setIsHovered(false)}
+			className={`${SIDEBAR_GROUP} relative flex flex-col w-[60px] hover:w-[240px] data-[pinned]:w-[240px] border-r bg-card/50 backdrop-blur-xl z-40 transition-[width] duration-200 ease-out will-change-[width]`}
+			data-pinned={isPinned ? "" : undefined}
 		>
-			<div
-				className="flex h-14 items-center border-b px-4 transition-all"
-				style={{ justifyContent: isExpanded ? "space-between" : "center" }}
-			>
-				{isExpanded && <Logo size="sm" showText={true} />}
-				{!isExpanded && <span className="font-bold text-xl tracking-tighter">SF</span>}
-				{isExpanded && (
+			{/* Header */}
+			<div className="flex h-14 items-center border-b px-4 justify-center group-hover/sb:justify-between group-data-[pinned]/sb:justify-between">
+				{/* Logo: always render both, toggle via CSS */}
+				<div className="flex items-center overflow-hidden">
+					<span className="font-bold text-xl tracking-tighter group-hover/sb:hidden group-data-[pinned]/sb:hidden">
+						SF
+					</span>
+					<div className="hidden group-hover/sb:block group-data-[pinned]/sb:block">
+						<Logo size="sm" showText={true} />
+					</div>
+				</div>
+				<div className="hidden group-hover/sb:block group-data-[pinned]/sb:block">
 					<Button
 						variant="ghost"
 						size="icon"
@@ -252,45 +266,45 @@ function AppSidebar() {
 					>
 						{isCollapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
 					</Button>
-				)}
+				</div>
 			</div>
 
-			{isExpanded && (
-				<div className="border-b py-2">
-					<PortfolioSwitcher isCollapsed={false} onInteractingChange={setIsInteracting} />
-				</div>
-			)}
+			{/* Portfolio Switcher — hidden when collapsed, shown on hover/pinned */}
+			<div className="border-b hidden group-hover/sb:block group-hover/sb:py-2 group-data-[pinned]/sb:block group-data-[pinned]/sb:py-2">
+				<PortfolioSwitcher isCollapsed={false} onInteractingChange={setIsInteracting} />
+			</div>
 
-			<div className="flex-1 overflow-y-auto py-4 scrollbar-hide">
+			{/* Nav */}
+			<div className="flex-1 overflow-y-auto overflow-x-hidden py-4 scrollbar-none">
 				<nav className="space-y-6 px-2">
 					{NAV_ITEMS.map((group) => (
 						<div key={group.group}>
-							{isExpanded && (
-								<h4 className="mb-2 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50">
-									{group.group}
-								</h4>
-							)}
+							<h4 className="mb-2 px-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/50 opacity-0 h-0 overflow-hidden group-hover/sb:opacity-100 group-hover/sb:h-auto group-data-[pinned]/sb:opacity-100 group-data-[pinned]/sb:h-auto">
+								{group.group}
+							</h4>
 							<div className="space-y-0.5">
 								{group.items.map((item) => (
 									<Button
 										key={item.id}
 										variant={activeItem === item.id ? "secondary" : "ghost"}
-										className={`w-full justify-start transition-all duration-200 h-9 ${!isExpanded ? "px-0 justify-center" : "px-3"} ${activeItem === item.id ? "bg-secondary/80 font-medium text-foreground shadow-sm ring-1 ring-border" : ""}`}
+										className={`w-full h-9 px-0 justify-center group-hover/sb:justify-start group-hover/sb:px-2.5 group-data-[pinned]/sb:justify-start group-data-[pinned]/sb:px-2.5 transition-[background-color,color,box-shadow] duration-150 ease-out ${activeItem === item.id ? "bg-secondary/80 font-medium text-foreground shadow-sm ring-1 ring-border" : ""}`}
 										onClick={() => navigate({ to: item.url, search: item.search })}
-										title={!isExpanded ? item.label : undefined}
 									>
 										<item.icon
-											className={`h-4 w-4 shrink-0 ${activeItem === item.id ? "text-primary" : "text-muted-foreground"} ${isExpanded ? "mr-3" : ""}`}
+											className={`h-4 w-4 shrink-0 transition-colors duration-150 ease-out ${activeItem === item.id ? "text-primary" : "text-muted-foreground"}`}
+											strokeWidth={1.75}
 										/>
-										{isExpanded && (
-											<>
-												<span className="truncate text-sm">{item.label}</span>
-												{item.count && (
-													<span className="ml-auto text-xs text-muted-foreground">
-														{item.count}
-													</span>
-												)}
-											</>
+										<span
+											className={`truncate text-sm ${SB_SHOW} ${SB_LABEL_ML} transition-opacity duration-150`}
+										>
+											{item.label}
+										</span>
+										{item.count && (
+											<span
+												className={`text-xs text-muted-foreground ${SB_COUNT} transition-opacity duration-150`}
+											>
+												{item.count}
+											</span>
 										)}
 									</Button>
 								))}
@@ -300,24 +314,28 @@ function AppSidebar() {
 				</nav>
 			</div>
 
-			<div className="border-t p-2">
+			{/* User footer */}
+			<div className="border-t p-1.5">
 				<DropdownMenu>
+					{" "}
 					<DropdownMenuTrigger asChild>
 						<Button
 							variant="ghost"
-							className={`w-full h-12 ${!isExpanded ? "px-0 justify-center" : "justify-start px-2"}`}
+							className="w-full h-12 px-0 justify-center group-hover/sb:justify-start group-hover/sb:px-2.5 group-data-[pinned]/sb:justify-start group-data-[pinned]/sb:px-2.5"
 						>
 							<Avatar className="h-8 w-8 rounded-lg border border-border">
 								<AvatarFallback className="bg-primary/5 text-xs font-medium">
 									{user?.name?.[0] || "U"}
 								</AvatarFallback>
 							</Avatar>
-							{isExpanded && (
-								<div className="ml-3 flex flex-col items-start truncate text-xs animate-in fade-in duration-300">
-									<span className="font-semibold text-foreground">{user?.name}</span>
-									<span className="text-muted-foreground text-[10px]">{user?.email}</span>
-								</div>
-							)}
+							<div
+								className={`flex flex-col items-start truncate text-xs ${SB_SHOW} ${SB_LABEL_ML} transition-opacity duration-150`}
+							>
+								<span className="font-semibold text-foreground leading-tight">{user?.name}</span>
+								<span className="text-muted-foreground text-[10px] leading-tight">
+									{user?.email}
+								</span>
+							</div>
 						</Button>
 					</DropdownMenuTrigger>
 					<DropdownMenuContent align="start" className="w-56" sideOffset={8}>

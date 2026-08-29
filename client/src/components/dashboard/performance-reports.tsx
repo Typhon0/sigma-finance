@@ -24,7 +24,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
+import { formatCurrency } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/formatters";
 
 export interface ReportSection {
 	id: string;

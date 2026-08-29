@@ -10,8 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
-import { formatCurrency, formatPercentage } from "@/lib/utils/formatters";
+import { cn, formatCurrency } from "@/lib/utils";
+import { formatPercentage } from "@/lib/utils/formatters";
 
 interface PortfolioOverviewProps {
 	title: string;

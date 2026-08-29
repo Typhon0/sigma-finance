@@ -28,8 +28,8 @@ from validation import price_to_cents, interval_to_yf_interval, symbol_with_suff
 
 logger = logging.getLogger(__name__)
 
-# Ring buffer for captured HTTP-accessible logs (up to 10 000 entries)
-LOG_BUFFER: collections.deque[dict[str, Any]] = collections.deque(maxlen=10000)
+# Ring buffer for captured HTTP-accessible logs (up to 1 000 entries)
+LOG_BUFFER: collections.deque[dict[str, Any]] = collections.deque(maxlen=1000)
 LOG_BUFFER_LOCK = threading.Lock()
 
 
@@ -385,13 +385,21 @@ class MarketDataServicer(market_data_pb2_grpc.MarketDataServiceServicer):
 
             bars: list[market_data_pb2.OHLCVBar] = []
             for _, row in hist.iterrows():
+                close_cents = price_to_cents(row.get("Close", 0))
+                if close_cents <= 0:
+                    continue
+                vol = row.get("Volume", 0)
+                try:
+                    vol_int = 0 if (pd.isna(vol) or math.isnan(float(vol))) else int(float(vol))
+                except (ValueError, TypeError):
+                    vol_int = 0
                 bar: market_data_pb2.OHLCVBar = market_data_pb2.OHLCVBar(
                     timestamp=int(row.name.timestamp() * 1000) if hasattr(row.name, 'timestamp') else 0,
-                    open=price_to_cents(row["Open"]),
-                    high=price_to_cents(row["High"]),
-                    low=price_to_cents(row["Low"]),
-                    close=price_to_cents(row["Close"]),
-                    volume=int(row["Volume"]) if not math.isnan(row["Volume"]) else 0,
+                    open=price_to_cents(row.get("Open", row.get("Close", 0))),
+                    high=price_to_cents(row.get("High", row.get("Close", 0))),
+                    low=price_to_cents(row.get("Low", row.get("Close", 0))),
+                    close=close_cents,
+                    volume=vol_int,
                 )
                 bars.append(bar)
 

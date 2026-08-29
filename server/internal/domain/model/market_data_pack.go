@@ -32,16 +32,17 @@ type MarketDataPack struct {
 type MarketDataPackCoverage struct {
 	bun.BaseModel `bun:"table:sigma_finance.market_data_pack_coverage"`
 
-	PackID        string          `bun:"pack_id,pk"`
-	InstrumentID  string          `bun:"instrument_id,pk,type:uuid"`
-	Symbol        string          `bun:"symbol,notnull"`
-	AssetType     string          `bun:"asset_type,notnull"`
-	Interval      CandleInterval  `bun:"interval,notnull"`
-	QuoteCurrency string          `bun:"quote_currency,pk,notnull"`
-	FirstDate     time.Time       `bun:"first_date,notnull"`
-	LastDate      time.Time       `bun:"last_date,notnull"`
-	RowCount      int64           `bun:"row_count,notnull"`
-	FilePaths     json.RawMessage `bun:"file_paths,type:jsonb,notnull"`
+	PackID             string          `bun:"pack_id,pk"`
+	InstrumentID       string          `bun:"instrument_id,pk,type:uuid"`
+	PackInstrumentID   *string         `bun:"pack_instrument_id,type:uuid"`
+	Symbol             string          `bun:"symbol,notnull"`
+	AssetType          string          `bun:"asset_type,notnull"`
+	Interval           CandleInterval  `bun:"interval,notnull"`
+	QuoteCurrency      string          `bun:"quote_currency,pk,notnull"`
+	FirstDate          time.Time       `bun:"first_date,notnull"`
+	LastDate           time.Time       `bun:"last_date,notnull"`
+	RowCount           int64           `bun:"row_count,notnull"`
+	FilePaths          json.RawMessage `bun:"file_paths,type:jsonb,notnull"`
 }
 
 type MarketDataPackJob struct {

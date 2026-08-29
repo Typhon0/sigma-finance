@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"testing"
@@ -232,7 +233,7 @@ func setupPerformanceServiceTest() (*PerformanceService, *MockPerformanceReposit
 	mockPriceRepo := &MockPriceRepository{}
 	mockPositionRepo := &MockPositionRepository{}
 
-	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo)
+	service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, nil)
 
 	return service, mockPerformanceRepo, mockPriceRepo, mockPositionRepo
 }
@@ -825,5 +826,115 @@ func TestPerformanceService_ValidateTimeRange(t *testing.T) {
 		err := service.validateTimeRange(timeRange)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "start and end dates are required")
+	})
+}
+
+type MockMarketDataService struct {
+	MarketDataService
+	mock.Mock
+}
+
+func (m *MockMarketDataService) GetCandlesByInstrument(ctx context.Context, userID string, instrumentID string, interval model.CandleInterval, from, to time.Time, limit int, preferredProvider *string) (*InstrumentCandlesResult, error) {
+	args := m.Called(ctx, userID, instrumentID, interval, from, to, limit, preferredProvider)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*InstrumentCandlesResult), args.Error(1)
+}
+
+func TestPerformanceService_CalculateBenchmarkComparison(t *testing.T) {
+	t.Run("uses marketDataService candles when available", func(t *testing.T) {
+		mockPerformanceRepo := &MockPerformanceRepository{}
+		mockPriceRepo := &MockPriceRepository{}
+		mockPositionRepo := &MockPositionRepository{}
+		mockMarketDataSvc := &MockMarketDataService{}
+
+		service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, mockMarketDataSvc)
+
+		ctx := context.Background()
+		portfolioID := uuid.NewString()
+		benchmarkAssetID := uuid.NewString()
+		timeRange := PerformanceTimeRange{
+			Start: time.Now().AddDate(0, -3, 0),
+			End:   time.Now(),
+		}
+
+		// Mock marketDataService GetCandlesByInstrument
+		candlesResult := &InstrumentCandlesResult{
+			Candles: []model.Candle{
+				{Close: decimal.NewFromFloat(100.0), Timestamp: timeRange.Start},
+				{Close: decimal.NewFromFloat(120.0), Timestamp: timeRange.End},
+			},
+		}
+		mockMarketDataSvc.On("GetCandlesByInstrument", ctx, "", benchmarkAssetID, model.Interval1d, timeRange.Start, timeRange.End, 0, (*string)(nil)).
+			Return(candlesResult, nil)
+
+		// Mock performanceRepo GetPerformanceSnapshots
+		snapshots := []repository.PerformanceSnapshot{
+			{TotalValue: 100000, SnapshotDate: timeRange.Start}, // $1000.00
+			{TotalValue: 110000, SnapshotDate: timeRange.End},   // $1100.00
+		}
+		mockPerformanceRepo.On("GetPerformanceSnapshots", ctx, portfolioID, timeRange.Start, timeRange.End).
+			Return(snapshots, nil)
+
+		res, err := service.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, timeRange)
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+
+		// Portfolio return = (110000 - 100000) / 100000 = 10%
+		// Benchmark return = (120 - 100) / 100 = 20%
+		// Alpha = 10% - 20% = -10%
+		assert.True(t, res.PortfolioReturn.Equal(decimal.NewFromFloat(10)))
+		assert.True(t, res.BenchmarkReturn.Equal(decimal.NewFromFloat(20)))
+		assert.True(t, res.Alpha.Equal(decimal.NewFromFloat(-10)))
+		assert.True(t, res.Beta.Equal(decimal.NewFromFloat(1)))
+
+		mockMarketDataSvc.AssertExpectations(t)
+		mockPerformanceRepo.AssertExpectations(t)
+	})
+
+	t.Run("falls back to repository when candles are empty/nil", func(t *testing.T) {
+		mockPerformanceRepo := &MockPerformanceRepository{}
+		mockPriceRepo := &MockPriceRepository{}
+		mockPositionRepo := &MockPositionRepository{}
+		mockMarketDataSvc := &MockMarketDataService{}
+
+		service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, mockMarketDataSvc)
+
+		ctx := context.Background()
+		portfolioID := uuid.NewString()
+		benchmarkAssetID := uuid.NewString()
+		timeRange := PerformanceTimeRange{
+			Start: time.Now().AddDate(0, -3, 0),
+			End:   time.Now(),
+		}
+
+		// Mock candles return empty
+		mockMarketDataSvc.On("GetCandlesByInstrument", ctx, "", benchmarkAssetID, model.Interval1d, timeRange.Start, timeRange.End, 0, (*string)(nil)).
+			Return((*InstrumentCandlesResult)(nil), fmt.Errorf("no candles found"))
+
+		repoTimeRange := repository.TimeRange{
+			Start: timeRange.Start,
+			End:   timeRange.End,
+		}
+		expectedResult := &repository.BenchmarkComparison{
+			PortfolioID:      portfolioID,
+			BenchmarkAssetID: benchmarkAssetID,
+			PortfolioReturn:  decimal.NewFromFloat(5.0),
+			BenchmarkReturn:  decimal.NewFromFloat(6.0),
+			Alpha:            decimal.NewFromFloat(-1.0),
+			Beta:             decimal.NewFromFloat(1.0),
+		}
+		mockPerformanceRepo.On("CalculateBenchmarkComparison", ctx, portfolioID, benchmarkAssetID, repoTimeRange).
+			Return(expectedResult, nil)
+
+		res, err := service.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, timeRange)
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+		assert.Equal(t, expectedResult.PortfolioReturn, res.PortfolioReturn)
+		assert.Equal(t, expectedResult.BenchmarkReturn, res.BenchmarkReturn)
+
+		mockMarketDataSvc.AssertExpectations(t)
+		mockPerformanceRepo.AssertExpectations(t)
 	})
 }

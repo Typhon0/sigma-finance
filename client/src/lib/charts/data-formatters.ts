@@ -4,6 +4,7 @@
  */
 
 import { format, subDays, subMonths, subYears } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 import type { ChartTimeRange } from "./config";
 import type {
 	AreaData,
@@ -223,12 +224,7 @@ export class EChartsFormatter {
 	 * Format currency values
 	 */
 	private static formatCurrency(value: number, currency: string = "USD"): string {
-		return new Intl.NumberFormat("en-US", {
-			style: "currency",
-			currency: currency,
-			minimumFractionDigits: 2,
-			maximumFractionDigits: 2,
-		}).format(value);
+		return formatCurrency(value, currency);
 	}
 }
 

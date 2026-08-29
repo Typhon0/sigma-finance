@@ -137,6 +137,18 @@ func (f *FinnhubProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 		}
 	}
 
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+		f.EnterCooldown(1 * time.Hour)
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "AUTH_FAILED",
+			Message:   "Finnhub API authentication failed — API key may be expired or invalid",
+			HTTPCode:  resp.StatusCode,
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("finnhub API error: %d", resp.StatusCode)
 	}
@@ -226,6 +238,11 @@ func (f *FinnhubProvider) ValidateCredentials(ctx context.Context, apiKey string
 
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return fmt.Errorf("invalid API key")
+	}
+
+	// 429 = rate limited; the key itself is valid.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
@@ -330,6 +347,18 @@ func (f *FinnhubProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 			Retryable:         true,
 			Fallback:          true,
 			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
+	if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
+		f.EnterCooldown(1 * time.Hour)
+		return nil, &ProviderError{
+			Provider:  f.ID(),
+			Code:      "AUTH_FAILED",
+			Message:   "Finnhub API authentication failed — API key may be expired or invalid",
+			HTTPCode:  resp.StatusCode,
+			Retryable: false,
+			Fallback:  true,
 		}
 	}
 

@@ -1,13 +1,19 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
+import { format } from "date-fns";
 import {
 	AlertTriangle,
+	Calendar as CalendarIcon,
 	CheckCircle2,
 	ChevronDown,
 	ChevronUp,
+	Clock,
 	Copy,
 	Download,
 	FileText,
+	HardDrive,
+	Hash,
 	Info,
+	Layers,
 	Pause,
 	Play,
 	ScrollText,
@@ -18,11 +24,10 @@ import {
 	XCircle,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Clock, Hash, HardDrive, Layers, Calendar as CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	DropdownMenu,
@@ -31,19 +36,32 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 // ---- Types ----
 
 interface LogEntry {
+	id: string;
 	timestamp: string;
 	level: string;
 	message: string;
 	service: string;
+}
+
+function generateUniqueKeys(rawLogs: Omit<LogEntry, "id">[]): LogEntry[] {
+	const keyCounts = new Map<string, number>();
+	return rawLogs.map((e) => {
+		const baseKey = `${e.timestamp}_${e.level}_${e.service}_${e.message}`;
+		const count = keyCounts.get(baseKey) || 0;
+		keyCounts.set(baseKey, count + 1);
+		return {
+			...e,
+			id: `${baseKey}_${count}`,
+		};
+	});
 }
 
 type LogService = "go" | "yfinance";
@@ -141,7 +159,7 @@ function cleanMessage(message: string, service: string): string {
 // ---- Component ----
 
 function getEntryKey(entry: LogEntry): string {
-	return `${entry.timestamp}_${entry.level}_${entry.message}`;
+	return entry.id;
 }
 
 export function LogViewer() {
@@ -172,7 +190,10 @@ export function LogViewer() {
 
 	// Uptime ticker (every second)
 	useEffect(() => {
-		const id = setInterval(() => setUptime(Math.floor((Date.now() - sessionStartRef.current) / 1000)), 1000);
+		const id = setInterval(
+			() => setUptime(Math.floor((Date.now() - sessionStartRef.current) / 1000)),
+			1000,
+		);
 		return () => clearInterval(id);
 	}, []);
 
@@ -204,7 +225,10 @@ export function LogViewer() {
 	// Memory estimate: average ~300 bytes per log entry (timestamp + level + message + overhead)
 	const memoryEstimate = useMemo(() => {
 		const source = activeService === "go" ? entries : yfEntries;
-		const bytes = source.reduce((sum, e) => sum + e.timestamp.length + e.level.length + e.message.length + 64, 0);
+		const bytes = source.reduce(
+			(sum, e) => sum + e.timestamp.length + e.level.length + e.message.length + 64,
+			0,
+		);
 		if (bytes < 1024) return "< 1 KB";
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
@@ -224,29 +248,23 @@ export function LogViewer() {
 	}, [entries, yfEntries, activeService]);
 
 	// ---- Virtual scrolling ----
+	const getScrollElement = useCallback(() => scrollContainerRef.current, []);
+
+	const estimateSize = useCallback(() => 28, []);
+
+	const getItemKey = useCallback(
+		(index: number) => {
+			const entry = displayEntries[index];
+			return entry ? entry.id : index;
+		},
+		[displayEntries],
+	);
+
 	const virtualizer = useVirtualizer({
 		count: displayEntries.length,
-		getScrollElement: () => scrollContainerRef.current,
-		estimateSize: useCallback(
-			(index: number) => {
-				const entry = displayEntries[index];
-				if (!entry) return 22;
-				const key = getEntryKey(entry);
-				const msg = cleanMessage(entry.message, entry.service);
-					if (!expandedKeys.has(key)) return wrapLines ? 28 : 22;
-					// Estimate expanded height from message length (mono 12px, ~80 chars/line)
-					const lines = Math.max(1, Math.ceil(msg.length / 80));
-					return Math.min(500, Math.max(28, 8 + lines * 20));
-			},
-			[displayEntries, expandedKeys, wrapLines],
-		),
-		getItemKey: useCallback(
-			(index: number) => {
-				const entry = displayEntries[index];
-				return entry ? getEntryKey(entry) : index;
-			},
-			[displayEntries],
-		),
+		getScrollElement,
+		estimateSize,
+		getItemKey,
 		overscan: 30,
 	});
 
@@ -271,21 +289,16 @@ export function LogViewer() {
 		isAtTopRef.current = el.scrollTop < 40;
 	}, []);
 
-	// Auto-scroll to top when new entries arrive and user is at top
-	const scrollToTop = useCallback(() => {
-		if (isAtTopRef.current && displayEntries.length > 0) {
-			virtualizer.scrollToIndex(0, { align: "start" });
-		}
-	}, [displayEntries.length, virtualizer]);
-
 	// Scroll to top when new entries arrive (via streaming or polling)
 	const prevCountRef = useRef(displayEntries.length);
 	useEffect(() => {
 		if (displayEntries.length > prevCountRef.current) {
-			scrollToTop();
+			if (isAtTopRef.current && displayEntries.length > 0) {
+				virtualizer.scrollToIndex(0, { align: "start" });
+			}
 		}
 		prevCountRef.current = displayEntries.length;
-	}, [displayEntries.length, scrollToTop]);
+	}, [displayEntries.length, virtualizer]);
 
 	// ---- Go SSE connection ----
 	// Reset expanded keys when service or filters change
@@ -309,7 +322,8 @@ export function LogViewer() {
 			});
 			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 			const data = await resp.json();
-			return data.logs ?? [];
+			const logs: Omit<LogEntry, "id">[] = data.logs ?? [];
+			return generateUniqueKeys(logs);
 		};
 
 		fetchInitial()
@@ -340,9 +354,25 @@ export function LogViewer() {
 		es.onmessage = (event) => {
 			if (isPausedRef.current) return;
 			try {
-				const entry: LogEntry = JSON.parse(event.data);
+				const entry: Omit<LogEntry, "id"> = JSON.parse(event.data);
 				setEntries((prev) => {
-					const next = [...prev, entry];
+					const baseKey = `${entry.timestamp}_${entry.level}_${entry.service}_${entry.message}`;
+					let count = 0;
+					for (let i = prev.length - 1; i >= 0; i--) {
+						if (prev[i].id.startsWith(baseKey)) {
+							const parts = prev[i].id.split("_");
+							const lastPart = Number(parts[parts.length - 1]);
+							if (Number.isInteger(lastPart)) {
+								count = lastPart + 1;
+								break;
+							}
+						}
+					}
+					const newEntry: LogEntry = {
+						...entry,
+						id: `${baseKey}_${count}`,
+					};
+					const next = [...prev, newEntry];
 					if (next.length > MAX_LOG_ENTRIES) {
 						setExpandedKeys(new Set());
 						return next.slice(-MAX_LOG_ENTRIES);
@@ -383,9 +413,12 @@ export function LogViewer() {
 				});
 				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 				const data = await resp.json();
-				const logs: LogEntry[] = data.logs ?? [];
+				const logs: Omit<LogEntry, "id">[] = data.logs ?? [];
+				const identified = generateUniqueKeys(logs);
 				setExpandedKeys(new Set());
-				setYfEntries(logs.length > MAX_LOG_ENTRIES ? logs.slice(-MAX_LOG_ENTRIES) : logs);
+				setYfEntries(
+					identified.length > MAX_LOG_ENTRIES ? identified.slice(-MAX_LOG_ENTRIES) : identified,
+				);
 				setError(null);
 			} catch (err) {
 				setError(
@@ -610,8 +643,7 @@ export function LogViewer() {
 							variant={levelFilter === "DEBUG" ? "default" : "outline"}
 							className={cn(
 								"cursor-pointer text-xs py-0 h-6 select-none",
-								levelFilter !== "DEBUG" &&
-									"text-blue-600 dark:text-blue-400 border-blue-500/30",
+								levelFilter !== "DEBUG" && "text-blue-600 dark:text-blue-400 border-blue-500/30",
 								levelFilter === "DEBUG" &&
 									"bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30",
 							)}
@@ -626,7 +658,10 @@ export function LogViewer() {
 					<div className="flex items-center gap-1.5">
 						<Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
 							<PopoverTrigger asChild>
-								<Button variant="outline" className="h-8 min-w-[200px] justify-start text-left font-normal text-xs gap-2">
+								<Button
+									variant="outline"
+									className="h-8 min-w-[200px] justify-start text-left font-normal text-xs gap-2"
+								>
 									<CalendarIcon className="h-3.5 w-3.5 text-muted-foreground" />
 									{timeFrom ? (
 										timeTo ? (
@@ -685,11 +720,11 @@ export function LogViewer() {
 				</div>
 			</div>
 
-		{/* Column Headers */}
-		<div className="flex items-center gap-2 px-4 py-1.5 bg-muted/30 border-b border-border/20 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground select-none shrink-0">
-			<div className="w-4 shrink-0" />
-			<div className="w-[38px] shrink-0 text-right">#</div>
-			<div className="w-[180px] shrink-0">Timestamp</div>
+			{/* Column Headers */}
+			<div className="flex items-center gap-2 px-4 py-1.5 bg-muted/30 border-b border-border/20 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground select-none shrink-0">
+				<div className="w-4 shrink-0" />
+				<div className="w-[38px] shrink-0 text-right">#</div>
+				<div className="w-[180px] shrink-0">Timestamp</div>
 				<div className="w-[65px] shrink-0 text-center">Level</div>
 				<div className="w-[80px] shrink-0">Service</div>
 				<div className="flex-1">Message</div>
@@ -738,18 +773,18 @@ export function LogViewer() {
 											transform: `translateY(${virtualRow.start}px)`,
 										}}
 									>
-						<span className="shrink-0 mt-0.5">{getLevelIcon(entry.level)}</span>
-						<span
-							className="shrink-0 w-[38px] text-right tabular-nums text-[10px] text-muted-foreground/40 select-none cursor-pointer hover:text-muted-foreground/80 transition-colors"
-							onClick={() => {
-								navigator.clipboard.writeText(String(virtualRow.index + 1));
-								toast.success(`Line ${virtualRow.index + 1} copied`);
-							}}
-							title={`Line ${virtualRow.index + 1} — click to copy`}
-						>
-							{virtualRow.index + 1}
-						</span>
-						<span className="text-muted-foreground shrink-0 w-[180px] tabular-nums select-none">
+										<span className="shrink-0 mt-0.5">{getLevelIcon(entry.level)}</span>
+										<span
+											className="shrink-0 w-[38px] text-right tabular-nums text-[10px] text-muted-foreground/40 select-none cursor-pointer hover:text-muted-foreground/80 transition-colors"
+											onClick={() => {
+												navigator.clipboard.writeText(String(virtualRow.index + 1));
+												toast.success(`Line ${virtualRow.index + 1} copied`);
+											}}
+											title={`Line ${virtualRow.index + 1} — click to copy`}
+										>
+											{virtualRow.index + 1}
+										</span>
+										<span className="text-muted-foreground shrink-0 w-[180px] tabular-nums select-none">
 											{formatTimestamp(entry.timestamp)}
 										</span>
 										<span
@@ -816,9 +851,7 @@ export function LogViewer() {
 					<div className="flex items-center gap-1.5">
 						<Layers className="h-3 w-3" />
 						<span>
-							{displayEntries.length > 0
-								? `${virtualizer.getVirtualItems().length} visible`
-								: "0"}{" "}
+							{displayEntries.length > 0 ? `${virtualizer.getVirtualItems().length} visible` : "0"}{" "}
 							/ {displayEntries.length} total
 						</span>
 					</div>
@@ -836,12 +869,13 @@ export function LogViewer() {
 									: `${Math.floor(uptime / 3600)}h ${Math.floor((uptime % 3600) / 60)}m ${uptime % 60}s`}
 						</span>
 					</div>
-					{(timeFrom || timeTo || filterText || levelFilter !== "ALL") && displayEntries.length > 0 && (
-						<div className="flex items-center gap-1.5 ml-auto">
-							<Hash className="h-3 w-3" />
-							<span>filtered</span>
-						</div>
-					)}
+					{(timeFrom || timeTo || filterText || levelFilter !== "ALL") &&
+						displayEntries.length > 0 && (
+							<div className="flex items-center gap-1.5 ml-auto">
+								<Hash className="h-3 w-3" />
+								<span>filtered</span>
+							</div>
+						)}
 				</div>
 			</CardContent>
 		</Card>
