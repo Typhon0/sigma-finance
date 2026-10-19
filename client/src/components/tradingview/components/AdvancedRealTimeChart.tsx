@@ -1,5 +1,5 @@
 import type React from "react";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import type {
 	ColorTheme,
 	CopyrightStyles,
@@ -77,13 +77,26 @@ const AdvancedRealTimeChart: React.FC<AdvancedRealTimeChartProps> = ({
 	studies = undefined,
 	disabled_features = undefined,
 	enabled_features = undefined,
-	container_id = `tradingview_${createId(5)}`,
+	container_id: containerIdProp,
 	backgroundColor = undefined,
 
 	copyrightStyles,
 
 	...props
 }) => {
+	// The container id must stay stable for the lifetime of this component.
+	//
+	// It used to be a *default parameter* (`container_id = \`tradingview_${createId(5)}\``),
+	// and default parameters are re-evaluated on every render. Widget keys both its
+	// effect dependency list and the React `key` of its container <div> on that id,
+	// so every parent re-render tore down the live TradingView widget and booted a
+	// brand new one against a fresh DOM node - leaking the old one.
+	const containerIdRef = useRef<string | null>(null);
+	if (containerIdRef.current === null) {
+		containerIdRef.current = containerIdProp ?? `tradingview_${createId(5)}`;
+	}
+	const container_id = containerIdRef.current;
+
 	return (
 		<Widget
 			scriptHTML={{

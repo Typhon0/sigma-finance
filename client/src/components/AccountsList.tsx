@@ -13,12 +13,15 @@ import {
 	Trash2,
 	Wallet,
 } from "lucide-react";
+import { useQuery } from "@apollo/client";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type PortfolioAssetItem, usePortfolio } from "@/components/PortfolioProvider";
 import { SearchInput } from "@/components/ui/search-input";
+import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
+import { CreateAccountDialog } from "./account/CreateAccountDialog";
 import { AddSavingForm, type SavingsFormData } from "./assets/savings/AddSavingForm";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
@@ -47,6 +50,7 @@ interface AccountData {
 	id: string;
 	name: string;
 	type: "CEX" | "Bank" | "Broker";
+	taxWrapper?: string;
 	assetClass: string;
 	totalValue: number;
 	totalCost: number;
@@ -92,11 +96,17 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const [sortBy, setSortBy] = useState("value-desc");
 	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [showAddForm, setShowAddForm] = useState(false);
+	const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
 	const [hoveredAccountData, setHoveredAccountData] = useState<{
 		name: string;
 		value: number;
 		percent: number;
 	} | null>(null);
+
+	const { data: accountsData } = useQuery(GET_ACCOUNTS, {
+		variables: { portfolioId: currentPortfolio },
+		skip: !currentPortfolio,
+	});
 
 	const handleAddAccount = async (data: SavingsFormData) => {
 		if (!currentPortfolio) {
@@ -128,8 +138,36 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 		}
 	};
 
-	// Derive accounts from real portfolio assets
+	// Map accounts from server accounts or fallback to portfolio assets
 	const accounts = useMemo((): AccountData[] => {
+		const serverAccounts = accountsData?.accounts;
+		if (serverAccounts && serverAccounts.length > 0) {
+			return serverAccounts.map((a: any) => {
+				const type: AccountData["type"] =
+					a.type === "CRYPTO_EXCHANGE"
+						? "CEX"
+						: a.type === "BROKER"
+							? "Broker"
+							: "Bank";
+				const assetClass = type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
+				const totalVal = a.totalValue ?? 0;
+
+				return {
+					id: a.id,
+					name: a.name,
+					type,
+					taxWrapper: a.taxWrapper,
+					assetClass,
+					totalValue: totalVal,
+					totalCost: totalVal,
+					profitLoss: 0,
+					profitLossPercent: 0,
+					accountNumber: a.accountNumber || (a.institution ? a.institution : "Main Account"),
+					color: ACCOUNT_TYPE_COLORS[type],
+				};
+			});
+		}
+
 		return assets.map((a) => {
 			const type = mapAssetTypeToAccountType(a);
 			const totalCost = a.purchasePrice * a.quantity;
@@ -142,6 +180,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				id: a.id,
 				name: a.institution || a.name,
 				type,
+				taxWrapper: "STANDARD_TAXABLE",
 				assetClass,
 				totalValue: a.currentValue,
 				totalCost,
@@ -154,7 +193,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				dayChangePercent: a.dayChangePercent,
 			};
 		});
-	}, [assets]);
+	}, [accountsData, assets]);
 
 	const { formatCurrencyCompact: formatCurrency, currencySymbol: _currencySymbol } = useCurrency();
 
@@ -445,13 +484,13 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 							<CardDescription>Manage all your financial accounts</CardDescription>
 						</div>
 						<div className="flex gap-2">
-							<Button onClick={() => setShowAddForm(true)}>
+							<Button onClick={() => setShowCreateAccountModal(true)}>
 								<Plus className="h-4 w-4 mr-2" />
-								Add Account
+								New Account
 							</Button>
-							<Button variant="outline">
-								<Download className="h-4 w-4 mr-2" />
-								Export
+							<Button variant="outline" onClick={() => setShowAddForm(true)}>
+								<Wallet className="h-4 w-4 mr-2" />
+								Add Savings / Bank
 							</Button>
 						</div>
 					</div>
@@ -541,7 +580,14 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																<AccountIcon type={account.type} />
 															</div>
 															<div>
-																<CardTitle className="text-lg">{account.name}</CardTitle>
+																<div className="flex items-center gap-2">
+																	<CardTitle className="text-lg">{account.name}</CardTitle>
+																	{account.taxWrapper && (
+																		<Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0 h-4">
+																			{account.taxWrapper === "PEA" ? "PEA" : account.taxWrapper === "CRYPTO_VAULT" ? "Crypto" : account.taxWrapper === "RETIREMENT_SHELTERED" ? "Retraite" : "CTO"}
+																		</Badge>
+																	)}
+																</div>
 																<CardDescription className="text-xs">
 																	{account.type} • {account.assetClass}
 																</CardDescription>
@@ -776,6 +822,12 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				open={showAddForm}
 				onClose={() => setShowAddForm(false)}
 				onSubmit={handleAddAccount}
+			/>
+
+			<CreateAccountDialog
+				open={showCreateAccountModal}
+				onOpenChange={setShowCreateAccountModal}
+				portfolioId={currentPortfolio || ""}
 			/>
 		</div>
 	);

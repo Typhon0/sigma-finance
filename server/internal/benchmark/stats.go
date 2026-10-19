@@ -15,6 +15,63 @@ import (
 // Daily returns
 // =============================================================================
 
+// DailyTWRReturns converts a series of AlignedPortfolioSample (Value + CostBasis)
+// into daily percentage returns isolated from cash flows (deposits/withdrawals):
+//
+//	ΔC_t = CostBasis_t - CostBasis_{t-1}
+//	NetGain_t = (Value_t - Value_{t-1}) - ΔC_t
+//	CapitalBase_t = Value_{t-1} + max(0, ΔC_t)
+//	r_t = (NetGain_t / CapitalBase_t) * 100
+//
+// When CapitalBase_t <= 0 (unfunded portfolio), r_t is 0.
+// This neutralizes external capital injections/removals, preventing deposit spikes
+// from corrupting Beta, Correlation, Tracking Error, and Alpha.
+func DailyTWRReturns(samples []AlignedPortfolioSample) []decimal.Decimal {
+	if len(samples) < 2 {
+		return nil
+	}
+	out := make([]decimal.Decimal, 0, len(samples)-1)
+	for i := 1; i < len(samples); i++ {
+		prev := samples[i-1]
+		curr := samples[i]
+
+		deltaCost := curr.CostBasis - prev.CostBasis
+		capitalBase := prev.Value
+		if deltaCost > 0 {
+			capitalBase += deltaCost
+		}
+
+		if capitalBase <= 0 {
+			out = append(out, decimal.Zero)
+			continue
+		}
+
+		netGain := (curr.Value - prev.Value) - deltaCost
+		ret := decimal.NewFromInt(int64(netGain)).
+			Div(decimal.NewFromInt(int64(capitalBase))).
+			Mul(decimal.NewFromInt(100))
+		out = append(out, ret)
+	}
+	return out
+}
+
+// CompoundTWR computes the cumulative Time-Weighted Return (TWR) in percentage:
+//
+//	TWR = [ Π (1 + r_t / 100) - 1 ] * 100
+func CompoundTWR(dailyReturns []decimal.Decimal) decimal.Decimal {
+	if len(dailyReturns) == 0 {
+		return decimal.Zero
+	}
+	prod := decimal.NewFromInt(1)
+	one := decimal.NewFromInt(1)
+	hundred := decimal.NewFromInt(100)
+	for _, r := range dailyReturns {
+		factor := one.Add(r.Div(hundred))
+		prod = prod.Mul(factor)
+	}
+	return prod.Sub(one).Mul(hundred)
+}
+
 // DailyMoneyReturns converts a series of Money (cents) snapshots into simple
 // daily percentage returns: r_i = (v_i - v_{i-1}) / v_{i-1} * 100.
 // Entries where v_{i-1} <= 0 are skipped so the result counts only matched
@@ -200,4 +257,11 @@ func JensenAlpha(portfolioReturns, benchmarkReturns []decimal.Decimal) decimal.D
 	}
 	beta := Beta(portfolioReturns, benchmarkReturns)
 	return Mean(portfolioReturns).Sub(beta.Mul(Mean(benchmarkReturns)))
+}
+
+// AnnualizedJensenAlpha annualizes daily CAPM Jensen's Alpha using 252 trading days:
+//
+//	alpha_annualized = dailyAlpha * 252
+func AnnualizedJensenAlpha(dailyAlpha decimal.Decimal) decimal.Decimal {
+	return dailyAlpha.Mul(decimal.NewFromInt(252))
 }

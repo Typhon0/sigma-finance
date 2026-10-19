@@ -409,7 +409,79 @@ func runTestMigrations(ctx context.Context, db *bun.DB) error {
 	-- Add search_vector to instruments (migration 51052026)
 	ALTER TABLE IF EXISTS sigma_finance.instruments
 		ADD COLUMN IF NOT EXISTS search_vector tsvector;
+
+	-- Create tax_lots table for tests
+	CREATE TABLE IF NOT EXISTS sigma_finance.tax_lots (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		portfolio_id UUID NOT NULL REFERENCES sigma_finance.portfolio(id) ON DELETE CASCADE,
+		position_id UUID NOT NULL REFERENCES sigma_finance.positions(id) ON DELETE CASCADE,
+		asset_id UUID NOT NULL REFERENCES sigma_finance.assets(id) ON DELETE CASCADE,
+		transaction_id UUID REFERENCES sigma_finance.transactions(id) ON DELETE SET NULL,
+		acquired_at TIMESTAMPTZ NOT NULL,
+		initial_quantity DECIMAL(20,8) NOT NULL,
+		remaining_quantity DECIMAL(20,8) NOT NULL,
+		cost_basis_per_unit DECIMAL(20,8) NOT NULL,
+		total_cost_basis BIGINT NOT NULL,
+		currency VARCHAR(10) NOT NULL DEFAULT 'USD',
+		status VARCHAR(20) NOT NULL DEFAULT 'OPEN',
+		created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_tax_lots_position_status ON sigma_finance.tax_lots(position_id, status);
+
+	-- Create tax_lot_dispositions table for tests (mirrors migration 56092026).
+	CREATE TABLE IF NOT EXISTS sigma_finance.tax_lot_dispositions (
+		id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+		lot_id UUID NOT NULL REFERENCES sigma_finance.tax_lots(id) ON DELETE CASCADE,
+		position_id UUID NOT NULL REFERENCES sigma_finance.positions(id) ON DELETE CASCADE,
+		portfolio_id UUID NOT NULL REFERENCES sigma_finance.portfolio(id) ON DELETE CASCADE,
+		asset_id UUID NOT NULL REFERENCES sigma_finance.assets(id) ON DELETE CASCADE,
+		transaction_id UUID REFERENCES sigma_finance.transactions(id) ON DELETE SET NULL,
+		acquired_at TIMESTAMPTZ NOT NULL,
+		sold_at TIMESTAMPTZ NOT NULL,
+		quantity DECIMAL(20,8) NOT NULL,
+		cost_basis_per_unit DECIMAL(20,8) NOT NULL,
+		sell_price_per_unit DECIMAL(20,8) NOT NULL,
+		cost_basis BIGINT NOT NULL,
+		proceeds BIGINT NOT NULL,
+		realized_gain_loss BIGINT NOT NULL,
+		method VARCHAR(20) NOT NULL DEFAULT 'FIFO',
+		holding_period_days INT NOT NULL DEFAULT 0,
+		is_long_term BOOLEAN NOT NULL DEFAULT FALSE,
+		created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);
+	CREATE INDEX IF NOT EXISTS idx_tax_lot_dispositions_position
+		ON sigma_finance.tax_lot_dispositions(position_id, sold_at);
+	CREATE INDEX IF NOT EXISTS idx_tax_lot_dispositions_portfolio
+		ON sigma_finance.tax_lot_dispositions(portfolio_id, sold_at);
+
+	-- positions.realized_gain_loss: cumulative economic realized P/L in cents
+	-- (average-cost method), distinct from fiscal lot-matched rows above.
+	ALTER TABLE IF EXISTS sigma_finance.positions
+		ADD COLUMN IF NOT EXISTS realized_gain_loss BIGINT NOT NULL DEFAULT 0;
 `)
+
+	if err != nil {
+		return err
+	}
+
+	// Reconcile `instruments` against the current schema.
+	//
+	// Unlike the tables above, this one is created by individual test packages
+	// (instrument_manual_repo_test.go, instrument_manual_test.go) rather than
+	// here, and those use CREATE TABLE IF NOT EXISTS - so on a test database
+	// that already has `instruments`, adding a field to model.Instrument
+	// silently breaks every query against the new column with
+	// "column does not exist". Those packages run in an unpredictable order
+	// relative to each other, so reconciling here is the only reliable place.
+	//
+	// Mirrors migration 55092026_add_instrument_reference_metrics.go.
+	_, err = db.ExecContext(ctx, `
+		ALTER TABLE sigma_finance.instruments
+			ADD COLUMN IF NOT EXISTS expense_ratio DECIMAL(8,6);
+		ALTER TABLE sigma_finance.instruments
+			ADD COLUMN IF NOT EXISTS dividend_yield DECIMAL(8,6);
+	`)
 
 	return err
 }
@@ -468,6 +540,8 @@ func (tdb *TestDB) CleanupTables(ctx context.Context) {
 			"sigma_finance.assets",
 			"sigma_finance.positions",
 			"sigma_finance.transactions",
+			"sigma_finance.tax_lot_dispositions",
+			"sigma_finance.tax_lots",
 			"sigma_finance.portfolio_performance",
 			"sigma_finance.user_alerts",
 			"sigma_finance.asset_prices",

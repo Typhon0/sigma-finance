@@ -79,6 +79,7 @@ type UpdateTransactionRequest struct {
 type BuyTransactionRequest struct {
 	UserID            string          `json:"user_id" validate:"required"`
 	PortfolioID       string          `json:"portfolio_id" validate:"required"`
+	AccountID         *string         `json:"account_id,omitempty"`
 	AssetID           string          `json:"asset_id" validate:"required"`
 	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
 	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
@@ -92,6 +93,7 @@ type BuyTransactionRequest struct {
 type SellTransactionRequest struct {
 	UserID            string          `json:"user_id" validate:"required"`
 	PositionID        string          `json:"position_id" validate:"required"`
+	AccountID         *string         `json:"account_id,omitempty"`
 	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
 	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
 	UnitPriceCurrency model.Currency  `json:"unit_price_currency" validate:"required"`
@@ -103,6 +105,7 @@ type SellTransactionRequest struct {
 
 type CashTransactionRequest struct {
 	UserID       string                `json:"user_id" validate:"required"`
+	AccountID    *string               `json:"account_id,omitempty"`
 	Type         model.TransactionType `json:"type" validate:"required"` // DEPOSIT, WITHDRAWAL, etc.
 	Amount       model.Money           `json:"amount" validate:"required"`
 	Currency     model.Currency        `json:"currency" validate:"required"`
@@ -132,9 +135,17 @@ type TimeRange struct {
 }
 
 type TransactionResult struct {
-	Transaction   *model.Transaction `json:"transaction"`
-	Position      *model.Position    `json:"position"`
-	RealizedGains *model.Money       `json:"realized_gains,omitempty"`
+	Transaction *model.Transaction `json:"transaction"`
+	Position    *model.Position    `json:"position"`
+	// RealizedGains is the ECONOMIC realized P/L for this sale (average-cost
+	// method). See FiscalRealizedGainLoss for the tax-basis number.
+	RealizedGains *model.Money `json:"realized_gains,omitempty"`
+	// FiscalRealizedGainLoss is the FISCAL lot-matched gain/loss for this
+	// sale (FIFO etc., persisted per disposal in tax_lot_dispositions).
+	// It is a different number from RealizedGains and must never be
+	// aggregated with it.
+	FiscalRealizedGainLoss  *model.Money                  `json:"fiscal_realized_gain_loss,omitempty"`
+	FiscalAllocationDetails *model.TaxLotAllocationResult `json:"fiscal_allocation_details,omitempty"`
 }
 
 // RecordTransaction creates a new transaction with validation
@@ -343,8 +354,6 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 	return s.uow.Transaction().Delete(ctx, id)
 }
 
-
-
 func getSignedTransactionValues(t *model.Transaction) (decimal.Decimal, model.Money) {
 	switch t.Type {
 	case model.TransactionTypeSell, model.TransactionTypeTransferOut:
@@ -508,8 +517,20 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 
 		var positionID string
 		if position == nil {
+			var targetAccountID string
+			if req.AccountID != nil && *req.AccountID != "" {
+				targetAccountID = *req.AccountID
+			} else {
+				// Default to first account of the portfolio
+				accounts, _ := uow.Account().GetAccountsByPortfolioID(ctx, req.PortfolioID)
+				if len(accounts) > 0 {
+					targetAccountID = accounts[0].ID
+				}
+			}
+
 			newPosition := &model.Position{
 				PortfolioID:         req.PortfolioID,
+				AccountID:           targetAccountID,
 				AssetID:             req.AssetID,
 				Quantity:            decimal.Zero,
 				OwnershipPercentage: decimal.NewFromInt(100),
@@ -529,8 +550,17 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 			}
 		}
 
+		var txAccountID *string
+		if position.AccountID != "" {
+			accID := position.AccountID
+			txAccountID = &accID
+		} else if req.AccountID != nil && *req.AccountID != "" {
+			txAccountID = req.AccountID
+		}
+
 		transaction := &model.Transaction{
 			UserID:            req.UserID,
+			AccountID:         txAccountID,
 			PositionID:        &positionID,
 			Type:              model.TransactionTypeBuy,
 			Amount:            amount,
@@ -562,6 +592,24 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 
 		if err := uow.Position().Update(ctx, position); err != nil {
 			return fmt.Errorf("failed to update position: %w", err)
+		}
+
+		// Persist TaxLot for this buy order
+		lot := &model.TaxLot{
+			PortfolioID:       position.PortfolioID,
+			PositionID:        position.ID,
+			AssetID:           req.AssetID,
+			TransactionID:     &createdTransaction.ID,
+			AcquiredAt:        req.ExecutedAt,
+			InitialQuantity:   req.Quantity,
+			RemainingQuantity: req.Quantity,
+			CostBasisPerUnit:  req.UnitPriceAmount,
+			TotalCostBasis:    amount,
+			Currency:          req.UnitPriceCurrency,
+			Status:            model.TaxLotStatusOpen,
+		}
+		if _, lotErr := uow.TaxLot().Create(ctx, lot); lotErr != nil {
+			log.Printf("[WARN] [TransactionService] ProcessBuy: failed to persist tax lot: %v", lotErr)
 		}
 
 		result = &TransactionResult{
@@ -624,8 +672,17 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 			return fmt.Errorf("failed to calculate realized gains: %w", err)
 		}
 
+		var txAccountID *string
+		if position.AccountID != "" {
+			accID := position.AccountID
+			txAccountID = &accID
+		} else if req.AccountID != nil && *req.AccountID != "" {
+			txAccountID = req.AccountID
+		}
+
 		transaction := &model.Transaction{
 			UserID:            req.UserID,
+			AccountID:         txAccountID,
 			PositionID:        &req.PositionID,
 			Type:              model.TransactionTypeSell,
 			Amount:            amount,
@@ -655,14 +712,72 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 			return fmt.Errorf("failed to update cost basis: %w", err)
 		}
 
+		// Accumulate the ECONOMIC realized P/L onto the position
+		// (average-cost method). Separate from the fiscal number below.
+		position.RealizedGainLoss += realizedGains
+
 		if err := uow.Position().Update(ctx, position); err != nil {
 			return fmt.Errorf("failed to update position: %w", err)
 		}
 
+		// Determine tax envelope and jurisdiction rules
+		var isTaxExempt bool
+		var taxMethod model.TaxLotMethod = model.TaxLotMethodFIFO
+
+		// Effective tax wrapper check from Account, falling back to Portfolio
+		wrapper := position.EffectiveTaxWrapper()
+		if wrapper == "" || wrapper == model.TaxWrapperStandardTaxable {
+			if position.AccountID != "" {
+				if acc, aErr := uow.Account().GetByID(ctx, position.AccountID); aErr == nil && acc != nil {
+					wrapper = acc.TaxWrapper
+				}
+			}
+			if wrapper == "" || wrapper == model.TaxWrapperStandardTaxable {
+				if portfolio, pErr := uow.Portfolio().GetByID(ctx, position.PortfolioID); pErr == nil && portfolio != nil {
+					if wrapper == "" {
+						wrapper = portfolio.TaxWrapper
+					}
+				}
+			}
+		}
+		isTaxExempt = wrapper.IsTaxExempt()
+
+		if user, uErr := uow.User().GetByID(ctx, req.UserID); uErr == nil && user != nil {
+			if user.TaxJurisdiction == "FR" {
+				taxMethod = model.TaxLotMethodPMP
+			}
+		}
+
+		// Allocate open tax lots and persist the fiscal
+		// gain/loss per matched lot as dispositions.
+		var fiscalResult *model.TaxLotAllocationResult
+		openLots, lotErr := uow.TaxLot().FindOpenByPositionID(ctx, req.PositionID)
+		if lotErr != nil {
+			return fmt.Errorf("failed to load open tax lots: %w", lotErr)
+		}
+		if len(openLots) > 0 {
+			var allocErr error
+			fiscalResult, allocErr = model.AllocateTaxLots(openLots, req.Quantity, req.UnitPriceAmount, req.ExecutedAt, taxMethod)
+			if allocErr != nil {
+				return fmt.Errorf("failed to allocate tax lots for sale: %w", allocErr)
+			}
+			fiscalResult.IsTaxExempt = isTaxExempt
+
+			if updateErr := uow.TaxLot().UpdateBatch(ctx, openLots); updateErr != nil {
+				return fmt.Errorf("failed to update tax lots: %w", updateErr)
+			}
+			dispositions := model.NewDispositionsFromAllocation(fiscalResult, position.PortfolioID, position.ID, position.AssetID, &createdTransaction.ID, isTaxExempt)
+			if dispErr := uow.TaxLotDisposition().CreateBatch(ctx, dispositions); dispErr != nil {
+				return fmt.Errorf("failed to persist tax lot dispositions: %w", dispErr)
+			}
+		}
+
 		result = &TransactionResult{
-			Transaction:   createdTransaction,
-			Position:      position,
-			RealizedGains: &realizedGains,
+			Transaction:             createdTransaction,
+			Position:                position,
+			RealizedGains:           &realizedGains,
+			FiscalRealizedGainLoss:  fiscalGainCentsPtr(fiscalResult),
+			FiscalAllocationDetails: fiscalResult,
 		}
 		return nil
 	})
@@ -673,8 +788,18 @@ func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req Sel
 	if result != nil && result.Position != nil {
 		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
 	}
-	log.Printf("[INFO] [TransactionService] ProcessSell: completed tx=%s user=%s realized=%v", result.Transaction.ID, req.UserID, result.RealizedGains)
+	log.Printf("[INFO] [TransactionService] ProcessSell: completed tx=%s user=%s economic=%v fiscal=%v", result.Transaction.ID, req.UserID, result.RealizedGains, result.FiscalRealizedGainLoss)
 	return result, nil
+}
+
+// fiscalGainCentsPtr extracts the fiscal lot-matched G/L total from an
+// allocation result; nil when no lot matching happened (no open lots).
+func fiscalGainCentsPtr(result *model.TaxLotAllocationResult) *model.Money {
+	if result == nil {
+		return nil
+	}
+	g := result.TotalRealizedGainLoss
+	return &g
 }
 
 func (s *TransactionService) enqueueDirtyRecalculationForPosition(ctx context.Context, positionID *string, dirtyFrom time.Time) {

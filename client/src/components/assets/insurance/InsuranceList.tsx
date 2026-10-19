@@ -131,9 +131,9 @@ export function InsuranceList({
 	const getCategoryBadge = (category: string) => {
 		const badges: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> =
 			{
-				life_insurance: { label: "Assurance Vie", variant: "default" },
-				retirement: { label: "PER", variant: "secondary" },
-				savings: { label: "Épargne", variant: "outline" },
+				life_insurance: { label: "Life Insurance", variant: "default" },
+				retirement: { label: "Retirement (PER)", variant: "secondary" },
+				savings: { label: "Savings", variant: "outline" },
 			};
 		return badges[category] || { label: category, variant: "outline" };
 	};

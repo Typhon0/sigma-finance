@@ -76,6 +76,7 @@ func mapUserToGQL(domainUser model.User) *gqlModel.User {
 		ThemeStyle:          themeStyle,
 		ThemeRadius:         themeRadius,
 		ThemeRtl:            domainUser.ThemeRTL,
+		TaxJurisdiction:     domainUser.TaxJurisdiction,
 	}
 }
 
@@ -87,13 +88,32 @@ func mapTagToGQL(tag model.Tag) *gqlModel.Tag {
 }
 
 func mapPortfolioToGQL(p model.Portfolio) *gqlModel.Portfolio {
+	tw := gqlModel.TaxWrapperType(p.TaxWrapper)
+	if !tw.IsValid() {
+		tw = gqlModel.TaxWrapperTypeStandardTaxable
+	}
+
+	var accounts []*gqlModel.Account
+	if len(p.Accounts) > 0 {
+		accounts = make([]*gqlModel.Account, len(p.Accounts))
+		for i, a := range p.Accounts {
+			if a != nil {
+				accounts[i] = mapAccountToGQL(*a)
+			}
+		}
+	} else {
+		accounts = []*gqlModel.Account{}
+	}
+
 	return &gqlModel.Portfolio{
 		ID:           p.ID,
 		Name:         p.Name,
 		Description:  &p.Description,
+		TaxWrapper:   tw,
 		CreatedAt:    p.CreatedAt,
 		UpdatedAt:    p.UpdatedAt,
 		SortOrder:    int32(p.SortOrder),
+		Accounts:     accounts,
 		Assets:       []*gqlModel.PortfolioAsset{},
 		Tags:         []*gqlModel.Tag{},
 		Transactions: []*gqlModel.Transaction{},
@@ -119,8 +139,15 @@ func mapPositionToGQL(p model.Position) *gqlModel.Position {
 	}
 	ownership, _ := p.OwnershipPercentage.Float64()
 
+	var acc *gqlModel.Account
+	if p.Account != nil {
+		acc = mapAccountToGQL(*p.Account)
+	}
+
 	return &gqlModel.Position{
 		ID:                   p.ID,
+		AccountID:            p.AccountID,
+		Account:              acc,
 		Quantity:             quantity,
 		AveragePurchasePrice: avgPrice,
 		OwnershipPct:         &ownership,
@@ -189,32 +216,41 @@ func mapTagsToGQL(domainTags []model.Tag) []*gqlModel.Tag {
 	return gqlTags
 }
 
-// mapStockToGQL converts domain Asset and its metadata to GraphQL Stock
-func mapStockToGQL(domainAsset model.Asset, stockDetails *model.Stock, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Stock {
+// mapStockToGQL converts domain Asset and its metadata to GraphQL Stock.
+//
+// `instrument` may be nil; see resolveReferenceMetrics for what that means for
+// the reference metrics.
+func mapStockToGQL(domainAsset model.Asset, stockDetails *model.Stock, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64, instrument *model.Instrument) *gqlModel.Stock {
 	var metadata model.StockMetadata
 	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	ticker := ""
+	if domainAsset.Symbol != nil {
+		ticker = *domainAsset.Symbol
+	}
+
+	reference := resolveReferenceMetrics(domainAsset, instrument)
 
 	stock := &gqlModel.Stock{
 		ID:               domainAsset.ID,
 		Name:             domainAsset.Name,
 		Symbol:           domainAsset.Symbol,
-		Ticker:           metadata.Exchange,
+		Ticker:           ticker,
 		Tags:             mapTagsToGQL(tags),
 		Sector:           &metadata.Sector,
 		Exchange:         &metadata.Exchange,
 		DayChange:        dayChange,
 		DayChangePercent: dayChangePercent,
 		CurrentValue:     currentValue,
-	}
-
-	if domainAsset.Symbol != nil {
-		stock.Ticker = *domainAsset.Symbol
+		PeRatio:          reference.PERatio,
+		DividendYield:    reference.DividendYield,
 	}
 
 	if stockDetails != nil {
 		stock.Ticker = stockDetails.Ticker
-		stock.Quantity = stockDetails.Quantity
-		stock.BuyingPrice = &stockDetails.BuyingPrice
+		stock.Quantity = stockDetails.Quantity.InexactFloat64()
+		buyingPrice := stockDetails.BuyingPrice.InexactFloat64()
+		stock.BuyingPrice = &buyingPrice
 	}
 
 	stock.AssetType = mapAssetTypeToGQL(domainAsset.Type)
@@ -222,16 +258,26 @@ func mapStockToGQL(domainAsset model.Asset, stockDetails *model.Stock, tags []mo
 	return stock
 }
 
-// mapFundToGQL converts domain Asset and its metadata to GraphQL Fund
-func mapFundToGQL(domainAsset model.Asset, fundDetails *model.Fund, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64) *gqlModel.Fund {
+// mapFundToGQL converts domain Asset and its metadata to GraphQL Fund.
+//
+// `instrument` may be nil; see resolveReferenceMetrics for what that means for
+// the reference metrics.
+func mapFundToGQL(domainAsset model.Asset, fundDetails *model.Fund, tags []model.Tag, dayChange, dayChangePercent, currentValue *float64, instrument *model.Instrument) *gqlModel.Fund {
 	var metadata model.FundMetadata
 	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
+
+	ticker := ""
+	if domainAsset.Symbol != nil {
+		ticker = *domainAsset.Symbol
+	}
+
+	reference := resolveReferenceMetrics(domainAsset, instrument)
 
 	fund := &gqlModel.Fund{
 		ID:               domainAsset.ID,
 		Name:             domainAsset.Name,
 		Symbol:           domainAsset.Symbol,
-		Ticker:           metadata.Exchange,
+		Ticker:           ticker,
 		Tags:             mapTagsToGQL(tags),
 		Sector:           &metadata.Sector,
 		Exchange:         &metadata.Exchange,
@@ -239,16 +285,15 @@ func mapFundToGQL(domainAsset model.Asset, fundDetails *model.Fund, tags []model
 		DayChange:        dayChange,
 		DayChangePercent: dayChangePercent,
 		CurrentValue:     currentValue,
-	}
-
-	if domainAsset.Symbol != nil {
-		fund.Ticker = *domainAsset.Symbol
+		ExpenseRatio:     reference.ExpenseRatio,
+		DividendYield:    reference.DividendYield,
 	}
 
 	if fundDetails != nil {
 		fund.Ticker = fundDetails.Ticker
-		fund.Quantity = fundDetails.Quantity
-		fund.BuyingPrice = &fundDetails.BuyingPrice
+		fund.Quantity = fundDetails.Quantity.InexactFloat64()
+		buyingPrice := fundDetails.BuyingPrice.InexactFloat64()
+		fund.BuyingPrice = &buyingPrice
 	}
 
 	fund.AssetType = mapAssetTypeToGQL(domainAsset.Type)
@@ -524,26 +569,16 @@ func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel
 		portfolioFXState = stringPtr(valuation.FXState)
 	}
 
-	// Map position valuations
+	// Map position valuations.
+	//
+	// This delegates to mapPositionValuationToGQL rather than repeating the
+	// field list. The two copies had already drifted: the one here was missing
+	// cost-basis fields the single-position path already emitted, so
+	// `analytics { positionValuations }` and the standalone resolver disagreed
+	// about the same position.
 	positionValuations := make([]*gqlModel.PositionValuation, len(valuation.PositionValuations))
-	for i, pv := range valuation.PositionValuations {
-		var fxAsOf *time.Time
-		if pv.FXAsOf != nil {
-			fxAsOf = pv.FXAsOf
-		}
-		positionValuations[i] = &gqlModel.PositionValuation{
-			PositionID:      pv.PositionID,
-			AssetID:         pv.AssetID,
-			NativeValue:     float64(pv.NativeValue) / 100.0,
-			DisplayValue:    float64(pv.DisplayValue) / 100.0,
-			FxRate:          pv.FXRate.InexactFloat64(),
-			FxAsOf:          fxAsOf,
-			FxSource:        stringPtrIfNonEmpty(pv.FXSource),
-			FxGranularity:   stringPtrIfNonEmpty(string(pv.FXGranularity)),
-			IsStale:         pv.IsStale,
-			QuoteCurrency:   string(pv.QuoteCurrency),
-			DisplayCurrency: string(pv.DisplayCurrency),
-		}
+	for i := range valuation.PositionValuations {
+		positionValuations[i] = mapPositionValuationToGQL(&valuation.PositionValuations[i])
 	}
 
 	return &gqlModel.PortfolioAnalytics{
@@ -552,12 +587,14 @@ func mapPortfolioValuationToGQL(valuation *service.PortfolioValuation) *gqlModel
 		TotalGainLoss:        float64(valuation.TotalDisplayGainLoss) / 100.0,
 		TotalGainLossPercent: valuation.TotalDisplayGainLossPct.InexactFloat64(),
 		AssetAllocation:      []*gqlModel.AssetAllocation{}, // Not computed in valuation
-		RiskMetrics: &gqlModel.RiskMetrics{
-			Volatility:      0,
-			SharpeRatio:     0,
-			MaxDrawdown:     0,
-			Diversification: 0,
-		},
+		// Risk metrics are deliberately left null. This path only has the
+		// valuation totals, not the return series, so it cannot measure
+		// volatility, Sharpe, Sortino or drawdown. It used to emit literal
+		// zeros, which the API and every consumer read as real measurements -
+		// "0.00 max drawdown" is a boast, not a missing value. Callers that
+		// need these numbers should query portfolioRiskMetrics, which computes
+		// them for real.
+		RiskMetrics:        &gqlModel.RiskMetrics{},
 		PerformanceHistory: history,
 		// Multi-currency fields
 		TotalNativeValue:      float64Ptr(float64(valuation.TotalNativeValue) / 100.0),
@@ -585,17 +622,24 @@ func mapPositionValuationToGQL(pv *service.PositionValuation) *gqlModel.Position
 		fxAsOf = pv.FXAsOf
 	}
 	return &gqlModel.PositionValuation{
-		PositionID:      pv.PositionID,
-		AssetID:         pv.AssetID,
-		NativeValue:     float64(pv.NativeValue) / 100.0,
-		DisplayValue:    float64(pv.DisplayValue) / 100.0,
-		FxRate:          pv.FXRate.InexactFloat64(),
-		FxAsOf:          fxAsOf,
-		FxSource:        stringPtrIfNonEmpty(pv.FXSource),
-		FxGranularity:   stringPtrIfNonEmpty(string(pv.FXGranularity)),
-		IsStale:         pv.IsStale,
-		QuoteCurrency:   string(pv.QuoteCurrency),
-		DisplayCurrency: string(pv.DisplayCurrency),
+		PositionID:         pv.PositionID,
+		AssetID:            pv.AssetID,
+		NativeValue:        float64(pv.NativeValue) / 100.0,
+		DisplayValue:       float64(pv.DisplayValue) / 100.0,
+		CostBasisNative:    float64(pv.CostBasisNative) / 100.0,
+		CostBasisDisplay:   float64(pv.CostBasisDisplay) / 100.0,
+		CostBasisCurrency:  string(pv.CostBasisCurrency),
+		CostBasisConverted: pv.CostBasisConverted,
+		HasDisplayValue:    pv.HasDisplayValue,
+		IsExcluded:         pv.IsExcluded,
+		ExclusionReason:    stringPtrIfNonEmpty(pv.ExclusionReason),
+		FxRate:             pv.FXRate.InexactFloat64(),
+		FxAsOf:             fxAsOf,
+		FxSource:           stringPtrIfNonEmpty(pv.FXSource),
+		FxGranularity:      stringPtrIfNonEmpty(string(pv.FXGranularity)),
+		IsStale:            pv.IsStale,
+		QuoteCurrency:      string(pv.QuoteCurrency),
+		DisplayCurrency:    string(pv.DisplayCurrency),
 	}
 }
 
@@ -629,10 +673,11 @@ func mapAuthErrorToGQL(err *service.AuthError) *gqlModel.AuthError {
 // mapRiskMetricsToGQL converts service RiskMetrics to GraphQL RiskMetrics
 func mapRiskMetricsToGQL(risk service.RiskMetrics) *gqlModel.RiskMetrics {
 	return &gqlModel.RiskMetrics{
-		Volatility:      risk.Volatility,
-		SharpeRatio:     risk.SharpeRatio,
-		MaxDrawdown:     risk.MaxDrawdown,
-		Diversification: risk.Diversification,
+		Volatility:      float64Ptr(risk.Volatility),
+		SharpeRatio:     float64Ptr(risk.SharpeRatio),
+		SortinoRatio:    float64Ptr(risk.SortinoRatio),
+		MaxDrawdown:     float64Ptr(risk.MaxDrawdown),
+		Diversification: float64Ptr(risk.Diversification),
 	}
 }
 
@@ -657,8 +702,15 @@ func mapTransactionToGQL(t model.Transaction) *gqlModel.Transaction {
 		unitPriceAmount = &value
 	}
 
+	var acc *gqlModel.Account
+	if t.Account != nil {
+		acc = mapAccountToGQL(*t.Account)
+	}
+
 	return &gqlModel.Transaction{
 		ID:                t.ID,
+		AccountID:         t.AccountID,
+		Account:           acc,
 		TransactionType:   gqlModel.TransactionType(t.Type),
 		Quantity:          quantity,
 		UnitPriceAmount:   unitPriceAmount,
@@ -766,4 +818,31 @@ func mapAssetAllocationsToGQL(allocations []service.AssetAllocation) []*gqlModel
 		}
 	}
 	return gqlAllocations
+}
+
+// mapAccountToGQL converts domain Account model to GraphQL Account
+func mapAccountToGQL(acc model.Account) *gqlModel.Account {
+	var totalVal float64
+	for _, p := range acc.Positions {
+		if p != nil && p.TotalCostBasis != nil {
+			totalVal += float64(*p.TotalCostBasis) / 100.0
+		}
+	}
+
+	return &gqlModel.Account{
+		ID:             acc.ID,
+		PortfolioID:    acc.PortfolioID,
+		Name:           acc.Name,
+		Type:           gqlModel.AccountType(acc.Type),
+		TaxWrapper:     gqlModel.TaxWrapperType(acc.TaxWrapper),
+		Institution:    acc.Institution,
+		AccountNumber:  acc.AccountNumber,
+		Currency:       string(acc.Currency),
+		SyncProvider:   acc.SyncProvider,
+		ExternalID:     acc.ExternalID,
+		PositionsCount: int32(len(acc.Positions)),
+		TotalValue:     &totalVal,
+		CreatedAt:      acc.CreatedAt,
+		UpdatedAt:      acc.UpdatedAt,
+	}
 }

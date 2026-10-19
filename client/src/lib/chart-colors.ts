@@ -2,32 +2,84 @@
  * Chart color utilities for ECharts integration with shadcn/ui theme
  */
 
-// Fallback color mappings for OKLCH to RGB conversion
-const CHART_COLOR_FALLBACKS: Record<string, string> = {
-	// Light theme colors
-	"oklch(0.646 0.222 41.116)": "#e11d48", // chart-1 red
-	"oklch(0.6 0.118 184.704)": "#0ea5e9", // chart-2 blue
-	"oklch(0.398 0.07 227.392)": "#8b5cf6", // chart-3 purple
-	"oklch(0.828 0.189 84.429)": "#22c55e", // chart-4 green
-
-	// Dark theme colors
-	"oklch(0.488 0.243 264.376)": "#8b5cf6", // chart-1 purple
-	"oklch(0.696 0.17 162.48)": "#10b981", // chart-2 emerald
-	"oklch(0.769 0.188 70.08)": "#f59e0b", // chart-3 orange
-	"oklch(0.627 0.265 303.9)": "#ec4899", // chart-4 pink
-	"oklch(0.645 0.246 16.439)": "#ef4444", // chart-5 red
-};
-
 /**
- * Convert OKLCH color to RGB hex string
- * Uses fallback mapping for now - in production you'd want a proper converter
+ * Convert an OKLCH color string to an sRGB hex string (or rgba() when the
+ * value carries alpha). Real CSS Color 4 conversion rather than a lookup
+ * table: tokens are tuned per theme, so every value that reaches a canvas
+ * must resolve exactly. Non-oklch input passes through untouched.
  */
 export function oklchToRgb(oklch: string): string {
 	if (!oklch?.includes("oklch")) {
 		return oklch;
 	}
 
-	return CHART_COLOR_FALLBACKS[oklch] || oklch;
+	const match = oklch.match(
+		/oklch\(\s*([\d.]+%?)\s+([\d.]+%?)\s+([\d.]+)(?:deg|rad|grad|turn)?\s*(?:\/\s*([\d.]+%?)\s*)?\)/i,
+	);
+	if (!match) {
+		return oklch;
+	}
+
+	const lightness = match[1].endsWith("%")
+		? Number.parseFloat(match[1]) / 100
+		: Number.parseFloat(match[1]);
+	// A chroma percentage maps to the 0–0.4 range per CSS Color 4.
+	const chroma = match[2].endsWith("%")
+		? (Number.parseFloat(match[2]) / 100) * 0.4
+		: Number.parseFloat(match[2]);
+	const hue = (Number.parseFloat(match[3]) * Math.PI) / 180;
+	const alpha = match[4]
+		? match[4].endsWith("%")
+			? Number.parseFloat(match[4]) / 100
+			: Number.parseFloat(match[4])
+		: 1;
+
+	// oklch → oklab
+	const a = chroma * Math.cos(hue);
+	const b = chroma * Math.sin(hue);
+
+	// oklab → linear sRGB (Björn Ottosson's matrices)
+	const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+	const m = (lightness - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+	const s = (lightness - 0.0894841775 * a - 1.291485548 * b) ** 3;
+
+	const linR = 4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+	const linG = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+	const linB = -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s;
+
+	const toSrgb = (value: number): number => {
+		const c = Math.min(1, Math.max(0, value));
+		return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
+	};
+
+	const r = Math.round(toSrgb(linR) * 255);
+	const g = Math.round(toSrgb(linG) * 255);
+	const bl = Math.round(toSrgb(linB) * 255);
+
+	if (alpha < 1) {
+		return `rgba(${r}, ${g}, ${bl}, ${Number(alpha.toFixed(3))})`;
+	}
+
+	return `#${((1 << 24) | (r << 16) | (g << 8) | bl).toString(16).slice(1)}`;
+}
+
+/**
+ * "r, g, b" triplet for composing rgba() strings that ECharts can parse.
+ */
+export function hexToRgbTriplet(hex: string): string {
+	const value = hex.replace("#", "");
+	const full =
+		value.length === 3
+			? value
+					.split("")
+					.map((c) => c + c)
+					.join("")
+			: value.slice(0, 6);
+	const int = Number.parseInt(full, 16);
+	if (Number.isNaN(int)) {
+		return "107, 114, 128";
+	}
+	return `${(int >> 16) & 255}, ${(int >> 8) & 255}, ${int & 255}`;
 }
 
 /**
@@ -62,6 +114,9 @@ export function getChartThemeColors() {
 			cardForeground: "#000000",
 			border: "#e5e7eb",
 			mutedForeground: "#6b7280",
+			gain: "#007149",
+			loss: "#bb1139",
+			primary: "#18181b",
 		};
 	}
 
@@ -75,6 +130,9 @@ export function getChartThemeColors() {
 		cardForeground: oklchToRgb(computedStyle.getPropertyValue("--card-foreground").trim()),
 		border: oklchToRgb(computedStyle.getPropertyValue("--border").trim()),
 		mutedForeground: oklchToRgb(computedStyle.getPropertyValue("--muted-foreground").trim()),
+		gain: oklchToRgb(computedStyle.getPropertyValue("--gain").trim()),
+		loss: oklchToRgb(computedStyle.getPropertyValue("--loss").trim()),
+		primary: oklchToRgb(computedStyle.getPropertyValue("--primary").trim()),
 	};
 }
 

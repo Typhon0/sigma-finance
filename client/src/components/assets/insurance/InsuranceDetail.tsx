@@ -74,11 +74,11 @@ export function InsuranceDetail({ insuranceId, onBack, isPanel = false }: Insura
 				variant: "default" | "secondary" | "outline" | "destructive";
 			}
 		> = {
-			life_insurance: { label: "Assurance Vie", variant: "default" },
-			retirement: { label: "PER", variant: "secondary" },
-			savings: { label: "Épargne", variant: "outline" },
-			death_insurance: { label: "Décès", variant: "destructive" },
-			mixed: { label: "Mixte", variant: "outline" },
+			life_insurance: { label: "Life Insurance", variant: "default" },
+			retirement: { label: "Retirement (PER)", variant: "secondary" },
+			savings: { label: "Savings", variant: "outline" },
+			death_insurance: { label: "Term Life", variant: "destructive" },
+			mixed: { label: "Mixed / Endowment", variant: "outline" },
 		};
 		return badges[category] || { label: category, variant: "outline" };
 	};

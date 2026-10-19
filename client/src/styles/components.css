@@ -287,7 +287,10 @@
 
 /* MARK: Popover */
 :root[data-style] .ui-popover-content {
-	width: min(90vw, 56rem);
+	/* Cap only: popovers size to their own content/width classes. A hard
+	   `width` here overrode every caller’s w-* (the rule is unlayered, so it
+	   beat the utilities) and stretched small popovers to 56rem. */
+	max-width: min(90vw, 56rem);
 }
 
 /* MARK: Drawer */

@@ -11,6 +11,7 @@ import (
 // IFXRateRepository defines the interface for FX rate repository operations
 type IFXRateRepository interface {
 	GetLatestRate(ctx context.Context, base, quote model.Currency) (*model.FXRate, error)
+	GetLatestRateWithGranularity(ctx context.Context, base, quote model.Currency, granularity model.FXRateGranularity) (*model.FXRate, error)
 	GetHistoricalRate(ctx context.Context, base, quote model.Currency, date time.Time) (*model.FXRate, error)
 	GetRateForDate(ctx context.Context, base, quote model.Currency, date time.Time) (*model.FXRate, error)
 	SaveRate(ctx context.Context, rate *model.FXRate) error
@@ -40,6 +41,23 @@ func (r *FXRateRepository) GetLatestRate(ctx context.Context, base, quote model.
 		Model(&rate).
 		Where("base_currency = ?", base).
 		Where("quote_currency = ?", quote).
+		Order("as_of DESC").
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &rate, nil
+}
+
+// GetLatestRateWithGranularity retrieves the most recent rate for a currency pair with specific granularity
+func (r *FXRateRepository) GetLatestRateWithGranularity(ctx context.Context, base, quote model.Currency, granularity model.FXRateGranularity) (*model.FXRate, error) {
+	var rate model.FXRate
+	err := r.db.NewSelect().
+		Model(&rate).
+		Where("base_currency = ?", base).
+		Where("quote_currency = ?", quote).
+		Where("granularity = ?", granularity).
 		Order("as_of DESC").
 		Limit(1).
 		Scan(ctx)
@@ -87,17 +105,21 @@ func (r *FXRateRepository) GetRateForDate(ctx context.Context, base, quote model
 	return &rate, nil
 }
 
-// SaveRate persists a single FX rate
+// SaveRate persists a single FX rate or updates it on conflict
 func (r *FXRateRepository) SaveRate(ctx context.Context, rate *model.FXRate) error {
 	_, err := r.db.NewInsert().
 		Model(rate).
-		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO NOTHING").
+		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO UPDATE").
+		Set("rate = EXCLUDED.rate").
+		Set("is_stale = EXCLUDED.is_stale").
+		Set("source = EXCLUDED.source").
+		Set("updated_at = CURRENT_TIMESTAMP").
 		Returning("*").
 		Exec(ctx)
 	return err
 }
 
-// SaveRates persists multiple FX rates in a batch
+// SaveRates persists multiple FX rates in a batch or updates on conflict
 func (r *FXRateRepository) SaveRates(ctx context.Context, rates []*model.FXRate) error {
 	if len(rates) == 0 {
 		return nil
@@ -105,7 +127,11 @@ func (r *FXRateRepository) SaveRates(ctx context.Context, rates []*model.FXRate)
 
 	_, err := r.db.NewInsert().
 		Model(&rates).
-		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO NOTHING").
+		On("CONFLICT (base_currency, quote_currency, as_of, granularity) DO UPDATE").
+		Set("rate = EXCLUDED.rate").
+		Set("is_stale = EXCLUDED.is_stale").
+		Set("source = EXCLUDED.source").
+		Set("updated_at = CURRENT_TIMESTAMP").
 		Returning("*").
 		Exec(ctx)
 	return err

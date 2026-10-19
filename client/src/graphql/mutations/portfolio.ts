@@ -6,6 +6,7 @@ export const CREATE_PORTFOLIO = graphql(/* GraphQL */ `
       id
       name
       description
+      taxWrapper
       sortOrder
     }
   }
@@ -17,6 +18,7 @@ export const UPDATE_PORTFOLIO = graphql(/* GraphQL */ `
       id
       name
       description
+      taxWrapper
       sortOrder
     }
   }

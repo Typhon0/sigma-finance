@@ -117,6 +117,10 @@ export const optimisticResponseGenerators = {
 export function invalidatePortfolioQueries(cache: any) {
 	cache.evict({ fieldName: "portfolios" });
 	cache.evict({ fieldName: "portfolio" });
+	// Watchlists are part of the same dashboard query as portfolios, so evicting
+	// this field costs no extra round trip and lets newly watched assets appear
+	// without a caller-side refetch().
+	cache.evict({ fieldName: "watchlists" });
 	cache.gc();
 }
 

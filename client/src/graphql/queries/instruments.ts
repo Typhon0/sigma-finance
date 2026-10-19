@@ -21,6 +21,7 @@ export const SEARCH_INSTRUMENTS = graphql(/* GraphQL */ `
 					cusip
 					industry
 					website
+					summary
 					family
 					category
 					city

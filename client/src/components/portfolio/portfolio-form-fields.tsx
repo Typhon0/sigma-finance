@@ -311,3 +311,36 @@ export function PortfolioDescriptionField({ disabled = false }: PortfolioDescrip
 		/>
 	);
 }
+
+export function PortfolioTaxWrapperField({ disabled = false }: { disabled?: boolean }) {
+	const form = useFormContext<PortfolioFormData>();
+
+	return (
+		<FormField
+			control={form.control}
+			name="taxWrapper"
+			render={({ field }) => (
+				<FormItem>
+					<FormLabel>Tax Envelope / Wrapper</FormLabel>
+					<FormControl>
+						<select
+							{...field}
+							disabled={disabled}
+							className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							<option value="STANDARD_TAXABLE">Standard Taxable (CTO / Taxable Brokerage)</option>
+							<option value="PEA">PEA (French Tax-Sheltered Equity Plan)</option>
+							<option value="RETIREMENT_SHELTERED">Retirement / Sheltered (IRA, 401k, PER)</option>
+							<option value="CRYPTO_VAULT">Crypto / Valuables Vault</option>
+						</select>
+					</FormControl>
+					<FormDescription>
+						Determines fiscal lot accounting (e.g. PEA tax-exempt envelope vs. CTO PMP / FIFO).
+					</FormDescription>
+					<FormMessage />
+				</FormItem>
+			)}
+		/>
+	);
+}
+

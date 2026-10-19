@@ -3,6 +3,8 @@
 type Transaction {
     id: ID!
     portfolio: Portfolio!
+    accountId: ID
+    account: Account
     asset: Asset!
     transactionType: TransactionType!
     quantity: Float!

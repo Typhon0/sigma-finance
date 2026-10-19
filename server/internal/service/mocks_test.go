@@ -169,6 +169,11 @@ func (m *MockUserRepository) UpdateThemePreferences(ctx context.Context, userID 
 	return args.Error(0)
 }
 
+func (m *MockUserRepository) UpdateTaxJurisdiction(ctx context.Context, userID string, jurisdiction string) error {
+	args := m.Called(ctx, userID, jurisdiction)
+	return args.Error(0)
+}
+
 // IRepository interface methods
 func (m *MockUserRepository) GetDB() bun.IDB {
 	args := m.Called()

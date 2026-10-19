@@ -26,6 +26,29 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
           date
           value
         }
+        # FX provenance. The module must not guess whether a value was
+        # converted - the server is the only party that knows.
+        displayCurrency
+        quoteCurrency
+        isStale
+        positionValuations {
+          positionId
+          assetId
+          nativeValue
+          displayValue
+          costBasisNative
+          costBasisDisplay
+          costBasisCurrency
+          costBasisConverted
+          hasDisplayValue
+          isExcluded
+          exclusionReason
+          fxRate
+          fxAsOf
+          isStale
+          quoteCurrency
+          displayCurrency
+        }
       }
       assets {
         quantity
@@ -33,6 +56,7 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
         currentValue
         dayChange
         dayChangePercent
+        quoteCurrency
         asset {
           id
           name
@@ -43,6 +67,17 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
           exchange
           dayChange
           dayChangePercent
+          # Instrument reference metrics, on the concrete types: the Asset
+          # interface does not carry them. Nullable - null means the provider
+          # has not supplied the figure, which is not the same as zero.
+          ... on Stock {
+            peRatio
+            dividendYield
+          }
+          ... on Fund {
+            expenseRatio
+            dividendYield
+          }
           assetType {
             id
             name

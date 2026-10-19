@@ -3,8 +3,8 @@
  * Centralized configuration for both Lightweight Charts™ and Apache ECharts
  */
 
-import { useTheme } from "next-themes";
 import { useMemo } from "react";
+import { useTheme } from "@/components/theme-provider";
 import { getEChartsTheme } from "./echarts";
 import { getChartTheme as getLightweightTheme } from "./lightweight-charts";
 
@@ -169,14 +169,17 @@ export const DEFAULT_CHART_CONFIGS: Record<ChartType, Partial<ChartConfig>> = {
  * Chart theme hook
  */
 export function useChartTheme() {
-	const { theme, systemTheme } = useTheme();
-
-	const isDark = useMemo(() => {
-		if (theme === "system") {
-			return systemTheme === "dark";
+	let resolvedTheme: "dark" | "light" = "dark";
+	try {
+		const themeContext = useTheme();
+		resolvedTheme = themeContext.resolvedTheme;
+	} catch {
+		if (typeof document !== "undefined") {
+			resolvedTheme = document.documentElement.classList.contains("dark") ? "dark" : "light";
 		}
-		return theme === "dark";
-	}, [theme, systemTheme]);
+	}
+
+	const isDark = resolvedTheme === "dark";
 
 	const lightweightTheme = useMemo(() => getLightweightTheme(isDark), [isDark]);
 	const echartsTheme = useMemo(() => getEChartsTheme(isDark), [isDark]);

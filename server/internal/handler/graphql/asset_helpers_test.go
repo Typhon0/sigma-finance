@@ -84,6 +84,9 @@ func (s *stubPortfolioService) GetAssetAllocation(_ context.Context, _ string) (
 func (s *stubPortfolioService) GetPerformanceVsBenchmark(_ context.Context, _, _ string) (service.PerformanceBenchmark, error) {
 	panic("not implemented")
 }
+func (s *stubPortfolioService) GetScopedPerformanceHistory(_ context.Context, _ string, _ []string) ([]service.PerformancePoint, error) {
+	panic("not implemented")
+}
 
 // unimplementedAssetService provides panic stubs for all IAssetService methods.
 // Embed this in test stubs to avoid repeating 9 panic methods.
@@ -397,32 +400,68 @@ type stubAssetRepo struct {
 }
 
 func (s *stubAssetRepo) GetDB() bun.IDB { panic("not implemented") }
-func (s *stubAssetRepo) Create(ctx context.Context, entity *model.Asset) (*model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) Update(ctx context.Context, entity *model.Asset) error { panic("not implemented") }
+func (s *stubAssetRepo) Create(ctx context.Context, entity *model.Asset) (*model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) Update(ctx context.Context, entity *model.Asset) error {
+	panic("not implemented")
+}
 func (s *stubAssetRepo) Delete(ctx context.Context, id string) error { panic("not implemented") }
-func (s *stubAssetRepo) GetByID(ctx context.Context, id string) (*model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetByID(ctx context.Context, id string) (*model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) FindOneBy(ctx context.Context, options ...repository.QueryOption) (*model.Asset, error) {
+	panic("not implemented")
+}
 func (s *stubAssetRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.Asset, error) {
 	return s.assets, s.err
 }
-func (s *stubAssetRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) { panic("not implemented") }
+func (s *stubAssetRepo) Count(ctx context.Context, options ...repository.QueryOption) (int, error) {
+	panic("not implemented")
+}
 
-func (s *stubAssetRepo) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) CountWithFilters(ctx context.Context, filter repository.AssetFilter) (int, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) GetByInstrumentID(ctx context.Context, instrumentID string) (*model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) CountWithFilters(ctx context.Context, filter repository.AssetFilter) (int, error) {
+	panic("not implemented")
+}
 
-func (s *stubAssetRepo) GetAssetsByType(ctx context.Context, assetType model.AssetType) ([]model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) GetTradeableAssets(ctx context.Context) ([]model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) SearchAssetsByName(ctx context.Context, searchTerm string, limit int) ([]model.Asset, error) { panic("not implemented") }
-func (s *stubAssetRepo) GetAssetsByMetadataField(ctx context.Context, field string, value interface{}) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetAssetsByType(ctx context.Context, assetType model.AssetType) ([]model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) GetTradeableAssets(ctx context.Context) ([]model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) SearchAssetsByName(ctx context.Context, searchTerm string, limit int) ([]model.Asset, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) GetAssetsByMetadataField(ctx context.Context, field string, value interface{}) ([]model.Asset, error) {
+	panic("not implemented")
+}
 
-func (s *stubAssetRepo) CreateBatch(ctx context.Context, assets []model.Asset) error { panic("not implemented") }
-func (s *stubAssetRepo) UpdateBatch(ctx context.Context, assets []model.Asset) error { panic("not implemented") }
+func (s *stubAssetRepo) CreateBatch(ctx context.Context, assets []model.Asset) error {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) UpdateBatch(ctx context.Context, assets []model.Asset) error {
+	panic("not implemented")
+}
 
-func (s *stubAssetRepo) GetAssetTypes(ctx context.Context) ([]model.AssetType, error) { panic("not implemented") }
-func (s *stubAssetRepo) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) { panic("not implemented") }
+func (s *stubAssetRepo) GetAssetTypes(ctx context.Context) ([]model.AssetType, error) {
+	panic("not implemented")
+}
+func (s *stubAssetRepo) GetAssetsByTag(ctx context.Context, tagID string) ([]model.Asset, error) {
+	panic("not implemented")
+}
 
 // stubUOW implements repository.IUnitOfWork for tests.
 // Only the methods needed by getAssetWithDetails are functional;
@@ -462,15 +501,20 @@ func (u *stubUOW) Fund() repository.IFundRepository {
 func (u *stubUOW) Do(_ context.Context, _ func(repository.IUnitOfWork) error) error {
 	panic("not implemented")
 }
-func (u *stubUOW) User() repository.IUserRepository                     { panic("not implemented") }
-func (u *stubUOW) Portfolio() repository.IPortfolioRepository           { panic("not implemented") }
+func (u *stubUOW) User() repository.IUserRepository           { panic("not implemented") }
+func (u *stubUOW) Portfolio() repository.IPortfolioRepository { panic("not implemented") }
+func (u *stubUOW) Account() repository.IAccountRepository     { panic("not implemented") }
 func (u *stubUOW) Asset() repository.IAssetRepository {
 	if u.assetRepo != nil {
 		return u.assetRepo
 	}
 	return &stubAssetRepo{}
 }
-func (u *stubUOW) Position() repository.IPositionRepository             { panic("not implemented") }
+func (u *stubUOW) Position() repository.IPositionRepository { panic("not implemented") }
+func (u *stubUOW) TaxLot() repository.ITaxLotRepository     { panic("not implemented") }
+func (u *stubUOW) TaxLotDisposition() repository.ITaxLotDispositionRepository {
+	panic("not implemented")
+}
 func (u *stubUOW) Transaction() repository.ITransactionRepository       { panic("not implemented") }
 func (u *stubUOW) Watchlist() repository.IWatchlistRepository           { panic("not implemented") }
 func (u *stubUOW) WatchlistAsset() repository.IWatchlistAssetRepository { panic("not implemented") }

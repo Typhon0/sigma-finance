@@ -46,6 +46,7 @@ type IPositionRepository interface {
 
 	// Enhanced CRUD operations
 	GetByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.Position, error)
+	GetByAccountAndAsset(ctx context.Context, accountID, assetID string) (*model.Position, error)
 	FindWithFilters(ctx context.Context, filter PositionFilter) ([]model.Position, error)
 	CountWithFilters(ctx context.Context, filter PositionFilter) (int, error)
 
@@ -83,7 +84,26 @@ func (r *PositionRepository) GetByPortfolioAndAsset(ctx context.Context, portfol
 	var position model.Position
 	err := r.db.NewSelect().
 		Model(&position).
-		Where("portfolio_id = ? AND asset_id = ?", portfolioID, assetID).
+		Relation("Account").
+		Relation("Asset").
+		Relation("Portfolio").
+		Where("position.portfolio_id = ? AND position.asset_id = ?", portfolioID, assetID).
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &position, nil
+}
+
+// GetByAccountAndAsset retrieves a position by account and asset IDs
+func (r *PositionRepository) GetByAccountAndAsset(ctx context.Context, accountID, assetID string) (*model.Position, error) {
+	var position model.Position
+	err := r.db.NewSelect().
+		Model(&position).
+		Relation("Account").
+		Relation("Asset").
+		Relation("Portfolio").
+		Where("position.account_id = ? AND position.asset_id = ?", accountID, assetID).
 		Scan(ctx)
 	if err != nil {
 		return nil, err
@@ -164,13 +184,14 @@ func (r *PositionRepository) GetPortfolioPositions(ctx context.Context, portfoli
 	return r.FindWithFilters(ctx, PositionFilter{PortfolioID: &portfolioID})
 }
 
-// GetPortfolioPositionsWithAssets retrieves all positions for a portfolio with asset details
+// GetPortfolioPositionsWithAssets retrieves all positions for a portfolio with asset and account details
 func (r *PositionRepository) GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]model.Position, error) {
 	var positions []model.Position
 	err := r.db.NewSelect().
 		Model(&positions).
 		Relation("Asset").
-		Where("portfolio_id = ?", portfolioID).
+		Relation("Account").
+		Where("position.portfolio_id = ?", portfolioID).
 		Order("asset.name ASC").
 		Scan(ctx)
 	return positions, err

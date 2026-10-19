@@ -299,13 +299,13 @@ export function CollectiblesList({
 						<Package className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
 						<div className="space-y-1 flex-1">
 							<p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-								Portfolio Demo Incomplet
+								Incomplete Demo Portfolio
 							</p>
 							<p className="text-sm text-blue-700 dark:text-blue-300">
-								Votre portfolio devrait contenir 15 collectibles (montres, art, véhicules, bijoux,
-								vins, métaux précieux). Allez dans{" "}
-								<strong>Paramètres → Préférences → Reset to Default Data</strong> pour charger le
-								portfolio complet avec tous les exemples.
+								Your portfolio should contain 15 collectibles (watches, art, vehicles, jewelry,
+								wines, precious metals). Go to{" "}
+								<strong>Settings → Preferences → Reset to Default Data</strong> to load the
+								complete portfolio with all examples.
 							</p>
 						</div>
 					</div>

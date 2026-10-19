@@ -3,16 +3,17 @@ package model
 import (
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
 type Fund struct {
 	bun.BaseModel `bun:"table:sigma_finance.fund"`
 
-	AssetID     string  `bun:"asset_id,pk"`
-	Ticker      string  `bun:"ticker"`
-	Quantity    float64 `bun:"quantity"`
-	BuyingPrice float64 `bun:"buying_price"`
+	AssetID     string          `bun:"asset_id,pk"`
+	Ticker      string          `bun:"ticker"`
+	Quantity    decimal.Decimal `bun:"quantity,type:decimal(20,8)"`
+	BuyingPrice decimal.Decimal `bun:"buying_price,type:decimal(20,8)"`
 }
 
 // Implement Entity interface

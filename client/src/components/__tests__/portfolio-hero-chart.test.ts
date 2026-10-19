@@ -69,4 +69,30 @@ describe("PortfolioHeroChart filterByRange", () => {
 		expect(result[1].date.getTime()).toBeCloseTo(now.getTime(), -3);
 		expect(result[1].portfolioValue).toBe(500);
 	});
+
+	it("computes distinct delta endpoints for 1M vs ALL time ranges", () => {
+		const now = new Date();
+		const tenYearsAgo = new Date(now.getTime() - 3650 * 24 * 60 * 60 * 1000);
+		const twentyDaysAgo = new Date(now.getTime() - 20 * 24 * 60 * 60 * 1000);
+
+		const points: PerformancePoint[] = [
+			{ date: tenYearsAgo, portfolioValue: 37.85, benchmarkValue: 37.85 },
+			{ date: twentyDaysAgo, portfolioValue: 9000, benchmarkValue: 9000 },
+			{ date: now, portfolioValue: 9200, benchmarkValue: 9200 },
+		];
+
+		const oneMonthPoints = filterByRange(points, "1M");
+		const allPoints = filterByRange(points, "ALL");
+
+		// 1M should start around the 1-month window (~9000), not 10 years ago ($37.85)
+		expect(oneMonthPoints[0].portfolioValue).toBeGreaterThan(8000);
+		const oneMonthDelta =
+			oneMonthPoints[oneMonthPoints.length - 1].portfolioValue - oneMonthPoints[0].portfolioValue;
+		expect(oneMonthDelta).toBeLessThan(1000);
+
+		// ALL spans the entire history
+		expect(allPoints[0].portfolioValue).toBe(37.85);
+		const allDelta = allPoints[allPoints.length - 1].portfolioValue - allPoints[0].portfolioValue;
+		expect(allDelta).toBeCloseTo(9162.15, 2);
+	});
 });

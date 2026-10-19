@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { PortfolioTaxWrapperField } from "./portfolio-form-fields";
 import {
 	type PortfolioFormData,
 	type PortfolioFormError,
@@ -33,6 +34,7 @@ export interface EnhancedPortfolioFormProps {
 		id?: string;
 		name: string;
 		description?: string | null;
+		taxWrapper?: string | null;
 	};
 	/** Form mode - create or edit */
 	mode: PortfolioFormMode;
@@ -94,6 +96,7 @@ export function EnhancedPortfolioForm({
 		defaultValues: {
 			name: portfolio?.name || "",
 			description: portfolio?.description || "",
+			taxWrapper: (portfolio?.taxWrapper as any) || "STANDARD_TAXABLE",
 		},
 		mode: "onChange", // Enable real-time validation
 	});
@@ -173,6 +176,7 @@ export function EnhancedPortfolioForm({
 				description: data.description
 					? portfolioValidationHelpers.sanitizeDescription(data.description)
 					: undefined,
+				taxWrapper: data.taxWrapper,
 			};
 
 			await onSubmit(sanitizedData);
@@ -344,6 +348,9 @@ export function EnhancedPortfolioForm({
 							</FormItem>
 						)}
 					/>
+
+					{/* Tax Envelope / Wrapper Field */}
+					<PortfolioTaxWrapperField disabled={isFormDisabled} />
 
 					<Separator />
 

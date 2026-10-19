@@ -27,6 +27,11 @@ type Query {
     GetPortfoliosWithAnalytics(userID: ID!): [Portfolio!]! @auth
     portfolios(filter: PortfolioFilter, pagination: PaginationInput, orderBy: PortfolioOrder): [Portfolio!]! @auth
 
+    # Daily value of the portfolio's positions restricted to the given asset
+    # types (e.g. ["STOCK","FUND"]). Lets a per-page hero chart show its own
+    # scope instead of pairing a subset headline with the whole-portfolio curve.
+    scopedPerformanceHistory(portfolioID: ID!, assetTypes: [String!]!): [PerformancePoint!]! @auth
+
     asset(id: ID!): Asset @auth
     assets(filter: AssetFilter, pagination: PaginationInput, orderBy: AssetOrder): [Asset!]! @auth
     assetTypes: [AssetType!]! @auth
@@ -50,6 +55,7 @@ type Mutation {
     updateUser(id: ID!, input: UpdateUserInput!): User! @auth
     updateUserDisplayCurrency(input: UpdateUserDisplayCurrencyInput!): User! @auth
     updateUserThemePreferences(input: UpdateUserThemePreferencesInput!): User! @auth
+    updateUserTaxJurisdiction(input: UpdateUserTaxJurisdictionInput!): User! @auth
     deleteUser(id: ID!): ID! @auth
 
     # Portfolio Mutations

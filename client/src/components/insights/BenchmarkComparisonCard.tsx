@@ -20,15 +20,15 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 	return (
 		<Card
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 backdrop-blur-xs p-5 min-h-[220px] flex flex-col justify-between shadow-xs hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/80">
+					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
 						vs S&P 500
 					</span>
 					{isRecommended && (
-						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider select-none">
+						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
 					)}
@@ -40,7 +40,7 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 							<span
 								className={cn(
 									"text-2xl font-bold font-mono",
-									benchmarkComparison.outperformance >= 0 ? "text-emerald-500" : "text-rose-500",
+									benchmarkComparison.outperformance >= 0 ? "text-gain" : "text-loss",
 								)}
 							>
 								{benchmarkComparison.outperformance >= 0 ? "+" : ""}
@@ -55,7 +55,7 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 								<span
 									className={cn(
 										"font-mono font-semibold",
-										benchmarkComparison.portfolioReturn >= 0 ? "text-emerald-500" : "text-rose-500",
+										benchmarkComparison.portfolioReturn >= 0 ? "text-gain" : "text-loss",
 									)}
 								>
 									{benchmarkComparison.portfolioReturn >= 0 ? "+" : ""}
@@ -75,22 +75,24 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 					<div className="flex flex-col items-center justify-center text-center h-[130px] gap-1.5 py-4">
 						<TrendingUp className="h-6 w-6 text-muted-foreground/40 shrink-0" />
 						<p className="text-xs font-semibold text-foreground/90">No comparison data</p>
-						<p className="text-[10px] text-muted-foreground max-w-[200px] leading-normal">
+						<p className="text-micro text-muted-foreground max-w-[200px] leading-normal">
 							Add historical purchases to compare performance vs global index benchmarks.
 						</p>
 					</div>
 				)}
 			</div>
 
-			<div className="flex justify-end mt-2 z-10">
-				<button
-					type="button"
-					onClick={() => setActiveTab("positions")}
-					className="text-[10px] text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
-				>
-					Detailed comparison →
-				</button>
-			</div>
+			{benchmarkComparison && (
+				<div className="flex justify-end mt-2 z-10">
+					<button
+						type="button"
+						onClick={() => setActiveTab("positions")}
+						className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
+					>
+						Detailed comparison →
+					</button>
+				</div>
+			)}
 		</Card>
 	);
 });

@@ -122,6 +122,11 @@ func mapInstrumentDetailsToGraphQL(details *service.InstrumentDetails) *gqlModel
 		UpdatedAt:              details.Instrument.UpdatedAt,
 		Aliases:                mapInstrumentAliases(details.Aliases),
 		SyncState:              mapInstrumentSyncState(details.SyncState),
+		// Nil when the provider has not supplied a figure. Deliberately not
+		// defaulted to zero: a missing expense ratio and a zero one are
+		// different claims about the fund.
+		ExpenseRatio:  decimalPercentToFloat(details.Instrument.ExpenseRatio),
+		DividendYield: decimalPercentToFloat(details.Instrument.DividendYield),
 	}
 }
 

@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 	"runtime"
-	"strconv"
-	"strings"
 	"sigma_finance/internal/benchmark"
 	"sigma_finance/internal/domain/model"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -77,6 +77,8 @@ type IPerformanceRepository interface {
 	CalculateTimeWeightedReturn(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error)
 	CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error)
 	CalculateMaxDrawdown(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error)
+	CalculateSharpeRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error)
+	CalculateSortinoRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error)
 
 	// Allocation calculations
 	CalculateAssetAllocation(ctx context.Context, portfolioID string, asOfDate time.Time) (*AllocationBreakdown, error)
@@ -135,26 +137,62 @@ func (r *PerformanceRepository) CalculatePortfolioPerformance(ctx context.Contex
 	}
 
 	err := r.db.NewSelect().
-		ColumnExpr("COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100 as total_value").
-		ColumnExpr("COALESCE(SUM(p.total_cost_basis), 0) as total_cost_basis").
-		ColumnExpr("COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100 - COALESCE(SUM(p.total_cost_basis), 0) as unrealized_gain_loss").
+		ColumnExpr(`COALESCE(SUM(
+			p.quantity * COALESCE(ap.price, 0) * (p.ownership_percentage / 100) *
+			CASE
+				WHEN COALESCE(NULLIF(p.quote_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0) * 100 as total_value`).
+		ColumnExpr(`COALESCE(SUM(
+			COALESCE(p.total_cost_basis, 0) *
+			CASE
+				WHEN COALESCE(NULLIF(p.quote_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0) as total_cost_basis`).
+		ColumnExpr(`COALESCE(SUM(
+			(p.quantity * COALESCE(ap.price, 0) * (p.ownership_percentage / 100) * 100 - COALESCE(p.total_cost_basis, 0)) *
+			CASE
+				WHEN COALESCE(NULLIF(p.quote_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0) as unrealized_gain_loss`).
 		Model((*model.Position)(nil)).
 		TableExpr("sigma_finance.positions p").
 		Join("LEFT JOIN sigma_finance.assets a ON a.id = p.asset_id").
 		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = a.id AND timestamp <= ? ORDER BY timestamp DESC LIMIT 1) ap ON true", asOfDate).
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = COALESCE(NULLIF(p.quote_currency, ''), 'USD') AND quote_currency = 'USD' AND as_of <= ? ORDER BY as_of DESC LIMIT 1) fx_direct ON true", asOfDate).
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = 'USD' AND quote_currency = COALESCE(NULLIF(p.quote_currency, ''), 'USD') AND as_of <= ? ORDER BY as_of DESC LIMIT 1) fx_inverse ON true", asOfDate).
 		Where("p.portfolio_id = ?", portfolioID).
 		Scan(ctx, &portfolioData)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get realized gains from transactions
+	// Get realized gains from transactions: Net Gain = Gross Proceeds - Cost Basis - Fees (converted to portfolio base currency)
 	var realizedGains int64
 	err = r.db.NewSelect().
-		ColumnExpr("COALESCE(SUM(t.amount), 0)").
+		ColumnExpr(`COALESCE(SUM(
+			(ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0)) *
+			CASE
+				WHEN COALESCE(NULLIF(t.unit_price_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0)`).
 		Model((*model.Transaction)(nil)).
 		TableExpr("sigma_finance.transactions t").
 		Join("JOIN sigma_finance.positions p ON p.id = t.position_id").
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = COALESCE(NULLIF(t.unit_price_currency, ''), 'USD') AND quote_currency = 'USD' AND as_of <= ? ORDER BY as_of DESC LIMIT 1) fx_direct ON true", asOfDate).
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = 'USD' AND quote_currency = COALESCE(NULLIF(t.unit_price_currency, ''), 'USD') AND as_of <= ? ORDER BY as_of DESC LIMIT 1) fx_inverse ON true", asOfDate).
 		Where("p.portfolio_id = ?", portfolioID).
 		Where("t.type = 'SELL'").
 		Where("t.executed_at <= ?", asOfDate).
@@ -252,30 +290,180 @@ func (r *PerformanceRepository) CalculateTimeWeightedReturn(ctx context.Context,
 	return twr, nil
 }
 
-// CalculateVolatility calculates the volatility (standard deviation of returns) for a portfolio
-func (r *PerformanceRepository) CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error) {
+// decimalSqrt returns the square root of a non-negative decimal using Newton's
+// method, matching the precision convention used by CalculateVolatility.
+func decimalSqrt(v decimal.Decimal) decimal.Decimal {
+	if !v.GreaterThan(decimal.Zero) {
+		return decimal.Zero
+	}
+	x := v.Div(decimal.NewFromInt(2))
+	for i := 0; i < 20; i++ {
+		if x.IsZero() {
+			break
+		}
+		x = x.Add(v.Div(x)).Div(decimal.NewFromInt(2))
+	}
+	return x
+}
+
+// dailyReturns derives the period-over-period returns from performance
+// snapshots. A snapshot with a zero predecessor contributes no return, so a
+// newly-created portfolio does not produce a -100% artefact.
+func (r *PerformanceRepository) dailyReturns(ctx context.Context, portfolioID string, days int) ([]decimal.Decimal, error) {
 	endDate := time.Now()
 	startDate := endDate.AddDate(0, 0, -days)
 
 	snapshots, err := r.GetPerformanceSnapshots(ctx, portfolioID, startDate, endDate)
-	if err != nil || len(snapshots) < 2 {
-		return decimal.Zero, err
+	if err != nil {
+		return nil, err
 	}
 
-	// Calculate daily returns
 	var returns []decimal.Decimal
 	for i := 1; i < len(snapshots); i++ {
-		prev := snapshots[i-1]
-		curr := snapshots[i]
+		prev := snapshots[i-1].TotalValue
+		curr := snapshots[i].TotalValue
 
-		if prev.TotalValue > 0 {
-			dailyReturn := decimal.NewFromInt(int64(curr.TotalValue)).
-				Div(decimal.NewFromInt(int64(prev.TotalValue))).
-				Sub(decimal.NewFromInt(1))
-			returns = append(returns, dailyReturn)
+		if prev > 0 {
+			returns = append(returns,
+				decimal.NewFromInt(int64(curr)).
+					Div(decimal.NewFromInt(int64(prev))).
+					Sub(decimal.NewFromInt(1)),
+			)
 		}
 	}
+	return returns, nil
+}
 
+// tradingDaysPerYear is the annualization factor for daily-return ratios.
+var tradingDaysPerYear = decimal.NewFromInt(252)
+
+// degenerateDispersion is the dispersion below which a return series is treated
+// as having no measurable variation, and the risk ratio is reported as unknown.
+//
+// A guard on "> 0" alone is not enough, and the failure mode it misses is worse
+// than returning nothing. Dividing mean return by a near-zero dispersion is
+// numerically unstable: a portfolio creeping up 1% a day - where compounding
+// makes 10303/10201 differ from 1.01 only in the sixth decimal - has a
+// standard deviation around 1e-6, and the resulting "Sharpe ratio" comes out in
+// the tens of thousands. That is a far more confident-looking and far more wrong
+// answer than the hardcoded zero it replaced.
+//
+// The floor is 1e-4 of daily dispersion (0.01%). Measured against real inputs,
+// a creeping 1%-a-day series sits around 1.4e-6 while a genuinely volatile
+// portfolio sits around 3e-2 - so this threshold rejects the numerical dust
+// while staying ~300x below the lowest dispersion worth reporting and ~1000x
+// below the daily volatility of a typical equity portfolio.
+var degenerateDispersion = decimal.New(1, -4)
+
+func isDegenerate(dispersion decimal.Decimal) bool {
+	return !dispersion.GreaterThan(degenerateDispersion)
+}
+
+// dailyRiskFree converts an annual percentage risk-free rate into a daily
+// decimal rate. A zero or negative rate is treated as no risk-free return.
+func dailyRiskFree(riskFreeRate decimal.Decimal) decimal.Decimal {
+	if !riskFreeRate.GreaterThan(decimal.Zero) {
+		return decimal.Zero
+	}
+	return riskFreeRate.Div(decimal.NewFromInt(100)).Div(tradingDaysPerYear)
+}
+
+// sharpeFromReturns computes the annualized Sharpe ratio from a daily return
+// series:
+//
+//	Sharpe = (meanDailyReturn - riskFreeDaily) / stdev(dailyReturn) * sqrt(252)
+//
+// A flat series has zero standard deviation, so the ratio is undefined; this
+// returns zero rather than dividing by zero. Fewer than two observations is
+// likewise not enough to measure, and returns zero.
+func sharpeFromReturns(returns []decimal.Decimal, riskFreeRate decimal.Decimal) decimal.Decimal {
+	if len(returns) < 2 {
+		return decimal.Zero
+	}
+
+	var sum decimal.Decimal
+	for _, ret := range returns {
+		sum = sum.Add(ret)
+	}
+	mean := sum.Div(decimal.NewFromInt(int64(len(returns))))
+
+	var varianceSum decimal.Decimal
+	for _, ret := range returns {
+		diff := ret.Sub(mean)
+		varianceSum = varianceSum.Add(diff.Mul(diff))
+	}
+	variance := varianceSum.Div(decimal.NewFromInt(int64(len(returns) - 1)))
+	stdDev := decimalSqrt(variance)
+	if isDegenerate(stdDev) {
+		return decimal.Zero
+	}
+
+	excess := mean.Sub(dailyRiskFree(riskFreeRate))
+	return excess.Div(stdDev).Mul(decimalSqrt(tradingDaysPerYear))
+}
+
+// sortinoFromReturns computes the annualized Sortino ratio, which like Sharpe
+// annualizes daily returns but penalizes only downside deviation:
+//
+//	Sortino = (meanDailyReturn - riskFreeDaily) / downsideDeviation * sqrt(252)
+//
+// Downside deviation is measured about the daily risk-free target, so upside
+// swings contribute nothing to the denominator.
+func sortinoFromReturns(returns []decimal.Decimal, riskFreeRate decimal.Decimal) decimal.Decimal {
+	if len(returns) < 2 {
+		return decimal.Zero
+	}
+
+	var sum decimal.Decimal
+	for _, ret := range returns {
+		sum = sum.Add(ret)
+	}
+	mean := sum.Div(decimal.NewFromInt(int64(len(returns))))
+
+	target := dailyRiskFree(riskFreeRate)
+
+	var downsideSum decimal.Decimal
+	for _, ret := range returns {
+		diff := ret.Sub(target)
+		if diff.IsNegative() {
+			downsideSum = downsideSum.Add(diff.Mul(diff))
+		}
+	}
+	downsideDeviation := decimalSqrt(downsideSum.Div(decimal.NewFromInt(int64(len(returns)))))
+	if isDegenerate(downsideDeviation) {
+		return decimal.Zero
+	}
+
+	excess := mean.Sub(target)
+	return excess.Div(downsideDeviation).Mul(decimalSqrt(tradingDaysPerYear))
+}
+
+// CalculateSharpeRatio computes the annualized Sharpe ratio for a portfolio
+// from its performance snapshot history.
+func (r *PerformanceRepository) CalculateSharpeRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error) {
+	returns, err := r.dailyReturns(ctx, portfolioID, days)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return sharpeFromReturns(returns, riskFreeRate), nil
+}
+
+// CalculateSortinoRatio computes the annualized Sortino ratio for a portfolio
+// from its performance snapshot history.
+func (r *PerformanceRepository) CalculateSortinoRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error) {
+	returns, err := r.dailyReturns(ctx, portfolioID, days)
+	if err != nil {
+		return decimal.Zero, err
+	}
+	return sortinoFromReturns(returns, riskFreeRate), nil
+}
+
+// CalculateVolatility calculates the volatility (standard deviation of returns) for a portfolio
+func (r *PerformanceRepository) CalculateVolatility(ctx context.Context, portfolioID string, days int) (decimal.Decimal, error) {
+	returns, err := r.dailyReturns(ctx, portfolioID, days)
+	if err != nil {
+		return decimal.Zero, err
+	}
 	if len(returns) == 0 {
 		return decimal.Zero, nil
 	}
@@ -374,12 +562,30 @@ func (r *PerformanceRepository) CalculateAllocationByType(ctx context.Context, p
 		ColumnExpr("a.type as asset_type").
 		ColumnExpr("COUNT(*) as position_count").
 		ColumnExpr("SUM(p.quantity) as total_quantity").
-		ColumnExpr("SUM(p.total_cost_basis) as total_cost_basis").
-		ColumnExpr("COALESCE(SUM(p.quantity * COALESCE(ap.price, 0) * p.ownership_percentage / 100), 0) * 100 as current_value").
+		ColumnExpr(`COALESCE(SUM(
+			COALESCE(p.total_cost_basis, 0) *
+			CASE
+				WHEN COALESCE(NULLIF(p.quote_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0) as total_cost_basis`).
+		ColumnExpr(`COALESCE(SUM(
+			p.quantity * COALESCE(ap.price, 0) * (p.ownership_percentage / 100) *
+			CASE
+				WHEN COALESCE(NULLIF(p.quote_currency, ''), 'USD') = 'USD' THEN 1.0
+				WHEN fx_direct.rate IS NOT NULL THEN fx_direct.rate
+				WHEN fx_inverse.rate IS NOT NULL AND fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate
+				ELSE 1.0
+			END
+		), 0) * 100 as current_value`).
 		Model((*model.Position)(nil)).
 		TableExpr("sigma_finance.positions p").
 		Join("JOIN sigma_finance.assets a ON a.id = p.asset_id").
 		Join("LEFT JOIN LATERAL (SELECT price FROM sigma_finance.asset_prices WHERE asset_id = a.id ORDER BY timestamp DESC LIMIT 1) ap ON true").
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = COALESCE(NULLIF(p.quote_currency, ''), 'USD') AND quote_currency = 'USD' ORDER BY as_of DESC LIMIT 1) fx_direct ON true").
+		Join("LEFT JOIN LATERAL (SELECT rate FROM sigma_finance.fx_rates WHERE base_currency = 'USD' AND quote_currency = COALESCE(NULLIF(p.quote_currency, ''), 'USD') ORDER BY as_of DESC LIMIT 1) fx_inverse ON true").
 		Where("p.portfolio_id = ?", portfolioID).
 		Group("a.type").
 		Order("current_value DESC").
@@ -603,25 +809,7 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 		return nil, err
 	}
 
-	// Calculate portfolio return (cumulative, percentage)
-	startValue := portfolioSnapshots[0].TotalValue
-	endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
-	var portfolioReturn decimal.Decimal
-	if startValue > 0 {
-		portfolioReturn = decimal.NewFromInt(int64(endValue - startValue)).
-			Div(decimal.NewFromInt(int64(startValue))).
-			Mul(decimal.NewFromInt(100))
-	}
-
-	// Calculate benchmark return (cumulative, percentage)
-	startPrice := benchmarkPrices[0].Price
-	endPrice := benchmarkPrices[len(benchmarkPrices)-1].Price
-	benchmarkReturn := endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
-
-	// Cumulative alpha: end-of-period percentage-point difference.
-	alpha := portfolioReturn.Sub(benchmarkReturn)
-
-	// Real Beta / TrackingError / InformationRatio / Correlation from
+	// Real Beta / TrackingError / InformationRatio / Correlation and TWR from
 	// aligned daily returns. Snapshots and prices are floored to UTC
 	// midnight, collapsed to one-sample-per-day (last-write-wins), and
 	// joined via LOCF on the portfolio calendar. Robust against intraday
@@ -632,6 +820,7 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 		portSamples[i] = benchmark.PortfolioSample{
 			Timestamp: snap.SnapshotDate,
 			Value:     snap.TotalValue,
+			CostBasis: snap.TotalCostBasis,
 		}
 	}
 	benchSamples := make([]benchmark.BenchmarkSample, len(benchmarkPrices))
@@ -644,20 +833,53 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 	portVals, priceVals := benchmark.AlignDaily(portSamples, benchSamples)
 
 	var (
+		portfolioReturn  decimal.Decimal
+		benchmarkReturn  decimal.Decimal
+		alpha            decimal.Decimal
 		beta             = decimal.NewFromInt(1) // safe default for insufficient data
 		trackingError    = decimal.Zero
 		informationRatio = decimal.Zero
 		correlationCoeff = decimal.Zero
 	)
 	if len(portVals) >= 2 && len(priceVals) >= 2 {
-		alignedPortReturns := benchmark.DailyMoneyReturns(portVals)
+		alignedPortReturns := benchmark.DailyTWRReturns(portVals)
 		alignedBenchReturns := benchmark.DailyPriceReturns(priceVals)
-		if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
-			beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
-			trackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
-			informationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
-			correlationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
+		if len(alignedPortReturns) >= 1 && len(alignedBenchReturns) >= 1 {
+			portfolioReturn = benchmark.CompoundTWR(alignedPortReturns)
+			benchmarkReturn = benchmark.CompoundTWR(alignedBenchReturns)
+			alpha = portfolioReturn.Sub(benchmarkReturn)
+			if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
+				beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
+				trackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
+				informationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
+				correlationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
+			}
 		}
+	}
+
+	// Fallback to cumulative price change when daily alignment produced insufficient pairs
+	if portfolioReturn.IsZero() && benchmarkReturn.IsZero() {
+		startValue := portfolioSnapshots[0].TotalValue
+		endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
+		startCost := portfolioSnapshots[0].TotalCostBasis
+		endCost := portfolioSnapshots[len(portfolioSnapshots)-1].TotalCostBasis
+		deltaCost := endCost - startCost
+		capitalBase := startValue
+		if deltaCost > 0 {
+			capitalBase += deltaCost
+		}
+		if capitalBase > 0 {
+			netGain := (endValue - startValue) - deltaCost
+			portfolioReturn = decimal.NewFromInt(int64(netGain)).
+				Div(decimal.NewFromInt(int64(capitalBase))).
+				Mul(decimal.NewFromInt(100))
+		}
+		startPrice := benchmarkPrices[0].Price
+		endPrice := benchmarkPrices[len(benchmarkPrices)-1].Price
+		if !startPrice.IsZero() {
+			benchmarkReturn = endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
+		}
+		alpha = portfolioReturn.Sub(benchmarkReturn)
 	}
 
 	return &BenchmarkComparison{
@@ -785,7 +1007,7 @@ daily_metrics AS (
 realized_gains AS (
     SELECT
         ds.snapshot_date,
-        COALESCE(SUM(t.amount), 0) AS realized_gain_loss
+        COALESCE(SUM(ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0)), 0) AS realized_gain_loss
     FROM date_series ds
     LEFT JOIN sigma_finance.positions p ON p.portfolio_id = ?
     LEFT JOIN sigma_finance.transactions t

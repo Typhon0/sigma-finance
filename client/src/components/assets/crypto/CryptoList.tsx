@@ -547,11 +547,11 @@ export function CryptoList({
 		const quantity = Number(editQuantity);
 		const averageBuyPrice = Number(editAverageBuyPrice);
 		if (!Number.isFinite(quantity) || quantity <= 0) {
-			toast.error("La quantité doit être supérieure à 0.");
+			toast.error("Quantity must be greater than 0.");
 			return;
 		}
 		if (!Number.isFinite(averageBuyPrice) || averageBuyPrice < 0) {
-			toast.error("Le prix moyen doit être supérieur ou égal à 0.");
+			toast.error("Average price must be greater than or equal to 0.");
 			return;
 		}
 
@@ -562,10 +562,10 @@ export function CryptoList({
 				quantity,
 				averagePurchasePrice: averageBuyPrice,
 			});
-			toast.success(`${editTarget.symbol} mis à jour.`);
+			toast.success(`${editTarget.symbol} updated.`);
 			closeEditDialog();
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Échec de la mise à jour.";
+			const message = error instanceof Error ? error.message : "Failed to update.";
 			toast.error(message);
 		} finally {
 			setIsSavingEdit(false);
@@ -577,13 +577,13 @@ export function CryptoList({
 		setIsDeleting(true);
 		try {
 			await deleteAsset(deleteTarget.id, currentPortfolio || undefined);
-			toast.success(`${deleteTarget.symbol} supprimé du portefeuille.`);
+			toast.success(`${deleteTarget.symbol} removed from portfolio.`);
 			if (selectedHoldingId === deleteTarget.id) {
 				setSelectedHoldingId(null);
 			}
 			setDeleteTarget(null);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : "Échec de la suppression.";
+			const message = error instanceof Error ? error.message : "Failed to delete position.";
 			toast.error(message);
 		} finally {
 			setIsDeleting(false);
@@ -593,7 +593,7 @@ export function CryptoList({
 	const openTransactionEditDialog = (row: Record<string, unknown>) => {
 		const id = typeof row.id === "string" ? row.id : "";
 		if (!id) {
-			toast.error("Transaction introuvable.");
+			toast.error("Transaction not found.");
 			return;
 		}
 
@@ -628,17 +628,17 @@ export function CryptoList({
 		const quantity = Number(editTransactionTarget.quantity);
 		const unitPriceAmount = Number(editTransactionTarget.unitPriceAmount);
 		if (!Number.isFinite(quantity) || quantity <= 0) {
-			toast.error("La quantité de transaction doit être supérieure à 0.");
+			toast.error("Transaction quantity must be greater than 0.");
 			return;
 		}
 		if (!Number.isFinite(unitPriceAmount) || unitPriceAmount <= 0) {
-			toast.error("Le prix unitaire doit être supérieur à 0.");
+			toast.error("Unit price must be greater than 0.");
 			return;
 		}
 
 		const executedAtDate = new Date(editTransactionTarget.executedAt);
 		if (Number.isNaN(executedAtDate.getTime())) {
-			toast.error("Date de transaction invalide.");
+			toast.error("Invalid transaction date.");
 			return;
 		}
 
@@ -655,11 +655,11 @@ export function CryptoList({
 				},
 			});
 			await refetch?.();
-			toast.success("Transaction mise à jour.");
+			toast.success("Transaction updated.");
 			closeTransactionEditDialog();
 		} catch (error) {
 			const message =
-				error instanceof Error ? error.message : "Échec de la mise à jour de transaction.";
+				error instanceof Error ? error.message : "Failed to update transaction.";
 			toast.error(message);
 		}
 	};
@@ -1097,9 +1097,9 @@ export function CryptoList({
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
-										<SelectItem value="crypto">Par crypto</SelectItem>
-										<SelectItem value="account">Par compte</SelectItem>
-										<SelectItem value="type">Par type</SelectItem>
+										<SelectItem value="crypto">By crypto</SelectItem>
+										<SelectItem value="account">By account</SelectItem>
+										<SelectItem value="type">By type</SelectItem>
 									</SelectContent>
 								</Select>
 								<div className="inline-flex items-center gap-1 rounded-md border border-border/60 p-1">
@@ -1155,7 +1155,7 @@ export function CryptoList({
 				<Card className="border-border/60 bg-card/90">
 					<CardHeader className="pb-3">
 						<CardTitle className="text-sm font-semibold tracking-tight">
-							Liquidité & Drawdown
+							Liquidity & Drawdown
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4 pt-0 text-sm">
@@ -1163,21 +1163,21 @@ export function CryptoList({
 							<div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-amber-200">
 								<p className="flex items-center gap-2 font-medium">
 									<AlertTriangle className="h-4 w-4" />
-									Poudre sèche épuisée
+									Dry Powder Depleted
 								</p>
-								<p className="mt-1 text-xs text-amber-100/90">Vous êtes exposé à 100% au marché.</p>
+								<p className="mt-1 text-xs text-amber-100/90">You are 100% exposed to the market.</p>
 							</div>
 						) : (
 							<div>
-								<p className="mb-2 text-muted-foreground">Liquidité disponible (Dry Powder)</p>
+								<p className="mb-2 text-muted-foreground">Available Liquidity (Dry Powder)</p>
 								<Progress value={dryPowderPercent} className="h-2.5" />
 								<p className="mt-2 font-mono text-xs text-muted-foreground">
-									{formatCurrency(dryPowderValue)} en stablecoins
+									{formatCurrency(dryPowderValue)} in stablecoins
 								</p>
 							</div>
 						)}
 						<div className="flex items-center justify-between border-t border-border/50 pt-3">
-							<span className="text-muted-foreground">Distance de l'ATH</span>
+							<span className="text-muted-foreground">Distance from ATH</span>
 							<span
 								className={cn(
 									"font-mono font-semibold",
@@ -1199,14 +1199,14 @@ export function CryptoList({
 			node: (
 				<Card className="border-border/60 bg-card/90">
 					<CardHeader className="pb-3">
-						<CardTitle className="text-sm font-semibold tracking-tight">Ratio de Succès</CardTitle>
+						<CardTitle className="text-sm font-semibold tracking-tight">Success Ratio</CardTitle>
 					</CardHeader>
 					<CardContent className="pt-0">
-						<p className="text-muted-foreground text-sm">Positions en profit</p>
+						<p className="text-muted-foreground text-sm">Profitable Positions</p>
 						<p className="font-mono text-4xl font-bold tracking-tight">
 							{inProfitCount} / {cryptoHoldings.length}
 						</p>
-						<p className="mt-2 text-xs text-muted-foreground">Basé sur le prix d'achat moyen</p>
+						<p className="mt-2 text-xs text-muted-foreground">Based on average purchase price</p>
 					</CardContent>
 				</Card>
 			),
@@ -1221,14 +1221,14 @@ export function CryptoList({
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight">
-								Impact des Frais
+								Fee Impact
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
-							<p className="text-muted-foreground text-sm">Frais cumulés de trading</p>
+							<p className="text-muted-foreground text-sm">Cumulative Trading Fees</p>
 							<p className="font-mono text-3xl font-bold">{formatCurrency(cumulativeFees)}</p>
 							<p className="mt-2 text-xs text-muted-foreground">
-								{feeWeight.toFixed(2)}% de la valeur actuelle du portefeuille.
+								{feeWeight.toFixed(2)}% of current portfolio value.
 							</p>
 						</CardContent>
 					</Card>
@@ -1237,12 +1237,12 @@ export function CryptoList({
 		} else {
 			const cadenceLabel =
 				averageDaysBetweenBuys === null
-					? "Pas assez d'historique"
+					? "Not enough history"
 					: averageDaysBetweenBuys <= 10
-						? "Rythme régulier"
+						? "Steady pace"
 						: averageDaysBetweenBuys <= 21
-							? "Rythme modéré"
-							: "Rythme opportuniste";
+							? "Moderate pace"
+							: "Opportunistic pace";
 			cards.push({
 				id: "dca-rhythm",
 				priority: 47,
@@ -1250,15 +1250,15 @@ export function CryptoList({
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight">
-								Rythme d'investissement (DCA)
+								Investment Rhythm (DCA)
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
-							<p className="font-mono text-3xl font-bold">{dcaLast30Count} achats / 30j</p>
+							<p className="font-mono text-3xl font-bold">{dcaLast30Count} buys / 30d</p>
 							<p className="mt-2 text-xs text-muted-foreground">
 								{averageDaysBetweenBuys === null
-									? "Ajoutez plus de transactions d'achat pour mesurer la régularité."
-									: `Intervalle moyen: ${averageDaysBetweenBuys.toFixed(1)} jours.`}
+									? "Add more buy transactions to measure consistency."
+									: `Average interval: ${averageDaysBetweenBuys.toFixed(1)} days.`}
 							</p>
 							<p className="mt-1 text-xs text-foreground/80">{cadenceLabel}</p>
 						</CardContent>
@@ -1275,18 +1275,18 @@ export function CryptoList({
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight">
-								Alerte de Concentration
+								Concentration Alert
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="text-sm text-muted-foreground">
-								Portefeuille concentré sur peu de lignes.
+								Portfolio concentrated in few assets.
 							</p>
 							<p className="mt-2 font-mono text-3xl font-bold">
 								{cryptoHoldings[0]?.symbol ?? "-"} {concentrationShare.toFixed(0)}%
 							</p>
 							<p className="mt-2 text-xs text-muted-foreground">
-								La première position porte l'essentiel du risque.
+								The top position holds the majority of risk.
 							</p>
 						</CardContent>
 					</Card>
@@ -1300,12 +1300,12 @@ export function CryptoList({
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight">
-								Locomotives et Boulets
+								Top & Flop Performers
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="space-y-3 pt-0 text-sm">
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Top performeur</span>
+								<span className="text-muted-foreground">Top Performer</span>
 								<span className="font-mono font-semibold text-emerald-500">
 									{bestPerformer
 										? `${bestPerformer.symbol} (${bestPerformer.profitLossPercent >= 0 ? "+" : ""}${bestPerformer.profitLossPercent.toFixed(1)}%)`
@@ -1313,7 +1313,7 @@ export function CryptoList({
 								</span>
 							</div>
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Flop</span>
+								<span className="text-muted-foreground">Worst Performer</span>
 								<span className="font-mono font-semibold text-rose-500">
 									{worstPerformer
 										? `${worstPerformer.symbol} (${worstPerformer.profitLossPercent >= 0 ? "+" : ""}${worstPerformer.profitLossPercent.toFixed(1)}%)`
@@ -1333,15 +1333,15 @@ export function CryptoList({
 				node: (
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
-							<CardTitle className="text-sm font-semibold tracking-tight">PnL Réalisé</CardTitle>
+							<CardTitle className="text-sm font-semibold tracking-tight">Realized P&L</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<div className="rounded-lg border border-dashed border-border/70 bg-muted/20 p-3">
 								<p className="text-sm text-muted-foreground">
-									Vous n'avez pas encore sécurisé de profits.
+									You have not secured any profits yet.
 								</p>
 								<p className="mt-1 text-xs text-muted-foreground">
-									Pensez à définir vos paliers de vente.
+									Consider setting take-profit targets.
 								</p>
 							</div>
 						</CardContent>
@@ -1358,19 +1358,19 @@ export function CryptoList({
 					<Card className="border-border/60 bg-card/90">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight">
-								Analyse des Frais
+								Fee Analysis
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="text-sm text-muted-foreground">
-								Connectez Binance ou Kraken pour débloquer l'analyse de vos frais de trading.
+								Connect Binance or Kraken to analyze your trading fees.
 							</p>
 							<Button
 								size="sm"
 								className="mt-3"
-								onClick={() => toast.info("Connexion exchange: bientôt disponible")}
+								onClick={() => toast.info("Exchange connection: coming soon")}
 							>
-								Connecter un exchange
+								Connect an exchange
 								<ArrowRight className="ml-2 h-4 w-4" />
 							</Button>
 						</CardContent>
@@ -1392,12 +1392,12 @@ export function CryptoList({
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="flex items-center gap-2 text-sm font-medium text-emerald-200">
-								<CalendarDays className="h-4 w-4" />🎂 Votre portefeuille a {anniversaryYears} an
-								{anniversaryYears > 1 ? "s" : ""} aujourd'hui
+								<CalendarDays className="h-4 w-4" />🎂 Your portfolio is {anniversaryYears} year
+								{anniversaryYears > 1 ? "s" : ""} old today
 							</p>
 							{allTimeReturnPercent !== null && (
 								<p className="mt-2 font-mono text-lg font-semibold text-emerald-200">
-									Résultat: {allTimeReturnPercent >= 0 ? "+" : ""}
+									Return: {allTimeReturnPercent >= 0 ? "+" : ""}
 									{allTimeReturnPercent.toFixed(2)}%
 								</p>
 							)}
@@ -1415,12 +1415,12 @@ export function CryptoList({
 					<Card className="border-amber-500/40 bg-amber-500/10">
 						<CardHeader className="pb-3">
 							<CardTitle className="text-sm font-semibold tracking-tight text-amber-300">
-								Nouveau Record
+								New High
 							</CardTitle>
 						</CardHeader>
 						<CardContent className="pt-0">
 							<p className="flex items-center gap-2 text-sm font-medium text-amber-200">
-								<Trophy className="h-4 w-4" />🏆 Nouveau sommet historique franchi.
+								<Trophy className="h-4 w-4" />🏆 New all-time high reached.
 							</p>
 							<p className="mt-2 font-mono text-lg font-semibold text-amber-200">
 								{formatCurrency(totalValue)}
@@ -1478,36 +1478,36 @@ export function CryptoList({
 						<div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
 							<span>🟢</span>
 							<span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-							Dernière synchro : à l'instant
+							Last sync: Just now
 						</div>
 					</div>
 					<div className="flex flex-wrap items-center gap-2">
 						<Button
 							variant="outline"
 							className="h-10 px-4 border-border/60 bg-transparent"
-							onClick={() => toast.info("Bientot disponible")}
+							onClick={() => toast.info("Coming soon")}
 						>
 							<Upload className="mr-2 h-4 w-4" />
-							Importer Wallet
+							Import Wallet
 						</Button>
 						<Button
 							className="h-10 px-4 bg-white text-black hover:bg-white/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
 							onClick={() => setShowAddForm(true)}
 						>
 							<Plus className="mr-2 h-4 w-4" />
-							Nouvelle Transaction
+							New Transaction
 						</Button>
 					</div>
 				</div>
 				<div className="py-16 text-center">
 					<Coins className="mx-auto mb-4 h-14 w-14 text-muted-foreground" />
-					<h2 className="mb-2 text-2xl font-bold">Aucune position crypto</h2>
+					<h2 className="mb-2 text-2xl font-bold">No crypto positions</h2>
 					<p className="mx-auto mb-6 max-w-md text-muted-foreground">
-						Ajoute une première position pour afficher performance, insights et tableau des actifs.
+						Add your first position to view performance, insights, and asset holdings.
 					</p>
 					<Button onClick={() => setShowAddForm(true)}>
 						<Plus className="mr-2 h-4 w-4" />
-						Ajouter une crypto
+						Add crypto
 					</Button>
 				</div>
 
@@ -1563,10 +1563,10 @@ export function CryptoList({
 							variant="outline"
 							size="sm"
 							className="h-8 text-xs bg-secondary/20 hover:bg-secondary/40 border-border/40"
-							onClick={() => toast.info("Bientot disponible")}
+							onClick={() => toast.info("Coming soon")}
 						>
 							<Upload className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
-							Importer Wallet
+							Import Wallet
 						</Button>
 
 						<Button
@@ -1575,7 +1575,7 @@ export function CryptoList({
 							onClick={() => setShowAddForm(true)}
 						>
 							<Plus className="mr-1.5 h-3.5 w-3.5" />
-							Nouvelle Transaction
+							New Transaction
 						</Button>
 					</>
 				}
@@ -1667,19 +1667,19 @@ export function CryptoList({
 						{/* Summary Content */}
 						<div className="space-y-3 text-xs">
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Capital investi</span>
+								<span className="text-muted-foreground">Invested Capital</span>
 								<span className="font-mono font-semibold">
 									{hasReliableCostBasis ? formatCurrency(totalCost) : "--"}
 								</span>
 							</div>
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">PnL Réalisé</span>
+								<span className="text-muted-foreground">Realized P&L</span>
 								<span className="font-mono font-semibold text-emerald-500">
 									+{formatCurrency(realizedPnL)}
 								</span>
 							</div>
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">PnL Latent</span>
+								<span className="text-muted-foreground">Unrealized P&L</span>
 								{latentPnL === null || latentPnLPercent === null ? (
 									<span className="font-mono text-muted-foreground">--</span>
 								) : (
@@ -1696,7 +1696,7 @@ export function CryptoList({
 								)}
 							</div>
 							<div className="flex items-center justify-between">
-								<span className="text-muted-foreground">Meilleur performeur</span>
+								<span className="text-muted-foreground">Best Performer</span>
 								<span className="font-mono font-semibold text-emerald-500">
 									{bestPerformer
 										? `${bestPerformer.symbol} (${bestPerformer.profitLossPercent >= 0 ? "+" : ""}${bestPerformer.profitLossPercent.toFixed(0)}%)`
@@ -1718,21 +1718,21 @@ export function CryptoList({
 				<CardHeader className="space-y-4">
 					<div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
 						<div>
-							<CardTitle>Détail des actifs crypto</CardTitle>
+							<CardTitle>Crypto Assets Detail</CardTitle>
 							<CardDescription>
-								Tri, filtre compte, groupement et actions rapides par ligne.
+								Sort, account filter, grouping and quick row actions.
 							</CardDescription>
 						</div>
 						<div className="flex flex-wrap items-center gap-2 text-sm">
 							<Badge variant="secondary">{filteredHoldings.length} positions</Badge>
 							<Badge variant="outline">{formatCurrency(totalValue)} total</Badge>
-							{hasActiveFilters && <Badge variant="outline">Filtres actifs</Badge>}
+							{hasActiveFilters && <Badge variant="outline">Active filters</Badge>}
 						</div>
 					</div>
 
 					<div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_180px_170px_auto]">
 						<SearchInput
-							placeholder="Rechercher un actif..."
+							placeholder="Search asset..."
 							value={searchQuery}
 							onChange={(event) => setSearchQuery(event.target.value)}
 							onClear={() => setSearchQuery("")}
@@ -1741,10 +1741,10 @@ export function CryptoList({
 						/>
 						<Select value={filterExchange} onValueChange={setFilterExchange}>
 							<SelectTrigger className="h-10">
-								<SelectValue placeholder="Compte" />
+								<SelectValue placeholder="Account" />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="all">Tous les comptes</SelectItem>
+								<SelectItem value="all">All accounts</SelectItem>
 								{uniqueExchanges.map((exchange) => (
 									<SelectItem key={exchange} value={exchange}>
 										{exchange}
@@ -1757,16 +1757,16 @@ export function CryptoList({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="value-desc">Valeur (haut)</SelectItem>
-								<SelectItem value="value-asc">Valeur (bas)</SelectItem>
-								<SelectItem value="profit-desc">PnL (haut)</SelectItem>
-								<SelectItem value="profit-asc">PnL (bas)</SelectItem>
-								<SelectItem value="name-asc">Nom (A-Z)</SelectItem>
+								<SelectItem value="value-desc">Value (High)</SelectItem>
+								<SelectItem value="value-asc">Value (Low)</SelectItem>
+								<SelectItem value="profit-desc">P&L (High)</SelectItem>
+								<SelectItem value="profit-asc">P&L (Low)</SelectItem>
+								<SelectItem value="name-asc">Name (A-Z)</SelectItem>
 							</SelectContent>
 						</Select>
 						<div className="flex items-center gap-3 rounded-lg border border-border/60 px-3">
 							<Switch checked={hideSmallBalances} onCheckedChange={setHideSmallBalances} />
-							<span className="text-sm text-muted-foreground">Masquer &lt; 1$</span>
+							<span className="text-sm text-muted-foreground">Hide &lt; $1</span>
 						</div>
 					</div>
 
@@ -1778,7 +1778,7 @@ export function CryptoList({
 							onClick={() => setGroupBy("account")}
 						>
 							<Wallet className="mr-2 h-4 w-4" />
-							Par compte
+							By account
 						</Button>
 						<Button
 							size="sm"
@@ -1787,7 +1787,7 @@ export function CryptoList({
 							onClick={() => setGroupBy("asset")}
 						>
 							<Coins className="mr-2 h-4 w-4" />
-							Par actif
+							By asset
 						</Button>
 					</div>
 				</CardHeader>
@@ -1827,7 +1827,7 @@ export function CryptoList({
 															{account}
 														</span>
 														<p className="text-xs text-muted-foreground">
-															{holdings.length} actif{holdings.length > 1 ? "s" : ""}
+															{holdings.length} asset{holdings.length > 1 ? "s" : ""}
 														</p>
 													</div>
 												</div>
@@ -1852,22 +1852,22 @@ export function CryptoList({
 													<TableHeader>
 														<TableRow className="hover:bg-transparent border-border/50">
 															<TableHead className="h-11 text-left text-[12px] uppercase tracking-wider text-muted-foreground">
-																Actif
+																Asset
 															</TableHead>
 															<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-																Prix
+																Price
 															</TableHead>
 															<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-																Solde
+																Balance
 															</TableHead>
 															<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
 																24H %
 															</TableHead>
 															<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-																Valeur Totale
+																Total Value
 															</TableHead>
 															<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-																Tendance 7J
+																7D Trend
 															</TableHead>
 															<TableHead className="h-11 w-[56px]" />
 														</TableRow>
@@ -1947,7 +1947,7 @@ export function CryptoList({
 																				}}
 																			>
 																				<Eye className="mr-2 h-4 w-4" />
-																				Voir détail
+																				View details
 																			</DropdownMenuItem>
 																			<DropdownMenuItem
 																				onClick={(event) => {
@@ -1956,7 +1956,7 @@ export function CryptoList({
 																				}}
 																			>
 																				<Edit className="mr-2 h-4 w-4" />
-																				Modifier
+																				Edit
 																			</DropdownMenuItem>
 																			<DropdownMenuSeparator />
 																			<DropdownMenuItem
@@ -1967,7 +1967,7 @@ export function CryptoList({
 																				}}
 																			>
 																				<Trash2 className="mr-2 h-4 w-4" />
-																				Supprimer
+																				Delete
 																			</DropdownMenuItem>
 																		</DropdownMenuContent>
 																	</DropdownMenu>
@@ -1988,25 +1988,25 @@ export function CryptoList({
 								<TableHeader>
 									<TableRow className="hover:bg-transparent border-border/50">
 										<TableHead className="h-11 text-left text-[12px] uppercase tracking-wider text-muted-foreground">
-											Actif
+											Asset
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-											Prix
+											Price
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-											Solde Total
+											Total Balance
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
 											24H %
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-											Valeur Totale
+											Total Value
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-											Tendance 7J
+											7D Trend
 										</TableHead>
 										<TableHead className="h-11 text-right text-[12px] uppercase tracking-wider text-muted-foreground">
-											Comptes
+											Accounts
 										</TableHead>
 										<TableHead className="h-11 w-[56px]" />
 									</TableRow>
@@ -2089,35 +2089,35 @@ export function CryptoList({
 															}}
 														>
 															<Eye className="mr-2 h-4 w-4" />
-															Voir détail
+															View details
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															onClick={(event) => {
 																event.stopPropagation();
 																toast.info(
-																	"Passe en vue 'Par compte' pour modifier une position précise.",
+																	"Switch to 'By account' view to edit a specific position.",
 																);
 															}}
 														>
 															<Edit className="mr-2 h-4 w-4" />
-															Modifier
+															Edit
 														</DropdownMenuItem>
 														<DropdownMenuItem
 															className="text-destructive"
 															onClick={(event) => {
 																event.stopPropagation();
 																toast.info(
-																	"Passe en vue 'Par compte' pour supprimer une position précise.",
+																	"Switch to 'By account' view to delete a specific position.",
 																);
 															}}
 														>
 															<Trash2 className="mr-2 h-4 w-4" />
-															Supprimer
+															Delete
 														</DropdownMenuItem>
 														<DropdownMenuSeparator />
 														<DropdownMenuItem onClick={(event) => event.stopPropagation()}>
 															<Wallet className="mr-2 h-4 w-4" />
-															Voir comptes
+															View accounts
 														</DropdownMenuItem>
 													</DropdownMenuContent>
 												</DropdownMenu>
@@ -2172,14 +2172,14 @@ export function CryptoList({
 				onOpenChange={(open) => {
 					if (!open && !isDeleting) setDeleteTarget(null);
 				}}
-				title="Supprimer la position ?"
+				title="Delete position?"
 				description={
 					deleteTarget
-						? `Retirer ${deleteTarget.symbol} (${deleteTarget.cryptoName}) de votre portefeuille. Cette action est irréversible.`
-						: "Cette action est irréversible."
+						? `Remove ${deleteTarget.symbol} (${deleteTarget.cryptoName}) from your portfolio. This action cannot be undone.`
+						: "This action cannot be undone."
 				}
-				confirmText={isDeleting ? "Suppression..." : "Supprimer"}
-				cancelText="Annuler"
+				confirmText={isDeleting ? "Deleting..." : "Delete"}
+				cancelText="Cancel"
 				variant="destructive"
 				onConfirm={() => {
 					if (!isDeleting) {
@@ -2190,14 +2190,14 @@ export function CryptoList({
 			<Dialog open={editTarget !== null} onOpenChange={(open) => !open && closeEditDialog()}>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Modifier la position</DialogTitle>
+						<DialogTitle>Edit position</DialogTitle>
 						<DialogDescription>
 							{editTarget ? `${editTarget.symbol} · ${editTarget.cryptoName}` : ""}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="space-y-4 py-2">
 						<div className="space-y-2">
-							<Label htmlFor="edit-quantity">Quantité</Label>
+							<Label htmlFor="edit-quantity">Quantity</Label>
 							<Input
 								id="edit-quantity"
 								type="number"
@@ -2208,7 +2208,7 @@ export function CryptoList({
 							/>
 						</div>
 						<div className="space-y-2">
-							<Label htmlFor="edit-average-buy-price">Prix d'achat moyen</Label>
+							<Label htmlFor="edit-average-buy-price">Average Buy Price</Label>
 							<Input
 								id="edit-average-buy-price"
 								type="number"
@@ -2221,10 +2221,10 @@ export function CryptoList({
 					</div>
 					<DialogFooter>
 						<Button variant="outline" onClick={closeEditDialog} disabled={isSavingEdit}>
-							Annuler
+							Cancel
 						</Button>
 						<Button onClick={() => void handleSaveEdit()} disabled={isSavingEdit}>
-							{isSavingEdit ? "Enregistrement..." : "Enregistrer"}
+							{isSavingEdit ? "Saving..." : "Save"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -2235,13 +2235,13 @@ export function CryptoList({
 			>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
-						<DialogTitle>Modifier la transaction</DialogTitle>
-						<DialogDescription>Mets à jour cette opération individuellement.</DialogDescription>
+						<DialogTitle>Edit Transaction</DialogTitle>
+						<DialogDescription>Update this transaction individually.</DialogDescription>
 					</DialogHeader>
 					{editTransactionTarget && (
 						<div className="space-y-4 py-2">
 							<div className="space-y-2">
-								<Label htmlFor="tx-edit-quantity">Quantité</Label>
+								<Label htmlFor="tx-edit-quantity">Quantity</Label>
 								<Input
 									id="tx-edit-quantity"
 									type="number"
@@ -2256,7 +2256,7 @@ export function CryptoList({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tx-edit-unit-price">Prix unitaire</Label>
+								<Label htmlFor="tx-edit-unit-price">Unit Price</Label>
 								<Input
 									id="tx-edit-unit-price"
 									type="number"
@@ -2271,7 +2271,7 @@ export function CryptoList({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tx-edit-date">Date d'exécution</Label>
+								<Label htmlFor="tx-edit-date">Execution Date</Label>
 								<Input
 									id="tx-edit-date"
 									type="datetime-local"
@@ -2284,7 +2284,7 @@ export function CryptoList({
 								/>
 							</div>
 							<div className="space-y-2">
-								<Label htmlFor="tx-edit-notes">Note</Label>
+								<Label htmlFor="tx-edit-notes">Notes</Label>
 								<Input
 									id="tx-edit-notes"
 									value={editTransactionTarget.notes}
@@ -2303,13 +2303,13 @@ export function CryptoList({
 							onClick={closeTransactionEditDialog}
 							disabled={isSavingTransactionEdit}
 						>
-							Annuler
+							Cancel
 						</Button>
 						<Button
 							onClick={() => void handleSaveTransactionEdit()}
 							disabled={isSavingTransactionEdit}
 						>
-							{isSavingTransactionEdit ? "Enregistrement..." : "Enregistrer"}
+							{isSavingTransactionEdit ? "Saving..." : "Save"}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -2362,16 +2362,16 @@ export function CryptoList({
 							<div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
 								<Tabs defaultValue="position" className="space-y-4">
 									<TabsList className="grid w-full grid-cols-3">
-										<TabsTrigger value="position">Ma Position</TabsTrigger>
+										<TabsTrigger value="position">My Position</TabsTrigger>
 										<TabsTrigger value="transactions">Transactions</TabsTrigger>
-										<TabsTrigger value="token">Infos du Token</TabsTrigger>
+										<TabsTrigger value="token">Token Info</TabsTrigger>
 									</TabsList>
 
 									<TabsContent value="position" className="space-y-4">
 										<Card className="border-border/60 bg-card/90">
 											<CardContent className="space-y-3 pt-6">
 												<div className="flex items-center justify-between">
-													<span className="text-sm text-muted-foreground">Solde</span>
+													<span className="text-sm text-muted-foreground">Balance</span>
 													<span className="font-mono font-semibold">
 														{selectedHolding.quantity.toLocaleString("en-US", {
 															maximumFractionDigits: 6,
@@ -2380,19 +2380,19 @@ export function CryptoList({
 													</span>
 												</div>
 												<div className="flex items-center justify-between">
-													<span className="text-sm text-muted-foreground">Valeur actuelle</span>
+													<span className="text-sm text-muted-foreground">Current Value</span>
 													<span className="font-mono font-semibold">
 														{formatCurrency(selectedHolding.value)}
 													</span>
 												</div>
 												<div className="flex items-center justify-between">
-													<span className="text-sm text-muted-foreground">Prix d'achat moyen</span>
+													<span className="text-sm text-muted-foreground">Avg. Purchase Price</span>
 													<span className="font-mono">
 														{formatCurrency(selectedHolding.averageBuyPrice)}
 													</span>
 												</div>
 												<div className="flex items-center justify-between">
-													<span className="text-sm text-muted-foreground">PnL latent</span>
+													<span className="text-sm text-muted-foreground">Unrealized P&L</span>
 													<span
 														className={cn(
 															"font-mono font-semibold",
@@ -2411,7 +2411,7 @@ export function CryptoList({
 										</Card>
 										<Card className="border-border/60 bg-card/90">
 											<CardHeader className="pb-2">
-												<CardTitle className="text-sm">Performance de la position</CardTitle>
+												<CardTitle className="text-sm">Position Performance</CardTitle>
 											</CardHeader>
 											<CardContent className="pt-0">
 												<div className="flex justify-center py-2">
@@ -2427,12 +2427,12 @@ export function CryptoList({
 									<TabsContent value="transactions">
 										<Card className="border-border/60 bg-card/90">
 											<CardHeader className="pb-2">
-												<CardTitle className="text-sm">Historique des transactions</CardTitle>
+												<CardTitle className="text-sm">Transaction History</CardTitle>
 											</CardHeader>
 											<CardContent className="pt-0">
 												{selectedHoldingTransactions.length === 0 ? (
 													<p className="text-sm text-muted-foreground">
-														Aucune transaction liée détectée pour cet actif.
+														No linked transactions found for this asset.
 													</p>
 												) : (
 													<div className="space-y-2">
@@ -2459,7 +2459,7 @@ export function CryptoList({
 																		<span>
 																			{new Date(
 																				String(row.executedAt ?? Date.now()),
-																			).toLocaleDateString("fr-FR")}
+																			).toLocaleDateString("en-US")}
 																		</span>
 																		<Badge variant="outline" className="uppercase">
 																			{typeLabel}
@@ -2467,7 +2467,7 @@ export function CryptoList({
 																	</div>
 																	<div className="mt-2 grid grid-cols-2 gap-2 text-sm">
 																		<div>
-																			<p className="text-xs text-muted-foreground">Quantité</p>
+																			<p className="text-xs text-muted-foreground">Quantity</p>
 																			<p className="font-mono">
 																				{Number.isFinite(quantity)
 																					? quantity.toLocaleString("en-US")
@@ -2475,7 +2475,7 @@ export function CryptoList({
 																			</p>
 																		</div>
 																		<div>
-																			<p className="text-xs text-muted-foreground">Prix unitaire</p>
+																			<p className="text-xs text-muted-foreground">Unit Price</p>
 																			<p className="font-mono">
 																				{Number.isFinite(unitPrice)
 																					? formatCurrency(unitPrice)
@@ -2483,7 +2483,7 @@ export function CryptoList({
 																			</p>
 																		</div>
 																		<div className="col-span-2">
-																			<p className="text-xs text-muted-foreground">Montant total</p>
+																			<p className="text-xs text-muted-foreground">Total Amount</p>
 																			<p className="font-mono">
 																				{Number.isFinite(total) ? formatCurrency(total) : "--"}
 																			</p>
@@ -2496,7 +2496,7 @@ export function CryptoList({
 																			onClick={() => openTransactionEditDialog(row)}
 																		>
 																			<Edit className="mr-2 h-3.5 w-3.5" />
-																			Modifier
+																			Edit
 																		</Button>
 																	</div>
 																</div>
@@ -2512,17 +2512,17 @@ export function CryptoList({
 										<Card className="border-border/60 bg-card/90">
 											<CardContent className="space-y-3 pt-6 text-sm">
 												<div className="flex items-center justify-between">
-													<span className="text-muted-foreground">Rang Market Cap</span>
+													<span className="text-muted-foreground">Market Cap Rank</span>
 													<span className="font-mono">-</span>
 												</div>
 												<div className="flex items-center justify-between">
-													<span className="text-muted-foreground">ATH observé (local)</span>
+													<span className="text-muted-foreground">Local All-Time High</span>
 													<span className="font-mono">
 														{formatCurrency(Math.max(...selectedHolding.sparklineData))}
 													</span>
 												</div>
 												<div className="flex items-center justify-between">
-													<span className="text-muted-foreground">Distance ATH</span>
+													<span className="text-muted-foreground">ATH Distance</span>
 													<span className="font-mono text-rose-500">
 														{(() => {
 															const localAth = Math.max(...selectedHolding.sparklineData);
@@ -2540,7 +2540,7 @@ export function CryptoList({
 														rel="noreferrer"
 														className="text-sm text-primary hover:underline"
 													>
-														Voir sur CoinGecko
+														View on CoinGecko
 													</a>
 												</div>
 											</CardContent>

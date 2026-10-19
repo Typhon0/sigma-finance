@@ -11,7 +11,7 @@ export function Logo({ size = "md", showText = true, className = "" }: LogoProps
 			container: "h-8 w-8",
 			text: "text-xs",
 			title: "text-sm",
-			subtitle: "text-[10px]",
+			subtitle: "text-micro",
 			logoText: "text-lg",
 		},
 		md: {
@@ -59,9 +59,9 @@ export function Logo({ size = "md", showText = true, className = "" }: LogoProps
 			{/* Text */}
 			{showText && (
 				<div className="flex flex-col">
-					<h1 className={`${sizes.title} font-semibold tracking-tight leading-tight`}>
+					<div className={`${sizes.title} font-semibold tracking-tight leading-tight`}>
 						Sigma Finance
-					</h1>
+					</div>
 					<p className={`${sizes.subtitle} text-muted-foreground leading-tight`}>
 						Portfolio Management
 					</p>

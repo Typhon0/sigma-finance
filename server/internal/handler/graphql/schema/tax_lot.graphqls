@@ -1,0 +1,85 @@
+# internal/handler/graphql/schema/tax_lot.graphqls
+
+type TaxLot {
+    id: ID!
+    portfolioId: ID!
+    positionId: ID!
+    assetId: ID!
+    transactionId: ID
+    acquiredAt: Time!
+    initialQuantity: Float!
+    remainingQuantity: Float!
+    costBasisPerUnit: Float!
+    totalCostBasis: Float!
+    currency: String!
+    status: String!
+    holdingPeriodDays: Int!
+    isLongTerm: Boolean!
+    currentPrice: Float
+    currentValue: Float
+    unrealizedGainLoss: Float
+    unrealizedGainLossPercent: Float
+}
+
+enum TaxLotAccountingMethod {
+    FIFO
+    LIFO
+    HIFO
+    LOWEST_COST
+    PMP
+}
+
+type TaxHarvestOpportunity {
+    positionId: ID!
+    symbol: String!
+    name: String!
+    harvestableLoss: Float!
+    eligibleLotsCount: Int!
+}
+
+# One lot-matched disposal. realizedGainLoss here is the FISCAL number
+# (lot-matched per disposal) — deliberately distinct from the economic
+# average-cost P/L carried on Position.realizedGainLoss.
+type TaxLotDisposition {
+    id: ID!
+    lotId: ID!
+    positionId: ID!
+    portfolioId: ID!
+    assetId: ID!
+    transactionId: ID
+    acquiredAt: Time!
+    soldAt: Time!
+    quantity: Float!
+    costBasisPerUnit: Float!
+    sellPricePerUnit: Float!
+    costBasis: Float!
+    proceeds: Float!
+    realizedGainLoss: Float!
+    method: String!
+    holdingPeriodDays: Int!
+    isLongTerm: Boolean!
+    isTaxExempt: Boolean!
+}
+
+# Fiscal realized gains summary for a portfolio over a window (tax year).
+# All amounts are FISCAL lot-matched G/L, not economic P/L.
+type RealizedGainsSummary {
+    portfolioId: ID!
+    dateFrom: Time!
+    dateTo: Time!
+    totalRealized: Float!
+    shortTermGains: Float!
+    longTermGains: Float!
+    dispositionCount: Int!
+    transactionCount: Int!
+    taxWrapper: String!
+    taxJurisdiction: String!
+    isTaxExempt: Boolean!
+}
+
+extend type Query {
+    taxLotsByPosition(positionId: ID!): [TaxLot!]! @auth
+    taxHarvestOpportunities(portfolioId: ID!): [TaxHarvestOpportunity!]! @auth
+    dispositionsByPosition(positionId: ID!): [TaxLotDisposition!]! @auth
+    realizedGains(portfolioId: ID!, dateFrom: Time!, dateTo: Time!): RealizedGainsSummary! @auth
+}

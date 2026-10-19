@@ -38,10 +38,12 @@ type TestAdminDBConfig struct {
 // GetTestDBConfig returns test database configuration
 func GetTestDBConfig() *TestDBConfig {
 	return &TestDBConfig{
-		Host:     getEnvOrDefault("TEST_DB_HOST", "192.168.1.170"),
+		Host:     getEnvOrDefault("TEST_DB_HOST", "localhost"),
 		Port:     getEnvOrDefault("TEST_DB_PORT", "5432"),
 		User:     getEnvOrDefault("TEST_DB_USER", "sigma_finance"),
-		Password: getEnvOrDefault("TEST_DB_PASSWORD", "xQxW&yATWuC2N3*8"),
+		// No default: tests must supply TEST_DB_PASSWORD (see .env.example).
+		// A hardcoded default previously leaked a real credential into git.
+		Password: getEnvOrDefault("TEST_DB_PASSWORD", ""),
 		DBName:   getEnvOrDefault("TEST_DB_NAME", "sigma_finance_test"),
 		SSLMode:  getEnvOrDefault("TEST_DB_SSLMODE", "disable"),
 	}

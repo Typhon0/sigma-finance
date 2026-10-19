@@ -21,15 +21,15 @@ export const CurrencyExposureCard = memo(function CurrencyExposureCard({
 	return (
 		<Card
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 backdrop-blur-xs p-5 min-h-[220px] flex flex-col justify-between shadow-xs hover:border-emerald-500/20 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-gain/20 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/80">
+					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
 						Currency Exposure
 					</span>
 					{isRecommended && (
-						<span className="bg-emerald-500/5 text-emerald-500 border border-emerald-500/10 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider select-none">
+						<span className="bg-gain/5 text-gain border border-gain/10 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
 					)}
@@ -58,7 +58,7 @@ export const CurrencyExposureCard = memo(function CurrencyExposureCard({
 									</span>
 									<span className="font-mono font-semibold text-foreground">
 										{formatCurrency(item.value)}{" "}
-										<span className="text-[10px] text-muted-foreground font-normal ml-1">
+										<span className="text-micro text-muted-foreground font-normal ml-1">
 											({item.percentage.toFixed(1)}%)
 										</span>
 									</span>
@@ -70,7 +70,7 @@ export const CurrencyExposureCard = memo(function CurrencyExposureCard({
 					<div className="flex flex-col items-center justify-center text-center h-[130px] gap-1.5 py-4">
 						<Globe className="h-6 w-6 text-muted-foreground/40 shrink-0" />
 						<p className="text-xs font-semibold text-foreground/90">No currencies found</p>
-						<p className="text-[10px] text-muted-foreground max-w-[200px] leading-normal">
+						<p className="text-micro text-muted-foreground max-w-[200px] leading-normal">
 							Add international investments to analyze global fx distribution.
 						</p>
 					</div>
@@ -81,7 +81,7 @@ export const CurrencyExposureCard = memo(function CurrencyExposureCard({
 				<button
 					type="button"
 					onClick={() => setActiveTab("positions")}
-					className="text-[10px] text-emerald-500 hover:text-emerald-400 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
+					className="text-micro text-gain hover:text-gain/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
 				>
 					View details →
 				</button>

@@ -20,6 +20,7 @@ import (
 // embedded in the resolver implementations in other files.
 type Resolver struct {
 	PortfolioService      service.IPortfolioService
+	AccountService        service.IAccountService
 	UserService           service.IUserService
 	AssetService          service.IAssetService
 	TagService            service.ITagService

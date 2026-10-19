@@ -22,16 +22,33 @@ type PerformanceMetrics struct {
 	Volatility  float64 `bun:"volatility"`
 }
 
+type TaxWrapperType string
+
+const (
+	TaxWrapperStandardTaxable     TaxWrapperType = "STANDARD_TAXABLE"
+	TaxWrapperPEA                 TaxWrapperType = "PEA"
+	TaxWrapperRetirementSheltered TaxWrapperType = "RETIREMENT_SHELTERED"
+	TaxWrapperCryptoVault         TaxWrapperType = "CRYPTO_VAULT"
+)
+
+func (t TaxWrapperType) IsTaxExempt() bool {
+	return t == TaxWrapperPEA || t == TaxWrapperRetirementSheltered
+}
+
 type Portfolio struct {
 	bun.BaseModel `bun:"table:sigma_finance.portfolio"`
 
-	ID          string    `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
-	UserID      string    `bun:"user_id,notnull,type:uuid"`
-	Name        string    `bun:"name,notnull"`
-	Description string    `bun:"description"`
-	SortOrder   int       `bun:"sort_order,default:0"`
-	CreatedAt   time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt   time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	ID          string         `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID      string         `bun:"user_id,notnull,type:uuid"`
+	Name        string         `bun:"name,notnull"`
+	Description string         `bun:"description"`
+	SortOrder   int            `bun:"sort_order,default:0"`
+	TaxWrapper  TaxWrapperType `bun:"tax_wrapper,notnull,default:'STANDARD_TAXABLE'"`
+	CreatedAt   time.Time      `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt   time.Time      `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+
+	// Relations
+	Accounts []*Account `bun:"rel:has-many,join:id=portfolio_id"`
 }
 
 // Implement Entity interface

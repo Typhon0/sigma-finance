@@ -1,3 +1,4 @@
+import { useMutation } from "@apollo/client";
 import { Check, MapPin, Shield, User, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -9,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SearchInput } from "@/components/ui/search-input";
 import { Separator } from "@/components/ui/separator";
+import { UPDATE_USER_TAX_JURISDICTION_MUTATION } from "@/graphql/mutations/user.mutations";
+import { useAuth } from "@/lib/auth-context";
 
 interface Country {
 	code: string;
@@ -78,14 +81,17 @@ const countries: Country[] = [
 const regions = ["All", "Europe", "Americas", "Asia-Pacific", "Middle East & Africa"];
 
 export function AccountSettings() {
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [selectedCountries, setSelectedCountries] = useState<string[]>(["FR"]);
+	const { user } = useAuth();
+	const [name, setName] = useState(user?.name || "");
+	const [email, setEmail] = useState(user?.email || "");
+	const [selectedCountries, setSelectedCountries] = useState<string[]>([user?.taxJurisdiction || "FR"]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedRegion, setSelectedRegion] = useState("All");
 	const [activeSubSection, setActiveSubSection] = useState<
 		"profile" | "jurisdictions" | "security"
 	>("profile");
+
+	const [updateJurisdiction] = useMutation(UPDATE_USER_TAX_JURISDICTION_MUTATION);
 
 	const filteredCountries = countries.filter((country) => {
 		const matchesSearch =
@@ -95,17 +101,16 @@ export function AccountSettings() {
 		return matchesSearch && matchesRegion;
 	});
 
-	const toggleCountry = (countryCode: string) => {
-		setSelectedCountries((prev) => {
-			if (prev.includes(countryCode)) {
-				if (prev.length === 1) {
-					toast.error("You must have at least one jurisdiction selected");
-					return prev;
-				}
-				return prev.filter((c) => c !== countryCode);
-			}
-			return [...prev, countryCode];
-		});
+	const toggleCountry = async (countryCode: string) => {
+		setSelectedCountries([countryCode]);
+		try {
+			await updateJurisdiction({
+				variables: { input: { taxJurisdiction: countryCode } },
+			});
+			toast.success(`Tax jurisdiction set to ${countryCode}`);
+		} catch (e) {
+			toast.error("Failed to update tax jurisdiction");
+		}
 	};
 
 	const handleSave = () => {

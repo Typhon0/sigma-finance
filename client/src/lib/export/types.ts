@@ -26,6 +26,12 @@ export interface ExportResult {
 	filename?: string;
 	error?: string;
 	size?: number;
+	/**
+	 * Set when the export succeeded but is known to be incomplete - currently
+	 * only when a transaction history hit the page size. Callers must display
+	 * it: the file is valid, it is just not the whole picture.
+	 */
+	warning?: string;
 }
 
 export interface PortfolioExportData {
@@ -37,6 +43,22 @@ export interface PortfolioExportData {
 		totalCost: number;
 		gainLoss: number;
 		returnPercentage: number;
+		/**
+		 * The currency the server valued this portfolio in, e.g. "EUR".
+		 *
+		 * The PDF writer used to print a hardcoded "$" on every amount, so a
+		 * portfolio held in euros was exported to an accountant as dollars at
+		 * a 1:1 rate - a number that is confidently wrong rather than
+		 * obviously missing. Undefined when the server did not say.
+		 */
+		currency?: string;
+		/**
+		 * True when the server valued this portfolio with a stale FX rate. The
+		 * exporters write it into the file header: a spreadsheet that does not
+		 * say its totals are approximate reads as authoritative, and the totals
+		 * go into tax and performance decisions.
+		 */
+		isStale: boolean;
 	};
 	positions: Array<{
 		id: string;
@@ -48,15 +70,22 @@ export interface PortfolioExportData {
 		currentValue: number;
 		costBasis: number;
 		gainLoss: number;
-		returnPercentage: number;
+		/**
+		 * Optional because "not computable" is a real state: a position with
+		 * no cost basis has no return, and writing 0 there would claim the
+		 * holding broke even. Writers render undefined as "n/a".
+		 */
+		returnPercentage?: number;
 		ownershipPercentage: number;
 	}>;
 	transactions: Array<{
 		id: string;
 		type: string;
 		assetName: string;
+		symbol?: string;
 		quantity?: number;
-		amount: number;
+		/** Undefined when the transaction records no unit price. */
+		amount?: number;
 		price?: number;
 		fee: number;
 		date: string;

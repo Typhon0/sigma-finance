@@ -25,9 +25,11 @@ const mockPortfolio = {
 	analytics: null,
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
+	taxWrapper: "STANDARD_TAXABLE" as any,
 	sortOrder: 1,
 	tags: [],
 	transactions: [],
+	accounts: [],
 } as Portfolio;
 
 const mockAssets: Asset[] = [

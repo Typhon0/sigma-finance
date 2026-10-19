@@ -120,6 +120,7 @@ export function EditPortfolioDialog({
 			await updatePortfolio(portfolioId, {
 				name: data.name,
 				description: data.description || undefined,
+				taxWrapper: data.taxWrapper as any,
 			});
 
 			// Show success message

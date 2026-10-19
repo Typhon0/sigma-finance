@@ -27,6 +27,25 @@ type Asset interface {
 	GetDayChangePercent() *float64
 }
 
+type Account struct {
+	ID             string         `json:"id"`
+	PortfolioID    string         `json:"portfolioId"`
+	Portfolio      *Portfolio     `json:"portfolio"`
+	Name           string         `json:"name"`
+	Type           AccountType    `json:"type"`
+	TaxWrapper     TaxWrapperType `json:"taxWrapper"`
+	Institution    *string        `json:"institution,omitempty"`
+	AccountNumber  *string        `json:"accountNumber,omitempty"`
+	Currency       string         `json:"currency"`
+	SyncProvider   string         `json:"syncProvider"`
+	ExternalID     *string        `json:"externalId,omitempty"`
+	Positions      []*Position    `json:"positions"`
+	PositionsCount int32          `json:"positionsCount"`
+	TotalValue     *float64       `json:"totalValue,omitempty"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+}
+
 type AddInstrumentHoldingInput struct {
 	PortfolioID          string     `json:"portfolioID"`
 	InstrumentID         string     `json:"instrumentID"`
@@ -409,6 +428,17 @@ type ChartMetadata struct {
 	AdditionalData []*KeyValuePair `json:"additionalData,omitempty"`
 }
 
+type CreateAccountInput struct {
+	PortfolioID   string         `json:"portfolioId"`
+	Name          string         `json:"name"`
+	Type          AccountType    `json:"type"`
+	TaxWrapper    TaxWrapperType `json:"taxWrapper"`
+	Institution   *string        `json:"institution,omitempty"`
+	AccountNumber *string        `json:"accountNumber,omitempty"`
+	Currency      *string        `json:"currency,omitempty"`
+	SyncProvider  *string        `json:"syncProvider,omitempty"`
+}
+
 type CreateAlertInput struct {
 	AssetID             *string                   `json:"assetId,omitempty"`
 	PortfolioID         *string                   `json:"portfolioId,omitempty"`
@@ -499,9 +529,10 @@ type CreateLoanInput struct {
 }
 
 type CreatePortfolioInput struct {
-	UserID      string  `json:"userID"`
-	Name        string  `json:"name"`
-	Description *string `json:"description,omitempty"`
+	UserID      string          `json:"userID"`
+	Name        string          `json:"name"`
+	Description *string         `json:"description,omitempty"`
+	TaxWrapper  *TaxWrapperType `json:"taxWrapper,omitempty"`
 }
 
 type CreateRealEstateInput struct {
@@ -749,6 +780,8 @@ type Fund struct {
 	DayChange        *float64    `json:"dayChange,omitempty"`
 	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
 	Positions        []*Position `json:"positions"`
+	ExpenseRatio     *float64    `json:"expenseRatio,omitempty"`
+	DividendYield    *float64    `json:"dividendYield,omitempty"`
 }
 
 func (Fund) IsAsset()                         {}
@@ -881,6 +914,8 @@ type Instrument struct {
 	UpdatedAt              time.Time            `json:"updatedAt"`
 	Aliases                []*InstrumentAlias   `json:"aliases"`
 	SyncState              *InstrumentSyncState `json:"syncState,omitempty"`
+	ExpenseRatio           *float64             `json:"expenseRatio,omitempty"`
+	DividendYield          *float64             `json:"dividendYield,omitempty"`
 }
 
 type InstrumentAlias struct {
@@ -1381,11 +1416,13 @@ type Portfolio struct {
 	ID           string              `json:"id"`
 	Name         string              `json:"name"`
 	Description  *string             `json:"description,omitempty"`
+	TaxWrapper   TaxWrapperType      `json:"taxWrapper"`
 	SortOrder    int32               `json:"sortOrder"`
 	CreatedAt    time.Time           `json:"createdAt"`
 	UpdatedAt    time.Time           `json:"updatedAt"`
 	User         *User               `json:"user"`
 	Tags         []*Tag              `json:"tags"`
+	Accounts     []*Account          `json:"accounts"`
 	Assets       []*PortfolioAsset   `json:"assets"`
 	Transactions []*Transaction      `json:"transactions"`
 	Analytics    *PortfolioAnalytics `json:"analytics,omitempty"`
@@ -1456,6 +1493,8 @@ type PortfolioUpdatePayload struct {
 type Position struct {
 	ID                   string     `json:"id"`
 	Portfolio            *Portfolio `json:"portfolio"`
+	AccountID            string     `json:"accountId"`
+	Account              *Account   `json:"account"`
 	Asset                Asset      `json:"asset"`
 	Quantity             float64    `json:"quantity"`
 	AveragePurchasePrice *float64   `json:"averagePurchasePrice,omitempty"`
@@ -1472,17 +1511,24 @@ type PositionPerformance struct {
 }
 
 type PositionValuation struct {
-	PositionID      string     `json:"positionId"`
-	AssetID         string     `json:"assetId"`
-	NativeValue     float64    `json:"nativeValue"`
-	DisplayValue    float64    `json:"displayValue"`
-	FxRate          float64    `json:"fxRate"`
-	FxAsOf          *time.Time `json:"fxAsOf,omitempty"`
-	FxSource        *string    `json:"fxSource,omitempty"`
-	FxGranularity   *string    `json:"fxGranularity,omitempty"`
-	IsStale         bool       `json:"isStale"`
-	QuoteCurrency   string     `json:"quoteCurrency"`
-	DisplayCurrency string     `json:"displayCurrency"`
+	PositionID         string     `json:"positionId"`
+	AssetID            string     `json:"assetId"`
+	NativeValue        float64    `json:"nativeValue"`
+	DisplayValue       float64    `json:"displayValue"`
+	CostBasisNative    float64    `json:"costBasisNative"`
+	CostBasisDisplay   float64    `json:"costBasisDisplay"`
+	CostBasisCurrency  string     `json:"costBasisCurrency"`
+	CostBasisConverted bool       `json:"costBasisConverted"`
+	HasDisplayValue    bool       `json:"hasDisplayValue"`
+	IsExcluded         bool       `json:"isExcluded"`
+	ExclusionReason    *string    `json:"exclusionReason,omitempty"`
+	FxRate             float64    `json:"fxRate"`
+	FxAsOf             *time.Time `json:"fxAsOf,omitempty"`
+	FxSource           *string    `json:"fxSource,omitempty"`
+	FxGranularity      *string    `json:"fxGranularity,omitempty"`
+	IsStale            bool       `json:"isStale"`
+	QuoteCurrency      string     `json:"quoteCurrency"`
+	DisplayCurrency    string     `json:"displayCurrency"`
 }
 
 type ProviderFailure struct {
@@ -1606,6 +1652,20 @@ func (this RealEstate) GetExchange() *string          { return this.Exchange }
 func (this RealEstate) GetDayChange() *float64        { return this.DayChange }
 func (this RealEstate) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
+type RealizedGainsSummary struct {
+	PortfolioID      string    `json:"portfolioId"`
+	DateFrom         time.Time `json:"dateFrom"`
+	DateTo           time.Time `json:"dateTo"`
+	TotalRealized    float64   `json:"totalRealized"`
+	ShortTermGains   float64   `json:"shortTermGains"`
+	LongTermGains    float64   `json:"longTermGains"`
+	DispositionCount int32     `json:"dispositionCount"`
+	TransactionCount int32     `json:"transactionCount"`
+	TaxWrapper       string    `json:"taxWrapper"`
+	TaxJurisdiction  string    `json:"taxJurisdiction"`
+	IsTaxExempt      bool      `json:"isTaxExempt"`
+}
+
 type RebalanceRecommendation struct {
 	AssetType         string  `json:"assetType"`
 	CurrentWeight     float64 `json:"currentWeight"`
@@ -1642,10 +1702,11 @@ type ResendVerificationInput struct {
 }
 
 type RiskMetrics struct {
-	Volatility      float64 `json:"volatility"`
-	SharpeRatio     float64 `json:"sharpeRatio"`
-	MaxDrawdown     float64 `json:"maxDrawdown"`
-	Diversification float64 `json:"diversification"`
+	Volatility      *float64 `json:"volatility,omitempty"`
+	SharpeRatio     *float64 `json:"sharpeRatio,omitempty"`
+	SortinoRatio    *float64 `json:"sortinoRatio,omitempty"`
+	MaxDrawdown     *float64 `json:"maxDrawdown,omitempty"`
+	Diversification *float64 `json:"diversification,omitempty"`
 }
 
 type StartLocalPackBuildInput struct {
@@ -1682,6 +1743,8 @@ type Stock struct {
 	DayChange        *float64    `json:"dayChange,omitempty"`
 	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
 	Positions        []*Position `json:"positions"`
+	PeRatio          *float64    `json:"peRatio,omitempty"`
+	DividendYield    *float64    `json:"dividendYield,omitempty"`
 }
 
 func (Stock) IsAsset()                         {}
@@ -1735,6 +1798,56 @@ type Tag struct {
 	Name string `json:"name"`
 }
 
+type TaxHarvestOpportunity struct {
+	PositionID        string  `json:"positionId"`
+	Symbol            string  `json:"symbol"`
+	Name              string  `json:"name"`
+	HarvestableLoss   float64 `json:"harvestableLoss"`
+	EligibleLotsCount int32   `json:"eligibleLotsCount"`
+}
+
+type TaxLot struct {
+	ID                        string    `json:"id"`
+	PortfolioID               string    `json:"portfolioId"`
+	PositionID                string    `json:"positionId"`
+	AssetID                   string    `json:"assetId"`
+	TransactionID             *string   `json:"transactionId,omitempty"`
+	AcquiredAt                time.Time `json:"acquiredAt"`
+	InitialQuantity           float64   `json:"initialQuantity"`
+	RemainingQuantity         float64   `json:"remainingQuantity"`
+	CostBasisPerUnit          float64   `json:"costBasisPerUnit"`
+	TotalCostBasis            float64   `json:"totalCostBasis"`
+	Currency                  string    `json:"currency"`
+	Status                    string    `json:"status"`
+	HoldingPeriodDays         int32     `json:"holdingPeriodDays"`
+	IsLongTerm                bool      `json:"isLongTerm"`
+	CurrentPrice              *float64  `json:"currentPrice,omitempty"`
+	CurrentValue              *float64  `json:"currentValue,omitempty"`
+	UnrealizedGainLoss        *float64  `json:"unrealizedGainLoss,omitempty"`
+	UnrealizedGainLossPercent *float64  `json:"unrealizedGainLossPercent,omitempty"`
+}
+
+type TaxLotDisposition struct {
+	ID                string    `json:"id"`
+	LotID             string    `json:"lotId"`
+	PositionID        string    `json:"positionId"`
+	PortfolioID       string    `json:"portfolioId"`
+	AssetID           string    `json:"assetId"`
+	TransactionID     *string   `json:"transactionId,omitempty"`
+	AcquiredAt        time.Time `json:"acquiredAt"`
+	SoldAt            time.Time `json:"soldAt"`
+	Quantity          float64   `json:"quantity"`
+	CostBasisPerUnit  float64   `json:"costBasisPerUnit"`
+	SellPricePerUnit  float64   `json:"sellPricePerUnit"`
+	CostBasis         float64   `json:"costBasis"`
+	Proceeds          float64   `json:"proceeds"`
+	RealizedGainLoss  float64   `json:"realizedGainLoss"`
+	Method            string    `json:"method"`
+	HoldingPeriodDays int32     `json:"holdingPeriodDays"`
+	IsLongTerm        bool      `json:"isLongTerm"`
+	IsTaxExempt       bool      `json:"isTaxExempt"`
+}
+
 type TechnicalIndicatorPoint struct {
 	Timestamp time.Time `json:"timestamp"`
 	Value     float64   `json:"value"`
@@ -1768,6 +1881,8 @@ type TimeSeriesData struct {
 type Transaction struct {
 	ID                string          `json:"id"`
 	Portfolio         *Portfolio      `json:"portfolio"`
+	AccountID         *string         `json:"accountId,omitempty"`
+	Account           *Account        `json:"account,omitempty"`
 	Asset             Asset           `json:"asset"`
 	TransactionType   TransactionType `json:"transactionType"`
 	Quantity          float64         `json:"quantity"`
@@ -1802,6 +1917,15 @@ type TriggerFinanceDatabaseSyncPayload struct {
 	Success    bool                     `json:"success"`
 	Message    string                   `json:"message"`
 	SyncStatus *FinanceDatabaseSyncItem `json:"syncStatus"`
+}
+
+type UpdateAccountInput struct {
+	Name          *string         `json:"name,omitempty"`
+	Type          *AccountType    `json:"type,omitempty"`
+	TaxWrapper    *TaxWrapperType `json:"taxWrapper,omitempty"`
+	Institution   *string         `json:"institution,omitempty"`
+	AccountNumber *string         `json:"accountNumber,omitempty"`
+	Currency      *string         `json:"currency,omitempty"`
 }
 
 type UpdateAlertInput struct {
@@ -1839,9 +1963,10 @@ type UpdateManualInstrumentInput struct {
 }
 
 type UpdatePortfolioInput struct {
-	Name        *string `json:"name,omitempty"`
-	Description *string `json:"description,omitempty"`
-	SortOrder   *int32  `json:"sortOrder,omitempty"`
+	Name        *string         `json:"name,omitempty"`
+	Description *string         `json:"description,omitempty"`
+	TaxWrapper  *TaxWrapperType `json:"taxWrapper,omitempty"`
+	SortOrder   *int32          `json:"sortOrder,omitempty"`
 }
 
 type UpdateTransactionInput struct {
@@ -1857,9 +1982,14 @@ type UpdateUserDisplayCurrencyInput struct {
 }
 
 type UpdateUserInput struct {
-	Username *string `json:"username,omitempty"`
-	Email    *string `json:"email,omitempty"`
-	Password *string `json:"password,omitempty"`
+	Username        *string `json:"username,omitempty"`
+	Email           *string `json:"email,omitempty"`
+	Password        *string `json:"password,omitempty"`
+	TaxJurisdiction *string `json:"taxJurisdiction,omitempty"`
+}
+
+type UpdateUserTaxJurisdictionInput struct {
+	TaxJurisdiction string `json:"taxJurisdiction"`
 }
 
 type UpdateUserThemePreferencesInput struct {
@@ -1894,6 +2024,7 @@ type User struct {
 	ThemeStyle          string       `json:"themeStyle"`
 	ThemeRadius         float64      `json:"themeRadius"`
 	ThemeRtl            bool         `json:"themeRTL"`
+	TaxJurisdiction     string       `json:"taxJurisdiction"`
 }
 
 // User engagement analytics
@@ -1993,6 +2124,65 @@ type Watchlist struct {
 
 type WatchlistFilter struct {
 	UserID string `json:"userID"`
+}
+
+type AccountType string
+
+const (
+	AccountTypeBroker         AccountType = "BROKER"
+	AccountTypeBank           AccountType = "BANK"
+	AccountTypeCryptoExchange AccountType = "CRYPTO_EXCHANGE"
+	AccountTypeOther          AccountType = "OTHER"
+)
+
+var AllAccountType = []AccountType{
+	AccountTypeBroker,
+	AccountTypeBank,
+	AccountTypeCryptoExchange,
+	AccountTypeOther,
+}
+
+func (e AccountType) IsValid() bool {
+	switch e {
+	case AccountTypeBroker, AccountTypeBank, AccountTypeCryptoExchange, AccountTypeOther:
+		return true
+	}
+	return false
+}
+
+func (e AccountType) String() string {
+	return string(e)
+}
+
+func (e *AccountType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = AccountType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid AccountType", str)
+	}
+	return nil
+}
+
+func (e AccountType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *AccountType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e AccountType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
 
 // Alert action type enumeration
@@ -3005,6 +3195,126 @@ func (e *SyncStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e SyncStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TaxLotAccountingMethod string
+
+const (
+	TaxLotAccountingMethodFifo       TaxLotAccountingMethod = "FIFO"
+	TaxLotAccountingMethodLifo       TaxLotAccountingMethod = "LIFO"
+	TaxLotAccountingMethodHifo       TaxLotAccountingMethod = "HIFO"
+	TaxLotAccountingMethodLowestCost TaxLotAccountingMethod = "LOWEST_COST"
+	TaxLotAccountingMethodPmp        TaxLotAccountingMethod = "PMP"
+)
+
+var AllTaxLotAccountingMethod = []TaxLotAccountingMethod{
+	TaxLotAccountingMethodFifo,
+	TaxLotAccountingMethodLifo,
+	TaxLotAccountingMethodHifo,
+	TaxLotAccountingMethodLowestCost,
+	TaxLotAccountingMethodPmp,
+}
+
+func (e TaxLotAccountingMethod) IsValid() bool {
+	switch e {
+	case TaxLotAccountingMethodFifo, TaxLotAccountingMethodLifo, TaxLotAccountingMethodHifo, TaxLotAccountingMethodLowestCost, TaxLotAccountingMethodPmp:
+		return true
+	}
+	return false
+}
+
+func (e TaxLotAccountingMethod) String() string {
+	return string(e)
+}
+
+func (e *TaxLotAccountingMethod) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaxLotAccountingMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaxLotAccountingMethod", str)
+	}
+	return nil
+}
+
+func (e TaxLotAccountingMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TaxLotAccountingMethod) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TaxLotAccountingMethod) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type TaxWrapperType string
+
+const (
+	TaxWrapperTypeStandardTaxable     TaxWrapperType = "STANDARD_TAXABLE"
+	TaxWrapperTypePea                 TaxWrapperType = "PEA"
+	TaxWrapperTypeRetirementSheltered TaxWrapperType = "RETIREMENT_SHELTERED"
+	TaxWrapperTypeCryptoVault         TaxWrapperType = "CRYPTO_VAULT"
+)
+
+var AllTaxWrapperType = []TaxWrapperType{
+	TaxWrapperTypeStandardTaxable,
+	TaxWrapperTypePea,
+	TaxWrapperTypeRetirementSheltered,
+	TaxWrapperTypeCryptoVault,
+}
+
+func (e TaxWrapperType) IsValid() bool {
+	switch e {
+	case TaxWrapperTypeStandardTaxable, TaxWrapperTypePea, TaxWrapperTypeRetirementSheltered, TaxWrapperTypeCryptoVault:
+		return true
+	}
+	return false
+}
+
+func (e TaxWrapperType) String() string {
+	return string(e)
+}
+
+func (e *TaxWrapperType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TaxWrapperType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TaxWrapperType", str)
+	}
+	return nil
+}
+
+func (e TaxWrapperType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TaxWrapperType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TaxWrapperType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

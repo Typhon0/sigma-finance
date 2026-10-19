@@ -19,6 +19,7 @@ type User {
     themeStyle: String!
     themeRadius: Float!
     themeRTL: Boolean!
+    taxJurisdiction: String!
 }
 
 # --- Inputs & Enums for User ---
@@ -33,6 +34,11 @@ input UpdateUserInput {
     username: String
     email: String
     password: String
+    taxJurisdiction: String
+}
+
+input UpdateUserTaxJurisdictionInput {
+    taxJurisdiction: String!
 }
 
 input UpdateUserDisplayCurrencyInput {

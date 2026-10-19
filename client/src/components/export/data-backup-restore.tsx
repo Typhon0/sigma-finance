@@ -1,3 +1,4 @@
+import { useApolloClient } from "@apollo/client";
 import {
 	AlertTriangle,
 	CheckCircle,
@@ -27,6 +28,10 @@ interface DataBackupRestoreProps {
 }
 
 export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
+	// The export service reads through an injected client; it has no access to
+	// React context of its own.
+	const client = useApolloClient();
+
 	const [backupDialogOpen, setBackupDialogOpen] = useState(false);
 	const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
 	const [isProcessing, setIsProcessing] = useState(false);
@@ -49,7 +54,7 @@ export function DataBackupRestore({ userId }: DataBackupRestoreProps) {
 				setProgress((prev) => Math.min(prev + 10, 90));
 			}, 200);
 
-			const backupResult = await ExportService.createDataBackup(userId);
+			const backupResult = await ExportService.createDataBackup(client, userId);
 
 			clearInterval(progressInterval);
 			setProgress(100);

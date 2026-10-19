@@ -26,3 +26,12 @@ export const UPDATE_USER_THEME_PREFERENCES_MUTATION = gql`
     }
   }
 `;
+
+export const UPDATE_USER_TAX_JURISDICTION_MUTATION = gql`
+  mutation UpdateUserTaxJurisdiction($input: UpdateUserTaxJurisdictionInput!) {
+    updateUserTaxJurisdiction(input: $input) {
+      id
+      taxJurisdiction
+    }
+  }
+`;

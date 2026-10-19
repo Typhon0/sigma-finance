@@ -16,6 +16,7 @@ export interface AuthUser {
 	themeStyle?: string;
 	themeRadius?: number;
 	themeRTL?: boolean;
+	taxJurisdiction?: string;
 }
 
 export interface AuthData {

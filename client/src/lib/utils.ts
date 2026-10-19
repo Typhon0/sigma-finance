@@ -1,5 +1,23 @@
 import { type ClassValue, clsx } from "clsx";
-import { twMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge";
+
+/**
+ * `cn` = clsx + tailwind-merge, with our custom `text-micro` size registered.
+ *
+ * tailwind-merge only knows Tailwind's stock scale. Handed `text-micro`
+ * alongside a colour like `text-loss`, it classifies the unknown `text-*` as
+ * a text COLOUR and merges the two, silently dropping `text-micro`. The
+ * element then renders at the inherited font size — visibly larger than its
+ * 11px siblings. Registering the token here keeps it in the font-size group,
+ * so size and colour resolve independently, exactly like `text-xs` does.
+ */
+const twMerge = extendTailwindMerge({
+	extend: {
+		classGroups: {
+			"font-size": [{ text: ["micro"] }],
+		},
+	},
+});
 
 export function cn(...inputs: ClassValue[]) {
 	return twMerge(clsx(inputs));

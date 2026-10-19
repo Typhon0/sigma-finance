@@ -66,7 +66,8 @@ type Transaction struct {
 
 	ID                string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	UserID            string           `bun:"user_id,notnull"`
-	PositionID        *string          `bun:"position_id"` // Optional for some transaction types
+	AccountID         *string          `bun:"account_id"`  // Custody account
+	PositionID        *string          `bun:"position_id"` // Optional for some transaction types (e.g. account cash flows)
 	Type              TransactionType  `bun:"type,notnull"`
 	Amount            Money            `bun:"amount,notnull"`                       // Amount in cents
 	Quantity          *decimal.Decimal `bun:"quantity,type:decimal(20,8)"`          // For quantity-based transactions
@@ -80,6 +81,7 @@ type Transaction struct {
 
 	// Relations
 	User     *User     `bun:"rel:belongs-to,join:user_id=id"`
+	Account  *Account  `bun:"rel:belongs-to,join:account_id=id"`
 	Position *Position `bun:"rel:belongs-to,join:position_id=id"`
 }
 

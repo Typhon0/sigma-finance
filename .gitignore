@@ -25,6 +25,25 @@ dist/
 # IDE/Agent specific tool directories
 .antigravitycli/
 .sisyphus/
+.freebuff/
+.impeccable/
+.impeccable.md
+.playwright-mcp/
+.hindsight.json
+.gemini/
+.github/agents/
+.github/copilot-instructions.md
+.github/instructions/
+.github/prompts/
+.github/skills/
+AGENTS.md
+*.snap
+*.png
+hunt1.yml
+snap-after-login.yml
+
+# Local MCP server config (LAN endpoints, machine-specific)
+mcp.json
 
 # Python compiled files and virtual environments
 __pycache__/
@@ -35,3 +54,4 @@ __pycache__/
 .venv/
 venv/
 env/
+

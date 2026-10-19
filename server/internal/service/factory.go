@@ -25,6 +25,7 @@ import (
 type ServiceContainer struct {
 	User            IUserService
 	Portfolio       IPortfolioService
+	Account         IAccountService
 	Asset           IAssetService
 	Transaction     ITransactionService
 	Watchlist       IWatchlistService
@@ -157,6 +158,7 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
+		Account:        NewAccountService(uow),
 		Asset:          NewAssetService(uow.Asset()),
 		Transaction:    NewTransactionService(uow),
 		Watchlist:      NewWatchlistService(uow),
@@ -209,6 +211,14 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 
 		if err := ensureFXRatesTable(initCtx, db); err != nil {
 			log.Printf("[INFO] [ServiceContainer] Failed to ensure FX table: %v", err)
+		}
+
+		packStoragePath := ""
+		if cfg != nil {
+			packStoragePath = cfg.MarketData.PackStoragePath
+		}
+		if err := autoSeedFXFromPackOrProvider(initCtx, db, packStoragePath); err != nil {
+			log.Printf("[WARN] [ServiceContainer] FX auto-seed: %v", err)
 		}
 
 		fxScheduler := NewFXScheduler(uow, fxRateService, "")

@@ -98,6 +98,15 @@ func (s *fxScheduler) Start(mode FXSchedulerMode) error {
 	// Start the refresh loop in a goroutine
 	go s.runRefreshLoop()
 
+	// Launch async gap backfill to catch up on any downtime/offline gaps
+	go func() {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := s.backfillDailyGaps(bgCtx); err != nil {
+			log.Printf("[WARN] [FXScheduler] Startup daily gap backfill failed: %v", err)
+		}
+	}()
+
 	log.Printf("[INFO] [FXScheduler] Started in %s mode with interval %v", mode, interval)
 	return nil
 }
@@ -159,7 +168,81 @@ func (s *fxScheduler) GetMode() FXSchedulerMode {
 
 // RefreshNow performs an immediate FX refresh outside the periodic ticker.
 func (s *fxScheduler) RefreshNow(ctx context.Context) error {
+	if err := s.backfillDailyGaps(ctx); err != nil {
+		log.Printf("[WARN] [FXScheduler] Daily gap backfill during RefreshNow: %v", err)
+	}
 	return s.refresh(ctx)
+}
+
+// backfillDailyGaps checks for offline gaps in daily FX rates for supported pairs.
+// If the most recent daily rate is older than 24 hours, it requests the missing date range
+// in a single batch request from the provider.
+func (s *fxScheduler) backfillDailyGaps(ctx context.Context) error {
+	now := time.Now().UTC()
+	pairs := supportedPairs
+
+	for _, pair := range pairs {
+		latestRate, err := s.uow.FXRate().GetLatestRateWithGranularity(ctx, pair.BaseCurrency, pair.QuoteCurrency, model.FXRateGranularityDay)
+		var from time.Time
+		if err != nil {
+			// No daily rate found: default to beginning of current year (or 1 year ago)
+			from = time.Date(now.Year(), 1, 1, 0, 0, 0, 0, time.UTC)
+		} else {
+			// If latest rate is less than 24 hours old, no gap to backfill
+			if now.Sub(latestRate.AsOf) <= 24*time.Hour {
+				continue
+			}
+			from = latestRate.AsOf.Add(24 * time.Hour)
+		}
+
+		if !from.Before(now) {
+			continue
+		}
+
+		log.Printf("[INFO] [FXScheduler] Backfilling daily gap for %s from %s to %s",
+			pair.String(), from.Format("2006-01-02"), now.Format("2006-01-02"))
+
+		req := providers.CandleRequest{
+			Symbol:    pair.String(),
+			AssetType: "FOREX",
+			Interval:  model.Interval1d,
+			From:      from,
+			To:        now,
+			APIKey:    "", // Never use TwelveData for historical backfill
+		}
+
+		resp, err := s.provider.GetCandles(ctx, req)
+		if err != nil {
+			log.Printf("[WARN] [FXScheduler] Failed to backfill daily gap for %s: %v", pair.String(), err)
+			continue
+		}
+
+		if len(resp.Candles) == 0 {
+			continue
+		}
+
+		rates := make([]*model.FXRate, 0, len(resp.Candles))
+		for _, c := range resp.Candles {
+			rates = append(rates, &model.FXRate{
+				BaseCurrency:  pair.BaseCurrency,
+				QuoteCurrency: pair.QuoteCurrency,
+				Rate:          c.Close,
+				AsOf:          c.Timestamp.UTC(),
+				Source:        c.Source,
+				Granularity:   model.FXRateGranularityDay,
+				IsStale:       false,
+			})
+		}
+
+		if err := s.uow.FXRate().SaveRates(ctx, rates); err != nil {
+			log.Printf("[ERROR] [FXScheduler] Failed saving backfilled rates for %s: %v", pair.String(), err)
+			continue
+		}
+
+		log.Printf("[INFO] [FXScheduler] Successfully backfilled %d daily rates for %s", len(rates), pair.String())
+	}
+
+	return nil
 }
 
 // runRefreshLoop is the main loop that handles tickers
@@ -214,16 +297,15 @@ func (s *fxScheduler) refresh(ctx context.Context) error {
 
 // refreshDaily performs the end-of-day FX rate refresh
 func (s *fxScheduler) refreshDaily(ctx context.Context) error {
+	if err := s.backfillDailyGaps(ctx); err != nil {
+		log.Printf("[WARN] [FXScheduler] Daily gap backfill during refreshDaily: %v", err)
+	}
+
 	// Use all supported pairs for daily refresh (historical record)
 	pairs := supportedPairs
 
 	log.Printf("[INFO] [FXScheduler] Performing daily refresh for %d pairs", len(pairs))
-	// Mark existing daily rates as stale
-	if err := s.markRatesStaleForGranularity(ctx, pairs, model.FXRateGranularityDay); err != nil {
-		log.Printf("[WARN] [FXScheduler] Warning: failed to mark daily rates stale: %v", err)
-	}
-
-	// Fetch and store new daily rates
+	// Fetch and store new daily rates without invalidating historical daily rates
 	if err := s.fetchAndStoreRatesWithGranularity(ctx, pairs, model.FXRateGranularityDay); err != nil {
 		return err
 	}
@@ -235,8 +317,15 @@ func (s *fxScheduler) refreshDaily(ctx context.Context) error {
 
 // markRatesStale marks existing rates as stale before fetching new ones
 func (s *fxScheduler) markRatesStale(ctx context.Context, pairs []model.CurrencyPair) error {
+	now := time.Now().UTC()
+	// Stale threshold accounts for 5-minute scheduler interval and weekend closures
+	staleThreshold := 15 * time.Minute
+	if now.Weekday() == time.Saturday || now.Weekday() == time.Sunday || (now.Weekday() == time.Monday && now.Hour() < 6) {
+		// Forex markets close Friday ~21:00 UTC and reopen Sunday ~21:00 UTC.
+		staleThreshold = 72 * time.Hour
+	}
+	olderThan := now.Add(-staleThreshold)
 	for _, pair := range pairs {
-		olderThan := time.Now().Add(-1 * time.Minute) // Rates older than 1 minute are stale
 		if err := s.uow.FXRate().MarkStale(ctx, pair.BaseCurrency, pair.QuoteCurrency, string(model.FXRateGranularityMinute), olderThan); err != nil {
 			log.Printf("[WARN] [FXScheduler] Warning: failed to mark %s stale: %v", pair.String(), err)
 		}
@@ -246,8 +335,12 @@ func (s *fxScheduler) markRatesStale(ctx context.Context, pairs []model.Currency
 
 // markRatesStaleForGranularity marks existing rates of a specific granularity as stale
 func (s *fxScheduler) markRatesStaleForGranularity(ctx context.Context, pairs []model.CurrencyPair, granularity model.FXRateGranularity) error {
+	// Daily historical rates are immutable historical facts and must never be marked stale
+	if granularity == model.FXRateGranularityDay {
+		return nil
+	}
 	for _, pair := range pairs {
-		olderThan := time.Now().Add(-24 * time.Hour) // Daily rates older than 24h are stale
+		olderThan := time.Now().Add(-24 * time.Hour)
 		if err := s.uow.FXRate().MarkStale(ctx, pair.BaseCurrency, pair.QuoteCurrency, string(granularity), olderThan); err != nil {
 			log.Printf("[WARN] [FXScheduler] Warning: failed to mark %s (%s) stale: %v", pair.String(), granularity, err)
 		}
@@ -264,11 +357,17 @@ func (s *fxScheduler) fetchAndStoreRates(ctx context.Context, pairs []model.Curr
 			continue
 		}
 
+		asOf := quote.Timestamp
+		// If the quote timestamp is date-only (midnight UTC) or zero, use current UTC observation time
+		if asOf.IsZero() || (asOf.Hour() == 0 && asOf.Minute() == 0 && asOf.Second() == 0) {
+			asOf = time.Now().UTC()
+		}
+
 		fxRate := &model.FXRate{
 			BaseCurrency:  pair.BaseCurrency,
 			QuoteCurrency: pair.QuoteCurrency,
 			Rate:          quote.Last,
-			AsOf:          quote.Timestamp,
+			AsOf:          asOf,
 			Source:        quote.Source,
 			Granularity:   model.FXRateGranularityMinute,
 			IsStale:       false,

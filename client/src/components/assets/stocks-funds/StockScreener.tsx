@@ -9,12 +9,11 @@ import {
 	Save,
 	Settings2,
 	Star,
-	TrendingDown,
-	TrendingUp,
 	X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -379,7 +378,7 @@ export function StockScreener({ initialPreset, onSelectStock }: StockScreenerPro
 		{
 			id: "growth",
 			name: "Growth Stocks",
-			icon: TrendingUp,
+			icon: TrendArrowUp,
 			filters: { changePercentMin: 5, peMin: 30 },
 		},
 		{
@@ -391,13 +390,13 @@ export function StockScreener({ initialPreset, onSelectStock }: StockScreenerPro
 		{
 			id: "gainers",
 			name: "Top Gainers",
-			icon: TrendingUp,
+			icon: TrendArrowUp,
 			filters: { changePercentMin: 3 },
 		},
 		{
 			id: "losers",
 			name: "Top Losers",
-			icon: TrendingDown,
+			icon: TrendArrowDown,
 			filters: { changePercentMax: -2 },
 		},
 		{

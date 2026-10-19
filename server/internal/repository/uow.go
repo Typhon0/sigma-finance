@@ -16,8 +16,11 @@ type IUnitOfWork interface {
 	Do(ctx context.Context, fn func(uow IUnitOfWork) error) error
 	User() IUserRepository
 	Portfolio() IPortfolioRepository
+	Account() IAccountRepository
 	Asset() IAssetRepository
 	Position() IPositionRepository
+	TaxLot() ITaxLotRepository
+	TaxLotDisposition() ITaxLotDispositionRepository
 	Transaction() ITransactionRepository
 	Watchlist() IWatchlistRepository
 	WatchlistAsset() IWatchlistAssetRepository
@@ -69,6 +72,7 @@ type UnitOfWork struct {
 	db                         *bun.DB
 	user                       IUserRepository
 	portfolio                  IPortfolioRepository
+	account                    IAccountRepository
 	asset                      IAssetRepository
 	position                   IPositionRepository
 	transaction                ITransactionRepository
@@ -76,6 +80,8 @@ type UnitOfWork struct {
 	watchlistAsset             IWatchlistAssetRepository
 	tag                        ITagRepository
 	portfolioAsset             IPortfolioAssetRepository
+	taxLot                     ITaxLotRepository
+	taxLotDisposition          ITaxLotDispositionRepository
 	stock                      IStockRepository
 	crypto                     ICryptoRepository
 	fund                       IFundRepository
@@ -126,6 +132,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		db:                         db,
 		user:                       NewUserRepository(db),
 		portfolio:                  NewPortfolioRepository(db),
+		account:                    NewAccountRepository(db),
 		asset:                      NewAssetRepository(db),
 		position:                   NewPositionRepository(db),
 		transaction:                NewTransactionRepository(db),
@@ -133,6 +140,8 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		watchlistAsset:             NewWatchlistAssetRepository(db),
 		tag:                        NewTagRepository(db),
 		portfolioAsset:             NewPortfolioAssetRepository(db),
+		taxLot:                     NewTaxLotRepository(db),
+		taxLotDisposition:          NewTaxLotDispositionRepository(db),
 		stock:                      NewStockRepository(db),
 		crypto:                     NewCryptoRepository(db),
 		fund:                       NewFundRepository(db),
@@ -176,8 +185,11 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		tx:                         tx,
 		user:                       NewUserRepository(&tx),
 		portfolio:                  NewPortfolioRepository(&tx),
+		account:                    NewAccountRepository(&tx),
 		asset:                      NewAssetRepository(&tx),
 		position:                   NewPositionRepository(&tx),
+		taxLot:                     NewTaxLotRepository(&tx),
+		taxLotDisposition:          NewTaxLotDispositionRepository(&tx),
 		transaction:                NewTransactionRepository(&tx),
 		watchlist:                  NewWatchlistRepository(NewRepository[model.Watchlist](&tx), NewRepository[model.WatchlistAsset](&tx), NewRepository[model.Asset](&tx)),
 		watchlistAsset:             NewWatchlistAssetRepository(&tx),
@@ -232,6 +244,11 @@ func (uow *UnitOfWork) User() IUserRepository {
 // Portfolio returns the portfolio repository
 func (uow *UnitOfWork) Portfolio() IPortfolioRepository {
 	return uow.portfolio
+}
+
+// Account returns the account repository
+func (uow *UnitOfWork) Account() IAccountRepository {
+	return uow.account
 }
 
 // Asset returns the asset repository
@@ -371,6 +388,7 @@ type txUnitOfWork struct {
 	tx                         bun.Tx
 	user                       IUserRepository
 	portfolio                  IPortfolioRepository
+	account                    IAccountRepository
 	asset                      IAssetRepository
 	position                   IPositionRepository
 	transaction                ITransactionRepository
@@ -378,6 +396,8 @@ type txUnitOfWork struct {
 	watchlistAsset             IWatchlistAssetRepository
 	tag                        ITagRepository
 	portfolioAsset             IPortfolioAssetRepository
+	taxLot                     ITaxLotRepository
+	taxLotDisposition          ITaxLotDispositionRepository
 	stock                      IStockRepository
 	crypto                     ICryptoRepository
 	fund                       IFundRepository
@@ -419,6 +439,10 @@ func (uow *txUnitOfWork) User() IUserRepository {
 
 func (uow *txUnitOfWork) Portfolio() IPortfolioRepository {
 	return uow.portfolio
+}
+
+func (uow *txUnitOfWork) Account() IAccountRepository {
+	return uow.account
 }
 
 func (uow *txUnitOfWork) Asset() IAssetRepository {
@@ -591,4 +615,20 @@ func (uow *UnitOfWork) FXRate() IFXRateRepository {
 }
 func (uow *txUnitOfWork) FXRate() IFXRateRepository {
 	return uow.fxRateRepo
+}
+
+// TaxLot returns the tax lot repository
+func (uow *UnitOfWork) TaxLot() ITaxLotRepository {
+	return uow.taxLot
+}
+func (uow *txUnitOfWork) TaxLot() ITaxLotRepository {
+	return uow.taxLot
+}
+
+// TaxLotDisposition returns the tax lot disposition repository
+func (uow *UnitOfWork) TaxLotDisposition() ITaxLotDispositionRepository {
+	return uow.taxLotDisposition
+}
+func (uow *txUnitOfWork) TaxLotDisposition() ITaxLotDispositionRepository {
+	return uow.taxLotDisposition
 }

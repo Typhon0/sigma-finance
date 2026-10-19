@@ -25,6 +25,7 @@ type IUserRepository interface {
 	GetUsersWithFailedLogins(ctx context.Context, threshold int) ([]model.User, error)
 	UpdateDisplayCurrency(ctx context.Context, userID string, currency model.Currency) error
 	UpdateThemePreferences(ctx context.Context, userID string, preferences model.UserThemePreferences) error
+	UpdateTaxJurisdiction(ctx context.Context, userID string, jurisdiction string) error
 }
 
 // UserRepository wraps the generic repository with user-specific functionality
@@ -269,6 +270,27 @@ func (r *UserRepository) UpdateThemePreferences(ctx context.Context, userID stri
 		Set("theme_style = ?", preferences.ThemeStyle).
 		Set("theme_radius = ?", preferences.ThemeRadius).
 		Set("theme_rtl = ?", preferences.ThemeRTL).
+		Set("updated_at = ?", time.Now()).
+		Where("id = ?", userID).
+		Exec(ctx)
+
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
+// UpdateTaxJurisdiction updates a user's tax jurisdiction preference
+func (r *UserRepository) UpdateTaxJurisdiction(ctx context.Context, userID string, jurisdiction string) error {
+	res, err := r.db.NewUpdate().
+		Model((*model.User)(nil)).
+		Set("tax_jurisdiction = ?", jurisdiction).
 		Set("updated_at = ?", time.Now()).
 		Where("id = ?", userID).
 		Exec(ctx)

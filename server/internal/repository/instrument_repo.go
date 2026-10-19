@@ -42,6 +42,7 @@ type IInstrumentRepository interface {
 	IRepository[model.Instrument]
 	GetBySymbolAndExchange(ctx context.Context, normalizedSymbol, exchange string, assetType model.InstrumentAssetType) (*model.Instrument, error)
 	GetByProviderIdentity(ctx context.Context, providerSource string, providerExternalID string) (*model.Instrument, error)
+	FindByIDs(ctx context.Context, ids []string) (map[string]model.Instrument, error)
 	FindByExternalKey(ctx context.Context, externalSource, externalID string) (*model.Instrument, error)
 	GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error)
 	SearchLocalInstruments(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error)
@@ -57,6 +58,56 @@ type InstrumentRepository struct {
 
 func NewInstrumentRepository(db bun.IDB) *InstrumentRepository {
 	return &InstrumentRepository{Repository: NewRepository[model.Instrument](db)}
+}
+
+// FindByIDs loads several instruments in one query, keyed by id.
+//
+// Assets reference their instrument by `assets.instrument_id`, and the
+// portfolio list renders every holding at once. Fetching them one at a time
+// turned one page into N+1 queries, so callers that already hold a set of
+// asset ids come through here.
+//
+// Ids that do not resolve are simply absent from the map - a missing
+// instrument is a normal state (a manually entered holding has none), not an
+// error worth failing a whole portfolio render over. Duplicate ids are
+// collapsed by the database.
+func (r *InstrumentRepository) FindByIDs(ctx context.Context, ids []string) (map[string]model.Instrument, error) {
+	result := make(map[string]model.Instrument, len(ids))
+	if len(ids) == 0 {
+		return result, nil
+	}
+
+	// Deduplicate before the IN clause: bun expands every element into a bind
+	// parameter, and a portfolio page that lists the same ETF in three accounts
+	// would otherwise send the same uuid three times.
+	unique := make([]string, 0, len(ids))
+	seen := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		if _, dup := seen[id]; dup {
+			continue
+		}
+		seen[id] = struct{}{}
+		unique = append(unique, id)
+	}
+	if len(unique) == 0 {
+		return result, nil
+	}
+
+	var instruments []model.Instrument
+	if err := r.db.NewSelect().
+		Model(&instruments).
+		Where("id IN (?)", bun.In(unique)).
+		Scan(ctx); err != nil {
+		return nil, fmt.Errorf("find instruments by ids: %w", err)
+	}
+
+	for _, instrument := range instruments {
+		result[instrument.ID] = instrument
+	}
+	return result, nil
 }
 
 func (r *InstrumentRepository) GetBySymbolAndExchange(ctx context.Context, normalizedSymbol, exchange string, assetType model.InstrumentAssetType) (*model.Instrument, error) {

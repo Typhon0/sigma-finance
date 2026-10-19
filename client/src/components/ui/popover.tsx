@@ -25,7 +25,13 @@ function PopoverContent({
 				data-slot="popover-content"
 				align={align}
 				sideOffset={sideOffset}
-				className={cn("ui-popover-content", className)}
+				className={cn(
+					// The width default lives here, not in the theme stylesheets: those are
+					// unlayered CSS, so any width declared there beat every w-* utility a
+					// caller passed. Defaults belong where cn() can resolve them.
+					"ui-popover-content w-72",
+					className,
+				)}
 				{...props}
 			/>
 		</PopoverPrimitive.Portal>

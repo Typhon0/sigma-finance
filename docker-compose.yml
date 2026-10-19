@@ -40,12 +40,15 @@ services:
       - YFINANCE_HOST=yfinance-service
       - YFINANCE_PORT=50051
       - YFINANCE_HTTP_PORT=50052
-      - DB_HOST=192.168.1.170
-      - DB_PORT=5432
-      - DB_USER=sigma_finance
-      - "DB_PASSWORD=xQxW&yATWuC2N3*8"
-      - DB_NAME=sigma_finance
-      - DB_SSLMODE=disable
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME:-sigma_finance}
+      - DB_SSLMODE=${DB_SSLMODE:-disable}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - JWT_SECRET=${JWT_SECRET}
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
       - MARKET_DATA_PACK_STORAGE_PATH=/data/market-data/packs
       - MARKET_DATA_PACK_REGISTRY_URL=file:///data/market-data/dist/registry.json
       - MARKET_DATA_AUTO_INSTALL=false
@@ -63,9 +66,9 @@ services:
   #   image: postgres:15-alpine
   #   container_name: sigma-postgres
   #   environment:
-  #     - POSTGRES_USER=sigma_finance
-  #     - "POSTGRES_PASSWORD=xQxW&yATWuC2N3*8"
-  #     - POSTGRES_DB=sigma_finance
+  #     - POSTGRES_USER=${DB_USER}
+  #     - "POSTGRES_PASSWORD=${DB_PASSWORD}"
+  #     - POSTGRES_DB=${DB_NAME:-sigma_finance}
   #   volumes:
   #     - postgres-data:/var/lib/postgresql/data
   #   healthcheck:

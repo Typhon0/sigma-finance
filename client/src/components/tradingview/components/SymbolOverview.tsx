@@ -1,5 +1,5 @@
 import type React from "react";
-import { memo } from "react";
+import { memo, useRef } from "react";
 import type {
 	ChartType,
 	ColorTheme,
@@ -128,10 +128,18 @@ const SymbolOverview: React.FC<SymbolOverviewProps> = ({
 	widgetFontColor = "rgba(216, 216, 216, 1)",
 
 	autosize = false,
-	container_id = `tradingview_${createId(5)}`,
+	container_id: containerIdProp,
 	copyrightStyles,
 	...props
 }) => {
+	// See AdvancedRealTimeChart: a default-parameter container id re-evaluated on
+	// every render and forced Widget to destroy and recreate the live widget.
+	const containerIdRef = useRef<string | null>(null);
+	if (containerIdRef.current === null) {
+		containerIdRef.current = containerIdProp ?? `tradingview_${createId(5)}`;
+	}
+	const container_id = containerIdRef.current;
+
 	return (
 		<Widget
 			scriptHTML={{

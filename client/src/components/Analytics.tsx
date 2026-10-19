@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { usePortfolioRiskMetrics } from "@/hooks/use-portfolio-risk-metrics";
+import { RiskMetricRows } from "./insights/RiskMetricRows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -99,12 +101,44 @@ export function Analytics() {
 	// Portfolio statistics
 	const _totalAssets = assets.length;
 	const diversificationScore = Math.min(Object.keys(assetAllocation).length * 20, 100);
-	const riskScore = Math.max(Math.min(Math.abs(gainPercent) * 2, 100), 20);
 
-	// Use real risk metrics from selectedPortfolio if available
-	const riskMetrics = selectedPortfolio?.analytics?.riskMetrics;
-	const volatility = riskMetrics?.volatility ?? Math.abs(gainPercent);
-	const monthlyReturn = riskMetrics ? gainPercent / 12 : gainPercent / 12;
+	// Real risk metrics, measured by the performance service.
+	//
+	// This used to be:
+	//     const volatility = selectedPortfolio?.analytics?.riskMetrics?.volatility ?? Math.abs(gainPercent);
+	// which labelled the portfolio's total return as a 30-day volatility, and
+	// fell through to that on every portfolio because analytics.riskMetrics is
+	// null on the valuation path. The risk tab below went further and printed
+	// Beta 1.2, Sharpe 1.8 and -8.5% max drawdown as literals in the JSX.
+	const { metrics: riskMetrics, loading: riskLoading } = usePortfolioRiskMetrics(
+		selectedPortfolio?.id,
+	);
+	// Absent a measurement, show nothing. A formatted 0.00% volatility would say
+	// this portfolio is riskless.
+	const volatility = riskMetrics.volatility;
+	const monthlyReturn = gainPercent / 12;
+
+	// Risk band, from measured volatility.
+	//
+	// This used to be:
+	//     const riskScore = Math.max(Math.min(Math.abs(gainPercent) * 2, 100), 20);
+	// rendered as "Risk Level: Conservative/Moderate/Aggressive". A portfolio
+	// that lost 40% scored 80 and read "Aggressive"; one that gained 10% scored
+	// 20 and read "Conservative". It measured the return, and read backwards
+	// for losses - a portfolio bleeding money was described as the bold one.
+	//
+	// The bands below are a display convention, not a measurement: the number
+	// is the server's annualised volatility, and the thresholds only decide
+	// which word to print next to it.
+	const RISK_BANDS = [
+		{ max: 10, label: "Conservative", score: 25 },
+		{ max: 20, label: "Moderate", score: 55 },
+		{ max: Infinity, label: "Aggressive", score: 80 },
+	] as const;
+	const riskBand =
+		volatility === null
+			? null
+			: (RISK_BANDS.find((band) => volatility < band.max) ?? RISK_BANDS[RISK_BANDS.length - 1]);
 	const yearToDateReturn = gainPercent;
 	const performanceTrendOption = useMemo<EChartsCoreOption>(() => {
 		return {
@@ -316,8 +350,19 @@ export function Analytics() {
 						<CardTitle className="text-sm">Volatility</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<div className="text-2xl font-mono">{volatility}%</div>
-						<p className="text-xs text-muted-foreground">30-day volatility</p>
+						{volatility === null ? (
+							<>
+								<div className="text-2xl font-mono text-muted-foreground/70">n/a</div>
+								<p className="text-xs text-muted-foreground">
+									{riskLoading ? "Computing…" : "Not enough price history to measure"}
+								</p>
+							</>
+						) : (
+							<>
+								<div className="text-2xl font-mono">{volatility.toFixed(2)}%</div>
+								<p className="text-xs text-muted-foreground">Annualised, 12-month window</p>
+							</>
+						)}
 					</CardContent>
 				</Card>
 			</div>
@@ -395,11 +440,22 @@ export function Analytics() {
 								<AlertTriangle className="h-4 w-4 text-muted-foreground" />
 							</CardHeader>
 							<CardContent>
-								<div className="text-2xl font-mono mb-2">{riskScore}/100</div>
-								<Progress value={riskScore} className="mb-2" />
-								<p className="text-xs text-muted-foreground">
-									{riskScore <= 30 ? "Conservative" : riskScore <= 60 ? "Moderate" : "Aggressive"}
-								</p>
+								{riskBand && volatility !== null ? (
+									<>
+										<div className="text-2xl font-mono mb-2">{riskBand.label}</div>
+										<Progress value={riskBand.score} className="mb-2" />
+										<p className="text-xs text-muted-foreground">
+											{volatility.toFixed(2)}% annualised volatility
+										</p>
+									</>
+								) : (
+									<>
+										<div className="text-2xl font-mono text-muted-foreground/70 mb-2">n/a</div>
+										<p className="text-xs text-muted-foreground">
+											{riskLoading ? "Computing…" : "Needs a price history long enough to measure"}
+										</p>
+									</>
+								)}
 							</CardContent>
 						</Card>
 
@@ -554,8 +610,8 @@ export function Analytics() {
 
 						<Card>
 							<CardHeader>
-								<CardTitle>Recommended Allocation</CardTitle>
-								<CardDescription>Suggested portfolio balance</CardDescription>
+								<CardTitle>Example Allocation</CardTitle>
+								<CardDescription>A generic 60/40 example, not a recommendation</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-4">
@@ -590,8 +646,9 @@ export function Analytics() {
 								</div>
 								<div className="mt-4 p-4 bg-muted rounded-lg">
 									<p className="text-sm text-muted-foreground">
-										This is a moderate risk allocation suitable for long-term growth. Adjust based
-										on your risk tolerance and investment goals.
+										This is an illustrative balance, identical for every portfolio. A real
+										recommendation needs your time horizon, liquidity needs and on your risk
+										tolerance and investment goals.
 									</p>
 								</div>
 							</CardContent>
@@ -607,37 +664,18 @@ export function Analytics() {
 								<CardDescription>Portfolio risk analysis</CardDescription>
 							</CardHeader>
 							<CardContent className="space-y-4">
-								<div className="space-y-2">
-									<div className="flex justify-between">
-										<span>Volatility (30d)</span>
-										<span className="font-mono">{volatility}%</span>
-									</div>
-									<Progress value={volatility * 5} className="h-2" />
-								</div>
-
-								<div className="space-y-2">
-									<div className="flex justify-between">
-										<span>Beta</span>
-										<span className="font-mono">1.2</span>
-									</div>
-									<Progress value={60} className="h-2" />
-								</div>
-
-								<div className="space-y-2">
-									<div className="flex justify-between">
-										<span>Sharpe Ratio</span>
-										<span className="font-mono">1.8</span>
-									</div>
-									<Progress value={90} className="h-2" />
-								</div>
-
-								<div className="space-y-2">
-									<div className="flex justify-between">
-										<span>Max Drawdown</span>
-										<span className="font-mono text-red-600">-8.5%</span>
-									</div>
-									<Progress value={8.5 * 10} className="h-2" />
-								</div>
+								{/* These four rows were literal numbers typed into the JSX -
+							    Beta 1.2, Sharpe 1.8, -8.5% max drawdown - rendered identically
+							    to every visitor regardless of what they owned. They now come
+							    from the performance service, which measures the real
+							    return series, and render as n/a when it cannot measure. */}
+								<RiskMetricRows metrics={riskMetrics} />
+								{!riskMetrics.hasData && !riskLoading && (
+									<p className="text-[10px] text-muted-foreground leading-normal">
+										Risk is measured from daily price history over a 12-month window. A new
+										portfolio does not have enough of it yet.
+									</p>
+								)}
 							</CardContent>
 						</Card>
 

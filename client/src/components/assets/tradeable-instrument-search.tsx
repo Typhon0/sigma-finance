@@ -120,19 +120,19 @@ function renderAssetTypeIcon(assetType: InstrumentAssetType) {
 	switch (assetType) {
 		case InstrumentAssetType.Crypto:
 			return (
-				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-500/15 to-amber-500/5 text-amber-500 shadow-sm border border-amber-500/20 flex-shrink-0">
+				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground border border-border/60 flex-shrink-0">
 					<Coins className="h-4 w-4" />
 				</div>
 			);
 		case InstrumentAssetType.Fund:
 			return (
-				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-emerald-500/15 to-emerald-500/5 text-emerald-500 shadow-sm border border-emerald-500/20 flex-shrink-0">
+				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground border border-border/60 flex-shrink-0">
 					<Building2 className="h-4 w-4" />
 				</div>
 			);
 		default:
 			return (
-				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/15 to-blue-500/5 text-blue-500 shadow-sm border border-blue-500/20 flex-shrink-0">
+				<div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground border border-border/60 flex-shrink-0">
 					<TrendingUp className="h-4 w-4" />
 				</div>
 			);
@@ -611,7 +611,7 @@ export function TradeableInstrumentSearch({
 							)}
 
 							{debouncedSearchTerm.length < 2 && !isSearchingLocal && (
-								<div className="flex flex-col items-center justify-center p-8 text-center text-xs text-muted-foreground/60 space-y-2 select-none">
+								<div className="flex flex-col items-center justify-center p-8 text-center text-xs text-muted-foreground space-y-2 select-none">
 									<Search className="h-8 w-8 text-muted-foreground/30 stroke-[1.5]" />
 									<span>Type at least 2 characters to search...</span>
 								</div>
@@ -620,7 +620,7 @@ export function TradeableInstrumentSearch({
 							{!isSearchingLocal &&
 								filteredLocalResults.length === 0 &&
 								debouncedSearchTerm.length >= 2 && (
-									<div className="flex flex-col items-center justify-center p-8 text-center text-xs text-muted-foreground/60 space-y-1 select-none">
+									<div className="flex flex-col items-center justify-center p-8 text-center text-xs text-muted-foreground space-y-1 select-none">
 										<ShieldAlert className="h-8 w-8 text-muted-foreground/30 stroke-[1.5]" />
 										<span>No matches found for this filter.</span>
 									</div>
@@ -628,7 +628,7 @@ export function TradeableInstrumentSearch({
 
 							{filteredLocalResults.length > 0 && (
 								<div className="space-y-0.5 p-2">
-									<div className="px-3.5 py-2 text-[10px] font-bold tracking-wider text-muted-foreground/50 uppercase select-none">
+									<div className="px-3.5 py-2 text-micro font-bold tracking-wider text-muted-foreground uppercase select-none">
 										Local Results
 									</div>
 									{filteredLocalResults.map((result) => {
@@ -662,7 +662,7 @@ export function TradeableInstrumentSearch({
 															{result.instrument.symbol}
 														</span>
 														{isExactMatch && (
-															<Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-extrabold h-4 px-1 py-0 rounded-xs select-none">
+															<Badge className="bg-gain/10 text-gain border border-gain/20 text-micro font-extrabold h-4 px-1 py-0 rounded-xs select-none">
 																Match
 															</Badge>
 														)}
@@ -674,7 +674,7 @@ export function TradeableInstrumentSearch({
 															{result.instrument.name}
 														</span>
 														{result.instrument.isin && (
-															<span className="text-[10px] text-muted-foreground/60 font-mono leading-none mt-0.5">
+															<span className="text-micro text-muted-foreground font-mono leading-none mt-0.5">
 																ISIN: {result.instrument.isin}
 															</span>
 														)}
@@ -685,7 +685,7 @@ export function TradeableInstrumentSearch({
 												<div className="flex items-center gap-2 flex-shrink-0">
 													{result.instrument.exchangeCode && (
 														<span
-															className="text-[10px] font-bold text-muted-foreground/60 bg-muted/60 px-1.5 py-0.5 rounded uppercase truncate max-w-[60px]"
+															className="text-micro font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded uppercase truncate max-w-[60px]"
 															title={result.instrument.exchange}
 														>
 															{result.instrument.exchangeCode}
@@ -693,11 +693,11 @@ export function TradeableInstrumentSearch({
 													)}
 													<Badge
 														variant="outline"
-														className="text-[9px] h-4.5 px-1.5 py-0 border-blue-500/20 text-blue-400 bg-blue-500/5 font-bold rounded-sm uppercase tracking-wide"
+														className="text-micro h-4.5 px-1.5 py-0 border-border/60 text-muted-foreground bg-muted/40 font-bold rounded-sm uppercase tracking-wide"
 													>
 														{result.instrument.assetType.toLowerCase()}
 													</Badge>
-													<div className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[9px] font-bold border bg-emerald-500/5 text-emerald-400 border-emerald-500/20 select-none w-[72px] flex-shrink-0 justify-center">
+													<div className="flex items-center gap-1 rounded-md px-2 py-0.5 text-micro font-bold border bg-gain/5 text-gain border-gain/20 select-none w-[72px] flex-shrink-0 justify-center">
 														<Database className="h-2.5 w-2.5" />
 														<span>Installed</span>
 													</div>
@@ -710,7 +710,7 @@ export function TradeableInstrumentSearch({
 
 							{filteredOnlineResults.length > 0 && (
 								<div className="space-y-0.5 p-2 border-t border-border/40">
-									<div className="px-3.5 py-2 text-[10px] font-bold tracking-wider text-muted-foreground/50 uppercase select-none">
+									<div className="px-3.5 py-2 text-micro font-bold tracking-wider text-muted-foreground uppercase select-none">
 										Online Results
 									</div>
 									{filteredOnlineResults.map((result) => {
@@ -744,7 +744,7 @@ export function TradeableInstrumentSearch({
 															{result.symbol}
 														</span>
 														{isExactMatch && (
-															<Badge className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[8px] font-extrabold h-4 px-1 py-0 rounded-xs select-none">
+															<Badge className="bg-gain/10 text-gain border border-gain/20 text-micro font-extrabold h-4 px-1 py-0 rounded-xs select-none">
 																Match
 															</Badge>
 														)}
@@ -756,7 +756,7 @@ export function TradeableInstrumentSearch({
 															{result.name}
 														</span>
 														{result.isin && (
-															<span className="text-[10px] text-muted-foreground/60 font-mono leading-none mt-0.5">
+															<span className="text-micro text-muted-foreground font-mono leading-none mt-0.5">
 																ISIN: {result.isin}
 															</span>
 														)}
@@ -767,7 +767,7 @@ export function TradeableInstrumentSearch({
 												<div className="flex items-center gap-2 flex-shrink-0">
 													{result.exchange && (
 														<span
-															className="text-[10px] font-bold text-muted-foreground/60 bg-muted/60 px-1.5 py-0.5 rounded uppercase truncate max-w-[60px]"
+															className="text-micro font-bold text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded uppercase truncate max-w-[60px]"
 															title={result.exchange}
 														>
 															{result.exchangeCode ?? result.exchange}
@@ -775,11 +775,11 @@ export function TradeableInstrumentSearch({
 													)}
 													<Badge
 														variant="outline"
-														className="text-[9px] h-4.5 px-1.5 py-0 border-amber-500/20 text-amber-400 bg-amber-500/5 font-bold rounded-sm uppercase tracking-wide"
+														className="text-micro h-4.5 px-1.5 py-0 border-border/60 text-muted-foreground bg-muted/40 font-bold rounded-sm uppercase tracking-wide"
 													>
 														{result.assetType.toLowerCase()}
 													</Badge>
-													<div className="flex h-5 items-center gap-1 rounded-md px-2 text-[9px] font-semibold border bg-muted/40 text-muted-foreground transition-colors group-hover/item:bg-primary/10 group-hover/item:text-primary group-hover/item:border-primary/20 select-none w-[72px] flex-shrink-0 justify-center">
+													<div className="flex h-5 items-center gap-1 rounded-md px-2 text-micro font-semibold border bg-muted/40 text-muted-foreground transition-colors group-hover/item:bg-primary/10 group-hover/item:text-primary group-hover/item:border-primary/20 select-none w-[72px] flex-shrink-0 justify-center">
 														<Sparkles className="h-2.5 w-2.5" />
 														<span>Import</span>
 													</div>
@@ -807,7 +807,7 @@ export function TradeableInstrumentSearch({
 												type="button"
 												variant="ghost"
 												className={cn(
-													"w-full justify-start gap-2 h-8.5 px-3.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-all",
+													"w-full justify-start gap-2 h-8.5 px-3.5 text-micro font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-all",
 													isFocused && "bg-accent/60 text-foreground",
 												)}
 												disabled={isSearchingOnline}
@@ -833,13 +833,13 @@ export function TradeableInstrumentSearch({
 												type="button"
 												variant="ghost"
 												className={cn(
-													"w-full justify-start gap-2 h-8.5 px-3.5 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-all",
+													"w-full justify-start gap-2 h-8.5 px-3.5 text-micro font-medium text-muted-foreground hover:text-foreground hover:bg-accent/50 rounded-md transition-all",
 													isFocused && "bg-accent/60 text-foreground",
 												)}
 												onClick={() => void handleAddManual()}
 												onMouseEnter={() => setFocusedIndex(index)}
 											>
-												<ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
+												<ShieldAlert className="h-3.5 w-3.5 text-warning" />
 												<span>Add "{debouncedSearchTerm}" manually (unverified)</span>
 											</Button>
 										);
@@ -854,8 +854,8 @@ export function TradeableInstrumentSearch({
 												type="button"
 												variant="ghost"
 												className={cn(
-													"w-full justify-center h-8.5 px-3.5 text-[11px] font-medium text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 rounded-md transition-all",
-													isFocused && "bg-rose-500/15 text-rose-600",
+													"w-full justify-center h-8.5 px-3.5 text-micro font-medium text-destructive hover:bg-destructive/10 rounded-md transition-all",
+													isFocused && "bg-destructive/15 text-destructive",
 												)}
 												onClick={clearSelection}
 												onMouseEnter={() => setFocusedIndex(index)}
@@ -880,7 +880,7 @@ export function TradeableInstrumentSearch({
 											<span className="font-extrabold text-base font-mono text-foreground leading-none tracking-tight block">
 												{previewInstrument.symbol}
 											</span>
-											<span className="text-[9px] font-bold text-muted-foreground/80 block mt-1.5 uppercase tracking-wider">
+											<span className="text-micro font-bold text-muted-foreground block mt-1.5 uppercase tracking-wider">
 												{previewInstrument.assetType.toLowerCase()}
 											</span>
 										</div>
@@ -888,11 +888,11 @@ export function TradeableInstrumentSearch({
 									<Badge
 										variant="secondary"
 										className={cn(
-											"text-[9px] font-bold px-2.5 py-0.5 rounded-full select-none border uppercase tracking-wider",
+											"text-micro font-bold px-2.5 py-0.5 rounded-full select-none border uppercase tracking-wider",
 											previewInstrument.providerSource === "local" ||
 												previewInstrument.providerSource === "manual"
-												? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
-												: "bg-blue-500/10 text-blue-400 border-blue-500/25",
+												? "bg-gain/10 text-gain border-gain/25"
+												: "bg-info/10 text-info border-info/25",
 										)}
 									>
 										{previewInstrument.providerSource === "local"
@@ -903,7 +903,7 @@ export function TradeableInstrumentSearch({
 
 								{/* Full name */}
 								<div className="space-y-1">
-									<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block">
+									<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block">
 										Company / Fund Name
 									</span>
 									<p className="text-xs font-bold text-foreground/90 leading-normal">
@@ -913,8 +913,8 @@ export function TradeableInstrumentSearch({
 
 								{/* Rebranding Alert Notice */}
 								{previewInstrument.isin === "FR0011871128" && (
-									<div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 text-[11px] text-amber-200/90 leading-normal flex items-start gap-2.5 animate-in fade-in duration-75">
-										<Sparkles className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
+									<div className="rounded-xl bg-warning/5 border border-warning/20 p-3 text-micro text-warning leading-normal flex items-start gap-2.5 animate-in fade-in duration-75">
+										<Sparkles className="h-4 w-4 text-warning shrink-0 mt-0.5" />
 										<span>
 											<strong>Rebranding Notice:</strong> This fund was rebranded from Lyxor to{" "}
 											<strong>Amundi</strong> following their corporate merger. The ISIN code is
@@ -927,7 +927,7 @@ export function TradeableInstrumentSearch({
 
 								{/* Dynamic Asset Info */}
 								<div className="space-y-4">
-									<h4 className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-wider select-none">
+									<h4 className="text-micro font-bold text-muted-foreground uppercase tracking-wider select-none">
 										{previewInstrument.assetType === InstrumentAssetType.Stock
 											? "About Company"
 											: "About Fund / ETF"}
@@ -937,7 +937,7 @@ export function TradeableInstrumentSearch({
 										{/* Common Fields */}
 										{previewInstrument.exchange && (
 											<div>
-												<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+												<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 													Exchange
 												</span>
 												<span
@@ -952,7 +952,7 @@ export function TradeableInstrumentSearch({
 										)}
 										{previewInstrument.currency && (
 											<div>
-												<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+												<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 													Currency
 												</span>
 												<span className="font-semibold font-mono text-foreground/90 block">
@@ -963,7 +963,7 @@ export function TradeableInstrumentSearch({
 										)}
 										{previewInstrument.country && (
 											<div>
-												<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+												<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 													Country
 												</span>
 												<span className="font-semibold text-foreground/90 block">
@@ -977,7 +977,7 @@ export function TradeableInstrumentSearch({
 											<>
 												{previewInstrument.sector && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Sector
 														</span>
 														<span
@@ -990,7 +990,7 @@ export function TradeableInstrumentSearch({
 												)}
 												{previewInstrument.industry && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Industry
 														</span>
 														<span
@@ -1005,7 +1005,7 @@ export function TradeableInstrumentSearch({
 													.filter(Boolean)
 													.join(", ") && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Headquarters
 														</span>
 														<span
@@ -1022,7 +1022,7 @@ export function TradeableInstrumentSearch({
 												)}
 												{previewInstrument.website && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Website
 														</span>
 														<a
@@ -1049,7 +1049,7 @@ export function TradeableInstrumentSearch({
 											<>
 												{previewInstrument.family && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Issuer / Brand
 														</span>
 														<span
@@ -1062,7 +1062,7 @@ export function TradeableInstrumentSearch({
 												)}
 												{previewInstrument.category && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Structure
 														</span>
 														<span
@@ -1075,7 +1075,7 @@ export function TradeableInstrumentSearch({
 												)}
 												{previewInstrument.sector && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Index Tracked
 														</span>
 														<span
@@ -1088,7 +1088,7 @@ export function TradeableInstrumentSearch({
 												)}
 												{previewInstrument.website && (
 													<div>
-														<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block mb-0.5">
+														<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block mb-0.5">
 															Home page
 														</span>
 														<a
@@ -1116,30 +1116,30 @@ export function TradeableInstrumentSearch({
 									<>
 										<div className="border-t border-border/40" />
 										<div className="space-y-2">
-											<span className="text-[9px] font-bold text-muted-foreground/50 uppercase tracking-wider block">
+											<span className="text-micro font-bold text-muted-foreground uppercase tracking-wider block">
 												Reference Identifiers
 											</span>
 											<div className="space-y-1.5">
 												{previewInstrument.isin && (
-													<div className="flex items-center justify-between text-[11px]">
-														<span className="text-muted-foreground/70 font-medium">ISIN</span>
-														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-[10px] text-foreground border border-border/30 select-all">
+													<div className="flex items-center justify-between text-micro">
+														<span className="text-muted-foreground font-medium">ISIN</span>
+														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-micro text-foreground border border-border/30 select-all">
 															{previewInstrument.isin}
 														</code>
 													</div>
 												)}
 												{previewInstrument.figi && (
-													<div className="flex items-center justify-between text-[11px]">
-														<span className="text-muted-foreground/70 font-medium">FIGI</span>
-														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-[10px] text-foreground border border-border/30 select-all">
+													<div className="flex items-center justify-between text-micro">
+														<span className="text-muted-foreground font-medium">FIGI</span>
+														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-micro text-foreground border border-border/30 select-all">
 															{previewInstrument.figi}
 														</code>
 													</div>
 												)}
 												{previewInstrument.cusip && (
-													<div className="flex items-center justify-between text-[11px]">
-														<span className="text-muted-foreground/70 font-medium">CUSIP</span>
-														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-[10px] text-foreground border border-border/30 select-all">
+													<div className="flex items-center justify-between text-micro">
+														<span className="text-muted-foreground font-medium">CUSIP</span>
+														<code className="bg-muted/80 px-1.5 py-0.5 rounded font-mono text-micro text-foreground border border-border/30 select-all">
 															{previewInstrument.cusip}
 														</code>
 													</div>
@@ -1150,12 +1150,12 @@ export function TradeableInstrumentSearch({
 								)}
 							</div>
 						) : (
-							<div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40 select-none min-h-[300px]">
+							<div className="h-full flex flex-col items-center justify-center text-center p-6 text-muted-foreground select-none min-h-[300px]">
 								<TrendingUp className="h-12 w-12 mb-3 stroke-[1.2] text-muted-foreground/20 animate-pulse" />
-								<h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground/60 mb-1">
+								<h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">
 									Instrument Details
 								</h4>
-								<p className="text-[11px] font-normal leading-relaxed max-w-[180px]">
+								<p className="text-micro font-normal leading-relaxed max-w-[180px]">
 									Hover over a result or use Arrow keys to preview instrument details
 								</p>
 							</div>

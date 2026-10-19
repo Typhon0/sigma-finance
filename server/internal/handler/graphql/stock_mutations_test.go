@@ -2,7 +2,6 @@ package graphql
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"time"
 
@@ -151,22 +150,20 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 		assert.Equal(t, 100.0, *portfolioAsset.AveragePurchasePrice)
 	})
 
-	t.Run("Duplicate add-to-portfolio attempt fails with controlled error", func(t *testing.T) {
-		// Create a stock asset
+	t.Run("Adding already-held asset accumulates position via DCA", func(t *testing.T) {
+		// Create a stock asset first
 		currentValue := 500.0
 		purchasePrice := 50.0
-
-		createInput := gqlModel.CreateStockInput{
-			Name:          "Duplicate Test Stock",
-			AssetTypeID:   string(*stockAssetType),
-			CurrentValue:  &currentValue,
-			PurchasePrice: &purchasePrice,
-			Ticker:        "DUP",
-			Quantity:      5.0,
+		stockInput := gqlModel.CreateStockInput{
+			Name:         "Duplicate Test Stock",
+			AssetTypeID:  string(*stockAssetType),
+			CurrentValue: &currentValue,
+			Ticker:       "DUPL",
+			Quantity:     10.0,
 			QuoteCurrency: "USD",
 		}
 
-		stock, err := mutationResolver.CreateStockAsset(ctx, createInput)
+		stock, err := mutationResolver.CreateStockAsset(ctx, stockInput)
 		require.NoError(t, err)
 
 		// Create a portfolio
@@ -178,7 +175,7 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 		portfolio, err := mutationResolver.CreatePortfolio(ctx, portfolioInput)
 		require.NoError(t, err)
 
-		// Add asset to portfolio - first attempt should succeed
+		// Add asset to portfolio
 		addAssetInput := gqlModel.PortfolioAssetInput{
 			PortfolioID:          portfolio.ID,
 			AssetID:              stock.ID,
@@ -186,15 +183,14 @@ func TestStockAssetMutationWorkflow(t *testing.T) {
 			AveragePurchasePrice: &purchasePrice,
 		}
 
-		_, err = mutationResolver.AddAssetToPortfolio(ctx, addAssetInput)
+		pa1, err := mutationResolver.AddAssetToPortfolio(ctx, addAssetInput)
 		require.NoError(t, err) // First add should succeed
+		assert.Equal(t, 5.0, pa1.Quantity)
 
-		// Second attempt to add the same asset to the same portfolio should fail
-		_, err = mutationResolver.AddAssetToPortfolio(ctx, addAssetInput)
-		require.Error(t, err) // Duplicate should fail
-
-		// Error should be a controlled/handled error, not a panic
-		assert.True(t, strings.Contains(err.Error(), "already exists") || strings.Contains(err.Error(), "duplicate"))
+		// Second attempt to add the same asset to the same portfolio accumulates position (DCA)
+		pa2, err := mutationResolver.AddAssetToPortfolio(ctx, addAssetInput)
+		require.NoError(t, err)
+		assert.Equal(t, 10.0, pa2.Quantity)
 	})
 
 	t.Run("CreateStockAsset then AddAssetToPortfolio maintains data integrity", func(t *testing.T) {

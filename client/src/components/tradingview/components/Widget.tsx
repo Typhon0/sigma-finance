@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Copyright, { type CopyrightProps } from "./Copyright";
 
 interface WidgetProps {
@@ -61,6 +61,20 @@ const Widget: React.FC<WidgetProps> = ({
 	const sentinelRef = useRef<HTMLDivElement>(null);
 	const [isVisible, setIsVisible] = useState(!lazy);
 
+	// Stable identity for the TradingView config.
+	//
+	// Every wrapper component builds `scriptHTML` as an inline object literal, so
+	// its reference changes on every render. Depending on it directly re-ran the
+	// init effect below on every render, and the cleanup wipes the container's
+	// children - so each parent re-render destroyed the live widget and booted a
+	// replacement (leaking TradingView's own internal state each time).
+	//
+	// TradingView configs are plain JSON (the embed path below already relies on
+	// that with JSON.stringify), so the serialized form is a safe identity: an
+	// unchanged config no longer churns the widget, while a real config change
+	// still triggers a clean re-initialization.
+	const scriptHTMLKey = useMemo(() => JSON.stringify(scriptHTML), [scriptHTML]);
+
 	// IntersectionObserver for lazy loading
 	useEffect(() => {
 		if (!lazy || isVisible) return;
@@ -83,6 +97,13 @@ const Widget: React.FC<WidgetProps> = ({
 	}, [lazy, isVisible, lazyMargin]);
 
 	// Widget initialization — only runs after visible
+	//
+	// The dependency list uses `scriptHTMLKey` in place of `scriptHTML` on
+	// purpose: the effect must re-run when the *configuration* changes, not when
+	// the wrapper component hands us a fresh object literal with identical
+	// contents. Keying on the object identity tore down and rebuilt the live
+	// widget on every parent render.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: see above
 	useEffect(() => {
 		if (!isVisible) return;
 
@@ -131,15 +152,23 @@ const Widget: React.FC<WidgetProps> = ({
 		return () => {
 			cancelled = true;
 			cancelAnimationFrame(raf);
+			if (containerId) {
+				const container = document.getElementById(containerId);
+				if (container) {
+					while (container.firstChild) {
+						container.removeChild(container.firstChild);
+					}
+				}
+			}
 			if (refValue) {
 				while (refValue.firstChild) {
 					refValue.removeChild(refValue.firstChild);
 				}
 			}
 		};
-	}, [isVisible, scriptHTML, type, scriptSRC]);
+	}, [isVisible, scriptHTMLKey, type, scriptSRC, containerId]);
 
-	const containerKey = containerId || "tradingview_" + scriptHTML;
+	const containerKey = containerId || scriptHTMLKey;
 
 	// Placeholder shown while waiting for intersection
 	if (!isVisible) {

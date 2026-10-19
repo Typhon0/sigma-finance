@@ -1,7 +1,9 @@
 import ReactECharts from "echarts-for-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { BarChart3, ChevronDown, Layers, LayoutGrid, PieChart, Sparkles, X } from "lucide-react";
 import { memo, useCallback, useMemo, useRef, useState } from "react";
 import type { Asset as StockAsset } from "@/components/stocks-funds/types";
+import { useTheme } from "@/components/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,19 +12,48 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getChartColors, getChartThemeColors, hexToRgbTriplet } from "@/lib/chart-colors";
+import { allocatePercentages } from "@/lib/money/rounding";
 import { cn } from "@/lib/utils";
 
-export const DISTRIBUTION_COLORS = [
-	"#3B82F6", // Electric Blue
-	"#10B981", // Emerald
-	"#8B5CF6", // Violet
-	"#F59E0B", // Amber
-	"#06B6D4", // Cyan
-	"#EC4899", // Rose Pink
-	"#6366F1", // Indigo
-	"#14B8A6", // Teal
-	"#64748B", // Muted Slate (for Others)
-];
+/**
+ * Categorical series colors for the allocation charts, resolved from the
+ * theme's chart tokens (DESIGN.md: series draw from `--chart-1…5` per theme).
+ * Resolved at call time because ECharts needs concrete color strings and
+ * cannot resolve CSS custom properties.
+ */
+export function getDistributionColors(): { series: string[]; others: string } {
+	return {
+		series: getChartColors(),
+		others: getChartThemeColors().mutedForeground,
+	};
+}
+
+/** Ink for a label sitting on a filled tile: dark on light fills, white on dark. */
+function contrastInkFor(hexColor: string): string {
+	const value = hexColor.replace("#", "");
+	const full =
+		value.length === 3
+			? value
+					.split("")
+					.map((c) => c + c)
+					.join("")
+			: value.slice(0, 6);
+	const int = Number.parseInt(full, 16);
+	if (Number.isNaN(int)) {
+		return "#ffffff";
+	}
+	const channel = (raw: number): number => {
+		const c = raw / 255;
+		return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	};
+	const luminance =
+		0.2126 * channel((int >> 16) & 255) +
+		0.7152 * channel((int >> 8) & 255) +
+		0.0722 * channel(int & 255);
+	return luminance >= 0.19 ? "#111318" : "#ffffff";
+}
 
 export interface InsightFilter {
 	mode: "sector" | "asset-class" | "type" | "asset";
@@ -39,6 +70,8 @@ export interface StocksDistributionWidgetProps {
 	activeFilter?: InsightFilter | null;
 	onSetFilter?: (filter: InsightFilter | null) => void;
 	onSelectAsset?: (symbol: string) => void;
+	/** Renders a layout-stable placeholder instead of the empty state. */
+	loading?: boolean;
 }
 
 type DistributionMode = "asset" | "sector" | "type";
@@ -61,10 +94,17 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 	activeFilter,
 	onSetFilter,
 	onSelectAsset,
+	loading = false,
 }: StocksDistributionWidgetProps) {
+	const shouldReduceMotion = useReducedMotion();
 	const [distributionMode, setDistributionMode] = useState<DistributionMode>("asset");
 	const [chartType, setChartType] = useState<ChartViewType>("donut");
 	const [hoveredItem, setHoveredItem] = useState<DistributionItem | null>(null);
+	// `theme` stays "system" when the user has not forced a mode, so it cannot
+	// answer "is the UI dark right now?" — reading it painted the light-theme
+	// white borders on a dark surface. `resolvedTheme` is the applied mode.
+	const { resolvedTheme } = useTheme();
+	const isDark = resolvedTheme === "dark";
 
 	// biome-ignore lint/suspicious/noExplicitAny: ECharts instance reference
 	const echartsInstanceRef = useRef<any>(null);
@@ -72,6 +112,10 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 	// ── Compute Distribution Items ─────────────────────────────────────────
 	const distributionItems = useMemo<DistributionItem[]>(() => {
 		if (assets.length === 0 || totalValue <= 0) return [];
+
+		// Resolved per render (isDark sits in the deps): series follow the
+		// active theme's chart tokens.
+		const { series: seriesColors, others: othersColor } = getDistributionColors();
 
 		const map = new Map<string, { value: number; count: number }>();
 
@@ -111,19 +155,19 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 		}
 
 		const sorted = Array.from(map.entries())
-			.map(([name, { value, count }]) => ({
-				name,
-				value,
-				count,
-				percent: totalValue > 0 ? (value / totalValue) * 100 : 0,
-			}))
+			.map(([name, { value, count }]) => ({ name, value, count }))
 			.sort((a, b) => b.value - a.value);
+
+		// Apportion once over the full set so every segment - including the
+		// aggregated "Others" bucket - is consistent with the same 100% total.
+		const allPercents = allocatePercentages(sorted.map((item) => item.value));
 
 		// Format into top items + Others if more than 5
 		if (sorted.length > 5 && distributionMode !== "type") {
 			const top5 = sorted.slice(0, 5).map((item, idx) => ({
 				...item,
-				color: DISTRIBUTION_COLORS[idx % DISTRIBUTION_COLORS.length],
+				percent: allPercents[idx],
+				color: seriesColors[idx % seriesColors.length],
 				isOthers: false,
 			}));
 			const others = sorted.slice(5);
@@ -133,8 +177,8 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 					name: "Others",
 					value: othersValue,
 					count: others.length,
-					percent: totalValue > 0 ? (othersValue / totalValue) * 100 : 0,
-					color: DISTRIBUTION_COLORS[DISTRIBUTION_COLORS.length - 1],
+					percent: allPercents.slice(5).reduce((sum, percent) => sum + percent, 0),
+					color: othersColor,
 					isOthers: true,
 				});
 			}
@@ -143,10 +187,11 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 
 		return sorted.map((item, idx) => ({
 			...item,
-			color: DISTRIBUTION_COLORS[idx % DISTRIBUTION_COLORS.length],
+			percent: allPercents[idx],
+			color: seriesColors[idx % seriesColors.length],
 			isOthers: false,
 		}));
-	}, [assets, totalValue, sectorValueMap, distributionMode]);
+	}, [assets, totalValue, sectorValueMap, distributionMode, isDark]);
 
 	// ── Concentration Metric ───────────────────────────────────────────────
 	const concentrationInfo = useMemo(() => {
@@ -217,6 +262,9 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 
 	// ── Donut Chart ECharts Option ─────────────────────────────────────────
 	const donutOption = useMemo(() => {
+		// Slice separators are the card surface itself: a hardcoded
+		// white/near-black read as a glaring outline on the tinted dark card.
+		const themeColors = getChartThemeColors();
 		const chartData = distributionItems.map((item) => ({
 			name: item.name,
 			value: item.value,
@@ -239,7 +287,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 					padAngle: 2.5,
 					itemStyle: {
 						borderRadius: 4,
-						borderColor: "rgba(10, 10, 10, 0.8)",
+						borderColor: themeColors.card,
 						borderWidth: 2,
 					},
 					label: { show: false },
@@ -248,41 +296,68 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 						scaleSize: 4,
 						itemStyle: {
 							shadowBlur: 10,
-							shadowColor: "rgba(0, 0, 0, 0.4)",
+							shadowColor: isDark ? "rgba(0, 0, 0, 0.4)" : "rgba(0, 0, 0, 0.15)",
 						},
 					},
 				},
 			],
 		};
-	}, [distributionItems]);
+	}, [distributionItems, isDark]);
 
 	// ── Treemap Chart ECharts Option ───────────────────────────────────────
 	const treemapOption = useMemo(() => {
-		const treemapData = distributionItems.map((item) => ({
-			name: item.name,
-			value: item.value,
-			itemStyle: {
-				color: item.color,
-			},
-		}));
+		// Tile separators use the card surface, same reason as the donut: the
+		// hardcoded pair drew white gutters over the dark card.
+		const themeColors = getChartThemeColors();
+		const treemapData = distributionItems.map((item) => {
+			// Labels sit ON the tile fill, so their ink follows the tile's
+			// luminance instead of a fixed white that faded on light fills.
+			const ink = contrastInkFor(item.color);
+			return {
+				name: item.name,
+				value: item.value,
+				itemStyle: {
+					color: item.color,
+				},
+				label: {
+					rich: {
+						name: { fontSize: 11, fontWeight: "bold", lineHeight: 15, color: ink },
+						percent: {
+							fontSize: 11,
+							lineHeight: 14,
+							fontFamily: "monospace",
+							color: `rgba(${hexToRgbTriplet(ink)}, 0.85)`,
+						},
+					},
+				},
+			};
+		});
 
 		return {
 			animationDuration: 400,
 			tooltip: {
 				trigger: "item",
-				backgroundColor: "rgba(10, 10, 10, 0.95)",
-				borderColor: "rgba(255, 255, 255, 0.15)",
+				// Theme-aware: the tooltip used to render as a dark slab in both
+				// themes, unreadable against dark surfaces and jarring on light.
+				backgroundColor: isDark ? "rgba(20, 20, 24, 0.96)" : "rgba(255, 255, 255, 0.98)",
+				borderColor: isDark ? "rgba(255, 255, 255, 0.15)" : "rgba(0, 0, 0, 0.1)",
 				borderWidth: 1,
 				padding: [8, 12],
-				textStyle: { color: "#fff", fontSize: 12, fontFamily: "sans-serif" },
+				textStyle: {
+					color: isDark ? "#f4f4f5" : "#18181b",
+					fontSize: 12,
+					fontFamily: "sans-serif",
+				},
 				// biome-ignore lint/suspicious/noExplicitAny: ECharts tooltip param
 				formatter: (params: any) => {
 					const pct = totalValue > 0 ? ((params.value / totalValue) * 100).toFixed(1) : "0.0";
+					const muted = isDark ? "#a1a1aa" : "#52525b";
+					const strong = isDark ? "#f4f4f5" : "#18181b";
 					return `
-						<div style="font-weight:600;font-size:12px;margin-bottom:2px;">${params.name}</div>
-						<div style="display:flex;justify-content:space-between;gap:16px;color:#a1a1aa;font-size:11px;">
-							<span>Weight: <b style="color:#fff;">${pct}%</b></span>
-							<span>Value: <b style="color:#fff;">${formatCurrency(params.value)}</b></span>
+						<div style="font-weight:600;font-size:12px;margin-bottom:2px;color:${strong};">${params.name}</div>
+						<div style="display:flex;justify-content:space-between;gap:16px;color:${muted};font-size:11px;">
+							<span>Weight: <b style="color:${strong};">${pct}%</b></span>
+							<span>Value: <b style="color:${strong};">${formatCurrency(params.value)}</b></span>
 						</div>
 					`;
 				},
@@ -302,7 +377,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 					nodeClick: false,
 					zoomToNodeRatio: 0,
 					itemStyle: {
-						borderColor: "rgba(10, 10, 10, 0.9)",
+						borderColor: themeColors.card,
 						borderWidth: 2,
 						gapWidth: 2,
 						borderRadius: 4,
@@ -325,8 +400,8 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								color: "#ffffff",
 							},
 							percent: {
-								fontSize: 9,
-								lineHeight: 13,
+								fontSize: 11,
+								lineHeight: 14,
 								color: "rgba(255, 255, 255, 0.85)",
 								fontFamily: "monospace",
 							},
@@ -336,30 +411,51 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 				},
 			],
 		};
-	}, [distributionItems, totalValue, formatCurrency]);
+	}, [distributionItems, totalValue, formatCurrency, isDark]);
 
 	const isFilterActive = Boolean(activeFilter);
+
+	// The donut centre used to repeat the hero's total value verbatim, two
+	// inches from the hero itself. The centre now carries the one figure the
+	// hero does not: how many groups the chart is showing.
+	const groupedItemCount = distributionItems.filter((i) => !i.isOthers).length;
+	const groupUnit =
+		distributionMode === "asset" ? "Assets" : distributionMode === "sector" ? "Sectors" : "Types";
+
+	// While the portfolio is still loading, `assets` is empty and the branch below
+	// would render "No distribution data available" - a confident, wrong message
+	// that then snaps into a chart. Show a placeholder of the same shape instead.
+	if (loading) {
+		return (
+			<div className="flex flex-col space-y-3 h-full" aria-busy="true" aria-live="polite">
+				<span className="sr-only">Loading portfolio allocation…</span>
+				<div className="flex items-center justify-between border-b border-border/10 pb-3 h-[45px]">
+					<Skeleton className="h-3 w-16" />
+					<Skeleton className="h-6 w-24" />
+				</div>
+				<Skeleton className="h-[250px] w-full rounded-lg" />
+			</div>
+		);
+	}
 
 	return (
 		<div className="flex flex-col space-y-3 h-full">
 			{/* ── Distribution Header (Aligned with Hero Chart Header) ────── */}
-			<div className="flex items-center justify-between border-b border-border/10 pb-3 h-[45px]">
+			<div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/10 pb-3 min-h-[45px] sm:h-[45px]">
 				<div className="flex items-center gap-2">
 					<div className="flex items-center gap-1.5">
-						<span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+						<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
 							Allocation
 						</span>
-						<Badge
-							variant="outline"
-							className="h-4.5 px-1.5 text-[9px] font-medium border-border/40 bg-secondary/30 text-muted-foreground"
-						>
-							{distributionItems.filter((i) => !i.isOthers).length}{" "}
-							{distributionMode === "asset"
-								? "Assets"
-								: distributionMode === "sector"
-									? "Sectors"
-									: "Types"}
-						</Badge>
+						{/* In the donut view the chart centre already shows this count. */}
+						{chartType !== "donut" && (
+							<Badge
+								variant="outline"
+								className="h-4.5 px-1.5 text-micro font-medium border-border/40 bg-secondary/30 text-muted-foreground"
+							>
+								{groupedItemCount} {groupUnit}
+							</Badge>
+						)}
 					</div>
 				</div>
 
@@ -370,7 +466,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 							<Button
 								variant="outline"
 								size="sm"
-								className="h-6 gap-1 rounded-full px-2.5 text-[10px] font-medium bg-secondary/35 border-border/50 text-muted-foreground hover:text-foreground transition-all"
+								className="h-6 gap-1 rounded-full px-2.5 text-micro font-medium bg-secondary/35 border-border/50 text-muted-foreground hover:text-foreground transition-all"
 							>
 								{distributionMode === "asset"
 									? "By Asset"
@@ -412,48 +508,84 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 					</DropdownMenu>
 
 					{/* View Switcher: Donut / Treemap / Bars */}
-					<div className="flex items-center gap-0.5 rounded-full border border-border/50 bg-secondary/20 p-0.5 backdrop-blur-xs">
+					<div className="relative flex items-center gap-0.5 rounded-full border border-border/50 bg-secondary/20 p-0.5">
 						<Button
 							variant="ghost"
 							size="icon"
+							aria-pressed={chartType === "donut"}
+							aria-label="Donut allocation view"
 							className={cn(
-								"h-5 w-5 rounded-full transition-all",
+								"relative h-8 w-8 rounded-full transition-colors duration-150 touch-target cursor-pointer active:translate-y-px",
 								chartType === "donut"
-									? "bg-secondary/90 text-foreground shadow-xs"
+									? "text-foreground font-bold"
 									: "text-muted-foreground hover:text-foreground",
 							)}
 							onClick={() => setChartType("donut")}
-							title="Donut Allocation"
 						>
-							<PieChart className="h-3 w-3" />
+							{chartType === "donut" && (
+								<motion.span
+									layoutId="distChartTypeActive"
+									className="absolute inset-0 rounded-full bg-secondary/90 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 35 }
+									}
+								/>
+							)}
+							<PieChart className="relative z-10 h-3.5 w-3.5" />
 						</Button>
 						<Button
 							variant="ghost"
 							size="icon"
+							aria-pressed={chartType === "treemap"}
+							aria-label="Treemap grid view"
 							className={cn(
-								"h-5 w-5 rounded-full transition-all",
+								"relative h-8 w-8 rounded-full transition-colors duration-150 touch-target cursor-pointer active:translate-y-px",
 								chartType === "treemap"
-									? "bg-secondary/90 text-foreground shadow-xs"
+									? "text-foreground font-bold"
 									: "text-muted-foreground hover:text-foreground",
 							)}
 							onClick={() => setChartType("treemap")}
-							title="Treemap Grid"
 						>
-							<LayoutGrid className="h-3 w-3" />
+							{chartType === "treemap" && (
+								<motion.span
+									layoutId="distChartTypeActive"
+									className="absolute inset-0 rounded-full bg-secondary/90 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 35 }
+									}
+								/>
+							)}
+							<LayoutGrid className="relative z-10 h-3.5 w-3.5" />
 						</Button>
 						<Button
 							variant="ghost"
 							size="icon"
+							aria-pressed={chartType === "bars"}
+							aria-label="Ranked list breakdown view"
 							className={cn(
-								"h-5 w-5 rounded-full transition-all",
+								"relative h-8 w-8 rounded-full transition-colors duration-150 touch-target cursor-pointer active:translate-y-px",
 								chartType === "bars"
-									? "bg-secondary/90 text-foreground shadow-xs"
+									? "text-foreground font-bold"
 									: "text-muted-foreground hover:text-foreground",
 							)}
 							onClick={() => setChartType("bars")}
-							title="Ranked List Breakdown"
 						>
-							<BarChart3 className="h-3 w-3" />
+							{chartType === "bars" && (
+								<motion.span
+									layoutId="distChartTypeActive"
+									className="absolute inset-0 rounded-full bg-secondary/90 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 35 }
+									}
+								/>
+							)}
+							<BarChart3 className="relative z-10 h-3.5 w-3.5" />
 						</Button>
 					</div>
 				</div>
@@ -466,14 +598,21 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 					<p className="text-xs font-medium text-muted-foreground">
 						No distribution data available
 					</p>
-					<p className="text-[10px] text-muted-foreground/60 mt-0.5">
+					<p className="text-xs text-muted-foreground mt-0.5">
 						Add positions to visualize portfolio weighting
 					</p>
 				</div>
 			) : (
 				<div className="h-[250px] flex flex-col justify-between">
-					{/* ── View: Donut + Legend ── */}
-					{chartType === "donut" && (
+					<motion.div
+						key={chartType}
+						initial={shouldReduceMotion ? false : { opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.16 }}
+						className="h-[200px] flex flex-col justify-between my-auto"
+					>
+						{/* ── View: Donut + Legend ── */}
+						{chartType === "donut" && (
 						<div className="flex items-center gap-3 h-[200px] my-auto">
 							{/* Donut Chart with Dynamic Interactive Center */}
 							<div className="relative w-[140px] h-[140px] shrink-0 mx-auto sm:mx-0">
@@ -506,7 +645,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								<div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none px-2 text-center">
 									{hoveredItem ? (
 										<div className="animate-in fade-in zoom-in-95 duration-150 flex flex-col items-center">
-											<span className="text-[11px] font-bold text-foreground leading-tight truncate max-w-[85px]">
+											<span className="text-micro font-bold text-foreground leading-tight truncate max-w-[85px]">
 												{hoveredItem.name}
 											</span>
 											<span
@@ -515,17 +654,17 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 											>
 												{hoveredItem.percent.toFixed(1)}%
 											</span>
-											<span className="font-mono text-[9px] text-muted-foreground/80 leading-tight">
+											<span className="font-mono text-micro text-muted-foreground leading-tight">
 												{formatCurrency(hoveredItem.value)}
 											</span>
 										</div>
 									) : (
 										<div className="animate-in fade-in duration-200 flex flex-col items-center">
 											<span className="font-mono text-sm font-bold tracking-tight text-foreground/90 leading-tight">
-												{formatCurrency(totalValue)}
+												{groupedItemCount}
 											</span>
-											<span className="text-[8px] font-bold uppercase tracking-widest text-muted-foreground/60 mt-0.5">
-												Total Value
+											<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
+												{groupUnit}
 											</span>
 										</div>
 									)}
@@ -537,15 +676,20 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								{distributionItems.map((item, idx) => {
 									const isItemActive =
 										(activeFilter?.mode === "asset" && activeFilter.value === item.name) ||
-										(activeFilter?.mode === "sector" && activeFilter.value === item.name);
+										(activeFilter?.mode === "sector" && activeFilter.value === item.name) ||
+										(activeFilter?.mode === "type" &&
+											((item.name.includes("ETF") && activeFilter.value === "fund") ||
+												(!item.name.includes("ETF") && activeFilter.value === "stock")));
 									const isHovered = hoveredItem?.name === item.name;
 
 									return (
 										<button
 											type="button"
 											key={item.name}
+											aria-pressed={isItemActive}
+											aria-label={`${item.name}: ${item.percent.toFixed(1)} percent, ${formatCurrency(item.value)}${isItemActive ? ", filter active" : ""}`}
 											className={cn(
-												"w-full text-left group flex flex-col rounded-md px-1.5 py-1 transition-all duration-150 cursor-pointer",
+												"w-full text-left group flex flex-col rounded-md px-1.5 py-1 transition-all duration-150 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
 												isItemActive
 													? "bg-primary/10 ring-1 ring-primary/30"
 													: isHovered
@@ -554,6 +698,8 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 											)}
 											onMouseEnter={() => handleLegendHover(item, idx)}
 											onMouseLeave={() => handleLegendHover(null)}
+											onFocus={() => handleLegendHover(item, idx)}
+											onBlur={() => handleLegendHover(null)}
 											onClick={() => handleItemClick(item)}
 										>
 											<div className="flex items-center justify-between text-xs leading-none">
@@ -567,7 +713,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 													/>
 													<span
 														className={cn(
-															"font-medium truncate transition-colors text-[11px]",
+															"font-medium truncate transition-colors text-micro",
 															isItemActive
 																? "text-primary font-semibold"
 																: "text-foreground group-hover:text-foreground",
@@ -578,7 +724,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 													</span>
 												</div>
 												<div className="flex items-center gap-1.5 shrink-0">
-													<span className="font-mono text-[11px] font-semibold text-foreground/90">
+													<span className="font-mono text-micro font-semibold text-foreground/90">
 														{item.percent.toFixed(1)}%
 													</span>
 												</div>
@@ -628,15 +774,19 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 							{distributionItems.map((item, idx) => {
 								const isItemActive =
 									(activeFilter?.mode === "asset" && activeFilter.value === item.name) ||
-									(activeFilter?.mode === "sector" && activeFilter.value === item.name);
+									(activeFilter?.mode === "sector" && activeFilter.value === item.name) ||
+									(activeFilter?.mode === "type" &&
+										((item.name.includes("ETF") && activeFilter.value === "fund") ||
+											(!item.name.includes("ETF") && activeFilter.value === "stock")));
 
 								return (
 									<button
 										type="button"
 										key={item.name}
 										onClick={() => handleItemClick(item)}
+										aria-pressed={isItemActive}
 										className={cn(
-											"w-full text-left p-2 rounded-lg border transition-all duration-150 cursor-pointer flex flex-col gap-1.5",
+											"w-full text-left p-2 rounded-lg border transition-all duration-150 cursor-pointer flex flex-col gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
 											isItemActive
 												? "border-primary/40 bg-primary/5"
 												: "border-border/30 bg-secondary/15 hover:bg-secondary/30 hover:border-border/60",
@@ -644,22 +794,22 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 									>
 										<div className="flex items-center justify-between text-xs">
 											<div className="flex items-center gap-2 min-w-0">
-												<span className="font-mono text-[10px] text-muted-foreground/70 w-4">
+												<span className="font-mono text-micro text-muted-foreground w-4">
 													#{idx + 1}
 												</span>
 												<div
 													className="h-2 w-2 rounded-full shrink-0"
 													style={{ backgroundColor: item.color }}
 												/>
-												<span className="font-semibold text-foreground truncate text-[11px]">
+												<span className="font-semibold text-foreground truncate text-micro">
 													{item.name}
 												</span>
 											</div>
 											<div className="flex items-center gap-2 text-right">
-												<span className="font-mono text-[10px] text-muted-foreground">
+												<span className="font-mono text-micro text-muted-foreground">
 													{formatCurrency(item.value)}
 												</span>
-												<span className="font-mono text-[11px] font-bold text-foreground">
+												<span className="font-mono text-micro font-bold text-foreground">
 													{item.percent.toFixed(1)}%
 												</span>
 											</div>
@@ -679,9 +829,10 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 							})}
 						</div>
 					)}
+						</motion.div>
 
 					{/* ── Footer Insight Strip ── */}
-					<div className="h-[36px] pt-2 border-t border-border/15 flex items-center justify-between text-[10px]">
+					<div className="h-[36px] pt-2 border-t border-border/15 flex items-center justify-between text-micro">
 						{isFilterActive ? (
 							<div className="flex items-center justify-between w-full">
 								<div className="flex items-center gap-1.5 text-primary">
@@ -693,7 +844,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								<Button
 									variant="ghost"
 									size="sm"
-									className="h-5 px-1.5 text-[9px] text-muted-foreground hover:text-foreground gap-1"
+									className="h-5 px-1.5 text-micro text-muted-foreground hover:text-foreground gap-1"
 									onClick={() => onSetFilter?.(null)}
 								>
 									<X className="h-2.5 w-2.5" />
@@ -703,7 +854,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 						) : concentrationInfo ? (
 							<>
 								<div className="flex items-center gap-1.5 text-muted-foreground">
-									<Sparkles className="h-3 w-3 text-amber-500/80" />
+									<Sparkles className="h-3 w-3 text-warning-muted" />
 									<span>Top 3 Concentration:</span>
 									<span className="font-mono font-semibold text-foreground">
 										{concentrationInfo.top3Percent.toFixed(1)}%
@@ -712,12 +863,12 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								<Badge
 									variant="outline"
 									className={cn(
-										"h-4 px-1 text-[8px] font-semibold border-0",
+										"h-4 px-1 text-micro font-semibold border-0",
 										concentrationInfo.level === "balanced"
-											? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+											? "bg-gain/15 text-gain"
 											: concentrationInfo.level === "moderate"
-												? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
-												: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+												? "bg-warning/15 text-warning"
+												: "bg-loss/15 text-loss",
 									)}
 								>
 									{concentrationInfo.level === "balanced"
@@ -728,7 +879,7 @@ export const StocksDistributionWidget = memo(function StocksDistributionWidget({
 								</Badge>
 							</>
 						) : (
-							<span className="text-muted-foreground/60">Portfolio Distribution Breakdown</span>
+							<span className="text-muted-foreground">Portfolio Distribution Breakdown</span>
 						)}
 					</div>
 				</div>

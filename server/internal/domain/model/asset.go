@@ -98,14 +98,19 @@ type StockMetadata struct {
 	MarketCap     *int64   `json:"market_cap,omitempty"`
 	PERatio       *float64 `json:"pe_ratio,omitempty"`
 	DividendYield *float64 `json:"dividend_yield,omitempty"`
-}
-
-// FundMetadata contains fund-specific information
+} // FundMetadata contains fund-specific information
 type FundMetadata struct {
 	Exchange string `json:"exchange"`
 	Sector   string `json:"sector"`
 	Industry string `json:"industry"`
 	FundType string `json:"fund_type"` // mutual_fund, etf, index_fund, hedge_fund
+	// Annual total expense ratio and dividend yield, as percentages. Both are
+	// optional: the canonical values live on the instrument (see
+	// Instrument.ExpenseRatio / Instrument.DividendYield) and this blob is the
+	// per-asset fallback. Never default these on write - a missing figure and
+	// a zero figure are different claims about the fund.
+	ExpenseRatio  *float64 `json:"expense_ratio,omitempty"`
+	DividendYield *float64 `json:"dividend_yield,omitempty"`
 }
 
 // CryptoMetadata contains cryptocurrency-specific information
@@ -355,6 +360,12 @@ func (a *Asset) validateFundMetadata(metadata *FundMetadata) error {
 	}
 	if !validFundTypes[metadata.FundType] {
 		return errors.New("invalid fund type")
+	}
+	if metadata.ExpenseRatio != nil && (*metadata.ExpenseRatio < 0 || *metadata.ExpenseRatio > 100) {
+		return errors.New("expense ratio must be between 0 and 100")
+	}
+	if metadata.DividendYield != nil && (*metadata.DividendYield < 0 || *metadata.DividendYield > 100) {
+		return errors.New("dividend yield must be between 0 and 100")
 	}
 	return nil
 }

@@ -1,17 +1,18 @@
 import ReactECharts from "echarts-for-react";
-import { Activity, AlertTriangle } from "lucide-react";
+import { Activity, AlertTriangle, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
 import { type BenchmarkMode, useBenchmarkInstrumentId } from "@/hooks/useBenchmarkInstrumentId";
 import { useMarketData } from "@/hooks/useMarketData";
 import { getChartThemeColors } from "@/lib/chart-colors";
 import { useChartTheme } from "@/lib/charts/config";
+import { cn } from "@/lib/utils";
 
 export type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
 export type { BenchmarkMode } from "@/hooks/useBenchmarkInstrumentId";
-// Re-export BenchmarkMode for backward compatibility
 
 export interface PerformancePoint {
 	date: Date;
@@ -114,6 +115,64 @@ export function filterByRange(data: PerformancePoint[], range: TimeRange): Perfo
 	];
 }
 
+export function PortfolioHeroChartSkeleton({ className }: { className?: string }) {
+	return (
+		<div
+			className={cn(
+				"relative overflow-hidden w-full h-full min-h-[250px] flex flex-col justify-between p-4",
+				className,
+			)}
+		>
+			{/* Top guide / stats shimmer */}
+			<div className="flex items-center justify-between">
+				<div className="space-y-1.5">
+					<Skeleton className="h-3 w-20" />
+					<Skeleton className="h-5 w-28" />
+				</div>
+				<div className="flex items-center gap-2">
+					<Skeleton className="h-6 w-24 rounded-full" />
+					<Skeleton className="h-6 w-16 rounded-full" />
+				</div>
+			</div>
+
+			{/* SVG Chart Wave Skeleton */}
+			<div className="relative w-full flex-1 my-4 flex items-end">
+				{/* Dashed Grid Lines */}
+				<div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20">
+					<div className="border-b border-dashed border-border w-full" />
+					<div className="border-b border-dashed border-border w-full" />
+					<div className="border-b border-dashed border-border w-full" />
+					<div className="border-b border-dashed border-border w-full" />
+				</div>
+
+				{/* Pulsing stylized SVG chart path */}
+				<svg
+					className="w-full h-full text-muted-foreground/30 animate-pulse overflow-visible"
+					viewBox="0 0 500 150"
+					preserveAspectRatio="none"
+					aria-hidden="true"
+				>
+					<path
+						d="M 0,110 C 60,120 100,70 160,85 C 220,100 280,30 360,50 C 420,65 460,25 500,20"
+						fill="none"
+						stroke="currentColor"
+						strokeWidth="1.5"
+						strokeDasharray="4 2"
+					/>
+				</svg>
+			</div>
+
+			{/* Bottom axis tick labels */}
+			<div className="flex justify-between items-center pt-2 border-t border-border/20">
+				<Skeleton className="h-3 w-12" />
+				<Skeleton className="h-3 w-12 hidden sm:block" />
+				<Skeleton className="h-3 w-12 hidden sm:block" />
+				<Skeleton className="h-3 w-12" />
+			</div>
+		</div>
+	);
+}
+
 export function PortfolioHeroChart({
 	data,
 	// biome-ignore lint/correctness/noUnusedFunctionParameters: required by props
@@ -125,7 +184,7 @@ export function PortfolioHeroChart({
 	benchmarkMode = "none",
 	portfolioID,
 }: PortfolioHeroChartProps) {
-	const { echarts: echartsTheme } = useChartTheme();
+	const { echarts: echartsTheme, isDark } = useChartTheme();
 	const { currency } = useCurrency();
 	const filteredData = useMemo(() => filterByRange(data, timeRange), [data, timeRange]);
 	const axisDateFormat = useMemo(() => {
@@ -312,6 +371,15 @@ export function PortfolioHeroChart({
 		benchmarkLoading &&
 		benchmarkData.length === 0;
 
+	// The legend names the comparison as soon as one is picked, and the spinner
+	// beside it reports the wait: first the instrument lookup, then the candle
+	// fetch that feeds the line. Without this the legend popped in only once the
+	// candles had already landed.
+	const benchmarkPending =
+		benchmarkMode !== "none" &&
+		!benchmarkInstrumentMissing &&
+		(instrumentLoading || isBenchmarkLoading);
+
 	const isUp = useMemo(() => {
 		return filteredData.length >= 2
 			? filteredData[filteredData.length - 1].portfolioValue >= filteredData[0].portfolioValue
@@ -330,8 +398,8 @@ export function PortfolioHeroChart({
 			benchmarkData[index] ?? null,
 		]);
 
-		const primaryColor = isUp ? "#10b981" : "#ef4444";
-		const primaryColorRgb = isUp ? "16, 185, 129" : "239, 68, 68";
+		const portfolioLineColor = isUp ? themeColors.gain : themeColors.loss;
+		const benchmarkLineColor = themeColors.mutedForeground;
 
 		return {
 			animation: true,
@@ -343,14 +411,18 @@ export function PortfolioHeroChart({
 			backgroundColor: "transparent",
 			tooltip: {
 				trigger: "axis",
-				backgroundColor: "rgba(17, 24, 39, 0.65)",
-				borderColor: "rgba(255, 255, 255, 0.15)",
+				// Institutional hairline card tuned per theme
+				backgroundColor: isDark ? "rgba(24, 24, 28, 0.96)" : "rgba(255, 255, 255, 0.98)",
+				borderColor: isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.08)",
 				borderWidth: 1,
-				borderRadius: 16,
+				borderRadius: 8,
 				padding: 0,
-				textStyle: { color: "#fff", fontSize: 13, fontFamily: "inherit" },
-				extraCssText:
-					"backdrop-filter: blur(16px) saturate(180%); -webkit-backdrop-filter: blur(16px) saturate(180%); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2); overflow: hidden;",
+				textStyle: {
+					color: isDark ? "#ffffff" : "#18181b",
+					fontSize: 13,
+					fontFamily: "inherit",
+				},
+				extraCssText: `backdrop-filter: blur(8px); box-shadow: 0 6px 20px ${isDark ? "rgba(0, 0, 0, 0.45)" : "rgba(0, 0, 0, 0.08)"}; border-radius: 8px; overflow: hidden;`,
 				// biome-ignore lint/suspicious/noExplicitAny: echarts injects any
 				formatter: (params: any) => {
 					if (!params?.length) return "";
@@ -362,22 +434,22 @@ export function PortfolioHeroChart({
 							: "");
 
 					let html = `<div style="padding: 12px 16px; min-width: 180px;">`;
-					html += `<div style="font-size: 11px; color: rgba(255,255,255,0.6); margin-bottom: 12px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">${formattedDate}</div>`;
+					html += `<div style="font-size: 11px; color: ${isDark ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.55)"}; margin-bottom: 12px; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase;">${formattedDate}</div>`;
 
 					// biome-ignore lint/suspicious/noExplicitAny: echarts injects any
 					params.forEach((param: any) => {
-						const color = param.color;
+						const isPortfolio = param.seriesName === "Portfolio";
+						const seriesColor = isPortfolio ? portfolioLineColor : benchmarkLineColor;
 						const val = param.value?.[1];
 						if (val === null || val === undefined || Number.isNaN(val)) return;
 						const formattedVal = formatCurrency(val);
-						const isPortfolio = param.seriesName === "Portfolio";
 
 						html += `<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">`;
 						html += `<div style="display: flex; align-items: center; gap: 8px;">`;
-						html += `<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${color}; box-shadow: 0 0 8px ${color}80;"></span>`;
-						html += `<span style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8);">${param.seriesName}</span>`;
+						html += `<span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background-color: ${seriesColor};"></span>`;
+						html += `<span style="font-size: 13px; font-weight: 500; color: ${isDark ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.7)"};">${param.seriesName}</span>`;
 						html += `</div>`;
-						html += `<span style="font-size: 13px; font-weight: ${isPortfolio ? "600" : "500"}; color: #fff; font-variant-numeric: tabular-nums;">${formattedVal}</span>`;
+						html += `<span style="font-size: 13px; font-weight: ${isPortfolio ? "600" : "500"}; color: ${isDark ? "#fff" : "#111"}; font-variant-numeric: tabular-nums;">${formattedVal}</span>`;
 						html += `</div>`;
 					});
 
@@ -411,7 +483,7 @@ export function PortfolioHeroChart({
 				splitLine: { show: false },
 				axisLabel: {
 					color: themeColors.mutedForeground,
-					fontSize: 10,
+					fontSize: 11,
 					hideOverlap: true,
 					margin: 12,
 					formatter: (value: number) => {
@@ -447,13 +519,13 @@ export function PortfolioHeroChart({
 				splitLine: {
 					show: true,
 					lineStyle: {
-						color: "rgba(255, 255, 255, 0.025)",
+						color: isDark ? "rgba(255, 255, 255, 0.025)" : "rgba(0, 0, 0, 0.05)",
 						type: "dashed",
 					},
 				},
 				axisLabel: {
 					color: themeColors.mutedForeground,
-					fontSize: 10,
+					fontSize: 11,
 					inside: false,
 					margin: 8,
 					formatter: (value: number) =>
@@ -472,28 +544,16 @@ export function PortfolioHeroChart({
 					type: "line",
 					smooth: 0.25,
 					showSymbol: false,
+					itemStyle: {
+						color: portfolioLineColor,
+					},
 					lineStyle: {
-						color: primaryColor,
-						width: 1.8,
-						shadowBlur: 6,
-						shadowColor: `rgba(${primaryColorRgb}, 0.25)`,
+						color: portfolioLineColor,
+						width: 1.5,
 					},
 					sampling: "lttb",
 					animationDurationUpdate: 600,
 					animationEasingUpdate: "cubicInOut",
-					areaStyle: {
-						color: {
-							type: "linear",
-							x: 0,
-							y: 0,
-							x2: 0,
-							y2: 1,
-							colorStops: [
-								{ offset: 0, color: `rgba(${primaryColorRgb}, 0.08)` },
-								{ offset: 1, color: `rgba(${primaryColorRgb}, 0.0)` },
-							],
-						},
-					},
 					data: portfolioSeries,
 				},
 				...(benchmarkMode !== "none" && benchmarkData.length > 0
@@ -506,23 +566,14 @@ export function PortfolioHeroChart({
 								showSymbol: false,
 								sampling: "lttb",
 								z: 5,
+								itemStyle: {
+									color: benchmarkLineColor,
+								},
 								lineStyle: {
-									color:
-										benchmarkMode === "sp500"
-											? "#a78bfa"
-											: benchmarkMode === "nasdaq"
-												? "#38bdf8"
-												: "#f59e0b", // btc gets amber-orange
-									width: 2.2,
-									type: "solid",
-									shadowBlur: 8,
-									shadowColor:
-										benchmarkMode === "sp500"
-											? "rgba(167, 139, 250, 0.4)"
-											: benchmarkMode === "nasdaq"
-												? "rgba(56, 189, 248, 0.4)"
-												: "rgba(245, 158, 11, 0.4)",
-									opacity: isBenchmarkLoading ? 0.4 : 0.95,
+									color: benchmarkLineColor,
+									width: 1.25,
+									type: "dashed",
+									opacity: isBenchmarkLoading ? 0.35 : 0.75,
 								},
 								animationDurationUpdate: 600,
 								animationEasingUpdate: "cubicInOut",
@@ -543,6 +594,7 @@ export function PortfolioHeroChart({
 		currency,
 		isUp,
 		isBenchmarkLoading,
+		isDark,
 	]);
 
 	if (error) {
@@ -550,7 +602,7 @@ export function PortfolioHeroChart({
 			<Card className="relative overflow-hidden border-border/60 bg-transparent shadow-none h-full w-full min-h-[300px]">
 				<CardContent className="flex h-full items-center justify-center p-4">
 					<div className="text-center space-y-2">
-						<AlertTriangle className="mx-auto h-8 w-8 text-amber-500" />
+						<AlertTriangle className="mx-auto h-8 w-8 text-warning" />
 						<p className="text-sm text-muted-foreground">{error}</p>
 					</div>
 				</CardContent>
@@ -561,12 +613,7 @@ export function PortfolioHeroChart({
 	if (loading) {
 		return (
 			<Card className="relative overflow-hidden border-border/60 bg-transparent shadow-none h-full w-full min-h-[300px]">
-				<CardContent className="flex h-full items-center justify-center p-4">
-					<div className="flex flex-col items-center gap-3">
-						<div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-						<p className="text-xs text-muted-foreground">Loading chart data…</p>
-					</div>
-				</CardContent>
+				<PortfolioHeroChartSkeleton />
 			</Card>
 		);
 	}
@@ -598,58 +645,60 @@ export function PortfolioHeroChart({
 					opts={{ renderer: "canvas" }}
 				/>
 				{/* Sleek dynamic legend badge when benchmark comparison is active */}
-				{benchmarkMode !== "none" && benchmarkData.length > 0 && (
-					<div className="absolute top-1 left-2 z-10 flex items-center gap-2.5 rounded-full bg-background/80 px-2.5 py-0.5 text-[10px] font-medium backdrop-blur-md border border-border/40 shadow-xs">
-						<div className="flex items-center gap-1.5">
-							<span
-								className={`inline-block h-1.5 w-1.5 rounded-full ${isUp ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]" : "bg-rose-500 shadow-[0_0_6px_rgba(239,68,68,0.6)]"}`}
-							/>
-							<span className="text-foreground/90">Portfolio</span>
+				{benchmarkMode !== "none" &&
+					!benchmarkInstrumentMissing &&
+					(benchmarkData.length > 0 || benchmarkPending) && (
+						<div className="absolute top-1 left-2 z-10 flex items-center gap-2.5 rounded-full bg-card/90 px-2.5 py-0.5 text-micro font-medium border border-border/60 shadow-xs">
+							<div className="flex items-center gap-1.5">
+								<span
+									className={`inline-block h-1.5 w-1.5 rounded-full ${isUp ? "bg-gain" : "bg-loss"}`}
+								/>
+								<span className="text-foreground/90">Portfolio</span>
+							</div>
+							<div className="h-2 w-[1px] bg-border/50" />
+							<div className="flex items-center gap-1.5">
+								<span
+									className={cn(
+										"inline-block h-1.5 w-1.5 rounded-full bg-muted-foreground transition-opacity",
+										benchmarkPending && "opacity-60",
+									)}
+								/>
+								<span className="text-muted-foreground">{benchmarkName}</span>
+								{benchmarkPending && (
+									<>
+										<Loader2
+											className="h-2.5 w-2.5 animate-spin text-muted-foreground/80"
+											aria-hidden="true"
+										/>
+										<span className="sr-only">Loading {benchmarkName} comparison data</span>
+									</>
+								)}
+							</div>
 						</div>
-						<div className="h-2 w-[1px] bg-border/50" />
-						<div className="flex items-center gap-1.5">
-							<span
-								className="inline-block h-1.5 w-1.5 rounded-full"
-								style={{
-									backgroundColor:
-										benchmarkMode === "sp500"
-											? "#a78bfa"
-											: benchmarkMode === "nasdaq"
-												? "#38bdf8"
-												: "#f59e0b",
-									boxShadow:
-										benchmarkMode === "sp500"
-											? "0 0 6px rgba(167, 139, 250, 0.7)"
-											: benchmarkMode === "nasdaq"
-												? "0 0 6px rgba(56, 189, 248, 0.7)"
-												: "0 0 6px rgba(245, 158, 11, 0.7)",
-								}}
-							/>
-							<span className="text-muted-foreground">{benchmarkName}</span>
-						</div>
-					</div>
-				)}
-				{/* Benchmark instrument not found in database */}
-				{benchmarkInstrumentMissing && (
-					<div className="absolute bottom-1 left-3 right-3 flex items-center gap-2 rounded-lg border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs z-10">
-						<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-red-500" />
-						<span className="text-red-600 dark:text-red-400">
-							{benchmarkName} instrument not found — import a market data pack that includes this
-							benchmark.
-						</span>
-					</div>
-				)}
-
-				{/* Benchmark candle data unavailable for selected time range */}
-				{benchmarkDataError && (
-					<div className="absolute bottom-1 left-3 right-3 flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs z-10">
-						<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
-						<span className="text-amber-600 dark:text-amber-400">
-							{benchmarkName} data unavailable for this time range — showing portfolio only.
-						</span>
-					</div>
-				)}
+					)}
 			</div>
+
+			{/* Benchmark instrument not found in database — in flow so the
+			    banner never covers the chart's date axis (audit fix). */}
+			{benchmarkInstrumentMissing && (
+				<div className="flex items-center gap-2 rounded-lg border border-loss/20 bg-loss/10 px-3 py-1.5 text-xs">
+					<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-loss" />
+					<span className="text-loss dark:text-loss">
+						{benchmarkName} instrument not found — import a market data pack that includes this
+						benchmark.
+					</span>
+				</div>
+			)}
+
+			{/* Benchmark candle data unavailable for selected time range */}
+			{benchmarkDataError && (
+				<div className="flex items-center gap-2 rounded-lg border border-warning/20 bg-warning/10 px-3 py-1.5 text-xs">
+					<AlertTriangle className="h-3.5 w-3.5 shrink-0 text-warning" />
+					<span className="text-warning dark:text-warning">
+						{benchmarkName} data unavailable for this time range — showing portfolio only.
+					</span>
+				</div>
+			)}
 
 			{/* Benchmark comparison metrics bar */}
 			<BenchmarkMetricsBar

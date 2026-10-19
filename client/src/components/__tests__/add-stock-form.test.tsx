@@ -7,6 +7,48 @@ vi.mock("@/hooks/use-debounce", () => ({
 	useDebounce: (value: string) => value,
 }));
 
+// Mock Apollo. AddStockForm renders TradeableInstrumentSearch, which calls
+// useQuery/useLazyQuery/useMutation and throws an invariant error when no
+// ApolloProvider is present.
+const localSearchResults = [
+	{
+		instrument: {
+			id: "inst-aapl",
+			symbol: "AAPL",
+			name: "Apple Inc.",
+			exchange: "NASDAQ",
+			exchangeCode: "NSDQ",
+			country: "US",
+			currency: "USD",
+			sector: "Technology",
+			assetType: "STOCK",
+			providerSource: "manual",
+			providerExternalId: "AAPL",
+			isin: null,
+			figi: null,
+			cusip: null,
+		},
+	},
+];
+
+vi.mock("@apollo/client", () => ({
+	gql: (strings: TemplateStringsArray) => strings.join(""),
+	graphql: (strings: TemplateStringsArray) => strings.join(""),
+	useQuery: () => ({
+		data: { searchInstruments: { localResults: localSearchResults, hasMore: false } },
+		loading: false,
+		error: undefined,
+	}),
+	useLazyQuery: () => [
+		vi.fn().mockResolvedValue({ data: undefined }),
+		{ data: undefined, loading: false, error: undefined },
+	],
+	useMutation: () => [
+		vi.fn().mockResolvedValue({ data: { persistDiscoveredInstrument: null } }),
+		{ loading: false, error: undefined },
+	],
+}));
+
 vi.mock("@/hooks/use-asset-management", () => ({
 	useAssets: () => ({
 		assets: [
@@ -64,6 +106,8 @@ vi.mock("../ui/dialog", () => ({
 	),
 	DialogDescription: ({ children }: { children: ReactNode }) => <span>{children}</span>,
 	DialogTitle: ({ children }: { children: ReactNode }) => <span>{children}</span>,
+	DialogHeader: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+	DialogFooter: ({ children }: { children: ReactNode }) => <div>{children}</div>,
 }));
 
 vi.mock("../ui/button", () => ({
@@ -173,20 +217,12 @@ vi.mock("../PortfolioProvider", () => ({
 }));
 
 // Mock lucide-react icons
-vi.mock("lucide-react", () => ({
-	X: () => <span data-testid="icon-x">X</span>,
-	Search: () => <span data-testid="icon-search">Search</span>,
-	ArrowRight: () => <span data-testid="icon-arrow-right">→</span>,
-	RefreshCw: () => <span data-testid="icon-refresh">Refresh</span>,
-	BarChart3: () => <span data-testid="icon-barchart">BarChart</span>,
-	DollarSign: () => <span data-testid="icon-dollar">$</span>,
-	TrendingUp: () => <span data-testid="icon-trending">Trending</span>,
-	Calendar: () => <span data-testid="icon-calendar">Calendar</span>,
-	Info: () => <span data-testid="icon-info">Info</span>,
-	Building2: () => <span data-testid="icon-building">Building</span>,
-	Wallet: () => <span data-testid="icon-wallet">Wallet</span>,
-	Hash: () => <span data-testid="icon-hash">#</span>,
-}));
+// Passthrough the real icon set. An explicit allowlist here went stale every
+// time a component grew a new icon and failed with "No X export is defined".
+vi.mock("lucide-react", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("lucide-react")>();
+	return { ...actual };
+});
 
 describe("AddStockForm", () => {
 	const mockOnSubmit = vi.fn().mockResolvedValue(undefined);
@@ -238,7 +274,7 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search stock, ETF, or fund/i)).toBeInTheDocument();
 			});
 		});
 	});
@@ -254,11 +290,11 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search stock, ETF, or fund/i)).toBeInTheDocument();
 			});
 
 			// Search for AAPL
-			const searchInput = screen.getByPlaceholderText(/Search symbol/i);
+			const searchInput = screen.getByPlaceholderText(/Search stock, ETF, or fund/i);
 			fireEvent.change(searchInput, { target: { value: "AAPL" } });
 
 			await waitFor(() => {
@@ -276,11 +312,11 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search stock, ETF, or fund/i)).toBeInTheDocument();
 			});
 
 			// Search for AAPL and select it
-			const searchInput = screen.getByPlaceholderText(/Search symbol/i);
+			const searchInput = screen.getByPlaceholderText(/Search stock, ETF, or fund/i);
 			fireEvent.change(searchInput, { target: { value: "AAPL" } });
 
 			await waitFor(() => {
@@ -307,10 +343,10 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search stock, ETF, or fund/i)).toBeInTheDocument();
 			});
 
-			const searchInput = screen.getByPlaceholderText(/Search symbol/i);
+			const searchInput = screen.getByPlaceholderText(/Search stock, ETF, or fund/i);
 			fireEvent.change(searchInput, { target: { value: "AAPL" } });
 
 			await waitFor(() => {
@@ -343,10 +379,10 @@ describe("AddStockForm", () => {
 			fireEvent.click(manualEntryButton);
 
 			await waitFor(() => {
-				expect(screen.getByPlaceholderText(/Search symbol/i)).toBeInTheDocument();
+				expect(screen.getByPlaceholderText(/Search stock, ETF, or fund/i)).toBeInTheDocument();
 			});
 
-			const searchInput = screen.getByPlaceholderText(/Search symbol/i);
+			const searchInput = screen.getByPlaceholderText(/Search stock, ETF, or fund/i);
 			fireEvent.change(searchInput, { target: { value: "AAPL" } });
 
 			await waitFor(() => {

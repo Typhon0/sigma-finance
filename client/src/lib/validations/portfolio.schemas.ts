@@ -20,6 +20,10 @@ export const portfolioFormSchema = z.object({
 		.max(500, "Description must be less than 500 characters")
 		.optional()
 		.transform((val) => (val === "" ? undefined : val)),
+	taxWrapper: z
+		.enum(["STANDARD_TAXABLE", "PEA", "RETIREMENT_SHELTERED", "CRYPTO_VAULT"])
+		.default("STANDARD_TAXABLE")
+		.optional(),
 });
 
 // Create portfolio input schema (extends form schema with user ID)
@@ -31,6 +35,9 @@ export const createPortfolioSchema = portfolioFormSchema.extend({
 export const updatePortfolioSchema = z.object({
 	name: portfolioFormSchema.shape.name.optional(),
 	description: portfolioFormSchema.shape.description.optional(),
+	taxWrapper: z
+		.enum(["STANDARD_TAXABLE", "PEA", "RETIREMENT_SHELTERED", "CRYPTO_VAULT"])
+		.optional(),
 	sortOrder: z.number().int().min(0).optional(),
 });
 

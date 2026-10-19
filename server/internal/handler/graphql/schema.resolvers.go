@@ -18,6 +18,8 @@ import (
 	"sigma_finance/internal/service"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // CreateUser is the resolver for the createUser field.
@@ -117,6 +119,32 @@ func (r *mutationResolver) UpdateUserThemePreferences(ctx context.Context, input
 	return mapUserToGQL(*user), nil
 }
 
+// UpdateUserTaxJurisdiction is the resolver for the updateUserTaxJurisdiction field.
+func (r *mutationResolver) UpdateUserTaxJurisdiction(ctx context.Context, input gqlModel.UpdateUserTaxJurisdictionInput) (*gqlModel.User, error) {
+	log.Printf("[INFO] [graphql] UpdateUserTaxJurisdiction: started")
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	jurisdiction := strings.ToUpper(strings.TrimSpace(input.TaxJurisdiction))
+	if jurisdiction == "" {
+		return nil, fmt.Errorf("tax jurisdiction is required")
+	}
+
+	err = r.UOW.User().UpdateTaxJurisdiction(ctx, userID, jurisdiction)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateUserTaxJurisdiction: update failed: %v", err)
+		return nil, err
+	}
+
+	user, err := r.UserService.GetByID(ctx, userID)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateUserTaxJurisdiction: user lookup failed: %v", err)
+		return nil, err
+	}
+	return mapUserToGQL(*user), nil
+}
+
 // DeleteUser is the resolver for the deleteUser field.
 func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, error) {
 	log.Printf("[INFO] [graphql] DeleteUser: started")
@@ -140,10 +168,17 @@ func (r *mutationResolver) CreatePortfolio(ctx context.Context, input gqlModel.C
 		return nil, fmt.Errorf("unauthorized: cannot create portfolio for another user")
 	}
 
+	var taxWrapper *model.TaxWrapperType
+	if input.TaxWrapper != nil {
+		tw := model.TaxWrapperType(*input.TaxWrapper)
+		taxWrapper = &tw
+	}
+
 	portfolioInput := service.CreatePortfolioInput{
 		UserID:      authUser.ID, // Override with authenticated user ID
 		Name:        input.Name,
 		Description: input.Description,
+		TaxWrapper:  taxWrapper,
 	}
 	portfolio, err := r.PortfolioService.CreatePortfolio(ctx, portfolioInput)
 	if err != nil {
@@ -171,9 +206,16 @@ func (r *mutationResolver) UpdatePortfolio(ctx context.Context, id string, input
 		sortOrder = &val
 	}
 
+	var taxWrapper *model.TaxWrapperType
+	if input.TaxWrapper != nil {
+		tw := model.TaxWrapperType(*input.TaxWrapper)
+		taxWrapper = &tw
+	}
+
 	portfolio, err := r.PortfolioService.UpdatePortfolio(ctx, id, service.UpdatePortfolioInput{
 		Name:        input.Name,
 		Description: input.Description,
+		TaxWrapper:  taxWrapper,
 		SortOrder:   sortOrder,
 	})
 	if err != nil {
@@ -476,8 +518,8 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 		_, err = uow.Stock().Create(ctx, &model.Stock{
 			AssetID:     asset.ID,
 			Ticker:      input.Ticker,
-			Quantity:    input.Quantity,
-			BuyingPrice: getFloat64(input.PurchasePrice),
+			Quantity:    decimal.NewFromFloat(input.Quantity),
+			BuyingPrice: decimal.NewFromFloat(getFloat64(input.PurchasePrice)),
 		})
 		return err
 	})
@@ -496,7 +538,7 @@ func (r *mutationResolver) CreateStockAsset(ctx context.Context, input gqlModel.
 		log.Printf("[ERROR] [CreateStockAsset] Stock.GetByID failed for asset %s: %v", asset.ID, stockErr)
 	}
 
-	result := mapStockToGQL(*asset, stockDetails, tags, nil, nil, nil)
+	result := mapStockToGQL(*asset, stockDetails, tags, nil, nil, nil, r.loadInstrumentForAsset(ctx, asset))
 	// Set fields that come from input but aren't persisted in the assets table
 	result.CurrentValue = input.CurrentValue
 	result.PurchaseDate = input.PurchaseDate
@@ -995,6 +1037,30 @@ func (r *queryResolver) Users(ctx context.Context, filter *gqlModel.UserFilter, 
 }
 
 // Portfolio is the resolver for the portfolio field.
+// ScopedPerformanceHistory is the resolver for the scopedPerformanceHistory field.
+func (r *queryResolver) ScopedPerformanceHistory(ctx context.Context, portfolioID string, assetTypes []string) ([]*gqlModel.PerformancePoint, error) {
+	log.Printf("[INFO] [graphql] ScopedPerformanceHistory: started portfolio=%s types=%v", portfolioID, assetTypes)
+	authUser, err := middleware.RequireAuth(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, portfolioID, authUser.ID); err != nil {
+		return nil, err
+	}
+
+	points, err := r.PortfolioService.GetScopedPerformanceHistory(ctx, portfolioID, assetTypes)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] ScopedPerformanceHistory: failed: %v", err)
+		return nil, err
+	}
+
+	out := make([]*gqlModel.PerformancePoint, len(points))
+	for i, p := range points {
+		out[i] = &gqlModel.PerformancePoint{Date: p.Date, Value: p.Value}
+	}
+	return out, nil
+}
+
 func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Portfolio, error) {
 	log.Printf("[INFO] [graphql] Portfolio: started")
 	p, err := r.PortfolioService.GetByID(ctx, id)
@@ -1147,7 +1213,7 @@ func (r *queryResolver) Assets(ctx context.Context, filter *gqlModel.AssetFilter
 			if stockErr != nil {
 				log.Printf("[ERROR] [Assets] Stock.GetByID failed for asset %s: %v", a.ID, stockErr)
 			}
-			res[i] = mapStockToGQL(*a, stockDetails, tags, nil, nil, nil)
+			res[i] = mapStockToGQL(*a, stockDetails, tags, nil, nil, nil, r.loadInstrumentForAsset(ctx, a))
 		} else if a.Type == model.AssetTypeCrypto {
 			cryptoDetails, cryptoErr := r.UOW.Crypto().GetByID(ctx, a.ID)
 			if cryptoErr != nil {
@@ -1159,7 +1225,7 @@ func (r *queryResolver) Assets(ctx context.Context, filter *gqlModel.AssetFilter
 			if fundErr != nil {
 				log.Printf("[ERROR] [Assets] Fund.GetByID failed for asset %s: %v", a.ID, fundErr)
 			}
-			res[i] = mapFundToGQL(*a, fundDetails, tags, nil, nil, nil)
+			res[i] = mapFundToGQL(*a, fundDetails, tags, nil, nil, nil, r.loadInstrumentForAsset(ctx, a))
 		} else if a.Type == model.AssetTypeBankAccount {
 			res[i] = mapBankAccountToGQL(*a, tags, nil, nil, nil)
 		} else if a.Type == model.AssetTypeRealEstate {
@@ -1172,7 +1238,7 @@ func (r *queryResolver) Assets(ctx context.Context, filter *gqlModel.AssetFilter
 			res[i] = mapLoanToGQL(*a, tags, nil, nil, nil)
 		} else {
 			// Generic mapping if needed
-			res[i] = mapStockToGQL(*a, nil, tags, nil, nil, nil) // Fallback
+			res[i] = mapStockToGQL(*a, nil, tags, nil, nil, nil, r.loadInstrumentForAsset(ctx, a)) // Fallback
 		}
 	}
 	return res, nil

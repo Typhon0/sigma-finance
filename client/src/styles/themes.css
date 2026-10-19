@@ -6,6 +6,9 @@
  */
 
 :root {
+	/* Native controls (date inputs, scrollbars) follow the applied theme. */
+	color-scheme: light;
+
 	/* ── Surfaces ─────────────────────────────────────────────── */
 	--background: oklch(1 0 0);
 	--foreground: oklch(0.145 0 0);
@@ -24,10 +27,28 @@
 	--destructive: oklch(0.577 0.245 27.325);
 	--destructive-foreground: oklch(0.985 0 0);
 
+	/* ── Semantic financial indicators ──────────────────────────────
+	 * Gain/loss/warning text must clear WCAG AA (4.5:1) against --card in
+	 * BOTH themes. No stock Tailwind shade does: emerald-500 is 2.54:1 on
+	 * white and emerald-400 is 1.92:1, while rose-600 is 4.70:1 on white but
+	 * only 3.71:1 on the dark card. These are tuned per theme instead.
+	 * Reserved for TEXT. Borders, rings and bar fills may keep /opacity,
+	 * which only need the 3:1 non-text threshold. */
+	--gain: oklch(0.478 0.118 163.2); /* #007149 — 6.07:1 on white */
+	--gain-muted: oklch(0.52 0.115 163.2); /* #007d56 — 5.16:1 on white */
+	--loss: oklch(0.508 0.196 17.6); /* #bb1139 — 6.46:1 on white */
+	--loss-muted: oklch(0.545 0.18 17.6); /* #c23247 — 5.47:1 on white */
+	--warning: oklch(0.47 0.11 70); /* #814d00 — 7.01:1 on white */
+	--warning-muted: oklch(0.53 0.1 70);
+	--info: oklch(0.484 0.18 272); /* #3f4fc2 — 6.76:1 on white */
+	--info-muted: oklch(0.52 0.17 272);
+
 	/* ── Borders / rings ──────────────────────────────────────── */
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
+	/* Focus ring is a non-text indicator: WCAG 1.4.11 wants 3:1 against the
+	 * white surface. oklch(0.708) sat at ~2.6:1; 0.65 lands at ~3.2:1. */
+	--ring: oklch(0.65 0 0);
 
 	/* ── Typography ───────────────────────────────────────────── */
 	--font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
@@ -54,38 +75,56 @@
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
+	color-scheme: dark;
+
+	/* Surfaces carry a faint hue-264 tint (the same hue as --chart-1 and
+	 * --sidebar-primary). Pure achromatic zinc next to tinted data accents read
+	 * as "default shadcn"; the chroma here is deliberately ≤0.012 so the
+	 * luminance — and therefore every contrast ratio below — is unchanged.
+	 * Verified with the WCAG oklch→sRGB→luminance path: worst text token
+	 * (--loss-muted) stays at 5.00:1 on --card. */
+	--background: oklch(0.145 0.008 264);
+	--foreground: oklch(0.985 0.003 264);
+	--card: oklch(0.205 0.01 264);
+	--card-foreground: oklch(0.985 0.003 264);
+	--popover: oklch(0.205 0.01 264);
+	--popover-foreground: oklch(0.985 0.003 264);
+	--primary: oklch(0.922 0.006 264);
+	--primary-foreground: oklch(0.205 0.01 264);
+	--secondary: oklch(0.269 0.012 264);
+	--secondary-foreground: oklch(0.985 0.003 264);
+	--muted: oklch(0.269 0.012 264);
+	--muted-foreground: oklch(0.708 0.012 264);
+	--accent: oklch(0.269 0.012 264);
+	--accent-foreground: oklch(0.985 0.003 264);
 	--destructive: oklch(0.704 0.191 22.216);
-	--destructive-foreground: oklch(0.985 0 0);
+	--destructive-foreground: oklch(0.985 0.003 264);
+
+	/* Dark-theme counterparts, tuned against --card oklch(0.205 0.01 264). */
+	--gain: oklch(0.72 0.11 155); /* #68b986 — 7.58:1 */
+	--gain-muted: oklch(0.66 0.09 155); /* #5da577 — 5.92:1 */
+	--loss: oklch(0.704 0.191 22.2); /* #ff6467 — 6.19:1 */
+	--loss-muted: oklch(0.645 0.174 22.2); /* #e4585b — 5.00:1 */
+	--warning: oklch(0.82 0.15 75); /* #fcb442 — 10.06:1 */
+	--warning-muted: oklch(0.75 0.13 75);
+	--info: oklch(0.74 0.14 272); /* #8ca4ff — 7.56:1 */
+	--info-muted: oklch(0.69 0.13 272);
 	--border: oklch(1 0 0 / 10%);
 	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
+	--ring: oklch(0.556 0.02 264);
 	--chart-1: oklch(0.55 0.22 264);
 	--chart-2: oklch(0.6 0.16 160);
 	--chart-3: oklch(0.75 0.18 45);
 	--chart-4: oklch(0.65 0.2 300);
 	--chart-5: oklch(0.7 0.19 15);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
+	--sidebar: oklch(0.205 0.01 264);
+	--sidebar-foreground: oklch(0.985 0.003 264);
 	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
+	--sidebar-primary-foreground: oklch(0.985 0.003 264);
+	--sidebar-accent: oklch(0.269 0.012 264);
+	--sidebar-accent-foreground: oklch(0.985 0.003 264);
 	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	--sidebar-ring: oklch(0.556 0.02 264);
 }
 
 /*
@@ -113,6 +152,14 @@
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
 	--color-destructive-foreground: var(--destructive-foreground);
+	--color-gain: var(--gain);
+	--color-gain-muted: var(--gain-muted);
+	--color-loss: var(--loss);
+	--color-loss-muted: var(--loss-muted);
+	--color-warning: var(--warning);
+	--color-warning-muted: var(--warning-muted);
+	--color-info: var(--info);
+	--color-info-muted: var(--info-muted);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
@@ -129,4 +176,14 @@
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-ring: var(--sidebar-ring);
+
+	/* ── Typography scale ──────────────────────────────────────────
+	 * `micro` is the 11px floor for labels, badges and table chrome.
+	 * The stocks page shipped 8–10px type that was unreadable at render
+	 * (the 8.5px `% n/a` and `STALE FX` badges were the worst offenders).
+	 * If a label needs to be smaller than this, cut the label instead.
+	 * Everything above this floor uses Tailwind's stock scale (text-xs = 12px).
+	 */
+	--text-micro: 0.6875rem;
+	--text-micro--line-height: 1.35;
 }

@@ -1,5 +1,5 @@
 import "@testing-library/jest-dom";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { StocksFundsModule } from "../assets/stocks-funds/StocksFundsModule";
@@ -12,10 +12,14 @@ vi.mock("sonner", () => ({
 	},
 }));
 
-vi.mock("@apollo/client", () => ({
-	gql: vi.fn(),
-	useQuery: () => ({ data: undefined, loading: false }),
-}));
+vi.mock("@apollo/client", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@apollo/client")>();
+	return {
+		...actual,
+		gql: vi.fn(),
+		useQuery: () => ({ data: undefined, loading: false }),
+	};
+});
 
 vi.mock("@/hooks/useBenchmarkInstrumentId", () => ({
 	useBenchmarkInstrumentId: () => ({ id: "bench-1", loading: false }),
@@ -74,9 +78,27 @@ vi.mock("@/components/PieChartWithCenter", () => ({
 	PieChartWithCenter: () => <div data-testid="pie-chart">Chart</div>,
 }));
 
-vi.mock("@/components/charts/PortfolioHeroChart", () => ({
-	PortfolioHeroChart: () => <div data-testid="portfolio-hero-chart">Portfolio Hero Chart</div>,
+vi.mock("@/components/assets/stocks-funds/StocksDistributionWidget", () => ({
+	StocksDistributionWidget: ({ onSetFilter }: { onSetFilter?: (filter: unknown) => void }) => (
+		<div data-testid="stocks-distribution-widget">
+			<button
+				type="button"
+				data-testid="filter-tech-sector"
+				onClick={() => onSetFilter?.({ mode: "sector", value: "Technology", label: "Technology" })}
+			>
+				Filter Technology
+			</button>
+		</div>
+	),
 }));
+
+vi.mock("@/components/charts/PortfolioHeroChart", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("../charts/PortfolioHeroChart")>();
+	return {
+		...actual,
+		PortfolioHeroChart: () => <div data-testid="portfolio-hero-chart">Portfolio Hero Chart</div>,
+	};
+});
 
 vi.mock("echarts-for-react", () => ({
 	default: () => <div data-testid="echarts">ECharts</div>,
@@ -101,7 +123,18 @@ vi.mock("@/hooks/use-currency", () => ({
 }));
 
 vi.mock("@/components/ui/button", () => ({
-	Button: ({ children }: { children: ReactNode }) => <button type="button">{children}</button>,
+	Button: ({
+		children,
+		onClick,
+		...props
+	}: {
+		children: ReactNode;
+		onClick?: (e: React.MouseEvent) => void;
+	}) => (
+		<button type="button" onClick={onClick} {...props}>
+			{children}
+		</button>
+	),
 }));
 
 vi.mock("@/components/ui/card", () => ({
@@ -288,6 +321,27 @@ describe("StocksFundsModule", () => {
 			// Check for formatted currency display (3400 = 1750 + 1650)
 			// The component should show total value somewhere
 			expect(screen.getByText(/Add Position/)).toBeInTheDocument();
+		});
+
+		it("displays in-viewport cross-filter banner when filter is active and clears cleanly", () => {
+			render(<StocksFundsModule />);
+
+			expect(screen.queryByTestId("cross-filter-banner")).not.toBeInTheDocument();
+
+			// Click the sector filter button in the mock distribution widget
+			const filterButton = screen.getByTestId("filter-tech-sector");
+			fireEvent.click(filterButton);
+
+			// Active banner should now appear in the viewport
+			const banner = screen.getByTestId("cross-filter-banner");
+			expect(banner).toBeInTheDocument();
+			expect(banner).toHaveTextContent("Filtered by Sector:");
+			expect(banner).toHaveTextContent("Technology");
+
+			// Clicking clear removes the banner
+			const clearButton = screen.getByText("Clear");
+			fireEvent.click(clearButton);
+			expect(screen.queryByTestId("cross-filter-banner")).not.toBeInTheDocument();
 		});
 	});
 });

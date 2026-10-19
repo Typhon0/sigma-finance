@@ -10,6 +10,7 @@ import (
 
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"sigma_finance/internal/service/providers"
 
 	"github.com/shopspring/decimal"
 )
@@ -54,17 +55,24 @@ type ConversionResult struct {
 
 // fxRateService implements IFXRateService.
 type fxRateService struct {
-	uow   repository.IUnitOfWork
-	cache *FXRateCache
-	ttl   int
+	uow      repository.IUnitOfWork
+	cache    *FXRateCache
+	ttl      int
+	provider providers.Provider
 }
 
 // NewFXRateService creates a new FX rate service with the specified cache TTL.
 func NewFXRateService(uow repository.IUnitOfWork, cacheTTLSeconds int) IFXRateService {
+	return NewFXRateServiceWithProvider(uow, cacheTTLSeconds, providers.NewFXProvider())
+}
+
+// NewFXRateServiceWithProvider creates a new FX rate service with a custom provider.
+func NewFXRateServiceWithProvider(uow repository.IUnitOfWork, cacheTTLSeconds int, provider providers.Provider) IFXRateService {
 	return &fxRateService{
-		uow:   uow,
-		cache: NewFXRateCache(time.Duration(cacheTTLSeconds) * time.Second),
-		ttl:   cacheTTLSeconds,
+		uow:      uow,
+		cache:    NewFXRateCache(time.Duration(cacheTTLSeconds) * time.Second),
+		ttl:      cacheTTLSeconds,
+		provider: provider,
 	}
 }
 
@@ -142,7 +150,7 @@ func (s *fxRateService) GetLatestRate(ctx context.Context, base, quote model.Cur
 		s.cache.Set(directRate)
 		return directRate, nil
 	}
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("[ERROR] [FXRateService] GetLatestRate: ERROR direct lookup failed base=%s quote=%s: %v", base, quote, err)
 		return nil, err
 	}
@@ -174,6 +182,8 @@ func (s *fxRateService) GetLatestRate(ctx context.Context, base, quote model.Cur
 }
 
 // GetHistoricalRate retrieves a historical FX rate for direct+inverse pairs.
+// On cache miss, it fetches the entire calendar year from the provider in a single
+// batch call, persisting ~250 trading days to avoid rate limits on subsequent lookups.
 func (s *fxRateService) GetHistoricalRate(ctx context.Context, base, quote model.Currency, date time.Time) (*model.FXRate, error) {
 	if base == quote {
 		return &model.FXRate{
@@ -192,30 +202,114 @@ func (s *fxRateService) GetHistoricalRate(ctx context.Context, base, quote model
 	if err == nil {
 		return rate, nil
 	}
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, sql.ErrNoRows) {
 		return nil, err
 	}
 
 	inverseRate, inverseErr := rateRepo.GetHistoricalRate(ctx, quote, base, date)
-	if inverseErr != nil {
-		if errors.Is(inverseErr, sql.ErrNoRows) {
-			return nil, ErrFXRateNotFound
+	if inverseErr == nil {
+		if inverseRate.Rate.IsZero() {
+			return nil, fmt.Errorf("inverse historical rate is zero for %s/%s", quote, base)
 		}
+		return &model.FXRate{
+			BaseCurrency:  base,
+			QuoteCurrency: quote,
+			Rate:          decimal.NewFromInt(1).Div(inverseRate.Rate),
+			AsOf:          inverseRate.AsOf,
+			Source:        fmt.Sprintf("%s(inverse)", inverseRate.Source),
+			Granularity:   inverseRate.Granularity,
+			IsStale:       inverseRate.IsStale,
+		}, nil
+	}
+	if !errors.Is(inverseErr, sql.ErrNoRows) {
 		return nil, inverseErr
 	}
-	if inverseRate.Rate.IsZero() {
-		return nil, fmt.Errorf("inverse historical rate is zero for %s/%s", quote, base)
+
+	// Cache miss: attempt on-demand calendar year batch fetch via provider
+	if s.provider != nil {
+		if backfillErr := s.backfillCalendarYear(ctx, base, quote, date.Year()); backfillErr != nil {
+			log.Printf("[WARN] [FXRateService] On-demand year backfill failed for %s/%s year=%d: %v",
+				base, quote, date.Year(), backfillErr)
+		} else {
+			// Retry direct query after backfill
+			rate, err = rateRepo.GetHistoricalRate(ctx, base, quote, date)
+			if err == nil {
+				return rate, nil
+			}
+			// Retry inverse query after backfill
+			inverseRate, inverseErr = rateRepo.GetHistoricalRate(ctx, quote, base, date)
+			if inverseErr == nil && !inverseRate.Rate.IsZero() {
+				return &model.FXRate{
+					BaseCurrency:  base,
+					QuoteCurrency: quote,
+					Rate:          decimal.NewFromInt(1).Div(inverseRate.Rate),
+					AsOf:          inverseRate.AsOf,
+					Source:        fmt.Sprintf("%s(inverse)", inverseRate.Source),
+					Granularity:   inverseRate.Granularity,
+					IsStale:       inverseRate.IsStale,
+				}, nil
+			}
+		}
 	}
 
-	return &model.FXRate{
-		BaseCurrency:  base,
-		QuoteCurrency: quote,
-		Rate:          decimal.NewFromInt(1).Div(inverseRate.Rate),
-		AsOf:          inverseRate.AsOf,
-		Source:        fmt.Sprintf("%s(inverse)", inverseRate.Source),
-		Granularity:   inverseRate.Granularity,
-		IsStale:       inverseRate.IsStale,
-	}, nil
+	return nil, ErrFXRateNotFound
+}
+
+// backfillCalendarYear fetches an entire calendar year of daily FX rates for the currency pair in a single batch request.
+func (s *fxRateService) backfillCalendarYear(ctx context.Context, base, quote model.Currency, year int) error {
+	from := time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(year, 12, 31, 23, 59, 59, 0, time.UTC)
+	if now := time.Now().UTC(); to.After(now) {
+		to = now
+	}
+
+	pairStr := fmt.Sprintf("%s/%s", base, quote)
+	log.Printf("[INFO] [FXRateService] On-demand batch fetching year %d for %s", year, pairStr)
+
+	req := providers.CandleRequest{
+		Symbol:    pairStr,
+		AssetType: "FOREX",
+		Interval:  model.Interval1d,
+		From:      from,
+		To:        to,
+		APIKey:    "", // Free / Frankfurter
+	}
+
+	resp, err := s.provider.GetCandles(ctx, req)
+	if err != nil || len(resp.Candles) == 0 {
+		// Try inverse pair (e.g. quote/base)
+		inversePairStr := fmt.Sprintf("%s/%s", quote, base)
+		req.Symbol = inversePairStr
+		resp, err = s.provider.GetCandles(ctx, req)
+		if err != nil {
+			return fmt.Errorf("fetch candles for %s / %s: %w", pairStr, inversePairStr, err)
+		}
+		if len(resp.Candles) == 0 {
+			return fmt.Errorf("no candles found for %s in year %d", pairStr, year)
+		}
+		// Invert candles
+		for i := range resp.Candles {
+			if resp.Candles[i].Close.IsPositive() {
+				resp.Candles[i].Symbol = pairStr
+				resp.Candles[i].Close = decimal.NewFromInt(1).Div(resp.Candles[i].Close)
+			}
+		}
+	}
+
+	rates := make([]*model.FXRate, 0, len(resp.Candles))
+	for _, c := range resp.Candles {
+		rates = append(rates, &model.FXRate{
+			BaseCurrency:  base,
+			QuoteCurrency: quote,
+			Rate:          c.Close,
+			AsOf:          c.Timestamp.UTC(),
+			Source:        c.Source,
+			Granularity:   model.FXRateGranularityDay,
+			IsStale:       false,
+		})
+	}
+
+	return s.uow.FXRate().SaveRates(ctx, rates)
 }
 
 // ResolvePairs deduplicates required pairs for scheduler usage.

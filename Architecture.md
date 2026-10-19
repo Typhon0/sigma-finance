@@ -34,6 +34,14 @@ The key principles are:
 3. Each layer has a distinct responsibility
 4. Changes to external systems (databases, APIs, frameworks) don't affect business logic
 
+## Catalog vs Market Data
+
+The system separates two concerns for crypto assets:
+- Catalog source: bundled Trust Wallet Assets-backed canonical ingestion into `instruments` (import metadata, external identity).
+- Market data source: the existing multi-provider quote/candle subsystem for live and historical pricing.
+
+Catalog ingestion config is independent from market data provider routing config.
+
 ## Layered Structure
 
 The application is organized into the following layers, from innermost to outermost:

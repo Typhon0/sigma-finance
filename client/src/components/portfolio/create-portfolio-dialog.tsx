@@ -114,6 +114,7 @@ export function CreatePortfolioDialog({
 					userID: user.id,
 					name: data.name,
 					description: data.description || undefined,
+					taxWrapper: data.taxWrapper as any,
 				});
 
 				if (result) {

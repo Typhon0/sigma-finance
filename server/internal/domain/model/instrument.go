@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
@@ -117,11 +118,19 @@ type Instrument struct {
 	CUSIP                  *string             `bun:"cusip"`
 	Metadata               json.RawMessage     `bun:"metadata,type:jsonb"`
 	SearchVector           *string             `bun:"search_vector" json:"-"`
-	FirstSeenAt            time.Time           `bun:"first_seen_at,notnull,default:current_timestamp"`
-	LastVerifiedAt         *time.Time          `bun:"last_verified_at"`
-	LastUsedAt             *time.Time          `bun:"last_used_at"`
-	CreatedAt              time.Time           `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt              time.Time           `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+
+	// Reference metrics that describe the instrument itself rather than any
+	// holding of it. Both are percentages (0.03 = 3%) and both are nullable:
+	// NULL means the data provider has not supplied the figure, which is not
+	// the same as zero and must not be defaulted on read.
+	ExpenseRatio  *decimal.Decimal `bun:"expense_ratio,type:decimal(8,6)"`
+	DividendYield *decimal.Decimal `bun:"dividend_yield,type:decimal(8,6)"`
+
+	FirstSeenAt    time.Time  `bun:"first_seen_at,notnull,default:current_timestamp"`
+	LastVerifiedAt *time.Time `bun:"last_verified_at"`
+	LastUsedAt     *time.Time `bun:"last_used_at"`
+	CreatedAt      time.Time  `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt      time.Time  `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 }
 
 type InstrumentAlias struct {

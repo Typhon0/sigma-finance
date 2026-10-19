@@ -65,12 +65,15 @@ type IPortfolioService interface {
 	GetPortfolioHistory(ctx context.Context, portfolioID string, period string) (PortfolioHistory, error)
 	GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
 	GetPerformanceVsBenchmark(ctx context.Context, portfolioID string, benchmarkSymbol string) (PerformanceBenchmark, error)
+	// GetScopedPerformanceHistory values the portfolio restricted to a set of
+	// asset types (e.g. STOCK, FUND). Read-only, computed per call.
+	GetScopedPerformanceHistory(ctx context.Context, portfolioID string, assetTypes []string) ([]PerformancePoint, error)
 }
 
 // analyticsCacheEntry holds a cached analytics result with a timestamp.
 type analyticsCacheEntry struct {
 	valuation *PortfolioValuation
-	createdAt  time.Time
+	createdAt time.Time
 }
 
 // PortfolioService is the concrete implementation of IPortfolioService.
@@ -225,11 +228,13 @@ type CreatePortfolioInput struct {
 	UserID      string
 	Name        string
 	Description *string
+	TaxWrapper  *model.TaxWrapperType
 }
 
 type UpdatePortfolioInput struct {
 	Name        *string
 	Description *string
+	TaxWrapper  *model.TaxWrapperType
 	SortOrder   *int
 }
 
@@ -271,6 +276,7 @@ type AssetAllocation struct {
 type RiskMetrics struct {
 	Volatility      float64 `json:"volatility"`
 	SharpeRatio     float64 `json:"sharpeRatio"`
+	SortinoRatio    float64 `json:"sortinoRatio"`
 	MaxDrawdown     float64 `json:"maxDrawdown"`
 	Diversification float64 `json:"diversification"`
 }
@@ -373,10 +379,16 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 			description = strings.TrimSpace(*input.Description)
 		}
 
+		wrapper := model.TaxWrapperStandardTaxable
+		if input.TaxWrapper != nil && *input.TaxWrapper != "" {
+			wrapper = *input.TaxWrapper
+		}
+
 		newPortfolio := model.Portfolio{
 			UserID:      input.UserID,
 			Name:        strings.TrimSpace(input.Name),
 			Description: description,
+			TaxWrapper:  wrapper,
 			SortOrder:   maxSortOrder + 1,
 		}
 
@@ -385,6 +397,20 @@ func (s *PortfolioService) CreatePortfolio(ctx context.Context, input CreatePort
 			return fmt.Errorf("failed to create portfolio in repository: %w", err)
 		}
 		portfolio = createdPortfolio
+
+		defaultAccount := &model.Account{
+			PortfolioID:  createdPortfolio.ID,
+			UserID:       input.UserID,
+			Name:         createdPortfolio.Name + " - Main Account",
+			Type:         model.AccountTypeBroker,
+			TaxWrapper:   wrapper,
+			Currency:     "EUR",
+			SyncProvider: "MANUAL",
+		}
+		if _, err := uow.Account().Create(ctx, defaultAccount); err != nil {
+			return fmt.Errorf("failed to create default account for portfolio: %w", err)
+		}
+
 		return nil
 	})
 
@@ -461,6 +487,10 @@ func (s *PortfolioService) UpdatePortfolio(ctx context.Context, id string, input
 
 		if input.SortOrder != nil {
 			portfolioToUpdate.SortOrder = *input.SortOrder
+		}
+
+		if input.TaxWrapper != nil && *input.TaxWrapper != "" {
+			portfolioToUpdate.TaxWrapper = *input.TaxWrapper
 		}
 
 		// 4. --- Persistence ---
@@ -540,6 +570,7 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 	}
 
 	var createdPortfolioAsset *model.PortfolioAsset
+	var createdPosition *model.Position
 	var assetForRefresh *model.Asset
 	var backfillFrom time.Time
 	var portfolioUserID string
@@ -574,84 +605,160 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 			return resolveErr
 		}
 
-		// 3. --- Check if asset already exists in portfolio ---
-		_, err = uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, portfolioID, assetID)
-		if err == nil {
-			return errors.New("asset already exists in portfolio")
-		}
-		if !errors.Is(err, repository.ErrNotFound) {
+		// 3. --- Check if asset already exists in portfolio (Accumulate / DCA if so) ---
+		if existingPA, err := uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, portfolioID, assetID); err == nil && existingPA != nil {
+			newQty := existingPA.Quantity + quantity
+			var newAvgPrice float64
+			if newQty > 0 {
+				newAvgPrice = ((existingPA.Quantity * existingPA.AveragePurchasePrice) + (quantity * price)) / newQty
+			}
+			existingPA.Quantity = newQty
+			existingPA.AveragePurchasePrice = newAvgPrice
+			if existingPA.QuoteCurrency == "" {
+				existingPA.QuoteCurrency = quoteCurrency
+			}
+			if err := uow.PortfolioAsset().Update(ctx, existingPA); err != nil {
+				return fmt.Errorf("failed to update existing portfolio asset: %w", err)
+			}
+			createdPortfolioAsset = existingPA
+
+			if pos, posErr := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); posErr == nil && pos != nil {
+				pos.Quantity = decimal.NewFromFloat(newQty)
+				if newAvgPrice > 0 {
+					avgCost := decimal.NewFromFloat(newAvgPrice)
+					pos.AverageCostBasis = &avgCost
+					totalCost := model.Money(decimal.NewFromFloat(newQty).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+					pos.TotalCostBasis = &totalCost
+				}
+				if updateErr := uow.Position().Update(ctx, pos); updateErr != nil {
+					return fmt.Errorf("failed to update position snapshot: %w", updateErr)
+				}
+				createdPosition = pos
+			}
+
+			if stock, stockErr := uow.Stock().GetByID(ctx, assetID); stockErr == nil && stock != nil {
+				stock.Quantity = decimal.NewFromFloat(newQty)
+				stock.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
+				_ = uow.Stock().Update(ctx, stock)
+			} else if fund, fundErr := uow.Fund().GetByID(ctx, assetID); fundErr == nil && fund != nil {
+				fund.Quantity = decimal.NewFromFloat(newQty)
+				fund.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
+				_ = uow.Fund().Update(ctx, fund)
+			}
+		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing portfolio asset: %w", err)
+		} else {
+			// 4. --- Create and Persist Join Table Record ---
+			portfolioAsset := model.PortfolioAsset{
+				PortfolioID:          portfolioID,
+				AssetID:              assetID,
+				InstrumentID:         asset.InstrumentID,
+				Quantity:             quantity,
+				AveragePurchasePrice: price,
+				QuoteCurrency:        quoteCurrency,
+			}
+
+			createdPortfolioAsset, err = uow.PortfolioAsset().Create(ctx, &portfolioAsset)
+			if err != nil {
+				return fmt.Errorf("failed to add asset to portfolio: %w", err)
+			}
+
+			// Canonical quote currency lives on positions; keep it in sync at creation time.
+			if _, err = uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); err != nil {
+				if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
+					return fmt.Errorf("failed to check existing position: %w", err)
+				}
+
+				var targetAccountID string
+				accounts, accErr := uow.Account().GetAccountsByPortfolioID(ctx, portfolioID)
+				if accErr == nil && len(accounts) > 0 {
+					targetAccountID = accounts[0].ID
+				} else {
+					defaultAccount := &model.Account{
+						PortfolioID:  portfolioID,
+						UserID:       portfolio.UserID,
+						Name:         portfolio.Name + " - Main Account",
+						Type:         model.AccountTypeBroker,
+						TaxWrapper:   portfolio.TaxWrapper,
+						Currency:     "EUR",
+						SyncProvider: "MANUAL",
+					}
+					acc, createAccErr := uow.Account().Create(ctx, defaultAccount)
+					if createAccErr != nil {
+						return fmt.Errorf("failed to ensure default account: %w", createAccErr)
+					}
+					targetAccountID = acc.ID
+				}
+
+				position := &model.Position{
+					PortfolioID:         portfolioID,
+					AccountID:           targetAccountID,
+					AssetID:             assetID,
+					Quantity:            decimal.NewFromFloat(quantity),
+					OwnershipPercentage: decimal.NewFromInt(100),
+					QuoteCurrency:       quoteCurrency,
+				}
+				if price > 0 {
+					avgCost := decimal.NewFromFloat(price)
+					position.AverageCostBasis = &avgCost
+					totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+					position.TotalCostBasis = &totalCost
+				}
+				createdPosition, err = uow.Position().Create(ctx, position)
+				if err != nil {
+					return fmt.Errorf("failed to create position snapshot: %w", err)
+				}
+			}
 		}
 
-		// 4. --- Create and Persist Join Table Record ---
-		portfolioAsset := model.PortfolioAsset{
-			PortfolioID:          portfolioID,
-			AssetID:              assetID,
-			InstrumentID:         asset.InstrumentID,
-			Quantity:             quantity,
-			AveragePurchasePrice: price,
-			QuoteCurrency:        quoteCurrency,
-		}
+		if price > 0 && createdPosition != nil {
+			executedAt := extractPurchaseDateFromAssetMetadata(asset)
+			if executedAt.IsZero() {
+				executedAt = time.Now()
+			}
+			if executedAt.After(time.Now().AddDate(0, 0, 1)) {
+				executedAt = time.Now()
+			}
+			amount := model.Money(decimal.NewFromFloat(quantity).Mul(decimal.NewFromFloat(price)).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+			txQuantity := decimal.NewFromFloat(quantity)
+			txUnitPrice := decimal.NewFromFloat(price)
+			positionIDCopy := createdPosition.ID
 
-		createdPortfolioAsset, err = uow.PortfolioAsset().Create(ctx, &portfolioAsset)
-		if err != nil {
-			return fmt.Errorf("failed to add asset to portfolio: %w", err)
-		}
-
-		// Canonical quote currency lives on positions; keep it in sync at creation time.
-		if _, err = uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); err != nil {
-			if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("failed to check existing position: %w", err)
+			transaction := &model.Transaction{
+				UserID:            portfolio.UserID,
+				PositionID:        &positionIDCopy,
+				Type:              model.TransactionTypeBuy,
+				Amount:            amount,
+				Quantity:          &txQuantity,
+				UnitPriceAmount:   &txUnitPrice,
+				UnitPriceCurrency: quoteCurrency,
+				FeesAmount:        0,
+				FeesCurrency:      quoteCurrency,
+				ExecutedAt:        executedAt,
+			}
+			newTx, txErr := uow.Transaction().Create(ctx, transaction)
+			if txErr != nil {
+				return fmt.Errorf("failed to create initial transaction: %w", txErr)
 			}
 
-			position := &model.Position{
-				PortfolioID:         portfolioID,
-				AssetID:             assetID,
-				Quantity:            decimal.NewFromFloat(quantity),
-				OwnershipPercentage: decimal.NewFromInt(100),
-				QuoteCurrency:       quoteCurrency,
+			// Persist TaxLot for this initial purchase lot
+			lot := &model.TaxLot{
+				PortfolioID:       portfolioID,
+				PositionID:        createdPosition.ID,
+				AssetID:           assetID,
+				TransactionID:     &newTx.ID,
+				AcquiredAt:        executedAt,
+				InitialQuantity:   txQuantity,
+				RemainingQuantity: txQuantity,
+				CostBasisPerUnit:  txUnitPrice,
+				TotalCostBasis:    amount,
+				Currency:          quoteCurrency,
+				Status:            model.TaxLotStatusOpen,
 			}
-			if price > 0 {
-				avgCost := decimal.NewFromFloat(price)
-				position.AverageCostBasis = &avgCost
-				totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
-				position.TotalCostBasis = &totalCost
+			if _, lotErr := uow.TaxLot().Create(ctx, lot); lotErr != nil {
+				log.Printf("[WARN] [PortfolioService] failed to create initial tax lot: %v", lotErr)
 			}
-			createdPosition, createErr := uow.Position().Create(ctx, position)
-			if createErr != nil {
-				return fmt.Errorf("failed to create position snapshot: %w", createErr)
-			}
-
-			if price > 0 && createdPosition != nil {
-				executedAt := extractPurchaseDateFromAssetMetadata(asset)
-				if executedAt.IsZero() {
-					executedAt = time.Now()
-				}
-				if executedAt.After(time.Now().AddDate(0, 0, 1)) {
-					executedAt = time.Now()
-				}
-				amount := model.Money(decimal.NewFromFloat(quantity).Mul(decimal.NewFromFloat(price)).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
-				txQuantity := decimal.NewFromFloat(quantity)
-				txUnitPrice := decimal.NewFromFloat(price)
-				positionIDCopy := createdPosition.ID
-
-				transaction := &model.Transaction{
-					UserID:            portfolio.UserID,
-					PositionID:        &positionIDCopy,
-					Type:              model.TransactionTypeBuy,
-					Amount:            amount,
-					Quantity:          &txQuantity,
-					UnitPriceAmount:   &txUnitPrice,
-					UnitPriceCurrency: quoteCurrency,
-					FeesAmount:        0,
-					FeesCurrency:      quoteCurrency,
-					ExecutedAt:        executedAt,
-				}
-				if _, txErr := uow.Transaction().Create(ctx, transaction); txErr != nil {
-					return fmt.Errorf("failed to create initial transaction: %w", txErr)
-				}
-				backfillFrom = executedAt
-			}
+			backfillFrom = executedAt
 		}
 
 		return nil
@@ -943,6 +1050,30 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 			return fmt.Errorf("failed to update asset in portfolio: %w", err)
 		}
 		updatedPortfolioAsset = existing
+
+		if pos, posErr := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); posErr == nil && pos != nil {
+			pos.Quantity = decimal.NewFromFloat(quantity)
+			if price > 0 {
+				avgCost := decimal.NewFromFloat(price)
+				pos.AverageCostBasis = &avgCost
+				totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+				pos.TotalCostBasis = &totalCost
+			}
+			if updateErr := uow.Position().Update(ctx, pos); updateErr != nil {
+				return fmt.Errorf("failed to update position snapshot: %w", updateErr)
+			}
+		}
+
+		if stock, stockErr := uow.Stock().GetByID(ctx, assetID); stockErr == nil && stock != nil {
+			stock.Quantity = decimal.NewFromFloat(quantity)
+			stock.BuyingPrice = decimal.NewFromFloat(price)
+			_ = uow.Stock().Update(ctx, stock)
+		} else if fund, fundErr := uow.Fund().GetByID(ctx, assetID); fundErr == nil && fund != nil {
+			fund.Quantity = decimal.NewFromFloat(quantity)
+			fund.BuyingPrice = decimal.NewFromFloat(price)
+			_ = uow.Fund().Update(ctx, fund)
+		}
+
 		return nil
 	})
 
@@ -960,18 +1091,32 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 // RemoveAssetFromPortfolio handles removing an asset from a portfolio.
 func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string) error {
 	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s", portfolioID, assetID)
-	// 1. --- Check Existence of Portfolio and Asset ---
-	if _, err := s.uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
-		return fmt.Errorf("portfolio with ID %s not found", portfolioID)
-	}
-	if _, err := s.uow.Asset().GetByID(ctx, assetID); err != nil {
-		return fmt.Errorf("asset with ID %s not found", assetID)
-	}
+	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// 1. --- Check Existence of Portfolio and Asset ---
+		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
+			return fmt.Errorf("portfolio with ID %s not found: %w", portfolioID, err)
+		}
+		if _, err := uow.Asset().GetByID(ctx, assetID); err != nil {
+			return fmt.Errorf("asset with ID %s not found: %w", assetID, err)
+		}
 
-	// 2. --- Remove Portfolio Asset ---
-	err := s.uow.PortfolioAsset().DeleteByPortfolioAndAsset(ctx, portfolioID, assetID)
+		// 2. --- Remove Position and Associated Portfolio Asset ---
+		if pos, err := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); err == nil && pos != nil {
+			if delErr := uow.Position().Delete(ctx, pos.ID); delErr != nil {
+				log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: failed to delete position %s: %v", pos.ID, delErr)
+			}
+		}
+
+		if err := uow.PortfolioAsset().DeleteByPortfolioAndAsset(ctx, portfolioID, assetID); err != nil {
+			return fmt.Errorf("failed to remove asset from portfolio: %w", err)
+		}
+
+		return nil
+	})
+
 	if err != nil {
-		return fmt.Errorf("failed to remove asset from portfolio: %w", err)
+		log.Printf("[ERROR] [PortfolioService] RemoveAssetFromPortfolio: ERROR: portfolio=%s asset=%s: %v", portfolioID, assetID, err)
+		return err
 	}
 
 	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
@@ -1318,25 +1463,41 @@ func (s *PortfolioService) calculateRiskMetrics(ctx context.Context, portfolioID
 	// Calculate diversification score based on number of assets and allocation spread
 	diversification := s.calculateDiversificationScoreFromPositions(ctx, positions, totalValue)
 
-	// Get actual risk metrics from repository if possible
-	volatility := 0.0
-	maxDrawdown := 0.0
-	sharpeRatio := 0.0
-
 	// We calculate over the last 365 days
+	const riskLookbackDays = 365
 	endDate := time.Now()
 	startDate := endDate.AddDate(-1, 0, 0)
 
-	if v, err := s.uow.Performance().CalculateVolatility(ctx, portfolioID, 365); err == nil {
+	// Same annual risk-free assumption the PerformanceService uses, so the two
+	// paths do not disagree.
+	riskFreeRate := decimal.NewFromFloat(2.0)
+
+	// Each metric falls back to zero when it cannot be computed (too few
+	// snapshots, a flat series, a repository error). Zero here means "not
+	// measurable", which is honest; the previous hardcoded 0.0 for Sharpe was
+	// indistinguishable from a genuinely terrible risk-adjusted return.
+	volatility := 0.0
+	maxDrawdown := 0.0
+	sharpeRatio := 0.0
+	sortinoRatio := 0.0
+
+	if v, err := s.uow.Performance().CalculateVolatility(ctx, portfolioID, riskLookbackDays); err == nil {
 		volatility, _ = v.Float64()
 	}
 	if m, err := s.uow.Performance().CalculateMaxDrawdown(ctx, portfolioID, startDate, endDate); err == nil {
 		maxDrawdown, _ = m.Float64()
 	}
+	if sr, err := s.uow.Performance().CalculateSharpeRatio(ctx, portfolioID, riskFreeRate, riskLookbackDays); err == nil {
+		sharpeRatio, _ = sr.Float64()
+	}
+	if sor, err := s.uow.Performance().CalculateSortinoRatio(ctx, portfolioID, riskFreeRate, riskLookbackDays); err == nil {
+		sortinoRatio, _ = sor.Float64()
+	}
 
 	return RiskMetrics{
 		Volatility:      volatility,
 		SharpeRatio:     sharpeRatio,
+		SortinoRatio:    sortinoRatio,
 		MaxDrawdown:     maxDrawdown,
 		Diversification: diversification,
 	}
@@ -1392,31 +1553,7 @@ func (s *PortfolioService) calculateDiversificationScoreFromPositions(ctx contex
 func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portfolioID string, currentValue float64) []PerformancePoint {
 	now := time.Now()
 	autoSnapshotRebuildDisabled := isAutoSnapshotRebuildDisabled()
-	startDate := now.AddDate(0, 0, -30) // Default window
-
-	transactions, txErr := s.uow.Transaction().FindByPortfolioID(ctx, portfolioID)
-	if txErr == nil && len(transactions) > 0 {
-		oldest := now
-		found := false
-		for _, tx := range transactions {
-			if tx.ExecutedAt.IsZero() {
-				continue
-			}
-			if !found || tx.ExecutedAt.Before(oldest) {
-				oldest = tx.ExecutedAt
-				found = true
-			}
-		}
-		if found {
-			startDate = time.Date(oldest.Year(), oldest.Month(), oldest.Day(), 0, 0, 0, 0, oldest.Location())
-		}
-	}
-	if earliestSnapshot := s.getEarliestPerformanceSnapshotDate(ctx, portfolioID); !earliestSnapshot.IsZero() && earliestSnapshot.Before(startDate) {
-		startDate = earliestSnapshot
-	}
-	if earliestPrice := s.getEarliestPortfolioAssetPriceDate(ctx, portfolioID); !earliestPrice.IsZero() && earliestPrice.Before(startDate) {
-		startDate = earliestPrice
-	}
+	startDate := s.performanceHistoryStartDate(ctx, portfolioID)
 
 	if materialized := s.getMaterializedPerformanceHistory(ctx, portfolioID, startDate, now); len(materialized) > 0 {
 		if coversRange(materialized, startDate, now) {
@@ -1448,6 +1585,36 @@ func (s *PortfolioService) generatePerformanceHistory(ctx context.Context, portf
 	})
 
 	return history
+}
+
+func (s *PortfolioService) performanceHistoryStartDate(ctx context.Context, portfolioID string) time.Time {
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -30) // Default window
+
+	transactions, txErr := s.uow.Transaction().FindByPortfolioID(ctx, portfolioID)
+	if txErr == nil {
+		oldest := time.Time{}
+		found := false
+		for _, tx := range transactions {
+			if tx.ExecutedAt.IsZero() {
+				continue
+			}
+			if !found || tx.ExecutedAt.Before(oldest) {
+				oldest = tx.ExecutedAt
+				found = true
+			}
+		}
+		if found {
+			startDate = time.Date(oldest.Year(), oldest.Month(), oldest.Day(), 0, 0, 0, 0, oldest.Location())
+		}
+	}
+	if earliestSnapshot := s.getEarliestPerformanceSnapshotDate(ctx, portfolioID); !earliestSnapshot.IsZero() && earliestSnapshot.Before(startDate) {
+		startDate = earliestSnapshot
+	}
+	if earliestPrice := s.getEarliestPortfolioAssetPriceDate(ctx, portfolioID); !earliestPrice.IsZero() && earliestPrice.Before(startDate) {
+		startDate = earliestPrice
+	}
+	return startDate
 }
 
 func snapshotsToPerformancePoints(snapshots []repository.PerformanceSnapshot) []PerformancePoint {
@@ -1504,6 +1671,16 @@ func (s *PortfolioService) getEarliestPortfolioAssetPriceDate(ctx context.Contex
 	return time.Date(row.Date.Year(), row.Date.Month(), row.Date.Day(), 0, 0, 0, 0, row.Date.Location())
 }
 
+// getMaterializedPerformanceHistory reads the precomputed per-day values from
+// sigma_finance.portfolio_daily_values.
+//
+// Unit note: this table stores total_value as NUMERIC in major units (e.g.
+// dollars) — unlike portfolio_performance.total_value, which is minor units
+// (cents) and divided by 100 on read. Nothing writes portfolio_daily_values
+// today (only portfolio_recalculation_jobs is enqueued, never processed), so
+// the read path is currently dormant. Whoever wires the writer must match the
+// major-unit convention here, or the hero chart axis will be ~100x the
+// headline total.
 func (s *PortfolioService) getMaterializedPerformanceHistory(ctx context.Context, portfolioID string, from, to time.Time) []PerformancePoint {
 	unit, ok := s.uow.(*repository.UnitOfWork)
 	if !ok || unit.GetDB() == nil {
@@ -1558,6 +1735,168 @@ func (s *PortfolioService) getPortfolioPerformanceHistory(ctx context.Context, p
 		})
 	}
 	return history
+}
+
+// validScopedAssetTypes mirrors the sigma_finance.asset_type enum. The enum is
+// closed, so anything else in a request is a caller bug, not data to filter on;
+// whitelisting before the value reaches the IN clause keeps that contract.
+var validScopedAssetTypes = map[string]bool{
+	"STOCK":          true,
+	"FUND":           true,
+	"CRYPTO":         true,
+	"BANK_ACCOUNT":   true,
+	"REAL_ESTATE":    true,
+	"LIFE_INSURANCE": true,
+	"WATCH":          true,
+	"OTHER_VALUABLE": true,
+}
+
+// GetScopedPerformanceHistory returns the portfolio's daily aggregate value
+// restricted to the given asset types (e.g. STOCK, FUND).
+//
+// It values each day with the same method as the snapshot writer
+// (repository.CalculateAndSaveHistoricalSnapshots): quantity held at date ×
+// last known price at date, summed per position. Computed on read and never
+// persisted, so a scoped series cannot drift from the whole-portfolio
+// snapshots, and no backfill or writer is needed for it to be honest.
+//
+// Unit note: the sum is built in cents exactly like the writer and converted
+// to major units on the way out, matching getPortfolioPerformanceHistory.
+func (s *PortfolioService) GetScopedPerformanceHistory(ctx context.Context, portfolioID string, assetTypes []string) ([]PerformancePoint, error) {
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if !ok || unit.GetDB() == nil {
+		return nil, fmt.Errorf("scoped performance history: database unavailable")
+	}
+
+	types := make([]string, 0, len(assetTypes))
+	for _, t := range assetTypes {
+		t = strings.ToUpper(strings.TrimSpace(t))
+		if !validScopedAssetTypes[t] {
+			return nil, fmt.Errorf("scoped performance history: unsupported asset type %q", t)
+		}
+		types = append(types, t)
+	}
+	if len(types) == 0 {
+		return nil, fmt.Errorf("scoped performance history: no asset types requested")
+	}
+
+	from := s.performanceHistoryStartDate(ctx, portfolioID)
+	to := time.Now()
+
+	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(types)), ",")
+	args := make([]any, 0, 3+len(types))
+	args = append(args, from.Format(time.DateOnly), to.Format(time.DateOnly), portfolioID)
+	for _, t := range types {
+		args = append(args, t)
+	}
+
+	var rows []struct {
+		Date       time.Time       `bun:"snapshot_date"`
+		TotalValue decimal.Decimal `bun:"total_value"`
+	}
+	query := `
+WITH date_series AS (
+    SELECT generate_series(?::date, ?::date, '1 day'::interval)::date AS snapshot_date
+),
+positions_with_tx AS (
+    SELECT DISTINCT position_id
+    FROM sigma_finance.transactions
+    WHERE position_id IS NOT NULL
+),
+quantity_per_position_per_day AS (
+    SELECT
+        p.id AS position_id,
+        p.asset_id,
+        COALESCE(p.quote_currency, a.metadata->>'currency', 'USD') AS quote_currency,
+        p.ownership_percentage,
+        ds.snapshot_date,
+        CASE
+            WHEN p.id IN (SELECT position_id FROM positions_with_tx) THEN
+                COALESCE((
+                    SELECT SUM(
+                        CASE
+                            WHEN t.type IN ('BUY','DEPOSIT','TRANSFER_IN') THEN  t.quantity
+                            WHEN t.type IN ('SELL','WITHDRAWAL','TRANSFER_OUT') THEN -t.quantity
+                            ELSE 0
+                        END
+                    )
+                    FROM sigma_finance.transactions t
+                    WHERE t.position_id = p.id
+                      AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+                ), 0)
+            WHEN ds.snapshot_date >= date_trunc('day', p.created_at)::date THEN p.quantity
+            ELSE 0
+        END AS quantity_at_date
+    FROM sigma_finance.positions p
+    JOIN sigma_finance.assets a ON a.id = p.asset_id
+    CROSS JOIN date_series ds
+    WHERE p.portfolio_id = ?
+      AND a.type IN (` + placeholders + `)
+),
+priced_metrics AS (
+    SELECT
+        qppd.snapshot_date,
+        qppd.quantity_at_date,
+        COALESCE(ap.price, 0) AS price_at_date,
+        COALESCE(qppd.ownership_percentage, 100) AS ownership_pct,
+        COALESCE(fx.rate, 1.0) AS fx_rate
+    FROM quantity_per_position_per_day qppd
+    LEFT JOIN LATERAL (
+        SELECT price
+        FROM sigma_finance.asset_prices
+        WHERE asset_id = qppd.asset_id
+          AND timestamp <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ORDER BY timestamp DESC
+        LIMIT 1
+    ) ap ON true
+    LEFT JOIN LATERAL (
+        SELECT rate
+        FROM sigma_finance.fx_rates
+        WHERE base_currency = qppd.quote_currency
+          AND quote_currency = 'USD'
+          AND as_of <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ORDER BY as_of DESC
+        LIMIT 1
+    ) fx ON qppd.quote_currency != 'USD'
+)
+SELECT
+    snapshot_date,
+    SUM(quantity_at_date * price_at_date * ownership_pct / 100 * fx_rate) * 100 AS total_value
+FROM priced_metrics
+GROUP BY snapshot_date
+ORDER BY snapshot_date ASC
+`
+	if err := unit.GetDB().NewRaw(query, args...).Scan(ctx, &rows); err != nil {
+		return nil, fmt.Errorf("scoped performance history: %w", err)
+	}
+
+	history := make([]PerformancePoint, 0, len(rows))
+	for _, row := range rows {
+		value, _ := row.TotalValue.Float64()
+		history = append(history, PerformancePoint{Date: row.Date, Value: value / 100.0})
+	}
+	return trimLeadingZeroPoints(history), nil
+}
+
+// trimLeadingZeroPoints drops the initial run of zero-value days from a series.
+//
+// The snapshot window starts at the earliest price or transaction in the
+// portfolio, which can be years before a given asset type was ever held. An
+// unheld type contributes honest zeros for that whole prefix, but they carry no
+// information and squash the chart: every long range would read as a flat line
+// at zero followed by a single jump on the right edge.
+//
+// Zeros after the first non-zero day are kept on purpose — a position can be
+// worth nothing mid-series (no price recorded yet, fully sold) and that shape is
+// real. A series that is zero throughout returns empty so callers fall back to
+// the live subtotal instead of drawing a flat zero.
+func trimLeadingZeroPoints(points []PerformancePoint) []PerformancePoint {
+	for i, point := range points {
+		if point.Value != 0 {
+			return points[i:]
+		}
+	}
+	return []PerformancePoint{}
 }
 
 func coversRange(points []PerformancePoint, startDate, endDate time.Time) bool {

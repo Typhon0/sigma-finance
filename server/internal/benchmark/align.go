@@ -14,11 +14,19 @@ import (
 // =============================================================================
 
 // PortfolioSample pairs a portfolio observation's calendar timestamp with
-// its total-value in cents (model.Money). Used as the "master" series — the
-// resulting aligned output uses portfolio days as the key.
+// its total-value and cost-basis in cents (model.Money). Used as the "master"
+// series — the resulting aligned output uses portfolio days as the key.
 type PortfolioSample struct {
 	Timestamp time.Time
 	Value     model.Money
+	CostBasis model.Money
+}
+
+// AlignedPortfolioSample represents a portfolio observation aligned with benchmark calendar,
+// carrying both market valuation and cost basis for flow-neutral returns (TWR).
+type AlignedPortfolioSample struct {
+	Value     model.Money
+	CostBasis model.Money
 }
 
 // BenchmarkSample pairs an instrument price observation's timestamp with
@@ -47,8 +55,8 @@ func utcDay(t time.Time) time.Time {
 }
 
 // AlignDaily joins a portfolio series and a benchmark series into a
-// day-aligned pair of (value, price) slices suitable for feeding into
-// DailyMoneyReturns + DailyPriceReturns.
+// day-aligned pair of (AlignedPortfolioSample, price) slices suitable for feeding into
+// DailyTWRReturns + DailyPriceReturns.
 //
 // Algorithm:
 //  1. Floor every input timestamp to UTC midnight (key for day resolution).
@@ -62,7 +70,7 @@ func utcDay(t time.Time) time.Time {
 // Returns nil, nil when either input is empty or the resulting alignment has
 // fewer than 2 paired points — downstream math requires 2+ pairs to produce
 // meaningful sample statistics.
-func AlignDaily(portfolio []PortfolioSample, benchmark []BenchmarkSample) ([]model.Money, []decimal.Decimal) {
+func AlignDaily(portfolio []PortfolioSample, benchmark []BenchmarkSample) ([]AlignedPortfolioSample, []decimal.Decimal) {
 	if len(portfolio) == 0 || len(benchmark) == 0 {
 		return nil, nil
 	}
@@ -73,7 +81,7 @@ func AlignDaily(portfolio []PortfolioSample, benchmark []BenchmarkSample) ([]mod
 		return nil, nil
 	}
 
-	outPort := make([]model.Money, 0, len(ports))
+	outPort := make([]AlignedPortfolioSample, 0, len(ports))
 	outBench := make([]decimal.Decimal, 0, len(ports))
 
 	// Two-pointer walk: j indexes the benchmark's latest covered day; once
@@ -94,7 +102,10 @@ func AlignDaily(portfolio []PortfolioSample, benchmark []BenchmarkSample) ([]mod
 			// week" estimate would silently bias Beta toward infinity.
 			continue
 		}
-		outPort = append(outPort, p.val)
+		outPort = append(outPort, AlignedPortfolioSample{
+			Value:     p.val,
+			CostBasis: p.costBasis,
+		})
 		outBench = append(outBench, lastBenchPx)
 	}
 
@@ -112,9 +123,10 @@ func AlignDaily(portfolio []PortfolioSample, benchmark []BenchmarkSample) ([]mod
 // the last-write-wins pass. The `ts` field holds the original (pre-truncation)
 // timestamp so that ties on UTC day resolve to the latest observation.
 type dayMoney struct {
-	day time.Time
-	val model.Money
-	ts  time.Time // original timestamp; used to pick the latest-of-day key
+	day       time.Time
+	val       model.Money
+	costBasis model.Money
+	ts        time.Time // original timestamp; used to pick the latest-of-day key
 }
 
 type dayPrice struct {
@@ -129,9 +141,10 @@ func collapsePortfolioSamples(portfolio []PortfolioSample) []dayMoney {
 	rows := make([]dayMoney, 0, len(portfolio))
 	for _, p := range portfolio {
 		rows = append(rows, dayMoney{
-			day: utcDay(p.Timestamp),
-			val: p.Value,
-			ts:  p.Timestamp,
+			day:       utcDay(p.Timestamp),
+			val:       p.Value,
+			costBasis: p.CostBasis,
+			ts:        p.Timestamp,
 		})
 	}
 	sort.SliceStable(rows, func(i, j int) bool {

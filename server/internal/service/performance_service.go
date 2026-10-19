@@ -203,10 +203,6 @@ type ServiceRiskMetrics struct {
 	MaxDrawdown       decimal.Decimal `json:"max_drawdown"`
 	ValueAtRisk       decimal.Decimal `json:"value_at_risk"`
 	ConditionalVaR    decimal.Decimal `json:"conditional_var"`
-	Beta              decimal.Decimal `json:"beta"`
-	Alpha             decimal.Decimal `json:"alpha"`
-	TrackingError     decimal.Decimal `json:"tracking_error"`
-	InformationRatio  decimal.Decimal `json:"information_ratio"`
 	CalmarRatio       decimal.Decimal `json:"calmar_ratio"`
 	DownsideDeviation decimal.Decimal `json:"downside_deviation"`
 }
@@ -660,7 +656,7 @@ func (s *PerformanceService) UpdatePerformanceSnapshots(ctx context.Context, por
 	// Validate all portfolio IDs
 	for _, portfolioID := range portfolioIDs {
 		if portfolioID == "" {
-		log.Printf("[WARN] [PerformanceService] UpdatePerformanceSnapshots: ERROR invalid portfolio ID found")
+			log.Printf("[WARN] [PerformanceService] UpdatePerformanceSnapshots: ERROR invalid portfolio ID found")
 			return errors.New("invalid portfolio ID found")
 		}
 	}
@@ -810,7 +806,7 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 			model.Interval1d,
 			timeRange.Start,
 			timeRange.End,
-			0, // limit (0 = retrieve all)
+			0,   // limit (0 = retrieve all)
 			nil, // preferredProvider
 		)
 		if err == nil && candlesResult != nil && len(candlesResult.Candles) >= 2 {
@@ -823,58 +819,8 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 		// Get portfolio performance snapshots
 		portfolioSnapshots, err := s.performanceRepo.GetPerformanceSnapshots(ctx, portfolioID, timeRange.Start, timeRange.End)
 		if err == nil && len(portfolioSnapshots) >= 2 {
-			// Skip leading snapshots where the portfolio was near-zero relative to
-			// the final value.  Without this, a portfolio that started at $21 and
-			// grew to $6,284 via cash deposits would report a 29,800% return and a
-			// meaningless alpha.  We use the first snapshot that has at least 1% of
-			// the final portfolio value as the start-of-period baseline.
-			endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
-			var effectiveStart model.Money
-			for _, snap := range portfolioSnapshots {
-				if snap.TotalValue >= endValue/100 {
-					effectiveStart = snap.TotalValue
-					break
-				}
-			}
-			if effectiveStart <= 0 {
-				effectiveStart = portfolioSnapshots[0].TotalValue
-			}
-
-			var portfolioReturn decimal.Decimal
-			if effectiveStart > 0 {
-				portfolioReturn = decimal.NewFromInt(int64(endValue - effectiveStart)).
-					Div(decimal.NewFromInt(int64(effectiveStart))).
-					Mul(decimal.NewFromInt(100))
-			}
-
-			startPrice := benchmarkPrices[0].Close
-			endPrice := benchmarkPrices[len(benchmarkPrices)-1].Close
-			var benchmarkReturn decimal.Decimal
-			if !startPrice.IsZero() {
-				benchmarkReturn = endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
-			}
-
-			// Cumulative alpha: end-of-period percentage-point difference. This
-			// preserves the existing service-level contract ("how much better did
-			// the portfolio finish vs. the benchmark?").
-			cumulativeAlpha := portfolioReturn.Sub(benchmarkReturn)
-
-			repoComparison = &repository.BenchmarkComparison{
-				PortfolioID:      portfolioID,
-				BenchmarkAssetID: benchmarkAssetID,
-				PortfolioReturn:  portfolioReturn,
-				BenchmarkReturn:  benchmarkReturn,
-				Alpha:            cumulativeAlpha,
-				Beta:             decimal.NewFromFloat(1),
-				TrackingError:    decimal.Zero,
-				InformationRatio: decimal.Zero,
-				CorrelationCoeff: decimal.NewFromFloat(1),
-				StartDate:        timeRange.Start,
-				EndDate:          timeRange.End,
-			}
-
 			// Real Beta / TrackingError / InformationRatio / Correlation /
-			// Jensen alpha from aligned daily returns. Snapshots and candles
+			// Jensen alpha and TWR from aligned daily returns. Snapshots and candles
 			// are floored to UTC midnight, collapsed to one-sample-per-day
 			// (last-write-wins), then joined via LOCF on the portfolio
 			// calendar. Robust against intraday timestamps, sparse or
@@ -884,6 +830,7 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 				portSamples[i] = benchmark.PortfolioSample{
 					Timestamp: snap.SnapshotDate,
 					Value:     snap.TotalValue,
+					CostBasis: snap.TotalCostBasis,
 				}
 			}
 			benchSamples := make([]benchmark.BenchmarkSample, len(benchmarkPrices))
@@ -894,16 +841,71 @@ func (s *PerformanceService) CalculateBenchmarkComparison(ctx context.Context, p
 				}
 			}
 			portVals, priceVals := benchmark.AlignDaily(portSamples, benchSamples)
+
+			var portfolioReturn decimal.Decimal
+			var benchmarkReturn decimal.Decimal
+			var cumulativeAlpha decimal.Decimal
+			beta := decimal.NewFromFloat(1)
+			trackingError := decimal.Zero
+			informationRatio := decimal.Zero
+			correlationCoeff := decimal.NewFromFloat(1)
+
 			if len(portVals) >= 2 && len(priceVals) >= 2 {
-				alignedPortReturns := benchmark.DailyMoneyReturns(portVals)
+				alignedPortReturns := benchmark.DailyTWRReturns(portVals)
 				alignedBenchReturns := benchmark.DailyPriceReturns(priceVals)
-				if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
-					repoComparison.Beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
-					repoComparison.TrackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
-					repoComparison.InformationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
-					repoComparison.CorrelationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
-					jensenAlpha = benchmark.JensenAlpha(alignedPortReturns, alignedBenchReturns)
+				if len(alignedPortReturns) >= 1 && len(alignedBenchReturns) >= 1 {
+					portfolioReturn = benchmark.CompoundTWR(alignedPortReturns)
+					benchmarkReturn = benchmark.CompoundTWR(alignedBenchReturns)
+					cumulativeAlpha = portfolioReturn.Sub(benchmarkReturn)
+
+					if len(alignedPortReturns) >= 2 && len(alignedBenchReturns) >= 2 {
+						beta = benchmark.Beta(alignedPortReturns, alignedBenchReturns)
+						trackingError = benchmark.TrackingError(alignedPortReturns, alignedBenchReturns)
+						informationRatio = benchmark.InformationRatio(alignedPortReturns, alignedBenchReturns)
+						correlationCoeff = benchmark.PearsonCorrelation(alignedPortReturns, alignedBenchReturns)
+						jDaily := benchmark.JensenAlpha(alignedPortReturns, alignedBenchReturns)
+						jensenAlpha = benchmark.AnnualizedJensenAlpha(jDaily)
+					}
 				}
+			}
+
+			// Fallback when daily aligned returns are insufficient
+			if portfolioReturn.IsZero() && benchmarkReturn.IsZero() {
+				startValue := portfolioSnapshots[0].TotalValue
+				endValue := portfolioSnapshots[len(portfolioSnapshots)-1].TotalValue
+				startCost := portfolioSnapshots[0].TotalCostBasis
+				endCost := portfolioSnapshots[len(portfolioSnapshots)-1].TotalCostBasis
+				deltaCost := endCost - startCost
+				capitalBase := startValue
+				if deltaCost > 0 {
+					capitalBase += deltaCost
+				}
+				if capitalBase > 0 {
+					netGain := (endValue - startValue) - deltaCost
+					portfolioReturn = decimal.NewFromInt(int64(netGain)).
+						Div(decimal.NewFromInt(int64(capitalBase))).
+						Mul(decimal.NewFromInt(100))
+				}
+				startPrice := benchmarkPrices[0].Close
+				endPrice := benchmarkPrices[len(benchmarkPrices)-1].Close
+				if !startPrice.IsZero() {
+					benchmarkReturn = endPrice.Sub(startPrice).Div(startPrice).Mul(decimal.NewFromInt(100))
+				}
+				cumulativeAlpha = portfolioReturn.Sub(benchmarkReturn)
+			}
+
+			repoComparison = &repository.BenchmarkComparison{
+				PortfolioID:      portfolioID,
+				BenchmarkAssetID: benchmarkAssetID,
+				PortfolioReturn:  portfolioReturn,
+				BenchmarkReturn:  benchmarkReturn,
+				Alpha:            cumulativeAlpha,
+				Beta:             beta,
+				TrackingError:    trackingError,
+				InformationRatio: informationRatio,
+				CorrelationCoeff: correlationCoeff,
+				StartDate:        timeRange.Start,
+				EndDate:          timeRange.End,
 			}
 		}
 	}
@@ -1049,6 +1051,12 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 	calmarRatio := s.calculateCalmarRatio(sharpeRatio, maxDrawdown)
 	downsideDeviation := s.calculateDownsideDeviation(ctx, portfolioID, days)
 
+	// Beta, alpha, tracking error and the information ratio are deliberately
+	// absent from this struct. They used to be hardcoded to 1.0 / 0.0 with TODO
+	// comments, which meant every generated report and JSON payload carried
+	// confident-looking numbers that were not measurements. They are computed for
+	// real - from aligned daily returns - on the BenchmarkComparison path, which
+	// is where they belong, because they are undefined without a benchmark.
 	return &ServiceRiskMetrics{
 		Volatility:        volatility,
 		SharpeRatio:       sharpeRatio,
@@ -1056,10 +1064,6 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 		MaxDrawdown:       maxDrawdown,
 		ValueAtRisk:       valueAtRisk,
 		ConditionalVaR:    conditionalVaR,
-		Beta:              decimal.NewFromInt(1), // TODO: Calculate against market benchmark
-		Alpha:             decimal.Zero,          // TODO: Calculate against market benchmark
-		TrackingError:     decimal.Zero,          // TODO: Calculate against benchmark
-		InformationRatio:  decimal.Zero,          // TODO: Calculate against benchmark
 		CalmarRatio:       calmarRatio,
 		DownsideDeviation: downsideDeviation,
 	}, nil

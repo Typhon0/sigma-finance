@@ -1,14 +1,23 @@
 # internal/handler/graphql/schema/portfolio.graphqls
 
+enum TaxWrapperType {
+    STANDARD_TAXABLE
+    PEA
+    RETIREMENT_SHELTERED
+    CRYPTO_VAULT
+}
+
 type Portfolio {
     id: ID!
     name: String!
     description: String
+    taxWrapper: TaxWrapperType!
     sortOrder: Int!
     createdAt: Time!
     updatedAt: Time!
     user: User!
     tags: [Tag!]!
+    accounts: [Account!]!
     assets: [PortfolioAsset!]!
     transactions: [Transaction!]!
     analytics: PortfolioAnalytics
@@ -54,6 +63,24 @@ type PositionValuation {
     assetId: ID!
     nativeValue: Float!
     displayValue: Float!
+    costBasisNative: Float!
+    costBasisDisplay: Float!
+    # Currency the remaining cost basis is denominated in. Equal to
+    # displayCurrency when the basis was converted at a stored rate; otherwise
+    # the percentage return for this position is not computable and clients
+    # must not derive one.
+    costBasisCurrency: String!
+    # True only when every remaining cost-basis lot was either already in the
+    # display currency or converted at the FX rate that prevailed on its own
+    # execution date. There is deliberately no latest-rate fallback. False
+    # means the percentage return is not computable and clients must not
+    # derive one from the raw basis.
+    costBasisConverted: Boolean!
+    # False when no display-currency value could be produced (missing price or
+    # missing FX rate). Clients must treat displayValue as unavailable.
+    hasDisplayValue: Boolean!
+    isExcluded: Boolean!
+    exclusionReason: String
     fxRate: Float!
     fxAsOf: Time
     fxSource: String
@@ -70,11 +97,19 @@ type AssetAllocation {
     count: Int!
 }
 
+# Risk metrics are nullable throughout.
+#
+# They were previously non-null and, on the portfolio-valuation path, filled
+# with literal zeros. A zero Sharpe ratio is indistinguishable from a genuinely
+# mediocre risk-adjusted return, and a zero max drawdown reads as "this portfolio
+# never fell" - so the API asserted a confident measurement it had not made.
+# Null now means "not computed for this portfolio", which is the truth.
 type RiskMetrics {
-    volatility: Float!
-    sharpeRatio: Float!
-    maxDrawdown: Float!
-    diversification: Float!
+    volatility: Float
+    sharpeRatio: Float
+    sortinoRatio: Float
+    maxDrawdown: Float
+    diversification: Float
 }
 
 type PerformancePoint {
@@ -88,11 +123,13 @@ input CreatePortfolioInput {
     userID: ID!
     name: String!
     description: String
+    taxWrapper: TaxWrapperType
 }
 
 input UpdatePortfolioInput {
     name: String
     description: String
+    taxWrapper: TaxWrapperType
     sortOrder: Int
 }
 

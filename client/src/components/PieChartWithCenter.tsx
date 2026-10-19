@@ -46,7 +46,7 @@ export function PieChartWithCenter({
 	const option = {
 		color: chartColors,
 		tooltip: {
-			show: false, // Désactive le tooltip
+			show: false, // Disables tooltip
 		},
 		legend: {
 			show: false,

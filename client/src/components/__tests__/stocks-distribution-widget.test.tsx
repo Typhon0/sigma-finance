@@ -113,8 +113,11 @@ describe("StocksDistributionWidget", () => {
 
 		// Check allocation title
 		expect(screen.getByText(/Allocation/i)).toBeInTheDocument();
-		expect(screen.getByText(/Total Value/i)).toBeInTheDocument();
-		expect(screen.getByText("$4,000")).toBeInTheDocument();
+		// The donut centre reports the number of charted groups; the portfolio
+		// total lives in the page hero, and repeating it here was the
+		// duplication this asserts against.
+		expect(screen.queryByText("$4,000")).not.toBeInTheDocument();
+		expect(screen.getByText(/Assets/i)).toBeInTheDocument();
 	});
 
 	it("switches to Treemap and Ranked Bars views", () => {
@@ -128,12 +131,12 @@ describe("StocksDistributionWidget", () => {
 		);
 
 		// Switch to Treemap
-		const treemapBtn = screen.getByTitle("Treemap Grid");
+		const treemapBtn = screen.getByRole("button", { name: "Treemap grid view" });
 		fireEvent.click(treemapBtn);
 		expect(screen.getByTestId("echarts-distribution")).toBeInTheDocument();
 
 		// Switch to Ranked Bars
-		const barsBtn = screen.getByTitle("Ranked List Breakdown");
+		const barsBtn = screen.getByRole("button", { name: "Ranked list breakdown view" });
 		fireEvent.click(barsBtn);
 		expect(screen.getByText("#1")).toBeInTheDocument();
 		expect(screen.getByText("#2")).toBeInTheDocument();

@@ -16,6 +16,27 @@ import (
 )
 
 // getAssetWithDetails is a helper method to get asset with type-specific details
+// loadInstrumentForAsset resolves the instrument an asset tracks, which is
+// where the reference metrics (expense ratio, dividend yield, P/E) live.
+//
+// Returns nil without logging when there is no instrument - a manually entered
+// holding has none, and that is normal, not a failure. A genuine lookup error
+// is logged and also degrades to nil: the metrics are supplementary, and
+// failing here would blank out a holding the user came to look at.
+func (r *Resolver) loadInstrumentForAsset(ctx context.Context, asset *model.Asset) *model.Instrument {
+	if asset == nil || asset.InstrumentID == nil || *asset.InstrumentID == "" {
+		return nil
+	}
+	instrument, err := r.UOW.Instrument().GetByID(ctx, *asset.InstrumentID)
+	if err != nil {
+		if !errors.Is(err, repository.ErrNotFound) {
+			log.Printf("[ERROR] [loadInstrumentForAsset] Instrument.GetByID failed for instrument %s: %v", *asset.InstrumentID, err)
+		}
+		return nil
+	}
+	return instrument
+}
+
 func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gqlModel.Asset, error) {
 	// Get base asset
 	asset, err := r.AssetService.GetAsset(ctx, assetID)
@@ -53,13 +74,15 @@ func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gql
 	}
 
 	// Determine asset type and return appropriate concrete type
+	instrument := r.loadInstrumentForAsset(ctx, asset)
+
 	switch asset.Type {
 	case "STOCK":
 		stockDetails, stockErr := r.UOW.Stock().GetByID(ctx, asset.ID)
 		if stockErr != nil {
 			log.Printf("[ERROR] [getAssetWithDetails] Stock.GetByID failed for asset %s: %v", asset.ID, stockErr)
 		}
-		return mapStockToGQL(*asset, stockDetails, tags, dayChange, dayChangePercent, currentValue), nil
+		return mapStockToGQL(*asset, stockDetails, tags, dayChange, dayChangePercent, currentValue, instrument), nil
 
 	case "CRYPTO":
 		cryptoDetails, cryptoErr := r.UOW.Crypto().GetByID(ctx, asset.ID)
@@ -73,7 +96,7 @@ func (r *Resolver) getAssetWithDetails(ctx context.Context, assetID string) (gql
 		if fundErr != nil {
 			log.Printf("[ERROR] [getAssetWithDetails] Fund.GetByID failed for asset %s: %v", asset.ID, fundErr)
 		}
-		return mapFundToGQL(*asset, fundDetails, tags, dayChange, dayChangePercent, currentValue), nil
+		return mapFundToGQL(*asset, fundDetails, tags, dayChange, dayChangePercent, currentValue, instrument), nil
 
 	case "BANK_ACCOUNT":
 		return mapBankAccountToGQL(*asset, tags, dayChange, dayChangePercent, currentValue), nil

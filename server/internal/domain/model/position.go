@@ -15,19 +15,37 @@ type Position struct {
 
 	ID                  string           `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	PortfolioID         string           `bun:"portfolio_id,notnull"`
+	AccountID           string           `bun:"account_id,notnull"`
 	AssetID             string           `bun:"asset_id,notnull"`
 	Quantity            decimal.Decimal  `bun:"quantity,type:decimal(20,8),notnull,default:0"`
 	OwnershipPercentage decimal.Decimal  `bun:"ownership_percentage,type:decimal(5,2),default:100.00"`
 	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:decimal(20,8)"` // Cost per unit
 	TotalCostBasis      *Money           `bun:"total_cost_basis"`                      // Total cost in cents
-	Notes               *string          `bun:"notes"`
-	QuoteCurrency       Currency         `bun:"quote_currency,type:varchar(3)"`
-	CreatedAt           time.Time        `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt           time.Time        `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	// RealizedGainLoss is the cumulative ECONOMIC realized P/L (average-cost
+	// method). It is deliberately a different number from the FISCAL
+	// lot-matched G/L recorded per disposal in tax_lot_dispositions.
+	RealizedGainLoss Money     `bun:"realized_gain_loss,notnull,default:0"` // In cents
+	Notes            *string   `bun:"notes"`
+	QuoteCurrency    Currency  `bun:"quote_currency,type:varchar(3)"`
+	CreatedAt        time.Time `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt        time.Time `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	Portfolio *Portfolio `bun:"rel:belongs-to,join:portfolio_id=id"`
+	Account   *Account   `bun:"rel:belongs-to,join:account_id=id"`
 	Asset     *Asset     `bun:"rel:belongs-to,join:asset_id=id"`
+}
+
+// EffectiveTaxWrapper returns the Account's tax wrapper if present,
+// falling back to Portfolio's tax wrapper if Account is nil.
+func (p *Position) EffectiveTaxWrapper() TaxWrapperType {
+	if p.Account != nil && p.Account.TaxWrapper != "" {
+		return p.Account.TaxWrapper
+	}
+	if p.Portfolio != nil && p.Portfolio.TaxWrapper != "" {
+		return p.Portfolio.TaxWrapper
+	}
+	return TaxWrapperStandardTaxable
 }
 
 // PositionValue represents the calculated value of a position

@@ -3,6 +3,8 @@
 type Position {
     id: ID!
     portfolio: Portfolio!
+    accountId: ID!
+    account: Account!
     asset: Asset!
     quantity: Float!
     averagePurchasePrice: Float

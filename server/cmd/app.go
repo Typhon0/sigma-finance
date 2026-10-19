@@ -136,6 +136,7 @@ func NewApp() (*AppContainer, error) {
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{
 		PortfolioService:      serviceContainer.Portfolio,
+		AccountService:        serviceContainer.Account,
 		UserService:           serviceContainer.User,
 		AssetService:          serviceContainer.Asset,
 		TagService:            serviceContainer.Tag,
@@ -147,22 +148,42 @@ func NewApp() (*AppContainer, error) {
 		MarketDataPackService: serviceContainer.MarketDataPacks,
 		InstrumentService:     serviceContainer.Instrument,
 		PerformanceService:    serviceContainer.Performance,
+		AlertService:          serviceContainer.Alert,
+		MonitoringService:     serviceContainer.Monitoring,
 		UOW:                   uow,
 	}
 
 	// Initialize Fiber app
 	app := fiber.New()
-	
+
 	allowedOrigins := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if allowedOrigins == "" {
-		allowedOrigins = "http://localhost:5173"
+		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173,http://localhost:8080,http://127.0.0.1:8080"
 	}
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins:     allowedOrigins,
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowOriginsFunc: func(origin string) bool {
+			if allowedOrigins == "*" {
+				return true
+			}
+			for _, o := range strings.Split(allowedOrigins, ",") {
+				if strings.TrimSpace(o) == origin {
+					return true
+				}
+			}
+			// In development allow any localhost/127.0.0.1/local-network origin
+			if strings.HasPrefix(origin, "http://localhost:") ||
+				strings.HasPrefix(origin, "http://127.0.0.1:") ||
+				strings.HasPrefix(origin, "http://192.168.") ||
+				strings.HasPrefix(origin, "http://10.") ||
+				strings.HasPrefix(origin, "http://172.") {
+				return true
+			}
+			return false
+		},
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, apollo-require-preflight, x-apollo-operation-name",
 		AllowCredentials: true,
-		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH",
+		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS",
 	}))
 	app.Use(logger.New())
 	app.Use(recover.New())

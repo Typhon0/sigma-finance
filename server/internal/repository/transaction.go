@@ -194,7 +194,6 @@ func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Contex
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN quantity WHEN type IN ('SELL', 'TRANSFER_OUT') THEN -quantity ELSE 0 END), 0) as total_quantity").
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') AND quantity IS NOT NULL AND unit_price_amount IS NOT NULL THEN quantity * unit_price_amount ELSE 0 END), 0) as weighted_cost_sum").
 		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN ABS(amount) ELSE 0 END), 0) as total_cost_basis").
-		ColumnExpr("COALESCE(SUM(CASE WHEN type IN ('SELL', 'TRANSFER_OUT') THEN amount ELSE 0 END), 0) as realized_gain_loss").
 		ColumnExpr("COUNT(*) as transaction_count").
 		ColumnExpr("MIN(CASE WHEN type IN ('BUY', 'TRANSFER_IN') THEN executed_at END) as first_purchase_date").
 		ColumnExpr("MAX(executed_at) as last_transaction_date").
@@ -205,11 +204,24 @@ func (r *TransactionRepository) CalculateCostBasisForPosition(ctx context.Contex
 		return nil, err
 	}
 
+	// Fiscal realized gain/loss CANNOT be derived from transactions.amount:
+	// for sells that column holds negative proceeds, not gains. The only
+	// truthful source is the lot-matched disposition records.
+	var fiscalGain int64
+	err = r.db.NewSelect().
+		ColumnExpr("COALESCE(SUM(realized_gain_loss), 0) as fiscal_gain").
+		Model((*model.TaxLotDisposition)(nil)).
+		Where("position_id = ?", positionID).
+		Scan(ctx, &fiscalGain)
+	if err != nil {
+		return nil, err
+	}
+
 	calculation := &CostBasisCalculation{
 		PositionID:          positionID,
 		TotalQuantity:       result.TotalQuantity,
 		TotalCostBasis:      model.Money(result.TotalCostBasis),
-		RealizedGainLoss:    model.Money(result.RealizedGainLoss),
+		RealizedGainLoss:    model.Money(fiscalGain),
 		TransactionCount:    result.TransactionCount,
 		FirstPurchaseDate:   result.FirstPurchaseDate,
 		LastTransactionDate: result.LastTransactionDate,
@@ -273,28 +285,35 @@ func (r *TransactionRepository) GetTaxLotsForPosition(ctx context.Context, posit
 func (r *TransactionRepository) CalculateRealizedGainsForUser(ctx context.Context, userID string, dateFrom, dateTo time.Time) (*model.RealizedGains, error) {
 	var result struct {
 		TotalRealized    int64 `bun:"total_realized"`
+		ShortTerm        int64 `bun:"short_term"`
+		LongTerm         int64 `bun:"long_term"`
 		TransactionCount int   `bun:"transaction_count"`
 	}
 
 	err := r.db.NewSelect().
-		ColumnExpr("COALESCE(SUM(amount), 0) as total_realized").
-		ColumnExpr("COUNT(*) as transaction_count").
-		Model((*model.Transaction)(nil)).
-		Where("user_id = ?", userID).
-		Where("type = 'SELL'").
-		Where("executed_at >= ? AND executed_at <= ?", dateFrom, dateTo).
+		ColumnExpr("COALESCE(SUM(tld.realized_gain_loss), 0) as total_realized").
+		ColumnExpr("COALESCE(SUM(CASE WHEN tld.is_long_term THEN tld.realized_gain_loss ELSE 0 END), 0) as long_term").
+		ColumnExpr("COALESCE(SUM(CASE WHEN tld.is_long_term THEN 0 ELSE tld.realized_gain_loss END), 0) as short_term").
+		ColumnExpr("COUNT(DISTINCT tld.transaction_id) as transaction_count").
+		Model((*model.TaxLotDisposition)(nil)).
+		ModelTableExpr("sigma_finance.tax_lot_dispositions AS tld").
+		Join("JOIN sigma_finance.positions p ON p.id = tld.position_id").
+		Join("JOIN sigma_finance.portfolio pf ON pf.id = p.portfolio_id").
+		Where("pf.user_id = ?", userID).
+		Where("tld.sold_at >= ? AND tld.sold_at < ?", dateFrom, dateTo).
 		Scan(ctx, &result)
 	if err != nil {
 		return nil, err
 	}
 
-	// For now, we'll classify all as short-term gains
-	// A more sophisticated implementation would track holding periods
+	// Fiscal lot-matched G/L from dispositions, split short/long term by
+	// the actual holding period recorded at disposal time. This is NOT the
+	// economic average-cost P/L; see Position.RealizedGainLoss for that.
 	return &model.RealizedGains{
 		UserID:           userID,
 		TotalRealized:    model.Money(result.TotalRealized),
-		ShortTermGains:   model.Money(result.TotalRealized),
-		LongTermGains:    0,
+		ShortTermGains:   model.Money(result.ShortTerm),
+		LongTermGains:    model.Money(result.LongTerm),
 		TransactionCount: result.TransactionCount,
 		StartDate:        dateFrom,
 		EndDate:          dateTo,

@@ -1,13 +1,27 @@
+import type { ApolloClient } from "@apollo/client";
+import { EXPORT_USER_PORTFOLIOS } from "@/graphql/queries/export";
 import { CSVExporter } from "./csv-exporter";
+import {
+	fetchAuditTrailData,
+	fetchPortfolioData,
+	fetchTaxReportData,
+	fetchTransactionHistory,
+} from "./export-data-source";
 import { PDFGenerator } from "./pdf-generator";
-import type {
-	AuditTrailData,
-	ExportFormat,
-	ExportResult,
-	ExportType,
-	PortfolioExportData,
-	TaxReportData,
-} from "./types";
+import type { ExportFormat, ExportResult, ExportType } from "./types";
+
+/**
+ * The Apollo client every export reads through.
+ *
+ * Injected rather than imported because the service is a static utility with
+ * no React context to reach into, and because a test must be able to point it
+ * at a mock link rather than the real server.
+ */
+// The cache shape is deliberately the loose `object` that useApolloClient
+// infers, not NormalizedCacheObject: pinning it here made every call site need
+// a cast, and this module only ever calls `client.query`.
+// biome-ignore lint/suspicious/noExplicitAny: see the note above
+export type ExportClient = ApolloClient<any>;
 
 export class ExportService {
 	private static downloadFile(blob: Blob, filename: string): void {
@@ -32,44 +46,48 @@ export class ExportService {
 	}
 
 	static async exportPortfolioData(
+		client: ExportClient,
 		portfolioId: string,
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
 		try {
-			// In a real implementation, this would fetch data from GraphQL
-			const mockData = await ExportService.fetchPortfolioData(portfolioId);
+			const data = await fetchPortfolioData(client, portfolioId);
+			// The transaction list is part of the artefact, not a separate
+			// download, so a portfolio export pulls it too.
+			const history = await fetchTransactionHistory(client, portfolioId);
+			const snapshot = { ...data, transactions: history.transactions };
 
 			let blob: Blob;
 			let filename: string;
 
 			switch (format) {
 				case "csv": {
-					const csvContent = CSVExporter.exportPortfolioData(mockData);
+					const csvContent = CSVExporter.exportPortfolioData(snapshot);
 					blob = new Blob([csvContent], { type: "text/csv" });
 					filename = ExportService.generateFilename(
 						"portfolio-data",
 						"csv",
-						mockData.portfolio.name,
+						snapshot.portfolio.name,
 					);
 					break;
 				}
 
 				case "pdf":
-					blob = await PDFGenerator.generatePortfolioReport(mockData);
+					blob = await PDFGenerator.generatePortfolioReport(snapshot);
 					filename = ExportService.generateFilename(
 						"portfolio-data",
 						"pdf",
-						mockData.portfolio.name,
+						snapshot.portfolio.name,
 					);
 					break;
 
 				case "json": {
-					const jsonContent = JSON.stringify(mockData, null, 2);
+					const jsonContent = JSON.stringify(snapshot, null, 2);
 					blob = new Blob([jsonContent], { type: "application/json" });
 					filename = ExportService.generateFilename(
 						"portfolio-data",
 						"json",
-						mockData.portfolio.name,
+						snapshot.portfolio.name,
 					);
 					break;
 				}
@@ -94,26 +112,31 @@ export class ExportService {
 	}
 
 	static async exportTransactionHistory(
+		client: ExportClient,
 		portfolioId: string,
 		dateRange?: { start: Date; end: Date },
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
 		try {
-			const mockData = await ExportService.fetchTransactionHistory(portfolioId, dateRange);
+			const { transactions, truncated } = await fetchTransactionHistory(
+				client,
+				portfolioId,
+				dateRange,
+			);
 
 			let blob: Blob;
 			let filename: string;
 
 			switch (format) {
 				case "csv": {
-					const csvContent = CSVExporter.exportTransactionHistory(mockData);
+					const csvContent = CSVExporter.exportTransactionHistory(transactions);
 					blob = new Blob([csvContent], { type: "text/csv" });
 					filename = ExportService.generateFilename("transaction-history", "csv");
 					break;
 				}
 
 				case "json": {
-					const jsonContent = JSON.stringify(mockData, null, 2);
+					const jsonContent = JSON.stringify(transactions, null, 2);
 					blob = new Blob([jsonContent], { type: "application/json" });
 					filename = ExportService.generateFilename("transaction-history", "json");
 					break;
@@ -129,6 +152,12 @@ export class ExportService {
 				success: true,
 				filename,
 				size: blob.size,
+				// The caller must show this. A file that stops at the page size
+				// looks complete in a spreadsheet, and a user reconciling their
+				// own books has no way to see that rows are missing.
+				warning: truncated
+					? `Only the first ${transactions.length} transactions were exported; this portfolio has more.`
+					: undefined,
 			};
 		} catch (error) {
 			return {
@@ -138,48 +167,28 @@ export class ExportService {
 		}
 	}
 
+	/**
+	 * Refuses rather than writing an empty filing.
+	 *
+	 * `fetchTaxReportData` throws: the server computes realised gains per
+	 * disposal and then discards them, so there is no tax data to export. The
+	 * method keeps its signature and its failure result so the UI path is
+	 * unchanged, but the format switch that used to sit below the fetch was
+	 * unreachable - a csv/pdf/json branch that could never run read like
+	 * three working formats.
+	 */
 	static async exportTaxReport(
-		userId: string,
-		taxYear: number,
+		_client: ExportClient,
+		_userId: string,
+		_taxYear: number,
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
+		void format;
 		try {
-			const mockData = await ExportService.fetchTaxReportData(userId, taxYear);
-
-			let blob: Blob;
-			let filename: string;
-
-			switch (format) {
-				case "csv": {
-					const csvContent = CSVExporter.exportTaxReport(mockData);
-					blob = new Blob([csvContent], { type: "text/csv" });
-					filename = ExportService.generateFilename("tax-report", "csv");
-					break;
-				}
-
-				case "pdf":
-					blob = await PDFGenerator.generateTaxReport(mockData);
-					filename = ExportService.generateFilename("tax-report", "pdf");
-					break;
-
-				case "json": {
-					const jsonContent = JSON.stringify(mockData, null, 2);
-					blob = new Blob([jsonContent], { type: "application/json" });
-					filename = ExportService.generateFilename("tax-report", "json");
-					break;
-				}
-
-				default:
-					throw new Error(`Unsupported format: ${format}`);
-			}
-
-			ExportService.downloadFile(blob, filename);
-
-			return {
-				success: true,
-				filename,
-				size: blob.size,
-			};
+			await fetchTaxReportData();
+			// Unreachable while fetchTaxReportData always throws. If a data
+			// source is ever added, this line is where the writers go.
+			return { success: false, error: "Tax report export was wired up but not implemented." };
 		} catch (error) {
 			return {
 				success: false,
@@ -188,43 +197,17 @@ export class ExportService {
 		}
 	}
 
+	/** Refuses for the same reason as exportTaxReport: there is no audit query. */
 	static async exportAuditTrail(
-		userId: string,
-		dateRange: { start: Date; end: Date },
+		_client: ExportClient,
+		_userId: string,
+		_dateRange: { start: Date; end: Date },
 		format: ExportFormat = "csv",
 	): Promise<ExportResult> {
+		void format;
 		try {
-			const mockData = await ExportService.fetchAuditTrailData(userId, dateRange);
-
-			let blob: Blob;
-			let filename: string;
-
-			switch (format) {
-				case "csv": {
-					const csvContent = CSVExporter.exportAuditTrail(mockData);
-					blob = new Blob([csvContent], { type: "text/csv" });
-					filename = ExportService.generateFilename("audit-trail", "csv");
-					break;
-				}
-
-				case "json": {
-					const jsonContent = JSON.stringify(mockData, null, 2);
-					blob = new Blob([jsonContent], { type: "application/json" });
-					filename = ExportService.generateFilename("audit-trail", "json");
-					break;
-				}
-
-				default:
-					throw new Error(`Unsupported format for audit trail: ${format}`);
-			}
-
-			ExportService.downloadFile(blob, filename);
-
-			return {
-				success: true,
-				filename,
-				size: blob.size,
-			};
+			await fetchAuditTrailData();
+			return { success: false, error: "Audit trail export was wired up but not implemented." };
 		} catch (error) {
 			return {
 				success: false,
@@ -233,9 +216,63 @@ export class ExportService {
 		}
 	}
 
-	static async createDataBackup(userId: string): Promise<ExportResult> {
+	/**
+	 * Export every portfolio the user can see, with their positions and
+	 * transactions.
+	 *
+	 * This used to write `{portfolios: [], transactions: [], alerts: []}` and
+	 * report success - an empty file called a "Complete Data Backup". A backup
+	 * is the artefact a user is least likely to open and most likely to trust,
+	 * so the absence of content has to be stated in the file itself, not left
+	 * for them to discover.
+	 *
+	 * `notIncluded` is part of the payload on purpose. What is absent from a
+	 * backup is invisible from the outside, and a user who later discovers their
+	 * tax history was never exported has no way to tell.
+	 */
+	static async createDataBackup(client: ExportClient, userId: string): Promise<ExportResult> {
 		try {
-			const backupData = await ExportService.fetchCompleteUserData(userId);
+			const { data, error } = await client.query({
+				query: EXPORT_USER_PORTFOLIOS,
+				variables: { userID: userId },
+				fetchPolicy: "network-only",
+			});
+			if (error) {
+				throw new Error(`Could not load portfolios: ${error.message}`);
+			}
+
+			const portfolios = data?.portfolios ?? [];
+			if (portfolios.length === 0) {
+				throw new Error(
+					"No portfolios were returned for this user, so there is nothing to back up. " +
+						"An empty backup file would be indistinguishable from a successful one.",
+				);
+			}
+
+			const exported: Array<Record<string, unknown>> = [];
+			for (const portfolio of portfolios) {
+				if (!portfolio?.id) continue;
+				const snapshot = await fetchPortfolioData(client, portfolio.id);
+				const history = await fetchTransactionHistory(client, portfolio.id);
+				exported.push({
+					portfolio: snapshot.portfolio,
+					positions: snapshot.positions,
+					transactions: history.transactions,
+					transactionsMayBeTruncated: history.truncated,
+				});
+			}
+
+			const backupData = {
+				userId,
+				exportDate: new Date().toISOString(),
+				portfolioCount: exported.length,
+				portfolios: exported,
+				notIncluded: [
+					"Realised gains per tax lot - the server computes them but does not persist them.",
+					"Audit trail - the API exposes no audit query.",
+					"Price history and FX rates - the file holds current valuations, not the series they were derived from.",
+				],
+			};
 
 			const jsonContent = JSON.stringify(backupData, null, 2);
 			const blob = new Blob([jsonContent], { type: "application/json" });
@@ -254,112 +291,5 @@ export class ExportService {
 				error: error instanceof Error ? error.message : "Backup failed",
 			};
 		}
-	}
-
-	// Mock data fetching methods - replace with actual GraphQL queries
-	private static async fetchPortfolioData(portfolioId: string): Promise<PortfolioExportData> {
-		// Mock implementation - replace with actual GraphQL query
-		return {
-			portfolio: {
-				id: portfolioId,
-				name: "My Portfolio",
-				createdAt: "2024-01-01T00:00:00Z",
-				totalValue: 150000,
-				totalCost: 120000,
-				gainLoss: 30000,
-				returnPercentage: 25.0,
-			},
-			positions: [
-				{
-					id: "1",
-					assetName: "Apple Inc.",
-					assetType: "STOCK",
-					symbol: "AAPL",
-					quantity: 100,
-					currentPrice: 150.0,
-					currentValue: 15000,
-					costBasis: 12000,
-					gainLoss: 3000,
-					returnPercentage: 25.0,
-					ownershipPercentage: 100,
-				},
-			],
-			transactions: [
-				{
-					id: "1",
-					type: "BUY",
-					assetName: "Apple Inc.",
-					quantity: 100,
-					amount: 12000,
-					price: 120.0,
-					fee: 10,
-					date: "2024-01-01T00:00:00Z",
-					notes: "Initial purchase",
-				},
-			],
-		};
-	}
-
-	private static async fetchTransactionHistory(
-		_portfolioId: string,
-		_dateRange?: { start: Date; end: Date },
-	): Promise<PortfolioExportData["transactions"]> {
-		// Mock implementation
-		return [
-			{
-				id: "1",
-				type: "BUY",
-				assetName: "Apple Inc.",
-				quantity: 100,
-				amount: 12000,
-				price: 120.0,
-				fee: 10,
-				date: "2024-01-01T00:00:00Z",
-				notes: "Initial purchase",
-			},
-		];
-	}
-
-	private static async fetchTaxReportData(userId: string, taxYear: number): Promise<TaxReportData> {
-		// Mock implementation
-		return {
-			taxYear,
-			userId,
-			realizedGains: [],
-			dividendIncome: [],
-			summary: {
-				totalRealizedGains: 0,
-				totalRealizedLosses: 0,
-				netGainLoss: 0,
-				totalDividends: 0,
-			},
-		};
-	}
-
-	private static async fetchAuditTrailData(
-		userId: string,
-		dateRange: { start: Date; end: Date },
-	): Promise<AuditTrailData> {
-		// Mock implementation
-		return {
-			userId,
-			dateRange: {
-				start: dateRange.start.toISOString(),
-				end: dateRange.end.toISOString(),
-			},
-			events: [],
-		};
-	}
-
-	private static async fetchCompleteUserData(userId: string): Promise<Record<string, unknown>> {
-		// Mock implementation
-		return {
-			userId,
-			exportDate: new Date().toISOString(),
-			portfolios: [],
-			transactions: [],
-			alerts: [],
-			preferences: {},
-		};
 	}
 }

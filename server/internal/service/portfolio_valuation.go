@@ -17,28 +17,39 @@ type positionCostLot struct {
 	Quantity decimal.Decimal
 	Price    decimal.Decimal
 	Currency model.Currency
+	// ExecutedAt is the transaction date of the lot. The strict cost-basis
+	// policy converts each foreign-currency lot at the FX rate that prevailed
+	// on the day it was bought, so this date is part of the lot's identity.
+	ExecutedAt time.Time
 }
 
 // PositionValuation holds the calculated value of a single position in both native and display currency.
 type PositionValuation struct {
-	PositionID        string                  `json:"position_id"`
-	AssetID           string                  `json:"asset_id"`
-	NativeValue       model.Money             `json:"native_value"`
-	DisplayValue      model.Money             `json:"display_value"`
-	CostBasisNative   model.Money             `json:"cost_basis_native"`
-	CostBasisDisplay  model.Money             `json:"cost_basis_display"`
-	CostBasisCurrency model.Currency          `json:"cost_basis_currency"`
-	FXRate            decimal.Decimal         `json:"fx_rate"`
-	FXAsOf            *time.Time              `json:"fx_as_of,omitempty"`
-	FXSource          string                  `json:"fx_source,omitempty"`
-	FXGranularity     model.FXRateGranularity `json:"fx_granularity,omitempty"`
-	IsStale           bool                    `json:"is_stale"`
-	QuoteCurrency     model.Currency          `json:"quote_currency"`
-	DisplayCurrency   model.Currency          `json:"display_currency"`
-	IsExcluded        bool                    `json:"is_excluded"`
-	ExclusionReason   string                  `json:"exclusion_reason,omitempty"`
-	HasNativeValue    bool                    `json:"has_native_value"`
-	HasDisplayValue   bool                    `json:"has_display_value"`
+	PositionID        string         `json:"position_id"`
+	AssetID           string         `json:"asset_id"`
+	NativeValue       model.Money    `json:"native_value"`
+	DisplayValue      model.Money    `json:"display_value"`
+	CostBasisNative   model.Money    `json:"cost_basis_native"`
+	CostBasisDisplay  model.Money    `json:"cost_basis_display"`
+	CostBasisCurrency model.Currency `json:"cost_basis_currency"`
+	// CostBasisConverted is true only when every remaining lot was either
+	// already in the display currency or converted at the FX rate that
+	// prevailed on its own execution date. There is deliberately no
+	// latest-rate fallback: folding a today's rate into a historical basis
+	// moves currency movement into unrealized P&L, so an unconverted basis
+	// suppresses the percentage instead of approximating it.
+	CostBasisConverted bool                    `json:"cost_basis_converted"`
+	FXRate             decimal.Decimal         `json:"fx_rate"`
+	FXAsOf             *time.Time              `json:"fx_as_of,omitempty"`
+	FXSource           string                  `json:"fx_source,omitempty"`
+	FXGranularity      model.FXRateGranularity `json:"fx_granularity,omitempty"`
+	IsStale            bool                    `json:"is_stale"`
+	QuoteCurrency      model.Currency          `json:"quote_currency"`
+	DisplayCurrency    model.Currency          `json:"display_currency"`
+	IsExcluded         bool                    `json:"is_excluded"`
+	ExclusionReason    string                  `json:"exclusion_reason,omitempty"`
+	HasNativeValue     bool                    `json:"has_native_value"`
+	HasDisplayValue    bool                    `json:"has_display_value"`
 }
 
 // PortfolioValuation holds the aggregated valuation of multiple positions.
@@ -107,64 +118,30 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 	valuation.NativeValue = model.Money(nativeValueDecimal.Round(0).IntPart())
 	valuation.HasNativeValue = true
 
-	costBasisByCurrency, costBasisErr := s.calculateRemainingCostBasisByCurrency(ctx, position)
-	if costBasisErr == nil && len(costBasisByCurrency) > 0 {
-		var displayCostBasis model.Money
-		for currency, amount := range costBasisByCurrency {
-			if !currency.IsValid() || amount == 0 {
-				continue
-			}
-			if valuation.CostBasisCurrency == "" {
-				valuation.CostBasisCurrency = currency
-			}
-			valuation.CostBasisNative += amount
-
-			if currency == displayCurrency {
-				displayCostBasis += amount
-				continue
-			}
-
-			costBasisConversion, conversionErr := s.fxRateService.Convert(ctx, amount, currency, displayCurrency)
-			if conversionErr != nil {
-				continue
-			}
-			displayCostBasis += costBasisConversion.ConvertedAmount
-			valuation.IsStale = valuation.IsStale || costBasisConversion.IsStale
-			if valuation.FXSource == "" && costBasisConversion.Source != "" {
-				valuation.FXSource = costBasisConversion.Source
-			}
-			if valuation.FXGranularity == "" && costBasisConversion.Granularity != "" {
-				valuation.FXGranularity = costBasisConversion.Granularity
-			}
-			if valuation.FXAsOf == nil && !costBasisConversion.AsOf.IsZero() {
-				asOf := costBasisConversion.AsOf
-				valuation.FXAsOf = &asOf
-			}
-		}
-		valuation.CostBasisDisplay = displayCostBasis
-	}
-
-	if valuation.CostBasisDisplay == 0 && position.TotalCostBasis != nil {
-		// Fallback to legacy position cost basis when transaction history cannot reconstruct remaining lots.
+	basis := s.resolveCostBasis(ctx, position, displayCurrency)
+	if basis != nil {
+		valuation.CostBasisNative = basis.NativeTotal
+		valuation.CostBasisDisplay = basis.DisplayTotal
+		// The currency label stays the raw lot currency; the verdict travels
+		// on the Converted flag instead of being inferred from labels.
+		valuation.CostBasisCurrency = basis.Currency
+		valuation.CostBasisConverted = basis.Converted
+	} else if position.TotalCostBasis != nil {
+		// Legacy fallback, only when the transactions could not reconstruct
+		// any remaining lots at all (missing history, fully sold, or a read
+		// failure). The legacy amount carries no lot dates, so under the
+		// strict policy it is only "converted" when it was never foreign to
+		// begin with with respect to the label we publish; it is never
+		// converted with today's rate, which would fabricate historical cost
+		// in display currency.
 		valuation.CostBasisNative = *position.TotalCostBasis
-		valuation.CostBasisDisplay = *position.TotalCostBasis
 		valuation.CostBasisCurrency = position.QuoteCurrency
-		if valuation.CostBasisCurrency.IsValid() && valuation.CostBasisCurrency != displayCurrency {
-			costBasisConversion, conversionErr := s.fxRateService.Convert(ctx, valuation.CostBasisNative, valuation.CostBasisCurrency, displayCurrency)
-			if conversionErr == nil {
-				valuation.CostBasisDisplay = costBasisConversion.ConvertedAmount
-				valuation.IsStale = valuation.IsStale || costBasisConversion.IsStale
-				if valuation.FXSource == "" && costBasisConversion.Source != "" {
-					valuation.FXSource = costBasisConversion.Source
-				}
-				if valuation.FXGranularity == "" && costBasisConversion.Granularity != "" {
-					valuation.FXGranularity = costBasisConversion.Granularity
-				}
-				if valuation.FXAsOf == nil && !costBasisConversion.AsOf.IsZero() {
-					asOf := costBasisConversion.AsOf
-					valuation.FXAsOf = &asOf
-				}
-			}
+		if valuation.CostBasisCurrency == displayCurrency {
+			valuation.CostBasisDisplay = valuation.CostBasisNative
+			valuation.CostBasisConverted = true
+		} else {
+			valuation.CostBasisDisplay = 0
+			valuation.CostBasisConverted = false
 		}
 	}
 
@@ -235,7 +212,10 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 		if valuation.HasDisplayValue {
 			totalDisplayValue += valuation.DisplayValue
 			coveredNative += valuation.NativeValue
-			if valuation.CostBasisDisplay > 0 {
+			// Coverage joins the strict converted-basis verdict: a position
+			// whose basis stayed in its own currency must not make the
+			// portfolio percentage look covered when it is not.
+			if valuation.CostBasisDisplay > 0 && valuation.CostBasisConverted {
 				costBasisCoveredDisplayValue += valuation.DisplayValue
 			}
 		}
@@ -351,9 +331,136 @@ func calculateGainLossPercent(totalGainLoss, totalCostBasis, totalDisplayValue, 
 		Mul(decimal.NewFromInt(100))
 }
 
-func (s *portfolioValuationService) calculateRemainingCostBasisByCurrency(ctx context.Context, position model.Position) (map[model.Currency]model.Money, error) {
+// executionDateRateKey deduplicates historical rate lookups within one
+// position: lots bought on the same day in the same pair share the rate, and
+// the same position sometimes holds several such lots.
+type executionDateRateKey struct {
+	From      model.Currency
+	To        model.Currency
+	Execution string // lot execution date, day precision, UTC
+}
+
+// positionCostBasis is the strict-policy resolution of a position's remaining
+// lots. Converted is true only when every remaining lot was either already in
+// the display currency or converted at the FX rate that prevailed on its own
+// execution date; there is no latest-rate fallback, because applying today's
+// rate to a historical basis folds currency movement into unrealized P&L.
+type positionCostBasis struct {
+	NativeTotal  model.Money
+	DisplayTotal model.Money
+	// Currency is the lot currency when all remaining lots share exactly one;
+	// mixed-currency bases stay unlabeled rather than publishing a wrong
+	// single label for the badge.
+	Currency  model.Currency
+	Converted bool
+	IsStale   bool
+}
+
+// resolveCostBasis reconstructs the remaining lots and converts each one at
+// its execution-date rate. It returns nil when the transactions could not be
+// read or left no remaining lots, so the caller can fall back to the legacy
+// position amount.
+func (s *portfolioValuationService) resolveCostBasis(ctx context.Context, position model.Position, displayCurrency model.Currency) *positionCostBasis {
 	if position.ID == "" {
-		return map[model.Currency]model.Money{}, nil
+		return nil
+	}
+
+	lots, err := s.remainingCostLots(ctx, position)
+	if err != nil {
+		log.Printf("[WARN] [PortfolioValuation] resolveCostBasis: failed to read transactions position=%s: %v", position.ID, err)
+		return nil
+	}
+	if len(lots) == 0 {
+		return nil
+	}
+
+	basis := &positionCostBasis{}
+	currencies := make(map[model.Currency]struct{}, len(lots))
+	rates := make(map[executionDateRateKey]*model.FXRate, len(lots))
+	allConverted := true
+	displaySum := model.Money(0)
+
+	for _, lot := range lots {
+		if !lot.Currency.IsValid() || lot.Quantity.IsZero() {
+			continue
+		}
+		cents := lot.Quantity.Mul(lot.Price).Mul(decimal.NewFromInt(100)).Round(0).IntPart()
+		if cents <= 0 {
+			continue
+		}
+		currencies[lot.Currency] = struct{}{}
+		basis.NativeTotal += model.Money(cents)
+
+		if lot.Currency == displayCurrency {
+			displaySum += model.Money(cents)
+			continue
+		}
+
+		rate, rateErr := s.executionDateRate(ctx, lot, displayCurrency, rates)
+		if rateErr != nil {
+			log.Printf("[WARN] [PortfolioValuation] resolveCostBasis: no execution-date rate position=%s lot=%s->%s as_of=%s: %v", position.ID, lot.Currency, displayCurrency, lot.ExecutedAt.Format("2006-01-02"), rateErr)
+			allConverted = false
+			continue
+		}
+		displaySum += convertLotCents(model.Money(cents), rate.Rate)
+		basis.IsStale = basis.IsStale || rate.IsStale
+	}
+
+	if len(currencies) == 0 {
+		return nil
+	}
+	if len(currencies) == 1 {
+		for currency := range currencies {
+			basis.Currency = currency
+		}
+	}
+	// A mixed-currency basis cannot be labeled with one currency, so it stays
+	// empty; the client reports an unknown basis currency. It is never
+	// "converted": an unlabeled basis could claim a label it does not have.
+	basis.Converted = allConverted && len(currencies) == 1
+	// The display total is only published together with the converted
+	// verdict. A partial sum would let downstream consumers build a
+	// percentage against an under-covered denominator without any means to
+	// notice.
+	if basis.Converted {
+		basis.DisplayTotal = displaySum
+	}
+	return basis
+}
+
+// executionDateRate resolves the FX rate for the lot's exposure currency to
+// the display currency on the day the lot was bought, with a per-call memo.
+func (s *portfolioValuationService) executionDateRate(ctx context.Context, lot positionCostLot, displayCurrency model.Currency, rates map[executionDateRateKey]*model.FXRate) (*model.FXRate, error) {
+	key := executionDateRateKey{
+		From:      lot.Currency,
+		To:        displayCurrency,
+		Execution: lot.ExecutedAt.UTC().Format("2006-01-02"),
+	}
+	if rate, ok := rates[key]; ok {
+		return rate, nil
+	}
+	rate, err := s.fxRateService.GetHistoricalRate(ctx, lot.Currency, displayCurrency, lot.ExecutedAt)
+	if err != nil {
+		return nil, err
+	}
+	if rate.Rate.IsZero() {
+		return nil, fmt.Errorf("execution-date rate is zero for %s->%s on %s", lot.Currency, displayCurrency, key.Execution)
+	}
+	rates[key] = rate
+	return rate, nil
+}
+
+func convertLotCents(cents model.Money, rate decimal.Decimal) model.Money {
+	converted := decimal.NewFromInt(int64(cents)).Mul(rate)
+	return model.Money(converted.Round(0).IntPart())
+}
+
+// remainingCostLots reconstructs the lots still owned by the position,
+// FIFO-applied to sells and transfers out, carrying each lot's execution date
+// so a later pass can price the basis at the rate of its own day.
+func (s *portfolioValuationService) remainingCostLots(ctx context.Context, position model.Position) ([]positionCostLot, error) {
+	if position.ID == "" {
+		return nil, nil
 	}
 
 	transactions, err := s.uow.Transaction().FindByPositionID(ctx, position.ID)
@@ -379,9 +486,10 @@ func (s *portfolioValuationService) calculateRemainingCostBasisByCurrency(ctx co
 				continue
 			}
 			lots = append(lots, positionCostLot{
-				Quantity: tx.Quantity.Abs(),
-				Price:    *tx.UnitPriceAmount,
-				Currency: tx.UnitPriceCurrency,
+				Quantity:   tx.Quantity.Abs(),
+				Price:      *tx.UnitPriceAmount,
+				Currency:   tx.UnitPriceCurrency,
+				ExecutedAt: tx.ExecutedAt,
 			})
 		case model.TransactionTypeSell, model.TransactionTypeTransferOut:
 			if tx.Quantity == nil || tx.Quantity.IsZero() {
@@ -403,17 +511,5 @@ func (s *portfolioValuationService) calculateRemainingCostBasisByCurrency(ctx co
 		}
 	}
 
-	totals := make(map[model.Currency]model.Money)
-	for _, lot := range lots {
-		if !lot.Currency.IsValid() || lot.Quantity.IsZero() {
-			continue
-		}
-		cents := lot.Quantity.Mul(lot.Price).Mul(decimal.NewFromInt(100)).Round(0).IntPart()
-		if cents <= 0 {
-			continue
-		}
-		totals[lot.Currency] += model.Money(cents)
-	}
-
-	return totals, nil
+	return lots, nil
 }

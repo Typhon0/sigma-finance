@@ -479,54 +479,116 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 			return err
 		}
 
+		var createdHolding *model.PortfolioAsset
+		var positionID string
+
 		if existing, err := uow.PortfolioAsset().FindByPortfolioAndInstrument(ctx, portfolioID, instrumentID); err == nil && existing != nil {
-			return errors.New("instrument already exists in portfolio")
+			// Instrument already held -> Accumulate position (DCA)
+			newQty := existing.Quantity + quantity
+			var newAvgPrice float64
+			if newQty > 0 {
+				newAvgPrice = ((existing.Quantity * existing.AveragePurchasePrice) + (quantity * averagePurchasePrice)) / newQty
+			}
+			existing.Quantity = newQty
+			existing.AveragePurchasePrice = newAvgPrice
+			if existing.QuoteCurrency == "" {
+				existing.QuoteCurrency = quoteCurrency
+			}
+			if err := uow.PortfolioAsset().Update(ctx, existing); err != nil {
+				return fmt.Errorf("failed to update existing portfolio holding: %w", err)
+			}
+			createdHolding = existing
+
+			if existingPosition, posErr := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, asset.ID); posErr == nil && existingPosition != nil {
+				positionID = existingPosition.ID
+				existingPosition.Quantity = decimal.NewFromFloat(newQty)
+				if newAvgPrice > 0 {
+					avgCost := decimal.NewFromFloat(newAvgPrice)
+					existingPosition.AverageCostBasis = &avgCost
+					totalCost := model.Money(decimal.NewFromFloat(newQty).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+					existingPosition.TotalCostBasis = &totalCost
+				}
+				if updateErr := uow.Position().Update(ctx, existingPosition); updateErr != nil {
+					return fmt.Errorf("failed to update existing position: %w", updateErr)
+				}
+			}
+
+			if stock, stockErr := uow.Stock().GetByID(ctx, asset.ID); stockErr == nil && stock != nil {
+				stock.Quantity = decimal.NewFromFloat(newQty)
+				stock.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
+				_ = uow.Stock().Update(ctx, stock)
+			} else if fund, fundErr := uow.Fund().GetByID(ctx, asset.ID); fundErr == nil && fund != nil {
+				fund.Quantity = decimal.NewFromFloat(newQty)
+				fund.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
+				_ = uow.Fund().Update(ctx, fund)
+			}
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing portfolio holding: %w", err)
-		}
+		} else {
+			instrumentIDCopy := instrument.ID
+			portfolioAsset := model.PortfolioAsset{
+				PortfolioID:          portfolioID,
+				AssetID:              asset.ID,
+				InstrumentID:         &instrumentIDCopy,
+				Quantity:             quantity,
+				AveragePurchasePrice: averagePurchasePrice,
+				QuoteCurrency:        quoteCurrency,
+			}
+			createdHolding, err = uow.PortfolioAsset().Create(ctx, &portfolioAsset)
+			if err != nil {
+				return fmt.Errorf("failed to add instrument to portfolio: %w", err)
+			}
 
-		instrumentIDCopy := instrument.ID
-		portfolioAsset := model.PortfolioAsset{
-			PortfolioID:          portfolioID,
-			AssetID:              asset.ID,
-			InstrumentID:         &instrumentIDCopy,
-			Quantity:             quantity,
-			AveragePurchasePrice: averagePurchasePrice,
-			QuoteCurrency:        quoteCurrency,
-		}
-		createdHolding, err := uow.PortfolioAsset().Create(ctx, &portfolioAsset)
-		if err != nil {
-			return fmt.Errorf("failed to add instrument to portfolio: %w", err)
+			if existingPosition, err := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, asset.ID); err == nil {
+				positionID = existingPosition.ID
+			} else if err != nil {
+				if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
+					return fmt.Errorf("failed to check existing position: %w", err)
+				}
+
+				var targetAccountID string
+				accounts, accErr := uow.Account().GetAccountsByPortfolioID(ctx, portfolioID)
+				if accErr == nil && len(accounts) > 0 {
+					targetAccountID = accounts[0].ID
+				} else {
+					defaultAccount := &model.Account{
+						PortfolioID:  portfolioID,
+						UserID:       portfolio.UserID,
+						Name:         portfolio.Name + " - Main Account",
+						Type:         model.AccountTypeBroker,
+						TaxWrapper:   portfolio.TaxWrapper,
+						Currency:     "EUR",
+						SyncProvider: "MANUAL",
+					}
+					acc, createAccErr := uow.Account().Create(ctx, defaultAccount)
+					if createAccErr != nil {
+						return fmt.Errorf("failed to ensure default account: %w", createAccErr)
+					}
+					targetAccountID = acc.ID
+				}
+
+				position := &model.Position{
+					PortfolioID:         portfolioID,
+					AccountID:           targetAccountID,
+					AssetID:             asset.ID,
+					Quantity:            decimal.NewFromFloat(quantity),
+					OwnershipPercentage: decimal.NewFromInt(100),
+					QuoteCurrency:       quoteCurrency,
+				}
+				if averagePurchasePrice > 0 {
+					avgCost := decimal.NewFromFloat(averagePurchasePrice)
+					position.AverageCostBasis = &avgCost
+					totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+					position.TotalCostBasis = &totalCost
+				}
+				createdPosition, createErr := uow.Position().Create(ctx, position)
+				if createErr != nil {
+					return fmt.Errorf("failed to create position snapshot: %w", createErr)
+				}
+				positionID = createdPosition.ID
+			}
 		}
 		created = createdHolding
-
-		var positionID string
-		if existingPosition, err := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, asset.ID); err == nil {
-			positionID = existingPosition.ID
-		} else if err != nil {
-			if !errors.Is(err, repository.ErrNotFound) && !errors.Is(err, sql.ErrNoRows) {
-				return fmt.Errorf("failed to check existing position: %w", err)
-			}
-
-			position := &model.Position{
-				PortfolioID:         portfolioID,
-				AssetID:             asset.ID,
-				Quantity:            decimal.NewFromFloat(quantity),
-				OwnershipPercentage: decimal.NewFromInt(100),
-				QuoteCurrency:       quoteCurrency,
-			}
-			if averagePurchasePrice > 0 {
-				avgCost := decimal.NewFromFloat(averagePurchasePrice)
-				position.AverageCostBasis = &avgCost
-				totalCost := model.Money(decimal.NewFromFloat(quantity).Mul(avgCost).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
-				position.TotalCostBasis = &totalCost
-			}
-			createdPosition, createErr := uow.Position().Create(ctx, position)
-			if createErr != nil {
-				return fmt.Errorf("failed to create position snapshot: %w", createErr)
-			}
-			positionID = createdPosition.ID
-		}
 
 		if positionID != "" {
 			transactionAmount := model.Money(decimal.NewFromFloat(quantity).Mul(decimal.NewFromFloat(averagePurchasePrice)).Mul(decimal.NewFromInt(100)).Round(0).IntPart())

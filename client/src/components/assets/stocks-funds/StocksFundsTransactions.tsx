@@ -1,17 +1,22 @@
 import { gql, useMutation, useQuery } from "@apollo/client";
 import {
+	AlertTriangle,
 	ArrowRight,
 	Download,
 	Filter,
 	MoreHorizontal,
-	TrendingDown,
-	TrendingUp,
+	RefreshCw,
+	Upload,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
+import { SortableHead } from "@/components/assets/stocks-funds/SortableHead";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import {
 	Dialog,
 	DialogContent,
@@ -32,6 +37,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SearchInput } from "@/components/ui/search-input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
 	Table,
 	TableBody,
@@ -73,12 +79,184 @@ const GET_PORTFOLIO_TRANSACTIONS = gql`
   }
 `;
 
-interface StocksFundsTransactionsProps {
+export interface TransactionAssetType {
+	id?: string | null;
+	name?: string | null;
+}
+
+export interface TransactionAsset {
+	id: string;
+	symbol?: string | null;
+	name?: string | null;
+	assetType?: TransactionAssetType | null;
+}
+
+export interface TransactionPortfolio {
+	id: string;
+	name?: string | null;
+}
+
+/**
+ * Edit-dialog validation. Quantity and price must be strictly positive: a
+ * zero or negative basis corrupts lot matching and P&L downstream. Fees may
+ * be zero but never negative. Field-level errors render inline and Save
+ * stays disabled while any rule fails (critique #3, P1 — previously only
+ * checked on submit with toasts, per .agents/frontend.md all inputs are
+ * validated with zod).
+ */
+const transactionEditSchema = z.object({
+	quantity: z
+		.number({ message: "Quantity is required" })
+		.positive("Quantity must be greater than 0"),
+	price: z
+		.number({ message: "Price is required" })
+		.positive("Price per unit must be greater than 0"),
+	fees: z.number().min(0, "Fees cannot be negative"),
+	date: z
+		.string()
+		.min(1, "Transaction date is required")
+		.refine((value) => !Number.isNaN(new Date(value).getTime()), {
+			message: "Transaction date is invalid",
+		}),
+	notes: z.string().max(500, "Notes must be less than 500 characters"),
+});
+
+type TransactionEditField = keyof z.infer<typeof transactionEditSchema>;
+
+export interface RawTransaction {
+	id: string;
+	quantity?: number | null;
+	unitPriceAmount?: number | null;
+	unitPriceCurrency?: string | null;
+	feesAmount?: number | null;
+	feesCurrency?: string | null;
+	executedAt?: string | null;
+	notes?: string | null;
+	transactionType?: string | null;
+	asset?: TransactionAsset | null;
+	portfolio?: TransactionPortfolio | null;
+}
+
+interface GetPortfolioTransactionsData {
+	transactions: RawTransaction[];
+}
+
+export interface TransactionItem {
+	id: string;
+	date: string;
+	type: string;
+	symbol: string;
+	name: string;
+	quantity: number;
+	price: number;
+	amount: number;
+	fees: number;
+	feesCurrency: string;
+	account: string;
+	notes: string;
+	raw: RawTransaction;
+}
+
+interface EditingTransactionState {
+	id: string;
+	symbol: string;
+	quantity: number;
+	price: number;
+	fees: number;
+	date: string;
+	notes: string;
+}
+
+export interface StocksFundsTransactionsProps {
 	onNavigateToFullView?: () => void;
 }
 
-export function StocksFundsTransactions({
-	onNavigateToFullView: _onNavigateToFullView,
+export function TransactionsTableSkeleton() {
+	return (
+		<div className="border border-border/60 rounded-lg overflow-hidden bg-card/80 flex flex-col h-full animate-pulse">
+			<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-b border-border/40 bg-muted/5">
+				<div className="flex items-center gap-2 w-full sm:w-auto">
+					<Skeleton className="h-8 w-64 rounded-md" />
+					<Skeleton className="h-8 w-20 rounded-md" />
+				</div>
+				<Skeleton className="h-8 w-28 rounded-md" />
+			</div>
+
+			<div className="overflow-x-auto min-h-[400px]">
+				<Table>
+					<TableHeader className="bg-muted/5">
+						<TableRow className="border-border/50">
+							<TableHead className="w-[120px]">
+								<Skeleton className="h-4 w-16" />
+							</TableHead>
+							<TableHead className="w-[100px]">
+								<Skeleton className="h-4 w-12" />
+							</TableHead>
+							<TableHead>
+								<Skeleton className="h-4 w-20" />
+							</TableHead>
+							<TableHead className="text-right">
+								<Skeleton className="h-4 w-16 ml-auto" />
+							</TableHead>
+							<TableHead className="text-right">
+								<Skeleton className="h-4 w-14 ml-auto" />
+							</TableHead>
+							<TableHead className="text-right">
+								<Skeleton className="h-4 w-24 ml-auto" />
+							</TableHead>
+							<TableHead className="text-right">
+								<Skeleton className="h-4 w-12 ml-auto" />
+							</TableHead>
+							<TableHead className="text-right w-[100px]">
+								<Skeleton className="h-4 w-16 ml-auto" />
+							</TableHead>
+							<TableHead className="w-[40px]"></TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{Array.from({ length: 6 }).map((_, i) => (
+							<TableRow key={`tx-skel-${i}`} className="border-border/40">
+								<TableCell className="py-3 pl-4">
+									<Skeleton className="h-4 w-20" />
+								</TableCell>
+								<TableCell className="py-3">
+									<Skeleton className="h-5 w-14 rounded-full" />
+								</TableCell>
+								<TableCell className="py-3">
+									<div className="flex items-center gap-2">
+										<Skeleton className="h-4 w-12" />
+										<Skeleton className="h-3 w-24" />
+									</div>
+								</TableCell>
+								<TableCell className="py-3 text-right">
+									<Skeleton className="h-4 w-14 ml-auto" />
+								</TableCell>
+								<TableCell className="py-3 text-right">
+									<Skeleton className="h-4 w-16 ml-auto" />
+								</TableCell>
+								<TableCell className="py-3 text-right">
+									<Skeleton className="h-4 w-20 ml-auto" />
+								</TableCell>
+								<TableCell className="py-3 text-right">
+									<Skeleton className="h-4 w-10 ml-auto" />
+								</TableCell>
+								<TableCell className="py-3 text-right">
+									<Skeleton className="h-5 w-16 rounded-md ml-auto" />
+								</TableCell>
+								<TableCell className="py-3 pr-3">
+									<Skeleton className="h-6 w-6 rounded-md" />
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+		</div>
+	);
+}
+
+export const StocksFundsTransactions = memo(function StocksFundsTransactions({
+	onNavigateToFullView,
 }: StocksFundsTransactionsProps) {
 	const [filterType, setFilterType] = useState<string[]>(["buy", "sell", "dividend"]);
 	const [searchQuery, setSearchQuery] = useState("");
@@ -87,12 +265,34 @@ export function StocksFundsTransactions({
 	>("date");
 	const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
 
-	// Dialog states
-	const [editingTx, setEditingTx] = useState<any | null>(null);
-	const [detailsTx, setDetailsTx] = useState<any | null>(null);
+	// Dialog & Sheet states
+	const [editingTx, setEditingTx] = useState<EditingTransactionState | null>(null);
+	const [detailsTx, setDetailsTx] = useState<TransactionItem | null>(null);
+	const [txToDelete, setTxToDelete] = useState<TransactionItem | null>(null);
 
 	const { formatCurrency } = useCurrency();
 	const { currentPortfolio, refetch: refetchPortfolio } = usePortfolio();
+
+	// Field-level validation for the edit dialog. Runs on every keystroke; the
+	// computed message map drives both the inline errors and the disabled Save.
+	const editFieldErrors = useMemo((): Partial<Record<TransactionEditField, string>> | null => {
+		if (!editingTx) return null;
+		const parsed = transactionEditSchema.safeParse({
+			quantity: editingTx.quantity,
+			price: editingTx.price,
+			fees: editingTx.fees,
+			date: editingTx.date,
+			notes: editingTx.notes ?? "",
+		});
+		if (parsed.success) return null;
+		const messages: Partial<Record<TransactionEditField, string>> = {};
+		for (const issue of parsed.error.issues) {
+			const key = issue.path[0] as TransactionEditField;
+			if (key && !messages[key]) messages[key] = issue.message;
+		}
+		return messages;
+	}, [editingTx]);
+	const isEditInvalid = editFieldErrors !== null;
 
 	// Query transactions for the current portfolio
 	const {
@@ -100,7 +300,7 @@ export function StocksFundsTransactions({
 		loading,
 		error,
 		refetch: refetchTransactions,
-	} = useQuery(GET_PORTFOLIO_TRANSACTIONS, {
+	} = useQuery<GetPortfolioTransactionsData>(GET_PORTFOLIO_TRANSACTIONS, {
 		variables: { portfolioID: currentPortfolio },
 		skip: !currentPortfolio,
 		fetchPolicy: "cache-and-network",
@@ -109,23 +309,27 @@ export function StocksFundsTransactions({
 	const [deleteTransactionMutation] = useMutation(DELETE_TRANSACTION);
 	const [updateTransactionMutation] = useMutation(UPDATE_TRANSACTION);
 
-	const handleDelete = async (id: string) => {
-		if (confirm("Are you sure you want to delete this transaction?")) {
-			try {
-				await deleteTransactionMutation({
-					variables: { id },
-				});
-				toast.success("Transaction deleted successfully");
-				refetchTransactions();
-				refetchPortfolio?.();
-			} catch (err: any) {
-				toast.error(err.message || "Failed to delete transaction");
-			}
+	const confirmDelete = async () => {
+		if (!txToDelete) return;
+		try {
+			await deleteTransactionMutation({
+				variables: { id: txToDelete.id },
+			});
+			toast.success("Transaction deleted successfully");
+			refetchTransactions();
+			refetchPortfolio?.();
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : "Failed to delete transaction";
+			toast.error(message);
+		} finally {
+			setTxToDelete(null);
 		}
 	};
 
 	const handleSaveEdit = async () => {
-		if (!editingTx) return;
+		// Defensive guard: the Save button is already disabled while invalid,
+		// but this keeps the mutation unreachable from other invocation paths.
+		if (!editingTx || isEditInvalid) return;
 		try {
 			await updateTransactionMutation({
 				variables: {
@@ -143,8 +347,9 @@ export function StocksFundsTransactions({
 			setEditingTx(null);
 			refetchTransactions();
 			refetchPortfolio?.();
-		} catch (err: any) {
-			toast.error(err.message || "Failed to update transaction");
+		} catch (err: unknown) {
+			const message = err instanceof Error ? err.message : "Failed to update transaction";
+			toast.error(message);
 		}
 	};
 
@@ -158,39 +363,46 @@ export function StocksFundsTransactions({
 	};
 
 	// Map transactions to UI structure, and filter by Stock / Fund asset types
-	const portfolioTransactions = useMemo(() => {
+	const portfolioTransactions = useMemo<TransactionItem[]>(() => {
 		if (!data?.transactions) return [];
 		return data.transactions
-			.filter((t: any) => {
+			.filter((t) => {
 				const typeName = t.asset?.assetType?.id || t.asset?.assetType?.name;
 				const typeLower = typeName?.toLowerCase() || "";
 				return typeLower === "stock" || typeLower === "fund" || typeLower === "etf";
 			})
-			.map((t: any) => ({
-				id: t.id,
-				date: t.executedAt ? t.executedAt.split("T")[0] : "",
-				type: t.transactionType?.toLowerCase() ?? "buy",
-				symbol: t.asset?.symbol ?? "",
-				name: t.asset?.name ?? "",
-				quantity: t.quantity ?? 0,
-				price: t.unitPriceAmount ?? 0,
-				amount: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0),
-				fees: t.feesAmount ?? 0,
-				feesCurrency: t.feesCurrency ?? "USD",
-				account: "IBKR", // Default broker account
-				notes: t.notes ?? "",
-				raw: t,
-			}));
+			.map((t) => {
+				const quantity = t.quantity ?? 0;
+				const price = t.unitPriceAmount ?? 0;
+				const executedDate = t.executedAt ? t.executedAt.split("T")[0] : "";
+				const accountName = t.portfolio?.name || "Portfolio Account";
+
+				return {
+					id: t.id,
+					date: executedDate,
+					type: (t.transactionType ?? "buy").toLowerCase(),
+					symbol: t.asset?.symbol ?? "",
+					name: t.asset?.name ?? "",
+					quantity,
+					price,
+					amount: quantity * price,
+					fees: t.feesAmount ?? 0,
+					feesCurrency: t.feesCurrency ?? "USD",
+					account: accountName,
+					notes: t.notes ?? "",
+					raw: t,
+				};
+			});
 	}, [data?.transactions]);
 
 	const getTypeColor = (type: string) => {
 		switch (type) {
 			case "buy":
-				return "text-emerald-500 bg-emerald-500/10 border-emerald-500/20";
+				return "text-gain bg-gain/10 border-gain/20";
 			case "sell":
-				return "text-rose-500 bg-rose-500/10 border-rose-500/20";
+				return "text-loss bg-loss/10 border-loss/20";
 			case "dividend":
-				return "text-blue-500 bg-blue-500/10 border-blue-500/20";
+				return "text-info bg-info/10 border-info/20";
 			default:
 				return "text-muted-foreground bg-muted border-border";
 		}
@@ -199,16 +411,16 @@ export function StocksFundsTransactions({
 	const getTypeIcon = (type: string) => {
 		switch (type) {
 			case "buy":
-				return <TrendingUp className="h-3 w-3" />;
+				return <TrendArrowUp className="h-3 w-3" />;
 			case "sell":
-				return <TrendingDown className="h-3 w-3" />;
+				return <TrendArrowDown className="h-3 w-3" />;
 			default:
 				return <ArrowRight className="h-3 w-3" />;
 		}
 	};
 
 	const filteredTransactions = useMemo(() => {
-		let result = portfolioTransactions.filter((tx: any) => {
+		let result = portfolioTransactions.filter((tx) => {
 			if (!filterType.includes(tx.type)) return false;
 			if (searchQuery) {
 				const q = searchQuery.toLowerCase();
@@ -218,26 +430,28 @@ export function StocksFundsTransactions({
 		});
 
 		// Sort transactions
-		result = [...result].sort((a: any, b: any) => {
-			let aVal: any = a[sortBy];
-			let bVal: any = b[sortBy];
+		result = [...result].sort((a, b) => {
+			let aVal: string | number = a[sortBy];
+			let bVal: string | number = b[sortBy];
 
 			if (sortBy === "date") {
 				aVal = new Date(a.date).getTime();
 				bVal = new Date(b.date).getTime();
 			} else if (typeof aVal === "string") {
-				return sortDirection === "asc" ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+				return sortDirection === "asc"
+					? aVal.localeCompare(String(bVal))
+					: String(bVal).localeCompare(aVal);
 			}
 
-			if (aVal < bVal) return sortDirection === "asc" ? -1 : 1;
-			if (aVal > bVal) return sortDirection === "asc" ? 1 : -1;
+			if (Number(aVal) < Number(bVal)) return sortDirection === "asc" ? -1 : 1;
+			if (Number(aVal) > Number(bVal)) return sortDirection === "asc" ? 1 : -1;
 			return 0;
 		});
 
 		return result;
 	}, [portfolioTransactions, filterType, searchQuery, sortBy, sortDirection]);
 
-	const escapeCSV = (val: any) => {
+	const escapeCSV = (val: unknown): string => {
 		if (val === undefined || val === null) return "";
 		const str = String(val);
 		if (str.includes(",") || str.includes('"') || str.includes("\n")) {
@@ -286,23 +500,39 @@ export function StocksFundsTransactions({
 	};
 
 	if (loading) {
-		return (
-			<div className="border border-border/60 rounded-lg p-8 bg-card/80 backdrop-blur-xs text-center text-xs text-muted-foreground">
-				Loading transactions...
-			</div>
-		);
+		return <TransactionsTableSkeleton />;
 	}
 
 	if (error) {
 		return (
-			<div className="border border-border/60 rounded-lg p-8 bg-card/80 backdrop-blur-xs text-center text-xs text-rose-500">
-				Failed to load transactions: {error.message}
+			<div
+				role="alert"
+				aria-live="assertive"
+				className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm"
+			>
+				<AlertTriangle aria-hidden className="h-4 w-4 shrink-0 text-destructive" />
+				<div className="min-w-0 flex-1">
+					<p className="font-semibold text-destructive">Could not load transactions</p>
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						The request failed, so this view could not be retrieved. Retry the request; your data
+						was not modified.
+					</p>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					className="h-8 shrink-0 gap-1.5 border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer touch-target"
+					onClick={() => refetchTransactions()}
+				>
+					<RefreshCw className="h-3.5 w-3.5" />
+					Retry
+				</Button>
 			</div>
 		);
 	}
 
 	return (
-		<div className="border border-border/60 rounded-lg overflow-hidden shadow-sm bg-card/80 backdrop-blur-xs flex flex-col h-full">
+		<div className="border border-border/60 rounded-lg overflow-hidden bg-card/80 flex flex-col h-full">
 			{/* Toolbar */}
 			<div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 border-b border-border/40 bg-muted/5">
 				<div className="flex items-center gap-2 w-full sm:w-auto">
@@ -344,8 +574,31 @@ export function StocksFundsTransactions({
 				</div>
 
 				<div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-					<Button variant="outline" size="sm" className="h-8 text-xs" onClick={handleExportCSV}>
-						<Download className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 text-xs cursor-pointer touch-target"
+						onClick={() => {
+							if (onNavigateToFullView) {
+								onNavigateToFullView();
+							} else {
+								toast.info(
+									"Bulk CSV import is available on the full Transactions page (/transactions).",
+								);
+							}
+						}}
+						title="Import transactions via CSV"
+					>
+						<Upload className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+						Import CSV
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 text-xs cursor-pointer touch-target"
+						onClick={handleExportCSV}
+					>
+						<Download className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
 						Export CSV
 					</Button>
 				</div>
@@ -356,42 +609,56 @@ export function StocksFundsTransactions({
 				<Table>
 					<TableHeader className="bg-muted/5">
 						<TableRow className="hover:bg-transparent border-border/50">
-							<TableHead
-								className="w-[120px] text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("date")}
-							>
-								Date {sortBy === "date" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
-							<TableHead
-								className="w-[100px] text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("type")}
-							>
-								Type {sortBy === "type" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
-							<TableHead
-								className="text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("symbol")}
-							>
-								Asset {sortBy === "symbol" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
-							<TableHead
-								className="text-right text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("quantity")}
-							>
-								Quantity {sortBy === "quantity" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
-							<TableHead
-								className="text-right text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("price")}
-							>
-								Price {sortBy === "price" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
-							<TableHead
-								className="text-right text-xs font-semibold text-muted-foreground h-9 cursor-pointer select-none"
-								onClick={() => handleSort("amount")}
-							>
-								Total Amount {sortBy === "amount" && (sortDirection === "asc" ? "▲" : "▼")}
-							</TableHead>
+							<SortableHead
+								label="Date"
+								field="date"
+								className="w-[120px]"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
+							<SortableHead
+								label="Type"
+								field="type"
+								className="w-[100px]"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
+							<SortableHead
+								label="Asset"
+								field="symbol"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
+							<SortableHead
+								label="Quantity"
+								field="quantity"
+								className="text-right"
+								align="right"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
+							<SortableHead
+								label="Price"
+								field="price"
+								className="text-right"
+								align="right"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
+							<SortableHead
+								label="Total Amount"
+								field="amount"
+								className="text-right"
+								align="right"
+								sortField={sortBy}
+								sortDirection={sortDirection}
+								onSort={handleSort}
+							/>
 							<TableHead className="text-right text-xs font-semibold text-muted-foreground h-9">
 								Fees
 							</TableHead>
@@ -422,7 +689,7 @@ export function StocksFundsTransactions({
 									<TableCell className="py-2">
 										<div
 											className={cn(
-												"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] uppercase font-bold border",
+												"inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-micro uppercase font-bold border",
 												getTypeColor(tx.type),
 											)}
 										>
@@ -455,7 +722,7 @@ export function StocksFundsTransactions({
 									<TableCell className="text-right py-2">
 										<Badge
 											variant="secondary"
-											className="text-[10px] font-normal text-muted-foreground"
+											className="text-micro font-normal text-muted-foreground"
 										>
 											{tx.account}
 										</Badge>
@@ -467,6 +734,7 @@ export function StocksFundsTransactions({
 													variant="ghost"
 													size="sm"
 													className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+													aria-label="Transaction options"
 												>
 													<MoreHorizontal className="h-4 w-4 text-muted-foreground" />
 												</Button>
@@ -475,13 +743,25 @@ export function StocksFundsTransactions({
 												<DropdownMenuItem onClick={() => setDetailsTx(tx)}>
 													View Details
 												</DropdownMenuItem>
-												<DropdownMenuItem onClick={() => setEditingTx(tx)}>
+												<DropdownMenuItem
+													onClick={() =>
+														setEditingTx({
+															id: tx.id,
+															symbol: tx.symbol,
+															quantity: tx.quantity,
+															price: tx.price,
+															fees: tx.fees,
+															date: tx.date,
+															notes: tx.notes,
+														})
+													}
+												>
 													Edit Transaction
 												</DropdownMenuItem>
 												<DropdownMenuSeparator />
 												<DropdownMenuItem
-													className="text-rose-500"
-													onClick={() => handleDelete(tx.id)}
+													className="text-destructive focus:text-destructive focus:bg-destructive/10"
+													onClick={() => setTxToDelete(tx)}
 												>
 													Delete
 												</DropdownMenuItem>
@@ -508,7 +788,7 @@ export function StocksFundsTransactions({
 							<div className="flex-1 overflow-y-auto px-6 py-6 space-y-4 text-sm font-mono">
 								<div className="flex justify-between border-b border-border/30 pb-2">
 									<span className="text-muted-foreground">Asset:</span>
-									<span className="text-foreground">
+									<span className="text-foreground font-semibold">
 										{detailsTx.name} ({detailsTx.symbol})
 									</span>
 								</div>
@@ -526,7 +806,9 @@ export function StocksFundsTransactions({
 								</div>
 								<div className="flex justify-between border-b border-border/30 pb-2">
 									<span className="text-muted-foreground">Total Amount:</span>
-									<span className="text-foreground">{formatCurrency(detailsTx.amount)}</span>
+									<span className="text-foreground font-bold">
+										{formatCurrency(detailsTx.amount)}
+									</span>
 								</div>
 								<div className="flex justify-between border-b border-border/30 pb-2">
 									<span className="text-muted-foreground">Fees:</span>
@@ -539,7 +821,7 @@ export function StocksFundsTransactions({
 									<span className="text-foreground">{detailsTx.date}</span>
 								</div>
 								<div className="flex justify-between border-b border-border/30 pb-2">
-									<span className="text-muted-foreground">Broker:</span>
+									<span className="text-muted-foreground">Account:</span>
 									<span className="text-foreground">{detailsTx.account}</span>
 								</div>
 								{detailsTx.notes && (
@@ -577,8 +859,14 @@ export function StocksFundsTransactions({
 									onChange={(e) =>
 										setEditingTx({ ...editingTx, quantity: parseFloat(e.target.value) || 0 })
 									}
-									className="focus-visible:ring-emerald-500 focus-visible:ring-1"
+									aria-invalid={Boolean(editFieldErrors?.quantity)}
+									aria-describedby={editFieldErrors?.quantity ? "qty-error" : undefined}
 								/>
+								{editFieldErrors?.quantity && (
+									<p id="qty-error" className="text-xs font-medium text-destructive">
+										{editFieldErrors.quantity}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="price">Price per Unit</Label>
@@ -590,8 +878,14 @@ export function StocksFundsTransactions({
 									onChange={(e) =>
 										setEditingTx({ ...editingTx, price: parseFloat(e.target.value) || 0 })
 									}
-									className="focus-visible:ring-emerald-500 focus-visible:ring-1"
+									aria-invalid={Boolean(editFieldErrors?.price)}
+									aria-describedby={editFieldErrors?.price ? "price-error" : undefined}
 								/>
+								{editFieldErrors?.price && (
+									<p id="price-error" className="text-xs font-medium text-destructive">
+										{editFieldErrors.price}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="fees">Fees</Label>
@@ -603,8 +897,14 @@ export function StocksFundsTransactions({
 									onChange={(e) =>
 										setEditingTx({ ...editingTx, fees: parseFloat(e.target.value) || 0 })
 									}
-									className="focus-visible:ring-emerald-500 focus-visible:ring-1"
+									aria-invalid={Boolean(editFieldErrors?.fees)}
+									aria-describedby={editFieldErrors?.fees ? "fees-error" : undefined}
 								/>
+								{editFieldErrors?.fees && (
+									<p id="fees-error" className="text-xs font-medium text-destructive">
+										{editFieldErrors.fees}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="date">Date</Label>
@@ -613,8 +913,14 @@ export function StocksFundsTransactions({
 									type="date"
 									value={editingTx.date}
 									onChange={(e) => setEditingTx({ ...editingTx, date: e.target.value })}
-									className="focus-visible:ring-emerald-500 focus-visible:ring-1 scheme-dark"
+									aria-invalid={Boolean(editFieldErrors?.date)}
+									aria-describedby={editFieldErrors?.date ? "date-error" : undefined}
 								/>
+								{editFieldErrors?.date && (
+									<p id="date-error" className="text-xs font-medium text-destructive">
+										{editFieldErrors.date}
+									</p>
+								)}
 							</div>
 							<div className="space-y-2">
 								<Label htmlFor="notes">Notes</Label>
@@ -622,8 +928,14 @@ export function StocksFundsTransactions({
 									id="notes"
 									value={editingTx.notes}
 									onChange={(e) => setEditingTx({ ...editingTx, notes: e.target.value })}
-									className="focus-visible:ring-emerald-500 focus-visible:ring-1"
+									aria-invalid={Boolean(editFieldErrors?.notes)}
+									aria-describedby={editFieldErrors?.notes ? "notes-error" : undefined}
 								/>
+								{editFieldErrors?.notes && (
+									<p id="notes-error" className="text-xs font-medium text-destructive">
+										{editFieldErrors.notes}
+									</p>
+								)}
 							</div>
 						</div>
 						<DialogFooter>
@@ -632,7 +944,8 @@ export function StocksFundsTransactions({
 							</Button>
 							<Button
 								onClick={handleSaveEdit}
-								className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 font-semibold"
+								disabled={isEditInvalid}
+								className="bg-primary text-primary-foreground hover:bg-primary/90 border-0 font-semibold"
 							>
 								Save Changes
 							</Button>
@@ -640,6 +953,19 @@ export function StocksFundsTransactions({
 					</DialogContent>
 				</Dialog>
 			)}
+
+			{/* Delete Confirmation Dialog */}
+			<ConfirmationDialog
+				open={Boolean(txToDelete)}
+				onOpenChange={(open) => {
+					if (!open) setTxToDelete(null);
+				}}
+				title="Delete Transaction"
+				description={`Are you sure you want to delete this ${txToDelete?.type.toUpperCase()} transaction for ${txToDelete?.symbol}? This action cannot be undone.`}
+				confirmText="Delete Transaction"
+				variant="destructive"
+				onConfirm={confirmDelete}
+			/>
 		</div>
 	);
-}
+});

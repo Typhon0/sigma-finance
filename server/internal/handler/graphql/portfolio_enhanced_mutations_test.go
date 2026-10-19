@@ -144,9 +144,15 @@ func TestPortfolioAnalyticsConverter(t *testing.T) {
 		assert.Equal(t, 60.0, gqlAnalytics.AssetAllocation[0].Percentage)
 		assert.Equal(t, int32(3), gqlAnalytics.AssetAllocation[0].Count)
 
-		assert.Equal(t, 0.15, gqlAnalytics.RiskMetrics.Volatility)
-		assert.Equal(t, 0.8, gqlAnalytics.RiskMetrics.SharpeRatio)
-		assert.Equal(t, 0.12, gqlAnalytics.RiskMetrics.MaxDrawdown)
-		assert.Equal(t, 75.0, gqlAnalytics.RiskMetrics.Diversification)
+		// Risk metrics are nullable pointers now, so that a path which cannot
+		// measure them can say "unknown" instead of asserting a zero.
+		assert.NotNil(t, gqlAnalytics.RiskMetrics.Volatility)
+		assert.Equal(t, 0.15, *gqlAnalytics.RiskMetrics.Volatility)
+		assert.NotNil(t, gqlAnalytics.RiskMetrics.SharpeRatio)
+		assert.Equal(t, 0.8, *gqlAnalytics.RiskMetrics.SharpeRatio)
+		assert.NotNil(t, gqlAnalytics.RiskMetrics.MaxDrawdown)
+		assert.Equal(t, 0.12, *gqlAnalytics.RiskMetrics.MaxDrawdown)
+		assert.NotNil(t, gqlAnalytics.RiskMetrics.Diversification)
+		assert.Equal(t, 75.0, *gqlAnalytics.RiskMetrics.Diversification)
 	})
 }

@@ -35,6 +35,16 @@ func (m *MockPerformanceRepository) CalculateVolatility(ctx context.Context, por
 	return args.Get(0).(decimal.Decimal), args.Error(1)
 }
 
+func (m *MockPerformanceRepository) CalculateSharpeRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error) {
+	args := m.Called(ctx, portfolioID, riskFreeRate, days)
+	return args.Get(0).(decimal.Decimal), args.Error(1)
+}
+
+func (m *MockPerformanceRepository) CalculateSortinoRatio(ctx context.Context, portfolioID string, riskFreeRate decimal.Decimal, days int) (decimal.Decimal, error) {
+	args := m.Called(ctx, portfolioID, riskFreeRate, days)
+	return args.Get(0).(decimal.Decimal), args.Error(1)
+}
+
 func (m *MockPerformanceRepository) CalculateMaxDrawdown(ctx context.Context, portfolioID string, startDate, endDate time.Time) (decimal.Decimal, error) {
 	args := m.Called(ctx, portfolioID, startDate, endDate)
 	return args.Get(0).(decimal.Decimal), args.Error(1)
@@ -938,6 +948,55 @@ func TestPerformanceService_CalculateBenchmarkComparison(t *testing.T) {
 		assert.NotNil(t, res)
 		assert.Equal(t, expectedResult.PortfolioReturn, res.PortfolioReturn)
 		assert.Equal(t, expectedResult.BenchmarkReturn, res.BenchmarkReturn)
+
+		mockMarketDataSvc.AssertExpectations(t)
+		mockPerformanceRepo.AssertExpectations(t)
+	})
+
+	t.Run("neutralizes deposit spike and does not report inflated alpha", func(t *testing.T) {
+		mockPerformanceRepo := &MockPerformanceRepository{}
+		mockPriceRepo := &MockPriceRepository{}
+		mockPositionRepo := &MockPositionRepository{}
+		mockMarketDataSvc := &MockMarketDataService{}
+
+		service := NewPerformanceService(mockPerformanceRepo, mockPriceRepo, mockPositionRepo, mockMarketDataSvc)
+
+		ctx := context.Background()
+		portfolioID := uuid.NewString()
+		benchmarkAssetID := uuid.NewString()
+		timeRange := PerformanceTimeRange{
+			Start: time.Now().AddDate(0, -6, 0),
+			End:   time.Now(),
+		}
+
+		// Benchmark: +10% over the period
+		candlesResult := &InstrumentCandlesResult{
+			Candles: []model.Candle{
+				{Close: decimal.NewFromFloat(5000.0), Timestamp: timeRange.Start},
+				{Close: decimal.NewFromFloat(5500.0), Timestamp: timeRange.End},
+			},
+		}
+		mockMarketDataSvc.On("GetCandlesByInstrument", ctx, "", benchmarkAssetID, model.Interval1d, timeRange.Start, timeRange.End, 0, (*string)(nil)).
+			Return(candlesResult, nil)
+
+		// Portfolio: started at $100, received $8,000 cash deposit, grew +5% organically
+		snapshots := []repository.PerformanceSnapshot{
+			{TotalValue: 10000, TotalCostBasis: 10000, SnapshotDate: timeRange.Start}, // $100
+			{TotalValue: 850500, TotalCostBasis: 810000, SnapshotDate: timeRange.End}, // $8,505 ($8,100 cost)
+		}
+		mockPerformanceRepo.On("GetPerformanceSnapshots", ctx, portfolioID, timeRange.Start, timeRange.End).
+			Return(snapshots, nil)
+
+		res, err := service.CalculateBenchmarkComparison(ctx, portfolioID, benchmarkAssetID, timeRange)
+		assert.NoError(t, err)
+		assert.NotNil(t, res)
+
+		// Portfolio TWR should be 5.00% (not 8405%)
+		// Benchmark return = 10.00%
+		// Cumulative Alpha = 5% - 10% = -5% (underperformed by 5%, not outperforming by 8400%)
+		assert.Equal(t, "5.00", res.PortfolioReturn.StringFixed(2))
+		assert.Equal(t, "10.00", res.BenchmarkReturn.StringFixed(2))
+		assert.Equal(t, "-5.00", res.Alpha.StringFixed(2))
 
 		mockMarketDataSvc.AssertExpectations(t)
 		mockPerformanceRepo.AssertExpectations(t)

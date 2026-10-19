@@ -267,9 +267,22 @@ func (f *FXProvider) getFrankfurterCandles(ctx context.Context, req CandleReques
 		}
 	}
 
-	url := fmt.Sprintf("%s/v1/%s/%s?start_date=%s&end_date=%s",
-		f.fkBaseURL, fromCurrency, toCurrency,
-		req.From.Format("2006-01-02"), req.To.Format("2006-01-02"))
+	fromDate := req.From
+	toDate := req.To
+	if toDate.IsZero() {
+		toDate = time.Now()
+	}
+	if fromDate.IsZero() {
+		fromDate = toDate.AddDate(-1, 0, 0)
+	}
+	if fromDate.After(toDate) {
+		fromDate, toDate = toDate, fromDate
+	}
+
+	url := fmt.Sprintf("%s/v1/%s..%s?base=%s&symbols=%s",
+		f.fkBaseURL,
+		fromDate.Format("2006-01-02"), toDate.Format("2006-01-02"),
+		fromCurrency, toCurrency)
 
 	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {

@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 							input: { email, password },
 						},
 					}),
-					10000, // 10 second timeout
+					30000, // 30 second timeout
 				);
 
 				if (data?.login.success && data.login.data) {
@@ -461,4 +461,8 @@ export function useAuth() {
 		throw new Error("useAuth must be used within an AuthProvider");
 	}
 	return context;
+}
+
+export function useSafeAuth() {
+	return useContext(AuthContext);
 }

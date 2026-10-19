@@ -195,6 +195,7 @@ export function usePortfolioManagement() {
 				id: `temp-${Date.now()}`,
 				name: variables.input.name,
 				description: variables.input.description || null,
+				taxWrapper: (variables.input.taxWrapper as any) || "STANDARD_TAXABLE",
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
 				sortOrder: (data?.portfolios?.length || 0) + 1,

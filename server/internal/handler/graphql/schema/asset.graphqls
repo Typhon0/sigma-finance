@@ -39,6 +39,12 @@ type Stock implements Asset {
     dayChange: Float
     dayChangePercent: Float
     positions: [Position!]!
+    # Instrument reference metrics. All nullable: null means the data provider
+    # has not supplied the figure, which is not the same as zero. Clients must
+    # not substitute a default - a guessed expense ratio becomes an annual fee
+    # in currency that the user budgets against.
+    peRatio: Float
+    dividendYield: Float
 }
 
 type Crypto implements Asset {
@@ -80,6 +86,10 @@ type Fund implements Asset {
     dayChange: Float
     dayChangePercent: Float
     positions: [Position!]!
+    # Annual total expense ratio, as a percentage (0.03 = 3%). Null when
+    # unknown. See the note on Stock.peRatio about not defaulting it.
+    expenseRatio: Float
+    dividendYield: Float
 }
 
 type BankAccount implements Asset {

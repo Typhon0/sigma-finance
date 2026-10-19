@@ -43,6 +43,7 @@ export default defineConfig({
 		},
 	},
 	server: {
+		host: true,
 		proxy: {
 			"/graphql": {
 				target: "http://localhost:8080",

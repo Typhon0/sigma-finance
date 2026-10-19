@@ -83,7 +83,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate, onAction }: Com
 								<CommandItem onSelect={() => handleSelect(() => onNavigate("overview"))}>
 									<PieChart className="mr-2 h-4 w-4" />
 									<span>Command Center</span>
-									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium text-muted-foreground opacity-100">
 										⌘1
 									</kbd>
 								</CommandItem>
@@ -94,14 +94,14 @@ export function CommandPalette({ open, onOpenChange, onNavigate, onAction }: Com
 								<CommandItem onSelect={() => handleSelect(() => onNavigate("transactions"))}>
 									<ArrowUpDown className="mr-2 h-4 w-4" />
 									<span>Ledger</span>
-									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium text-muted-foreground opacity-100">
 										⌘T
 									</kbd>
 								</CommandItem>
 								<CommandItem onSelect={() => handleSelect(() => onNavigate("analytics"))}>
 									<BarChart3 className="mr-2 h-4 w-4" />
 									<span>Analytics & Reports</span>
-									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium text-muted-foreground opacity-100">
 										⌘2
 									</kbd>
 								</CommandItem>
@@ -142,7 +142,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate, onAction }: Com
 								<CommandItem onSelect={() => handleSelect(() => onAction("add-asset"))}>
 									<Plus className="mr-2 h-4 w-4" />
 									<span>Add New Asset</span>
-									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium">
+									<kbd className="ml-auto pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-micro font-medium">
 										N
 									</kbd>
 								</CommandItem>

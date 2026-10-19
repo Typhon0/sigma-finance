@@ -76,6 +76,11 @@ type Instrument {
   updatedAt: Time!
   aliases: [InstrumentAlias!]!
   syncState: InstrumentSyncState
+  # Reference metrics describing the instrument itself, as percentages
+  # (0.03 = 3%). Both nullable: null means the data provider has not supplied
+  # the figure, which is not the same as zero. Never default on read.
+  expenseRatio: Float
+  dividendYield: Float
 }
 
 type InstrumentSearchResult {

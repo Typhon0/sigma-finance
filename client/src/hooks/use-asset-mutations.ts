@@ -1,4 +1,4 @@
-import { useApolloClient, useMutation } from "@apollo/client";
+import { type ApolloCache, useApolloClient, useMutation } from "@apollo/client";
 import { useCallback } from "react";
 import { toast } from "sonner";
 import { InstrumentAssetType } from "@/gql/graphql";
@@ -18,6 +18,7 @@ import {
 	LATEST_HISTORICAL_DATA_BACKFILL_JOB,
 	SEARCH_INSTRUMENTS,
 } from "@/graphql/queries/instruments";
+import { invalidateDashboardData, invalidatePortfolioQueries } from "@/hooks/use-asset-management";
 
 export type AssetType = "stock" | "fund" | "etf";
 
@@ -183,21 +184,66 @@ interface SearchInstrumentsQueryResult {
 	} | null;
 }
 
+/**
+ * Cache invalidation shared by every mutation in this hook.
+ *
+ * These mutations previously had no `update` handler at all, so each caller had
+ * to follow up with a full `refetch()` before its own change became visible.
+ * Evicting the root `portfolios` / `portfolio` fields makes every *active*
+ * observer of them (GET_DASHBOARD_CRITICAL, GET_PORTFOLIO_CARDS, ...) refetch
+ * on its own, so the same update arrives without a second network request.
+ */
+const invalidatePortfolioDerivedQueries = {
+	update: (cache: ApolloCache<unknown>) => {
+		invalidatePortfolioQueries(cache);
+		invalidateDashboardData(cache);
+	},
+};
+
+/** Same invalidation for mutations issued through the raw client. */
+function invalidateDerivedQueries(cache: ApolloCache<unknown>) {
+	invalidatePortfolioQueries(cache);
+	invalidateDashboardData(cache);
+}
+
 export const useAssetMutations = () => {
 	const apolloClient = useApolloClient();
-	const [createStockAsset, { loading: creatingStock }] = useMutation(CREATE_STOCK_ASSET);
-	const [createCryptoAsset, { loading: creatingCrypto }] = useMutation(CREATE_CRYPTO_ASSET);
-	const [createRealEstateAsset, { loading: creatingRealEstate }] =
-		useMutation(CREATE_REAL_ESTATE_ASSET);
+	const [createStockAsset, { loading: creatingStock }] = useMutation(
+		CREATE_STOCK_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [createCryptoAsset, { loading: creatingCrypto }] = useMutation(
+		CREATE_CRYPTO_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [createRealEstateAsset, { loading: creatingRealEstate }] = useMutation(
+		CREATE_REAL_ESTATE_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
 	const [createLifeInsuranceAsset, { loading: creatingLifeInsurance }] = useMutation(
 		CREATE_LIFE_INSURANCE_ASSET,
+		invalidatePortfolioDerivedQueries,
 	);
-	const [createWatchAsset, { loading: creatingWatch }] = useMutation(CREATE_WATCH_ASSET);
-	const [createBankAccountAsset, { loading: creatingBankAccount }] =
-		useMutation(CREATE_BANK_ACCOUNT_ASSET);
-	const [createLoanAsset, { loading: creatingLoan }] = useMutation(CREATE_LOAN_ASSET);
-	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(ADD_ASSET_TO_PORTFOLIO);
-	const [refreshSingleAssetPrice] = useMutation(REFRESH_SINGLE_ASSET_PRICE);
+	const [createWatchAsset, { loading: creatingWatch }] = useMutation(
+		CREATE_WATCH_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [createBankAccountAsset, { loading: creatingBankAccount }] = useMutation(
+		CREATE_BANK_ACCOUNT_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [createLoanAsset, { loading: creatingLoan }] = useMutation(
+		CREATE_LOAN_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [addAssetToPortfolio, { loading: addingToPortfolio }] = useMutation(
+		ADD_ASSET_TO_PORTFOLIO,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [refreshSingleAssetPrice] = useMutation(
+		REFRESH_SINGLE_ASSET_PRICE,
+		invalidatePortfolioDerivedQueries,
+	);
 
 	const monitorHistoricalBackfill = useCallback(
 		(portfolioId: string, assetId?: string) => {
@@ -329,6 +375,10 @@ export const useAssetMutations = () => {
 				if (instrumentResult.errors && instrumentResult.errors.length > 0) {
 					throw new Error(instrumentResult.errors[0].message);
 				}
+
+				// This mutation goes through the raw Apollo client rather than the
+				// useMutation hook, so it cannot use the shared `update` handler.
+				invalidateDerivedQueries(apolloClient.cache);
 
 				await refreshAssetPriceBestEffort(
 					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,
@@ -468,6 +518,10 @@ export const useAssetMutations = () => {
 				if (instrumentResult.errors && instrumentResult.errors.length > 0) {
 					throw new Error(instrumentResult.errors[0].message);
 				}
+
+				// This mutation goes through the raw Apollo client rather than the
+				// useMutation hook, so it cannot use the shared `update` handler.
+				invalidateDerivedQueries(apolloClient.cache);
 
 				await refreshAssetPriceBestEffort(
 					instrumentResult.data?.addInstrumentToPortfolio?.asset?.id ?? undefined,

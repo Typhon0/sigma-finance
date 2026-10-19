@@ -95,7 +95,32 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 		log.Printf("[INFO] [getAssetsWithDetailsBatch] Loaded %d prices for %d assets", len(priceMap), len(assetIDs))
 	}
 
-	// 4. Batch fetch price statistics for all tradeable assets
+	// 4. Load the instruments these assets track, in one query.
+	//
+	// TER, dividend yield and P/E are instrument-level facts. Fetching them
+	// per asset would make every portfolio page an N+1, and the alternative -
+	// leaving them to the client - is what produced the hardcoded ETF expense
+	// ratio table. Assets with no instrument (manual holdings) are simply
+	// absent from the map.
+	instrumentIDs := make([]string, 0, len(assets))
+	for _, a := range assets {
+		if a.InstrumentID != nil && *a.InstrumentID != "" {
+			instrumentIDs = append(instrumentIDs, *a.InstrumentID)
+		}
+	}
+	instruments := map[string]model.Instrument{}
+	if len(instrumentIDs) > 0 {
+		found, instrumentErr := r.UOW.Instrument().FindByIDs(ctx, instrumentIDs)
+		if instrumentErr != nil {
+			// Non-fatal: reference metrics are supplementary, and failing the
+			// whole batch would blank out the holdings a user came to look at.
+			log.Printf("[ERROR] [getAssetsWithDetailsBatch] Instrument.FindByIDs failed for %d instruments: %v", len(instrumentIDs), instrumentErr)
+		} else {
+			instruments = found
+		}
+	}
+
+	// 5. Batch fetch price statistics for all tradeable assets
 	tradeableAssetIDs := []string{}
 	for _, a := range assets {
 		if a.Type.IsTradeable() {
@@ -137,7 +162,7 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 			if details, ok := stocks[a.ID]; ok {
 				detailsPtr = &details
 			}
-			result[a.ID] = mapStockToGQL(a, detailsPtr, tags, dayChange, dayChangePercent, currentValue)
+			result[a.ID] = mapStockToGQL(a, detailsPtr, tags, dayChange, dayChangePercent, currentValue, instrumentFor(a, instruments))
 		case "CRYPTO":
 			var detailsPtr *model.Crypto
 			if details, ok := cryptos[a.ID]; ok {
@@ -149,7 +174,7 @@ func (r *Resolver) getAssetsWithDetailsBatch(ctx context.Context, assetIDs []str
 			if details, ok := funds[a.ID]; ok {
 				detailsPtr = &details
 			}
-			result[a.ID] = mapFundToGQL(a, detailsPtr, tags, dayChange, dayChangePercent, currentValue)
+			result[a.ID] = mapFundToGQL(a, detailsPtr, tags, dayChange, dayChangePercent, currentValue, instrumentFor(a, instruments))
 		case "BANK_ACCOUNT":
 			result[a.ID] = mapBankAccountToGQL(a, tags, dayChange, dayChangePercent, currentValue)
 		case "REAL_ESTATE":

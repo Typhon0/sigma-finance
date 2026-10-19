@@ -4,13 +4,21 @@
 
 We have successfully implemented a comprehensive market data system for the portfolio tracker application. The system provides real-time and historical market data through multiple providers with intelligent caching, rate limiting, and TradingView chart integration.
 
+## Scope Boundary
+
+This document covers quote/candle market-data delivery only. Instrument catalog ingestion/discovery is a separate subsystem: crypto catalog seeding and canonical import default to the bundled Trust Wallet catalog (with CoinGecko/CoinMarketCap available as alternative sources) and persist into `instruments`, while live pricing remains on the existing multi-provider market-data path.
+
 ## ✅ Completed Features
 
 ### 1. Multi-Provider System
 - **Binance**: Cryptocurrency data with real-time WebSocket support
-- **Finnhub**: Stock market data with comprehensive coverage
 - **CryptoCompare**: Aggregated cryptocurrency data
+- **Finnhub**: Stock market data with comprehensive coverage
 - **Twelve Data**: Multi-asset support (stocks, crypto, forex)
+- **Tiingo**: Stocks/ETF/FUNDs, crypto and FX with circuit-breaker protection
+- **Alpha Vantage**: Stocks/ETF/FUNDs, forex and crypto fallback (low free-tier limits)
+- **YFinance**: Stock/fund/crypto/ETF/index fallback via the Python gRPC sidecar
+- **FX**: Forex/currency-pair rates (Frankfurter by default, optional Twelve Data)
 
 ### 2. Provider Management
 - Automatic provider selection based on asset type and capabilities
@@ -86,6 +94,12 @@ client/src/
 
 ### Environment Variables
 ```bash
+# Catalog Source
+CATALOG_SOURCE=TRUSTWALLET
+CATALOG_SNAPSHOT_PATH=./catalog/crypto-catalog.snapshot.json
+CATALOG_REFRESH_ENABLED=false
+CATALOG_VERSION=trustwallet-v1
+
 # Market Data Providers
 BINANCE_API_KEY=your_binance_key
 FINNHUB_API_KEY=your_finnhub_key
@@ -104,19 +118,26 @@ CANDLE_CACHE_MAX_SIZE=10000
 | Provider | Asset Types | Intervals | Real-time | Rate Limits |
 |----------|-------------|-----------|-----------|-------------|
 | Binance | Crypto | 1m-1M | ✅ WebSocket | 1200/min |
-| Finnhub | Stocks | 1m-1M | ✅ WebSocket | 60/min |
-| CryptoCompare | Crypto | 1m-1d | ❌ | 100k/month |
-| Twelve Data | Multi | 1m-1M | ✅ WebSocket | 800/day |
+| Finnhub | Stock, ETF, Index | 1m-1M | ✅ WebSocket | 60/min, 10k/day |
+| CryptoCompare | Crypto | 1m-1d | ❌ | 100/min, 100k/month |
+| Twelve Data | Stock, ETF, Index, Forex, Crypto | 1m-1M | ✅ WebSocket | 8/min, 800/day |
+| Tiingo | Stock, ETF, Fund, Crypto, Forex | 1m-1M | ✅ IEX | 8/min, 12k/day |
+| Alpha Vantage | Stock, ETF, Fund, Forex, Crypto | 1m-1M | ❌ | 5/min, 25/day |
+| YFinance (gRPC sidecar) | Stock, Fund, Crypto, ETF, Index | 1m-1d | ❌ | 60/min (sidecar-throttled) |
+| FX (Frankfurter / Twelve Data) | Forex | daily | ❌ | 60/min |
 
 ## 📊 GraphQL API
 
 ### Queries
 ```graphql
-# Get historical candle data
-candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]!
+# Preferred: instrumentId-based candles
+candlesByInstrument(instrumentId: ID!, interval: String!, from: Time!, to: Time!, limit: Int = 500, preferredProvider: String): MarketDataCandlesPayload!
 
-# Get real-time price
-realTimePrice(symbol: String!, assetType: String!): Candle
+# Preferred: instrumentId-based real-time quote
+realTimePriceByInstrument(instrumentId: ID!, preferredProvider: String): MarketDataCandlePayload
+
+# Compatibility (deprecated): symbol-based candles
+candles(symbol: String!, assetType: String!, interval: String!, from: Time!, to: Time!, limit: Int = 500): [Candle!]!
 
 # Get supported providers for asset type
 supportedProviders(assetType: String!): [ProviderInfo!]!
@@ -130,8 +151,8 @@ marketDataCredentials: [MarketDataCredential!]!
 
 ### Mutations
 ```graphql
-# Add/update API credentials
-upsertMarketDataCredential(provider: String!, apiKey: String!): MarketDataCredential!
+# Add/update API credentials with enablement and priority
+upsertMarketDataCredential(provider: String!, apiKey: String!, isEnabled: Boolean, priority: Int): MarketDataCredential!
 
 # Delete API credentials
 deleteMarketDataCredential(provider: String!): ID!

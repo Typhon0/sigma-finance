@@ -271,12 +271,16 @@ func mapServiceRiskMetricsToGQL(rm *service.ServiceRiskMetrics) *gqlModel.RiskMe
 	}
 	vol, _ := rm.Volatility.Float64()
 	sharpe, _ := rm.SharpeRatio.Float64()
+	sortino, _ := rm.SortinoRatio.Float64()
 	md, _ := rm.MaxDrawdown.Float64()
 
 	return &gqlModel.RiskMetrics{
-		Volatility:      vol,
-		SharpeRatio:     sharpe,
-		MaxDrawdown:     md,
-		Diversification: 0, // usually from portfolio analytics
+		Volatility:   float64Ptr(vol),
+		SharpeRatio:  float64Ptr(sharpe),
+		SortinoRatio: float64Ptr(sortino),
+		MaxDrawdown:  float64Ptr(md),
+		// Diversification lives on the portfolio-analytics path, not here.
+		// Left null rather than 0 so it cannot be mistaken for a measured 0.
+		Diversification: nil,
 	}
 }

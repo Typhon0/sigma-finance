@@ -1,8 +1,17 @@
 import { useMutation } from "@apollo/client";
 import type React from "react";
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import {
+	type FxResolution,
+	indexFxResolutions,
+	resolveFxBasis,
+} from "@/components/stocks-funds/fx-valuation";
 import { CREATE_PORTFOLIO } from "@/graphql/mutations";
-import { useAssetManagement } from "@/hooks/use-asset-management";
+import {
+	invalidateDashboardData,
+	invalidatePortfolioQueries,
+	useAssetManagement,
+} from "@/hooks/use-asset-management";
 import type {
 	AddAssetInput,
 	AddCryptoInput,
@@ -21,6 +30,14 @@ export const PortfolioContext = createContext<any>(null);
 export interface PortfolioAssetItem {
 	id: string;
 	portfolioId: string;
+	/**
+	 * The server's `positions.id` for this holding, present only when the
+	 * portfolio has exactly one position for the asset. `taxLotsByPosition`
+	 * and `dispositionsByPosition` resolve this id — never the asset id — so
+	 * consumers must skip the query when it is absent instead of falling back
+	 * to `id`. Resolved from `PositionValuation`; see resolvePositionId.
+	 */
+	positionId?: string;
 	type: string;
 	name: string;
 	symbol: string;
@@ -33,9 +50,17 @@ export interface PortfolioAssetItem {
 	dayChange: number | null;
 	dayChangePercent: number | null;
 	portfolioWeight: number;
+	/** Instrument reference metrics. Absent means unknown, never zero. */
+	expenseRatio?: number;
 	dividendYield?: number;
 	peRatio?: number;
 	sparklineData: number[];
+	/**
+	 * Whether the server can back a percentage return for this position, and
+	 * why not when it cannot. Resolved from `PositionValuation`; never
+	 * guessed from a currency comparison. See fx-valuation.ts.
+	 */
+	fx: FxResolution;
 	// BankAccount-specific metadata
 	accountType?: string;
 	institution?: string;
@@ -62,49 +87,24 @@ function extractBankAccountFields(
 	};
 }
 
+/**
+ * Read an instrument reference metric off a GraphQL asset object.
+ *
+ * Returns undefined for null, which the server sends when the data provider
+ * has no figure. That is not the same as zero, and it must not be defaulted
+ * here: a missing expense ratio becomes an annual fee in currency that the
+ * user budgets against, and a guessed 0.15% for a fund that really costs 1.8%
+ * is a twelve-fold error in the user's favour.
+ *
+ * The fields live on the concrete GraphQL types (Stock, Fund) rather than the
+ * Asset interface, so they arrive on the same object under these names.
+ */
 function extractOptionalMetric(
 	asset: Record<string, unknown>,
-	key: "dividendYield" | "peRatio",
+	key: "dividendYield" | "peRatio" | "expenseRatio",
 ): number | undefined {
 	const value = asset[key];
 	return typeof value === "number" && Number.isFinite(value) ? value : undefined;
-}
-
-function buildSparklineData(
-	currentPrice: number,
-	dayChangePercent: number | null | undefined,
-): number[] {
-	const safeCurrentPrice = Number.isFinite(currentPrice) && currentPrice > 0 ? currentPrice : 0;
-	const safeDayChange =
-		typeof dayChangePercent === "number" && Number.isFinite(dayChangePercent)
-			? dayChangePercent
-			: 0;
-
-	if (safeCurrentPrice === 0) {
-		return [0, 0, 0, 0, 0, 0, 0];
-	}
-
-	const points = 7;
-	const startPrice = safeCurrentPrice / (1 + safeDayChange / 100);
-	const drift = safeCurrentPrice - startPrice;
-	const volatility =
-		Math.max(Math.abs(safeDayChange) / 100, 0.004) * Math.max(safeCurrentPrice, startPrice);
-	const seed = (Math.round(safeCurrentPrice * 100) % 37) / 37;
-	const phaseA = seed * Math.PI * 2;
-	const phaseB = seed * Math.PI;
-
-	const series = Array.from({ length: points }, (_, index) => {
-		const progress = points > 1 ? index / (points - 1) : 1;
-		const baseline = startPrice + drift * progress;
-		const waveA = Math.sin(progress * Math.PI * 1.8 + phaseA) * volatility * 0.25;
-		const waveB = Math.sin(progress * Math.PI * 3.2 + phaseB) * volatility * 0.12;
-		return Math.max(0, baseline + waveA + waveB);
-	});
-
-	series[0] = startPrice;
-	series[series.length - 1] = safeCurrentPrice;
-
-	return series.map((value) => Number(value.toFixed(4)));
 }
 
 export const usePortfolio = () => {
@@ -118,7 +118,11 @@ export const usePortfolio = () => {
 export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 	const { user, isLoading: authLoading } = useAuth();
 	const isAuthenticated = !!user?.id;
-	const { data, loading, refetch } = usePortfolioAnalytics(user?.id ?? "");
+	// `error` is the combined dashboard-analytics failure (critical || secondary).
+	// Consumers must surface it instead of rendering the empty-portfolio state:
+	// a failed request and an empty portfolio are different states, and a $0
+	// hero shown for the former is a trust bug (see critique #3, P0).
+	const { data, loading, error, refetch } = usePortfolioAnalytics(user?.id ?? "");
 	const {
 		addAsset: addAssetMutation,
 		addCrypto: addCryptoMutation,
@@ -130,7 +134,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 	} = useAssetMutations();
 
 	// Portfolio mutations - use mutations directly instead of usePortfolioManagement to avoid duplicate queries
-	const [createPortfolioMutation] = useMutation(CREATE_PORTFOLIO);
+	// Evicting the root `portfolios` field makes every active observer of it
+	// (GET_DASHBOARD_CRITICAL, GET_PORTFOLIO_CARDS, ...) refetch on its own, so
+	// callers no longer have to force a full refetch() after creating one.
+	const [createPortfolioMutation] = useMutation(CREATE_PORTFOLIO, {
+		update: (cache) => {
+			invalidatePortfolioQueries(cache);
+			invalidateDashboardData(cache);
+		},
+	});
 
 	const [currentPortfolio, setCurrentPortfolio] = useState("");
 
@@ -144,6 +156,68 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 	}, [isAuthenticated, data?.portfolios?.length, currentPortfolio, data?.portfolios?.[0]?.id]);
 
 	const allPortfolios = data?.portfolios || [];
+
+	/**
+	 * Index a portfolio's FX valuations by asset id.
+	 *
+	 * The valuations live on `analytics`, not on the asset, so every asset
+	 * lookup needs the parent portfolio's index. Memoised per portfolio so the
+	 * two asset mappers below do not rebuild it on every render.
+	 */
+	const fxIndexByPortfolio = useMemo(() => {
+		const index = new Map<string, Map<string, FxResolution>>();
+		for (const portfolio of data?.portfolios ?? []) {
+			index.set(portfolio.id, indexFxResolutions(portfolio.analytics?.positionValuations ?? []));
+		}
+		return index;
+	}, [data?.portfolios]);
+
+	const resolveAssetFx = useCallback(
+		(portfolioId: string, assetId: string | undefined): FxResolution => {
+			if (!assetId) return resolveFxBasis(null);
+			return fxIndexByPortfolio.get(portfolioId)?.get(assetId) ?? resolveFxBasis(null);
+		},
+		[fxIndexByPortfolio],
+	);
+
+	/**
+	 * Map (portfolio, asset) to the server position id the tax-lots endpoints
+	 * need.
+	 *
+	 * The UI keys rows by asset id while `taxLotsByPosition` resolves
+	 * `positions.id`; `PositionValuation` is the only place the API publishes
+	 * that link, so it is read from there rather than guessed from the asset
+	 * id. An asset can hold several positions in one portfolio (one per
+	 * account); the row-level id would then be ambiguous, so none is published
+	 * instead of silently showing one position's lots for the whole row.
+	 */
+	const positionIdByPortfolioAsset = useMemo(() => {
+		const index = new Map<string, Map<string, string>>();
+		for (const portfolio of data?.portfolios ?? []) {
+			const idsByAsset = new Map<string, Set<string>>();
+			for (const valuation of portfolio.analytics?.positionValuations ?? []) {
+				if (!valuation.assetId || !valuation.positionId) continue;
+				const ids = idsByAsset.get(valuation.assetId) ?? new Set<string>();
+				ids.add(valuation.positionId);
+				idsByAsset.set(valuation.assetId, ids);
+			}
+			const resolved = new Map<string, string>();
+			for (const [assetId, ids] of idsByAsset) {
+				const onlyId = [...ids][0];
+				if (ids.size === 1 && onlyId) resolved.set(assetId, onlyId);
+			}
+			index.set(portfolio.id, resolved);
+		}
+		return index;
+	}, [data?.portfolios]);
+
+	const resolvePositionId = useCallback(
+		(portfolioId: string, assetId: string | undefined): string | undefined => {
+			if (!assetId) return undefined;
+			return positionIdByPortfolioAsset.get(portfolioId)?.get(assetId);
+		},
+		[positionIdByPortfolioAsset],
+	);
 
 	const selectedPortfolio = useMemo(() => {
 		if (!currentPortfolio || !allPortfolios.length) return null;
@@ -191,7 +265,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					portfolioWeight: 0,
 					dividendYield: extractOptionalMetric(assetRecord, "dividendYield"),
 					peRatio: extractOptionalMetric(assetRecord, "peRatio"),
-					sparklineData: buildSparklineData(currentPrice, dayChangePercent),
+					expenseRatio: extractOptionalMetric(assetRecord, "expenseRatio"),
+					// Real sparkline series do not exist yet: the previous value was a
+					// sine-wave synthesis of price + day change, which rendered as a
+					// fabricated trend (and powered a fake "ATH observé" on crypto).
+					// Empty is the honest state until the server exposes per-holding
+					// candles.
+					sparklineData: [],
+					fx: resolveAssetFx(p.id, a.asset?.id),
+					positionId: resolvePositionId(p.id, a.asset?.id),
 					...bankFields,
 					// Ensure type is set correctly after spread (bankFields may override)
 					type: bankFields.type || assetType,
@@ -206,7 +288,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			portfolioWeight:
 				totalValue > 0 ? Number(((asset.currentValue / totalValue) * 100).toFixed(2)) : 0,
 		}));
-	}, [data]);
+	}, [data, resolveAssetFx, resolvePositionId]);
 
 	const assets = useMemo((): PortfolioAssetItem[] => {
 		if (!selectedPortfolio) return [];
@@ -246,7 +328,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				portfolioWeight: 0,
 				dividendYield: extractOptionalMetric(assetRecord, "dividendYield"),
 				peRatio: extractOptionalMetric(assetRecord, "peRatio"),
-				sparklineData: buildSparklineData(currentPrice, dayChangePercent),
+				expenseRatio: extractOptionalMetric(assetRecord, "expenseRatio"),
+				// Real sparkline series do not exist yet: the previous value was a
+				// sine-wave synthesis of price + day change, which rendered as a
+				// fabricated trend (and powered a fake "ATH observé" on crypto).
+				// Empty is the honest state until the server exposes per-holding
+				// candles.
+				sparklineData: [],
+				fx: resolveAssetFx(selectedPortfolio.id, a.asset?.id),
+				positionId: resolvePositionId(selectedPortfolio.id, a.asset?.id),
 				...bankFields,
 				// Ensure type is set correctly after spread (bankFields may override)
 				type: bankFields.type || assetType,
@@ -260,7 +350,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			portfolioWeight:
 				totalValue > 0 ? Number(((asset.currentValue / totalValue) * 100).toFixed(2)) : 0,
 		}));
-	}, [selectedPortfolio]);
+	}, [selectedPortfolio, resolveAssetFx, resolvePositionId]);
 
 	const transactions = useMemo(() => {
 		if (!data?.recentTransactions) return [];
@@ -327,10 +417,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					},
 				},
 			});
-			await refetch();
+			// No refetch(): CREATE_PORTFOLIO evicts the portfolio/dashboard cache
+			// fields in its `update`, so the active observers refetch themselves.
 			return result.data?.createPortfolio;
 		},
-		[createPortfolioMutation, user?.id, refetch],
+		[createPortfolioMutation, user?.id],
 	);
 
 	const addAsset = useCallback(
@@ -342,10 +433,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				...input,
 				portfolioId: currentPortfolio,
 			});
-			await refetch();
+			// No refetch(): the underlying create/portfolio-add mutations already
+			// evict the portfolio/dashboard cache fields in their `update`.
 			return result;
 		},
-		[currentPortfolio, addAssetMutation, refetch],
+		[currentPortfolio, addAssetMutation],
 	);
 
 	const addCrypto = useCallback(
@@ -357,10 +449,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				...input,
 				portfolioId: currentPortfolio,
 			});
-			await refetch();
+			// No refetch(): the underlying create/portfolio-add mutations already
+			// evict the portfolio/dashboard cache fields in their `update`.
 			return result;
 		},
-		[currentPortfolio, addCryptoMutation, refetch],
+		[currentPortfolio, addCryptoMutation],
 	);
 
 	const addRealEstate = useCallback(
@@ -372,10 +465,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				...input,
 				portfolioId: currentPortfolio,
 			});
-			await refetch();
+			// No refetch(): the underlying create/portfolio-add mutations already
+			// evict the portfolio/dashboard cache fields in their `update`.
 			return result;
 		},
-		[currentPortfolio, addRealEstateMutation, refetch],
+		[currentPortfolio, addRealEstateMutation],
 	);
 
 	const addLifeInsurance = useCallback(
@@ -387,10 +481,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				...input,
 				portfolioId: currentPortfolio,
 			});
-			await refetch();
+			// No refetch(): the underlying create/portfolio-add mutations already
+			// evict the portfolio/dashboard cache fields in their `update`.
 			return result;
 		},
-		[currentPortfolio, addLifeInsuranceMutation, refetch],
+		[currentPortfolio, addLifeInsuranceMutation],
 	);
 
 	const addWatch = useCallback(
@@ -402,10 +497,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				...input,
 				portfolioId: currentPortfolio,
 			});
-			await refetch();
+			// No refetch(): the create mutation evicts the portfolio/dashboard/
+			// watchlist cache fields, so the active observers refetch themselves.
 			return result;
 		},
-		[currentPortfolio, addWatchMutation, refetch],
+		[currentPortfolio, addWatchMutation],
 	);
 
 	const { removeAssetFromPortfolio, updateAssetInPortfolio } = useAssetManagement();
@@ -454,9 +550,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 						? nextAveragePurchasePrice
 						: undefined,
 			});
-			await refetch();
+			// No refetch(): UPDATE_ASSET_IN_PORTFOLIO evicts the portfolio/dashboard
+			// cache fields in its `update`, so the active observers refetch on their
+			// own. This call used to fire a second, identical request every time.
 		},
-		[currentPortfolio, assets, refetch, updateAssetInPortfolio],
+		[currentPortfolio, assets, updateAssetInPortfolio],
 	);
 	const deleteAsset = useCallback(
 		async (assetId: string, portfolioId?: string) => {
@@ -465,9 +563,11 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				throw new Error("No portfolio selected");
 			}
 			await removeAssetFromPortfolio(pid, assetId);
-			await refetch();
+			// No refetch(): REMOVE_ASSET_FROM_PORTFOLIO evicts the portfolio/dashboard
+			// cache fields in its `update`, so the active observers refetch on their
+			// own. This call used to fire a second, identical request every time.
 		},
-		[currentPortfolio, removeAssetFromPortfolio, refetch],
+		[currentPortfolio, removeAssetFromPortfolio],
 	);
 	const addTransaction = useCallback(() => {}, []);
 	const addToWatchlist = useCallback(() => {}, []);
@@ -485,6 +585,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			allAssets,
 			transactions,
 			watchlist: [],
+			analyticsError: error,
 			getPortfolioValue,
 			getPortfolioGainLoss,
 			createPortfolio,
@@ -512,6 +613,7 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			assets,
 			allAssets,
 			transactions,
+			error,
 			getPortfolioValue,
 			getPortfolioGainLoss,
 			createPortfolio,

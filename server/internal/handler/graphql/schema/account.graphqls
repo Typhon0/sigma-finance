@@ -1,0 +1,58 @@
+# internal/handler/graphql/schema/account.graphqls
+
+enum AccountType {
+    BROKER
+    BANK
+    CRYPTO_EXCHANGE
+    OTHER
+}
+
+type Account {
+    id: ID!
+    portfolioId: ID!
+    portfolio: Portfolio!
+    name: String!
+    type: AccountType!
+    taxWrapper: TaxWrapperType!
+    institution: String
+    accountNumber: String
+    currency: String!
+    syncProvider: String!
+    externalId: String
+    positions: [Position!]!
+    positionsCount: Int!
+    totalValue: Float
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+input CreateAccountInput {
+    portfolioId: ID!
+    name: String!
+    type: AccountType!
+    taxWrapper: TaxWrapperType!
+    institution: String
+    accountNumber: String
+    currency: String
+    syncProvider: String
+}
+
+input UpdateAccountInput {
+    name: String
+    type: AccountType
+    taxWrapper: TaxWrapperType
+    institution: String
+    accountNumber: String
+    currency: String
+}
+
+extend type Query {
+    accounts(portfolioId: ID): [Account!]! @auth
+    account(id: ID!): Account @auth
+}
+
+extend type Mutation {
+    createAccount(input: CreateAccountInput!): Account! @auth
+    updateAccount(id: ID!, input: UpdateAccountInput!): Account! @auth
+    deleteAccount(id: ID!): Boolean! @auth
+}

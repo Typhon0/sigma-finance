@@ -200,6 +200,14 @@ func (m *MockPositionRepository) GetByPortfolioAndAsset(ctx context.Context, por
 	return args.Get(0).(*model.Position), args.Error(1)
 }
 
+func (m *MockPositionRepository) GetByAccountAndAsset(ctx context.Context, accountID, assetID string) (*model.Position, error) {
+	args := m.Called(ctx, accountID, assetID)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*model.Position), args.Error(1)
+}
+
 func (m *MockPositionRepository) FindWithFilters(ctx context.Context, filter repository.PositionFilter) ([]model.Position, error) {
 	args := m.Called(ctx, filter)
 	return args.Get(0).([]model.Position), args.Error(1)

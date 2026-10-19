@@ -6,6 +6,7 @@ export const GET_PORTFOLIOS_WITH_ANALYTICS = gql(`
       id
       name
       description
+      taxWrapper
       createdAt
       updatedAt
       assets {
@@ -57,6 +58,13 @@ export const GET_PORTFOLIOS_WITH_ANALYTICS = gql(`
           assetId
           nativeValue
           displayValue
+          costBasisNative
+          costBasisDisplay
+          costBasisCurrency
+          costBasisConverted
+          hasDisplayValue
+          isExcluded
+          exclusionReason
           fxRate
           fxAsOf
           fxSource
@@ -76,6 +84,7 @@ export const GET_PORTFOLIO = gql(`
       id
       name
       description
+      taxWrapper
       createdAt
       updatedAt
       sortOrder
@@ -132,6 +141,13 @@ export const GET_PORTFOLIO = gql(`
           assetId
           nativeValue
           displayValue
+          costBasisNative
+          costBasisDisplay
+          costBasisCurrency
+          costBasisConverted
+          hasDisplayValue
+          isExcluded
+          exclusionReason
           fxRate
           fxAsOf
           fxSource
@@ -145,6 +161,23 @@ export const GET_PORTFOLIO = gql(`
         id
         name
       }
+    }
+  }
+`);
+
+/**
+ * Daily value of a portfolio restricted to a set of asset types.
+ *
+ * Exists so a per-asset-type page (Stocks & Funds today) can show a hero
+ * chart that belongs to its own scope. The portfolio-wide
+ * `analytics.performanceHistory` stays for pages that genuinely mean the
+ * whole portfolio.
+ */
+export const GET_SCOPED_PERFORMANCE_HISTORY = gql(`
+  query GetScopedPerformanceHistory($portfolioID: ID!, $assetTypes: [String!]!) {
+    scopedPerformanceHistory(portfolioID: $portfolioID, assetTypes: $assetTypes) {
+      date
+      value
     }
   }
 `);

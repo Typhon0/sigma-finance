@@ -60,6 +60,7 @@ type User struct {
 	ThemeStyle          ThemeStyle          `bun:"theme_style,type:varchar(10),default:vega"`
 	ThemeRadius         float64             `bun:"theme_radius,type:numeric(3,2),default:0.625"`
 	ThemeRTL            bool                `bun:"theme_rtl,default:false"`
+	TaxJurisdiction     string              `bun:"tax_jurisdiction,type:varchar(10),notnull,default:FR"`
 }
 
 func (u *User) normalizeRole() {

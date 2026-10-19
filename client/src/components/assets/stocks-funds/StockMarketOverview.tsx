@@ -9,8 +9,6 @@ import {
 	Flame,
 	Globe,
 	Percent,
-	TrendingDown,
-	TrendingUp,
 } from "lucide-react";
 import { useState } from "react";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
@@ -454,7 +452,7 @@ export function StockMarketOverview({
 										</div>
 										<div className="font-mono text-lg">{index.value.toLocaleString()}</div>
 										<div
-											className={`text-xs font-mono ${index.change >= 0 ? "text-green-600" : "text-red-600"}`}
+											className={`text-xs font-mono ${index.change >= 0 ? "text-gain" : "text-loss"}`}
 										>
 											{index.change >= 0 ? "+" : ""}
 											{index.change.toFixed(2)} ({index.change >= 0 ? "+" : ""}
@@ -480,8 +478,8 @@ export function StockMarketOverview({
 								<p className="text-sm text-muted-foreground">Value Stocks</p>
 								<p className="text-2xl font-mono mt-1">324</p>
 							</div>
-							<div className="h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-								<DollarSign className="h-6 w-6 text-blue-600" />
+							<div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+								<DollarSign className="h-6 w-6 text-primary" />
 							</div>
 						</div>
 						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
@@ -500,8 +498,8 @@ export function StockMarketOverview({
 								<p className="text-sm text-muted-foreground">Growth Stocks</p>
 								<p className="text-2xl font-mono mt-1">218</p>
 							</div>
-							<div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-								<TrendingUp className="h-6 w-6 text-green-600" />
+							<div className="h-12 w-12 rounded-full bg-gain/10 flex items-center justify-center">
+								<TrendArrowUp className="h-6 w-6 text-gain" />
 							</div>
 						</div>
 						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
@@ -520,8 +518,8 @@ export function StockMarketOverview({
 								<p className="text-sm text-muted-foreground">Dividend Stocks</p>
 								<p className="text-2xl font-mono mt-1">156</p>
 							</div>
-							<div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-950 flex items-center justify-center">
-								<Percent className="h-6 w-6 text-purple-600" />
+							<div className="h-12 w-12 rounded-full bg-info/10 flex items-center justify-center">
+								<Percent className="h-6 w-6 text-info" />
 							</div>
 						</div>
 						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
@@ -540,8 +538,8 @@ export function StockMarketOverview({
 								<p className="text-sm text-muted-foreground">View Heatmap</p>
 								<p className="text-2xl font-mono mt-1">Live</p>
 							</div>
-							<div className="h-12 w-12 rounded-full bg-orange-100 dark:bg-orange-950 flex items-center justify-center">
-								<BarChart3 className="h-6 w-6 text-orange-600" />
+							<div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+								<BarChart3 className="h-6 w-6 text-primary" />
 							</div>
 						</div>
 						<Button variant="ghost" size="sm" className="w-full mt-4 justify-between">
@@ -622,8 +620,8 @@ export function StockMarketOverview({
 										onClick={() => onSelectStock?.(stock.symbol)}
 									>
 										<div className="flex items-center gap-3 flex-1">
-											<div className="h-10 w-10 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-												<TrendingUp className="h-5 w-5 text-green-600" />
+											<div className="h-10 w-10 rounded-full bg-gain/10 flex items-center justify-center">
+												<TrendArrowUp className="h-5 w-5 text-gain" />
 											</div>
 											<div>
 												<div className="flex items-center gap-2">
@@ -637,9 +635,7 @@ export function StockMarketOverview({
 										</div>
 										<div className="text-right">
 											<div className="font-mono">{formatCurrency(stock.price)}</div>
-											<div className="text-sm text-green-600 font-mono">
-												+{stock.change.toFixed(2)}%
-											</div>
+											<div className="text-sm text-gain font-mono">+{stock.change.toFixed(2)}%</div>
 										</div>
 										<div className="text-right ml-4">
 											<p className="text-xs text-muted-foreground">Volume</p>
@@ -671,8 +667,8 @@ export function StockMarketOverview({
 										onClick={() => onSelectStock?.(stock.symbol)}
 									>
 										<div className="flex items-center gap-3 flex-1">
-											<div className="h-10 w-10 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center">
-												<TrendingDown className="h-5 w-5 text-red-600" />
+											<div className="h-10 w-10 rounded-full bg-loss/10 flex items-center justify-center">
+												<TrendArrowDown className="h-5 w-5 text-loss" />
 											</div>
 											<div>
 												<div className="flex items-center gap-2">
@@ -686,9 +682,7 @@ export function StockMarketOverview({
 										</div>
 										<div className="text-right">
 											<div className="font-mono">{formatCurrency(stock.price)}</div>
-											<div className="text-sm text-red-600 font-mono">
-												{stock.change.toFixed(2)}%
-											</div>
+											<div className="text-sm text-loss font-mono">{stock.change.toFixed(2)}%</div>
 										</div>
 										<div className="text-right ml-4">
 											<p className="text-xs text-muted-foreground">Volume</p>
@@ -720,8 +714,8 @@ export function StockMarketOverview({
 										onClick={() => onSelectStock?.(stock.symbol)}
 									>
 										<div className="flex items-center gap-3 flex-1">
-											<div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-												<Activity className="h-5 w-5 text-blue-600" />
+											<div className="h-10 w-10 rounded-full bg-info/10 flex items-center justify-center">
+												<Activity className="h-5 w-5 text-info" />
 											</div>
 											<div>
 												<span className="font-mono">{stock.symbol}</span>
@@ -731,7 +725,7 @@ export function StockMarketOverview({
 										<div className="text-right">
 											<div className="font-mono">{formatCurrency(stock.price)}</div>
 											<div
-												className={`text-sm font-mono ${stock.change >= 0 ? "text-green-600" : "text-red-600"}`}
+												className={`text-sm font-mono ${stock.change >= 0 ? "text-gain" : "text-loss"}`}
 											>
 												{stock.change >= 0 ? "+" : ""}
 												{stock.change.toFixed(2)}%

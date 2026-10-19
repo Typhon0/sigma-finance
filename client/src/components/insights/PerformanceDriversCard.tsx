@@ -21,15 +21,15 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 	return (
 		<Card
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 backdrop-blur-xs p-5 min-h-[220px] flex flex-col justify-between shadow-xs hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/80">
+					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
 						Performance Drivers
 					</span>
 					{isRecommended && (
-						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-[8px] font-extrabold uppercase tracking-wider select-none">
+						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
 					)}
@@ -41,7 +41,7 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 							<span
 								className={cn(
 									"text-2xl font-bold font-mono",
-									performanceDrivers.totalGain >= 0 ? "text-emerald-500" : "text-rose-500",
+									performanceDrivers.totalGain >= 0 ? "text-gain" : "text-loss",
 								)}
 							>
 								{performanceDrivers.totalGain >= 0 ? "+" : ""}
@@ -52,7 +52,7 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 
 						<div className="grid grid-cols-2 gap-4">
 							<div>
-								<p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
+								<p className="text-micro uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
 									Top contributors
 								</p>
 								<div className="space-y-1">
@@ -62,19 +62,19 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 												<span className="truncate w-16 text-muted-foreground font-medium">
 													{c.symbol}
 												</span>
-												<span className="text-emerald-500 font-mono font-semibold">
+												<span className="text-gain font-mono font-semibold">
 													+{formatCurrency(c.gain)}
 												</span>
 											</div>
 										))
 									) : (
-										<span className="text-[10px] text-muted-foreground italic">—</span>
+										<span className="text-micro text-muted-foreground italic">—</span>
 									)}
 								</div>
 							</div>
 
 							<div>
-								<p className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
+								<p className="text-micro uppercase tracking-wider text-muted-foreground font-bold mb-1.5">
 									Worst draggers
 								</p>
 								<div className="space-y-1">
@@ -84,13 +84,13 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 												<span className="truncate w-16 text-muted-foreground font-medium">
 													{d.symbol}
 												</span>
-												<span className="text-rose-500 font-mono font-semibold">
+												<span className="text-loss font-mono font-semibold">
 													{formatCurrency(d.gain)}
 												</span>
 											</div>
 										))
 									) : (
-										<span className="text-[10px] text-muted-foreground italic">—</span>
+										<span className="text-micro text-muted-foreground italic">—</span>
 									)}
 								</div>
 							</div>
@@ -110,7 +110,7 @@ export const PerformanceDriversCard = memo(function PerformanceDriversCard({
 					<button
 						type="button"
 						onClick={() => setActiveTab("positions")}
-						className="text-[10px] text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
+						className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
 					>
 						View details →
 					</button>

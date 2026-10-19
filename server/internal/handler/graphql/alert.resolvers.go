@@ -8,12 +8,57 @@ package graphql
 import (
 	"context"
 	"fmt"
+	"log"
+
+	"github.com/shopspring/decimal"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/service"
 )
 
 // CreateAlert is the resolver for the createAlert field.
+//
+// The AlertService (validation + persistence) has existed for a long time;
+// this resolver used to return "not implemented", so every client "Alert"
+// button silently created nothing. Wire the service in, deriving the caller
+// from the auth context rather than trusting a client-supplied user ID.
 func (r *mutationResolver) CreateAlert(ctx context.Context, input gqlModel.CreateAlertInput) (*gqlModel.Alert, error) {
-	return nil, fmt.Errorf("not implemented: CreateAlert - createAlert")
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if input.AssetID != nil && input.PortfolioID != nil {
+		// The service treats asset and portfolio alerts differently; accepting
+		// both at once would make the trigger semantics ambiguous.
+		return nil, fmt.Errorf("invalid alert configuration: provide either assetId or portfolioId, not both")
+	}
+
+	req := service.CreateAlertRequest{
+		UserID:              userID,
+		AlertType:           mapGQLAlertTypeToService(input.AlertType),
+		ConditionType:       mapGQLConditionTypeToService(input.ConditionType),
+		NotificationMethods: mapGQLNotificationMethodsToService(input.NotificationMethods),
+	}
+	if input.AssetID != nil && *input.AssetID != "" {
+		req.AssetID = input.AssetID
+	}
+	if input.PortfolioID != nil && *input.PortfolioID != "" {
+		req.PortfolioID = input.PortfolioID
+	}
+	if input.ThresholdValue != nil {
+		v := decimal.NewFromFloat(*input.ThresholdValue)
+		req.ThresholdValue = &v
+	}
+	if input.ThresholdPercentage != nil {
+		p := decimal.NewFromFloat(*input.ThresholdPercentage)
+		req.ThresholdPercentage = &p
+	}
+
+	created, err := r.Resolver.AlertService.CreateAlert(ctx, req)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] CreateAlert: failed user=%s: %v", userID, err)
+		return nil, err
+	}
+	return mapAlertToGQL(created), nil
 }
 
 // UpdateAlert is the resolver for the updateAlert field.

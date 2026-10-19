@@ -70,6 +70,11 @@ func TestInstrumentRepository_ListManual(t *testing.T) {
 		cusip VARCHAR(32),
 		search_vector tsvector,
 		metadata JSONB,
+			-- Reference metrics added by migration 55092026_add_instrument_reference_metrics.
+			-- Nullable: NULL means the provider has not supplied a figure, which is
+			-- not the same as zero and must never be defaulted on read.
+			expense_ratio DECIMAL(8,6),
+			dividend_yield DECIMAL(8,6),
 			first_seen_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
 			last_verified_at TIMESTAMP WITH TIME ZONE,
 			last_used_at TIMESTAMP WITH TIME ZONE,

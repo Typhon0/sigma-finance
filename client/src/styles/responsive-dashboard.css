@@ -59,7 +59,7 @@
 
 	/* Better focus states for mobile */
 	.mobile-focus:focus {
-		outline: 2px solid hsl(var(--ring));
+		outline: 2px solid var(--ring);
 		outline-offset: 2px;
 	}
 }
@@ -77,7 +77,7 @@
 @media (min-width: 1024px) {
 	/* Hover states only on devices that support hover */
 	.desktop-hover:hover {
-		background-color: hsl(var(--muted) / 0.5);
+		background-color: color-mix(in oklab, var(--muted) 50%, transparent);
 	}
 }
 
@@ -152,7 +152,7 @@
 	transform: translateY(-50%);
 	width: 4px;
 	height: 60px;
-	background: linear-gradient(to right, transparent, hsl(var(--primary)));
+	background: linear-gradient(to right, transparent, var(--primary));
 	border-radius: 0 4px 4px 0;
 	opacity: 0;
 	transition: opacity 0.2s ease-in-out;
@@ -215,14 +215,14 @@
 @media (max-width: 767px) {
 	/* Larger focus rings on mobile */
 	.mobile-focus-ring:focus-visible {
-		outline: 3px solid hsl(var(--ring));
+		outline: 3px solid var(--ring);
 		outline-offset: 3px;
 	}
 
 	/* Better contrast for mobile */
 	.mobile-high-contrast {
-		color: hsl(var(--foreground));
-		background-color: hsl(var(--background));
+		color: var(--foreground);
+		background-color: var(--background);
 	}
 }
 

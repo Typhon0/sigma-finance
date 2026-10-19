@@ -27,8 +27,9 @@ func TestMapStockToGQL(t *testing.T) {
 		{ID: "2", Name: "growth"},
 	}
 
-	// Test conversion
-	result := mapStockToGQL(asset, nil, tags, nil, nil, nil)
+	// Test conversion. No instrument: the holding was entered by hand, so the
+	// reference metrics have nowhere to come from and must stay nil.
+	result := mapStockToGQL(asset, nil, tags, nil, nil, nil, nil)
 
 	// Verify results
 	if result.ID != "1" {

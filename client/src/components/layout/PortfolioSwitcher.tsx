@@ -104,7 +104,7 @@ export function PortfolioSwitcher({
 					<Button
 						variant="ghost"
 						size="sm"
-						className="w-full h-7 text-[10px] text-muted-foreground hover:text-primary"
+						className="w-full h-7 text-micro text-muted-foreground hover:text-primary"
 					>
 						<Plus className="h-3 w-3 mr-1.5" />
 						New Portfolio
