@@ -566,6 +566,7 @@ func (u *stubUOW) ProviderRoutingConfig() repository.IProviderRoutingConfigRepos
 	panic("not implemented")
 }
 func (u *stubUOW) FXRate() repository.IFXRateRepository { panic("not implemented") }
+func (u *stubUOW) Sync() repository.ISyncRepository     { panic("not implemented") }
 
 // ---------------------------------------------------------------------------
 // Helper: build a Resolver wired to the given stubs
