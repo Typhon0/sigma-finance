@@ -416,6 +416,174 @@ func TestSyncService_RegisterCredentialAndLinkAccount(t *testing.T) {
 	assert.Equal(t, "KRAKEN", acc.SyncProvider)
 }
 
+func TestSyncService_LinkAccount_TenantIsolation(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+
+	// Seed connection for user-1 in portfolio-1
+	uow.portfolios["portfolio-1"] = &model.Portfolio{ID: "portfolio-1", UserID: "user-1"}
+	conn := &model.SyncConnection{
+		ID:                    "conn-1",
+		UserID:                "user-1",
+		PortfolioID:           "portfolio-1",
+		CredentialID:          "cred-1",
+		Provider:              "KRAKEN",
+		ExternalInstitutionID: "kraken",
+		ExternalAccountID:     "ext-acc-1",
+		InstitutionName:       "Kraken",
+		SyncStatus:            model.SyncConnectionStatusIdle,
+	}
+	_ = uow.Sync().CreateConnection(ctx, conn)
+
+	// Seed account belonging to user-2 in portfolio-2
+	alienAccount := &model.Account{
+		ID:          "acc-alien",
+		UserID:      "user-2",
+		PortfolioID: "portfolio-2",
+		Name:        "Alien Account",
+	}
+	_, _ = uow.Account().Create(ctx, alienAccount)
+
+	service := syncservice.NewSyncService(uow, nil)
+
+	// Attempt linking alien account must fail with unauthorized error
+	_, err := service.LinkAccount(ctx, conn.ID, "acc-alien", false)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "unauthorized account linkage")
+}
+
+func TestSyncService_ResidualTaxLotCreationIsIdempotent(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	aaplAsset := &model.Asset{
+		ID:          "asset-aapl",
+		Symbol:      strPtr("AAPL"),
+		Name:        "Apple Inc.",
+		Type:        model.AssetTypeStock,
+		IsTradeable: true,
+	}
+	uow.assets[aaplAsset.ID] = aaplAsset
+
+	buyTx := &model.Transaction{
+		ID:                "tx-hist-1",
+		UserID:            "user-1",
+		AccountID:         strPtr("acc-1"),
+		PositionID:        strPtr("pos-aapl"),
+		Type:              model.TransactionTypeBuy,
+		Amount:            model.Money(30000),
+		Quantity:          decPtr(decimal.NewFromInt(2)),
+		UnitPriceAmount:   decPtr(decimal.NewFromInt(150)),
+		UnitPriceCurrency: model.CurrencyUSD,
+		ExecutedAt:        time.Now().Add(-30 * 24 * time.Hour),
+	}
+	uow.transactions[buyTx.ID] = buyTx
+
+	pos := &model.Position{
+		ID:                  "pos-aapl",
+		PortfolioID:         "portfolio-1",
+		AccountID:           "acc-1",
+		AssetID:             aaplAsset.ID,
+		Quantity:            decimal.NewFromInt(2),
+		OwnershipPercentage: decimal.NewFromInt(100),
+		QuoteCurrency:       model.CurrencyUSD,
+	}
+	uow.positions[pos.ID] = pos
+
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawHoldings: []syncservice.RawHolding{
+			{
+				ExternalID:       "ext-aapl",
+				Symbol:           "AAPL",
+				Name:             "Apple Inc.",
+				AssetType:        model.AssetTypeStock,
+				Quantity:         decimal.NewFromInt(10),
+				CostBasisPerUnit: decPtr(decimal.NewFromInt(150)),
+				Currency:         model.CurrencyUSD,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	// First sync creates 1 baseline tax lot of 8 shares
+	run1, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run1.Status)
+
+	lots1, err := uow.TaxLot().FindByPositionID(ctx, pos.ID)
+	require.NoError(t, err)
+	assert.Len(t, lots1, 1, "expected exactly 1 baseline tax lot after sync 1")
+	assert.True(t, lots1[0].RemainingQuantity.Equal(decimal.NewFromInt(8)))
+
+	// Second sync with identical data must NOT create extra tax lots
+	run2, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run2.Status)
+
+	lots2, err := uow.TaxLot().FindByPositionID(ctx, pos.ID)
+	require.NoError(t, err)
+	assert.Len(t, lots2, 1, "expected STILL exactly 1 baseline tax lot after repeat sync (idempotency)")
+	assert.True(t, lots2[0].RemainingQuantity.Equal(decimal.NewFromInt(8)))
+}
+
+func TestSyncService_CatalogMatchProvisionsRealAsset(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	// Pre-seed an Instrument in the catalog with ISIN
+	catalogInst := &model.Instrument{
+		ID:               "inst-aapl",
+		NormalizedSymbol: "AAPL",
+		NormalizedName:   "Apple Inc.",
+		AssetType:        model.InstrumentAssetTypeStock,
+		ProviderSource:   "EODHD",
+		ISIN:             strPtr("US0378331005"),
+	}
+	uow.instruments[catalogInst.ID] = catalogInst
+
+	// Asset repository initially has NO asset for AAPL
+	assert.Empty(t, uow.assets)
+
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawHoldings: []syncservice.RawHolding{
+			{
+				ExternalID: "ext-aapl",
+				Symbol:     "AAPL",
+				ISIN:       "US0378331005",
+				Name:       "Apple Inc.",
+				Quantity:   decimal.NewFromInt(15),
+				Currency:   model.CurrencyUSD,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+	assert.Nil(t, run.ErrorMessage, "should have no unmapped warnings since instrument was matched")
+
+	// Asset was provisioned as a real tradeable asset linked to catalogInst.ID
+	asset, err := uow.Asset().GetByInstrumentID(ctx, "inst-aapl")
+	require.NoError(t, err)
+	require.NotNil(t, asset)
+	assert.Equal(t, "AAPL", *asset.Symbol)
+	assert.Equal(t, "EODHD", *asset.MarketDataSource)
+	assert.NotEqual(t, "UNMAPPED", *asset.MarketDataSource)
+	assert.True(t, asset.IsTradeable)
+}
+
 // Helpers and in-memory Unit of Work for testing
 
 func decPtr(d decimal.Decimal) *decimal.Decimal { return &d }
@@ -434,6 +602,7 @@ type syncTestUOW struct {
 	connections  map[string]*model.SyncConnection
 	syncRuns     map[string]*model.SyncRun
 	assetPrices  map[string]*model.AssetPrice
+	instruments  map[string]*model.Instrument
 }
 
 func newSyncTestUOW() *syncTestUOW {
@@ -449,6 +618,7 @@ func newSyncTestUOW() *syncTestUOW {
 		connections:  make(map[string]*model.SyncConnection),
 		syncRuns:     make(map[string]*model.SyncRun),
 		assetPrices:  make(map[string]*model.AssetPrice),
+		instruments:  make(map[string]*model.Instrument),
 	}
 }
 
@@ -502,6 +672,21 @@ func (u *syncTestUOW) Position() repository.IPositionRepository       { return &
 func (u *syncTestUOW) TaxLot() repository.ITaxLotRepository           { return &syncTestTaxLotRepo{u: u} }
 func (u *syncTestUOW) Transaction() repository.ITransactionRepository { return &syncTestTxRepo{u: u} }
 func (u *syncTestUOW) AssetPrice() repository.IPriceRepository        { return &syncTestPriceRepo{u: u} }
+func (u *syncTestUOW) Instrument() repository.IInstrumentRepository   { return &syncTestInstrumentRepo{u: u} }
+
+type syncTestInstrumentRepo struct {
+	repository.IInstrumentRepository
+	u *syncTestUOW
+}
+
+func (r *syncTestInstrumentRepo) GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error) {
+	for _, inst := range r.u.instruments {
+		if field == "isin" && inst.ISIN != nil && *inst.ISIN == value {
+			return inst, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
 
 type syncTestSyncRepo struct {
 	repository.ISyncRepository
@@ -521,6 +706,11 @@ func (r *syncTestSyncRepo) GetCredentialByID(ctx context.Context, id string) (*m
 		return c, nil
 	}
 	return nil, repository.ErrNotFound
+}
+
+func (r *syncTestSyncRepo) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
+	r.u.credentials[cred.ID] = cred
+	return nil
 }
 
 func (r *syncTestSyncRepo) CreateConnection(ctx context.Context, conn *model.SyncConnection) error {

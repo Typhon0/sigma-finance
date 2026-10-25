@@ -97,48 +97,59 @@ func (s *SyncService) LinkAccount(ctx context.Context, connectionID string, acco
 		return nil, ErrConnectionNotFound
 	}
 
-	if autoCreate || accountID == "" {
-		accountName := fmt.Sprintf("%s Account", conn.InstitutionName)
-		accountType := model.AccountTypeBroker
-		if conn.Provider == model.SyncProviderKraken {
-			accountType = model.AccountTypeCryptoExchange
-		} else if conn.Provider == model.SyncProviderGoCardless {
-			accountType = model.AccountTypeBank
+	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		if autoCreate || accountID == "" {
+			accountName := fmt.Sprintf("%s Account", conn.InstitutionName)
+			accountType := model.AccountTypeBroker
+			if conn.Provider == model.SyncProviderKraken {
+				accountType = model.AccountTypeCryptoExchange
+			} else if conn.Provider == model.SyncProviderGoCardless {
+				accountType = model.AccountTypeBank
+			}
+
+			acc := &model.Account{
+				UserID:        conn.UserID,
+				PortfolioID:   conn.PortfolioID,
+				Name:          accountName,
+				Type:          accountType,
+				TaxWrapper:    model.TaxWrapperStandardTaxable,
+				Institution:   &conn.InstitutionName,
+				AccountNumber: &conn.ExternalAccountID,
+				Currency:      model.CurrencyEUR,
+				SyncProvider:  conn.Provider,
+				ExternalID:    &conn.ExternalAccountID,
+			}
+
+			createdAcc, createErr := uow.Account().Create(ctx, acc)
+			if createErr != nil {
+				return fmt.Errorf("failed to auto-create account: %w", createErr)
+			}
+			conn.AccountID = &createdAcc.ID
+		} else {
+			acc, getErr := uow.Account().GetByID(ctx, accountID)
+			if getErr != nil {
+				return ErrAccountNotFound
+			}
+			if acc.UserID != conn.UserID || acc.PortfolioID != conn.PortfolioID {
+				return errors.New("unauthorized account linkage: account belongs to different user or portfolio")
+			}
+			acc.SyncProvider = conn.Provider
+			acc.ExternalID = &conn.ExternalAccountID
+			if updateErr := uow.Account().Update(ctx, acc); updateErr != nil {
+				return fmt.Errorf("failed to update account linkage: %w", updateErr)
+			}
+			conn.AccountID = &acc.ID
 		}
 
-		acc := &model.Account{
-			UserID:        conn.UserID,
-			PortfolioID:   conn.PortfolioID,
-			Name:          accountName,
-			Type:          accountType,
-			TaxWrapper:    model.TaxWrapperStandardTaxable,
-			Institution:   &conn.InstitutionName,
-			AccountNumber: &conn.ExternalAccountID,
-			Currency:      model.CurrencyEUR,
-			SyncProvider:  conn.Provider,
-			ExternalID:    &conn.ExternalAccountID,
+		if err := uow.Sync().UpdateConnection(ctx, conn); err != nil {
+			return fmt.Errorf("failed to update connection: %w", err)
 		}
 
-		createdAcc, createErr := s.uow.Account().Create(ctx, acc)
-		if createErr != nil {
-			return nil, fmt.Errorf("failed to auto-create account: %w", createErr)
-		}
-		conn.AccountID = &createdAcc.ID
-	} else {
-		acc, getErr := s.uow.Account().GetByID(ctx, accountID)
-		if getErr != nil {
-			return nil, ErrAccountNotFound
-		}
-		acc.SyncProvider = conn.Provider
-		acc.ExternalID = &conn.ExternalAccountID
-		if updateErr := s.uow.Account().Update(ctx, acc); updateErr != nil {
-			return nil, fmt.Errorf("failed to update account linkage: %w", updateErr)
-		}
-		conn.AccountID = &acc.ID
-	}
+		return nil
+	})
 
-	if err := s.uow.Sync().UpdateConnection(ctx, conn); err != nil {
-		return nil, fmt.Errorf("failed to update connection: %w", err)
+	if err != nil {
+		return nil, err
 	}
 
 	return conn, nil
@@ -194,12 +205,12 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		now := time.Now()
 		errMsg := testErr.Error()
 
-		if errors.Is(testErr, ErrInvalidCredentials) || errors.Is(testErr, ErrExpiredCredentials) {
+		if errors.Is(testErr, ErrExpiredCredentials) {
+			cred.Status = model.SyncCredentialStatusExpired
+			_ = s.uow.Sync().UpdateCredential(ctx, cred)
+		} else if errors.Is(testErr, ErrInvalidCredentials) {
 			cred.Status = model.SyncCredentialStatusInvalid
-			// Update credential status in DB
-			_ = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-				return uow.Sync().CreateCredential(ctx, cred) // update if exists or repository method
-			})
+			_ = s.uow.Sync().UpdateCredential(ctx, cred)
 		}
 
 		run.Status = model.SyncRunStatusFailed
@@ -214,26 +225,82 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		return run, testErr
 	}
 
-	// 3. Reconcile in atomic database transaction
+	// 3. Network calls outside DB transaction
+	if conn.AccountID == nil {
+		now := time.Now()
+		errMsg := ErrAccountNotFound.Error()
+		run.Status = model.SyncRunStatusFailed
+		run.ErrorMessage = &errMsg
+		run.CompletedAt = &now
+		_ = s.uow.Sync().UpdateSyncRun(ctx, run)
+
+		conn.SyncStatus = model.SyncConnectionStatusFailed
+		conn.LastError = &errMsg
+		_ = s.uow.Sync().UpdateConnection(ctx, conn)
+
+		return run, ErrAccountNotFound
+	}
+
+	balances, err := adapter.FetchBalances(ctx, cred, conn.ExternalAccountID)
+	if err != nil {
+		now := time.Now()
+		errMsg := fmt.Sprintf("failed to fetch balances: %v", err)
+		run.Status = model.SyncRunStatusFailed
+		run.ErrorMessage = &errMsg
+		run.CompletedAt = &now
+		_ = s.uow.Sync().UpdateSyncRun(ctx, run)
+
+		conn.SyncStatus = model.SyncConnectionStatusFailed
+		conn.LastError = &errMsg
+		_ = s.uow.Sync().UpdateConnection(ctx, conn)
+
+		return run, err
+	}
+
+	holdings, err := adapter.FetchHoldings(ctx, cred, conn.ExternalAccountID)
+	if err != nil {
+		now := time.Now()
+		errMsg := fmt.Sprintf("failed to fetch holdings: %v", err)
+		run.Status = model.SyncRunStatusFailed
+		run.ErrorMessage = &errMsg
+		run.CompletedAt = &now
+		_ = s.uow.Sync().UpdateSyncRun(ctx, run)
+
+		conn.SyncStatus = model.SyncConnectionStatusFailed
+		conn.LastError = &errMsg
+		_ = s.uow.Sync().UpdateConnection(ctx, conn)
+
+		return run, err
+	}
+
+	txs, err := adapter.FetchTransactions(ctx, cred, conn.ExternalAccountID, conn.LastSyncAt)
+	if err != nil {
+		now := time.Now()
+		errMsg := fmt.Sprintf("failed to fetch transactions: %v", err)
+		run.Status = model.SyncRunStatusFailed
+		run.ErrorMessage = &errMsg
+		run.CompletedAt = &now
+		_ = s.uow.Sync().UpdateSyncRun(ctx, run)
+
+		conn.SyncStatus = model.SyncConnectionStatusFailed
+		conn.LastError = &errMsg
+		_ = s.uow.Sync().UpdateConnection(ctx, conn)
+
+		return run, err
+	}
+
+	// 4. Reconcile in atomic database transaction
 	totalImported := 0
 	totalUpdated := 0
 	var allWarnings []string
 
 	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		// Verify target account exists
-		if conn.AccountID == nil {
-			return ErrAccountNotFound
-		}
 		account, err := uow.Account().GetByID(ctx, *conn.AccountID)
 		if err != nil {
 			return ErrAccountNotFound
 		}
 
-		// Fetch balances and reconcile cash
-		balances, err := adapter.FetchBalances(ctx, cred, conn.ExternalAccountID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch balances: %w", err)
-		}
+		// Reconcile cash balances
 		balImported, balUpdated, err := ReconcileBalances(ctx, uow, conn, account, balances)
 		if err != nil {
 			return err
@@ -241,11 +308,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		totalImported += balImported
 		totalUpdated += balUpdated
 
-		// Fetch holdings and reconcile positions
-		holdings, err := adapter.FetchHoldings(ctx, cred, conn.ExternalAccountID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch holdings: %w", err)
-		}
+		// Reconcile holdings
 		hImported, hUpdated, warnings, activeAssetIDs, err := ReconcileHoldings(ctx, uow, s.instrumentService, conn, account, holdings)
 		if err != nil {
 			return err
@@ -254,11 +317,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		totalUpdated += hUpdated
 		allWarnings = append(allWarnings, warnings...)
 
-		// Fetch transactions and ingest
-		txs, err := adapter.FetchTransactions(ctx, cred, conn.ExternalAccountID, conn.LastSyncAt)
-		if err != nil {
-			return fmt.Errorf("failed to fetch transactions: %w", err)
-		}
+		// Reconcile transactions
 		txImported, txUpdated, err := ReconcileTransactions(ctx, uow, conn, txs)
 		if err != nil {
 			return err

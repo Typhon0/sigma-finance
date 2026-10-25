@@ -315,33 +315,38 @@ func ReconcileResidualTaxLots(ctx context.Context, uow repository.IUnitOfWork, c
 			continue
 		}
 
-		// Calculate total quantity currently tracked in tax lots
+		// Calculate total quantity currently tracked in active tax lots
+		// and collect transaction IDs that already have a tax lot.
 		existingLots, _ := uow.TaxLot().FindByPositionID(ctx, pos.ID)
-		totalAllocatedInLots := decimal.Zero
+		totalRemainingInLots := decimal.Zero
+		allocatedLotTxIDs := make(map[string]bool)
 		for _, lot := range existingLots {
 			if lot.Status != model.TaxLotStatusClosed {
-				totalAllocatedInLots = totalAllocatedInLots.Add(lot.RemainingQuantity)
+				totalRemainingInLots = totalRemainingInLots.Add(lot.RemainingQuantity)
+			}
+			if lot.TransactionID != nil {
+				allocatedLotTxIDs[*lot.TransactionID] = true
 			}
 		}
 
-		// Retrieve historical buy transactions to find earliest cost basis and historical volume
+		// Retrieve historical buy transactions to find earliest cost basis and unallocated tx quantity
 		txs, _ := uow.Transaction().FindByPositionID(ctx, pos.ID)
-		totalBoughtHistorically := decimal.Zero
+		unallocatedTxQty := decimal.Zero
 		var earliestBuy *model.Transaction
 		for _, tx := range txs {
 			if tx.Type == model.TransactionTypeBuy && tx.Quantity != nil {
-				totalBoughtHistorically = totalBoughtHistorically.Add(*tx.Quantity)
 				if earliestBuy == nil || tx.ExecutedAt.Before(earliestBuy.ExecutedAt) {
 					earliestBuy = &tx
+				}
+				// Only count buy transactions that don't already have a tax lot
+				if !allocatedLotTxIDs[tx.ID] {
+					unallocatedTxQty = unallocatedTxQty.Add(*tx.Quantity)
 				}
 			}
 		}
 
-		// Baseline accounted quantity is the maximum of tax lots or historical buy txs
-		accountedQuantity := totalAllocatedInLots
-		if totalBoughtHistorically.GreaterThan(accountedQuantity) {
-			accountedQuantity = totalBoughtHistorically
-		}
+		// Accounted quantity is all open tax lots (including existing baseline lots) plus unallocated buy transactions
+		accountedQuantity := totalRemainingInLots.Add(unallocatedTxQty)
 
 		if h.Quantity.GreaterThan(accountedQuantity) {
 			residualQuantity := h.Quantity.Sub(accountedQuantity)
@@ -414,6 +419,8 @@ func resolveOrCreateAsset(
 			if err == nil && asset != nil {
 				return asset, false, nil
 			}
+			// Instrument matched in catalog, but Asset entity not yet created -> provision real tradeable asset
+			return createAssetFromInstrument(ctx, uow, inst)
 		}
 	}
 
@@ -427,6 +434,8 @@ func resolveOrCreateAsset(
 				if err == nil && asset != nil {
 					return asset, false, nil
 				}
+				// Instrument matched in catalog, but Asset entity not yet created -> provision real tradeable asset
+				return createAssetFromInstrument(ctx, uow, inst)
 			}
 		}
 	}
@@ -464,4 +473,38 @@ func resolveOrCreateAsset(
 	}
 
 	return created, true, nil
+}
+
+// createAssetFromInstrument provisions and persists a tradeable Asset linked to a matched catalog Instrument.
+func createAssetFromInstrument(ctx context.Context, uow repository.IUnitOfWork, inst *model.Instrument) (*model.Asset, bool, error) {
+	assetType := model.AssetTypeStock
+	switch inst.AssetType {
+	case model.InstrumentAssetTypeCrypto:
+		assetType = model.AssetTypeCrypto
+	case model.InstrumentAssetTypeFund, model.InstrumentAssetTypeETF:
+		assetType = model.AssetTypeFund
+	}
+
+	instID := inst.ID
+	sym := inst.NormalizedSymbol
+	name := inst.NormalizedName
+	if name == "" {
+		name = sym
+	}
+
+	newAsset := &model.Asset{
+		InstrumentID:     &instID,
+		Symbol:           &sym,
+		Name:             name,
+		Type:             assetType,
+		IsTradeable:      true,
+		MarketDataSource: &inst.ProviderSource,
+	}
+
+	created, err := uow.Asset().Create(ctx, newAsset)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to create asset from matched instrument %s: %w", sym, err)
+	}
+
+	return created, false, nil
 }

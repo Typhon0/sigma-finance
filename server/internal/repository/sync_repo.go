@@ -16,6 +16,7 @@ type ISyncRepository interface {
 	CreateCredential(ctx context.Context, cred *model.SyncCredential) error
 	GetCredentialByID(ctx context.Context, id string) (*model.SyncCredential, error)
 	GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error)
+	UpdateCredential(ctx context.Context, cred *model.SyncCredential) error
 	CreateConnection(ctx context.Context, conn *model.SyncConnection) error
 	GetConnectionByID(ctx context.Context, id string) (*model.SyncConnection, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
@@ -94,6 +95,20 @@ func (r *SyncRepository) GetCredentialByProvider(ctx context.Context, userID str
 		return nil, err
 	}
 	return &cred, nil
+}
+
+// UpdateCredential updates an existing sync credential in the database.
+func (r *SyncRepository) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
+	cred.UpdatedAt = time.Now()
+	res, err := r.db.NewUpdate().Model(cred).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // CreateConnection links a portfolio to an external provider account.
