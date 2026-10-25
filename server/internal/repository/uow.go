@@ -65,6 +65,9 @@ type IUnitOfWork interface {
 
 	// FX rate repository
 	FXRate() IFXRateRepository
+
+	// Sync repository
+	Sync() ISyncRepository
 }
 
 // UnitOfWork is the concrete implementation of IUnitOfWork
@@ -121,6 +124,9 @@ type UnitOfWork struct {
 
 	// FX rate repository
 	fxRateRepo *FXRateRepository
+
+	// Sync repository
+	sync ISyncRepository
 }
 
 // Expose DB for internal wiring (not part of interface to preserve abstraction)
@@ -170,6 +176,7 @@ func NewUnitOfWork(db *bun.DB) IUnitOfWork {
 		pushSubscription:           NewPushSubscriptionRepository(db),
 		providerRoutingConfig:      NewProviderRoutingConfigRepository(db),
 		fxRateRepo:                 NewFXRateRepository(db),
+		sync:                       NewSyncRepository(db),
 	}
 }
 
@@ -224,6 +231,7 @@ func (uow *UnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) e
 		pushSubscription:       NewPushSubscriptionRepository(&tx),
 		providerRoutingConfig:  NewProviderRoutingConfigRepository(&tx),
 		fxRateRepo:             NewFXRateRepository(&tx),
+		sync:                   NewSyncRepository(&tx),
 	}
 
 	if err := fn(txUow); err != nil {
@@ -426,6 +434,7 @@ type txUnitOfWork struct {
 	pushSubscription           IPushSubscriptionRepository
 	providerRoutingConfig      IProviderRoutingConfigRepository
 	fxRateRepo                 *FXRateRepository
+	sync                       ISyncRepository
 }
 
 func (uow *txUnitOfWork) Do(ctx context.Context, fn func(uow IUnitOfWork) error) error {
@@ -631,4 +640,12 @@ func (uow *UnitOfWork) TaxLotDisposition() ITaxLotDispositionRepository {
 }
 func (uow *txUnitOfWork) TaxLotDisposition() ITaxLotDispositionRepository {
 	return uow.taxLotDisposition
+}
+
+// Sync returns the sync repository
+func (uow *UnitOfWork) Sync() ISyncRepository {
+	return uow.sync
+}
+func (uow *txUnitOfWork) Sync() ISyncRepository {
+	return uow.sync
 }
