@@ -401,7 +401,8 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 			if vol.IsPositive() && cost.IsPositive() {
 				costBasisPerUnit := cost.Div(vol)
 				holding.CostBasisPerUnit = &costBasisPerUnit
-				cents := model.Money(cost.Mul(decimal.NewFromInt(100)).IntPart())
+				totalCost := costBasisPerUnit.Mul(holding.Quantity)
+				cents := model.Money(totalCost.Mul(decimal.NewFromInt(100)).IntPart())
 				holding.TotalCostBasis = &cents
 			}
 		}
@@ -417,6 +418,32 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 	return holdings, nil
 }
 
+// ExtractBaseAssetFromPair strips known quote suffixes (ordered from longest to shortest)
+// and normalizes the resulting base currency symbol (e.g. "SOLUSD" -> "SOL", "XXBTZUSD" -> "BTC").
+func ExtractBaseAssetFromPair(pair string) string {
+	p := strings.ToUpper(strings.TrimSpace(pair))
+	quoteSuffixes := []string{
+		"ZUSD", "ZEUR", "ZGBP", "ZJPY", "ZCAD", "ZAUD", "ZCHF", "USDT", "USDC",
+		"USD", "EUR", "GBP", "JPY", "CAD", "AUD", "CHF", "XBT", "BTC", "ETH",
+	}
+
+	for _, suffix := range quoteSuffixes {
+		if strings.HasSuffix(p, suffix) && len(p) > len(suffix) {
+			base := p[:len(p)-len(suffix)]
+			sym, _ := NormalizeKrakenAsset(base)
+			return sym
+		}
+	}
+
+	// Fallback if no known quote matched: if length >= 4, strip 4
+	if len(p) >= 4 {
+		sym, _ := NormalizeKrakenAsset(p[:len(p)-4])
+		return sym
+	}
+	sym, _ := NormalizeKrakenAsset(p)
+	return sym
+}
+
 func (k *KrakenAdapter) fetchOpenPositionsSilently(ctx context.Context, cred *model.SyncCredential) map[string]krakenOpenPositionRecord {
 	out := make(map[string]krakenOpenPositionRecord)
 	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/OpenPositions", nil)
@@ -430,12 +457,7 @@ func (k *KrakenAdapter) fetchOpenPositionsSilently(ctx context.Context, cred *mo
 	}
 
 	for _, pos := range env.Result {
-		// e.g. pair "XXBTZUSD" -> extract base "BTC"
-		baseAsset := pos.Pair
-		if len(baseAsset) >= 4 {
-			baseAsset = baseAsset[:len(baseAsset)-4]
-		}
-		sym, _ := NormalizeKrakenAsset(baseAsset)
+		sym := ExtractBaseAssetFromPair(pos.Pair)
 		out[sym] = pos
 	}
 	return out
@@ -456,6 +478,15 @@ type krakenLedgerRecord struct {
 type krakenLedgersResult struct {
 	Count  int                           `json:"count"`
 	Ledger map[string]krakenLedgerRecord `json:"ledger"`
+}
+
+type parsedTradeLeg struct {
+	id       string
+	execTime time.Time
+	symbol   string
+	isFiat   bool
+	amt      decimal.Decimal
+	feeCents model.Money
 }
 
 // FetchTransactions queries /0/private/Ledgers and converts records into syncservice.RawTransaction items.
@@ -487,6 +518,9 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 	sort.Strings(keys)
 
 	var txs []syncservice.RawTransaction
+	tradeGroups := make(map[string][]parsedTradeLeg)
+	var tradeRefOrder []string
+
 	for _, id := range keys {
 		entry := env.Result.Ledger[id]
 		amt, parseErr := decimal.NewFromString(entry.Amount)
@@ -578,57 +612,21 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 			})
 
 		case "trade":
-			qty := amt.Abs()
-			if qty.IsZero() {
-				continue
+			refID := strings.TrimSpace(entry.RefID)
+			if refID == "" {
+				refID = fmt.Sprintf("standalone_%s", id)
 			}
-
-			// If ledger trade is recorded in crypto asset, formulate Buy or Sell transaction
-			if amt.IsPositive() {
-				// Buy crypto
-				unitPrice := decimal.NewFromInt(1)
-				amtCents := model.Money(qty.Mul(unitPrice).Mul(decimal.NewFromInt(100)).IntPart())
-				if amtCents <= 0 {
-					amtCents = 1
-				}
-				txs = append(txs, syncservice.RawTransaction{
-					ExternalID:        id,
-					Type:              model.TransactionTypeBuy,
-					Symbol:            symbol,
-					Name:              symbol,
-					Quantity:          &qty,
-					UnitPriceAmount:   &unitPrice,
-					UnitPriceCurrency: model.CurrencyUSD,
-					Amount:            amtCents,
-					Currency:          model.CurrencyUSD,
-					FeesAmount:        feeCents,
-					FeesCurrency:      feeCurrency,
-					ExecutedAt:        execTime,
-					Notes:             fmt.Sprintf("Kraken trade buy %s %s", qty.String(), symbol),
-				})
-			} else {
-				// Sell crypto or fiat leg
-				unitPrice := decimal.NewFromInt(1)
-				amtCents := -model.Money(qty.Mul(unitPrice).Mul(decimal.NewFromInt(100)).IntPart())
-				if amtCents >= 0 {
-					amtCents = -1
-				}
-				txs = append(txs, syncservice.RawTransaction{
-					ExternalID:        id,
-					Type:              model.TransactionTypeSell,
-					Symbol:            symbol,
-					Name:              symbol,
-					Quantity:          &qty,
-					UnitPriceAmount:   &unitPrice,
-					UnitPriceCurrency: model.CurrencyUSD,
-					Amount:            amtCents,
-					Currency:          model.CurrencyUSD,
-					FeesAmount:        feeCents,
-					FeesCurrency:      feeCurrency,
-					ExecutedAt:        execTime,
-					Notes:             fmt.Sprintf("Kraken trade sell %s %s", qty.String(), symbol),
-				})
+			if _, exists := tradeGroups[refID]; !exists {
+				tradeRefOrder = append(tradeRefOrder, refID)
 			}
+			tradeGroups[refID] = append(tradeGroups[refID], parsedTradeLeg{
+				id:       id,
+				execTime: execTime,
+				symbol:   symbol,
+				isFiat:   isFiat,
+				amt:      amt,
+				feeCents: feeCents,
+			})
 
 		default:
 			// Transfers, fees, rollovers, adjustments
@@ -670,6 +668,128 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 			}
 		}
 	}
+
+	// Process trade groups paired by refid:
+	// A Kraken trade consists of double-entry ledger records (e.g. crypto leg +0.05 BTC and fiat leg -2500 EUR).
+	// We generate a single transaction for the crypto asset and extract execution price & monetary amount
+	// from the counter-fiat leg. We never emit BUY/SELL transactions for fiat currencies.
+	for _, refID := range tradeRefOrder {
+		legs := tradeGroups[refID]
+
+		var cryptoLegs []parsedTradeLeg
+		var fiatLegs []parsedTradeLeg
+
+		for _, l := range legs {
+			if l.isFiat {
+				fiatLegs = append(fiatLegs, l)
+			} else {
+				cryptoLegs = append(cryptoLegs, l)
+			}
+		}
+
+		// Case A: Crypto leg paired with counter-fiat leg
+		if len(cryptoLegs) > 0 && len(fiatLegs) > 0 {
+			totalFiatAmount := decimal.Zero
+			totalFiatFees := model.Money(0)
+			fiatCurrency := model.CurrencyUSD
+
+			for _, fl := range fiatLegs {
+				totalFiatAmount = totalFiatAmount.Add(fl.amt.Abs())
+				totalFiatFees += fl.feeCents
+				fiatCurrency = model.Currency(fl.symbol)
+			}
+			if !fiatCurrency.IsValid() {
+				fiatCurrency = model.CurrencyUSD
+			}
+
+			for _, cl := range cryptoLegs {
+				cryptoQty := cl.amt.Abs()
+				if cryptoQty.IsZero() {
+					continue
+				}
+
+				unitPrice := totalFiatAmount.Div(cryptoQty)
+				totalFees := cl.feeCents + totalFiatFees
+				fiatCents := model.Money(totalFiatAmount.Mul(decimal.NewFromInt(100)).IntPart())
+				if fiatCents <= 0 {
+					fiatCents = 1
+				}
+
+				var txType model.TransactionType
+				var amtCents model.Money
+				if cl.amt.IsPositive() {
+					txType = model.TransactionTypeBuy
+					amtCents = fiatCents
+				} else {
+					txType = model.TransactionTypeSell
+					amtCents = -fiatCents
+				}
+
+				txs = append(txs, syncservice.RawTransaction{
+					ExternalID:        cl.id,
+					Type:              txType,
+					Symbol:            cl.symbol,
+					Name:              cl.symbol,
+					Quantity:          &cryptoQty,
+					UnitPriceAmount:   &unitPrice,
+					UnitPriceCurrency: fiatCurrency,
+					Amount:            amtCents,
+					Currency:          fiatCurrency,
+					FeesAmount:        totalFees,
+					FeesCurrency:      fiatCurrency,
+					ExecutedAt:        cl.execTime,
+					Notes:             fmt.Sprintf("Kraken trade %s %s %s @ %s %s", txType, cryptoQty.String(), cl.symbol, unitPrice.String(), fiatCurrency),
+				})
+			}
+		} else if len(cryptoLegs) >= 2 && len(fiatLegs) == 0 {
+			// Case B: Crypto-to-crypto trade (e.g. bought ETH with BTC)
+			var boughtLeg, soldLeg *parsedTradeLeg
+			for i := range cryptoLegs {
+				if cryptoLegs[i].amt.IsPositive() {
+					boughtLeg = &cryptoLegs[i]
+				} else if cryptoLegs[i].amt.IsNegative() {
+					soldLeg = &cryptoLegs[i]
+				}
+			}
+
+			if boughtLeg != nil && soldLeg != nil {
+				buyQty := boughtLeg.amt.Abs()
+				sellQty := soldLeg.amt.Abs()
+				unitPrice := sellQty.Div(buyQty)
+				cents := model.Money(sellQty.Mul(decimal.NewFromInt(100)).IntPart())
+				if cents <= 0 {
+					cents = 1
+				}
+
+				txs = append(txs, syncservice.RawTransaction{
+					ExternalID:        boughtLeg.id,
+					Type:              model.TransactionTypeBuy,
+					Symbol:            boughtLeg.symbol,
+					Name:              boughtLeg.symbol,
+					Quantity:          &buyQty,
+					UnitPriceAmount:   &unitPrice,
+					UnitPriceCurrency: model.Currency(soldLeg.symbol),
+					Amount:            cents,
+					Currency:          model.Currency(soldLeg.symbol),
+					FeesAmount:        boughtLeg.feeCents + soldLeg.feeCents,
+					FeesCurrency:      model.CurrencyUSD,
+					ExecutedAt:        boughtLeg.execTime,
+					Notes:             fmt.Sprintf("Kraken crypto trade BUY %s for %s", boughtLeg.symbol, soldLeg.symbol),
+				})
+			}
+		}
+		// Case C & D:
+		// - If legs are fiat-only, omit: never emit BUY/SELL for fiat currencies.
+		// - If orphan crypto trade leg with no counter leg, skip: do not corrupt trade history with $1 placeholder.
+	}
+
+	// Sort transactions deterministically by ExecutedAt then ExternalID
+	sort.Slice(txs, func(i, j int) bool {
+		if txs[i].ExecutedAt.Equal(txs[j].ExecutedAt) {
+			return txs[i].ExternalID < txs[j].ExternalID
+		}
+		return txs[i].ExecutedAt.Before(txs[j].ExecutedAt)
+	})
 
 	return txs, nil
 }

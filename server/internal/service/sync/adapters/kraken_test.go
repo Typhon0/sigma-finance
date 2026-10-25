@@ -98,6 +98,17 @@ func TestKrakenAdapter_FetchBalancesAndHoldings(t *testing.T) {
 						"fee": "10.00",
 						"vol": "1.00000000",
 						"value": "55000.00"
+					},
+					"POS-2": {
+						"ordertxid": "O124",
+						"posstatus": "open",
+						"pair": "SOLUSD",
+						"time": 1600000000.0,
+						"type": "buy",
+						"cost": "4000.00",
+						"fee": "5.00",
+						"vol": "40.00000000",
+						"value": "4500.00"
 					}
 				}
 			}`))
@@ -145,12 +156,21 @@ func TestKrakenAdapter_FetchBalancesAndHoldings(t *testing.T) {
 	assert.True(t, decimal.RequireFromString("10.0").Equal(holdingMap["ETH"].Quantity))
 	assert.True(t, decimal.RequireFromString("50.0").Equal(holdingMap["SOL"].Quantity))
 
-	// Verify cost basis enrichment from /0/private/OpenPositions on BTC
+	// Verify proportional cost basis scaling on BTC (holding qty 1.23456789 vs margin vol 1.0)
 	btcHolding := holdingMap["BTC"]
 	require.NotNil(t, btcHolding.CostBasisPerUnit)
 	assert.True(t, decimal.RequireFromString("50000.00").Equal(*btcHolding.CostBasisPerUnit))
 	require.NotNil(t, btcHolding.TotalCostBasis)
-	assert.Equal(t, model.Money(5000000), *btcHolding.TotalCostBasis)
+	// 50000.00 * 1.23456789 = 61728.3945 -> 6172839 cents
+	assert.Equal(t, model.Money(6172839), *btcHolding.TotalCostBasis)
+
+	// Verify modern 3-char quote pair "SOLUSD" -> "SOL" cost basis enrichment
+	solHolding := holdingMap["SOL"]
+	require.NotNil(t, solHolding.CostBasisPerUnit)
+	assert.True(t, decimal.RequireFromString("100.00").Equal(*solHolding.CostBasisPerUnit))
+	require.NotNil(t, solHolding.TotalCostBasis)
+	// 100.00 * 50.0 = 5000.00 -> 500000 cents
+	assert.Equal(t, model.Money(500000), *solHolding.TotalCostBasis)
 }
 
 func TestKrakenAdapter_FetchAccounts(t *testing.T) {
@@ -303,6 +323,17 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 						"amount": "0.05000000",
 						"fee": "0.00010000",
 						"balance": "0.05000000"
+					},
+					"L-TRADE-1-FIAT": {
+						"refid": "REF-4",
+						"time": 1600000400.0,
+						"type": "trade",
+						"subtype": "",
+						"aclass": "currency",
+						"asset": "ZEUR",
+						"amount": "-2500.0000",
+						"fee": "0.0000",
+						"balance": "2500.0000"
 					}
 				}
 			}
@@ -319,6 +350,8 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 	since := time.Unix(1600000000, 0)
 	txs, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", &since)
 	require.NoError(t, err)
+	// Emits exactly 4 transactions: deposit, withdrawal, staking, and paired trade BUY BTC.
+	// L-TRADE-1-FIAT must NOT produce a phantom SELL EUR transaction!
 	require.Len(t, txs, 4)
 
 	txMap := make(map[string]syncservice.RawTransaction)
@@ -348,17 +381,157 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 	assert.Equal(t, "ETH", stake.Symbol)
 	assert.True(t, stake.Amount.IsPositive())
 
-	// Trade
+	// Paired Trade: BUY 0.05 BTC for 2500 EUR -> price 50,000 EUR
 	trade := txMap["L-TRADE-1"]
 	assert.Equal(t, model.TransactionTypeBuy, trade.Type)
 	assert.Equal(t, "BTC", trade.Symbol)
 	require.NotNil(t, trade.Quantity)
 	assert.True(t, decimal.RequireFromString("0.05").Equal(*trade.Quantity))
+	require.NotNil(t, trade.UnitPriceAmount)
+	assert.True(t, decimal.RequireFromString("50000").Equal(*trade.UnitPriceAmount))
+	assert.Equal(t, model.CurrencyEUR, trade.UnitPriceCurrency)
+	assert.Equal(t, model.Money(250000), trade.Amount)
+	assert.Equal(t, model.CurrencyEUR, trade.Currency)
+
+	// Ensure no phantom fiat trade was emitted
+	_, fiatTradeExists := txMap["L-TRADE-1-FIAT"]
+	assert.False(t, fiatTradeExists, "fiat leg must not produce a phantom trade transaction")
 
 	// Also test with since == nil
 	txsNoSince, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil)
 	require.NoError(t, err)
 	assert.Len(t, txsNoSince, 4)
+}
+
+func TestKrakenAdapter_TradeLedgerPairing_BuySellAndOrphan(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"error": [],
+			"result": {
+				"count": 5,
+				"ledger": {
+					"L-BUY-CRYPTO": {
+						"refid": "REF-BUY",
+						"time": 1610000100.0,
+						"type": "trade",
+						"asset": "XXBT",
+						"amount": "0.10000000",
+						"fee": "0.00010000"
+					},
+					"L-BUY-FIAT": {
+						"refid": "REF-BUY",
+						"time": 1610000100.0,
+						"type": "trade",
+						"asset": "ZUSD",
+						"amount": "-3500.0000",
+						"fee": "1.5000"
+					},
+					"L-SELL-CRYPTO": {
+						"refid": "REF-SELL",
+						"time": 1610000200.0,
+						"type": "trade",
+						"asset": "XETH",
+						"amount": "-2.00000000",
+						"fee": "0.00200000"
+					},
+					"L-SELL-FIAT": {
+						"refid": "REF-SELL",
+						"time": 1610000200.0,
+						"type": "trade",
+						"asset": "ZEUR",
+						"amount": "4000.0000",
+						"fee": "0.0000"
+					},
+					"L-ORPHAN-CRYPTO": {
+						"refid": "REF-ORPHAN-1",
+						"time": 1610000300.0,
+						"type": "trade",
+						"asset": "SOL",
+						"amount": "10.00000000",
+						"fee": "0.01000000"
+					},
+					"L-ORPHAN-FIAT": {
+						"refid": "REF-ORPHAN-2",
+						"time": 1610000400.0,
+						"type": "trade",
+						"asset": "ZUSD",
+						"amount": "-500.0000",
+						"fee": "0.0000"
+					}
+				}
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+	)
+
+	cred := newTestCredential()
+	txs, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil)
+	require.NoError(t, err)
+
+	// Expected: Exactly 2 valid paired trades (BUY BTC, SELL ETH).
+	// L-BUY-FIAT and L-SELL-FIAT are paired and not emitted as fiat trades.
+	// L-ORPHAN-CRYPTO has no pricing counter-leg and is skipped without $1 corruption.
+	// L-ORPHAN-FIAT is a fiat-only trade and is skipped without emitting phantom fiat BUY/SELL.
+	require.Len(t, txs, 2)
+
+	buyTx := txs[0]
+	assert.Equal(t, "L-BUY-CRYPTO", buyTx.ExternalID)
+	assert.Equal(t, model.TransactionTypeBuy, buyTx.Type)
+	assert.Equal(t, "BTC", buyTx.Symbol)
+	require.NotNil(t, buyTx.Quantity)
+	assert.True(t, decimal.RequireFromString("0.1").Equal(*buyTx.Quantity))
+	require.NotNil(t, buyTx.UnitPriceAmount)
+	// Price = 3500 / 0.1 = 35000 USD
+	assert.True(t, decimal.RequireFromString("35000").Equal(*buyTx.UnitPriceAmount))
+	assert.Equal(t, model.CurrencyUSD, buyTx.UnitPriceCurrency)
+	assert.Equal(t, model.Money(350000), buyTx.Amount)
+	assert.Equal(t, model.CurrencyUSD, buyTx.Currency)
+
+	sellTx := txs[1]
+	assert.Equal(t, "L-SELL-CRYPTO", sellTx.ExternalID)
+	assert.Equal(t, model.TransactionTypeSell, sellTx.Type)
+	assert.Equal(t, "ETH", sellTx.Symbol)
+	require.NotNil(t, sellTx.Quantity)
+	assert.True(t, decimal.RequireFromString("2.0").Equal(*sellTx.Quantity))
+	require.NotNil(t, sellTx.UnitPriceAmount)
+	// Price = 4000 / 2.0 = 2000 EUR
+	assert.True(t, decimal.RequireFromString("2000").Equal(*sellTx.UnitPriceAmount))
+	assert.Equal(t, model.CurrencyEUR, sellTx.UnitPriceCurrency)
+	assert.Equal(t, model.Money(-400000), sellTx.Amount)
+	assert.Equal(t, model.CurrencyEUR, sellTx.Currency)
+}
+
+func TestKrakenAdapter_ExtractBaseAssetFromPair_ModernAndLegacy(t *testing.T) {
+	tests := []struct {
+		pair         string
+		expectedBase string
+	}{
+		{"XXBTZUSD", "BTC"},
+		{"XETHZEUR", "ETH"},
+		{"XXRPZGBP", "XRP"},
+		{"XLTCZJPY", "LTC"},
+		{"SOLUSD", "SOL"},
+		{"SOLEUR", "SOL"},
+		{"DOTEUR", "DOT"},
+		{"DOTUSD", "DOT"},
+		{"ADAUSD", "ADA"},
+		{"ADAUSDT", "ADA"},
+		{"BTCUSDC", "BTC"},
+		{"AVAXUSD", "AVAX"},
+		{"LINKUSD", "LINK"},
+		{"MATICUSD", "MATIC"},
+	}
+
+	for _, tc := range tests {
+		base := adapters.ExtractBaseAssetFromPair(tc.pair)
+		assert.Equal(t, tc.expectedBase, base, "mismatch for pair %s", tc.pair)
+	}
 }
 
 func TestKrakenAdapter_RateLimiting_AllEndpoints(t *testing.T) {
