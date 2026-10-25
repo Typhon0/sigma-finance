@@ -2,6 +2,8 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"sigma_finance/internal/domain/model"
 	"time"
 
@@ -60,6 +62,7 @@ type ITransactionRepository interface {
 	// Position-based queries
 	FindByPositionID(ctx context.Context, positionID string) ([]model.Transaction, error)
 	FindByUserID(ctx context.Context, userID string) ([]model.Transaction, error)
+	FindByAccountAndExternalID(ctx context.Context, accountID, externalID string) (*model.Transaction, error)
 
 	// Cost basis calculation queries
 	CalculateCostBasisForPosition(ctx context.Context, positionID string) (*CostBasisCalculation, error)
@@ -171,6 +174,22 @@ func (r *TransactionRepository) applyTransactionFilters(query *bun.SelectQuery, 
 // FindByPositionID retrieves all transactions for a specific position
 func (r *TransactionRepository) FindByPositionID(ctx context.Context, positionID string) ([]model.Transaction, error) {
 	return r.FindWithFilters(ctx, TransactionFilter{PositionID: &positionID})
+}
+
+// FindByAccountAndExternalID retrieves a transaction by account ID and external ID for sync deduplication
+func (r *TransactionRepository) FindByAccountAndExternalID(ctx context.Context, accountID, externalID string) (*model.Transaction, error) {
+	var tx model.Transaction
+	err := r.db.NewSelect().Model(&tx).
+		Where("account_id = ? AND external_id = ?", accountID, externalID).
+		Limit(1).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &tx, nil
 }
 
 // FindByUserID retrieves all transactions for a specific user
