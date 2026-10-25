@@ -76,6 +76,7 @@ type Transaction struct {
 	FeesAmount        Money            `bun:"fees_amount,default:0"` // Transaction fees in cents
 	FeesCurrency      Currency         `bun:"fees_currency,type:varchar(3),default:USD"`
 	Notes             *string          `bun:"notes"`
+	ExternalID        *string          `bun:"external_id"`
 	ExecutedAt        time.Time        `bun:"executed_at,notnull"`
 	CreatedAt         time.Time        `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 

@@ -46,9 +46,10 @@ type Account struct {
 	UpdatedAt     time.Time      `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
-	User      *User       `bun:"rel:belongs-to,join:user_id=id"`
-	Portfolio *Portfolio  `bun:"rel:belongs-to,join:portfolio_id=id"`
-	Positions []*Position `bun:"rel:has-many,join:id=account_id"`
+	User           *User           `bun:"rel:belongs-to,join:user_id=id"`
+	Portfolio      *Portfolio      `bun:"rel:belongs-to,join:portfolio_id=id"`
+	Positions      []*Position     `bun:"rel:has-many,join:id=account_id"`
+	SyncConnection *SyncConnection `bun:"rel:has-one,join:id=account_id"`
 }
 
 // Implement Entity interface
