@@ -59,3 +59,40 @@ export const GET_FINANCE_DATABASE_PREVIEW = gql`
     }
   }
 `;
+
+export const GET_SYNC_CONNECTIONS = gql`
+  query GetSyncConnections($portfolioId: ID!) {
+    syncConnections(portfolioId: $portfolioId) {
+      id
+      portfolioId
+      accountId
+      account {
+        id
+        name
+        institution
+      }
+      provider
+      externalInstitutionId
+      externalAccountId
+      institutionName
+      syncStatus
+      lastSyncAt
+      lastError
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+export const GET_SYNC_CREDENTIALS = gql`
+  query GetSyncCredentials {
+    syncCredentials {
+      id
+      provider
+      status
+      createdAt
+      updatedAt
+    }
+  }
+`;
+

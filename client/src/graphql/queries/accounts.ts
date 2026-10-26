@@ -13,6 +13,13 @@ export const GET_ACCOUNTS = gql`
       currency
       syncProvider
       externalId
+      syncConnection {
+        id
+        provider
+        syncStatus
+        lastSyncAt
+        lastError
+      }
       positionsCount
       totalValue
       createdAt
@@ -34,6 +41,13 @@ export const GET_ACCOUNT = gql`
       currency
       syncProvider
       externalId
+      syncConnection {
+        id
+        provider
+        syncStatus
+        lastSyncAt
+        lastError
+      }
       positionsCount
       totalValue
       createdAt

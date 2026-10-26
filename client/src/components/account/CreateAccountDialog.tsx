@@ -1,6 +1,8 @@
 import { useMutation } from "@apollo/client";
+import { RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -43,6 +45,7 @@ export function CreateAccountDialog({
 	const [institution, setInstitution] = useState("");
 	const [accountNumber, setAccountNumber] = useState("");
 	const [currency, setCurrency] = useState("EUR");
+	const [showConnectDialog, setShowConnectDialog] = useState(false);
 
 	const [createAccount, { loading }] = useMutation(CREATE_ACCOUNT, {
 		refetchQueries: [{ query: GET_ACCOUNTS, variables: { portfolioId } }],
@@ -85,7 +88,8 @@ export function CreateAccountDialog({
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<>
+			<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="sm:max-w-[480px]">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
@@ -95,6 +99,25 @@ export function CreateAccountDialog({
 							your institution.
 						</DialogDescription>
 					</DialogHeader>
+
+					<div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs sm:text-sm mt-2">
+						<div className="flex items-center gap-2">
+							<RefreshCw className="h-4 w-4 text-primary shrink-0" />
+							<span>Want to sync balances & trades automatically?</span>
+						</div>
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								onOpenChange(false);
+								setShowConnectDialog(true);
+							}}
+							className="text-xs shrink-0 w-full sm:w-auto"
+						>
+							Connect External Institution
+						</Button>
+					</div>
 
 					<div className="grid gap-4 py-4">
 						<div className="grid gap-2">
@@ -195,5 +218,15 @@ export function CreateAccountDialog({
 				</form>
 			</DialogContent>
 		</Dialog>
+
+		<ConnectInstitutionDialog
+			open={showConnectDialog}
+			onOpenChange={setShowConnectDialog}
+			portfolioId={portfolioId}
+			onSuccess={(id) => {
+				if (id) onSuccess?.(id);
+			}}
+		/>
+	</>
 	);
 }

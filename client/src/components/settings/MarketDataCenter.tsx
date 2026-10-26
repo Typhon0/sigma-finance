@@ -4,6 +4,9 @@ import {
 	CheckCircle2,
 	Database,
 	Download,
+	Eye,
+	EyeOff,
+	Key,
 	Loader2,
 	Play,
 	RefreshCw,
@@ -16,6 +19,8 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MarketDataSettingsWrapper } from "@/components/MarketDataSettingsWrapper";
+import { usePortfolio } from "@/components/PortfolioProvider";
+import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -55,6 +60,8 @@ import {
 	GET_PACK_BUILD_JOB,
 	GET_PACK_BUILD_JOBS,
 } from "@/graphql/queries/market-data";
+import { REGISTER_SYNC_CREDENTIAL } from "@/graphql/mutations/sync";
+import { GET_SYNC_CREDENTIALS } from "@/graphql/queries/sync";
 
 interface RegistryPack {
 	packId: string;
@@ -168,6 +175,18 @@ interface MarketDataCredentialsData {
 	marketDataCredentials: MarketDataCredential[];
 }
 
+interface SyncCredentialItem {
+	id: string;
+	provider: string;
+	status: string;
+	createdAt: string;
+	updatedAt: string;
+}
+
+interface SyncCredentialsData {
+	syncCredentials: SyncCredentialItem[];
+}
+
 const emptyInstrumentId = "00000000-0000-0000-0000-000000000000";
 
 const formatBytes = (value: number) => {
@@ -203,8 +222,8 @@ export function MarketDataCenter() {
 	const [localBuildItems, setLocalBuildItems] = useState<LocalBuildItem[]>([]);
 	const [loadingLocalBuildItems, setLoadingLocalBuildItems] = useState(false);
 	const instrumentId = coverageInstrumentId.trim() || emptyInstrumentId;
-	const graphqlEndpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql";
-	const apiBaseURL = graphqlEndpoint.replace(/\/graphql$/, "");
+	const graphqlEndpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "/graphql";
+	const apiBaseURL = graphqlEndpoint.startsWith("http") ? graphqlEndpoint.replace(/\/graphql$/, "") : "";
 
 	const { data, loading, error, refetch } = useQuery<PackCenterData>(GET_MARKET_DATA_PACKS_CENTER, {
 		variables: { instrumentId },
@@ -237,6 +256,49 @@ export function MarketDataCenter() {
 		},
 	);
 	const { data: credentialData } = useQuery<MarketDataCredentialsData>(GET_MARKET_DATA_CREDENTIALS);
+
+	// Sync Credentials state & mutations
+	const { currentPortfolio } = usePortfolio();
+	const [showConnectDialog, setShowConnectDialog] = useState(false);
+	const [newSyncProvider, setNewSyncProvider] = useState("KRAKEN");
+	const [newSyncApiKey, setNewSyncApiKey] = useState("");
+	const [newSyncApiSecret, setNewSyncApiSecret] = useState("");
+	const [showSyncSecret, setShowSyncSecret] = useState(false);
+
+	const { data: syncCredsData, loading: loadingSyncCreds, refetch: refetchSyncCreds } =
+		useQuery<SyncCredentialsData>(GET_SYNC_CREDENTIALS, {
+			fetchPolicy: "cache-and-network",
+		});
+
+	const [registerSyncCred, { loading: registeringSyncCred }] =
+		useMutation(REGISTER_SYNC_CREDENTIAL);
+
+	const handleRegisterSyncCredential = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!newSyncApiKey.trim() || !newSyncApiSecret.trim()) {
+			toast.error("Please provide both API Key and API Secret");
+			return;
+		}
+
+		try {
+			await registerSyncCred({
+				variables: {
+					provider: newSyncProvider,
+					credentials: {
+						apiKey: newSyncApiKey.trim(),
+						apiSecret: newSyncApiSecret.trim(),
+					},
+				},
+			});
+			toast.success(`${newSyncProvider} sync credential registered successfully!`);
+			setNewSyncApiKey("");
+			setNewSyncApiSecret("");
+			void refetchSyncCreds();
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Failed to register sync credential";
+			toast.error(msg);
+		}
+	};
 
 	const [installPack, { loading: installing }] = useMutation(INSTALL_MARKET_DATA_PACK);
 	const [updatePack, { loading: updating }] = useMutation(UPDATE_MARKET_DATA_PACK);
@@ -487,6 +549,10 @@ export function MarketDataCenter() {
 					<TabsTrigger value="providers">
 						<Settings className="mr-2 h-4 w-4" />
 						Providers
+					</TabsTrigger>
+					<TabsTrigger value="sync">
+						<RefreshCw className="mr-2 h-4 w-4" />
+						Sync Credentials
 					</TabsTrigger>
 				</TabsList>
 			</div>
@@ -1050,6 +1116,158 @@ export function MarketDataCenter() {
 
 			<TabsContent value="providers">
 				<MarketDataSettingsWrapper showHeader={false} />
+			</TabsContent>
+
+			<TabsContent value="sync" className="space-y-6">
+				<Card>
+					<CardHeader className="flex flex-row items-start justify-between pb-3">
+						<div>
+							<CardTitle className="text-base">Configured Institution Sync Credentials</CardTitle>
+							<CardDescription>
+								Active API keys and authentication tokens for automated account synchronization.
+							</CardDescription>
+						</div>
+						{currentPortfolio && (
+							<Button
+								size="sm"
+								onClick={() => setShowConnectDialog(true)}
+							>
+								<RefreshCw className="mr-2 h-4 w-4" />
+								Institution Wizard
+							</Button>
+						)}
+					</CardHeader>
+					<CardContent>
+						<Table>
+							<TableHeader>
+								<TableRow>
+									<TableHead>Provider</TableHead>
+									<TableHead>Status</TableHead>
+									<TableHead>Created</TableHead>
+									<TableHead>Last Updated</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								{(syncCredsData?.syncCredentials ?? []).map((cred) => (
+									<TableRow key={cred.id}>
+										<TableCell className="font-medium uppercase">{cred.provider}</TableCell>
+										<TableCell>
+											<Badge
+												variant={
+													cred.status === "ACTIVE" || cred.status === "SUCCESS"
+														? "default"
+														: "secondary"
+												}
+											>
+												{cred.status}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-xs text-muted-foreground">
+											{new Date(cred.createdAt).toLocaleDateString()}
+										</TableCell>
+										<TableCell className="text-xs text-muted-foreground">
+											{new Date(cred.updatedAt).toLocaleDateString()}
+										</TableCell>
+									</TableRow>
+								))}
+								{!loadingSyncCreds && (syncCredsData?.syncCredentials ?? []).length === 0 && (
+									<TableRow>
+										<TableCell
+											colSpan={4}
+											className="py-8 text-center text-sm text-muted-foreground"
+										>
+											No sync credentials configured yet. Register a new API key below or use the wizard.
+										</TableCell>
+									</TableRow>
+								)}
+							</TableBody>
+						</Table>
+					</CardContent>
+				</Card>
+
+				<Card>
+					<CardHeader>
+						<CardTitle className="text-base">Register Direct API Key</CardTitle>
+						<CardDescription>
+							Add credentials directly for supported providers (e.g. Kraken, Binance).
+						</CardDescription>
+					</CardHeader>
+					<CardContent>
+						<form onSubmit={handleRegisterSyncCredential} className="space-y-4 max-w-lg">
+							<div className="space-y-2">
+								<Label htmlFor="sync-provider-select">Provider</Label>
+								<Select value={newSyncProvider} onValueChange={setNewSyncProvider}>
+									<SelectTrigger id="sync-provider-select">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="KRAKEN">Kraken (Crypto Exchange)</SelectItem>
+										<SelectItem value="SNAPTRADE">SnapTrade (Stock Brokerages)</SelectItem>
+										<SelectItem value="GOCARDLESS">GoCardless (Open Banking)</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="sync-api-key">API Key *</Label>
+								<Input
+									id="sync-api-key"
+									placeholder="Enter provider API key"
+									value={newSyncApiKey}
+									onChange={(e) => setNewSyncApiKey(e.target.value)}
+									required
+								/>
+							</div>
+
+							<div className="space-y-2">
+								<Label htmlFor="sync-api-secret">API Secret / Private Key *</Label>
+								<div className="relative">
+									<Input
+										id="sync-api-secret"
+										type={showSyncSecret ? "text" : "password"}
+										placeholder="Enter provider secret"
+										value={newSyncApiSecret}
+										onChange={(e) => setNewSyncApiSecret(e.target.value)}
+										required
+									/>
+									<button
+										type="button"
+										onClick={() => setShowSyncSecret((v) => !v)}
+										className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+										aria-label={showSyncSecret ? "Hide secret" : "Show secret"}
+									>
+										{showSyncSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+									</button>
+								</div>
+							</div>
+
+							<Button type="submit" disabled={registeringSyncCred || !newSyncApiKey || !newSyncApiSecret}>
+								{registeringSyncCred ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Saving...
+									</>
+								) : (
+									<>
+										<Key className="mr-2 h-4 w-4" />
+										Register Credential
+									</>
+								)}
+							</Button>
+						</form>
+					</CardContent>
+				</Card>
+
+				{currentPortfolio && (
+					<ConnectInstitutionDialog
+						open={showConnectDialog}
+						onOpenChange={setShowConnectDialog}
+						portfolioId={currentPortfolio}
+						onSuccess={() => {
+							void refetchSyncCreds();
+						}}
+					/>
+				)}
 			</TabsContent>
 		</Tabs>
 	);

@@ -10,6 +10,7 @@ import {
 	MoreVertical,
 	PieChart,
 	Plus,
+	RefreshCw,
 	Trash2,
 	Wallet,
 } from "lucide-react";
@@ -23,6 +24,8 @@ import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { CreateAccountDialog } from "./account/CreateAccountDialog";
 import { AddSavingForm, type SavingsFormData } from "./assets/savings/AddSavingForm";
+import { ConnectInstitutionDialog } from "./sync/ConnectInstitutionDialog";
+import { SyncStatusBadge } from "./sync/SyncStatusBadge";
 import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -61,6 +64,14 @@ interface AccountData {
 	symbol?: string;
 	dayChange?: number;
 	dayChangePercent?: number;
+	syncProvider?: string;
+	syncConnection?: {
+		id: string;
+		provider: string;
+		syncStatus: string;
+		lastSyncAt?: string | null;
+		lastError?: string | null;
+	} | null;
 }
 
 /** Map portfolio asset type to account-level type */
@@ -97,6 +108,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
+	const [showConnectInstitution, setShowConnectInstitution] = useState(false);
 	const [hoveredAccountData, setHoveredAccountData] = useState<{
 		name: string;
 		value: number;
@@ -164,6 +176,8 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					profitLossPercent: 0,
 					accountNumber: a.accountNumber || (a.institution ? a.institution : "Main Account"),
 					color: ACCOUNT_TYPE_COLORS[type],
+					syncProvider: a.syncProvider,
+					syncConnection: a.syncConnection,
 				};
 			});
 		}
@@ -483,10 +497,18 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 							<CardTitle>Accounts</CardTitle>
 							<CardDescription>Manage all your financial accounts</CardDescription>
 						</div>
-						<div className="flex gap-2">
+						<div className="flex flex-wrap gap-2">
 							<Button onClick={() => setShowCreateAccountModal(true)}>
 								<Plus className="h-4 w-4 mr-2" />
 								New Account
+							</Button>
+							<Button
+								variant="outline"
+								onClick={() => setShowConnectInstitution(true)}
+								disabled={!currentPortfolio}
+							>
+								<RefreshCw className="h-4 w-4 mr-2" />
+								Connect Institution
 							</Button>
 							<Button variant="outline" onClick={() => setShowAddForm(true)}>
 								<Wallet className="h-4 w-4 mr-2" />
@@ -675,8 +697,19 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 														)}
 													</div>
 
-													<div className="text-xs text-muted-foreground">
-														Account: {account.accountNumber}
+													<div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+														<span>Account: {account.accountNumber}</span>
+														{account.syncProvider && (
+															<SyncStatusBadge
+																accountId={account.id}
+																portfolioId={currentPortfolio ?? undefined}
+																syncStatus={account.syncConnection?.syncStatus}
+																lastSyncAt={account.syncConnection?.lastSyncAt}
+																lastError={account.syncConnection?.lastError}
+																provider={account.syncProvider}
+																compact
+															/>
+														)}
 													</div>
 												</CardContent>
 											</Card>
@@ -763,32 +796,45 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 														)}
 													</TableCell>
 													<TableCell className="text-right">
-														<DropdownMenu>
-															<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-																<Button variant="ghost" size="icon">
-																	<MoreVertical className="h-4 w-4" />
-																</Button>
-															</DropdownMenuTrigger>
-															<DropdownMenuContent align="end">
-																<DropdownMenuItem
-																	onClick={(e) => {
-																		e.stopPropagation();
-																		onSelectAccount(account.id);
-																	}}
-																>
-																	<Eye className="h-4 w-4 mr-2" />
-																	View Details
-																</DropdownMenuItem>
-																<DropdownMenuSeparator />
-																<DropdownMenuItem
-																	className="text-destructive"
-																	onClick={(e) => e.stopPropagation()}
-																>
-																	<Trash2 className="h-4 w-4 mr-2" />
-																	Delete
-																</DropdownMenuItem>
-															</DropdownMenuContent>
-														</DropdownMenu>
+														<div className="flex items-center justify-end gap-1">
+															{account.syncProvider && (
+																<SyncStatusBadge
+																	accountId={account.id}
+																	portfolioId={currentPortfolio ?? undefined}
+																	syncStatus={account.syncConnection?.syncStatus}
+																	lastSyncAt={account.syncConnection?.lastSyncAt}
+																	lastError={account.syncConnection?.lastError}
+																	provider={account.syncProvider}
+																	compact
+																/>
+															)}
+															<DropdownMenu>
+																<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+																	<Button variant="ghost" size="icon">
+																		<MoreVertical className="h-4 w-4" />
+																	</Button>
+																</DropdownMenuTrigger>
+																<DropdownMenuContent align="end">
+																	<DropdownMenuItem
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			onSelectAccount(account.id);
+																		}}
+																	>
+																		<Eye className="h-4 w-4 mr-2" />
+																		View Details
+																	</DropdownMenuItem>
+																	<DropdownMenuSeparator />
+																	<DropdownMenuItem
+																		className="text-destructive"
+																		onClick={(e) => e.stopPropagation()}
+																	>
+																		<Trash2 className="h-4 w-4 mr-2" />
+																		Delete
+																	</DropdownMenuItem>
+																</DropdownMenuContent>
+															</DropdownMenu>
+														</div>
 													</TableCell>
 												</TableRow>
 											))}
@@ -829,6 +875,14 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				onOpenChange={setShowCreateAccountModal}
 				portfolioId={currentPortfolio || ""}
 			/>
+
+			{currentPortfolio && (
+				<ConnectInstitutionDialog
+					open={showConnectInstitution}
+					onOpenChange={setShowConnectInstitution}
+					portfolioId={currentPortfolio}
+				/>
+			)}
 		</div>
 	);
 }

@@ -13,6 +13,13 @@ export const CREATE_ACCOUNT = gql`
       currency
       syncProvider
       externalId
+      syncConnection {
+        id
+        provider
+        syncStatus
+        lastSyncAt
+        lastError
+      }
       positionsCount
       totalValue
       createdAt
@@ -34,6 +41,13 @@ export const UPDATE_ACCOUNT = gql`
       currency
       syncProvider
       externalId
+      syncConnection {
+        id
+        provider
+        syncStatus
+        lastSyncAt
+        lastError
+      }
       positionsCount
       totalValue
       createdAt
