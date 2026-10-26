@@ -548,7 +548,7 @@ func (s *SnapTradeAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCr
 		assetType := resolveAssetType(sym)
 
 		qty, _ := parseDecimalValue(pos.Units)
-		if qty.IsZero() && qty.IsNegative() {
+		if qty.IsZero() || qty.IsNegative() {
 			continue
 		}
 
@@ -729,6 +729,9 @@ func (s *SnapTradeAdapter) FetchTransactions(
 		if execDate.IsZero() {
 			execDate = parseSnapTradeTime(act.SettlementDate)
 		}
+		if execDate.IsZero() {
+			execDate = s.timeNow()
+		}
 
 		feeAmt, _ := parseDecimalValue(act.Fee)
 		feeCents := model.Money(feeAmt.Abs().Mul(decimal.NewFromInt(100)).IntPart())
@@ -892,6 +895,13 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			})
 		}
 	}
+
+	sort.Slice(txs, func(i, j int) bool {
+		if txs[i].ExecutedAt.Equal(txs[j].ExecutedAt) {
+			return txs[i].ExternalID < txs[j].ExternalID
+		}
+		return txs[i].ExecutedAt.Before(txs[j].ExecutedAt)
+	})
 
 	return txs, nil
 }

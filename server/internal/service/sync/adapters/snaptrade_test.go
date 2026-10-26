@@ -371,9 +371,19 @@ func TestSnapTradeAdapter_FetchTransactions_Activities(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, txs, 5)
 
+	// Verify chronological ordering
+	for i := 1; i < len(txs); i++ {
+		assert.True(t, txs[i-1].ExecutedAt.Before(txs[i].ExecutedAt) || txs[i-1].ExecutedAt.Equal(txs[i].ExecutedAt))
+	}
+
+	txMap := make(map[string]syncservice.RawTransaction)
+	for _, tx := range txs {
+		txMap[tx.ExternalID] = tx
+	}
+
 	// Buy transaction
-	buy := txs[0]
-	assert.Equal(t, "act-buy-1", buy.ExternalID)
+	buy, ok := txMap["act-buy-1"]
+	require.True(t, ok)
 	assert.Equal(t, model.TransactionTypeBuy, buy.Type)
 	assert.Equal(t, "VUAA", buy.Symbol)
 	assert.Equal(t, "IE00BFMXXD54", buy.ISIN)
@@ -388,8 +398,8 @@ func TestSnapTradeAdapter_FetchTransactions_Activities(t *testing.T) {
 	assert.Equal(t, model.CurrencyEUR, buy.FeesCurrency)
 
 	// Sell transaction
-	sell := txs[1]
-	assert.Equal(t, "act-sell-1", sell.ExternalID)
+	sell, ok := txMap["act-sell-1"]
+	require.True(t, ok)
 	assert.Equal(t, model.TransactionTypeSell, sell.Type)
 	assert.Equal(t, "AAPL", sell.Symbol)
 	assert.Equal(t, "US0378331005", sell.ISIN)
@@ -398,21 +408,21 @@ func TestSnapTradeAdapter_FetchTransactions_Activities(t *testing.T) {
 	assert.Equal(t, -model.Money(175500), sell.Amount) // Negative for SELL per model rules
 
 	// Dividend transaction
-	div := txs[2]
-	assert.Equal(t, "act-div-1", div.ExternalID)
+	div, ok := txMap["act-div-1"]
+	require.True(t, ok)
 	assert.Equal(t, model.TransactionTypeDividend, div.Type)
 	assert.Equal(t, "AAPL", div.Symbol)
 	assert.Equal(t, model.Money(4250), div.Amount) // Positive for DIVIDEND
 
 	// Deposit transaction
-	dep := txs[3]
-	assert.Equal(t, "act-dep-1", dep.ExternalID)
+	dep, ok := txMap["act-dep-1"]
+	require.True(t, ok)
 	assert.Equal(t, model.TransactionTypeDeposit, dep.Type)
 	assert.Equal(t, model.Money(500000), dep.Amount) // Positive for DEPOSIT
 
 	// Withdrawal transaction
-	wdr := txs[4]
-	assert.Equal(t, "act-wdr-1", wdr.ExternalID)
+	wdr, ok := txMap["act-wdr-1"]
+	require.True(t, ok)
 	assert.Equal(t, model.TransactionTypeWithdrawal, wdr.Type)
 	assert.Equal(t, -model.Money(50000), wdr.Amount) // Negative for WITHDRAWAL
 }
@@ -628,4 +638,110 @@ func TestSnapTradeAdapter_CredentialParsing(t *testing.T) {
 		err := adapter.TestConnection(context.Background(), cred)
 		require.NoError(t, err)
 	})
+}
+
+func TestSnapTradeAdapter_FetchHoldings_FiltersZeroAndNegativeQuantities(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/api/v1/accounts/tr-acc-zero-test/holdings", r.URL.Path)
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{
+			"positions": [
+				{
+					"symbol": {
+						"symbol": "VALID",
+						"description": "Valid Position"
+					},
+					"units": 15.0,
+					"price": 100.00
+				},
+				{
+					"symbol": {
+						"symbol": "ZERO_FLOAT",
+						"description": "Zero Units Float"
+					},
+					"units": 0.0,
+					"price": 50.00
+				},
+				{
+					"symbol": {
+						"symbol": "ZERO_INT",
+						"description": "Zero Units Int"
+					},
+					"units": 0,
+					"price": 20.00
+				},
+				{
+					"symbol": {
+						"symbol": "NEGATIVE",
+						"description": "Negative Units"
+					},
+					"units": -3.5,
+					"price": 75.00
+				}
+			]
+		}`))
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewSnapTradeAdapter(adapters.WithBaseURL(server.URL))
+	cred := newTestSnapTradeCredential()
+
+	holdings, err := adapter.FetchHoldings(context.Background(), cred, "tr-acc-zero-test")
+	require.NoError(t, err)
+	require.Len(t, holdings, 1, "only positive quantity positions should be retained")
+	assert.Equal(t, "VALID", holdings[0].Symbol)
+	assert.True(t, holdings[0].Quantity.Equal(decimal.NewFromFloat(15.0)))
+}
+
+func TestSnapTradeAdapter_FetchTransactions_DateFallbackAndSorting(t *testing.T) {
+	fixedNow := time.Date(2026, 10, 25, 23, 0, 0, 0, time.UTC)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		// Return transactions out of order, one without any date
+		_, _ = w.Write([]byte(`[
+			{
+				"id": "tx-mar",
+				"type": "DIVIDEND",
+				"amount": 25.00,
+				"trade_date": "2024-03-01T12:00:00Z"
+			},
+			{
+				"id": "tx-feb",
+				"type": "DEPOSIT",
+				"amount": 100.00,
+				"trade_date": "",
+				"settlement_date": "2024-02-01T12:00:00Z"
+			},
+			{
+				"id": "tx-nodate",
+				"type": "INTEREST",
+				"amount": 5.00,
+				"trade_date": "",
+				"settlement_date": ""
+			}
+		]`))
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewSnapTradeAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithTimeFunc(func() time.Time { return fixedNow }),
+	)
+	cred := newTestSnapTradeCredential()
+
+	txs, err := adapter.FetchTransactions(context.Background(), cred, "acc-1", nil)
+	require.NoError(t, err)
+	require.Len(t, txs, 3)
+
+	// Verify chronological ascending sorting: Feb 2024, Mar 2024, fallback Now (Oct 2026)
+	assert.Equal(t, "tx-feb", txs[0].ExternalID)
+	assert.Equal(t, "tx-mar", txs[1].ExternalID)
+	assert.Equal(t, "tx-nodate", txs[2].ExternalID)
+
+	// Verify fallback date is fixedNow
+	assert.True(t, txs[2].ExecutedAt.Equal(fixedNow))
 }
