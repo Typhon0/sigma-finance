@@ -17,6 +17,9 @@ type SnapTradeOption = Option
 // GoCardlessOption defines a functional option for configuring GoCardlessAdapter.
 type GoCardlessOption = Option
 
+// ExampleOption defines a functional option for configuring ExampleAdapter.
+type ExampleOption = Option
+
 // WithBaseURL configures a custom base URL on any adapter supporting it.
 func WithBaseURL(baseURL string) Option {
 	return func(target any) {
@@ -26,6 +29,8 @@ func WithBaseURL(baseURL string) Option {
 		case *SnapTradeAdapter:
 			t.baseURL = strings.TrimRight(baseURL, "/")
 		case *GoCardlessAdapter:
+			t.baseURL = strings.TrimRight(baseURL, "/")
+		case *ExampleAdapter:
 			t.baseURL = strings.TrimRight(baseURL, "/")
 		}
 	}
@@ -46,6 +51,11 @@ func WithGoCardlessBaseURL(baseURL string) GoCardlessOption {
 	return WithBaseURL(baseURL)
 }
 
+// WithExampleBaseURL configures a custom base URL specifically for ExampleAdapter.
+func WithExampleBaseURL(baseURL string) ExampleOption {
+	return WithBaseURL(baseURL)
+}
+
 // WithHTTPClient configures a custom http.Client on any adapter supporting it.
 func WithHTTPClient(client *http.Client) Option {
 	return func(target any) {
@@ -55,6 +65,8 @@ func WithHTTPClient(client *http.Client) Option {
 		case *SnapTradeAdapter:
 			t.httpClient = client
 		case *GoCardlessAdapter:
+			t.httpClient = client
+		case *ExampleAdapter:
 			t.httpClient = client
 		}
 	}
@@ -72,5 +84,10 @@ func WithKrakenHTTPClient(client *http.Client) KrakenOption {
 
 // WithGoCardlessHTTPClient configures a custom http.Client specifically for GoCardlessAdapter.
 func WithGoCardlessHTTPClient(client *http.Client) GoCardlessOption {
+	return WithHTTPClient(client)
+}
+
+// WithExampleHTTPClient configures a custom http.Client specifically for ExampleAdapter.
+func WithExampleHTTPClient(client *http.Client) ExampleOption {
 	return WithHTTPClient(client)
 }
