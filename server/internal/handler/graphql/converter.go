@@ -829,6 +829,24 @@ func mapAccountToGQL(acc model.Account) *gqlModel.Account {
 		}
 	}
 
+	var syncConn *gqlModel.SyncConnection
+	if acc.SyncConnection != nil {
+		syncConn = &gqlModel.SyncConnection{
+			ID:                    acc.SyncConnection.ID,
+			PortfolioID:           acc.SyncConnection.PortfolioID,
+			AccountID:             acc.SyncConnection.AccountID,
+			Provider:              acc.SyncConnection.Provider,
+			ExternalInstitutionID: acc.SyncConnection.ExternalInstitutionID,
+			ExternalAccountID:     acc.SyncConnection.ExternalAccountID,
+			InstitutionName:       acc.SyncConnection.InstitutionName,
+			SyncStatus:            string(acc.SyncConnection.SyncStatus),
+			LastSyncAt:            acc.SyncConnection.LastSyncAt,
+			LastError:             acc.SyncConnection.LastError,
+			CreatedAt:             acc.SyncConnection.CreatedAt,
+			UpdatedAt:             acc.SyncConnection.UpdatedAt,
+		}
+	}
+
 	return &gqlModel.Account{
 		ID:             acc.ID,
 		PortfolioID:    acc.PortfolioID,
@@ -840,9 +858,64 @@ func mapAccountToGQL(acc model.Account) *gqlModel.Account {
 		Currency:       string(acc.Currency),
 		SyncProvider:   acc.SyncProvider,
 		ExternalID:     acc.ExternalID,
+		SyncConnection: syncConn,
 		PositionsCount: int32(len(acc.Positions)),
 		TotalValue:     &totalVal,
 		CreatedAt:      acc.CreatedAt,
 		UpdatedAt:      acc.UpdatedAt,
+	}
+}
+
+func mapSyncConnectionToGQL(conn *model.SyncConnection) *gqlModel.SyncConnection {
+	if conn == nil {
+		return nil
+	}
+	var account *gqlModel.Account
+	if conn.Account != nil {
+		account = mapAccountToGQL(*conn.Account)
+	}
+	return &gqlModel.SyncConnection{
+		ID:                    conn.ID,
+		PortfolioID:           conn.PortfolioID,
+		AccountID:             conn.AccountID,
+		Account:               account,
+		Provider:              conn.Provider,
+		ExternalInstitutionID: conn.ExternalInstitutionID,
+		ExternalAccountID:     conn.ExternalAccountID,
+		InstitutionName:       conn.InstitutionName,
+		SyncStatus:            string(conn.SyncStatus),
+		LastSyncAt:            conn.LastSyncAt,
+		LastError:             conn.LastError,
+		CreatedAt:             conn.CreatedAt,
+		UpdatedAt:             conn.UpdatedAt,
+	}
+}
+
+func mapSyncCredentialToGQL(cred *model.SyncCredential) *gqlModel.SyncCredential {
+	if cred == nil {
+		return nil
+	}
+	return &gqlModel.SyncCredential{
+		ID:        cred.ID,
+		Provider:  cred.Provider,
+		Status:    string(cred.Status),
+		CreatedAt: cred.CreatedAt,
+		UpdatedAt: cred.UpdatedAt,
+	}
+}
+
+func mapSyncRunToGQL(run *model.SyncRun) *gqlModel.SyncRun {
+	if run == nil {
+		return nil
+	}
+	return &gqlModel.SyncRun{
+		ID:            run.ID,
+		ConnectionID:  run.ConnectionID,
+		Status:        string(run.Status),
+		ItemsImported: int32(run.ItemsImported),
+		ItemsUpdated:  int32(run.ItemsUpdated),
+		ErrorMessage:  run.ErrorMessage,
+		StartedAt:     run.StartedAt,
+		CompletedAt:   run.CompletedAt,
 	}
 }

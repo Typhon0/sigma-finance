@@ -52,11 +52,18 @@ type ComplexityRoot struct {
 		PortfolioID    func(childComplexity int) int
 		Positions      func(childComplexity int) int
 		PositionsCount func(childComplexity int) int
+		SyncConnection func(childComplexity int) int
 		SyncProvider   func(childComplexity int) int
 		TaxWrapper     func(childComplexity int) int
 		TotalValue     func(childComplexity int) int
 		Type           func(childComplexity int) int
 		UpdatedAt      func(childComplexity int) int
+	}
+
+	AggregatorAuthSession struct {
+		Link         func(childComplexity int) int
+		Provider     func(childComplexity int) int
+		SessionToken func(childComplexity int) int
 	}
 
 	Alert struct {
@@ -806,6 +813,7 @@ type ComplexityRoot struct {
 		ArchiveManualInstrument          func(childComplexity int, id string) int
 		CancelMarketDataPackJob          func(childComplexity int, jobID string) int
 		CancelPackBuildJob               func(childComplexity int, id string) int
+		CompleteAggregatorAuth           func(childComplexity int, connectionID string, sessionToken string) int
 		ConfirmPasswordReset             func(childComplexity int, input gqlModel.PasswordResetConfirmInput) int
 		CreateAccount                    func(childComplexity int, input gqlModel.CreateAccountInput) int
 		CreateAlert                      func(childComplexity int, input gqlModel.CreateAlertInput) int
@@ -833,10 +841,12 @@ type ComplexityRoot struct {
 		DeleteWatchlist                  func(childComplexity int, id string) int
 		DuplicatePortfolio               func(childComplexity int, input gqlModel.DuplicatePortfolioInput) int
 		ExportPortfolio                  func(childComplexity int, input gqlModel.ExportPortfolioInput) int
+		GenerateAggregatorLink           func(childComplexity int, provider string, redirectURL string) int
 		ImportFinanceDatabaseAssets      func(childComplexity int, assetType gqlModel.AssetSyncType, symbols []string) int
 		ImportInstrumentFromCatalog      func(childComplexity int, source gqlModel.CatalogSource, externalID string, forceEnrich *bool) int
 		ImportInstrumentFromSource       func(childComplexity int, input gqlModel.ImportInstrumentFromSourceInput) int
 		InstallMarketDataPack            func(childComplexity int, packID string) int
+		LinkSyncAccount                  func(childComplexity int, connectionID string, accountID *string, autoCreate *bool) int
 		Login                            func(childComplexity int, input gqlModel.LoginInput) int
 		Logout                           func(childComplexity int, input gqlModel.LogoutInput) int
 		PersistDiscoveredInstrument      func(childComplexity int, input gqlModel.PersistDiscoveredInstrumentInput) int
@@ -845,6 +855,7 @@ type ComplexityRoot struct {
 		RefreshSingleAssetPrice          func(childComplexity int, assetID string) int
 		RefreshToken                     func(childComplexity int, input gqlModel.RefreshTokenInput) int
 		Register                         func(childComplexity int, input gqlModel.RegisterInput) int
+		RegisterSyncCredential           func(childComplexity int, provider string, credentials map[string]any) int
 		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string) int
 		RemoveAssetFromWatchlist         func(childComplexity int, watchlistID string, assetID string) int
 		RemoveMarketDataPack             func(childComplexity int, packID string) int
@@ -857,6 +868,7 @@ type ComplexityRoot struct {
 		StartLocalPackBuild              func(childComplexity int, input gqlModel.StartLocalPackBuildInput) int
 		TagAsset                         func(childComplexity int, assetID string, tagID string) int
 		TagPortfolio                     func(childComplexity int, portfolioID string, tagID string) int
+		TriggerAccountSync               func(childComplexity int, accountID string) int
 		TriggerFinanceDatabaseSync       func(childComplexity int, assetType gqlModel.AssetSyncType) int
 		UntagAsset                       func(childComplexity int, assetID string, tagID string) int
 		UntagPortfolio                   func(childComplexity int, portfolioID string, tagID string) int
@@ -1176,6 +1188,8 @@ type ComplexityRoot struct {
 		SearchInstruments               func(childComplexity int, input gqlModel.InstrumentSearchInput) int
 		SearchInstrumentsOnline         func(childComplexity int, input gqlModel.InstrumentSearchInput) int
 		SupportedProviders              func(childComplexity int, assetType *string) int
+		SyncConnections                 func(childComplexity int, portfolioID string) int
+		SyncCredentials                 func(childComplexity int) int
 		SystemHealth                    func(childComplexity int) int
 		Tag                             func(childComplexity int, id string) int
 		Tags                            func(childComplexity int) int
@@ -1292,6 +1306,41 @@ type ComplexityRoot struct {
 		PriceUpdates                func(childComplexity int, assetIds []string) int
 		SystemHealthUpdated         func(childComplexity int) int
 		TransactionUpdates          func(childComplexity int, userID string) int
+	}
+
+	SyncConnection struct {
+		Account               func(childComplexity int) int
+		AccountID             func(childComplexity int) int
+		CreatedAt             func(childComplexity int) int
+		ExternalAccountID     func(childComplexity int) int
+		ExternalInstitutionID func(childComplexity int) int
+		ID                    func(childComplexity int) int
+		InstitutionName       func(childComplexity int) int
+		LastError             func(childComplexity int) int
+		LastSyncAt            func(childComplexity int) int
+		PortfolioID           func(childComplexity int) int
+		Provider              func(childComplexity int) int
+		SyncStatus            func(childComplexity int) int
+		UpdatedAt             func(childComplexity int) int
+	}
+
+	SyncCredential struct {
+		CreatedAt func(childComplexity int) int
+		ID        func(childComplexity int) int
+		Provider  func(childComplexity int) int
+		Status    func(childComplexity int) int
+		UpdatedAt func(childComplexity int) int
+	}
+
+	SyncRun struct {
+		CompletedAt   func(childComplexity int) int
+		ConnectionID  func(childComplexity int) int
+		ErrorMessage  func(childComplexity int) int
+		ID            func(childComplexity int) int
+		ItemsImported func(childComplexity int) int
+		ItemsUpdated  func(childComplexity int) int
+		StartedAt     func(childComplexity int) int
+		Status        func(childComplexity int) int
 	}
 
 	SystemHealth struct {
@@ -1566,6 +1615,11 @@ type MutationResolver interface {
 	DeleteAlertRule(ctx context.Context, id string) (bool, error)
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error)
+	RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any) (*gqlModel.SyncCredential, error)
+	GenerateAggregatorLink(ctx context.Context, provider string, redirectURL string) (*gqlModel.AggregatorAuthSession, error)
+	CompleteAggregatorAuth(ctx context.Context, connectionID string, sessionToken string) ([]*gqlModel.SyncConnection, error)
+	LinkSyncAccount(ctx context.Context, connectionID string, accountID *string, autoCreate *bool) (*gqlModel.SyncConnection, error)
+	TriggerAccountSync(ctx context.Context, accountID string) (*gqlModel.SyncRun, error)
 	UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) (string, error)
 }
@@ -1639,6 +1693,8 @@ type QueryResolver interface {
 	WorstPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error)
 	GeneratePerformanceReport(ctx context.Context, input gqlModel.GenerateReportInput) (*gqlModel.PerformanceReport, error)
 	ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error)
+	SyncConnections(ctx context.Context, portfolioID string) ([]*gqlModel.SyncConnection, error)
+	SyncCredentials(ctx context.Context) ([]*gqlModel.SyncCredential, error)
 	TaxLotsByPosition(ctx context.Context, positionID string) ([]*gqlModel.TaxLot, error)
 	TaxHarvestOpportunities(ctx context.Context, portfolioID string) ([]*gqlModel.TaxHarvestOpportunity, error)
 	DispositionsByPosition(ctx context.Context, positionID string) ([]*gqlModel.TaxLotDisposition, error)
@@ -1734,6 +1790,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.PositionsCount(childComplexity), true
+	case "Account.syncConnection":
+		if e.ComplexityRoot.Account.SyncConnection == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.SyncConnection(childComplexity), true
 	case "Account.syncProvider":
 		if e.ComplexityRoot.Account.SyncProvider == nil {
 			break
@@ -1764,6 +1826,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.UpdatedAt(childComplexity), true
+
+	case "AggregatorAuthSession.link":
+		if e.ComplexityRoot.AggregatorAuthSession.Link == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AggregatorAuthSession.Link(childComplexity), true
+	case "AggregatorAuthSession.provider":
+		if e.ComplexityRoot.AggregatorAuthSession.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AggregatorAuthSession.Provider(childComplexity), true
+	case "AggregatorAuthSession.sessionToken":
+		if e.ComplexityRoot.AggregatorAuthSession.SessionToken == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AggregatorAuthSession.SessionToken(childComplexity), true
 
 	case "Alert.alertType":
 		if e.ComplexityRoot.Alert.AlertType == nil {
@@ -5154,6 +5235,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CancelPackBuildJob(childComplexity, args["id"].(string)), true
+	case "Mutation.completeAggregatorAuth":
+		if e.ComplexityRoot.Mutation.CompleteAggregatorAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_completeAggregatorAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CompleteAggregatorAuth(childComplexity, args["connectionId"].(string), args["sessionToken"].(string)), true
 	case "Mutation.confirmPasswordReset":
 		if e.ComplexityRoot.Mutation.ConfirmPasswordReset == nil {
 			break
@@ -5451,6 +5543,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ExportPortfolio(childComplexity, args["input"].(gqlModel.ExportPortfolioInput)), true
+	case "Mutation.generateAggregatorLink":
+		if e.ComplexityRoot.Mutation.GenerateAggregatorLink == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_generateAggregatorLink_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.GenerateAggregatorLink(childComplexity, args["provider"].(string), args["redirectUrl"].(string)), true
 	case "Mutation.importFinanceDatabaseAssets":
 		if e.ComplexityRoot.Mutation.ImportFinanceDatabaseAssets == nil {
 			break
@@ -5495,6 +5598,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.InstallMarketDataPack(childComplexity, args["packId"].(string)), true
+	case "Mutation.linkSyncAccount":
+		if e.ComplexityRoot.Mutation.LinkSyncAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_linkSyncAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.LinkSyncAccount(childComplexity, args["connectionId"].(string), args["accountId"].(*string), args["autoCreate"].(*bool)), true
 	case "Mutation.login":
 		if e.ComplexityRoot.Mutation.Login == nil {
 			break
@@ -5583,6 +5697,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.Register(childComplexity, args["input"].(gqlModel.RegisterInput)), true
+	case "Mutation.registerSyncCredential":
+		if e.ComplexityRoot.Mutation.RegisterSyncCredential == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_registerSyncCredential_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RegisterSyncCredential(childComplexity, args["provider"].(string), args["credentials"].(map[string]any)), true
 	case "Mutation.removeAssetFromPortfolio":
 		if e.ComplexityRoot.Mutation.RemoveAssetFromPortfolio == nil {
 			break
@@ -5715,6 +5840,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TagPortfolio(childComplexity, args["portfolioID"].(string), args["tagID"].(string)), true
+	case "Mutation.triggerAccountSync":
+		if e.ComplexityRoot.Mutation.TriggerAccountSync == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_triggerAccountSync_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.TriggerAccountSync(childComplexity, args["accountId"].(string)), true
 	case "Mutation.triggerFinanceDatabaseSync":
 		if e.ComplexityRoot.Mutation.TriggerFinanceDatabaseSync == nil {
 			break
@@ -7589,6 +7725,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SupportedProviders(childComplexity, args["assetType"].(*string)), true
+	case "Query.syncConnections":
+		if e.ComplexityRoot.Query.SyncConnections == nil {
+			break
+		}
+
+		args, err := ec.field_Query_syncConnections_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.SyncConnections(childComplexity, args["portfolioId"].(string)), true
+	case "Query.syncCredentials":
+		if e.ComplexityRoot.Query.SyncCredentials == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.SyncCredentials(childComplexity), true
 	case "Query.systemHealth":
 		if e.ComplexityRoot.Query.SystemHealth == nil {
 			break
@@ -8239,6 +8392,165 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Subscription.TransactionUpdates(childComplexity, args["userID"].(string)), true
+
+	case "SyncConnection.account":
+		if e.ComplexityRoot.SyncConnection.Account == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.Account(childComplexity), true
+	case "SyncConnection.accountId":
+		if e.ComplexityRoot.SyncConnection.AccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.AccountID(childComplexity), true
+	case "SyncConnection.createdAt":
+		if e.ComplexityRoot.SyncConnection.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.CreatedAt(childComplexity), true
+	case "SyncConnection.externalAccountId":
+		if e.ComplexityRoot.SyncConnection.ExternalAccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.ExternalAccountID(childComplexity), true
+	case "SyncConnection.externalInstitutionId":
+		if e.ComplexityRoot.SyncConnection.ExternalInstitutionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.ExternalInstitutionID(childComplexity), true
+	case "SyncConnection.id":
+		if e.ComplexityRoot.SyncConnection.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.ID(childComplexity), true
+	case "SyncConnection.institutionName":
+		if e.ComplexityRoot.SyncConnection.InstitutionName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.InstitutionName(childComplexity), true
+	case "SyncConnection.lastError":
+		if e.ComplexityRoot.SyncConnection.LastError == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.LastError(childComplexity), true
+	case "SyncConnection.lastSyncAt":
+		if e.ComplexityRoot.SyncConnection.LastSyncAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.LastSyncAt(childComplexity), true
+	case "SyncConnection.portfolioId":
+		if e.ComplexityRoot.SyncConnection.PortfolioID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.PortfolioID(childComplexity), true
+	case "SyncConnection.provider":
+		if e.ComplexityRoot.SyncConnection.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.Provider(childComplexity), true
+	case "SyncConnection.syncStatus":
+		if e.ComplexityRoot.SyncConnection.SyncStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.SyncStatus(childComplexity), true
+	case "SyncConnection.updatedAt":
+		if e.ComplexityRoot.SyncConnection.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncConnection.UpdatedAt(childComplexity), true
+
+	case "SyncCredential.createdAt":
+		if e.ComplexityRoot.SyncCredential.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.CreatedAt(childComplexity), true
+	case "SyncCredential.id":
+		if e.ComplexityRoot.SyncCredential.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.ID(childComplexity), true
+	case "SyncCredential.provider":
+		if e.ComplexityRoot.SyncCredential.Provider == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.Provider(childComplexity), true
+	case "SyncCredential.status":
+		if e.ComplexityRoot.SyncCredential.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.Status(childComplexity), true
+	case "SyncCredential.updatedAt":
+		if e.ComplexityRoot.SyncCredential.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.UpdatedAt(childComplexity), true
+
+	case "SyncRun.completedAt":
+		if e.ComplexityRoot.SyncRun.CompletedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.CompletedAt(childComplexity), true
+	case "SyncRun.connectionId":
+		if e.ComplexityRoot.SyncRun.ConnectionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.ConnectionID(childComplexity), true
+	case "SyncRun.errorMessage":
+		if e.ComplexityRoot.SyncRun.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.ErrorMessage(childComplexity), true
+	case "SyncRun.id":
+		if e.ComplexityRoot.SyncRun.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.ID(childComplexity), true
+	case "SyncRun.itemsImported":
+		if e.ComplexityRoot.SyncRun.ItemsImported == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.ItemsImported(childComplexity), true
+	case "SyncRun.itemsUpdated":
+		if e.ComplexityRoot.SyncRun.ItemsUpdated == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.ItemsUpdated(childComplexity), true
+	case "SyncRun.startedAt":
+		if e.ComplexityRoot.SyncRun.StartedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.StartedAt(childComplexity), true
+	case "SyncRun.status":
+		if e.ComplexityRoot.SyncRun.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncRun.Status(childComplexity), true
 
 	case "SystemHealth.alertsCount":
 		if e.ComplexityRoot.SystemHealth.AlertsCount == nil {
@@ -9274,7 +9586,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
+//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/sync.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -9302,6 +9614,7 @@ var sources = []*ast.Source{
 	{Name: "schema/position.graphqls", Input: sourceData("schema/position.graphqls"), BuiltIn: false},
 	{Name: "schema/schema.graphqls", Input: sourceData("schema/schema.graphqls"), BuiltIn: false},
 	{Name: "schema/subscription.graphqls", Input: sourceData("schema/subscription.graphqls"), BuiltIn: false},
+	{Name: "schema/sync.graphqls", Input: sourceData("schema/sync.graphqls"), BuiltIn: false},
 	{Name: "schema/tax_lot.graphqls", Input: sourceData("schema/tax_lot.graphqls"), BuiltIn: false},
 	{Name: "schema/transaction.graphqls", Input: sourceData("schema/transaction.graphqls"), BuiltIn: false},
 	{Name: "schema/user.graphqls", Input: sourceData("schema/user.graphqls"), BuiltIn: false},
@@ -9392,6 +9705,22 @@ func (ec *executionContext) field_Mutation_cancelPackBuildJob_args(ctx context.C
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_completeAggregatorAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "connectionId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["connectionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "sessionToken", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["sessionToken"] = arg1
 	return args, nil
 }
 
@@ -9697,6 +10026,22 @@ func (ec *executionContext) field_Mutation_exportPortfolio_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_generateAggregatorLink_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "provider", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["provider"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "redirectUrl", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["redirectUrl"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_importFinanceDatabaseAssets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -9753,6 +10098,27 @@ func (ec *executionContext) field_Mutation_installMarketDataPack_args(ctx contex
 		return nil, err
 	}
 	args["packId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_linkSyncAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "connectionId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["connectionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "accountId", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["accountId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "autoCreate", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["autoCreate"] = arg2
 	return args, nil
 }
 
@@ -9830,6 +10196,22 @@ func (ec *executionContext) field_Mutation_refreshToken_args(ctx context.Context
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_registerSyncCredential_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "provider", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["provider"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "credentials", ec.unmarshalNJSON2map)
+	if err != nil {
+		return nil, err
+	}
+	args["credentials"] = arg1
 	return args, nil
 }
 
@@ -9993,6 +10375,17 @@ func (ec *executionContext) field_Mutation_tagPortfolio_args(ctx context.Context
 		return nil, err
 	}
 	args["tagID"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_triggerAccountSync_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "accountId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["accountId"] = arg0
 	return args, nil
 }
 
@@ -11047,6 +11440,17 @@ func (ec *executionContext) field_Query_supportedProviders_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_syncConnections_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_tag_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11724,6 +12128,63 @@ func (ec *executionContext) fieldContext_Account_externalId(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Account_syncConnection(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Account_syncConnection,
+		func(ctx context.Context) (any, error) {
+			return obj.SyncConnection, nil
+		},
+		nil,
+		ec.marshalOSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Account_syncConnection(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Account_positions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -11882,6 +12343,93 @@ func (ec *executionContext) fieldContext_Account_updatedAt(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AggregatorAuthSession_link(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AggregatorAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AggregatorAuthSession_link,
+		func(ctx context.Context) (any, error) {
+			return obj.Link, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AggregatorAuthSession_link(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AggregatorAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AggregatorAuthSession_sessionToken(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AggregatorAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AggregatorAuthSession_sessionToken,
+		func(ctx context.Context) (any, error) {
+			return obj.SessionToken, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AggregatorAuthSession_sessionToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AggregatorAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AggregatorAuthSession_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AggregatorAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AggregatorAuthSession_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AggregatorAuthSession_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AggregatorAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30936,6 +31484,8 @@ func (ec *executionContext) fieldContext_Mutation_createAccount(ctx context.Cont
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -31024,6 +31574,8 @@ func (ec *executionContext) fieldContext_Mutation_updateAccount(ctx context.Cont
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -34296,6 +34848,370 @@ func (ec *executionContext) fieldContext_Mutation_updatePerformanceSnapshots(ctx
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_registerSyncCredential(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_registerSyncCredential,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RegisterSyncCredential(ctx, fc.Args["provider"].(string), fc.Args["credentials"].(map[string]any))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.SyncCredential
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncCredential2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredential,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_registerSyncCredential(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncCredential_id(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncCredential_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_SyncCredential_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncCredential_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncCredential_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncCredential", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_registerSyncCredential_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_generateAggregatorLink(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_generateAggregatorLink,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().GenerateAggregatorLink(ctx, fc.Args["provider"].(string), fc.Args["redirectUrl"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.AggregatorAuthSession
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNAggregatorAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAggregatorAuthSession,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_generateAggregatorLink(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "link":
+				return ec.fieldContext_AggregatorAuthSession_link(ctx, field)
+			case "sessionToken":
+				return ec.fieldContext_AggregatorAuthSession_sessionToken(ctx, field)
+			case "provider":
+				return ec.fieldContext_AggregatorAuthSession_provider(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AggregatorAuthSession", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_generateAggregatorLink_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_completeAggregatorAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_completeAggregatorAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CompleteAggregatorAuth(ctx, fc.Args["connectionId"].(string), fc.Args["sessionToken"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.SyncConnection
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_completeAggregatorAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_completeAggregatorAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_linkSyncAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_linkSyncAccount,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().LinkSyncAccount(ctx, fc.Args["connectionId"].(string), fc.Args["accountId"].(*string), fc.Args["autoCreate"].(*bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.SyncConnection
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_linkSyncAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_linkSyncAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_triggerAccountSync(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_triggerAccountSync,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().TriggerAccountSync(ctx, fc.Args["accountId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.SyncRun
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncRun2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncRun,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_triggerAccountSync(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncRun_id(ctx, field)
+			case "connectionId":
+				return ec.fieldContext_SyncRun_connectionId(ctx, field)
+			case "status":
+				return ec.fieldContext_SyncRun_status(ctx, field)
+			case "itemsImported":
+				return ec.fieldContext_SyncRun_itemsImported(ctx, field)
+			case "itemsUpdated":
+				return ec.fieldContext_SyncRun_itemsUpdated(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_SyncRun_errorMessage(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_SyncRun_startedAt(ctx, field)
+			case "completedAt":
+				return ec.fieldContext_SyncRun_completedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncRun", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_triggerAccountSync_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -37110,6 +38026,8 @@ func (ec *executionContext) fieldContext_Portfolio_accounts(_ context.Context, f
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -38427,6 +39345,8 @@ func (ec *executionContext) fieldContext_Position_account(_ context.Context, fie
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -41115,6 +42035,8 @@ func (ec *executionContext) fieldContext_Query_accounts(ctx context.Context, fie
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -41203,6 +42125,8 @@ func (ec *executionContext) fieldContext_Query_account(ctx context.Context, fiel
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -44980,6 +45904,142 @@ func (ec *executionContext) fieldContext_Query_exportPortfolioData(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_syncConnections(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_syncConnections,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().SyncConnections(ctx, fc.Args["portfolioId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.SyncConnection
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_syncConnections(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_syncConnections_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_syncCredentials(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_syncCredentials,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().SyncCredentials(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.SyncCredential
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncCredential2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredentialᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_syncCredentials(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncCredential_id(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncCredential_provider(ctx, field)
+			case "status":
+				return ec.fieldContext_SyncCredential_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncCredential_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncCredential_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncCredential", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_taxLotsByPosition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -47900,6 +48960,796 @@ func (ec *executionContext) fieldContext_Subscription_priceUpdates(ctx context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _SyncConnection_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_portfolioId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_portfolioId,
+		func(ctx context.Context) (any, error) {
+			return obj.PortfolioID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_portfolioId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_accountId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_accountId,
+		func(ctx context.Context) (any, error) {
+			return obj.AccountID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_accountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_account(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_account,
+		func(ctx context.Context) (any, error) {
+			return obj.Account, nil
+		},
+		nil,
+		ec.marshalOAccount2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAccount,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_account(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Account_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_Account_portfolioId(ctx, field)
+			case "portfolio":
+				return ec.fieldContext_Account_portfolio(ctx, field)
+			case "name":
+				return ec.fieldContext_Account_name(ctx, field)
+			case "type":
+				return ec.fieldContext_Account_type(ctx, field)
+			case "taxWrapper":
+				return ec.fieldContext_Account_taxWrapper(ctx, field)
+			case "institution":
+				return ec.fieldContext_Account_institution(ctx, field)
+			case "accountNumber":
+				return ec.fieldContext_Account_accountNumber(ctx, field)
+			case "currency":
+				return ec.fieldContext_Account_currency(ctx, field)
+			case "syncProvider":
+				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "externalId":
+				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
+			case "positions":
+				return ec.fieldContext_Account_positions(ctx, field)
+			case "positionsCount":
+				return ec.fieldContext_Account_positionsCount(ctx, field)
+			case "totalValue":
+				return ec.fieldContext_Account_totalValue(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Account_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Account_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Account", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_externalInstitutionId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_externalInstitutionId,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalInstitutionID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_externalInstitutionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_externalAccountId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_externalAccountId,
+		func(ctx context.Context) (any, error) {
+			return obj.ExternalAccountID, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_externalAccountId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_institutionName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_institutionName,
+		func(ctx context.Context) (any, error) {
+			return obj.InstitutionName, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_institutionName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_syncStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_syncStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.SyncStatus, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_syncStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_lastSyncAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_lastSyncAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastSyncAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_lastSyncAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_lastError(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_lastError,
+		func(ctx context.Context) (any, error) {
+			return obj.LastError, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_lastError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncConnection_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncConnection_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncConnection_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncConnection",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_provider(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_provider,
+		func(ctx context.Context) (any, error) {
+			return obj.Provider, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_provider(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_connectionId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_connectionId,
+		func(ctx context.Context) (any, error) {
+			return obj.ConnectionID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_connectionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_itemsImported(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_itemsImported,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemsImported, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_itemsImported(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_itemsUpdated(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_itemsUpdated,
+		func(ctx context.Context) (any, error) {
+			return obj.ItemsUpdated, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_itemsUpdated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_startedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_startedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.StartedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_startedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncRun_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncRun) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncRun_completedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CompletedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncRun_completedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncRun",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _SystemHealth_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -50034,6 +51884,8 @@ func (ec *executionContext) fieldContext_Transaction_account(_ context.Context, 
 				return ec.fieldContext_Account_syncProvider(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
+			case "syncConnection":
+				return ec.fieldContext_Account_syncConnection(ctx, field)
 			case "positions":
 				return ec.fieldContext_Account_positions(ctx, field)
 			case "positionsCount":
@@ -57806,6 +59658,8 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "externalId":
 			out.Values[i] = ec._Account_externalId(ctx, field, obj)
+		case "syncConnection":
+			out.Values[i] = ec._Account_syncConnection(ctx, field, obj)
 		case "positions":
 			out.Values[i] = ec._Account_positions(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -57825,6 +59679,55 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Account_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var aggregatorAuthSessionImplementors = []string{"AggregatorAuthSession"}
+
+func (ec *executionContext) _AggregatorAuthSession(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AggregatorAuthSession) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aggregatorAuthSessionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AggregatorAuthSession")
+		case "link":
+			out.Values[i] = ec._AggregatorAuthSession_link(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sessionToken":
+			out.Values[i] = ec._AggregatorAuthSession_sessionToken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._AggregatorAuthSession_provider(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -62875,6 +64778,41 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "registerSyncCredential":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_registerSyncCredential(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "generateAggregatorLink":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_generateAggregatorLink(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completeAggregatorAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_completeAggregatorAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "linkSyncAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_linkSyncAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "triggerAccountSync":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_triggerAccountSync(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateTransaction":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateTransaction(ctx, field)
@@ -65866,6 +67804,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "syncConnections":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_syncConnections(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "syncCredentials":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_syncCredentials(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "taxLotsByPosition":
 			field := field
 
@@ -66504,6 +68486,220 @@ func (ec *executionContext) _Subscription(ctx context.Context, sel ast.Selection
 	default:
 		panic("unknown field " + strconv.Quote(fields[0].Name))
 	}
+}
+
+var syncConnectionImplementors = []string{"SyncConnection"}
+
+func (ec *executionContext) _SyncConnection(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.SyncConnection) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncConnectionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncConnection")
+		case "id":
+			out.Values[i] = ec._SyncConnection_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "portfolioId":
+			out.Values[i] = ec._SyncConnection_portfolioId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accountId":
+			out.Values[i] = ec._SyncConnection_accountId(ctx, field, obj)
+		case "account":
+			out.Values[i] = ec._SyncConnection_account(ctx, field, obj)
+		case "provider":
+			out.Values[i] = ec._SyncConnection_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "externalInstitutionId":
+			out.Values[i] = ec._SyncConnection_externalInstitutionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "externalAccountId":
+			out.Values[i] = ec._SyncConnection_externalAccountId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "institutionName":
+			out.Values[i] = ec._SyncConnection_institutionName(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "syncStatus":
+			out.Values[i] = ec._SyncConnection_syncStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSyncAt":
+			out.Values[i] = ec._SyncConnection_lastSyncAt(ctx, field, obj)
+		case "lastError":
+			out.Values[i] = ec._SyncConnection_lastError(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._SyncConnection_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._SyncConnection_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var syncCredentialImplementors = []string{"SyncCredential"}
+
+func (ec *executionContext) _SyncCredential(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.SyncCredential) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncCredentialImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncCredential")
+		case "id":
+			out.Values[i] = ec._SyncCredential_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "provider":
+			out.Values[i] = ec._SyncCredential_provider(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._SyncCredential_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._SyncCredential_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._SyncCredential_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var syncRunImplementors = []string{"SyncRun"}
+
+func (ec *executionContext) _SyncRun(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.SyncRun) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, syncRunImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("SyncRun")
+		case "id":
+			out.Values[i] = ec._SyncRun_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connectionId":
+			out.Values[i] = ec._SyncRun_connectionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._SyncRun_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "itemsImported":
+			out.Values[i] = ec._SyncRun_itemsImported(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "itemsUpdated":
+			out.Values[i] = ec._SyncRun_itemsUpdated(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "errorMessage":
+			out.Values[i] = ec._SyncRun_errorMessage(ctx, field, obj)
+		case "startedAt":
+			out.Values[i] = ec._SyncRun_startedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completedAt":
+			out.Values[i] = ec._SyncRun_completedAt(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
 }
 
 var systemHealthImplementors = []string{"SystemHealth"}
@@ -68079,6 +70275,20 @@ func (ec *executionContext) marshalNAccountType2sigma_financeᚋinternalᚋhandl
 func (ec *executionContext) unmarshalNAddInstrumentHoldingInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddInstrumentHoldingInput(ctx context.Context, v any) (gqlModel.AddInstrumentHoldingInput, error) {
 	res, err := ec.unmarshalInputAddInstrumentHoldingInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAggregatorAuthSession2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAggregatorAuthSession(ctx context.Context, sel ast.SelectionSet, v gqlModel.AggregatorAuthSession) graphql.Marshaler {
+	return ec._AggregatorAuthSession(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAggregatorAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAggregatorAuthSession(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AggregatorAuthSession) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AggregatorAuthSession(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAlert2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlert(ctx context.Context, sel ast.SelectionSet, v gqlModel.Alert) graphql.Marshaler {
@@ -70489,6 +72699,80 @@ func (ec *executionContext) marshalNString2ᚕstringᚄ(ctx context.Context, sel
 	return ret
 }
 
+func (ec *executionContext) marshalNSyncConnection2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx context.Context, sel ast.SelectionSet, v gqlModel.SyncConnection) graphql.Marshaler {
+	return ec._SyncConnection(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.SyncConnection) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SyncConnection) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSyncCredential2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredential(ctx context.Context, sel ast.SelectionSet, v gqlModel.SyncCredential) graphql.Marshaler {
+	return ec._SyncCredential(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSyncCredential2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredentialᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.SyncCredential) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSyncCredential2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredential(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNSyncCredential2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncCredential(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SyncCredential) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncCredential(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNSyncRun2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncRun(ctx context.Context, sel ast.SelectionSet, v gqlModel.SyncRun) graphql.Marshaler {
+	return ec._SyncRun(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNSyncRun2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncRun(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SyncRun) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._SyncRun(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNSyncStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncStatus(ctx context.Context, v any) (gqlModel.SyncStatus, error) {
 	var res gqlModel.SyncStatus
 	err := res.UnmarshalGQL(v)
@@ -71746,6 +74030,13 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SyncConnection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._SyncConnection(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOTag2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTag(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Tag) graphql.Marshaler {

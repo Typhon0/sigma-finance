@@ -13,15 +13,26 @@ import (
 	"sigma_finance/internal/service"
 )
 
+// AggregatorAuthSession holds session information for external aggregator authentication.
+type AggregatorAuthSession struct {
+	Link         string
+	SessionToken string
+	Provider     string
+}
+
 // ISyncService defines the central coordination and execution interface for account sync.
 type ISyncService interface {
 	RegisterAdapter(adapter SyncAdapter)
 	TriggerSync(ctx context.Context, connectionID string) (*model.SyncRun, error)
+	TriggerAccountSync(ctx context.Context, accountID string) (*model.SyncRun, error)
 	RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
 	LinkAccount(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
 	GetConnection(ctx context.Context, connectionID string) (*model.SyncConnection, error)
 	ListConnections(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
+	ListCredentials(ctx context.Context, userID string) ([]*model.SyncCredential, error)
 	GetAdapter(provider string) (SyncAdapter, bool)
+	GenerateAggregatorLink(ctx context.Context, userID string, provider string, redirectURL string) (*AggregatorAuthSession, error)
+	CompleteAggregatorAuth(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
 }
 
 // SyncService implements ISyncService
@@ -374,4 +385,141 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 	_ = s.uow.Sync().UpdateConnection(ctx, conn)
 
 	return run, nil
+}
+
+// TriggerAccountSync finds the active sync connection associated with accountID (or connectionID) and initiates sync.
+func (s *SyncService) TriggerAccountSync(ctx context.Context, accountID string) (*model.SyncRun, error) {
+	if strings.TrimSpace(accountID) == "" {
+		return nil, errors.New("account ID is required")
+	}
+
+	conn, err := s.uow.Sync().GetConnectionByAccountID(ctx, accountID)
+	if err != nil || conn == nil {
+		conn, err = s.uow.Sync().GetConnectionByID(ctx, accountID)
+		if err != nil || conn == nil {
+			return nil, ErrConnectionNotFound
+		}
+	}
+
+	return s.TriggerSync(ctx, conn.ID)
+}
+
+// ListCredentials retrieves all sync credentials for a user.
+func (s *SyncService) ListCredentials(ctx context.Context, userID string) ([]*model.SyncCredential, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	return s.uow.Sync().ListCredentialsByUser(ctx, userID)
+}
+
+// GenerateAggregatorLink constructs an external authentication portal or requisition link for an aggregator.
+func (s *SyncService) GenerateAggregatorLink(ctx context.Context, userID string, provider string, redirectURL string) (*AggregatorAuthSession, error) {
+	if strings.TrimSpace(provider) == "" {
+		return nil, errors.New("provider is required")
+	}
+
+	normProvider := strings.ToUpper(strings.TrimSpace(provider))
+	adapter, ok := s.GetAdapter(normProvider)
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrAdapterNotFound, provider)
+	}
+
+	cred, err := s.uow.Sync().GetCredentialByProvider(ctx, userID, normProvider)
+	if err != nil {
+		return nil, fmt.Errorf("credential not found for provider %s: %w", normProvider, err)
+	}
+
+	switch normProvider {
+	case model.SyncProviderSnapTrade:
+		type snapTradePortal interface {
+			GeneratePortalLink(ctx context.Context, cred *model.SyncCredential, redirectURL string) (string, error)
+		}
+		if portalAdapter, ok := adapter.(snapTradePortal); ok {
+			link, err := portalAdapter.GeneratePortalLink(ctx, cred, redirectURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to generate SnapTrade portal link: %w", err)
+			}
+			return &AggregatorAuthSession{
+				Link:         link,
+				SessionToken: cred.ID,
+				Provider:     normProvider,
+			}, nil
+		}
+	case model.SyncProviderGoCardless:
+		type goCardlessRequisition interface {
+			CreateRequisition(ctx context.Context, cred *model.SyncCredential, institutionID string, redirectURL string) (string, string, error)
+		}
+		if requisitionAdapter, ok := adapter.(goCardlessRequisition); ok {
+			reqID, link, err := requisitionAdapter.CreateRequisition(ctx, cred, "SANDBOXFINANCE_SAPI0000", redirectURL)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create GoCardless requisition: %w", err)
+			}
+			return &AggregatorAuthSession{
+				Link:         link,
+				SessionToken: reqID,
+				Provider:     normProvider,
+			}, nil
+		}
+	}
+
+	type genericLinkGenerator interface {
+		GeneratePortalLink(ctx context.Context, cred *model.SyncCredential, redirectURL string) (string, error)
+	}
+	if genAdapter, ok := adapter.(genericLinkGenerator); ok {
+		link, err := genAdapter.GeneratePortalLink(ctx, cred, redirectURL)
+		if err != nil {
+			return nil, err
+		}
+		return &AggregatorAuthSession{
+			Link:         link,
+			SessionToken: cred.ID,
+			Provider:     normProvider,
+		}, nil
+	}
+
+	return nil, fmt.Errorf("provider %s does not support aggregator link generation", normProvider)
+}
+
+// CompleteAggregatorAuth completes external authentication callback and discovers accounts.
+func (s *SyncService) CompleteAggregatorAuth(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error) {
+	if strings.TrimSpace(connectionID) == "" {
+		return nil, errors.New("connection ID is required")
+	}
+
+	// Try getting connection by ID
+	conn, err := s.uow.Sync().GetConnectionByID(ctx, connectionID)
+	if err == nil && conn != nil {
+		if conn.UserID != userID {
+			return nil, errors.New("unauthorized: connection belongs to another user")
+		}
+
+		// Trigger sync for the connection
+		_, _ = s.TriggerSync(ctx, conn.ID)
+
+		// Refetch updated connection
+		refetched, fetchErr := s.uow.Sync().GetConnectionByID(ctx, conn.ID)
+		if fetchErr == nil {
+			return []*model.SyncConnection{refetched}, nil
+		}
+		return []*model.SyncConnection{conn}, nil
+	}
+
+	// Check if connectionID is a portfolio ID
+	conns, listErr := s.uow.Sync().ListConnectionsByPortfolio(ctx, connectionID)
+	if listErr == nil && len(conns) > 0 {
+		var results []*model.SyncConnection
+		for _, c := range conns {
+			if c.UserID == userID {
+				_, _ = s.TriggerSync(ctx, c.ID)
+				if updated, err := s.uow.Sync().GetConnectionByID(ctx, c.ID); err == nil {
+					results = append(results, updated)
+				} else {
+					results = append(results, c)
+				}
+			}
+		}
+		return results, nil
+	}
+
+	return nil, ErrConnectionNotFound
 }

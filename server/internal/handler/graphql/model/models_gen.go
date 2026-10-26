@@ -28,22 +28,23 @@ type Asset interface {
 }
 
 type Account struct {
-	ID             string         `json:"id"`
-	PortfolioID    string         `json:"portfolioId"`
-	Portfolio      *Portfolio     `json:"portfolio"`
-	Name           string         `json:"name"`
-	Type           AccountType    `json:"type"`
-	TaxWrapper     TaxWrapperType `json:"taxWrapper"`
-	Institution    *string        `json:"institution,omitempty"`
-	AccountNumber  *string        `json:"accountNumber,omitempty"`
-	Currency       string         `json:"currency"`
-	SyncProvider   string         `json:"syncProvider"`
-	ExternalID     *string        `json:"externalId,omitempty"`
-	Positions      []*Position    `json:"positions"`
-	PositionsCount int32          `json:"positionsCount"`
-	TotalValue     *float64       `json:"totalValue,omitempty"`
-	CreatedAt      time.Time      `json:"createdAt"`
-	UpdatedAt      time.Time      `json:"updatedAt"`
+	ID             string          `json:"id"`
+	PortfolioID    string          `json:"portfolioId"`
+	Portfolio      *Portfolio      `json:"portfolio"`
+	Name           string          `json:"name"`
+	Type           AccountType     `json:"type"`
+	TaxWrapper     TaxWrapperType  `json:"taxWrapper"`
+	Institution    *string         `json:"institution,omitempty"`
+	AccountNumber  *string         `json:"accountNumber,omitempty"`
+	Currency       string          `json:"currency"`
+	SyncProvider   string          `json:"syncProvider"`
+	ExternalID     *string         `json:"externalId,omitempty"`
+	SyncConnection *SyncConnection `json:"syncConnection,omitempty"`
+	Positions      []*Position     `json:"positions"`
+	PositionsCount int32           `json:"positionsCount"`
+	TotalValue     *float64        `json:"totalValue,omitempty"`
+	CreatedAt      time.Time       `json:"createdAt"`
+	UpdatedAt      time.Time       `json:"updatedAt"`
 }
 
 type AddInstrumentHoldingInput struct {
@@ -53,6 +54,12 @@ type AddInstrumentHoldingInput struct {
 	AveragePurchasePrice float64    `json:"averagePurchasePrice"`
 	UnitPriceCurrency    *string    `json:"unitPriceCurrency,omitempty"`
 	PurchaseDate         *time.Time `json:"purchaseDate,omitempty"`
+}
+
+type AggregatorAuthSession struct {
+	Link         string `json:"link"`
+	SessionToken string `json:"sessionToken"`
+	Provider     string `json:"provider"`
 }
 
 type Alert struct {
@@ -1783,6 +1790,41 @@ func (this Stock) GetDayChangePercent() *float64 { return this.DayChangePercent 
 type Subscription struct {
 }
 
+type SyncConnection struct {
+	ID                    string     `json:"id"`
+	PortfolioID           string     `json:"portfolioId"`
+	AccountID             *string    `json:"accountId,omitempty"`
+	Account               *Account   `json:"account,omitempty"`
+	Provider              string     `json:"provider"`
+	ExternalInstitutionID string     `json:"externalInstitutionId"`
+	ExternalAccountID     string     `json:"externalAccountId"`
+	InstitutionName       string     `json:"institutionName"`
+	SyncStatus            string     `json:"syncStatus"`
+	LastSyncAt            *time.Time `json:"lastSyncAt,omitempty"`
+	LastError             *string    `json:"lastError,omitempty"`
+	CreatedAt             time.Time  `json:"createdAt"`
+	UpdatedAt             time.Time  `json:"updatedAt"`
+}
+
+type SyncCredential struct {
+	ID        string    `json:"id"`
+	Provider  string    `json:"provider"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+type SyncRun struct {
+	ID            string     `json:"id"`
+	ConnectionID  string     `json:"connectionId"`
+	Status        string     `json:"status"`
+	ItemsImported int32      `json:"itemsImported"`
+	ItemsUpdated  int32      `json:"itemsUpdated"`
+	ErrorMessage  *string    `json:"errorMessage,omitempty"`
+	StartedAt     time.Time  `json:"startedAt"`
+	CompletedAt   *time.Time `json:"completedAt,omitempty"`
+}
+
 // System health status
 type SystemHealth struct {
 	Status       string         `json:"status"`
@@ -3136,6 +3178,181 @@ func (e *SortDirection) UnmarshalJSON(b []byte) error {
 }
 
 func (e SortDirection) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SyncConnectionStatus string
+
+const (
+	SyncConnectionStatusIdle    SyncConnectionStatus = "IDLE"
+	SyncConnectionStatusSyncing SyncConnectionStatus = "SYNCING"
+	SyncConnectionStatusSuccess SyncConnectionStatus = "SUCCESS"
+	SyncConnectionStatusFailed  SyncConnectionStatus = "FAILED"
+)
+
+var AllSyncConnectionStatus = []SyncConnectionStatus{
+	SyncConnectionStatusIdle,
+	SyncConnectionStatusSyncing,
+	SyncConnectionStatusSuccess,
+	SyncConnectionStatusFailed,
+}
+
+func (e SyncConnectionStatus) IsValid() bool {
+	switch e {
+	case SyncConnectionStatusIdle, SyncConnectionStatusSyncing, SyncConnectionStatusSuccess, SyncConnectionStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e SyncConnectionStatus) String() string {
+	return string(e)
+}
+
+func (e *SyncConnectionStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SyncConnectionStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SyncConnectionStatus", str)
+	}
+	return nil
+}
+
+func (e SyncConnectionStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SyncConnectionStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SyncConnectionStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SyncProvider string
+
+const (
+	SyncProviderKraken     SyncProvider = "KRAKEN"
+	SyncProviderSnaptrade  SyncProvider = "SNAPTRADE"
+	SyncProviderGocardless SyncProvider = "GOCARDLESS"
+	SyncProviderManual     SyncProvider = "MANUAL"
+)
+
+var AllSyncProvider = []SyncProvider{
+	SyncProviderKraken,
+	SyncProviderSnaptrade,
+	SyncProviderGocardless,
+	SyncProviderManual,
+}
+
+func (e SyncProvider) IsValid() bool {
+	switch e {
+	case SyncProviderKraken, SyncProviderSnaptrade, SyncProviderGocardless, SyncProviderManual:
+		return true
+	}
+	return false
+}
+
+func (e SyncProvider) String() string {
+	return string(e)
+}
+
+func (e *SyncProvider) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SyncProvider(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SyncProvider", str)
+	}
+	return nil
+}
+
+func (e SyncProvider) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SyncProvider) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SyncProvider) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type SyncRunStatus string
+
+const (
+	SyncRunStatusInProgress SyncRunStatus = "IN_PROGRESS"
+	SyncRunStatusCompleted  SyncRunStatus = "COMPLETED"
+	SyncRunStatusFailed     SyncRunStatus = "FAILED"
+)
+
+var AllSyncRunStatus = []SyncRunStatus{
+	SyncRunStatusInProgress,
+	SyncRunStatusCompleted,
+	SyncRunStatusFailed,
+}
+
+func (e SyncRunStatus) IsValid() bool {
+	switch e {
+	case SyncRunStatusInProgress, SyncRunStatusCompleted, SyncRunStatusFailed:
+		return true
+	}
+	return false
+}
+
+func (e SyncRunStatus) String() string {
+	return string(e)
+}
+
+func (e *SyncRunStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = SyncRunStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid SyncRunStatus", str)
+	}
+	return nil
+}
+
+func (e SyncRunStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SyncRunStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SyncRunStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

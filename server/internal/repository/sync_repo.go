@@ -16,9 +16,11 @@ type ISyncRepository interface {
 	CreateCredential(ctx context.Context, cred *model.SyncCredential) error
 	GetCredentialByID(ctx context.Context, id string) (*model.SyncCredential, error)
 	GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error)
+	ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error)
 	UpdateCredential(ctx context.Context, cred *model.SyncCredential) error
 	CreateConnection(ctx context.Context, conn *model.SyncConnection) error
 	GetConnectionByID(ctx context.Context, id string) (*model.SyncConnection, error)
+	GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
 	UpdateConnection(ctx context.Context, conn *model.SyncConnection) error
 	CreateSyncRun(ctx context.Context, run *model.SyncRun) error
@@ -97,6 +99,20 @@ func (r *SyncRepository) GetCredentialByProvider(ctx context.Context, userID str
 	return &cred, nil
 }
 
+// ListCredentialsByUser retrieves all credentials for a given user, including system credentials.
+func (r *SyncRepository) ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error) {
+	var creds []*model.SyncCredential
+	err := r.db.NewSelect().
+		Model(&creds).
+		Where("sc.user_id = ? OR (sc.is_system = TRUE AND sc.user_id IS NULL)", userID).
+		Order("sc.created_at DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return creds, nil
+}
+
 // UpdateCredential updates an existing sync credential in the database.
 func (r *SyncRepository) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
 	cred.UpdatedAt = time.Now()
@@ -141,6 +157,25 @@ func (r *SyncRepository) GetConnectionByID(ctx context.Context, id string) (*mod
 		Relation("Credential").
 		Relation("Account").
 		Where("sconn.id = ?", id).
+		Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &conn, nil
+}
+
+// GetConnectionByAccountID retrieves a sync connection by associated account ID.
+func (r *SyncRepository) GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error) {
+	var conn model.SyncConnection
+	err := r.db.NewSelect().
+		Model(&conn).
+		Relation("Credential").
+		Relation("Account").
+		Where("sconn.account_id = ?", accountID).
+		Limit(1).
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {

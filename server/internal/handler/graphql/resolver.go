@@ -12,6 +12,7 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
+	syncservice "sigma_finance/internal/service/sync"
 	"sync"
 )
 
@@ -34,6 +35,7 @@ type Resolver struct {
 	AlertService          service.IAlertService
 	MonitoringService     *service.MonitoringService
 	InstrumentService     service.InstrumentService
+	SyncService           syncservice.ISyncService
 	UOW                   repository.IUnitOfWork
 
 	// Subscription broadcaster state

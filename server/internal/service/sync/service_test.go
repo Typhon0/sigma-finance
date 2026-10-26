@@ -728,6 +728,25 @@ func (r *syncTestSyncRepo) GetConnectionByID(ctx context.Context, id string) (*m
 	return nil, repository.ErrNotFound
 }
 
+func (r *syncTestSyncRepo) GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error) {
+	for _, c := range r.u.connections {
+		if c.AccountID != nil && *c.AccountID == accountID {
+			return c, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *syncTestSyncRepo) ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error) {
+	var res []*model.SyncCredential
+	for _, c := range r.u.credentials {
+		if c.UserID == userID || (c.IsSystem && c.UserID == "") {
+			res = append(res, c)
+		}
+	}
+	return res, nil
+}
+
 func (r *syncTestSyncRepo) ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error) {
 	var res []*model.SyncConnection
 	for _, c := range r.u.connections {

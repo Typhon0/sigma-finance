@@ -21,6 +21,8 @@ import (
 	"sigma_finance/internal/service"
 	catalogservice "sigma_finance/internal/service/catalog"
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
+	syncservice "sigma_finance/internal/service/sync"
+	syncadapters "sigma_finance/internal/service/sync/adapters"
 	"slices"
 	"strconv"
 	"strings"
@@ -133,6 +135,12 @@ func NewApp() (*AppContainer, error) {
 	}
 	log.Printf("[INFO] [app] background processor wired (uow injected, tick=5m, snapshots use CalculateAndSaveHistoricalSnapshots)")
 
+	// Initialize Sync Service with registered adapters
+	syncService := syncservice.NewSyncService(uow, serviceContainer.Instrument)
+	syncService.RegisterAdapter(syncadapters.NewKrakenAdapter())
+	syncService.RegisterAdapter(syncadapters.NewSnapTradeAdapter())
+	syncService.RegisterAdapter(syncadapters.NewGoCardlessAdapter())
+
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{
 		PortfolioService:      serviceContainer.Portfolio,
@@ -147,6 +155,7 @@ func NewApp() (*AppContainer, error) {
 		MarketDataService:     serviceContainer.MarketData,
 		MarketDataPackService: serviceContainer.MarketDataPacks,
 		InstrumentService:     serviceContainer.Instrument,
+		SyncService:           syncService,
 		PerformanceService:    serviceContainer.Performance,
 		AlertService:          serviceContainer.Alert,
 		MonitoringService:     serviceContainer.Monitoring,
@@ -181,7 +190,7 @@ func NewApp() (*AppContainer, error) {
 			}
 			return false
 		},
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, apollo-require-preflight, x-apollo-operation-name",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, X-Requested-With, apollo-require-preflight, x-apollo-operation-name, apollographql-client-name, apollographql-client-version",
 		AllowCredentials: true,
 		AllowMethods:     "GET, POST, HEAD, PUT, DELETE, PATCH, OPTIONS",
 	}))

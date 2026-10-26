@@ -19,6 +19,7 @@ type Account {
     currency: String!
     syncProvider: String!
     externalId: String
+    syncConnection: SyncConnection
     positions: [Position!]!
     positionsCount: Int!
     totalValue: Float

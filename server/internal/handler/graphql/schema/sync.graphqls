@@ -1,0 +1,75 @@
+# internal/handler/graphql/schema/sync.graphqls
+
+enum SyncProvider {
+    KRAKEN
+    SNAPTRADE
+    GOCARDLESS
+    MANUAL
+}
+
+enum SyncConnectionStatus {
+    IDLE
+    SYNCING
+    SUCCESS
+    FAILED
+}
+
+enum SyncRunStatus {
+    IN_PROGRESS
+    COMPLETED
+    FAILED
+}
+
+type SyncCredential {
+    id: ID!
+    provider: String!
+    status: String!
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+type SyncConnection {
+    id: ID!
+    portfolioId: ID!
+    accountId: ID
+    account: Account
+    provider: String!
+    externalInstitutionId: String!
+    externalAccountId: String!
+    institutionName: String!
+    syncStatus: String!
+    lastSyncAt: Time
+    lastError: String
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+type SyncRun {
+    id: ID!
+    connectionId: ID!
+    status: String!
+    itemsImported: Int!
+    itemsUpdated: Int!
+    errorMessage: String
+    startedAt: Time!
+    completedAt: Time
+}
+
+type AggregatorAuthSession {
+    link: String!
+    sessionToken: String!
+    provider: String!
+}
+
+extend type Query {
+    syncConnections(portfolioId: ID!): [SyncConnection!]! @auth
+    syncCredentials: [SyncCredential!]! @auth
+}
+
+extend type Mutation {
+    registerSyncCredential(provider: String!, credentials: JSON!): SyncCredential! @auth
+    generateAggregatorLink(provider: String!, redirectUrl: String!): AggregatorAuthSession! @auth
+    completeAggregatorAuth(connectionId: ID!, sessionToken: String!): [SyncConnection!]! @auth
+    linkSyncAccount(connectionId: ID!, accountId: ID, autoCreate: Boolean): SyncConnection! @auth
+    triggerAccountSync(accountId: ID!): SyncRun! @auth
+}
