@@ -72,7 +72,8 @@ func (s *SyncService) RegisterCredential(ctx context.Context, userID string, pro
 	if strings.TrimSpace(userID) == "" {
 		return nil, errors.New("user ID is required")
 	}
-	if strings.TrimSpace(provider) == "" {
+	provider = strings.ToUpper(strings.TrimSpace(provider))
+	if provider == "" {
 		return nil, errors.New("provider is required")
 	}
 	if strings.TrimSpace(rawJSON) == "" {
@@ -493,8 +494,10 @@ func (s *SyncService) CompleteAggregatorAuth(ctx context.Context, userID string,
 			return nil, errors.New("unauthorized: connection belongs to another user")
 		}
 
-		// Trigger sync for the connection
-		_, _ = s.TriggerSync(ctx, conn.ID)
+		// Trigger sync only if the connection is already linked to an account
+		if conn.AccountID != nil && *conn.AccountID != "" {
+			_, _ = s.TriggerSync(ctx, conn.ID)
+		}
 
 		// Refetch updated connection
 		refetched, fetchErr := s.uow.Sync().GetConnectionByID(ctx, conn.ID)
@@ -510,7 +513,9 @@ func (s *SyncService) CompleteAggregatorAuth(ctx context.Context, userID string,
 		var results []*model.SyncConnection
 		for _, c := range conns {
 			if c.UserID == userID {
-				_, _ = s.TriggerSync(ctx, c.ID)
+				if c.AccountID != nil && *c.AccountID != "" {
+					_, _ = s.TriggerSync(ctx, c.ID)
+				}
 				if updated, err := s.uow.Sync().GetConnectionByID(ctx, c.ID); err == nil {
 					results = append(results, updated)
 				} else {
