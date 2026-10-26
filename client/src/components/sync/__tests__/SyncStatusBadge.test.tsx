@@ -1,6 +1,6 @@
 import "@testing-library/jest-dom";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import { formatRelativeSyncTime, SyncStatusBadge } from "../SyncStatusBadge";
 
 describe("formatRelativeSyncTime", () => {
@@ -29,13 +29,7 @@ describe("SyncStatusBadge", () => {
 
 	it("renders synced relative time when status is SUCCESS", () => {
 		const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000);
-		render(
-			<SyncStatusBadge
-				accountId="acc-1"
-				syncStatus="SUCCESS"
-				lastSyncAt={fiveMinAgo}
-			/>,
-		);
+		render(<SyncStatusBadge accountId="acc-1" syncStatus="SUCCESS" lastSyncAt={fiveMinAgo} />);
 		expect(screen.getByText(/Synced 5m ago/i)).toBeInTheDocument();
 	});
 
@@ -46,11 +40,7 @@ describe("SyncStatusBadge", () => {
 
 	it("renders 'Sync Failed' when status is FAILED", () => {
 		render(
-			<SyncStatusBadge
-				accountId="acc-1"
-				syncStatus="FAILED"
-				lastError="Rate limit exceeded"
-			/>,
+			<SyncStatusBadge accountId="acc-1" syncStatus="FAILED" lastError="Rate limit exceeded" />,
 		);
 		expect(screen.getByText(/Sync Failed/i)).toBeInTheDocument();
 	});

@@ -7,10 +7,8 @@ import {
 	useQuery,
 } from "@apollo/client";
 import {
-	AlertCircle,
 	ArrowRight,
 	Building2,
-	CheckCircle2,
 	ExternalLink,
 	Eye,
 	EyeOff,
@@ -72,7 +70,9 @@ export function ConnectInstitutionDialog({
 	portfolioId,
 	onSuccess,
 }: ConnectInstitutionDialogProps) {
-	const [activeProviderTab, setActiveProviderTab] = useState<"kraken" | "snaptrade" | "gocardless">("kraken");
+	const [activeProviderTab, setActiveProviderTab] = useState<"kraken" | "snaptrade" | "gocardless">(
+		"kraken",
+	);
 
 	// Kraken Form State
 	const [krakenApiKey, setKrakenApiKey] = useState("");
@@ -97,14 +97,26 @@ export function ConnectInstitutionDialog({
 		skip: !open || !portfolioId || !apolloContext?.client,
 	});
 
-	const [registerCredential, { loading: registeringKraken }] = useMutation(REGISTER_SYNC_CREDENTIAL, {
+	const { data: syncConnsData } = useQuery<{
+		syncConnections: Array<{ id: string; provider: string; accountId?: string | null }>;
+	}>(GET_SYNC_CONNECTIONS, {
 		client: fallbackClient,
+		variables: { portfolioId },
+		skip: !open || !portfolioId || !apolloContext?.client,
 	});
+
+	const [registerCredential, { loading: registeringKraken }] = useMutation(
+		REGISTER_SYNC_CREDENTIAL,
+		{
+			client: fallbackClient,
+		},
+	);
 	const [generateLink, { loading: generatingLink }] = useMutation(GENERATE_AGGREGATOR_LINK, {
 		client: fallbackClient,
 	});
 	const [linkAccount, { loading: linkingAccount }] = useMutation(LINK_SYNC_ACCOUNT, {
 		client: fallbackClient,
+		refetchQueries: [{ query: GET_ACCOUNTS, variables: { portfolioId } }],
 	});
 	const [createAccount, { loading: creatingAccount }] = useMutation(CREATE_ACCOUNT, {
 		client: fallbackClient,
@@ -127,6 +139,11 @@ export function ConnectInstitutionDialog({
 		e.preventDefault();
 		if (!krakenApiKey.trim() || !krakenApiSecret.trim()) {
 			toast.error("Please enter both Kraken API Key and API Secret");
+			return;
+		}
+
+		if (mappingMode === "existing" && accounts.length > 0 && !selectedAccountId) {
+			toast.error("Please select an existing account to link");
 			return;
 		}
 
@@ -163,6 +180,20 @@ export function ConnectInstitutionDialog({
 						},
 					},
 				});
+			} else if (mappingMode === "existing" && selectedAccountId) {
+				// If a sync connection for Kraken already exists, link it
+				const krakenConn = syncConnsData?.syncConnections.find(
+					(c) => c.provider === "KRAKEN" && (!c.accountId || c.accountId === selectedAccountId),
+				);
+				if (krakenConn) {
+					await linkAccount({
+						variables: {
+							connectionId: krakenConn.id,
+							accountId: selectedAccountId,
+							autoCreate: false,
+						},
+					});
+				}
 			}
 
 			toast.success("Kraken connected successfully!", { id: toastId });
@@ -177,7 +208,12 @@ export function ConnectInstitutionDialog({
 
 	// 2. Handle SnapTrade (Trade Republic, IBKR, etc.)
 	const handleConnectSnapTrade = async () => {
-		const redirectUrl = `${window.location.origin}/sync/callback`;
+		if (mappingMode === "existing" && accounts.length > 0 && !selectedAccountId) {
+			toast.error("Please select an existing account to link");
+			return;
+		}
+
+		const redirectUrl = `${window.location.origin}/dashboard`;
 		const toastId = toast.loading("Initializing Trade Republic & Brokerage connection...");
 
 		try {
@@ -191,6 +227,22 @@ export function ConnectInstitutionDialog({
 			const authSession = res.data?.generateAggregatorLink;
 			if (!authSession?.link) {
 				throw new Error("No authorization link received from broker aggregator");
+			}
+
+			// If linking to existing account, link any matching connection if available
+			if (mappingMode === "existing" && selectedAccountId) {
+				const snapConn = syncConnsData?.syncConnections.find(
+					(c) => c.provider === "SNAPTRADE" && !c.accountId,
+				);
+				if (snapConn) {
+					await linkAccount({
+						variables: {
+							connectionId: snapConn.id,
+							accountId: selectedAccountId,
+							autoCreate: false,
+						},
+					});
+				}
 			}
 
 			toast.success("Redirecting to institution authentication portal...", { id: toastId });
@@ -216,7 +268,12 @@ export function ConnectInstitutionDialog({
 
 	// 3. Handle GoCardless (European Banks Open Banking)
 	const handleConnectGoCardless = async () => {
-		const redirectUrl = `${window.location.origin}/sync/callback`;
+		if (mappingMode === "existing" && accounts.length > 0 && !selectedAccountId) {
+			toast.error("Please select an existing account to link");
+			return;
+		}
+
+		const redirectUrl = `${window.location.origin}/dashboard`;
 		const toastId = toast.loading("Initializing European Open Banking session...");
 
 		try {
@@ -230,6 +287,22 @@ export function ConnectInstitutionDialog({
 			const authSession = res.data?.generateAggregatorLink;
 			if (!authSession?.link) {
 				throw new Error("No authorization link received from Open Banking provider");
+			}
+
+			// If linking to existing account, link any matching connection if available
+			if (mappingMode === "existing" && selectedAccountId) {
+				const gcConn = syncConnsData?.syncConnections.find(
+					(c) => c.provider === "GOCARDLESS" && !c.accountId,
+				);
+				if (gcConn) {
+					await linkAccount({
+						variables: {
+							connectionId: gcConn.id,
+							accountId: selectedAccountId,
+							autoCreate: false,
+						},
+					});
+				}
 			}
 
 			toast.success("Redirecting to Bank authorization gateway...", { id: toastId });
@@ -461,7 +534,10 @@ export function ConnectInstitutionDialog({
 								{accounts.length > 0 && (
 									<div className="flex items-center space-x-2">
 										<RadioGroupItem value="existing" id="snap-map-existing" />
-										<Label htmlFor="snap-map-existing" className="cursor-pointer text-xs sm:text-sm">
+										<Label
+											htmlFor="snap-map-existing"
+											className="cursor-pointer text-xs sm:text-sm"
+										>
 											Link to existing account in portfolio
 										</Label>
 									</div>

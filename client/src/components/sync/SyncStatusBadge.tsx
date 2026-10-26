@@ -10,12 +10,7 @@ import { useContext, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TRIGGER_ACCOUNT_SYNC } from "@/graphql/mutations/sync";
 import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { GET_SYNC_CONNECTIONS } from "@/graphql/queries/sync";
@@ -172,10 +167,7 @@ export function SyncStatusBadge({
 	};
 
 	return (
-		<div
-			className={cn("inline-flex items-center gap-1.5", className)}
-			onClick={(e) => e.stopPropagation()}
-		>
+		<div className={cn("inline-flex items-center gap-1.5", className)}>
 			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
@@ -209,7 +201,10 @@ export function SyncStatusBadge({
 							aria-label="Sync Now"
 						>
 							<RefreshCw
-								className={cn("h-3.5 w-3.5", (isSyncing || effectiveStatus === "SYNCING") && "animate-spin")}
+								className={cn(
+									"h-3.5 w-3.5",
+									(isSyncing || effectiveStatus === "SYNCING") && "animate-spin",
+								)}
 							/>
 							{showButtonText && <span className="ml-1 text-xs">Sync Now</span>}
 						</Button>

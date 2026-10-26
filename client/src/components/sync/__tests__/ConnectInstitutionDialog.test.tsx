@@ -41,12 +41,8 @@ describe("ConnectInstitutionDialog", () => {
 		const tradeRepublicTab = screen.getByRole("tab", { name: /Trade Republic/i });
 		fireEvent.click(tradeRepublicTab);
 
-		expect(
-			screen.getByRole("button", { name: /Connect.*SnapTrade/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByText(/Interactive Brokers, Robinhood, Degiro/i),
-		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Connect.*SnapTrade/i })).toBeInTheDocument();
+		expect(screen.getByText(/Interactive Brokers, Robinhood, Degiro/i)).toBeInTheDocument();
 	});
 
 	it("switches tabs to European Banks and shows open banking gateway button", () => {
@@ -55,22 +51,14 @@ describe("ConnectInstitutionDialog", () => {
 		const banksTab = screen.getByRole("tab", { name: /European Banks/i });
 		fireEvent.click(banksTab);
 
-		expect(
-			screen.getByRole("button", { name: /Connect via Open Banking/i }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByText(/2,500\+ financial institutions in 31 countries/i),
-		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Connect via Open Banking/i })).toBeInTheDocument();
+		expect(screen.getByText(/2,500\+ financial institutions in 31 countries/i)).toBeInTheDocument();
 	});
 
 	it("invokes onOpenChange(false) when clicking Cancel", () => {
 		const onOpenChange = vi.fn();
 		render(
-			<ConnectInstitutionDialog
-				open={true}
-				onOpenChange={onOpenChange}
-				portfolioId="port-1"
-			/>,
+			<ConnectInstitutionDialog open={true} onOpenChange={onOpenChange} portfolioId="port-1" />,
 		);
 
 		const cancelButtons = screen.getAllByRole("button", { name: /Cancel/i });

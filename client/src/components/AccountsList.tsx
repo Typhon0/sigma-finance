@@ -1,9 +1,9 @@
+import { useQuery } from "@apollo/client";
 import ReactECharts from "echarts-for-react";
 import {
 	Building2,
 	CheckCircle2,
 	Coins,
-	Download,
 	Eye,
 	LayoutGrid,
 	List,
@@ -14,7 +14,6 @@ import {
 	Trash2,
 	Wallet,
 } from "lucide-react";
-import { useQuery } from "@apollo/client";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type PortfolioAssetItem, usePortfolio } from "@/components/PortfolioProvider";
@@ -154,32 +153,46 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const accounts = useMemo((): AccountData[] => {
 		const serverAccounts = accountsData?.accounts;
 		if (serverAccounts && serverAccounts.length > 0) {
-			return serverAccounts.map((a: any) => {
-				const type: AccountData["type"] =
-					a.type === "CRYPTO_EXCHANGE"
-						? "CEX"
-						: a.type === "BROKER"
-							? "Broker"
-							: "Bank";
-				const assetClass = type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
-				const totalVal = a.totalValue ?? 0;
+			return serverAccounts.map(
+				(a: {
+					id: string;
+					name: string;
+					type: "BROKER" | "BANK" | "CRYPTO_EXCHANGE" | "OTHER";
+					taxWrapper?: string;
+					institution?: string | null;
+					accountNumber?: string | null;
+					totalValue?: number | null;
+					syncProvider?: string | null;
+					syncConnection?: {
+						id: string;
+						provider: string;
+						syncStatus: string;
+						lastSyncAt?: string | null;
+						lastError?: string | null;
+					} | null;
+				}) => {
+					const type: AccountData["type"] =
+						a.type === "CRYPTO_EXCHANGE" ? "CEX" : a.type === "BROKER" ? "Broker" : "Bank";
+					const assetClass = type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
+					const totalVal = a.totalValue ?? 0;
 
-				return {
-					id: a.id,
-					name: a.name,
-					type,
-					taxWrapper: a.taxWrapper,
-					assetClass,
-					totalValue: totalVal,
-					totalCost: totalVal,
-					profitLoss: 0,
-					profitLossPercent: 0,
-					accountNumber: a.accountNumber || (a.institution ? a.institution : "Main Account"),
-					color: ACCOUNT_TYPE_COLORS[type],
-					syncProvider: a.syncProvider,
-					syncConnection: a.syncConnection,
-				};
-			});
+					return {
+						id: a.id,
+						name: a.name,
+						type,
+						taxWrapper: a.taxWrapper,
+						assetClass,
+						totalValue: totalVal,
+						totalCost: totalVal,
+						profitLoss: 0,
+						profitLossPercent: 0,
+						accountNumber: a.accountNumber || (a.institution ? a.institution : "Main Account"),
+						color: ACCOUNT_TYPE_COLORS[type],
+						syncProvider: a.syncProvider,
+						syncConnection: a.syncConnection,
+					};
+				},
+			);
 		}
 
 		return assets.map((a) => {
@@ -605,8 +618,17 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																<div className="flex items-center gap-2">
 																	<CardTitle className="text-lg">{account.name}</CardTitle>
 																	{account.taxWrapper && (
-																		<Badge variant="secondary" className="text-[10px] uppercase font-mono px-1.5 py-0 h-4">
-																			{account.taxWrapper === "PEA" ? "PEA" : account.taxWrapper === "CRYPTO_VAULT" ? "Crypto" : account.taxWrapper === "RETIREMENT_SHELTERED" ? "Retraite" : "CTO"}
+																		<Badge
+																			variant="secondary"
+																			className="text-[10px] uppercase font-mono px-1.5 py-0 h-4"
+																		>
+																			{account.taxWrapper === "PEA"
+																				? "PEA"
+																				: account.taxWrapper === "CRYPTO_VAULT"
+																					? "Crypto"
+																					: account.taxWrapper === "RETIREMENT_SHELTERED"
+																						? "Retraite"
+																						: "CTO"}
 																		</Badge>
 																	)}
 																</div>
@@ -699,7 +721,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 
 													<div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
 														<span>Account: {account.accountNumber}</span>
-														{account.syncProvider && (
+														{account.syncProvider && account.syncProvider !== "MANUAL" && (
 															<SyncStatusBadge
 																accountId={account.id}
 																portfolioId={currentPortfolio ?? undefined}
@@ -707,6 +729,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																lastSyncAt={account.syncConnection?.lastSyncAt}
 																lastError={account.syncConnection?.lastError}
 																provider={account.syncProvider}
+																onSyncComplete={() => void refetch()}
 																compact
 															/>
 														)}
@@ -797,7 +820,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 													</TableCell>
 													<TableCell className="text-right">
 														<div className="flex items-center justify-end gap-1">
-															{account.syncProvider && (
+															{account.syncProvider && account.syncProvider !== "MANUAL" && (
 																<SyncStatusBadge
 																	accountId={account.id}
 																	portfolioId={currentPortfolio ?? undefined}
@@ -805,6 +828,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																	lastSyncAt={account.syncConnection?.lastSyncAt}
 																	lastError={account.syncConnection?.lastError}
 																	provider={account.syncProvider}
+																	onSyncComplete={() => void refetch()}
 																	compact
 																/>
 															)}
