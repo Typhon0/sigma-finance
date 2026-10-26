@@ -34,9 +34,12 @@ type SnapTradeAdapter struct {
 }
 
 // WithTimeFunc configures a custom time provider for deterministic testing.
-func WithTimeFunc(fn func() time.Time) SnapTradeOption {
+func WithTimeFunc(fn func() time.Time) Option {
 	return func(target any) {
-		if s, ok := target.(*SnapTradeAdapter); ok {
+		switch s := target.(type) {
+		case *SnapTradeAdapter:
+			s.timeNow = fn
+		case *GoCardlessAdapter:
 			s.timeNow = fn
 		}
 	}

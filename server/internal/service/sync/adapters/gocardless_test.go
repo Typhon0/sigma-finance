@@ -477,3 +477,60 @@ func TestGoCardlessAdapter_TokenRefreshOn401(t *testing.T) {
 	assert.Equal(t, int32(2), atomic.LoadInt32(&requestCount))
 	assert.Equal(t, int32(1), atomic.LoadInt32(&tokenCalls))
 }
+
+func TestGoCardlessAdapter_FetchTransactions_DateFallbackAndSorting(t *testing.T) {
+	mockNow := time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.URL.Path == "/api/v2/token/new/":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"access":"token","access_expires":86400}`))
+
+		case r.URL.Path == "/api/v2/accounts/"+testGCAccountID1+"/transactions/":
+			w.Header().Set("Content-Type", "application/json")
+			// Return two transactions with identical timestamp to verify tie-breaking on ExternalID ascending
+			_, _ = w.Write([]byte(`{
+				"transactions": {
+					"booked": [
+						{
+							"transactionId": "TX-B",
+							"transactionAmount": {"amount": "10.00", "currency": "EUR"},
+							"remittanceInformationUnstructured": "Transfer B"
+						},
+						{
+							"transactionId": "TX-A",
+							"transactionAmount": {"amount": "20.00", "currency": "EUR"},
+							"remittanceInformationUnstructured": "Transfer A"
+						}
+					]
+				}
+			}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewGoCardlessAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+		adapters.WithTimeFunc(func() time.Time { return mockNow }),
+	)
+
+	cred := makeTestGCCredential("sid", "skey", "", "")
+	txs, err := adapter.FetchTransactions(context.Background(), cred, testGCAccountID1, nil)
+	require.NoError(t, err)
+	require.Len(t, txs, 2)
+
+	// Since both fell back to mockNow, TX-A must come before TX-B due to tie breaker
+	assert.Equal(t, "TX-A", txs[0].ExternalID)
+	assert.Equal(t, mockNow, txs[0].ExecutedAt)
+	assert.Equal(t, model.TransactionTypeDeposit, txs[0].Type)
+	assert.Equal(t, model.Money(2000), txs[0].Amount)
+
+	assert.Equal(t, "TX-B", txs[1].ExternalID)
+	assert.Equal(t, mockNow, txs[1].ExecutedAt)
+	assert.Equal(t, model.TransactionTypeDeposit, txs[1].Type)
+	assert.Equal(t, model.Money(1000), txs[1].Amount)
+}
