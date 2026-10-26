@@ -2,6 +2,7 @@ package sync
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -33,6 +34,7 @@ type ISyncService interface {
 	GetAdapter(provider string) (SyncAdapter, bool)
 	GenerateAggregatorLink(ctx context.Context, userID string, provider string, redirectURL string) (*AggregatorAuthSession, error)
 	CompleteAggregatorAuth(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
+	DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
 }
 
 // SyncService implements ISyncService
@@ -182,6 +184,10 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 	conn, err := s.uow.Sync().GetConnectionByID(ctx, connectionID)
 	if err != nil {
 		return nil, ErrConnectionNotFound
+	}
+
+	if conn.SyncStatus == model.SyncConnectionStatusSyncing && time.Since(conn.UpdatedAt) < 5*time.Minute {
+		return nil, errors.New("sync is already in progress for this connection")
 	}
 
 	adapter, ok := s.GetAdapter(conn.Provider)
@@ -507,7 +513,62 @@ func (s *SyncService) CompleteAggregatorAuth(ctx context.Context, userID string,
 		return []*model.SyncConnection{conn}, nil
 	}
 
-	// Check if connectionID is a portfolio ID
+	// Handle case where connectionID is a portfolio ID:
+	// Identify provider from sessionToken or user's active credentials
+	var targetProvider string
+	if sessionToken != "" {
+		if cred, err := s.uow.Sync().GetCredentialByID(ctx, sessionToken); err == nil && cred != nil && cred.UserID == userID {
+			targetProvider = cred.Provider
+		}
+	}
+
+	if targetProvider == "" {
+		userCreds, _ := s.uow.Sync().ListCredentialsByUser(ctx, userID)
+		for _, cred := range userCreds {
+			if cred.Status == model.SyncCredentialStatusActive {
+				targetProvider = cred.Provider
+				break
+			}
+		}
+	}
+
+	if targetProvider == model.SyncProviderGoCardless && sessionToken != "" {
+		if cred, err := s.uow.Sync().GetCredentialByProvider(ctx, userID, targetProvider); err == nil && cred != nil {
+			rawJSON, decErr := cred.Decrypt()
+			if decErr == nil {
+				var credMap map[string]any
+				if err := json.Unmarshal([]byte(rawJSON), &credMap); err == nil {
+					if _, hasReq := credMap["requisition_id"]; !hasReq {
+						credMap["requisition_id"] = sessionToken
+						updatedJSON, _ := json.Marshal(credMap)
+						cred.RawData = string(updatedJSON)
+						_ = cred.Encrypt()
+						_ = s.uow.Sync().UpdateCredential(ctx, cred)
+					}
+				}
+			}
+		}
+	}
+
+	if targetProvider != "" {
+		conns, discErr := s.DiscoverAndCreateConnections(ctx, userID, connectionID, targetProvider)
+		if discErr == nil && len(conns) > 0 {
+			var results []*model.SyncConnection
+			for _, c := range conns {
+				if c.AccountID != nil && *c.AccountID != "" {
+					_, _ = s.TriggerSync(ctx, c.ID)
+				}
+				if refetched, err := s.uow.Sync().GetConnectionByID(ctx, c.ID); err == nil {
+					results = append(results, refetched)
+				} else {
+					results = append(results, c)
+				}
+			}
+			return results, nil
+		}
+	}
+
+	// Fallback: Check if connectionID is a portfolio ID with existing connections
 	conns, listErr := s.uow.Sync().ListConnectionsByPortfolio(ctx, connectionID)
 	if listErr == nil && len(conns) > 0 {
 		var results []*model.SyncConnection
@@ -527,4 +588,133 @@ func (s *SyncService) CompleteAggregatorAuth(ctx context.Context, userID string,
 	}
 
 	return nil, ErrConnectionNotFound
+}
+
+// DiscoverAndCreateConnections discovers external institution accounts for the active credential and provisions connections & accounts.
+func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if strings.TrimSpace(portfolioID) == "" {
+		return nil, errors.New("portfolio ID is required")
+	}
+	normProvider := strings.ToUpper(strings.TrimSpace(provider))
+	if normProvider == "" {
+		return nil, errors.New("provider is required")
+	}
+
+	adapter, ok := s.GetAdapter(normProvider)
+	if !ok {
+		return nil, fmt.Errorf("%w: %s", ErrAdapterNotFound, normProvider)
+	}
+
+	cred, err := s.uow.Sync().GetCredentialByProvider(ctx, userID, normProvider)
+	if err != nil {
+		return nil, fmt.Errorf("active credential not found for provider %s: %w", normProvider, err)
+	}
+	if cred.Status != model.SyncCredentialStatusActive {
+		return nil, fmt.Errorf("credential is not active (status: %s)", cred.Status)
+	}
+
+	if _, err := cred.Decrypt(); err != nil {
+		return nil, fmt.Errorf("failed to decrypt credentials: %w", err)
+	}
+
+	rawAccounts, err := adapter.FetchAccounts(ctx, cred)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch accounts from provider %s: %w", normProvider, err)
+	}
+
+	var resultConnections []*model.SyncConnection
+
+	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		existingConns, err := uow.Sync().ListConnectionsByPortfolio(ctx, portfolioID)
+		if err != nil {
+			return fmt.Errorf("failed to list connections for portfolio: %w", err)
+		}
+
+		existingByExtAccID := make(map[string]*model.SyncConnection)
+		for _, c := range existingConns {
+			if c.Provider == normProvider {
+				existingByExtAccID[c.ExternalAccountID] = c
+			}
+		}
+
+		for _, rawAcc := range rawAccounts {
+			conn, exists := existingByExtAccID[rawAcc.ExternalID]
+			if !exists {
+				institutionName := rawAcc.Institution
+				if institutionName == "" {
+					institutionName = normProvider
+				}
+				conn = &model.SyncConnection{
+					UserID:                userID,
+					PortfolioID:           portfolioID,
+					CredentialID:          cred.ID,
+					Provider:              normProvider,
+					ExternalInstitutionID: institutionName,
+					ExternalAccountID:     rawAcc.ExternalID,
+					InstitutionName:       institutionName,
+					SyncStatus:            model.SyncConnectionStatusIdle,
+				}
+				if err := uow.Sync().CreateConnection(ctx, conn); err != nil {
+					return fmt.Errorf("failed to create connection for account %s: %w", rawAcc.ExternalID, err)
+				}
+			}
+
+			if conn.AccountID == nil || *conn.AccountID == "" {
+				accountName := rawAcc.Name
+				if accountName == "" {
+					accountName = fmt.Sprintf("%s Account", conn.InstitutionName)
+				}
+				accountType := rawAcc.Type
+				if accountType == "" {
+					accountType = model.AccountTypeBroker
+					if normProvider == model.SyncProviderKraken {
+						accountType = model.AccountTypeCryptoExchange
+					} else if normProvider == model.SyncProviderGoCardless {
+						accountType = model.AccountTypeBank
+					}
+				}
+				taxWrapper := rawAcc.TaxWrapper
+				if taxWrapper == "" {
+					taxWrapper = model.TaxWrapperStandardTaxable
+				}
+				currency := rawAcc.Currency
+				if currency == "" {
+					currency = model.CurrencyEUR
+				}
+				extAccID := rawAcc.ExternalID
+				acc := &model.Account{
+					UserID:        userID,
+					PortfolioID:   portfolioID,
+					Name:          accountName,
+					Type:          accountType,
+					TaxWrapper:    taxWrapper,
+					Institution:   &conn.InstitutionName,
+					AccountNumber: &extAccID,
+					Currency:      currency,
+					SyncProvider:  normProvider,
+					ExternalID:    &extAccID,
+				}
+				createdAcc, createErr := uow.Account().Create(ctx, acc)
+				if createErr != nil {
+					return fmt.Errorf("failed to auto-create account for connection %s: %w", conn.ID, createErr)
+				}
+				conn.AccountID = &createdAcc.ID
+				if err := uow.Sync().UpdateConnection(ctx, conn); err != nil {
+					return fmt.Errorf("failed to update connection with account ID: %w", err)
+				}
+			}
+
+			resultConnections = append(resultConnections, conn)
+		}
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resultConnections, nil
 }

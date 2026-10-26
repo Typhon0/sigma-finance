@@ -167,8 +167,8 @@ export function SyncStatusBadge({
 	};
 
 	return (
-		<div className={cn("inline-flex items-center gap-1.5", className)}>
-			<TooltipProvider>
+		<TooltipProvider>
+			<div className={cn("inline-flex items-center gap-1.5", className)}>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<span className="inline-flex items-center cursor-default">{renderBadge()}</span>
@@ -183,9 +183,7 @@ export function SyncStatusBadge({
 						</div>
 					</TooltipContent>
 				</Tooltip>
-			</TooltipProvider>
 
-			<TooltipProvider>
 				<Tooltip>
 					<TooltipTrigger asChild>
 						<Button
@@ -213,7 +211,7 @@ export function SyncStatusBadge({
 						<p className="text-xs">Sync now</p>
 					</TooltipContent>
 				</Tooltip>
-			</TooltipProvider>
-		</div>
+			</div>
+		</TooltipProvider>
 	);
 }

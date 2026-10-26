@@ -33,6 +33,11 @@ func (m Money) Abs() Money {
 	return m
 }
 
+// NewZeroMoney returns a zero Money value for the given currency.
+func NewZeroMoney(_ Currency) Money {
+	return Money(0)
+}
+
 // IsZero returns true if the money amount is zero
 func (m Money) IsZero() bool {
 	return m == 0

@@ -234,6 +234,9 @@ func (k *KrakenAdapter) postPrivate(ctx context.Context, cred *model.SyncCredent
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 		return nil, syncservice.ErrInvalidCredentials
 	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("kraken http error (status %d): %s", resp.StatusCode, string(bodyBytes))
+	}
 
 	return bodyBytes, nil
 }
@@ -385,7 +388,7 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 				costBasisPerUnit := cost.Div(vol)
 				holding.CostBasisPerUnit = &costBasisPerUnit
 				totalCost := costBasisPerUnit.Mul(holding.Quantity)
-				cents := model.Money(totalCost.Mul(decimal.NewFromInt(100)).IntPart())
+				cents := model.Money(totalCost.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 				holding.TotalCostBasis = &cents
 			}
 		}
@@ -439,7 +442,14 @@ func (k *KrakenAdapter) fetchOpenPositionsSilently(ctx context.Context, cred *mo
 		return out
 	}
 
-	for _, pos := range env.Result {
+	keys := make([]string, 0, len(env.Result))
+	for k := range env.Result {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		pos := env.Result[k]
 		sym := ExtractBaseAssetFromPair(pos.Pair)
 		out[sym] = pos
 	}
@@ -518,7 +528,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 		nsec := int64((entry.Time - float64(sec)) * 1e9)
 		execTime := time.Unix(sec, nsec)
 
-		feeCents := model.Money(fee.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+		feeCents := model.Money(fee.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 		feeCurrency := model.CurrencyUSD
 		if isFiat {
 			feeCurrency = model.Currency(symbol)
@@ -527,7 +537,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 		switch strings.ToLower(entry.Type) {
 		case "deposit":
 			amtAbs := amt.Abs()
-			amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).IntPart())
+			amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if amtCents <= 0 {
 				amtCents = 1
 			}
@@ -550,7 +560,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 
 		case "withdrawal":
 			amtAbs := amt.Abs()
-			amtCents := -model.Money(amtAbs.Mul(decimal.NewFromInt(100)).IntPart())
+			amtCents := -model.Money(amtAbs.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if amtCents >= 0 {
 				amtCents = -1
 			}
@@ -573,7 +583,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 
 		case "staking", "dividend":
 			amtAbs := amt.Abs()
-			amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).IntPart())
+			amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if amtCents <= 0 {
 				amtCents = 1
 			}
@@ -615,7 +625,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 			// Transfers, fees, rollovers, adjustments
 			amtAbs := amt.Abs()
 			if amt.IsNegative() {
-				amtCents := -model.Money(amtAbs.Mul(decimal.NewFromInt(100)).IntPart())
+				amtCents := -model.Money(amtAbs.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 				if amtCents >= 0 {
 					amtCents = -1
 				}
@@ -632,7 +642,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 					Notes:        fmt.Sprintf("Kraken fee/adjustment %s %s", amtAbs.String(), symbol),
 				})
 			} else {
-				amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).IntPart())
+				amtCents := model.Money(amtAbs.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 				if amtCents <= 0 {
 					amtCents = 1
 				}
@@ -693,7 +703,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 
 				unitPrice := totalFiatAmount.Div(cryptoQty)
 				totalFees := cl.feeCents + totalFiatFees
-				fiatCents := model.Money(totalFiatAmount.Mul(decimal.NewFromInt(100)).IntPart())
+				fiatCents := model.Money(totalFiatAmount.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 				if fiatCents <= 0 {
 					fiatCents = 1
 				}
@@ -739,7 +749,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				buyQty := boughtLeg.amt.Abs()
 				sellQty := soldLeg.amt.Abs()
 				unitPrice := sellQty.Div(buyQty)
-				cents := model.Money(sellQty.Mul(decimal.NewFromInt(100)).IntPart())
+				cents := model.Money(sellQty.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 				if cents <= 0 {
 					cents = 1
 				}

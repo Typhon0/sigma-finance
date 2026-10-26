@@ -65,4 +65,23 @@ describe("ConnectInstitutionDialog", () => {
 		fireEvent.click(cancelButtons[0]);
 		expect(onOpenChange).toHaveBeenCalledWith(false);
 	});
+
+	it("renders waiting for authorization step when pendingSession is restored from sessionStorage", () => {
+		sessionStorage.setItem(
+			"sigma_pending_aggregator_auth",
+			JSON.stringify({
+				provider: "SNAPTRADE",
+				sessionToken: "session-xyz",
+				link: "https://example.com/portal",
+				portfolioId: "port-1",
+			}),
+		);
+
+		render(<ConnectInstitutionDialog open={true} onOpenChange={vi.fn()} portfolioId="port-1" />);
+
+		expect(screen.getByText(/Waiting for authorization\.\.\./i)).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Complete Connection/i })).toBeInTheDocument();
+
+		sessionStorage.removeItem("sigma_pending_aggregator_auth");
+	});
 });

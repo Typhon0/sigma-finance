@@ -1,7 +1,9 @@
+import { useMutation } from "@apollo/client";
 import { Outlet, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { COMPLETE_AGGREGATOR_AUTH } from "@/graphql/mutations/sync";
 import { AccountDetail } from "./AccountDetail";
 import { AccountsList } from "./AccountsList";
 import { Analytics } from "./Analytics";
@@ -66,6 +68,36 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 	const [cryptoScreenerPreset, setCryptoScreenerPreset] = useState<string | undefined>(undefined);
 
 	const { assets } = usePortfolio();
+
+	// Handle pending aggregator authorization callback from full-page redirect
+	const [completeAggregatorAuth] = useMutation(COMPLETE_AGGREGATOR_AUTH);
+	useEffect(() => {
+		try {
+			const saved = sessionStorage.getItem("sigma_pending_aggregator_auth");
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				if (parsed.sessionToken && parsed.portfolioId) {
+					sessionStorage.removeItem("sigma_pending_aggregator_auth");
+					toast.loading("Completing aggregator connection...", { id: "agg-auth" });
+					completeAggregatorAuth({
+						variables: {
+							connectionId: parsed.portfolioId,
+							sessionToken: parsed.sessionToken,
+						},
+					})
+						.then(() => {
+							toast.success("External accounts synchronized successfully!", { id: "agg-auth" });
+						})
+						.catch((err: unknown) => {
+							const msg = err instanceof Error ? err.message : "Failed to complete account connection";
+							toast.error(msg, { id: "agg-auth" });
+						});
+				}
+			}
+		} catch {
+			// Ignore sessionStorage errors
+		}
+	}, [completeAggregatorAuth]);
 
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	const _handleUpdateUser = (updatedUser: any) => {
@@ -290,9 +322,9 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 						<StockDetail
 							symbol={selectedStockSymbol}
 							onBack={() => setSelectedStockSymbol(null)}
-							onNavigateToScreener={() => {
+							onNavigateToTransactions={() => {
 								setSelectedStockSymbol(null);
-								toast.success("Applied filters");
+								setActiveView("transactions");
 							}}
 						/>
 					);

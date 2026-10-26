@@ -34,8 +34,8 @@ export const IMPORT_FINANCE_DATABASE_ASSETS = gql`
 `;
 
 export const REGISTER_SYNC_CREDENTIAL = gql`
-  mutation RegisterSyncCredential($provider: String!, $credentials: JSON!) {
-    registerSyncCredential(provider: $provider, credentials: $credentials) {
+  mutation RegisterSyncCredential($provider: String!, $credentials: JSON!, $portfolioId: ID) {
+    registerSyncCredential(provider: $provider, credentials: $credentials, portfolioId: $portfolioId) {
       id
       provider
       status
@@ -107,4 +107,3 @@ export const TRIGGER_ACCOUNT_SYNC = gql`
     }
   }
 `;
-

@@ -754,13 +754,13 @@ func (g *GoCardlessAdapter) FetchTransactions(
 
 		if amtVal.IsPositive() {
 			txType = model.TransactionTypeDeposit
-			cents = model.Money(amtVal.Mul(decimal.NewFromInt(100)).IntPart())
+			cents = model.Money(amtVal.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents <= 0 {
 				cents = 1
 			}
 		} else {
 			txType = model.TransactionTypeWithdrawal
-			cents = -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents = -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents >= 0 {
 				cents = -1
 			}

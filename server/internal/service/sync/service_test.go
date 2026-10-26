@@ -584,6 +584,267 @@ func TestSyncService_CatalogMatchProvisionsRealAsset(t *testing.T) {
 	assert.True(t, asset.IsTradeable)
 }
 
+func TestSyncService_DiscoverAndCreateConnections(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawAccounts: []syncservice.RawAccount{
+			{
+				ExternalID:    "ext-acc-broker-1",
+				Name:          "Primary Brokerage",
+				Type:          model.AccountTypeBroker,
+				Institution:   "Test Broker",
+				AccountNumber: "12345678",
+				Currency:      model.CurrencyEUR,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	conns, err := service.DiscoverAndCreateConnections(ctx, "user-1", "portfolio-1", "TEST_PROVIDER")
+	require.NoError(t, err)
+	require.Len(t, conns, 1)
+
+	conn := conns[0]
+	assert.Equal(t, "user-1", conn.UserID)
+	assert.Equal(t, "portfolio-1", conn.PortfolioID)
+	assert.Equal(t, "TEST_PROVIDER", conn.Provider)
+	assert.Equal(t, "ext-acc-broker-1", conn.ExternalAccountID)
+	require.NotNil(t, conn.AccountID, "should have auto-provisioned and linked account")
+
+	acc, err := uow.Account().GetByID(ctx, *conn.AccountID)
+	require.NoError(t, err)
+	assert.Equal(t, "Primary Brokerage", acc.Name)
+	assert.Equal(t, model.AccountTypeBroker, acc.Type)
+}
+
+func TestSyncService_CompleteAggregatorAuth_PortfolioID(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawAccounts: []syncservice.RawAccount{
+			{
+				ExternalID:  "ext-acc-99",
+				Name:        "Aggregator Discovered Account",
+				Type:        model.AccountTypeBroker,
+				Institution: "Test Broker",
+				Currency:    model.CurrencyEUR,
+			},
+		},
+		rawBalances: []syncservice.RawBalance{
+			{
+				Currency: model.CurrencyEUR,
+				Amount:   decimal.NewFromInt(500),
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	// CompleteAggregatorAuth with portfolio ID "portfolio-1"
+	conns, err := service.CompleteAggregatorAuth(ctx, "user-1", "portfolio-1", "cred-1")
+	require.NoError(t, err)
+	require.NotEmpty(t, conns)
+
+	var discoveredConn *model.SyncConnection
+	for _, c := range conns {
+		if c.ExternalAccountID == "ext-acc-99" {
+			discoveredConn = c
+			break
+		}
+	}
+	require.NotNil(t, discoveredConn)
+	assert.Equal(t, model.SyncConnectionStatusSuccess, discoveredConn.SyncStatus)
+}
+
+func TestSyncService_TriggerSync_ConcurrencyProtection(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	// Set connection to SYNCING recently
+	conn, err := uow.Sync().GetConnectionByID(ctx, "conn-1")
+	require.NoError(t, err)
+	conn.SyncStatus = model.SyncConnectionStatusSyncing
+	conn.UpdatedAt = time.Now().Add(-1 * time.Minute)
+	_ = uow.Sync().UpdateConnection(ctx, conn)
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(&MockSyncAdapter{provider: "TEST_PROVIDER"})
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.Error(t, err)
+	assert.Nil(t, run)
+	assert.Contains(t, err.Error(), "sync is already in progress")
+}
+
+func TestSyncService_MultiCurrencyCashLiquidation(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	service := syncservice.NewSyncService(uow, nil)
+
+	// First sync with EUR and USD cash
+	adapter1 := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawBalances: []syncservice.RawBalance{
+			{Currency: model.CurrencyEUR, Amount: decimal.NewFromInt(100)},
+			{Currency: model.CurrencyUSD, Amount: decimal.NewFromInt(200)},
+		},
+	}
+	service.RegisterAdapter(adapter1)
+
+	run1, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run1.Status)
+
+	positions1, err := uow.Position().GetPortfolioPositions(ctx, "portfolio-1")
+	require.NoError(t, err)
+	require.Len(t, positions1, 2)
+	for _, p := range positions1 {
+		assert.True(t, p.Quantity.Equal(decimal.NewFromInt(1)))
+		assert.NotNil(t, p.AverageCostBasis)
+	}
+
+	// Second sync with EUR only (USD liquidated)
+	adapter2 := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawBalances: []syncservice.RawBalance{
+			{Currency: model.CurrencyEUR, Amount: decimal.NewFromInt(150)},
+		},
+	}
+	service.RegisterAdapter(adapter2)
+
+	run2, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run2.Status)
+
+	positions2, err := uow.Position().GetPortfolioPositions(ctx, "portfolio-1")
+	require.NoError(t, err)
+	require.Len(t, positions2, 2)
+
+	for _, p := range positions2 {
+		if p.QuoteCurrency == model.CurrencyUSD {
+			assert.True(t, p.Quantity.IsZero(), "USD cash position should be liquidated to 0")
+			assert.Nil(t, p.AverageCostBasis)
+			assert.Nil(t, p.TotalCostBasis)
+		} else if p.QuoteCurrency == model.CurrencyEUR {
+			assert.True(t, p.Quantity.Equal(decimal.NewFromInt(1)))
+			require.NotNil(t, p.AverageCostBasis)
+			assert.True(t, p.AverageCostBasis.Equal(decimal.NewFromInt(150)))
+		}
+	}
+}
+
+func TestSyncService_NegativeCashBalanceOverdraft(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	service := syncservice.NewSyncService(uow, nil)
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawBalances: []syncservice.RawBalance{
+			{Currency: model.CurrencyEUR, Amount: decimal.NewFromInt(-75)},
+		},
+	}
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	positions, err := uow.Position().GetPortfolioPositions(ctx, "portfolio-1")
+	require.NoError(t, err)
+	require.Len(t, positions, 1)
+
+	pos := positions[0]
+	assert.True(t, pos.Quantity.Equal(decimal.NewFromInt(1)))
+	require.NotNil(t, pos.AverageCostBasis)
+	assert.True(t, pos.AverageCostBasis.IsZero(), "overdraft AverageCostBasis must be clamped to 0")
+	require.NotNil(t, pos.TotalCostBasis)
+	assert.Equal(t, model.Money(0), *pos.TotalCostBasis, "overdraft TotalCostBasis must be clamped to 0")
+	require.NoError(t, pos.Validate(), "Position.Validate() must pass for clamped overdraft")
+}
+
+func TestSyncService_ReconcileTransactions_ISINFallback(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	// Seed Instrument and Asset
+	inst := &model.Instrument{
+		ID:               "inst-vwce",
+		NormalizedSymbol: "VWCE",
+		NormalizedName:   "Vanguard FTSE All-World",
+		ISIN:             strPtr("IE00BK5BQT80"),
+	}
+	uow.instruments[inst.ID] = inst
+
+	asset := &model.Asset{
+		ID:           "asset-vwce",
+		InstrumentID: strPtr("inst-vwce"),
+		Symbol:       strPtr("VWCE"),
+		Name:         "Vanguard FTSE All-World",
+		Type:         model.AssetTypeFund,
+		IsTradeable:  true,
+	}
+	uow.assets[asset.ID] = asset
+
+	pos := &model.Position{
+		ID:                  "pos-vwce",
+		PortfolioID:         "portfolio-1",
+		AccountID:           "acc-1",
+		AssetID:             asset.ID,
+		Quantity:            decimal.NewFromInt(5),
+		OwnershipPercentage: decimal.NewFromInt(100),
+	}
+	uow.positions[pos.ID] = pos
+
+	service := syncservice.NewSyncService(uow, nil)
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawTransactions: []syncservice.RawTransaction{
+			{
+				ExternalID: "tx-isin-1",
+				Type:       model.TransactionTypeBuy,
+				Symbol:     "", // Empty symbol!
+				ISIN:       "IE00BK5BQT80",
+				Quantity:   decPtr(decimal.NewFromInt(2)),
+				Amount:     model.Money(20000),
+				ExecutedAt: time.Now(),
+			},
+		},
+	}
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	tx, err := uow.Transaction().FindByAccountAndExternalID(ctx, "acc-1", "tx-isin-1")
+	require.NoError(t, err)
+	require.NotNil(t, tx)
+	require.NotNil(t, tx.PositionID)
+	assert.Equal(t, pos.ID, *tx.PositionID)
+}
+
 // Helpers and in-memory Unit of Work for testing
 
 func decPtr(d decimal.Decimal) *decimal.Decimal { return &d }
@@ -704,6 +965,15 @@ func (r *syncTestSyncRepo) CreateCredential(ctx context.Context, cred *model.Syn
 func (r *syncTestSyncRepo) GetCredentialByID(ctx context.Context, id string) (*model.SyncCredential, error) {
 	if c, ok := r.u.credentials[id]; ok {
 		return c, nil
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *syncTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error) {
+	for _, c := range r.u.credentials {
+		if (c.UserID == userID || (c.IsSystem && c.UserID == "")) && c.Provider == provider {
+			return c, nil
+		}
 	}
 	return nil, repository.ErrNotFound
 }
@@ -903,7 +1173,11 @@ func (r *syncTestPositionRepo) GetPortfolioPositions(ctx context.Context, portfo
 	var res []model.Position
 	for _, p := range r.u.positions {
 		if p.PortfolioID == portfolioID {
-			res = append(res, *p)
+			cp := *p
+			if asset, ok := r.u.assets[p.AssetID]; ok {
+				cp.Asset = asset
+			}
+			res = append(res, cp)
 		}
 	}
 	return res, nil

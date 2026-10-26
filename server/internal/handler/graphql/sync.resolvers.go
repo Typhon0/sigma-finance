@@ -13,7 +13,7 @@ import (
 )
 
 // RegisterSyncCredential is the resolver for the registerSyncCredential field.
-func (r *mutationResolver) RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any) (*gqlModel.SyncCredential, error) {
+func (r *mutationResolver) RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any, portfolioId *string) (*gqlModel.SyncCredential, error) {
 	userID, err := getUserIDFromContext(ctx)
 	if err != nil {
 		return nil, err
@@ -27,6 +27,12 @@ func (r *mutationResolver) RegisterSyncCredential(ctx context.Context, provider 
 	cred, err := r.SyncService.RegisterCredential(ctx, userID, provider, string(rawJSON))
 	if err != nil {
 		return nil, err
+	}
+
+	if portfolioId != nil && *portfolioId != "" {
+		if _, err := r.SyncService.DiscoverAndCreateConnections(ctx, userID, *portfolioId, provider); err != nil {
+			return nil, fmt.Errorf("failed to discover accounts: %w", err)
+		}
 	}
 
 	return mapSyncCredentialToGQL(cred), nil

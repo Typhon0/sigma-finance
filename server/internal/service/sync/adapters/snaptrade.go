@@ -583,7 +583,7 @@ func (s *SnapTradeAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCr
 		if costBasis, ok := parseDecimalValue(pos.AveragePurchasePrice); ok && costBasis.IsPositive() {
 			holding.CostBasisPerUnit = &costBasis
 			totalCost := costBasis.Mul(qty)
-			cents := model.Money(totalCost.Mul(decimal.NewFromInt(100)).IntPart())
+			cents := model.Money(totalCost.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			holding.TotalCostBasis = &cents
 		}
 
@@ -737,7 +737,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 		}
 
 		feeAmt, _ := parseDecimalValue(act.Fee)
-		feeCents := model.Money(feeAmt.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+		feeCents := model.Money(feeAmt.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 
 		qtyVal, hasQty := parseDecimalValue(act.Quantity)
 		priceVal, hasPrice := parseDecimalValue(act.Price)
@@ -749,9 +749,9 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			txPrice := priceVal.Abs()
 			var totalCents model.Money
 			if hasPrice && hasQty && txPrice.IsPositive() && txQty.IsPositive() {
-				totalCents = model.Money(txQty.Mul(txPrice).Mul(decimal.NewFromInt(100)).IntPart())
+				totalCents = model.Money(txQty.Mul(txPrice).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			} else if hasAmt {
-				totalCents = model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+				totalCents = model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			}
 			if totalCents <= 0 {
 				totalCents = 1
@@ -784,9 +784,9 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			txPrice := priceVal.Abs()
 			var totalCents model.Money
 			if hasPrice && hasQty && txPrice.IsPositive() && txQty.IsPositive() {
-				totalCents = -model.Money(txQty.Mul(txPrice).Mul(decimal.NewFromInt(100)).IntPart())
+				totalCents = -model.Money(txQty.Mul(txPrice).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			} else if hasAmt {
-				totalCents = -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+				totalCents = -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			}
 			if totalCents >= 0 {
 				totalCents = -1
@@ -815,7 +815,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			txs = append(txs, tx)
 
 		case "DIVIDEND", "STOCK_DIVIDEND", "SUBSTITUTE_DIVIDEND":
-			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents <= 0 {
 				cents = 1
 			}
@@ -834,7 +834,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			})
 
 		case "DEPOSIT", "CONTRIBUTION":
-			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents <= 0 {
 				cents = 1
 			}
@@ -850,7 +850,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			})
 
 		case "WITHDRAWAL", "DISTRIBUTION":
-			cents := -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents := -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents >= 0 {
 				cents = -1
 			}
@@ -866,7 +866,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			})
 
 		case "FEE":
-			cents := -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents := -model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents >= 0 {
 				cents = -1
 			}
@@ -882,7 +882,7 @@ func (s *SnapTradeAdapter) FetchTransactions(
 			})
 
 		case "INTEREST":
-			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).IntPart())
+			cents := model.Money(amtVal.Abs().Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			if cents <= 0 {
 				cents = 1
 			}

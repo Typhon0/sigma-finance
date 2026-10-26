@@ -855,7 +855,7 @@ type ComplexityRoot struct {
 		RefreshSingleAssetPrice          func(childComplexity int, assetID string) int
 		RefreshToken                     func(childComplexity int, input gqlModel.RefreshTokenInput) int
 		Register                         func(childComplexity int, input gqlModel.RegisterInput) int
-		RegisterSyncCredential           func(childComplexity int, provider string, credentials map[string]any) int
+		RegisterSyncCredential           func(childComplexity int, provider string, credentials map[string]any, portfolioID *string) int
 		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string) int
 		RemoveAssetFromWatchlist         func(childComplexity int, watchlistID string, assetID string) int
 		RemoveMarketDataPack             func(childComplexity int, packID string) int
@@ -1615,7 +1615,7 @@ type MutationResolver interface {
 	DeleteAlertRule(ctx context.Context, id string) (bool, error)
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error)
-	RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any) (*gqlModel.SyncCredential, error)
+	RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any, portfolioID *string) (*gqlModel.SyncCredential, error)
 	GenerateAggregatorLink(ctx context.Context, provider string, redirectURL string) (*gqlModel.AggregatorAuthSession, error)
 	CompleteAggregatorAuth(ctx context.Context, connectionID string, sessionToken string) ([]*gqlModel.SyncConnection, error)
 	LinkSyncAccount(ctx context.Context, connectionID string, accountID *string, autoCreate *bool) (*gqlModel.SyncConnection, error)
@@ -5707,7 +5707,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.RegisterSyncCredential(childComplexity, args["provider"].(string), args["credentials"].(map[string]any)), true
+		return e.ComplexityRoot.Mutation.RegisterSyncCredential(childComplexity, args["provider"].(string), args["credentials"].(map[string]any), args["portfolioId"].(*string)), true
 	case "Mutation.removeAssetFromPortfolio":
 		if e.ComplexityRoot.Mutation.RemoveAssetFromPortfolio == nil {
 			break
@@ -10212,6 +10212,11 @@ func (ec *executionContext) field_Mutation_registerSyncCredential_args(ctx conte
 		return nil, err
 	}
 	args["credentials"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg2
 	return args, nil
 }
 
@@ -34856,7 +34861,7 @@ func (ec *executionContext) _Mutation_registerSyncCredential(ctx context.Context
 		ec.fieldContext_Mutation_registerSyncCredential,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RegisterSyncCredential(ctx, fc.Args["provider"].(string), fc.Args["credentials"].(map[string]any))
+			return ec.Resolvers.Mutation().RegisterSyncCredential(ctx, fc.Args["provider"].(string), fc.Args["credentials"].(map[string]any), fc.Args["portfolioId"].(*string))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next

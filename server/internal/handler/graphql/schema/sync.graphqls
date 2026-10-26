@@ -67,7 +67,7 @@ extend type Query {
 }
 
 extend type Mutation {
-    registerSyncCredential(provider: String!, credentials: JSON!): SyncCredential! @auth
+    registerSyncCredential(provider: String!, credentials: JSON!, portfolioId: ID): SyncCredential! @auth
     generateAggregatorLink(provider: String!, redirectUrl: String!): AggregatorAuthSession! @auth
     completeAggregatorAuth(connectionId: ID!, sessionToken: String!): [SyncConnection!]! @auth
     linkSyncAccount(connectionId: ID!, accountId: ID, autoCreate: Boolean): SyncConnection! @auth

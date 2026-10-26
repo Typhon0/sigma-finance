@@ -9,6 +9,7 @@ import {
 import {
 	ArrowRight,
 	Building2,
+	CheckCircle2,
 	ExternalLink,
 	Eye,
 	EyeOff,
@@ -18,7 +19,7 @@ import {
 	ShieldCheck,
 	Wallet,
 } from "lucide-react";
-import { useContext, useMemo, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CREATE_ACCOUNT } from "@/graphql/mutations/accounts";
 import {
+	COMPLETE_AGGREGATOR_AUTH,
 	GENERATE_AGGREGATOR_LINK,
 	LINK_SYNC_ACCOUNT,
 	REGISTER_SYNC_CREDENTIAL,
@@ -83,12 +85,34 @@ export function ConnectInstitutionDialog({
 	const [mappingMode, setMappingMode] = useState<"auto" | "existing">("auto");
 	const [selectedAccountId, setSelectedAccountId] = useState<string>("");
 
+	// Pending Aggregator Session State
+	const [pendingSession, setPendingSession] = useState<{
+		provider: string;
+		sessionToken: string;
+		link: string;
+	} | null>(null);
+
 	// Safe Apollo context handling when rendered in tests without ApolloProvider
 	const apolloContext = useContext(getApolloContext());
 	const fallbackClient = useMemo(() => {
 		if (apolloContext?.client) return undefined;
 		return new ApolloClient({ cache: new InMemoryCache(), link: ApolloLink.empty() });
 	}, [apolloContext?.client]);
+
+	// Restore pending aggregator authorization state on mount/open
+	useEffect(() => {
+		try {
+			const saved = sessionStorage.getItem("sigma_pending_aggregator_auth");
+			if (saved) {
+				const parsed = JSON.parse(saved);
+				if (parsed.sessionToken && (!parsed.portfolioId || parsed.portfolioId === portfolioId)) {
+					setPendingSession(parsed);
+				}
+			}
+		} catch {
+			// Ignore sessionStorage errors
+		}
+	}, [open, portfolioId]);
 
 	// Queries & Mutations
 	const { data: accountsData } = useQuery<{ accounts: AccountItem[] }>(GET_ACCOUNTS, {
@@ -114,6 +138,16 @@ export function ConnectInstitutionDialog({
 	const [generateLink, { loading: generatingLink }] = useMutation(GENERATE_AGGREGATOR_LINK, {
 		client: fallbackClient,
 	});
+	const [completeAggregatorAuth, { loading: completingAuth }] = useMutation(
+		COMPLETE_AGGREGATOR_AUTH,
+		{
+			client: fallbackClient,
+			refetchQueries: [
+				{ query: GET_ACCOUNTS, variables: { portfolioId } },
+				{ query: GET_SYNC_CONNECTIONS, variables: { portfolioId } },
+			],
+		},
+	);
 	const [linkAccount, { loading: linkingAccount }] = useMutation(LINK_SYNC_ACCOUNT, {
 		client: fallbackClient,
 		refetchQueries: [{ query: GET_ACCOUNTS, variables: { portfolioId } }],
@@ -124,7 +158,8 @@ export function ConnectInstitutionDialog({
 	});
 
 	const accounts = accountsData?.accounts ?? [];
-	const isBusy = registeringKraken || generatingLink || linkingAccount || creatingAccount;
+	const isBusy =
+		registeringKraken || generatingLink || linkingAccount || creatingAccount || completingAuth;
 
 	const resetForm = () => {
 		setKrakenApiKey("");
@@ -132,6 +167,38 @@ export function ConnectInstitutionDialog({
 		setShowSecret(false);
 		setMappingMode("auto");
 		setSelectedAccountId("");
+		setPendingSession(null);
+	};
+
+	const handleCompleteAuth = async (tokenOverride?: string) => {
+		const token = tokenOverride || pendingSession?.sessionToken;
+		if (!token) return;
+
+		const toastId = toast.loading("Finalizing account discovery and synchronization...");
+		try {
+			const res = await completeAggregatorAuth({
+				variables: {
+					connectionId: portfolioId,
+					sessionToken: token,
+				},
+			});
+
+			try {
+				sessionStorage.removeItem("sigma_pending_aggregator_auth");
+			} catch {
+				// Ignore
+			}
+
+			setPendingSession(null);
+			toast.success("Account connected and synchronized successfully!", { id: toastId });
+			const conns = res.data?.completeAggregatorAuth;
+			const connId = conns && conns.length > 0 ? conns[0].id : token;
+			onSuccess?.(connId);
+			onOpenChange(false);
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Failed to complete aggregator connection";
+			toast.error(msg, { id: toastId });
+		}
 	};
 
 	// 1. Handle Kraken Direct Connection
@@ -158,6 +225,7 @@ export function ConnectInstitutionDialog({
 						apiKey: krakenApiKey.trim(),
 						apiSecret: krakenApiSecret.trim(),
 					},
+					portfolioId,
 				},
 			});
 
@@ -247,19 +315,36 @@ export function ConnectInstitutionDialog({
 
 			toast.success("Redirecting to institution authentication portal...", { id: toastId });
 
+			const sessionData = {
+				provider: "SNAPTRADE",
+				sessionToken: authSession.sessionToken,
+				link: authSession.link,
+				portfolioId,
+			};
+			setPendingSession(sessionData);
+			try {
+				sessionStorage.setItem("sigma_pending_aggregator_auth", JSON.stringify(sessionData));
+			} catch {
+				// Ignore
+			}
+
 			// Open portal in new window or redirect
 			const popup = window.open(
 				authSession.link,
 				"snaptrade_auth",
 				"width=720,height=800,scrollbars=yes,resizable=yes",
 			);
-			if (!popup || popup.closed || typeof popup.closed === "undefined") {
+			if (popup) {
+				const checkPopup = setInterval(() => {
+					if (popup.closed) {
+						clearInterval(checkPopup);
+						handleCompleteAuth(authSession.sessionToken);
+					}
+				}, 1000);
+			} else {
 				// Popup blocked, open in same tab
 				window.location.href = authSession.link;
 			}
-
-			onSuccess?.(authSession.sessionToken);
-			onOpenChange(false);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : "Failed to generate connection link";
 			toast.error(msg, { id: toastId });
@@ -307,17 +392,34 @@ export function ConnectInstitutionDialog({
 
 			toast.success("Redirecting to Bank authorization gateway...", { id: toastId });
 
+			const sessionData = {
+				provider: "GOCARDLESS",
+				sessionToken: authSession.sessionToken,
+				link: authSession.link,
+				portfolioId,
+			};
+			setPendingSession(sessionData);
+			try {
+				sessionStorage.setItem("sigma_pending_aggregator_auth", JSON.stringify(sessionData));
+			} catch {
+				// Ignore
+			}
+
 			const popup = window.open(
 				authSession.link,
 				"gocardless_auth",
 				"width=720,height=800,scrollbars=yes,resizable=yes",
 			);
-			if (!popup || popup.closed || typeof popup.closed === "undefined") {
+			if (popup) {
+				const checkPopup = setInterval(() => {
+					if (popup.closed) {
+						clearInterval(checkPopup);
+						handleCompleteAuth(authSession.sessionToken);
+					}
+				}, 1000);
+			} else {
 				window.location.href = authSession.link;
 			}
-
-			onSuccess?.(authSession.sessionToken);
-			onOpenChange(false);
 		} catch (err: unknown) {
 			const msg = err instanceof Error ? err.message : "Failed to generate bank connection link";
 			toast.error(msg, { id: toastId });
@@ -344,11 +446,61 @@ export function ConnectInstitutionDialog({
 					</DialogDescription>
 				</DialogHeader>
 
-				<Tabs
-					value={activeProviderTab}
-					onValueChange={(val) => setActiveProviderTab(val as typeof activeProviderTab)}
-					className="mt-2"
-				>
+				{pendingSession ? (
+					<div className="py-8 flex flex-col items-center justify-center space-y-4 text-center">
+						<div className="rounded-full bg-primary/10 p-4">
+							<Loader2 className="h-8 w-8 animate-spin text-primary" />
+						</div>
+						<div className="space-y-1">
+							<h3 className="font-semibold text-lg">Waiting for authorization...</h3>
+							<p className="text-sm text-muted-foreground max-w-sm">
+								Please complete the authentication process in the institution's portal. Once approved,
+								click below to discover accounts and initiate synchronization.
+							</p>
+						</div>
+						<div className="flex flex-col gap-2 w-full max-w-xs pt-2">
+							<Button
+								type="button"
+								onClick={() => handleCompleteAuth()}
+								disabled={completingAuth}
+								className="w-full gap-2"
+							>
+								{completingAuth ? (
+									<>
+										<Loader2 className="h-4 w-4 animate-spin" />
+										Connecting Accounts...
+									</>
+								) : (
+									<>
+										<CheckCircle2 className="h-4 w-4" />
+										Complete Connection
+									</>
+								)}
+							</Button>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={() => {
+									setPendingSession(null);
+									try {
+										sessionStorage.removeItem("sigma_pending_aggregator_auth");
+									} catch {
+										// Ignore
+									}
+								}}
+								disabled={completingAuth}
+								className="w-full"
+							>
+								Cancel
+							</Button>
+						</div>
+					</div>
+				) : (
+					<Tabs
+						value={activeProviderTab}
+						onValueChange={(val) => setActiveProviderTab(val as typeof activeProviderTab)}
+						className="mt-2"
+					>
 					<TabsList className="grid w-full grid-cols-3">
 						<TabsTrigger
 							value="kraken"
@@ -675,6 +827,7 @@ export function ConnectInstitutionDialog({
 						</DialogFooter>
 					</TabsContent>
 				</Tabs>
+				)}
 			</DialogContent>
 		</Dialog>
 	);

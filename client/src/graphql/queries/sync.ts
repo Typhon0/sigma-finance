@@ -95,4 +95,3 @@ export const GET_SYNC_CREDENTIALS = gql`
     }
   }
 `;
-

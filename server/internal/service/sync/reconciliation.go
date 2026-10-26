@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
+
+	"github.com/shopspring/decimal"
 )
 
 // ReconcileBalances reconciles cash balances under an account as AssetTypeBankAccount positions.
@@ -18,10 +20,13 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 	imported := 0
 	updated := 0
 
+	activeCashCurrencies := make(map[model.Currency]bool)
+
 	for _, bal := range balances {
 		if !bal.Currency.IsValid() {
 			continue
 		}
+		activeCashCurrencies[bal.Currency] = true
 
 		symbol := fmt.Sprintf("%s_CASH_%s", bal.Currency, account.ID)
 		asset, err := uow.Asset().GetBySymbol(ctx, symbol)
@@ -59,7 +64,24 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 
 		// Reconcile position
 		pos, posErr := uow.Position().GetByAccountAndAsset(ctx, account.ID, asset.ID)
-		cents := model.Money(bal.Amount.Mul(decimal.NewFromInt(100)).IntPart())
+		cents := model.Money(bal.Amount.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+
+		var avgCost *decimal.Decimal
+		var totalCost *model.Money
+
+		zeroCost := decimal.Zero
+		zeroMoney := model.NewZeroMoney(bal.Currency)
+
+		if bal.Amount.IsZero() {
+			avgCost = nil
+			totalCost = nil
+		} else if bal.Amount.IsNegative() {
+			avgCost = &zeroCost
+			totalCost = &zeroMoney
+		} else {
+			avgCost = &bal.Amount
+			totalCost = &cents
+		}
 
 		if posErr != nil || pos == nil {
 			qty := decimal.NewFromInt(1)
@@ -73,12 +95,8 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 				Quantity:            qty,
 				OwnershipPercentage: decimal.NewFromInt(100),
 				QuoteCurrency:       bal.Currency,
-				AverageCostBasis:    &bal.Amount,
-				TotalCostBasis:      &cents,
-			}
-			if bal.Amount.IsZero() {
-				newPos.AverageCostBasis = nil
-				newPos.TotalCostBasis = nil
+				AverageCostBasis:    avgCost,
+				TotalCostBasis:      totalCost,
 			}
 			_, err = uow.Position().Create(ctx, newPos)
 			if err != nil {
@@ -88,18 +106,49 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 		} else {
 			if bal.Amount.IsZero() {
 				pos.Quantity = decimal.Zero
-				pos.AverageCostBasis = nil
-				pos.TotalCostBasis = nil
 			} else {
 				pos.Quantity = decimal.NewFromInt(1)
-				pos.AverageCostBasis = &bal.Amount
-				pos.TotalCostBasis = &cents
 			}
+			pos.AverageCostBasis = avgCost
+			pos.TotalCostBasis = totalCost
 			pos.QuoteCurrency = bal.Currency
 			if err := uow.Position().Update(ctx, pos); err != nil {
 				return imported, updated, fmt.Errorf("failed to update cash position: %w", err)
 			}
 			updated++
+		}
+	}
+
+	// Multi-Currency Cash Liquidation: reconcile missing cash currency positions
+	existingPositions, err := uow.Position().GetPortfolioPositions(ctx, conn.PortfolioID)
+	if err == nil {
+		for _, pos := range existingPositions {
+			if pos.AccountID != account.ID {
+				continue
+			}
+
+			asset := pos.Asset
+			if asset == nil {
+				asset, _ = uow.Asset().GetByID(ctx, pos.AssetID)
+			}
+			if asset != nil && asset.Type == model.AssetTypeBankAccount {
+				curr := pos.QuoteCurrency
+				if curr == "" && asset.Symbol != nil {
+					parts := strings.Split(*asset.Symbol, "_")
+					if len(parts) > 0 {
+						curr = model.Currency(parts[0])
+					}
+				}
+				if !activeCashCurrencies[curr] && !pos.Quantity.IsZero() {
+					pos.Quantity = decimal.Zero
+					pos.AverageCostBasis = nil
+					pos.TotalCostBasis = nil
+					if err := uow.Position().Update(ctx, &pos); err != nil {
+						return imported, updated, fmt.Errorf("failed to liquidate cash position: %w", err)
+					}
+					updated++
+				}
+			}
 		}
 	}
 
@@ -229,6 +278,25 @@ func ReconcileTransactions(ctx context.Context, uow repository.IUnitOfWork, conn
 				pos, _ := uow.Position().GetByAccountAndAsset(ctx, *conn.AccountID, asset.ID)
 				if pos != nil {
 					posID = &pos.ID
+				}
+			}
+		}
+
+		if posID == nil && rawTx.ISIN != "" && conn.AccountID != nil {
+			inst, err := uow.Instrument().GetByGlobalIdentifier(ctx, "isin", rawTx.ISIN)
+			if err == nil && inst != nil {
+				asset, err := uow.Asset().GetByInstrumentID(ctx, inst.ID)
+				if err != nil || asset == nil {
+					if inst.NormalizedSymbol != "" {
+						asset, _ = uow.Asset().GetBySymbol(ctx, inst.NormalizedSymbol)
+					}
+				}
+				if asset != nil {
+					assetID = asset.ID
+					pos, _ := uow.Position().GetByAccountAndAsset(ctx, *conn.AccountID, asset.ID)
+					if pos != nil {
+						posID = &pos.ID
+					}
 				}
 			}
 		}
@@ -364,7 +432,7 @@ func ReconcileResidualTaxLots(ctx context.Context, uow repository.IUnitOfWork, c
 				acquiredAt = earliestBuy.ExecutedAt
 			}
 
-			totalCostCents := model.Money(costBasisPerUnit.Mul(residualQuantity).Mul(decimal.NewFromInt(100)).IntPart())
+			totalCostCents := model.Money(costBasisPerUnit.Mul(residualQuantity).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 			currency := pos.QuoteCurrency
 			if !currency.IsValid() && earliestBuy != nil {
 				currency = earliestBuy.UnitPriceCurrency

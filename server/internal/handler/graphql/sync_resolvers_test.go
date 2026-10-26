@@ -25,6 +25,7 @@ type mockSyncService struct {
 	getAdapterFn             func(provider string) (syncservice.SyncAdapter, bool)
 	generateAggregatorLinkFn func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
 	completeAggregatorAuthFn func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
+	discoverAndCreateConnectionsFn func(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
 }
 
 func (m *mockSyncService) RegisterAdapter(adapter syncservice.SyncAdapter) {
@@ -180,6 +181,26 @@ func (m *mockSyncService) CompleteAggregatorAuth(ctx context.Context, userID str
 	}, nil
 }
 
+func (m *mockSyncService) DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error) {
+	if m.discoverAndCreateConnectionsFn != nil {
+		return m.discoverAndCreateConnectionsFn(ctx, userID, portfolioID, provider)
+	}
+	return []*model.SyncConnection{
+		{
+			ID:                    "conn-disc-1",
+			UserID:                userID,
+			PortfolioID:           portfolioID,
+			Provider:              provider,
+			ExternalInstitutionID: "inst-1",
+			ExternalAccountID:     "acc-ext-1",
+			InstitutionName:       "Mock Inst",
+			SyncStatus:            model.SyncConnectionStatusIdle,
+			CreatedAt:             time.Now(),
+			UpdatedAt:             time.Now(),
+		},
+	}, nil
+}
+
 func createAuthContext(userID string) context.Context {
 	return context.WithValue(context.Background(), middleware.UserKey, &middleware.AuthenticatedUser{
 		ID:            userID,
@@ -273,7 +294,7 @@ func TestGraphQL_RegisterSyncCredentialMutation(t *testing.T) {
 		cred, err := r.Mutation().RegisterSyncCredential(ctx, model.SyncProviderKraken, map[string]any{
 			"apiKey":    "test-api-key",
 			"apiSecret": "test-secret-key",
-		})
+		}, nil)
 		require.NoError(t, err)
 		require.NotNil(t, cred)
 		assert.Equal(t, "cred-kraken-1", cred.ID)
@@ -282,11 +303,46 @@ func TestGraphQL_RegisterSyncCredentialMutation(t *testing.T) {
 		assert.Contains(t, capturedJSON, "test-api-key")
 	})
 
+	t.Run("successfully registers sync credential and discovers connections when portfolioId provided", func(t *testing.T) {
+		discoveredCalled := false
+		portfolioID := "port-xyz"
+		mockService := &mockSyncService{
+			registerCredentialFn: func(ctx context.Context, userID, provider, rawJSON string) (*model.SyncCredential, error) {
+				return &model.SyncCredential{
+					ID:        "cred-kraken-2",
+					UserID:    userID,
+					Provider:  provider,
+					Status:    model.SyncCredentialStatusActive,
+					CreatedAt: time.Now(),
+					UpdatedAt: time.Now(),
+				}, nil
+			},
+			discoverAndCreateConnectionsFn: func(ctx context.Context, userID, pID, provider string) ([]*model.SyncConnection, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, portfolioID, pID)
+				assert.Equal(t, model.SyncProviderKraken, provider)
+				discoveredCalled = true
+				return []*model.SyncConnection{{ID: "conn-1"}}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		cred, err := r.Mutation().RegisterSyncCredential(ctx, model.SyncProviderKraken, map[string]any{
+			"apiKey":    "test-api-key",
+			"apiSecret": "test-secret-key",
+		}, &portfolioID)
+		require.NoError(t, err)
+		require.NotNil(t, cred)
+		assert.True(t, discoveredCalled)
+	})
+
 	t.Run("fails when unauthenticated", func(t *testing.T) {
 		r := &Resolver{SyncService: &mockSyncService{}}
 		ctx := context.Background()
 
-		cred, err := r.Mutation().RegisterSyncCredential(ctx, model.SyncProviderKraken, map[string]any{"apiKey": "k"})
+		cred, err := r.Mutation().RegisterSyncCredential(ctx, model.SyncProviderKraken, map[string]any{"apiKey": "k"}, nil)
 		assert.Error(t, err)
 		assert.Nil(t, cred)
 	})
