@@ -33,23 +33,6 @@ type KrakenAdapter struct {
 	httpClient *http.Client
 }
 
-// KrakenOption defines a functional option for configuring KrakenAdapter.
-type KrakenOption func(*KrakenAdapter)
-
-// WithBaseURL configures a custom base URL (used for testing with httptest.Server).
-func WithBaseURL(baseURL string) KrakenOption {
-	return func(k *KrakenAdapter) {
-		k.baseURL = strings.TrimRight(baseURL, "/")
-	}
-}
-
-// WithHTTPClient configures a custom http.Client.
-func WithHTTPClient(client *http.Client) KrakenOption {
-	return func(k *KrakenAdapter) {
-		k.httpClient = client
-	}
-}
-
 // NewKrakenAdapter creates a new KrakenAdapter instance.
 func NewKrakenAdapter(opts ...KrakenOption) *KrakenAdapter {
 	k := &KrakenAdapter{
