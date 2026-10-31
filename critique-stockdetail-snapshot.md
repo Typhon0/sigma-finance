@@ -1,0 +1,136 @@
+- generic:
+  - generic:
+    - generic:
+      - complementary [aria-hidden]:
+        - generic: SF
+        - generic:
+          - navigation:
+            - generic:
+              - generic:
+                - button
+                - button
+                - button
+            - generic:
+              - generic:
+                - button
+                - button
+                - button
+                - button
+            - generic:
+              - generic:
+                - button
+                - button
+                - button
+                - button
+                - button
+                - button
+                - button
+                - button
+                - button
+            - generic:
+              - generic:
+                - button
+                - button
+            - generic:
+              - generic:
+                - button
+                - button
+        - generic:
+          - button:
+            - generic: P
+            - generic: Pilot UI Review
+            - generic: pilot-ui-review@example.com
+      - main:
+        - generic:
+          - generic [aria-hidden]:
+            - generic:
+              - navigation:
+                - list
+          - main:
+            - generic:
+              - generic [aria-hidden]:
+                - button
+                - generic
+              - generic [aria-hidden]:
+                - generic
+                - generic
+              - generic:
+                - generic [aria-hidden]
+                - generic
+    - region "Notifications alt+T"
+    - button [ref=f2e810] [cursor=pointer]:
+      - generic [ref=f2e808]: "-"
+      - generic [ref=f2e809]: TanStack Router
+  - dialog "Stock Details" [ref=f2e812]:
+    - generic [ref=f2e813]:
+      - heading "Stock Details" [level=2]
+      - paragraph: Detailed view of the selected stock position and historical performance chart.
+    - generic [ref=f2e816]:
+      - generic [ref=f2e817]:
+        - generic [ref=f2e818]:
+          - generic [ref=f2e819]:
+            - button "Back to AAPL overview" [active] [ref=f2e820] [cursor=pointer]
+            - generic [ref=f2e822]:
+              - generic [ref=f2e823]: Apple Inc.
+              - generic [ref=f2e824]: AAPL
+          - generic [ref=f2e825]:
+            - button "Add AAPL to watchlist" [ref=f2e826] [cursor=pointer]: Watch
+            - button "Set price alert for AAPL" [ref=f2e827] [cursor=pointer]: Alert
+            - button "Add a position for AAPL" [ref=f2e829] [cursor=pointer]: Add position
+        - generic [ref=f2e831]:
+          - generic [ref=f2e832]:
+            - paragraph [ref=f2e833]: Market Value
+            - paragraph [ref=f2e834]: $13,717.60
+            - paragraph [ref=f2e835]: 40 shares @ $342.94
+          - generic [ref=f2e836]:
+            - paragraph [ref=f2e837]: Cost Basis
+            - paragraph [ref=f2e838]: $7,140.00
+            - paragraph [ref=f2e839]: avg. $178.50
+          - generic [ref=f2e840]:
+            - paragraph [ref=f2e841]: Unrealized Gain
+            - paragraph [ref=f2e842]: +$6,577.60
+            - paragraph [ref=f2e843]: +92.12%
+          - generic [ref=f2e844]:
+            - paragraph [ref=f2e845]: Day Change
+            - paragraph [ref=f2e846]: "-$20.80"
+            - paragraph [ref=f2e847]: "-0.15%"
+          - generic [ref=f2e848]:
+            - generic [ref=f2e849]:
+              - generic [ref=f2e850]: Allocation
+              - generic [ref=f2e851]: 24.93%
+            - generic [ref=f2e852]:
+              - progressbar [ref=f2e853]
+              - paragraph [ref=f2e855]:
+                - generic [ref=f2e857]: Manual Entry
+        - tablist [ref=f2e859]:
+          - tab "Overview" [selected] [ref=f2e860] [cursor=pointer]
+          - tab "À propos" [ref=f2e862] [cursor=pointer]
+          - tab "Historique" [ref=f2e864] [cursor=pointer]
+          - tab "Research" [ref=f2e866] [cursor=pointer]
+          - tab "Tax Lots & Gains 40 sh" [ref=f2e868] [cursor=pointer]:
+            - generic [ref=f2e869]: Tax Lots & Gains
+            - generic [ref=f2e870]: 40 sh
+      - tabpanel "Overview" [ref=f2e871]:
+        - generic [ref=f2e872]:
+          - generic [ref=f2e873]: Position Value
+          - generic [ref=f2e874]:
+            - generic [ref=f2e875]:
+              - generic [ref=f2e876]: Market & Day Range
+              - generic [ref=f2e880]:
+                - generic [ref=f2e881]: Intraday Range
+                - generic [ref=f2e882]: Stable Price ($0.00)
+              - generic [ref=f2e883]:
+                - generic [ref=f2e884]
+                - generic [ref=f2e887]
+                - generic [ref=f2e890]
+                - generic [ref=f2e893]
+                - generic [ref=f2e896]
+                - generic [ref=f2e900]
+            - generic [ref=f2e903]:
+              - generic [ref=f2e904]: Performance & Tax Basis
+              - generic [ref=f2e909]:
+                - generic [ref=f2e910]
+                - generic [ref=f2e917]
+                - generic [ref=f2e925]
+              - paragraph [ref=f2e932]: To review lot-by-lot acquisitions or manage capital gains, visit the Tax Lots tab.
+    - button "Close" [ref=f2e933]

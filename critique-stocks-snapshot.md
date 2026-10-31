@@ -1,0 +1,377 @@
+- generic [ref=f2e2]:
+  - generic [ref=f2e3]:
+    - complementary [ref=f2e4]:
+      - generic [ref=f2e5]: SF
+      - navigation [ref=f2e9]:
+        - generic [ref=f2e10]:
+          - heading "Overview" [level=4]
+          - generic [ref=f2e11]:
+            - button "Command Center" [ref=f2e12]
+            - button "Analytics & Reports" [ref=f2e13]
+            - button "Ledger" [ref=f2e14]
+        - generic [ref=f2e15]:
+          - heading "Markets" [level=4]
+          - generic [ref=f2e16]:
+            - button "Stock Market" [ref=f2e17]
+            - button "Crypto Market" [ref=f2e18]
+            - button "Heatmaps" [ref=f2e19]
+            - button "Calendar" [ref=f2e20]
+        - generic [ref=f2e21]:
+          - heading "Assets" [level=4]
+          - generic [ref=f2e22]:
+            - button "All Assets 30" [ref=f2e23]:
+              - generic: All Assets
+              - generic: "30"
+            - button "Stocks & Funds 5" [ref=f2e24]:
+              - generic: Stocks & Funds
+              - generic: "5"
+            - button "Crypto 3" [ref=f2e25]:
+              - generic: Crypto
+              - generic: "3"
+            - button "Real Estate 2" [ref=f2e26]:
+              - generic: Real Estate
+              - generic: "2"
+            - button "Accounts 4" [ref=f2e27]:
+              - generic: Accounts
+              - generic: "4"
+            - button "Savings 5" [ref=f2e28]:
+              - generic: Savings
+              - generic: "5"
+            - button "Loans 2" [ref=f2e29]:
+              - generic: Loans
+              - generic: "2"
+            - button "Insurance 1" [ref=f2e30]:
+              - generic: Insurance
+              - generic: "1"
+            - button "Collectibles 13" [ref=f2e31]:
+              - generic: Collectibles
+              - generic: "13"
+        - generic [ref=f2e32]:
+          - heading "Tools" [level=4]
+          - generic [ref=f2e33]:
+            - button "Watchlist" [ref=f2e34]
+            - button "Settings" [ref=f2e35]
+        - generic [ref=f2e36]:
+          - heading "Portfolios" [level=4]
+          - generic [ref=f2e37]:
+            - button "All Assets" [ref=f2e38]
+            - button "Create Portfolio" [ref=f2e39]
+      - button "P Pilot UI Review pilot-ui-review@example.com" [ref=f2e41]:
+        - generic [ref=f2e42]: P
+        - generic:
+          - generic [ref=f2e44]: Pilot UI Review
+          - generic [ref=f2e45]: pilot-ui-review@example.com
+    - main [ref=f2e46]:
+      - generic [ref=f2e47]:
+        - navigation "breadcrumb" [ref=f2e50]:
+          - list [ref=f2e51]:
+            - generic [ref=f2e52]:
+              - listitem [ref=f2e53]:
+                - link "Dashboard" [ref=f2e54] [cursor=pointer]:
+                  - /url: /dashboard
+              - listitem [aria-hidden] [ref=f2e60]
+            - listitem [ref=f2e64]:
+              - link "Portfolios" [disabled] [ref=f2e65]
+        - main [ref=f2e70]:
+          - generic [ref=f2e71]:
+            - generic [ref=f2e72]:
+              - button "Back to Portfolios" [ref=f2e73] [cursor=pointer]
+              - generic [ref=f2e77]:
+                - generic [ref=f2e78]:
+                  - heading "Stocks & Funds" [level=1] [ref=f2e79]
+                  - paragraph [ref=f2e80]: Track stock assets, mutual funds, ETF performance, sector weightings, and real-time insights.
+                - generic [ref=f2e81]:
+                  - button "Wall Street After-Hours — Ends in 2h 23m" [ref=f2e364] [cursor=pointer]:
+                    - generic [ref=f2e84]: 🇺🇸 Wall Street After-Hours
+                    - generic [ref=f2e85]: • Ends in 2h 23m
+                  - button "Add Position" [ref=f2e86]
+            - generic [ref=f2e87]:
+              - generic [ref=f2e89]:
+                - generic [ref=f2e90]:
+                  - generic [ref=f2e91]:
+                    - generic "Total value of the stocks and funds held in this portfolio" [ref=f2e92]: Stocks & Funds Value
+                    - generic [ref=f2e93]:
+                      - generic [ref=f2e94]: $55,030
+                      - generic "Change over the selected 1M period" [ref=f2e366]:
+                        - generic [ref=f2e367]: +$584 (+1.07%)
+                        - generic [ref=f2e368]: 1M
+                  - generic [ref=f2e96]:
+                    - button "vs S&P 500" [ref=f2e97] [cursor=pointer]
+                    - button "Show 1D performance" [ref=f2e99] [cursor=pointer]:
+                      - generic [ref=f2e100]: 1D
+                    - button "Show 7D performance" [ref=f2e101] [cursor=pointer]:
+                      - generic [ref=f2e102]: 7D
+                    - button "Show 1M performance" [pressed] [ref=f2e103] [cursor=pointer]:
+                      - generic [ref=f2e105]: 1M
+                    - button "Show 3M performance" [ref=f2e106] [cursor=pointer]:
+                      - generic [ref=f2e107]: 3M
+                    - button "Show YTD performance" [ref=f2e108] [cursor=pointer]:
+                      - generic [ref=f2e109]: YTD
+                    - button "Show 1Y performance" [ref=f2e110] [cursor=pointer]:
+                      - generic [ref=f2e111]: 1Y
+                    - button "Show ALL performance" [ref=f2e112] [cursor=pointer]:
+                      - generic [ref=f2e113]: ALL
+                - generic [ref=f2e369]:
+                  - generic [ref=f2e374]:
+                    - generic [ref=f2e375]: Portfolio
+                    - generic [ref=f2e379]: S&P 500
+                  - generic [ref=f2e382]:
+                    - generic [ref=f2e383]:
+                      - button "Excess Return — Cumulative outperformance of the portfolio compared to the benchmark over this period (Time-Weighted Return difference)." [ref=f2e386]: Excess Return
+                      - generic [ref=f2e387]: +0.60%
+                    - generic [ref=f2e388]:
+                      - button "Jensen's Alpha — Annualized excess return beyond what this portfolio's market exposure (β) alone would predict (CAPM risk-adjusted alpha)." [ref=f2e389]: Alpha (α)
+                      - generic [ref=f2e390]: +8.07%/yr
+                    - generic [ref=f2e391]:
+                      - button "Beta — Sensitivity to the benchmark's swings. 1.00 moves in lockstep; above 1 amplifies both gains and losses." [ref=f2e392]: β
+                      - generic [ref=f2e393]: "1.20"
+                    - generic [ref=f2e394]:
+                      - button "Correlation — How closely portfolio returns track the benchmark, from −1 to +1. Below 1 means the two partly diverge." [ref=f2e395]: ρ
+                      - generic [ref=f2e396]: "0.80"
+                    - generic [ref=f2e397]:
+                      - button "Tracking error — Volatility of the gap between portfolio and benchmark returns. Higher means returns wander further from the index." [ref=f2e398]: TE
+                      - generic [ref=f2e399]: 0.43%
+                    - generic [ref=f2e400]:
+                      - button "Information ratio — Excess return earned for each unit of tracking error. Above 0 means the extra risk against the benchmark is being paid for." [ref=f2e401]: IR
+                      - generic [ref=f2e402]: "+0.05"
+              - generic [ref=f2e133]:
+                - generic [ref=f2e403]:
+                  - generic [ref=f2e404]: Allocation
+                  - generic [ref=f2e407]:
+                    - button "By Asset" [ref=f2e408]
+                    - generic [ref=f2e409]:
+                      - button "Donut allocation view" [pressed] [ref=f2e410] [cursor=pointer]
+                      - button "Treemap grid view" [ref=f2e412] [cursor=pointer]
+                      - button "Ranked list breakdown view" [ref=f2e413] [cursor=pointer]
+                - generic [ref=f2e135]:
+                  - generic [ref=f2e415]:
+                    - generic [ref=f2e416]:
+                      - generic:
+                        - generic:
+                          - generic: "5"
+                          - generic: Assets
+                    - generic [ref=f2e427]:
+                      - 'button "AAPL: 24.9 percent, $13,718" [ref=f2e428] [cursor=pointer]':
+                        - generic [ref=f2e429]:
+                          - generic "AAPL" [ref=f2e432]
+                          - generic [ref=f2e433]: 24.9%
+                      - 'button "NVDA: 23.7 percent, $13,025" [ref=f2e437] [cursor=pointer]':
+                        - generic [ref=f2e438]:
+                          - generic "NVDA" [ref=f2e441]
+                          - generic [ref=f2e442]: 23.7%
+                      - 'button "VOO: 23.1 percent, $12,683" [ref=f2e446] [cursor=pointer]':
+                        - generic [ref=f2e447]:
+                          - generic "VOO" [ref=f2e450]
+                          - generic [ref=f2e451]: 23.1%
+                      - 'button "TSLA: 16.7 percent, $9,202" [ref=f2e455] [cursor=pointer]':
+                        - generic [ref=f2e456]:
+                          - generic "TSLA" [ref=f2e459]
+                          - generic [ref=f2e460]: 16.7%
+                      - 'button "MSFT: 11.6 percent, $6,402" [ref=f2e464] [cursor=pointer]':
+                        - generic [ref=f2e465]:
+                          - generic "MSFT" [ref=f2e468]
+                          - generic [ref=f2e469]: 11.6%
+                  - generic [ref=f2e473]:
+                    - generic [ref=f2e474]:
+                      - generic [ref=f2e478]: "Top 3 Concentration:"
+                      - generic [ref=f2e479]: 71.7%
+                    - generic [ref=f2e480]: Concentrated
+            - generic [ref=f2e139]:
+              - tablist "Stocks and funds workspace view" [ref=f2e141]:
+                - tab "Holdings 5" [selected] [ref=f2e481] [cursor=pointer]:
+                  - generic [ref=f2e144]: Holdings
+                  - generic [ref=f2e145]: "5"
+                - tab "Insights & Analytics 4" [ref=f2e146] [cursor=pointer]:
+                  - generic [ref=f2e149]: Insights & Analytics
+                  - generic [ref=f2e150]: "4"
+                - tab "Transactions" [ref=f2e151] [cursor=pointer]
+              - generic [ref=f2e482]:
+                - generic [ref=f2e483]:
+                  - generic [ref=f2e484]:
+                    - textbox "Filter positions by symbol, name, or account..." [ref=f2e486]
+                    - button "Change sort metric and direction" [ref=f2e487]
+                    - button "Export CSV" [ref=f2e488] [cursor=pointer]
+                  - generic [ref=f2e490]:
+                    - generic [ref=f2e491]: "Group By:"
+                    - group "Group By:" [ref=f2e492]:
+                      - button "Account" [pressed] [ref=f2e493] [cursor=pointer]
+                      - button "Asset" [ref=f2e494] [cursor=pointer]
+                      - button "Sector" [ref=f2e495] [cursor=pointer]
+                      - button "None" [ref=f2e496] [cursor=pointer]
+                - table [ref=f2e500]:
+                  - rowgroup [ref=f2e501]:
+                    - row [ref=f2e502]:
+                      - columnheader [ref=f2e503]
+                      - columnheader "Instrument" [ref=f2e504]:
+                        - button "Instrument" [ref=f2e505] [cursor=pointer]
+                      - columnheader "Price" [ref=f2e510]:
+                        - button "Price" [ref=f2e511] [cursor=pointer]
+                      - columnheader "Change (1D)" [ref=f2e516]:
+                        - button "Change (1D)" [ref=f2e517] [cursor=pointer]
+                      - columnheader "Quantity" [ref=f2e522]:
+                        - button "Quantity" [ref=f2e523] [cursor=pointer]
+                      - columnheader "Avg Cost & Basis" [ref=f2e528]:
+                        - button "Avg Cost & Basis" [ref=f2e529] [cursor=pointer]
+                      - columnheader "Value" [ref=f2e534]:
+                        - button "Value" [ref=f2e535] [cursor=pointer]:
+                          - generic [aria-hidden] [ref=f2e537]: ▼
+                      - columnheader "Weight" [ref=f2e538]:
+                        - button "Weight" [ref=f2e539] [cursor=pointer]
+                      - columnheader "Total P&L" [ref=f2e544]:
+                        - button "Total P&L" [ref=f2e545] [cursor=pointer]
+                      - columnheader [ref=f2e550]
+                  - rowgroup [ref=f2e551]:
+                    - row [ref=f2e552]:
+                      - cell "Main Account 5 Value$55,029.54 +$16,508.94 Open Main Account" [ref=f2e553]:
+                        - generic [ref=f2e554]:
+                          - button "Main Account 5" [expanded] [ref=f2e555] [cursor=pointer]:
+                            - generic [ref=f2e562]: Main Account
+                            - generic [ref=f2e563]: "5"
+                          - generic [ref=f2e568]:
+                            - generic [ref=f2e569]: Value$55,029.54
+                            - generic [ref=f2e570]: +$16,508.94
+                        - button "Open Main Account" [ref=f2e573] [cursor=pointer]
+                    - row [ref=f2e574]:
+                      - cell [ref=f2e575]
+                      - cell "AAPL Information Technology Apple Inc." [ref=f2e577]:
+                        - generic [ref=f2e578]:
+                          - button "AAPL Information Technology" [ref=f2e579] [cursor=pointer]:
+                            - generic [ref=f2e580]: AAPL
+                            - generic [ref=f2e581]: Information Technology
+                          - generic [ref=f2e582]: Apple Inc.
+                      - cell "$342.94" [ref=f2e583]
+                      - cell "-$20.80 -0.15%" [ref=f2e584]:
+                        - generic [ref=f2e585]:
+                          - generic [ref=f2e586]: "-$20.80"
+                          - generic [ref=f2e587]: "-0.15%"
+                      - cell "40" [ref=f2e588]
+                      - 'cell "$178.50 Cost: $7,140.00" [ref=f2e589]':
+                        - generic [ref=f2e590]:
+                          - generic [ref=f2e591]: $178.50
+                          - generic [ref=f2e592]: "Cost: $7,140.00"
+                      - cell "$13,717.60" [ref=f2e593]
+                      - cell "24.9%" [ref=f2e594]
+                      - cell "+$6,577.60 +92.12%" [ref=f2e599]:
+                        - generic [ref=f2e600]:
+                          - generic [ref=f2e601]: +$6,577.60
+                          - generic [ref=f2e602]: +92.12%
+                      - cell "Actions for AAPL" [ref=f2e603]:
+                        - button "Actions for AAPL" [ref=f2e604] [cursor=pointer]
+                    - row [ref=f2e605]:
+                      - cell [ref=f2e606]
+                      - cell "NVDA Information Technology NVIDIA Corporation" [ref=f2e608]:
+                        - generic [ref=f2e609]:
+                          - button "NVDA Information Technology" [ref=f2e610] [cursor=pointer]:
+                            - generic [ref=f2e611]: NVDA
+                            - generic [ref=f2e612]: Information Technology
+                          - generic [ref=f2e613]: NVIDIA Corporation
+                      - cell "$217.09" [ref=f2e614]
+                      - cell "+$177.60 +1.38%" [ref=f2e615]:
+                        - generic [ref=f2e616]:
+                          - generic [ref=f2e617]: +$177.60
+                          - generic [ref=f2e618]: +1.38%
+                      - cell "60" [ref=f2e619]
+                      - 'cell "$121.40 Cost: $7,284.00" [ref=f2e620]':
+                        - generic [ref=f2e621]:
+                          - generic [ref=f2e622]: $121.40
+                          - generic [ref=f2e623]: "Cost: $7,284.00"
+                      - cell "$13,025.40" [ref=f2e624]
+                      - cell "23.7%" [ref=f2e625]
+                      - cell "+$5,741.40 +78.82%" [ref=f2e630]:
+                        - generic [ref=f2e631]:
+                          - generic [ref=f2e632]: +$5,741.40
+                          - generic [ref=f2e633]: +78.82%
+                      - cell "Actions for NVDA" [ref=f2e634]:
+                        - button "Actions for NVDA" [ref=f2e635] [cursor=pointer]
+                    - row [ref=f2e636]:
+                      - cell [ref=f2e637]
+                      - cell "VOO Needs metadata Vanguard S&P 500 ETF" [ref=f2e639]:
+                        - generic [ref=f2e640]:
+                          - button "VOO Needs metadata" [ref=f2e641] [cursor=pointer]:
+                            - generic [ref=f2e642]: VOO
+                            - generic [ref=f2e643]: Needs metadata
+                          - generic [ref=f2e644]: Vanguard S&P 500 ETF
+                      - cell "$704.60" [ref=f2e645]
+                      - cell "+$53.82 +0.43%" [ref=f2e646]:
+                        - generic [ref=f2e647]:
+                          - generic [ref=f2e648]: +$53.82
+                          - generic [ref=f2e649]: +0.43%
+                      - cell "18" [ref=f2e650]
+                      - 'cell "$512.30 Cost: $9,221.40" [ref=f2e651]':
+                        - generic [ref=f2e652]:
+                          - generic [ref=f2e653]: $512.30
+                          - generic [ref=f2e654]: "Cost: $9,221.40"
+                      - cell "$12,682.80" [ref=f2e655]
+                      - cell "23.1%" [ref=f2e656]
+                      - cell "+$3,461.40 +37.54%" [ref=f2e661]:
+                        - generic [ref=f2e662]:
+                          - generic [ref=f2e663]: +$3,461.40
+                          - generic [ref=f2e664]: +37.54%
+                      - cell "Actions for VOO" [ref=f2e665]:
+                        - button "Actions for VOO" [ref=f2e666] [cursor=pointer]
+                    - row [ref=f2e667]:
+                      - cell [ref=f2e668]
+                      - cell "TSLA Consumer Discretionary Tesla, Inc." [ref=f2e670]:
+                        - generic [ref=f2e671]:
+                          - button "TSLA Consumer Discretionary" [ref=f2e672] [cursor=pointer]:
+                            - generic [ref=f2e673]: TSLA
+                            - generic [ref=f2e674]: Consumer Discretionary
+                          - generic [ref=f2e675]: Tesla, Inc.
+                      - cell "$368.06" [ref=f2e676]
+                      - cell "+$333.50 +3.76%" [ref=f2e677]:
+                        - generic [ref=f2e678]:
+                          - generic [ref=f2e679]: +$333.50
+                          - generic [ref=f2e680]: +3.76%
+                      - cell "25" [ref=f2e681]
+                      - 'cell "$402.00 Cost: $10,050.00" [ref=f2e682]':
+                        - generic [ref=f2e683]:
+                          - generic [ref=f2e684]: $402.00
+                          - generic [ref=f2e685]: "Cost: $10,050.00"
+                      - cell "$9,201.50" [ref=f2e686]
+                      - cell "16.7%" [ref=f2e687]
+                      - cell "-$848.50 -8.44%" [ref=f2e692]:
+                        - generic [ref=f2e693]:
+                          - generic [ref=f2e694]: "-$848.50"
+                          - generic [ref=f2e695]: "-8.44%"
+                      - cell "Actions for TSLA" [ref=f2e696]:
+                        - button "Actions for TSLA" [ref=f2e697] [cursor=pointer]
+                    - row [ref=f2e698]:
+                      - cell [ref=f2e699]
+                      - cell "MSFT Information Technology Microsoft Corporation" [ref=f2e701]:
+                        - generic [ref=f2e702]:
+                          - button "MSFT Information Technology" [ref=f2e703] [cursor=pointer]:
+                            - generic [ref=f2e704]: MSFT
+                            - generic [ref=f2e705]: Information Technology
+                          - generic [ref=f2e706]: Microsoft Corporation
+                      - cell "$533.52" [ref=f2e707]
+                      - cell "+$53.64 +0.84%" [ref=f2e708]:
+                        - generic [ref=f2e709]:
+                          - generic [ref=f2e710]: +$53.64
+                          - generic [ref=f2e711]: +0.84%
+                      - cell "12" [ref=f2e712]
+                      - 'cell "$402.10 Cost: $4,825.20" [ref=f2e713]':
+                        - generic [ref=f2e714]:
+                          - generic [ref=f2e715]: $402.10
+                          - generic [ref=f2e716]: "Cost: $4,825.20"
+                      - cell "$6,402.24" [ref=f2e717]
+                      - cell "11.6%" [ref=f2e718]
+                      - cell "+$1,577.04 +32.68%" [ref=f2e723]:
+                        - generic [ref=f2e724]:
+                          - generic [ref=f2e725]: +$1,577.04
+                          - generic [ref=f2e726]: +32.68%
+                      - cell "Actions for MSFT" [ref=f2e727]:
+                        - button "Actions for MSFT" [ref=f2e728] [cursor=pointer]
+                - generic [ref=f2e729]:
+                  - generic [ref=f2e731]:
+                    - text: Showing
+                    - strong [ref=f2e732]: "5"
+                    - text: of 5 holdings
+                  - generic [ref=f2e734]:
+                    - text: "Aggregated Value:"
+                    - strong [ref=f2e735]: $55,029.54
+  - region "Notifications alt+T"
+  - generic:
+    - contentinfo:
+      - button "Open TanStack Router Devtools" [ref=f2e736] [cursor=pointer]:
+        - generic [ref=f2e808]: "-"
+        - generic [ref=f2e809]: TanStack Router
