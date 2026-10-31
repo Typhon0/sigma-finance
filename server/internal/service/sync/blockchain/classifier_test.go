@@ -99,6 +99,121 @@ func TestActivityClassifier_InternalTransfer(t *testing.T) {
 	assert.Equal(t, model.TransactionTypeFee, result.Transactions[1].Type)
 }
 
+func TestActivityClassifier_NativeFeeDecimals_SolanaAndBitcoin(t *testing.T) {
+	classifier := NewActivityClassifier()
+
+	// 1. Solana Account: 5000 lamports fee -> 0.000005 SOL (9 decimals)
+	solAccount := &model.WalletAccount{
+		ID:            "wacc-sol",
+		UserID:        "user-1",
+		AddressOrXpub: "SolAddr111",
+		Network:       model.BlockchainNetworkSolana,
+	}
+	solActivities := []*model.WalletActivity{
+		{
+			ID:              "act-sol",
+			WalletAccountID: "wacc-sol",
+			TxHash:          "soltx1",
+			FromAddress:     "SolAddr111",
+			ToAddress:       "SolAddr222",
+			FormattedAmount: decimal.NewFromFloat(1.0),
+			FeeAmount:       "5000", // 5000 lamports
+			ExecutedAt:      time.Now().UTC(),
+		},
+	}
+	resSol, err := classifier.Classify(context.Background(), solAccount, solActivities, nil)
+	assert.NoError(t, err)
+	assert.Len(t, resSol.Transactions, 2)
+	solFeeTx := resSol.Transactions[1]
+	assert.Equal(t, model.TransactionTypeFee, solFeeTx.Type)
+	expectedSolFee := decimal.NewFromFloat(0.000005)
+	assert.True(t, expectedSolFee.Equal(*solFeeTx.Quantity), "Solana fee must use 9 decimals: expected %s, got %s", expectedSolFee, solFeeTx.Quantity)
+
+	// 2. Bitcoin Account: 2500 satoshis fee -> 0.000025 BTC (8 decimals)
+	btcAccount := &model.WalletAccount{
+		ID:            "wacc-btc",
+		UserID:        "user-1",
+		AddressOrXpub: "bc1qtest",
+		Network:       model.BlockchainNetworkBitcoin,
+	}
+	btcActivities := []*model.WalletActivity{
+		{
+			ID:              "act-btc",
+			WalletAccountID: "wacc-btc",
+			TxHash:          "btctx1",
+			FromAddress:     "bc1qtest",
+			ToAddress:       "bc1qpeer",
+			FormattedAmount: decimal.NewFromFloat(0.5),
+			FeeAmount:       "2500", // 2500 satoshis
+			ExecutedAt:      time.Now().UTC(),
+		},
+	}
+	resBtc, errBtc := classifier.Classify(context.Background(), btcAccount, btcActivities, nil)
+	assert.NoError(t, errBtc)
+	assert.Len(t, resBtc.Transactions, 2)
+	btcFeeTx := resBtc.Transactions[1]
+	assert.Equal(t, model.TransactionTypeFee, btcFeeTx.Type)
+	expectedBtcFee := decimal.NewFromFloat(0.000025)
+	assert.True(t, expectedBtcFee.Equal(*btcFeeTx.Quantity), "Bitcoin fee must use 8 decimals: expected %s, got %s", expectedBtcFee, btcFeeTx.Quantity)
+}
+
+func TestActivityClassifier_SolanaRentRecoveryNotClassifiedAsSwap(t *testing.T) {
+	classifier := NewActivityClassifier()
+	userAddr := "SolAddr111"
+	usdcMint := "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+	account := &model.WalletAccount{
+		ID:            "wacc-sol-close",
+		UserID:        "user-1",
+		AddressOrXpub: userAddr,
+		Network:       model.BlockchainNetworkSolana,
+	}
+
+	txHash := "sol_close_account_tx"
+	// 1 Outgoing token disposal (50 USDC) + 1 Incoming native SOL (0.00203928 SOL rent refund)
+	rentMeta := []byte(`{"rent_recovery_detected": true, "net_transfer_lamports": 2039280}`)
+	tokenCloseMeta := []byte(`{"is_account_closure": true}`)
+
+	activities := []*model.WalletActivity{
+		{
+			ID:              "act-token-close",
+			WalletAccountID: "wacc-sol-close",
+			TxHash:          txHash,
+			FromAddress:     userAddr,
+			ToAddress:       "",
+			TokenAddress:    &usdcMint,
+			FormattedAmount: decimal.NewFromFloat(50.0),
+			RawMetadata:     tokenCloseMeta,
+			ExecutedAt:      time.Now().UTC(),
+		},
+		{
+			ID:              "act-rent-refund",
+			WalletAccountID: "wacc-sol-close",
+			TxHash:          txHash,
+			FromAddress:     "",
+			ToAddress:       userAddr,
+			TokenAddress:    nil, // native SOL
+			FormattedAmount: decimal.NewFromFloat(0.00203928),
+			RawMetadata:     rentMeta,
+			ExecutedAt:      time.Now().UTC(),
+		},
+	}
+
+	res, err := classifier.Classify(context.Background(), account, activities, nil)
+	assert.NoError(t, err)
+
+	// Must NOT be classified as a DEX swap (Buy/Sell)!
+	for _, tx := range res.Transactions {
+		assert.NotEqual(t, model.TransactionTypeBuy, tx.Type, "Closing an ATA must not generate a BUY swap transaction")
+		assert.NotEqual(t, model.TransactionTypeSell, tx.Type, "Closing an ATA must not generate a SELL swap transaction")
+	}
+
+	// Should be classified as TRANSFER_OUT (token closure) and TRANSFER_IN (rent refund)
+	assert.Len(t, res.Transactions, 2)
+}
+
+
+
 func TestActivityClassifier_ComplexDeFiToReviewQueue(t *testing.T) {
 	classifier := NewActivityClassifier()
 	userAddr := "0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045"

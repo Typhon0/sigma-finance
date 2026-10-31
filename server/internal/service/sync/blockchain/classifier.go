@@ -2,6 +2,7 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"strings"
@@ -76,7 +77,7 @@ func (c *ActivityClassifier) Classify(
 			}
 		}
 
-		if len(outgoing) == 1 && len(incoming) == 1 {
+		if len(outgoing) == 1 && len(incoming) == 1 && !isRentRecoveryOrClosure(group) {
 			// SWAP DETECTED: Outgoing = SELL, Incoming = BUY
 			outAct := outgoing[0]
 			inAct := incoming[0]
@@ -141,7 +142,14 @@ func (c *ActivityClassifier) Classify(
 
 				// Record separate native FEE disposal if fee was spent
 				if act.FeeAmount != "" && act.FeeAmount != "0" {
-					feeDecimal := parseRawAmountToDecimal(act.FeeAmount, 18)
+					feeDecimals := 18
+					switch account.Network {
+					case model.BlockchainNetworkSolana:
+						feeDecimals = 9
+					case model.BlockchainNetworkBitcoin:
+						feeDecimals = 8
+					}
+					feeDecimal := parseRawAmountToDecimal(act.FeeAmount, feeDecimals)
 					if feeDecimal.GreaterThan(decimal.Zero) {
 						feeTx := &model.Transaction{
 							UserID:            account.UserID,
@@ -206,4 +214,21 @@ func parseRawAmountToDecimal(rawStr string, decimals int) decimal.Decimal {
 
 func stringPtr(s string) *string {
 	return &s
+}
+
+func isRentRecoveryOrClosure(acts []*model.WalletActivity) bool {
+	for _, a := range acts {
+		if len(a.RawMetadata) > 0 {
+			var m map[string]interface{}
+			if err := json.Unmarshal(a.RawMetadata, &m); err == nil {
+				if r, ok := m["rent_recovery_detected"].(bool); ok && r {
+					return true
+				}
+				if c, ok := m["is_account_closure"].(bool); ok && c {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

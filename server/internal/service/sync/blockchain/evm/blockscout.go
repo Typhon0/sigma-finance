@@ -52,6 +52,14 @@ type blockscoutTxItem struct {
 	Type              string `json:"type"`
 }
 
+func parseBigInt(val string) (*big.Int, bool) {
+	clean := strings.TrimSpace(val)
+	if strings.HasPrefix(clean, "0x") || strings.HasPrefix(clean, "0X") {
+		return new(big.Int).SetString(clean[2:], 16)
+	}
+	return new(big.Int).SetString(clean, 10)
+}
+
 // calculateTotalTxFee calculates execution fee + OP Stack L1 data fee for the sender
 func calculateTotalTxFee(tx blockscoutTxItem, userAddress string) string {
 	if !strings.EqualFold(tx.From, userAddress) {
@@ -63,8 +71,8 @@ func calculateTotalTxFee(tx blockscoutTxItem, userAddress string) string {
 		priceStr = tx.GasPrice
 	}
 
-	gasUsed, ok1 := new(big.Int).SetString(tx.GasUsed, 10)
-	gasPrice, ok2 := new(big.Int).SetString(priceStr, 10)
+	gasUsed, ok1 := parseBigInt(tx.GasUsed)
+	gasPrice, ok2 := parseBigInt(priceStr)
 	if !ok1 || !ok2 {
 		return "0"
 	}
@@ -72,7 +80,7 @@ func calculateTotalTxFee(tx blockscoutTxItem, userAddress string) string {
 	executionFee := new(big.Int).Mul(gasUsed, gasPrice)
 
 	if tx.L1Fee != "" && tx.L1Fee != "0" {
-		if l1Fee, okL1 := new(big.Int).SetString(tx.L1Fee, 10); okL1 && l1Fee.Sign() > 0 {
+		if l1Fee, okL1 := parseBigInt(tx.L1Fee); okL1 && l1Fee.Sign() > 0 {
 			return new(big.Int).Add(executionFee, l1Fee).String()
 		}
 	}
@@ -155,12 +163,37 @@ func (c *BlockscoutClient) FetchTransfers(ctx context.Context, net model.Blockch
 			// Calculate gas fee = executionFee + L1 data fee, attributed only to sender
 			feeStr := calculateTotalTxFee(tx, address)
 
+			priceStr := tx.EffectiveGasPrice
+			if priceStr == "" {
+				priceStr = tx.GasPrice
+			}
+			execFeeStr := "0"
+			if gu, okGU := parseBigInt(tx.GasUsed); okGU {
+				if gp, okGP := parseBigInt(priceStr); okGP {
+					execFeeStr = new(big.Int).Mul(gu, gp).String()
+				}
+			}
+
+			metaMap := map[string]interface{}{
+				"blockNumber":       tx.BlockNumber,
+				"timeStamp":         tx.TimeStamp,
+				"hash":              tx.Hash,
+				"from":              tx.From,
+				"to":                tx.To,
+				"gasUsed":           tx.GasUsed,
+				"gasPrice":          tx.GasPrice,
+				"effectiveGasPrice": tx.EffectiveGasPrice,
+				"l1Fee":             tx.L1Fee,
+				"execution_fee":     execFeeStr,
+				"l1_data_fee":       tx.L1Fee,
+				"total_fee":         feeStr,
+			}
+			rawMeta, _ := json.Marshal(metaMap)
+
 			rawAmt := tx.Value
 			if rawAmt == "" {
 				rawAmt = "0"
 			}
-
-			rawMeta, _ := json.Marshal(tx)
 
 			appendUnique(blockchain.RawTransferMovement{
 				TxHash:          tx.Hash,

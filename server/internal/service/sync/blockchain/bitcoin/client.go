@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"strconv"
 	"strings"
@@ -69,8 +70,9 @@ type EsploraTx struct {
 		BlockHeight int64 `json:"block_height"`
 		BlockTime   int64 `json:"block_time"`
 	} `json:"status"`
-	Vin  []EsploraVin  `json:"vin"`
-	Vout []EsploraVout `json:"vout"`
+	Vin                []EsploraVin  `json:"vin"`
+	Vout               []EsploraVout `json:"vout"`
+	IsMempoolTruncated bool          `json:"-"`
 }
 
 // Client provides resilient Bitcoin indexing across Mempool.space and Blockstream
@@ -205,10 +207,14 @@ func (c *Client) FetchAddressTransactions(ctx context.Context, address string) (
 	if mBody, mErr := c.doGet(ctx, mempoolURL); mErr == nil {
 		var mempoolTxs []EsploraTx
 		if errU := json.Unmarshal(mBody, &mempoolTxs); errU == nil && len(mempoolTxs) > 0 {
-			if len(mempoolTxs) >= 50 {
+			isTruncated := len(mempoolTxs) >= 50
+			if isTruncated {
 				log.Printf("[INFO] [BitcoinClient] Address %s has >= 50 mempool transactions (Esplora mempool limit reached)", address)
 			}
 			for _, mTx := range mempoolTxs {
+				if isTruncated {
+					mTx.IsMempoolTruncated = true
+				}
 				if !seenTxIDs[mTx.TxID] {
 					seenTxIDs[mTx.TxID] = true
 					allTxs = append(allTxs, mTx)
@@ -637,8 +643,9 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 				// Sole spender: wallet pays 100% of miner fee
 				walletFee = tx.Fee
 			} else if totalTxInputSat > 0 {
-				// Collaborative / CoinJoin / PayJoin: allocate fee proportionally to wallet's input share
-				walletFee = (tx.Fee * walletSpentSat) / totalTxInputSat
+				// Collaborative / CoinJoin / PayJoin: allocate fee proportionally using big.Int to prevent overflow
+				feeBig := new(big.Int).Mul(new(big.Int).SetUint64(tx.Fee), new(big.Int).SetUint64(walletSpentSat))
+				walletFee = new(big.Int).Div(feeBig, new(big.Int).SetUint64(totalTxInputSat)).Uint64()
 			}
 
 			externalAmt := uint64(0)
@@ -646,7 +653,7 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 				externalAmt = netOutflow - walletFee
 			}
 
-			meta, _ := json.Marshal(map[string]interface{}{
+			metaMap := map[string]interface{}{
 				"txid":               tx.TxID,
 				"descriptor":         descriptor,
 				"fee":                tx.Fee,
@@ -657,7 +664,11 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 				"received":           walletReceivedSat,
 				"total_tx_input_sat": totalTxInputSat,
 				"is_collaborative":   isCollaborative,
-			})
+			}
+			if tx.IsMempoolTruncated {
+				metaMap["mempool_truncated"] = true
+			}
+			meta, _ := json.Marshal(metaMap)
 
 			// If externalAmt == 0, this was an internal UTXO consolidation or change return
 			allMovements = append(allMovements, blockchain.RawTransferMovement{
@@ -676,7 +687,7 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 			})
 		} else if walletReceivedSat > walletSpentSat {
 			netInflow := walletReceivedSat - walletSpentSat
-			meta, _ := json.Marshal(map[string]interface{}{
+			metaMap := map[string]interface{}{
 				"txid":               tx.TxID,
 				"descriptor":         descriptor,
 				"fee":                tx.Fee,
@@ -687,7 +698,11 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 				"received":           walletReceivedSat,
 				"total_tx_input_sat": totalTxInputSat,
 				"is_collaborative":   isCollaborative,
-			})
+			}
+			if tx.IsMempoolTruncated {
+				metaMap["mempool_truncated"] = true
+			}
+			meta, _ := json.Marshal(metaMap)
 
 			allMovements = append(allMovements, blockchain.RawTransferMovement{
 				TxHash:          tx.TxID,

@@ -199,6 +199,12 @@ func TestBitcoinClient_MempoolLimitDetection(t *testing.T) {
 				txs[i] = EsploraTx{
 					TxID: fmt.Sprintf("mempool-tx-%d", i),
 					Fee:  1000,
+					Vin: []EsploraVin{
+						{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_mempool_heavy", Value: 50000}},
+					},
+					Vout: []EsploraVout{
+						{ScriptpubkeyAddress: "bc1q_ext_target", Value: 49000},
+					},
 				}
 			}
 			_ = json.NewEncoder(w).Encode(txs)
@@ -209,10 +215,53 @@ func TestBitcoinClient_MempoolLimitDetection(t *testing.T) {
 	defer server.Close()
 
 	client := NewClient(server.URL)
-	txs, err := client.FetchAddressTransactions(context.Background(), "bc1q_mempool_heavy")
+	page, err := client.FetchTransfers(context.Background(), "bc1q_mempool_heavy", "")
 	require.NoError(t, err)
-	assert.Len(t, txs, 50, "Should successfully ingest 50 mempool transactions")
+	require.NotNil(t, page)
+	assert.Len(t, page.Movements, 50, "Should successfully ingest 50 mempool movements")
+
+	// Metadata must have mempool_truncated: true
+	var meta map[string]interface{}
+	errMeta := json.Unmarshal(page.Movements[0].RawMetadataJSON, &meta)
+	require.NoError(t, errMeta)
+	assert.Equal(t, true, meta["mempool_truncated"], "When mempool returns 50 txs, mempool_truncated must be true")
 }
+
+func TestBitcoinClient_CollaborativeTx_BigIntSafeMath(t *testing.T) {
+	// 20,000 BTC input = 2,000,000,000,000 satoshis
+	// Total fee = 100,000,000 satoshis (1 BTC fee)
+	// (Fee * walletSpentSat) = 10^8 * 2*10^12 = 2*10^20 > math.MaxUint64 (1.84*10^19)
+	// Must not overflow!
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		tx := EsploraTx{
+			TxID: "tx-huge-coinjoin-999",
+			Fee:  100000000, // 1 BTC fee
+			Vin: []EsploraVin{
+				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_whale", Value: 2000000000000}}, // 20,000 BTC
+				{Prevout: &EsploraVout{ScriptpubkeyAddress: "bc1q_peer_whale", Value: 2000000000000}}, // 20,000 BTC
+			},
+			Vout: []EsploraVout{
+				{ScriptpubkeyAddress: "bc1q_whale", Value: 1999950000000}, // change
+				{ScriptpubkeyAddress: "bc1q_peer_whale_out", Value: 1999950000000},
+			},
+		}
+		tx.Status.Confirmed = true
+		tx.Status.BlockHeight = 850000
+		_ = json.NewEncoder(w).Encode([]EsploraTx{tx})
+	}))
+	defer server.Close()
+
+	client := NewClient(server.URL)
+	page, err := client.FetchTransfers(context.Background(), "bc1q_whale", "")
+	require.NoError(t, err)
+	require.NotNil(t, page)
+	require.Len(t, page.Movements, 1)
+
+	// Half of 1 BTC fee = 50,000,000 satoshis
+	assert.Equal(t, "50000000", page.Movements[0].FeeAmount)
+}
+
 
 
 

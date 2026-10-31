@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"sigma_finance/internal/domain/model"
+	"sigma_finance/internal/service/sync/blockchain"
 )
 
 func TestAdapterRegistryRouting(t *testing.T) {
@@ -31,4 +32,22 @@ func TestAdapterRegistryRouting(t *testing.T) {
 	regHelius := NewAdapterRegistry("", "helius-key-123", nil)
 	assert.Equal(t, model.WalletCapabilityEnhancedHistory, regHelius.GetCapability(model.BlockchainNetworkSolana))
 }
+
+func TestAdapterRegistry_PersistentTokenAccountProvider(t *testing.T) {
+	reg := NewAdapterRegistry("", "", nil)
+
+	// AdapterRegistry must implement PersistentTokenAccountProvider
+	tap, ok := any(reg).(blockchain.PersistentTokenAccountProvider)
+	assert.True(t, ok, "AdapterRegistry must implement blockchain.PersistentTokenAccountProvider")
+
+	walletAddr := "SolWallet123"
+	ataMap := map[string]string{
+		"ATAPubkey1": "MintUSDC1",
+	}
+
+	tap.LoadKnownTokenAccounts(walletAddr, ataMap)
+	loaded := tap.GetKnownTokenAccounts(walletAddr)
+	assert.Equal(t, "MintUSDC1", loaded["ATAPubkey1"])
+}
+
 

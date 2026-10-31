@@ -366,6 +366,30 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 		allAccountKeys = append(allAccountKeys, txResult.Meta.LoadedAddresses.Writable...)
 		allAccountKeys = append(allAccountKeys, txResult.Meta.LoadedAddresses.Readonly...)
 
+		// Check if any token account belonging to this wallet was closed in this transaction
+		hasClosedATA := false
+		for _, preTok := range txResult.Meta.PreTokenBalances {
+			var ataPubkey string
+			if preTok.AccountIndex < len(allAccountKeys) {
+				ataPubkey = allAccountKeys[preTok.AccountIndex]
+			}
+			isOwner := preTok.Owner == address || (preTok.Owner == "" && ataPubkey != "" && a.isKnownATA(address, ataPubkey))
+			if !isOwner {
+				continue
+			}
+			foundInPost := false
+			for _, postTok := range txResult.Meta.PostTokenBalances {
+				if postTok.AccountIndex == preTok.AccountIndex {
+					foundInPost = true
+					break
+				}
+			}
+			if !foundInPost {
+				hasClosedATA = true
+				break
+			}
+		}
+
 		// 1. Detect Native SOL delta for the wallet
 		accIdx := -1
 		for idx, keyStr := range allAccountKeys {
@@ -387,6 +411,15 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 			if isFeePayer {
 				// Invariant: post = pre - fee + netTransfer => netTransfer = delta + fee
 				netTransfer := delta + int64(fee)
+				isRentRecovery := hasClosedATA && netTransfer > 0
+
+				nativeMetaMap := map[string]interface{}{
+					"slot":                   txResult.Slot,
+					"fee":                    txResult.Meta.Fee,
+					"net_transfer_lamports":  netTransfer,
+					"rent_recovery_detected": isRentRecovery,
+				}
+				rawNativeMeta, _ := json.Marshal(nativeMetaMap)
 
 				if netTransfer < 0 {
 					// Net outflow from fee payer
@@ -404,7 +437,7 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 						FeeAmount:       feeStr,
 						MovementIndex:   0,
 						ProviderSource:  "SOLANA_RPC",
-						RawMetadataJSON: rawMeta,
+						RawMetadataJSON: rawNativeMeta,
 					})
 				} else if netTransfer > 0 {
 					// Net inflow to fee payer (e.g. received transfer, reward, or swap output)
@@ -422,7 +455,7 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 						FeeAmount:       feeStr,
 						MovementIndex:   0,
 						ProviderSource:  "SOLANA_RPC",
-						RawMetadataJSON: rawMeta,
+						RawMetadataJSON: rawNativeMeta,
 					})
 				} else {
 					// netTransfer == 0: Fee-only interaction (no transfer, just fee spent)
@@ -439,7 +472,7 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 						FeeAmount:       feeStr,
 						MovementIndex:   0,
 						ProviderSource:  "SOLANA_RPC",
-						RawMetadataJSON: rawMeta,
+						RawMetadataJSON: rawNativeMeta,
 					})
 				}
 			} else {
@@ -569,6 +602,11 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 				if preBig != nil && preBig.Sign() > 0 {
 					hasTokenDelta = true
 					mint := preTok.Mint
+					closedMeta, _ := json.Marshal(map[string]interface{}{
+						"slot":               txResult.Slot,
+						"mint":               mint,
+						"is_account_closure": true,
+					})
 					movements = append(movements, blockchain.RawTransferMovement{
 						TxHash:          sigItem.Signature,
 						BlockOrSlot:     int64(txResult.Slot),
@@ -581,7 +619,7 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 						FeeAmount:       "0",
 						MovementIndex:   100 + preTok.AccountIndex,
 						ProviderSource:  "SOLANA_RPC",
-						RawMetadataJSON: rawMeta,
+						RawMetadataJSON: closedMeta,
 					})
 				}
 			}

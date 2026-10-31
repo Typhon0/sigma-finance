@@ -125,6 +125,27 @@ func (r *AdapterRegistry) FetchTransfers(ctx context.Context, network model.Bloc
 	}
 }
 
+// Compile-time interface checks
+var (
+	_ blockchain.BlockchainProvider             = (*AdapterRegistry)(nil)
+	_ blockchain.CapabilityProvider             = (*AdapterRegistry)(nil)
+	_ blockchain.PersistentHDProvider           = (*AdapterRegistry)(nil)
+	_ blockchain.PersistentTokenAccountProvider = (*AdapterRegistry)(nil)
+)
+
+func (r *AdapterRegistry) GetKnownTokenAccounts(walletAddress string) map[string]string {
+	if r.solanaAdapter != nil {
+		return r.solanaAdapter.GetKnownTokenAccounts(walletAddress)
+	}
+	return nil
+}
+
+func (r *AdapterRegistry) LoadKnownTokenAccounts(walletAddress string, ataMap map[string]string) {
+	if r.solanaAdapter != nil {
+		r.solanaAdapter.LoadKnownTokenAccounts(walletAddress, ataMap)
+	}
+}
+
 // EVMAdapter returns the internal EVM adapter for token introspection
 func (r *AdapterRegistry) EVMAdapter() *evm.EVMAdapter {
 	return r.evmAdapter
