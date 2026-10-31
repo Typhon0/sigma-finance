@@ -381,53 +381,35 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 			post := txResult.Meta.PostBalances[accIdx]
 			isFeePayer := accIdx == 0
 
-			if isFeePayer {
-				// Wallet is fee payer: pre-post already includes meta.Fee
-				if pre > post {
-					grossOutflow := uint64(pre - post)
-					fee := txResult.Meta.Fee
-					var transferAmt uint64
-					if grossOutflow >= fee {
-						transferAmt = grossOutflow - fee
-					}
+			delta := post - pre
+			fee := txResult.Meta.Fee
 
+			if isFeePayer {
+				// Invariant: post = pre - fee + netTransfer => netTransfer = delta + fee
+				netTransfer := delta + int64(fee)
+
+				if netTransfer < 0 {
+					// Net outflow from fee payer
 					hasNativeDelta = true
-					if transferAmt > 0 {
-						movements = append(movements, blockchain.RawTransferMovement{
-							TxHash:          sigItem.Signature,
-							BlockOrSlot:     int64(txResult.Slot),
-							ExecutedAt:      execTime,
-							FromAddress:     address,
-							ToAddress:       "",
-							TokenAddress:    nil,
-							RawAmount:       strconv.FormatUint(transferAmt, 10),
-							Decimals:        9,
-							FeeAmount:       feeStr,
-							MovementIndex:   0,
-							ProviderSource:  "SOLANA_RPC",
-							RawMetadataJSON: rawMeta,
-						})
-					} else {
-						// Fee-only interaction (no native transfer, just fee spent)
-						movements = append(movements, blockchain.RawTransferMovement{
-							TxHash:          sigItem.Signature,
-							BlockOrSlot:     int64(txResult.Slot),
-							ExecutedAt:      execTime,
-							FromAddress:     address,
-							ToAddress:       address,
-							TokenAddress:    nil,
-							RawAmount:       "0",
-							Decimals:        9,
-							FeeAmount:       feeStr,
-							MovementIndex:   0,
-							ProviderSource:  "SOLANA_RPC",
-							RawMetadataJSON: rawMeta,
-						})
-					}
-				} else if post > pre {
-					// Incoming payment to fee payer
+					transferAmt := uint64(-netTransfer)
+					movements = append(movements, blockchain.RawTransferMovement{
+						TxHash:          sigItem.Signature,
+						BlockOrSlot:     int64(txResult.Slot),
+						ExecutedAt:      execTime,
+						FromAddress:     address,
+						ToAddress:       "",
+						TokenAddress:    nil,
+						RawAmount:       strconv.FormatUint(transferAmt, 10),
+						Decimals:        9,
+						FeeAmount:       feeStr,
+						MovementIndex:   0,
+						ProviderSource:  "SOLANA_RPC",
+						RawMetadataJSON: rawMeta,
+					})
+				} else if netTransfer > 0 {
+					// Net inflow to fee payer (e.g. received transfer, reward, or swap output)
 					hasNativeDelta = true
-					netInflow := uint64(post - pre)
+					transferAmt := uint64(netTransfer)
 					movements = append(movements, blockchain.RawTransferMovement{
 						TxHash:          sigItem.Signature,
 						BlockOrSlot:     int64(txResult.Slot),
@@ -435,7 +417,24 @@ func (a *SolanaAdapter) FetchTransfers(ctx context.Context, net model.Blockchain
 						FromAddress:     "",
 						ToAddress:       address,
 						TokenAddress:    nil,
-						RawAmount:       strconv.FormatUint(netInflow, 10),
+						RawAmount:       strconv.FormatUint(transferAmt, 10),
+						Decimals:        9,
+						FeeAmount:       feeStr,
+						MovementIndex:   0,
+						ProviderSource:  "SOLANA_RPC",
+						RawMetadataJSON: rawMeta,
+					})
+				} else {
+					// netTransfer == 0: Fee-only interaction (no transfer, just fee spent)
+					hasNativeDelta = true
+					movements = append(movements, blockchain.RawTransferMovement{
+						TxHash:          sigItem.Signature,
+						BlockOrSlot:     int64(txResult.Slot),
+						ExecutedAt:      execTime,
+						FromAddress:     address,
+						ToAddress:       address,
+						TokenAddress:    nil,
+						RawAmount:       "0",
 						Decimals:        9,
 						FeeAmount:       feeStr,
 						MovementIndex:   0,

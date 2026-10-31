@@ -238,4 +238,68 @@ func TestSolanaAdapter_ClosedTokenAccountWithOmittedOwner(t *testing.T) {
 	_ = foundTokenMvt
 }
 
+func TestSolanaAdapter_FeePayerReceivingNativeSOL(t *testing.T) {
+	targetAddress := "FeePayerWallet111"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		var req rpcRequest
+		_ = json.NewDecoder(r.Body).Decode(&req)
+
+		if req.Method == "getSignaturesForAddress" {
+			sigs := []solanaSignatureItem{
+				{Signature: "sig-fee-payer-rx-789", Slot: 1002},
+			}
+			resBytes, _ := json.Marshal(sigs)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      req.ID,
+				"result":  json.RawMessage(resBytes),
+			})
+			return
+		}
+
+		if req.Method == "getTransaction" {
+			var txRes solanaTransactionResult
+			txRes.Slot = 1002
+			txRes.Meta.Fee = 5000 // 5,000 lamports fee paid by account 0
+			// PreBalance: 1,000,000, PostBalance: 2,000,000
+			// Net balance delta = +1,000,000
+			// Actual external payment received = delta + fee = 1,000,000 + 5,000 = 1,005,000
+			txRes.Meta.PreBalances = []int64{1000000, 5000000}
+			txRes.Meta.PostBalances = []int64{2000000, 3995000}
+
+			txRes.Transaction.Signatures = []string{"sig-fee-payer-rx-789"}
+			txRes.Transaction.Message.AccountKeys = []interface{}{
+				targetAddress,
+				"SenderAddress222",
+			}
+
+			resBytes, _ := json.Marshal(txRes)
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"jsonrpc": "2.0",
+				"id":      req.ID,
+				"result":  json.RawMessage(resBytes),
+			})
+			return
+		}
+	}))
+	defer server.Close()
+
+	adapter := NewSolanaAdapter(server.URL, "")
+	page, err := adapter.FetchTransfers(context.Background(), model.BlockchainNetworkSolana, targetAddress, "")
+	require.NoError(t, err)
+	require.NotNil(t, page)
+
+	require.Len(t, page.Movements, 1)
+	mvt := page.Movements[0]
+	assert.Equal(t, "sig-fee-payer-rx-789", mvt.TxHash)
+	assert.Nil(t, mvt.TokenAddress)
+	assert.Equal(t, targetAddress, mvt.ToAddress)
+	assert.Equal(t, "5000", mvt.FeeAmount)
+	// Must be 1005000 (delta + fee), not 1000000
+	assert.Equal(t, "1005000", mvt.RawAmount, "Incoming payment to fee payer must be netDelta + fee")
+}
+
+
 
