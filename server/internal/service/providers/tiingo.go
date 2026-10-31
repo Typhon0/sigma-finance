@@ -112,7 +112,11 @@ func (t *TiingoProvider) MapSymbol(internalSymbol, assetType string) (string, er
 		return symbol, nil
 	case "CRYPTO":
 		// Tiingo uses lowercase for crypto pairs: "btcusd"
-		return strings.ToLower(strings.ReplaceAll(symbol, "/", "")), nil
+		sym := strings.ToLower(strings.ReplaceAll(symbol, "/", ""))
+		if !strings.HasSuffix(sym, "usd") && !strings.HasSuffix(sym, "usdt") && !strings.HasSuffix(sym, "eur") {
+			sym = sym + "usd"
+		}
+		return sym, nil
 	case "FOREX":
 		// Tiingo uses lowercase for forex: "eurusd"
 		return strings.ToLower(strings.ReplaceAll(symbol, "/", "")), nil
@@ -853,6 +857,10 @@ func (t *TiingoProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quote
 		return nil, err
 	}
 
+	if req.AssetType == "CRYPTO" {
+		return t.doGetCryptoQuote(ctx, symbol, req.APIKey)
+	}
+
 	resp, err := t.doGetIEXQuote(ctx, symbol, req.APIKey)
 	if err != nil {
 		if	t.IsInCooldown() {
@@ -862,6 +870,88 @@ func (t *TiingoProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quote
 	}
 
 	return resp, nil
+}
+
+// doGetCryptoQuote fetches quote from Tiingo crypto endpoint
+func (t *TiingoProvider) doGetCryptoQuote(ctx context.Context, symbol, apiKey string) (*QuoteResponse, error) {
+	url := fmt.Sprintf("%s/tiingo/crypto/prices", t.baseURL)
+
+	httpReq, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	q := httpReq.URL.Query()
+	q.Set("tickers", symbol)
+	q.Set("token", apiKey)
+	httpReq.URL.RawQuery = q.Encode()
+
+	resp, err := t.client.Do(httpReq)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, &ProviderError{
+			Provider:  t.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("crypto ticker %s not found on Tiingo", symbol),
+			HTTPCode:  resp.StatusCode,
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		cooldownDuration := ParseRetryAfter(resp, tiingoMaxCooldown, tiingoMaxCooldown)
+		t.EnterCooldown(cooldownDuration)
+		return nil, &ProviderError{
+			Provider:          t.ID(),
+			Code:              "RATE_LIMITED",
+			Message:           "Tiingo rate limit exceeded",
+			HTTPCode:          resp.StatusCode,
+			Retryable:         true,
+			Fallback:          true,
+			RetryAfterSeconds: int(cooldownDuration.Seconds()),
+		}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("tiingo crypto API error: status %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	var response tiingoCryptoResponse
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("tiingo crypto decode error: %w", err)
+	}
+
+	if len(response) == 0 || len(response[0].PriceData) == 0 {
+		return nil, &ProviderError{
+			Provider:  t.ID(),
+			Code:      "TICKER_NOT_FOUND",
+			Message:   fmt.Sprintf("no price data for crypto ticker %s on Tiingo", symbol),
+			Retryable: false,
+			Fallback:  true,
+		}
+	}
+
+	lastData := response[0].PriceData[len(response[0].PriceData)-1]
+	ts, err := time.Parse(time.RFC3339, lastData.Date)
+	if err != nil {
+		ts = time.Now()
+	}
+
+	return &QuoteResponse{
+		Symbol:    symbol,
+		Last:      decimal.NewFromFloat(lastData.Close),
+		Bid:       decimal.NewFromFloat(lastData.Close),
+		Ask:       decimal.NewFromFloat(lastData.Close),
+		Volume:    int64(lastData.Volume),
+		Timestamp: ts,
+		Source:    t.ID(),
+	}, nil
 }
 
 // doGetIEXQuote fetches quote from Tiingo IEX endpoint

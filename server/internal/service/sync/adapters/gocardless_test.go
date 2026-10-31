@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	testGCSecretID       = "test-secret-id-12345"
-	testGCSecretKey      = "test-secret-key-67890"
-	testGCRequisitionID  = "req-uuid-revolut-999"
-	testGCAccessToken    = "mock-access-token-jwt"
-	testGCRefreshToken   = "mock-refresh-token-jwt"
-	testGCAccountID1     = "acc-uuid-revolut-001"
-	testGCAccountID2     = "acc-uuid-fortuneo-002"
+	testGCSecretID      = "test-secret-id-12345"
+	testGCSecretKey     = "test-secret-key-67890"
+	testGCRequisitionID = "req-uuid-revolut-999"
+	testGCAccessToken   = "mock-access-token-jwt"
+	testGCRefreshToken  = "mock-refresh-token-jwt"
+	testGCAccountID1    = "acc-uuid-revolut-001"
+	testGCAccountID2    = "acc-uuid-fortuneo-002"
 )
 
 func makeTestGCCredential(secretID, secretKey, requisitionID, accessToken string) *model.SyncCredential {

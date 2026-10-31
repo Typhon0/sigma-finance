@@ -89,13 +89,53 @@ type Client struct {
 }
 
 func NewClient(endpoints ...string) *Client {
-	if len(endpoints) == 0 {
-		endpoints = []string{DefaultMempoolEndpoint, DefaultBlockstreamEndpoint}
+	var finalEndpoints []string
+	isMockTest := false
+	for _, ep := range endpoints {
+		ep = strings.TrimSpace(ep)
+		if ep != "" {
+			if strings.Contains(ep, "127.0.0.1") || strings.Contains(ep, "localhost") {
+				isMockTest = true
+			}
+			exists := false
+			for _, existing := range finalEndpoints {
+				if existing == ep {
+					exists = true
+					break
+				}
+			}
+			if !exists {
+				finalEndpoints = append(finalEndpoints, ep)
+			}
+		}
 	}
+
+	if len(finalEndpoints) == 0 {
+		finalEndpoints = []string{DefaultMempoolEndpoint, DefaultBlockstreamEndpoint}
+	} else if !isMockTest {
+		// Ensure Mempool is primary default and Blockstream is failover default
+		hasMempool := false
+		hasBlockstream := false
+		for _, ep := range finalEndpoints {
+			if ep == DefaultMempoolEndpoint {
+				hasMempool = true
+			}
+			if ep == DefaultBlockstreamEndpoint {
+				hasBlockstream = true
+			}
+		}
+		if !hasMempool {
+			finalEndpoints = append(finalEndpoints, DefaultMempoolEndpoint)
+		}
+		if !hasBlockstream {
+			finalEndpoints = append(finalEndpoints, DefaultBlockstreamEndpoint)
+		}
+	}
+
 	return &Client{
-		endpoints: endpoints,
+		endpoints: finalEndpoints,
 		httpClient: &http.Client{
-			Timeout: 8 * time.Second,
+			Timeout: 5 * time.Second,
 		},
 		rateLimiter:     rate.NewLimiter(rate.Every(150*time.Millisecond), 5), // polite pacing
 		gapLimit:        DefaultGapLimit,
@@ -103,6 +143,13 @@ func NewClient(endpoints ...string) *Client {
 		cooldowns:       make(map[string]time.Time),
 		activeAddrCache: make(map[string][]string),
 	}
+}
+
+// Endpoints returns the active list of configured Esplora endpoints
+func (c *Client) Endpoints() []string {
+	eps := make([]string, len(c.endpoints))
+	copy(eps, c.endpoints)
+	return eps
 }
 
 func (c *Client) isCoolingDown(base string) bool {
@@ -122,7 +169,7 @@ func (c *Client) setCooldown(base string, duration time.Duration) {
 func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 	var lastErr error
 
-	// First pass: try non-cooling endpoints
+	// First pass: try non-cooling endpoints in priority order
 	for _, base := range c.endpoints {
 		if c.isCoolingDown(base) {
 			continue
@@ -133,6 +180,7 @@ func (c *Client) doGet(ctx context.Context, path string) ([]byte, error) {
 			return body, nil
 		}
 		lastErr = err
+		log.Printf("[WARN] [BitcoinClient] Endpoint %s request to %s failed: %v. Attempting failover.", base, path, err)
 	}
 
 	// Second pass: if all in cooldown, try any endpoint
@@ -376,10 +424,11 @@ func (c *Client) ScanExtendedKeyPersistent(ctx context.Context, descriptor strin
 	// 1. Fetch balance for already known active addresses
 	for _, addr := range data.Addresses {
 		stats, err := c.FetchAddressStats(ctx, addr)
-		if err == nil {
-			totalSat += (stats.ChainStats.FundedTxoSum - stats.ChainStats.SpentTxoSum) +
-				(stats.MempoolStats.FundedTxoSum - stats.MempoolStats.SpentTxoSum)
+		if err != nil {
+			return nil, 0, "", fmt.Errorf("failed to fetch stats for known address %s during persistent scan: %w", addr, err)
 		}
+		totalSat += (stats.ChainStats.FundedTxoSum - stats.ChainStats.SpentTxoSum) +
+			(stats.MempoolStats.FundedTxoSum - stats.MempoolStats.SpentTxoSum)
 	}
 
 	// 2. Probe forward for new addresses on receive (0) and change (1) branches
@@ -418,8 +467,7 @@ func (c *Client) ScanExtendedKeyPersistent(ctx context.Context, descriptor strin
 
 			stats, err := c.FetchAddressStats(ctx, addr)
 			if err != nil {
-				consecutiveEmpty++
-				continue
+				return nil, 0, "", fmt.Errorf("failed to probe address %s on branch %s: %w", addr, br.name, err)
 			}
 
 			if stats.ChainStats.TxCount > 0 || stats.MempoolStats.TxCount > 0 {
@@ -461,10 +509,11 @@ func (c *Client) ScanExtendedKey(ctx context.Context, descriptor string) ([]stri
 		var totalSat uint64
 		for _, addr := range cached {
 			stats, err := c.FetchAddressStats(ctx, addr)
-			if err == nil {
-				totalSat += (stats.ChainStats.FundedTxoSum - stats.ChainStats.SpentTxoSum) +
-					(stats.MempoolStats.FundedTxoSum - stats.MempoolStats.SpentTxoSum)
+			if err != nil {
+				return nil, 0, fmt.Errorf("failed to fetch stats for cached address %s: %w", addr, err)
 			}
+			totalSat += (stats.ChainStats.FundedTxoSum - stats.ChainStats.SpentTxoSum) +
+				(stats.MempoolStats.FundedTxoSum - stats.MempoolStats.SpentTxoSum)
 		}
 		return cached, totalSat, nil
 	}
@@ -497,8 +546,7 @@ func (c *Client) ScanExtendedKey(ctx context.Context, descriptor string) ([]stri
 
 			stats, err := c.FetchAddressStats(ctx, addr)
 			if err != nil {
-				consecutiveEmpty++
-				continue
+				return nil, 0, fmt.Errorf("failed to scan address %s on branch %s: %w", addr, chain.name, err)
 			}
 
 			if stats.ChainStats.TxCount > 0 || stats.MempoolStats.TxCount > 0 {
@@ -654,16 +702,22 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 			}
 
 			metaMap := map[string]interface{}{
-				"txid":               tx.TxID,
-				"descriptor":         descriptor,
-				"fee":                tx.Fee,
-				"wallet_fee":         walletFee,
-				"confirmed":          tx.Status.Confirmed,
-				"blockHeight":        tx.Status.BlockHeight,
-				"spent":              walletSpentSat,
-				"received":           walletReceivedSat,
-				"total_tx_input_sat": totalTxInputSat,
-				"is_collaborative":   isCollaborative,
+				"txid":                   tx.TxID,
+				"descriptor":             descriptor,
+				"fee":                    tx.Fee,
+				"wallet_fee":             walletFee,
+				"confirmed":              tx.Status.Confirmed,
+				"blockHeight":            tx.Status.BlockHeight,
+				"spent":                  walletSpentSat,
+				"received":               walletReceivedSat,
+				"total_tx_input_sat":     totalTxInputSat,
+				"is_collaborative":       isCollaborative,
+				"fee_allocation_method":  "exact_sole_payer",
+				"fee_is_estimated":       false,
+			}
+			if isCollaborative {
+				metaMap["fee_allocation_method"] = "proportional_input_value"
+				metaMap["fee_is_estimated"] = true
 			}
 			if tx.IsMempoolTruncated {
 				metaMap["mempool_truncated"] = true
@@ -688,16 +742,22 @@ func (c *Client) FetchTransfers(ctx context.Context, descriptor string, cursor s
 		} else if walletReceivedSat > walletSpentSat {
 			netInflow := walletReceivedSat - walletSpentSat
 			metaMap := map[string]interface{}{
-				"txid":               tx.TxID,
-				"descriptor":         descriptor,
-				"fee":                tx.Fee,
-				"wallet_fee":         0,
-				"confirmed":          tx.Status.Confirmed,
-				"blockHeight":        tx.Status.BlockHeight,
-				"spent":              walletSpentSat,
-				"received":           walletReceivedSat,
-				"total_tx_input_sat": totalTxInputSat,
-				"is_collaborative":   isCollaborative,
+				"txid":                   tx.TxID,
+				"descriptor":             descriptor,
+				"fee":                    tx.Fee,
+				"wallet_fee":             0,
+				"confirmed":              tx.Status.Confirmed,
+				"blockHeight":            tx.Status.BlockHeight,
+				"spent":                  walletSpentSat,
+				"received":               walletReceivedSat,
+				"total_tx_input_sat":     totalTxInputSat,
+				"is_collaborative":       isCollaborative,
+				"fee_allocation_method":  "exact_sole_payer",
+				"fee_is_estimated":       false,
+			}
+			if isCollaborative {
+				metaMap["fee_allocation_method"] = "proportional_input_value"
+				metaMap["fee_is_estimated"] = true
 			}
 			if tx.IsMempoolTruncated {
 				metaMap["mempool_truncated"] = true

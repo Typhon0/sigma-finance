@@ -16,16 +16,18 @@ export function useCurrency() {
 	/**
 	 * Format a numeric amount using the user's display currency.
 	 * Mirrors the signature of the shared `formatCurrency` utility
-	 * but defaults to the user's preferred currency instead of USD.
+	 * A missing amount formats to an em dash: the caller asked for a figure
+	 * it does not have, and "$0.00" would read as a measurement it isn't.
+	 * Callers that want zero must pass the number 0.
 	 */
 	const formatCurrency = useCallback(
 		(amount: number | null | undefined): string => {
 			if (amount === null || amount === undefined) {
-				return `${currencySymbol}0.00`;
+				return "—";
 			}
 			return formatCurrencyUtil(amount, currency);
 		},
-		[currency, currencySymbol],
+		[currency],
 	);
 
 	/**

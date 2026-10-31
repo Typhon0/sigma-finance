@@ -1,0 +1,16 @@
+{
+  "blobGasPrice": "0xe3f5193b",
+  "blobGasUsed": "0x20000",
+  "blockHash": "0x7a8c6ea514f01591815abf9d2d334f50c11d89296d768c551b8420c819915d8f",
+  "blockNumber": "0x141b9ae",
+  "contractAddress": null,
+  "cumulativeGasUsed": "0x1326cf4",
+  "effectiveGasPrice": "0x2b3c6fb59",
+  "from": "0x9084ee7f65d32763ac436e4fc971e7d2cc52e672",
+  "gasUsed": "0x26321",
+  "status": "0x1",
+  "to": "0xecec5421a81dec20e32494d0b47a8509dd7e90cf",
+  "transactionHash": "0x725d7fef2bc61337be7972bb4e155b1886cb2b966079006fedb0eeceb3a1c185",
+  "transactionIndex": "0xb6",
+  "type": "0x3"
+}

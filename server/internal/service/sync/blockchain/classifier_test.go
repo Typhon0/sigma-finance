@@ -240,3 +240,83 @@ func TestActivityClassifier_ComplexDeFiToReviewQueue(t *testing.T) {
 	assert.Len(t, result.StagedReviews, 3, "expected movements to be staged for user review")
 	assert.Equal(t, model.WalletReviewStatusPending, result.StagedReviews[0].ReviewStatus)
 }
+
+func TestActivityClassifier_WSOLUnwrapClassification(t *testing.T) {
+	classifier := NewActivityClassifier()
+	userAddr := "SolanaWallet111"
+
+	account := &model.WalletAccount{
+		ID:            "wacc-sol-unwrap",
+		UserID:        "user-1",
+		AddressOrXpub: userAddr,
+		Network:       model.BlockchainNetworkSolana,
+	}
+
+	txHash := "solwsolunwraptx"
+	wsolMint := "So11111111111111111111111111111111111111112"
+
+	rawWSOLMeta := []byte(`{"mint":"So11111111111111111111111111111111111111112","is_account_closure":true,"is_wsol_unwrap":true,"unwrapped_to_native":true}`)
+	rawNativeMeta := []byte(`{"is_wsol_unwrap":true,"rent_recovery_detected":true,"wrapped_sol_unwrapped_lamports":"1000000000","rent_recovered_lamports":"2039280"}`)
+
+	activities := []*model.WalletActivity{
+		{
+			ID:              "act-wsol-out",
+			WalletAccountID: "wacc-sol-unwrap",
+			TxHash:          txHash,
+			FromAddress:     userAddr,
+			ToAddress:       "",
+			TokenAddress:    &wsolMint,
+			FormattedAmount: decimal.NewFromFloat(1.0), // 1 WSOL out
+			FeeAmount:       "5000",                   // 5000 lamports fee
+			RawMetadata:     rawWSOLMeta,
+			ExecutedAt:      time.Now().UTC(),
+		},
+		{
+			ID:              "act-sol-in",
+			WalletAccountID: "wacc-sol-unwrap",
+			TxHash:          txHash,
+			FromAddress:     "",
+			ToAddress:       userAddr,
+			TokenAddress:    nil, // Native SOL in
+			FormattedAmount: decimal.NewFromFloat(1.00203928),
+			FeeAmount:       "0",
+			RawMetadata:     rawNativeMeta,
+			ExecutedAt:      time.Now().UTC(),
+		},
+	}
+
+	result, err := classifier.Classify(context.Background(), account, activities, nil)
+	assert.NoError(t, err)
+
+	// Must NOT be classified as a DEX swap!
+	for _, tx := range result.Transactions {
+		assert.NotEqual(t, model.TransactionTypeBuy, tx.Type, "Unwrapping WSOL must not generate a BUY swap transaction")
+		assert.NotEqual(t, model.TransactionTypeSell, tx.Type, "Unwrapping WSOL must not generate a SELL swap transaction")
+	}
+
+	// Must have: 1 TRANSFER_OUT (WSOL), 1 FEE (gas fee), 1 TRANSFER_IN (native SOL)
+	assert.Len(t, result.Transactions, 3)
+
+	var transferOut *model.Transaction
+	var transferIn *model.Transaction
+	var feeTx *model.Transaction
+
+	for _, tx := range result.Transactions {
+		switch tx.Type {
+		case model.TransactionTypeTransferOut:
+			transferOut = tx
+		case model.TransactionTypeTransferIn:
+			transferIn = tx
+		case model.TransactionTypeFee:
+			feeTx = tx
+		}
+	}
+
+	assert.NotNil(t, transferOut)
+	assert.NotNil(t, transferIn)
+	assert.NotNil(t, feeTx)
+
+	assert.Contains(t, *transferOut.Notes, "Unwrap WSOL to native SOL")
+	assert.Contains(t, *transferIn.Notes, "Unwrapped native SOL from WSOL")
+	assert.True(t, decimal.NewFromFloat(0.000005).Equal(*feeTx.Quantity))
+}

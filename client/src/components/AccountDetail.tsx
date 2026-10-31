@@ -1,3 +1,4 @@
+import { useMutation, useQuery } from "@apollo/client";
 import ReactECharts from "echarts-for-react";
 import {
 	ArrowLeft,
@@ -7,16 +8,23 @@ import {
 	HardDrive,
 	LayoutGrid,
 	Link as LinkIcon,
+	Loader2,
 	PieChart,
 	RefreshCw,
 	Settings,
+	Trash2,
 	TrendingDown,
 	TrendingUp,
 	Wallet,
 } from "lucide-react";
 import React, { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { TRIGGER_ACCOUNT_SYNC } from "@/graphql/mutations/sync";
+import { GET_ACCOUNT, GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { useCurrency } from "@/hooks/use-currency";
+import { DeleteAccountDialog } from "./account/DeleteAccountDialog";
+import { EditAccountDialog } from "./account/EditAccountDialog";
 import { AssetDetailChart, type AssetDetailChartPoint } from "./charts/AssetDetailChart";
 import { PageTimeframeSelector, type TimeRange } from "./shared/PageTimeframeSelector";
 import type { EChartsMouseEventParam, HoveredChartData } from "./types/echarts";
@@ -33,22 +41,66 @@ interface AccountDetailProps {
 }
 
 export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetailProps) {
-	const { assets } = usePortfolio();
+	const { assets, currentPortfolio, refetch: refetchPortfolio } = usePortfolio();
 	const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
 	const [distributionChartType, setDistributionChartType] = useState<"pie" | "treemap">("pie");
+	const [showEditDialog, setShowEditDialog] = useState(false);
+	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
-	// Find the account in assets
+	const {
+		data: accountQueryData,
+		loading: accountLoading,
+		refetch: refetchAccount,
+	} = useQuery(GET_ACCOUNT, {
+		variables: { id: accountId },
+		skip: !accountId,
+	});
+
+	const [triggerSync, { loading: syncing }] = useMutation(TRIGGER_ACCOUNT_SYNC, {
+		refetchQueries: currentPortfolio
+			? [{ query: GET_ACCOUNTS, variables: { portfolioId: currentPortfolio } }]
+			: undefined,
+	});
+
+	// Find the account in GraphQL data, with fallback to assets
 	const account = useMemo(() => {
+		const rawAcc = accountQueryData?.account;
+		if (rawAcc) {
+			const typeUpper = (rawAcc.type || "").toUpperCase();
+			const type: "CEX" | "Bank" | "Broker" =
+				typeUpper === "CRYPTO_EXCHANGE" ? "CEX" : typeUpper === "BROKER" ? "Broker" : "Bank";
+
+			return {
+				id: rawAcc.id,
+				name: rawAcc.name,
+				accountName: rawAcc.name,
+				type,
+				rawType: rawAcc.type,
+				taxWrapper: rawAcc.taxWrapper,
+				institution: rawAcc.institution || "Main Account",
+				accountNumber:
+					rawAcc.accountNumber || (rawAcc.institution ? rawAcc.institution : "Main Account"),
+				currency: rawAcc.currency || "EUR",
+				syncProvider: rawAcc.syncProvider,
+				syncConnection: rawAcc.syncConnection,
+				totalValue: rawAcc.totalValue ?? 0,
+				currentValue: rawAcc.totalValue ?? 0,
+				balance: rawAcc.totalValue ?? 0,
+				purchasePrice: rawAcc.totalValue ?? 0,
+			};
+		}
+
 		return assets.find((a) => a.id === accountId);
-	}, [assets, accountId]);
+	}, [accountQueryData, assets, accountId]);
 
 	// Find holdings linked to this account
 	const holdings = useMemo(() => {
 		if (!account) return [];
 		return assets
 			.filter((a) => {
+				if ((a as { accountId?: string }).accountId === account.id) return true;
 				if (a.account === account.name) return true;
-				if (a.account === account.accountName) return true;
+				if (a.account === (account as { accountName?: string }).accountName) return true;
 				return false;
 			})
 			.map((h) => {
@@ -70,6 +122,29 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 				};
 			});
 	}, [assets, account]);
+
+	const handleSync = async () => {
+		if (!account?.id) return;
+		const toastId = toast.loading(`Synchronizing ${account.name}...`);
+		try {
+			await triggerSync({ variables: { accountId: account.id } });
+			toast.success(`Sync started for ${account.name}`, { id: toastId });
+			await refetchAccount();
+			await refetchPortfolio();
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Failed to sync account";
+			toast.error(msg, { id: toastId });
+		}
+	};
+
+	if (accountLoading && !account) {
+		return (
+			<div className="flex flex-col items-center justify-center h-full p-8 space-y-4">
+				<Loader2 className="h-8 w-8 animate-spin text-primary" />
+				<p className="text-sm text-muted-foreground">Loading account details...</p>
+			</div>
+		);
+	}
 
 	if (!account) {
 		return (
@@ -266,35 +341,59 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 					/>
 					<div className="h-8 w-px bg-border/50 mx-2" />
 					<div className="flex gap-2">
-						<Button variant="outline" size="sm">
-							<RefreshCw className="h-4 w-4 mr-2" />
-							Sync
-						</Button>
-						<Button variant="outline" size="sm">
+						{account.syncProvider && account.syncProvider !== "MANUAL" && (
+							<Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+								<RefreshCw className={`h-4 w-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
+								{syncing ? "Syncing..." : "Sync"}
+							</Button>
+						)}
+						<Button variant="outline" size="sm" onClick={() => setShowEditDialog(true)}>
 							<Settings className="h-4 w-4 mr-2" />
-							Settings
+							Edit
+						</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+							onClick={() => setShowDeleteDialog(true)}
+						>
+							<Trash2 className="h-4 w-4 mr-2" />
+							Delete
 						</Button>
 					</div>
 				</div>
 			</div>
 
 			{/* Status Banner */}
-			<div className="flex items-center justify-between p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-				<div className="flex items-center gap-2">
-					<CheckCircle2 className="h-5 w-5 text-emerald-500" />
-					<span className="text-sm text-emerald-700 dark:text-emerald-400">
-						Account connected • Last sync: Just now
+			{account.syncProvider && account.syncProvider !== "MANUAL" ? (
+				<div className="flex items-center justify-between p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+					<div className="flex items-center gap-2">
+						<CheckCircle2 className="h-5 w-5 text-emerald-500" />
+						<span className="text-sm text-emerald-700 dark:text-emerald-400">
+							{account.syncProvider} connected • Last sync:{" "}
+							{account.syncConnection?.lastSyncAt
+								? new Date(account.syncConnection.lastSyncAt).toLocaleString()
+								: "Never"}
+						</span>
+					</div>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={handleSync}
+						disabled={syncing}
+						className="h-8 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-500/20"
+					>
+						<RefreshCw className={`h-3.5 w-3.5 mr-2 ${syncing ? "animate-spin" : ""}`} />
+						{syncing ? "Syncing..." : "Sync Now"}
+					</Button>
+				</div>
+			) : (
+				<div className="flex items-center justify-between p-4 rounded-lg bg-muted/40 border border-border">
+					<span className="text-sm text-muted-foreground">
+						Manual Account • No automated integration configured
 					</span>
 				</div>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-8 text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 hover:bg-emerald-500/20"
-				>
-					<LinkIcon className="h-3.5 w-3.5 mr-2" />
-					Reconnect
-				</Button>
-			</div>
+			)}
 
 			{/* Stats Cards */}
 			<div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -468,6 +567,43 @@ export function AccountDetail({ accountId, onBack, onSelectAsset }: AccountDetai
 						</Table>
 					</CardContent>
 				</Card>
+			)}
+
+			{showEditDialog && (
+				<EditAccountDialog
+					open={showEditDialog}
+					onOpenChange={setShowEditDialog}
+					account={{
+						id: account.id,
+						name: account.name,
+						type: (account as { rawType?: string }).rawType || account.type,
+						taxWrapper: (account as { taxWrapper?: string | null }).taxWrapper,
+						institution: (account as { institution?: string | null }).institution,
+						accountNumber: account.accountNumber,
+						currency: (account as { currency?: string | null }).currency,
+					}}
+					portfolioId={currentPortfolio || undefined}
+					onSuccess={() => {
+						setShowEditDialog(false);
+						void refetchAccount();
+						void refetchPortfolio();
+					}}
+				/>
+			)}
+
+			{showDeleteDialog && (
+				<DeleteAccountDialog
+					open={showDeleteDialog}
+					onOpenChange={setShowDeleteDialog}
+					accountId={account.id}
+					accountName={account.name}
+					portfolioId={currentPortfolio || undefined}
+					onSuccess={() => {
+						setShowDeleteDialog(false);
+						void refetchPortfolio();
+						onBack();
+					}}
+				/>
 			)}
 		</div>
 	);

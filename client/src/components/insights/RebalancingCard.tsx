@@ -29,6 +29,8 @@ interface RebalancingCardProps {
 	setActiveTab: (tab: string) => void;
 	targetWeights?: Record<string, number>;
 	onUpdateTargetWeights?: (weights: Record<string, number>) => void;
+	/** No card of its own: the insight strip owns the surface. */
+	bare?: boolean;
 }
 
 export const RebalancingCard = memo(function RebalancingCard({
@@ -38,7 +40,9 @@ export const RebalancingCard = memo(function RebalancingCard({
 	setActiveTab: _setActiveTab,
 	targetWeights = DEFAULT_TARGET_WEIGHTS,
 	onUpdateTargetWeights,
+	bare = false,
 }: RebalancingCardProps) {
+	const Wrapper = bare ? "div" : Card;
 	const [isEditorOpen, setIsEditorOpen] = useState(false);
 	const [tempWeights, setTempWeights] = useState<Record<string, number>>(targetWeights);
 	const [newSectorName, setNewSectorName] = useState("");
@@ -87,14 +91,24 @@ export const RebalancingCard = memo(function RebalancingCard({
 
 	return (
 		<>
-			<Card
+			<Wrapper
 				key={cardId}
-				className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+				className={cn(
+					"relative flex flex-col justify-between",
+					!bare &&
+						"overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out",
+				)}
 			>
 				<div>
 					<div className="flex items-center justify-between mb-3">
 						<div className="flex items-center gap-1.5">
-							<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
+							{" "}
+							<span
+								className={cn(
+									"text-muted-foreground",
+									bare ? "text-xs font-medium" : "text-micro font-bold uppercase tracking-widest",
+								)}
+							>
 								Rebalancing
 							</span>
 							<button
@@ -107,7 +121,7 @@ export const RebalancingCard = memo(function RebalancingCard({
 							</button>
 						</div>
 
-						{isRecommended && (
+						{isRecommended && !bare && (
 							<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 								Recommended
 							</span>
@@ -165,16 +179,18 @@ export const RebalancingCard = memo(function RebalancingCard({
 					)}
 				</div>
 
-				<div className="flex justify-end mt-2 z-10">
-					<button
-						type="button"
-						onClick={handleOpenEditor}
-						className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
-					>
-						Configure targets →
-					</button>
-				</div>
-			</Card>
+				{!bare && (
+					<div className="flex justify-end mt-2 z-10">
+						<button
+							type="button"
+							onClick={handleOpenEditor}
+							className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
+						>
+							Configure targets →
+						</button>
+					</div>
+				)}
+			</Wrapper>
 
 			{/* Target Allocations Editor Dialog */}
 			<Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>

@@ -866,6 +866,30 @@ func mapAccountToGQL(acc model.Account) *gqlModel.Account {
 	}
 }
 
+func mapAccountToGQLWithPrices(acc model.Account, priceMap map[string]float64) *gqlModel.Account {
+	res := mapAccountToGQL(acc)
+	if len(acc.Positions) > 0 {
+		var liveVal float64
+		for _, p := range acc.Positions {
+			if p == nil {
+				continue
+			}
+			if price, ok := priceMap[p.AssetID]; ok && price > 0 {
+				q, _ := p.Quantity.Float64()
+				liveVal += q * price
+			} else if p.TotalCostBasis != nil && *p.TotalCostBasis > 0 {
+				liveVal += float64(*p.TotalCostBasis) / 100.0
+			} else if p.AverageCostBasis != nil {
+				q, _ := p.Quantity.Float64()
+				c, _ := p.AverageCostBasis.Float64()
+				liveVal += q * c
+			}
+		}
+		res.TotalValue = &liveVal
+	}
+	return res
+}
+
 func mapSyncConnectionToGQL(conn *model.SyncConnection) *gqlModel.SyncConnection {
 	if conn == nil {
 		return nil
@@ -895,10 +919,12 @@ func mapSyncCredentialToGQL(cred *model.SyncCredential) *gqlModel.SyncCredential
 	if cred == nil {
 		return nil
 	}
+	source := "DATABASE"
 	return &gqlModel.SyncCredential{
 		ID:        cred.ID,
 		Provider:  cred.Provider,
 		Status:    string(cred.Status),
+		Source:    &source,
 		CreatedAt: cred.CreatedAt,
 		UpdatedAt: cred.UpdatedAt,
 	}

@@ -42,6 +42,10 @@ type blockscoutTxItem struct {
 	GasPrice          string `json:"gasPrice"`
 	EffectiveGasPrice string `json:"effectiveGasPrice"`
 	L1Fee             string `json:"l1Fee"`
+	OperatorFee       string `json:"operatorFee"`
+	BlobFee           string `json:"blobFee"`
+	BlobGasUsed       string `json:"blobGasUsed"`
+	BlobGasPrice      string `json:"blobGasPrice"`
 	IsError           string `json:"isError"`
 	ContractAddress   string `json:"contractAddress"`
 	TokenName         string `json:"tokenName"`
@@ -60,9 +64,98 @@ func parseBigInt(val string) (*big.Int, bool) {
 	return new(big.Int).SetString(clean, 10)
 }
 
-// calculateTotalTxFee calculates execution fee + OP Stack L1 data fee for the sender
-func calculateTotalTxFee(tx blockscoutTxItem, userAddress string) string {
+// CalculateIsthmusOperatorFee calculates post-Isthmus OP Stack operator fee:
+// operatorFee = operatorFeeConstant + (operatorFeeScalar * gasUsed / 1e6)
+func CalculateIsthmusOperatorFee(gasUsed *big.Int, constant *big.Int, scalar *big.Int) *big.Int {
+	if gasUsed == nil || constant == nil || scalar == nil {
+		return big.NewInt(0)
+	}
+	scaled := new(big.Int).Mul(scalar, gasUsed)
+	scaled.Div(scaled, big.NewInt(1000000))
+	return new(big.Int).Add(constant, scaled)
+}
+
+// OP Stack L1 Attributes Constants & Selectors
+const (
+	// L1BlockPredeployAddress is the OP Stack contract receiving the first transaction of every block
+	L1BlockPredeployAddress = "0x4200000000000000000000000000000000000015"
+	// MethodSelectorIsthmus: setL1BlockValuesIsthmus() (selector 0x3a4832bc)
+	MethodSelectorIsthmus = "0x3a4832bc"
+	// MethodSelectorJovian: setL1BlockValuesJovian() (selector 0x0eb5e840)
+	MethodSelectorJovian = "0x0eb5e840"
+)
+
+// DecodeL1BlockAttributesCalldata decodes operatorFeeScalar and operatorFeeConstant from the input calldata
+// of the L1 Attributes deposited transaction (type 0x7e / index 0 of every OP Stack block).
+// Note: These parameters are encoded in the transaction input calldata, NOT in a transaction receipt.
+// At the Jovian activation block transition, the L1 Attributes transaction uses the Isthmus format (0x3a4832bc),
+// while subsequent blocks in the Jovian era use the Jovian format (0x0eb5e840).
+func DecodeL1BlockAttributesCalldata(inputHex string) (*big.Int, *big.Int, string, error) {
+	clean := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(inputHex)), "0x")
+	if len(clean) < 8 {
+		return nil, nil, "", fmt.Errorf("calldata too short for function selector: %s", inputHex)
+	}
+
+	selector := "0x" + clean[:8]
+	dataBytes := clean[8:]
+
+	switch selector {
+	case MethodSelectorIsthmus:
+		// Isthmus calldata layout:
+		// bytes 160..164: operatorFeeScalar (uint32) -> hex chars 320..328
+		// bytes 164..172: operatorFeeConstant (uint64) -> hex chars 328..344
+		if len(dataBytes) < 344 {
+			return nil, nil, "", fmt.Errorf("isthmus calldata too short: len=%d", len(dataBytes))
+		}
+		scalarHex := dataBytes[320:328]
+		constantHex := dataBytes[328:344]
+		scalar, ok1 := new(big.Int).SetString(scalarHex, 16)
+		constant, ok2 := new(big.Int).SetString(constantHex, 16)
+		if !ok1 || !ok2 {
+			return nil, nil, "", fmt.Errorf("failed to parse isthmus operator fee hex")
+		}
+		return scalar, constant, "ISTHMUS", nil
+
+	case MethodSelectorJovian:
+		// Jovian calldata layout:
+		// operatorFeeScalar and operatorFeeConstant encoded in calldata
+		if len(dataBytes) < 344 {
+			return nil, nil, "", fmt.Errorf("jovian calldata too short: len=%d", len(dataBytes))
+		}
+		scalarHex := dataBytes[320:328]
+		constantHex := dataBytes[328:344]
+		scalar, ok1 := new(big.Int).SetString(scalarHex, 16)
+		constant, ok2 := new(big.Int).SetString(constantHex, 16)
+		if !ok1 || !ok2 {
+			return nil, nil, "", fmt.Errorf("failed to parse jovian operator fee hex")
+		}
+		return scalar, constant, "JOVIAN", nil
+
+	default:
+		return nil, nil, "", fmt.Errorf("unrecognized L1 attributes selector: %s", selector)
+	}
+}
+
+// CalculateJovianOperatorFee calculates post-Jovian OP Stack operator fee:
+// operatorFee = operatorFeeConstant + (operatorFeeScalar * gasUsed * 100)
+func CalculateJovianOperatorFee(gasUsed *big.Int, constant *big.Int, scalar *big.Int) *big.Int {
+	if gasUsed == nil || constant == nil || scalar == nil {
+		return big.NewInt(0)
+	}
+	scaled := new(big.Int).Mul(scalar, gasUsed)
+	scaled.Mul(scaled, big.NewInt(100))
+	return new(big.Int).Add(constant, scaled)
+}
+
+// calculateTotalTxFee calculates execution fee + OP Stack L1 data fee + operator fee + blob fee for sender
+func calculateTotalTxFee(tx blockscoutTxItem, userAddress string, net model.BlockchainNetwork) string {
 	if !strings.EqualFold(tx.From, userAddress) {
+		return "0"
+	}
+
+	isOPStack := net == model.BlockchainNetworkBase || net == model.BlockchainNetworkOptimism
+	// OP Stack deposit transactions (type 0x7e / 126 or gasPrice == 0 with no L1 fee) pay 0 L2 fees
+	if isOPStack && (tx.Type == "0x7e" || tx.Type == "126" || (tx.GasPrice == "0" && (tx.L1Fee == "" || tx.L1Fee == "0"))) {
 		return "0"
 	}
 
@@ -77,16 +170,43 @@ func calculateTotalTxFee(tx blockscoutTxItem, userAddress string) string {
 		return "0"
 	}
 
-	executionFee := new(big.Int).Mul(gasUsed, gasPrice)
+	totalFee := new(big.Int).Mul(gasUsed, gasPrice)
 
+	// OP Stack L1 data fee (Base, Optimism, Arbitrum)
 	if tx.L1Fee != "" && tx.L1Fee != "0" {
 		if l1Fee, okL1 := parseBigInt(tx.L1Fee); okL1 && l1Fee.Sign() > 0 {
-			return new(big.Int).Add(executionFee, l1Fee).String()
+			totalFee.Add(totalFee, l1Fee)
 		}
 	}
 
-	return executionFee.String()
+	// OP Stack Isthmus / Jovian operator fee (Base, Optimism)
+	if tx.OperatorFee != "" && tx.OperatorFee != "0" {
+		if opFee, okOp := parseBigInt(tx.OperatorFee); okOp && opFee.Sign() > 0 {
+			totalFee.Add(totalFee, opFee)
+		}
+	}
+
+	// EIP-4844 blob fee applies ONLY to Ethereum L1 transactions.
+	// On OP Stack rollups (Base, Optimism), blobGasUsed represents the L1 DA footprint (Jovian)
+	// which is already accounted inside l1Fee and must NOT be added as an L2 blob fee.
+	if net == model.BlockchainNetworkEthereum {
+		if tx.BlobFee != "" && tx.BlobFee != "0" {
+			if bFee, okB := parseBigInt(tx.BlobFee); okB && bFee.Sign() > 0 {
+				totalFee.Add(totalFee, bFee)
+			}
+		} else if tx.BlobGasUsed != "" && tx.BlobGasPrice != "" {
+			if bGu, okBGu := parseBigInt(tx.BlobGasUsed); okBGu && bGu.Sign() > 0 {
+				if bGp, okBGp := parseBigInt(tx.BlobGasPrice); okBGp && bGp.Sign() > 0 {
+					blobFee := new(big.Int).Mul(bGu, bGp)
+					totalFee.Add(totalFee, blobFee)
+				}
+			}
+		}
+	}
+
+	return totalFee.String()
 }
+
 
 type blockscoutResponse struct {
 	Status  string             `json:"status"`
@@ -160,8 +280,8 @@ func (c *BlockscoutClient) FetchTransfers(ctx context.Context, net model.Blockch
 			ts, _ := strconv.ParseInt(tx.TimeStamp, 10, 64)
 			execTime := time.Unix(ts, 0).UTC()
 
-			// Calculate gas fee = executionFee + L1 data fee, attributed only to sender
-			feeStr := calculateTotalTxFee(tx, address)
+			// Calculate gas fee = executionFee + L1 data fee + operatorFee + blobFee, attributed only to sender
+			feeStr := calculateTotalTxFee(tx, address, net)
 
 			priceStr := tx.EffectiveGasPrice
 			if priceStr == "" {
@@ -174,19 +294,59 @@ func (c *BlockscoutClient) FetchTransfers(ctx context.Context, net model.Blockch
 				}
 			}
 
+			blobFeeStr := "0"
+			if net == model.BlockchainNetworkEthereum {
+				if tx.BlobFee != "" && tx.BlobFee != "0" {
+					blobFeeStr = tx.BlobFee
+				} else if tx.BlobGasUsed != "" && tx.BlobGasPrice != "" {
+					if bGu, okBGu := parseBigInt(tx.BlobGasUsed); okBGu && bGu.Sign() > 0 {
+						if bGp, okBGp := parseBigInt(tx.BlobGasPrice); okBGp && bGp.Sign() > 0 {
+							blobFeeStr = new(big.Int).Mul(bGu, bGp).String()
+						}
+					}
+				}
+			}
+
+			opFeeStr := "0"
+			operatorFeeStatus := "NOT_APPLICABLE"
+			isOPStack := net == model.BlockchainNetworkBase || net == model.BlockchainNetworkOptimism
+			isDepositTx := isOPStack && (tx.Type == "0x7e" || tx.Type == "126" || (tx.GasPrice == "0" && (tx.L1Fee == "" || tx.L1Fee == "0")))
+
+			if isOPStack {
+				if isDepositTx {
+					operatorFeeStatus = "EXEMPT_DEPOSIT_TX"
+					opFeeStr = "0"
+				} else if tx.OperatorFee != "" && tx.OperatorFee != "0" {
+					opFeeStr = tx.OperatorFee
+					operatorFeeStatus = "AVAILABLE"
+				} else if tx.OperatorFee == "0" {
+					opFeeStr = "0"
+					operatorFeeStatus = "EXPLICIT_ZERO"
+				} else {
+					// Missing from Blockscout payload: Never silently claim it is confirmed zero!
+					opFeeStr = "0"
+					operatorFeeStatus = "UNAVAILABLE_FROM_PROVIDER"
+				}
+			}
+
 			metaMap := map[string]interface{}{
-				"blockNumber":       tx.BlockNumber,
-				"timeStamp":         tx.TimeStamp,
-				"hash":              tx.Hash,
-				"from":              tx.From,
-				"to":                tx.To,
-				"gasUsed":           tx.GasUsed,
-				"gasPrice":          tx.GasPrice,
-				"effectiveGasPrice": tx.EffectiveGasPrice,
-				"l1Fee":             tx.L1Fee,
-				"execution_fee":     execFeeStr,
-				"l1_data_fee":       tx.L1Fee,
-				"total_fee":         feeStr,
+				"blockNumber":          tx.BlockNumber,
+				"timeStamp":            tx.TimeStamp,
+				"hash":                 tx.Hash,
+				"from":                 tx.From,
+				"to":                   tx.To,
+				"gasUsed":              tx.GasUsed,
+				"gasPrice":             tx.GasPrice,
+				"effectiveGasPrice":    tx.EffectiveGasPrice,
+				"l1Fee":                tx.L1Fee,
+				"execution_fee":        execFeeStr,
+				"l1_data_fee":          tx.L1Fee,
+				"operator_fee":         opFeeStr,
+				"operator_fee_status":  operatorFeeStatus,
+				"operator_fee_missing": operatorFeeStatus == "UNAVAILABLE_FROM_PROVIDER",
+				"is_deposit_tx":        isDepositTx,
+				"blob_fee":             blobFeeStr,
+				"total_fee":            feeStr,
 			}
 			rawMeta, _ := json.Marshal(metaMap)
 

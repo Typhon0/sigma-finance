@@ -47,6 +47,26 @@ const mockDispositions = [
 	},
 ];
 
+// Closed lot backing the disposition: the ledger refuses to print a sum
+// whose currency basis it cannot resolve, so the disposition's source lot
+// must exist (and record its currency) for the gross-gain line to print.
+const mockClosedLots = [
+	{
+		id: "lot-1",
+		positionId: "pos-1",
+		status: "CLOSED",
+		currency: "EUR",
+		remainingQuantity: 0,
+		initialQuantity: 10,
+		costBasisPerUnit: 100,
+		currentPrice: 0,
+		currentValue: 0,
+		unrealizedGainLoss: null,
+		acquiredAt: "2023-01-15T10:00:00Z",
+		method: "PMP",
+	},
+];
+
 const mockQueryState = {
 	lots: [] as any[],
 	dispositions: mockDispositions as any[],
@@ -79,19 +99,14 @@ vi.mock("@apollo/client", async () => {
 
 describe("TaxLotsTab PEA and Jurisdiction behavior", () => {
 	beforeEach(() => {
-		mockQueryState.lots = [];
+		mockQueryState.lots = mockClosedLots;
 		mockQueryState.dispositions = mockDispositions;
 		mockQueryState.error = null;
 	});
 
 	it("renders PEA banner and marks gains as exempt when portfolio wrapper is PEA", () => {
 		render(
-			<TaxLotsTab
-				positionId="pos-1"
-				symbol="MC.PA"
-				currency="EUR"
-				portfolioTaxWrapper="PEA"
-			/>,
+			<TaxLotsTab positionId="pos-1" symbol="MC.PA" currency="EUR" portfolioTaxWrapper="PEA" />,
 		);
 
 		// PEA banner must appear

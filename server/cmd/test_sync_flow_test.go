@@ -72,34 +72,36 @@ func (m *mockE2ESyncAdapter) FetchTransactions(ctx context.Context, cred *model.
 // In-Memory Unit of Work for E2E integration test
 type e2eSyncUOW struct {
 	repository.IUnitOfWork
-	users        map[string]*model.User
-	portfolios   map[string]*model.Portfolio
-	accounts     map[string]*model.Account
-	assets       map[string]*model.Asset
-	positions    map[string]*model.Position
-	taxLots      map[string]*model.TaxLot
-	transactions map[string]*model.Transaction
-	credentials  map[string]*model.SyncCredential
-	connections  map[string]*model.SyncConnection
-	syncRuns     map[string]*model.SyncRun
-	assetPrices  map[string]*model.AssetPrice
-	instruments  map[string]*model.Instrument
+	users              map[string]*model.User
+	portfolios         map[string]*model.Portfolio
+	accounts           map[string]*model.Account
+	assets             map[string]*model.Asset
+	positions          map[string]*model.Position
+	taxLots            map[string]*model.TaxLot
+	taxLotDispositions map[string]*model.TaxLotDisposition
+	transactions       map[string]*model.Transaction
+	credentials        map[string]*model.SyncCredential
+	connections        map[string]*model.SyncConnection
+	syncRuns           map[string]*model.SyncRun
+	assetPrices        map[string]*model.AssetPrice
+	instruments        map[string]*model.Instrument
 }
 
 func newE2ESyncUOW() *e2eSyncUOW {
 	return &e2eSyncUOW{
-		users:        make(map[string]*model.User),
-		portfolios:   make(map[string]*model.Portfolio),
-		accounts:     make(map[string]*model.Account),
-		assets:       make(map[string]*model.Asset),
-		positions:    make(map[string]*model.Position),
-		taxLots:      make(map[string]*model.TaxLot),
-		transactions: make(map[string]*model.Transaction),
-		credentials:  make(map[string]*model.SyncCredential),
-		connections:  make(map[string]*model.SyncConnection),
-		syncRuns:     make(map[string]*model.SyncRun),
-		assetPrices:  make(map[string]*model.AssetPrice),
-		instruments:  make(map[string]*model.Instrument),
+		users:              make(map[string]*model.User),
+		portfolios:         make(map[string]*model.Portfolio),
+		accounts:           make(map[string]*model.Account),
+		assets:             make(map[string]*model.Asset),
+		positions:          make(map[string]*model.Position),
+		taxLots:            make(map[string]*model.TaxLot),
+		taxLotDispositions: make(map[string]*model.TaxLotDisposition),
+		transactions:       make(map[string]*model.Transaction),
+		credentials:        make(map[string]*model.SyncCredential),
+		connections:        make(map[string]*model.SyncConnection),
+		syncRuns:           make(map[string]*model.SyncRun),
+		assetPrices:        make(map[string]*model.AssetPrice),
+		instruments:        make(map[string]*model.Instrument),
 	}
 }
 
@@ -107,12 +109,15 @@ func (u *e2eSyncUOW) Do(ctx context.Context, fn func(uow repository.IUnitOfWork)
 	return fn(u)
 }
 
-func (u *e2eSyncUOW) Sync() repository.ISyncRepository               { return &e2eSyncRepo{u: u} }
-func (u *e2eSyncUOW) Account() repository.IAccountRepository         { return &e2eAccountRepo{u: u} }
-func (u *e2eSyncUOW) Portfolio() repository.IPortfolioRepository     { return &e2ePortfolioRepo{u: u} }
-func (u *e2eSyncUOW) Asset() repository.IAssetRepository             { return &e2eAssetRepo{u: u} }
-func (u *e2eSyncUOW) Position() repository.IPositionRepository       { return &e2ePositionRepo{u: u} }
-func (u *e2eSyncUOW) TaxLot() repository.ITaxLotRepository           { return &e2eTaxLotRepo{u: u} }
+func (u *e2eSyncUOW) Sync() repository.ISyncRepository           { return &e2eSyncRepo{u: u} }
+func (u *e2eSyncUOW) Account() repository.IAccountRepository     { return &e2eAccountRepo{u: u} }
+func (u *e2eSyncUOW) Portfolio() repository.IPortfolioRepository { return &e2ePortfolioRepo{u: u} }
+func (u *e2eSyncUOW) Asset() repository.IAssetRepository         { return &e2eAssetRepo{u: u} }
+func (u *e2eSyncUOW) Position() repository.IPositionRepository   { return &e2ePositionRepo{u: u} }
+func (u *e2eSyncUOW) TaxLot() repository.ITaxLotRepository       { return &e2eTaxLotRepo{u: u} }
+func (u *e2eSyncUOW) TaxLotDisposition() repository.ITaxLotDispositionRepository {
+	return &e2eTaxLotDispositionRepo{u: u}
+}
 func (u *e2eSyncUOW) Transaction() repository.ITransactionRepository { return &e2eTxRepo{u: u} }
 func (u *e2eSyncUOW) AssetPrice() repository.IPriceRepository        { return &e2ePriceRepo{u: u} }
 func (u *e2eSyncUOW) Instrument() repository.IInstrumentRepository   { return &e2eInstrumentRepo{u: u} }
@@ -161,6 +166,11 @@ func (r *e2eSyncRepo) UpdateCredential(ctx context.Context, cred *model.SyncCred
 	return nil
 }
 
+func (r *e2eSyncRepo) DeleteCredential(ctx context.Context, id string) error {
+	delete(r.u.credentials, id)
+	return nil
+}
+
 func (r *e2eSyncRepo) CreateConnection(ctx context.Context, conn *model.SyncConnection) error {
 	if conn.ID == "" {
 		conn.ID = fmt.Sprintf("conn-%d", time.Now().UnixNano())
@@ -197,6 +207,11 @@ func (r *e2eSyncRepo) ListConnectionsByPortfolio(ctx context.Context, portfolioI
 
 func (r *e2eSyncRepo) UpdateConnection(ctx context.Context, conn *model.SyncConnection) error {
 	r.u.connections[conn.ID] = conn
+	return nil
+}
+
+func (r *e2eSyncRepo) DeleteConnection(ctx context.Context, id string) error {
+	delete(r.u.connections, id)
 	return nil
 }
 
@@ -303,6 +318,23 @@ func (r *e2eAssetRepo) UpsertTradeable(ctx context.Context, asset *model.Asset) 
 	return asset, nil
 }
 
+func (r *e2eAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) {
+	var result []model.Asset
+	for _, a := range r.u.assets {
+		if filter.Symbol != nil && (a.Symbol == nil || *a.Symbol != *filter.Symbol) {
+			continue
+		}
+		if filter.AssetType != nil && a.Type != *filter.AssetType {
+			continue
+		}
+		if filter.IsTradeable != nil && a.IsTradeable != *filter.IsTradeable {
+			continue
+		}
+		result = append(result, *a)
+	}
+	return result, nil
+}
+
 type e2ePositionRepo struct {
 	repository.IPositionRepository
 	u *e2eSyncUOW
@@ -380,6 +412,31 @@ func (r *e2eTaxLotRepo) FindOpenByPositionID(ctx context.Context, positionID str
 	return res, nil
 }
 
+func (r *e2eTaxLotRepo) Update(ctx context.Context, lot *model.TaxLot) error {
+	r.u.taxLots[lot.ID] = lot
+	return nil
+}
+
+func (r *e2eTaxLotRepo) Delete(ctx context.Context, id string) error {
+	delete(r.u.taxLots, id)
+	return nil
+}
+
+type e2eTaxLotDispositionRepo struct {
+	repository.ITaxLotDispositionRepository
+	u *e2eSyncUOW
+}
+
+func (r *e2eTaxLotDispositionRepo) FindByPositionID(ctx context.Context, positionID string) ([]*model.TaxLotDisposition, error) {
+	var res []*model.TaxLotDisposition
+	for _, d := range r.u.taxLotDispositions {
+		if d.PositionID == positionID {
+			res = append(res, d)
+		}
+	}
+	return res, nil
+}
+
 type e2eTxRepo struct {
 	repository.ITransactionRepository
 	u *e2eSyncUOW
@@ -439,15 +496,15 @@ func (r *e2eInstrumentRepo) GetByGlobalIdentifier(ctx context.Context, field, va
 }
 
 // TestFullSyncLifecycle verifies the entire end-to-end sync lifecycle:
-// 1. Initializing UoW and SyncService.
-// 2. Registering an encrypted credential in the database.
-// 3. Creating a connection linked to a test portfolio.
-// 4. Auto-provisioning an account via LinkAccount.
-// 5. Triggering sync through SyncService with cash balances, holdings, and trades.
-// 6. Asserting holdings match snapshot, cash is recorded, transactions are recorded & deduplicated,
-//    and residual tax lots are created.
-// 7. Asserting audit log in sync_runs is marked COMPLETED.
-// 8. Re-running sync to assert idempotency and trade deduplication.
+//  1. Initializing UoW and SyncService.
+//  2. Registering an encrypted credential in the database.
+//  3. Creating a connection linked to a test portfolio.
+//  4. Auto-provisioning an account via LinkAccount.
+//  5. Triggering sync through SyncService with cash balances, holdings, and trades.
+//  6. Asserting holdings match snapshot, cash is recorded, transactions are recorded & deduplicated,
+//     and residual tax lots are created.
+//  7. Asserting audit log in sync_runs is marked COMPLETED.
+//  8. Re-running sync to assert idempotency and trade deduplication.
 func TestFullSyncLifecycle(t *testing.T) {
 	model.SetEncryptionKey(testEncryptionKey)
 	ctx := context.Background()

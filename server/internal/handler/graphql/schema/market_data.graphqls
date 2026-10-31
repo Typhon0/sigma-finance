@@ -64,6 +64,7 @@ type MarketDataCredential {
     provider: String!
     isEnabled: Boolean!
     priority: Int!
+    source: String
     lastValidatedAt: Time
     createdAt: Time!
     updatedAt: Time!

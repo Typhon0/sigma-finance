@@ -153,6 +153,198 @@ func TestSyncService_ReconciliationSnapshotWithResidualTaxLot(t *testing.T) {
 	assert.Equal(t, model.TaxLotStatusOpen, baselineLot.Status)
 }
 
+func TestSyncService_PlaceholderTaxLotDisappearsWhenHistoryExplainsTheHolding(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	btcAsset := &model.Asset{ID: "asset-btc", Symbol: strPtr("BTC"), Name: "Bitcoin", Type: model.AssetTypeCrypto, IsTradeable: true}
+	uow.assets[btcAsset.ID] = btcAsset
+
+	holding := decimal.RequireFromString("0.08330202")
+	pos := &model.Position{
+		ID:                  "pos-btc",
+		PortfolioID:         "portfolio-1",
+		AccountID:           "acc-1",
+		AssetID:             btcAsset.ID,
+		Quantity:            holding,
+		OwnershipPercentage: decimal.NewFromInt(100),
+		QuoteCurrency:       model.CurrencyEUR,
+	}
+	uow.positions[pos.ID] = pos
+
+	// What a truncated ledger import left behind: no transactions at all, and a
+	// placeholder lot covering the whole holding, dated at the sync.
+	uow.taxLots["lot-btc-placeholder"] = &model.TaxLot{
+		ID:                "lot-btc-placeholder",
+		PortfolioID:       "portfolio-1",
+		PositionID:        pos.ID,
+		AssetID:           btcAsset.ID,
+		AcquiredAt:        time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC),
+		InitialQuantity:   holding,
+		RemainingQuantity: holding,
+		CostBasisPerUnit:  decimal.Zero,
+		TotalCostBasis:    0,
+		Currency:          model.CurrencyEUR,
+		Status:            model.TaxLotStatusOpen,
+	}
+
+	boughtAt := time.Date(2024, 11, 5, 9, 30, 0, 0, time.UTC)
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawHoldings: []syncservice.RawHolding{
+			{ExternalID: "ext-btc", Symbol: "BTC", Name: "Bitcoin", AssetType: model.AssetTypeCrypto, Quantity: holding, Currency: model.CurrencyEUR},
+		},
+		rawTransactions: []syncservice.RawTransaction{
+			{
+				ExternalID:        "kraken-buy-btc",
+				Type:              model.TransactionTypeBuy,
+				Symbol:            "BTC",
+				Name:              "BTC",
+				Quantity:          &holding,
+				UnitPriceAmount:   decPtr(decimal.NewFromInt(80000)),
+				UnitPriceCurrency: model.CurrencyEUR,
+				Amount:            model.Money(6664162),
+				Currency:          model.CurrencyEUR,
+				ExecutedAt:        boughtAt,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	require.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	lots, err := uow.TaxLot().FindByPositionID(ctx, pos.ID)
+	require.NoError(t, err)
+	require.Len(t, lots, 1, "the imported buy must replace the placeholder lot, not stack on top of it")
+
+	assert.NotNil(t, lots[0].TransactionID)
+	assert.True(t, boughtAt.Equal(lots[0].AcquiredAt), "the lot must carry the Kraken buy date, got %s", lots[0].AcquiredAt)
+	assert.True(t, holding.Equal(lots[0].RemainingQuantity))
+}
+
+func TestSyncService_PlaceholderTaxLotTracksTheUnexplainedQuantity(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	btcAsset := &model.Asset{ID: "asset-btc", Symbol: strPtr("BTC"), Name: "Bitcoin", Type: model.AssetTypeCrypto, IsTradeable: true}
+	uow.assets[btcAsset.ID] = btcAsset
+
+	pos := &model.Position{
+		ID:                  "pos-btc",
+		PortfolioID:         "portfolio-1",
+		AccountID:           "acc-1",
+		AssetID:             btcAsset.ID,
+		Quantity:            decimal.NewFromInt(1),
+		OwnershipPercentage: decimal.NewFromInt(100),
+		QuoteCurrency:       model.CurrencyEUR,
+	}
+	uow.positions[pos.ID] = pos
+
+	boughtAt := time.Date(2024, 3, 4, 10, 0, 0, 0, time.UTC)
+
+	// 0.4 BTC are explained by an imported buy with its own lot.
+	uow.transactions["tx-btc-buy"] = &model.Transaction{
+		ID:                "tx-btc-buy",
+		UserID:            "user-1",
+		AccountID:         strPtr("acc-1"),
+		PositionID:        strPtr(pos.ID),
+		Type:              model.TransactionTypeBuy,
+		Amount:            model.Money(1200000),
+		Quantity:          decPtr(decimal.RequireFromString("0.4")),
+		UnitPriceAmount:   decPtr(decimal.NewFromInt(30000)),
+		UnitPriceCurrency: model.CurrencyEUR,
+		ExternalID:        strPtr("kraken-buy-btc"),
+		ExecutedAt:        boughtAt,
+	}
+	uow.taxLots["lot-btc-buy"] = &model.TaxLot{
+		ID:                "lot-btc-buy",
+		PortfolioID:       "portfolio-1",
+		PositionID:        pos.ID,
+		AssetID:           btcAsset.ID,
+		TransactionID:     strPtr("tx-btc-buy"),
+		AcquiredAt:        boughtAt,
+		InitialQuantity:   decimal.RequireFromString("0.4"),
+		RemainingQuantity: decimal.RequireFromString("0.4"),
+		CostBasisPerUnit:  decimal.NewFromInt(30000),
+		TotalCostBasis:    model.Money(1200000),
+		Currency:          model.CurrencyEUR,
+		Status:            model.TaxLotStatusOpen,
+	}
+
+	// The remaining 0.6 are unexplained, so the placeholder survives but must
+	// shrink to that residual and stop claiming the sync date.
+	uow.taxLots["lot-btc-placeholder"] = &model.TaxLot{
+		ID:                "lot-btc-placeholder",
+		PortfolioID:       "portfolio-1",
+		PositionID:        pos.ID,
+		AssetID:           btcAsset.ID,
+		AcquiredAt:        time.Date(2026, 10, 26, 12, 0, 0, 0, time.UTC),
+		InitialQuantity:   decimal.NewFromInt(1),
+		RemainingQuantity: decimal.NewFromInt(1),
+		CostBasisPerUnit:  decimal.Zero,
+		TotalCostBasis:    0,
+		Currency:          model.CurrencyEUR,
+		Status:            model.TaxLotStatusOpen,
+	}
+
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawHoldings: []syncservice.RawHolding{
+			{ExternalID: "ext-btc", Symbol: "BTC", Name: "Bitcoin", AssetType: model.AssetTypeCrypto, Quantity: decimal.NewFromInt(1), Currency: model.CurrencyEUR},
+		},
+		rawTransactions: []syncservice.RawTransaction{
+			{
+				ExternalID:        "kraken-buy-btc",
+				Type:              model.TransactionTypeBuy,
+				Symbol:            "BTC",
+				Name:              "BTC",
+				Quantity:          decPtr(decimal.RequireFromString("0.4")),
+				UnitPriceAmount:   decPtr(decimal.NewFromInt(30000)),
+				UnitPriceCurrency: model.CurrencyEUR,
+				Amount:            model.Money(1200000),
+				Currency:          model.CurrencyEUR,
+				ExecutedAt:        boughtAt,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	_, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+
+	lots, err := uow.TaxLot().FindByPositionID(ctx, pos.ID)
+	require.NoError(t, err)
+	require.Len(t, lots, 2)
+
+	var baseline *model.TaxLot
+	for _, lot := range lots {
+		if lot.TransactionID == nil {
+			baseline = lot
+		}
+	}
+	require.NotNil(t, baseline)
+	assert.Equal(t, "lot-btc-placeholder", baseline.ID, "the existing placeholder must be updated, not duplicated")
+	assert.True(t, baseline.RemainingQuantity.Equal(decimal.RequireFromString("0.6")), "expected 0.6 unexplained, got %s", baseline.RemainingQuantity.String())
+	assert.True(t, boughtAt.Equal(baseline.AcquiredAt), "the placeholder must borrow the earliest buy date, got %s", baseline.AcquiredAt)
+
+	// Repeating the sync must not stack another placeholder on top.
+	_, err = service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	lots, err = uow.TaxLot().FindByPositionID(ctx, pos.ID)
+	require.NoError(t, err)
+	require.Len(t, lots, 2)
+}
+
 func TestSyncService_UnmatchedInstrumentCreatesPlaceholder(t *testing.T) {
 	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	ctx := context.Background()
@@ -845,6 +1037,220 @@ func TestSyncService_ReconcileTransactions_ISINFallback(t *testing.T) {
 	assert.Equal(t, pos.ID, *tx.PositionID)
 }
 
+func TestSyncService_DiscoverAndCreateConnections_DuplicateNameSuffixing(t *testing.T) {
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-main", "cred-snaptrade", "conn-main", "SNAPTRADE")
+
+	service := syncservice.NewSyncService(uow, nil)
+	adapter := &MockSyncAdapter{
+		provider: "SNAPTRADE",
+		rawAccounts: []syncservice.RawAccount{
+			{
+				ExternalID:  "tr-cto-1111",
+				Name:        "Trade Republic",
+				Type:        model.AccountTypeBroker,
+				Currency:    model.CurrencyEUR,
+				Institution: "Trade Republic",
+			},
+			{
+				ExternalID:  "tr-pea-2222",
+				Name:        "Trade Republic",
+				Type:        model.AccountTypeBroker,
+				Currency:    model.CurrencyEUR,
+				Institution: "Trade Republic",
+			},
+		},
+	}
+	service.RegisterAdapter(adapter)
+
+	conns, err := service.DiscoverAndCreateConnections(ctx, "user-1", "portfolio-1", "SNAPTRADE")
+	require.NoError(t, err)
+	require.Len(t, conns, 2)
+
+	acc1, err := uow.Account().GetByID(ctx, *conns[0].AccountID)
+	require.NoError(t, err)
+	acc2, err := uow.Account().GetByID(ctx, *conns[1].AccountID)
+	require.NoError(t, err)
+
+	assert.Equal(t, "Trade Republic", acc1.Name)
+	assert.Equal(t, "Trade Republic (2222)", acc2.Name)
+}
+
+func TestSyncService_Reconciliation_MultiAccountQuantityAggregation(t *testing.T) {
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-snaptrade", "conn-1", "SNAPTRADE")
+
+	// Create second account and connection in same portfolio
+	acc2 := &model.Account{
+		ID:           "acc-2",
+		UserID:       "user-1",
+		PortfolioID:  "portfolio-1",
+		Name:         "Trade Republic (2222)",
+		Type:         model.AccountTypeBroker,
+		Currency:     model.CurrencyEUR,
+		SyncProvider: "SNAPTRADE",
+	}
+	_, _ = uow.Account().Create(ctx, acc2)
+
+	conn2 := &model.SyncConnection{
+		ID:                "conn-2",
+		UserID:            "user-1",
+		PortfolioID:       "portfolio-1",
+		CredentialID:      "cred-snaptrade",
+		AccountID:         strPtr("acc-2"),
+		Provider:          "SNAPTRADE",
+		ExternalAccountID: "tr-pea-2222",
+		InstitutionName:   "Trade Republic",
+		SyncStatus:        model.SyncConnectionStatusIdle,
+	}
+	_ = uow.Sync().CreateConnection(ctx, conn2)
+
+	// Single shared Asset (e.g. Apple)
+	aaplAsset := &model.Asset{
+		ID:     "asset-aapl",
+		Type:   model.AssetTypeStock,
+		Name:   "Apple Inc.",
+		Symbol: strPtr("AAPL"),
+	}
+	uow.assets[aaplAsset.ID] = aaplAsset
+
+	service := syncservice.NewSyncService(uow, nil)
+
+	// Sync conn-1 with 10 AAPL
+	adapter1 := &MockSyncAdapter{
+		provider: "SNAPTRADE",
+		rawHoldings: []syncservice.RawHolding{
+			{
+				Symbol:           "AAPL",
+				Quantity:         decimal.NewFromInt(10),
+				CostBasisPerUnit: decPtr(decimal.NewFromInt(150)),
+				Currency:         model.CurrencyUSD,
+			},
+		},
+	}
+	service.RegisterAdapter(adapter1)
+	run1, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run1.Status)
+
+	pa1, err := uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, "portfolio-1", aaplAsset.ID)
+	require.NoError(t, err)
+	assert.Equal(t, float64(10), pa1.Quantity)
+
+	// Sync conn-2 with 5 AAPL
+	adapter2 := &MockSyncAdapter{
+		provider: "SNAPTRADE",
+		rawHoldings: []syncservice.RawHolding{
+			{
+				Symbol:           "AAPL",
+				Quantity:         decimal.NewFromInt(5),
+				CostBasisPerUnit: decPtr(decimal.NewFromInt(180)),
+				Currency:         model.CurrencyUSD,
+			},
+		},
+	}
+	service.RegisterAdapter(adapter2)
+	run2, err := service.TriggerSync(ctx, "conn-2")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run2.Status)
+
+	// Check that portfolio_asset now has 10 + 5 = 15 total quantity!
+	pa2, err := uow.PortfolioAsset().FindByPortfolioAndAsset(ctx, "portfolio-1", aaplAsset.ID)
+	require.NoError(t, err)
+	assert.Equal(t, float64(15), pa2.Quantity)
+	// Weighted average price: (10*150 + 5*180) / 15 = (1500 + 900) / 15 = 2400 / 15 = 160
+	assert.Equal(t, float64(160), pa2.AveragePurchasePrice)
+}
+
+func TestSyncService_CryptoInstrumentMatchingDoesNotMatchStock(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "KRAKEN")
+
+	// Stock instrument named FLR exists in catalog
+	stockInst := &model.Instrument{
+		ID:               "inst-flr-stock",
+		NormalizedSymbol: "FLR",
+		NormalizedName:   "Fluor Corporation",
+		AssetType:        model.InstrumentAssetTypeStock,
+		ProviderSource:   "financedatabase",
+	}
+	uow.instruments[stockInst.ID] = stockInst
+
+	// Adapter returns crypto holding for FLR
+	adapter := &MockSyncAdapter{
+		provider: "KRAKEN",
+		rawHoldings: []syncservice.RawHolding{
+			{
+				Symbol:    "FLR",
+				AssetType: model.AssetTypeCrypto,
+				Quantity:  decimal.NewFromFloat(182.60),
+				Currency:  model.CurrencyUSD,
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	// Verify the created position's asset is CRYPTO and NOT linked to the stock instrument
+	positions, err := uow.Position().GetPortfolioPositions(ctx, "portfolio-1")
+	require.NoError(t, err)
+	require.Len(t, positions, 1)
+
+	asset := positions[0].Asset
+	if asset == nil {
+		asset, err = uow.Asset().GetByID(ctx, positions[0].AssetID)
+		require.NoError(t, err)
+	}
+
+	assert.Equal(t, model.AssetTypeCrypto, asset.Type, "crypto holding must NOT be assigned AssetTypeStock")
+	assert.NotEqual(t, "inst-flr-stock", asset.InstrumentID, "crypto holding must NOT be linked to stock instrument")
+}
+
+func TestSyncService_RepeatedCashSyncDoesNotDuplicateCashAsset(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "KRAKEN")
+
+	adapter := &MockSyncAdapter{
+		provider: "KRAKEN",
+		rawBalances: []syncservice.RawBalance{
+			{
+				Currency: model.CurrencyEUR,
+				Amount:   decimal.NewFromFloat(150.00),
+			},
+		},
+	}
+
+	service := syncservice.NewSyncService(uow, nil)
+	service.RegisterAdapter(adapter)
+
+	// First sync
+	run1, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run1.Status)
+
+	// Second sync
+	run2, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run2.Status)
+
+	// Check total assets created
+	symbol := "EUR_CASH_acc-1"
+	cashAssets, err := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &symbol})
+	require.NoError(t, err)
+	assert.Len(t, cashAssets, 1, "repeated cash sync must reuse existing cash asset, not create duplicates")
+}
+
 // Helpers and in-memory Unit of Work for testing
 
 func decPtr(d decimal.Decimal) *decimal.Decimal { return &d }
@@ -852,34 +1258,38 @@ func strPtr(s string) *string                   { return &s }
 
 type syncTestUOW struct {
 	repository.IUnitOfWork
-	users        map[string]*model.User
-	portfolios   map[string]*model.Portfolio
-	accounts     map[string]*model.Account
-	assets       map[string]*model.Asset
-	positions    map[string]*model.Position
-	taxLots      map[string]*model.TaxLot
-	transactions map[string]*model.Transaction
-	credentials  map[string]*model.SyncCredential
-	connections  map[string]*model.SyncConnection
-	syncRuns     map[string]*model.SyncRun
-	assetPrices  map[string]*model.AssetPrice
-	instruments  map[string]*model.Instrument
+	users              map[string]*model.User
+	portfolios         map[string]*model.Portfolio
+	accounts           map[string]*model.Account
+	assets             map[string]*model.Asset
+	positions          map[string]*model.Position
+	taxLots            map[string]*model.TaxLot
+	taxLotDispositions map[string]*model.TaxLotDisposition
+	transactions       map[string]*model.Transaction
+	credentials        map[string]*model.SyncCredential
+	connections        map[string]*model.SyncConnection
+	syncRuns           map[string]*model.SyncRun
+	assetPrices        map[string]*model.AssetPrice
+	instruments        map[string]*model.Instrument
+	portfolioAssets    map[string]*model.PortfolioAsset
 }
 
 func newSyncTestUOW() *syncTestUOW {
 	return &syncTestUOW{
-		users:        make(map[string]*model.User),
-		portfolios:   make(map[string]*model.Portfolio),
-		accounts:     make(map[string]*model.Account),
-		assets:       make(map[string]*model.Asset),
-		positions:    make(map[string]*model.Position),
-		taxLots:      make(map[string]*model.TaxLot),
-		transactions: make(map[string]*model.Transaction),
-		credentials:  make(map[string]*model.SyncCredential),
-		connections:  make(map[string]*model.SyncConnection),
-		syncRuns:     make(map[string]*model.SyncRun),
-		assetPrices:  make(map[string]*model.AssetPrice),
-		instruments:  make(map[string]*model.Instrument),
+		users:              make(map[string]*model.User),
+		portfolios:         make(map[string]*model.Portfolio),
+		accounts:           make(map[string]*model.Account),
+		assets:             make(map[string]*model.Asset),
+		positions:          make(map[string]*model.Position),
+		taxLots:            make(map[string]*model.TaxLot),
+		taxLotDispositions: make(map[string]*model.TaxLotDisposition),
+		transactions:       make(map[string]*model.Transaction),
+		credentials:        make(map[string]*model.SyncCredential),
+		connections:        make(map[string]*model.SyncConnection),
+		syncRuns:           make(map[string]*model.SyncRun),
+		assetPrices:        make(map[string]*model.AssetPrice),
+		instruments:        make(map[string]*model.Instrument),
+		portfolioAssets:    make(map[string]*model.PortfolioAsset),
 	}
 }
 
@@ -925,15 +1335,50 @@ func (u *syncTestUOW) seedBaseEntities(userID, portfolioID, accountID, credID, c
 }
 
 // Repositories wiring for syncTestUOW
-func (u *syncTestUOW) Sync() repository.ISyncRepository               { return &syncTestSyncRepo{u: u} }
-func (u *syncTestUOW) Account() repository.IAccountRepository         { return &syncTestAccountRepo{u: u} }
-func (u *syncTestUOW) Portfolio() repository.IPortfolioRepository     { return &syncTestPortfolioRepo{u: u} }
-func (u *syncTestUOW) Asset() repository.IAssetRepository             { return &syncTestAssetRepo{u: u} }
-func (u *syncTestUOW) Position() repository.IPositionRepository       { return &syncTestPositionRepo{u: u} }
-func (u *syncTestUOW) TaxLot() repository.ITaxLotRepository           { return &syncTestTaxLotRepo{u: u} }
+func (u *syncTestUOW) Sync() repository.ISyncRepository       { return &syncTestSyncRepo{u: u} }
+func (u *syncTestUOW) Account() repository.IAccountRepository { return &syncTestAccountRepo{u: u} }
+func (u *syncTestUOW) Portfolio() repository.IPortfolioRepository {
+	return &syncTestPortfolioRepo{u: u}
+}
+func (u *syncTestUOW) Asset() repository.IAssetRepository       { return &syncTestAssetRepo{u: u} }
+func (u *syncTestUOW) Position() repository.IPositionRepository { return &syncTestPositionRepo{u: u} }
+func (u *syncTestUOW) TaxLot() repository.ITaxLotRepository     { return &syncTestTaxLotRepo{u: u} }
+func (u *syncTestUOW) TaxLotDisposition() repository.ITaxLotDispositionRepository {
+	return &syncTestTaxLotDispositionRepo{u: u}
+}
 func (u *syncTestUOW) Transaction() repository.ITransactionRepository { return &syncTestTxRepo{u: u} }
 func (u *syncTestUOW) AssetPrice() repository.IPriceRepository        { return &syncTestPriceRepo{u: u} }
-func (u *syncTestUOW) Instrument() repository.IInstrumentRepository   { return &syncTestInstrumentRepo{u: u} }
+func (u *syncTestUOW) Instrument() repository.IInstrumentRepository {
+	return &syncTestInstrumentRepo{u: u}
+}
+func (u *syncTestUOW) PortfolioAsset() repository.IPortfolioAssetRepository {
+	return &syncTestPortfolioAssetRepo{u: u}
+}
+
+type syncTestPortfolioAssetRepo struct {
+	repository.IPortfolioAssetRepository
+	u *syncTestUOW
+}
+
+func (r *syncTestPortfolioAssetRepo) FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.PortfolioAsset, error) {
+	key := portfolioID + ":" + assetID
+	if pa, ok := r.u.portfolioAssets[key]; ok {
+		return pa, nil
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *syncTestPortfolioAssetRepo) Create(ctx context.Context, pa *model.PortfolioAsset) (*model.PortfolioAsset, error) {
+	key := pa.PortfolioID + ":" + pa.AssetID
+	r.u.portfolioAssets[key] = pa
+	return pa, nil
+}
+
+func (r *syncTestPortfolioAssetRepo) Update(ctx context.Context, pa *model.PortfolioAsset) error {
+	key := pa.PortfolioID + ":" + pa.AssetID
+	r.u.portfolioAssets[key] = pa
+	return nil
+}
 
 type syncTestInstrumentRepo struct {
 	repository.IInstrumentRepository
@@ -980,6 +1425,11 @@ func (r *syncTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID s
 
 func (r *syncTestSyncRepo) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
 	r.u.credentials[cred.ID] = cred
+	return nil
+}
+
+func (r *syncTestSyncRepo) DeleteCredential(ctx context.Context, id string) error {
+	delete(r.u.credentials, id)
 	return nil
 }
 
@@ -1032,6 +1482,11 @@ func (r *syncTestSyncRepo) UpdateConnection(ctx context.Context, conn *model.Syn
 	return nil
 }
 
+func (r *syncTestSyncRepo) DeleteConnection(ctx context.Context, id string) error {
+	delete(r.u.connections, id)
+	return nil
+}
+
 func (r *syncTestSyncRepo) CreateSyncRun(ctx context.Context, run *model.SyncRun) error {
 	if run.ID == "" {
 		run.ID = "run-" + time.Now().Format("150405.000000")
@@ -1075,6 +1530,16 @@ func (r *syncTestAccountRepo) GetByID(ctx context.Context, id string) (*model.Ac
 func (r *syncTestAccountRepo) Update(ctx context.Context, acc *model.Account) error {
 	r.u.accounts[acc.ID] = acc
 	return nil
+}
+
+func (r *syncTestAccountRepo) GetAccountsByPortfolioID(ctx context.Context, portfolioID string) ([]model.Account, error) {
+	var res []model.Account
+	for _, a := range r.u.accounts {
+		if a.PortfolioID == portfolioID {
+			res = append(res, *a)
+		}
+	}
+	return res, nil
 }
 
 type syncTestPortfolioRepo struct {
@@ -1133,6 +1598,23 @@ func (r *syncTestAssetRepo) UpsertTradeable(ctx context.Context, asset *model.As
 	}
 	r.u.assets[asset.ID] = asset
 	return asset, nil
+}
+
+func (r *syncTestAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) {
+	var result []model.Asset
+	for _, a := range r.u.assets {
+		if filter.Symbol != nil && (a.Symbol == nil || *a.Symbol != *filter.Symbol) {
+			continue
+		}
+		if filter.AssetType != nil && a.Type != *filter.AssetType {
+			continue
+		}
+		if filter.IsTradeable != nil && a.IsTradeable != *filter.IsTradeable {
+			continue
+		}
+		result = append(result, *a)
+	}
+	return result, nil
 }
 
 type syncTestPositionRepo struct {
@@ -1211,6 +1693,31 @@ func (r *syncTestTaxLotRepo) FindOpenByPositionID(ctx context.Context, positionI
 	for _, l := range r.u.taxLots {
 		if l.PositionID == positionID && l.Status != model.TaxLotStatusClosed {
 			res = append(res, l)
+		}
+	}
+	return res, nil
+}
+
+func (r *syncTestTaxLotRepo) Update(ctx context.Context, lot *model.TaxLot) error {
+	r.u.taxLots[lot.ID] = lot
+	return nil
+}
+
+func (r *syncTestTaxLotRepo) Delete(ctx context.Context, id string) error {
+	delete(r.u.taxLots, id)
+	return nil
+}
+
+type syncTestTaxLotDispositionRepo struct {
+	repository.ITaxLotDispositionRepository
+	u *syncTestUOW
+}
+
+func (r *syncTestTaxLotDispositionRepo) FindByPositionID(ctx context.Context, positionID string) ([]*model.TaxLotDisposition, error) {
+	var res []*model.TaxLotDisposition
+	for _, d := range r.u.taxLotDispositions {
+		if d.PositionID == positionID {
+			res = append(res, d)
 		}
 	}
 	return res, nil

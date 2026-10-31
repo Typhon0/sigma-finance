@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sigma_finance/internal/domain/model"
 	"strconv"
 	"time"
 )
@@ -47,6 +48,11 @@ type Account struct {
 	UpdatedAt      time.Time       `json:"updatedAt"`
 }
 
+type AddCustomTokenInput struct {
+	WalletAccountID string `json:"walletAccountId"`
+	TokenAddress    string `json:"tokenAddress"`
+}
+
 type AddInstrumentHoldingInput struct {
 	PortfolioID          string     `json:"portfolioID"`
 	InstrumentID         string     `json:"instrumentID"`
@@ -54,6 +60,24 @@ type AddInstrumentHoldingInput struct {
 	AveragePurchasePrice float64    `json:"averagePurchasePrice"`
 	UnitPriceCurrency    *string    `json:"unitPriceCurrency,omitempty"`
 	PurchaseDate         *time.Time `json:"purchaseDate,omitempty"`
+}
+
+type AddMultiNetworkWalletInput struct {
+	PortfolioID string              `json:"portfolioId"`
+	Address     string              `json:"address"`
+	Networks    []BlockchainNetwork `json:"networks"`
+	Label       *string             `json:"label,omitempty"`
+	DeviceName  *string             `json:"deviceName,omitempty"`
+	DeviceType  *WalletDeviceType   `json:"deviceType,omitempty"`
+}
+
+type AddWalletAccountInput struct {
+	PortfolioID   string            `json:"portfolioId"`
+	Network       BlockchainNetwork `json:"network"`
+	AddressOrXpub string            `json:"addressOrXpub"`
+	IsXpub        *bool             `json:"isXpub,omitempty"`
+	Label         *string           `json:"label,omitempty"`
+	DeviceID      *string           `json:"deviceId,omitempty"`
 }
 
 type AggregatorAuthSession struct {
@@ -383,6 +407,14 @@ type BenchmarkResult struct {
 	Value float64 `json:"value"`
 }
 
+type BlockchainNetworkConfig struct {
+	Network        BlockchainNetwork `json:"network"`
+	RPCURL         string            `json:"rpcUrl"`
+	ExplorerAPIURL *string           `json:"explorerApiUrl,omitempty"`
+	Source         string            `json:"source"`
+	UpdatedAt      time.Time         `json:"updatedAt"`
+}
+
 type CalculationMethod struct {
 	Method      string             `json:"method"`
 	Parameters  []*MethodParameter `json:"parameters"`
@@ -575,6 +607,11 @@ type CreateUserInput struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type CreateWalletDeviceInput struct {
+	Name       string           `json:"name"`
+	DeviceType WalletDeviceType `json:"deviceType"`
 }
 
 type CreateWatchInput struct {
@@ -1155,6 +1192,7 @@ type MarketDataCredential struct {
 	Provider        string     `json:"provider"`
 	IsEnabled       bool       `json:"isEnabled"`
 	Priority        int32      `json:"priority"`
+	Source          *string    `json:"source,omitempty"`
 	LastValidatedAt *time.Time `json:"lastValidatedAt,omitempty"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
@@ -1810,6 +1848,7 @@ type SyncCredential struct {
 	ID        string    `json:"id"`
 	Provider  string    `json:"provider"`
 	Status    string    `json:"status"`
+	Source    *string   `json:"source,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -1979,6 +2018,12 @@ type UpdateAlertInput struct {
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods,omitempty"`
 }
 
+type UpdateBlockchainNetworkConfigInput struct {
+	Network        BlockchainNetwork `json:"network"`
+	RPCURL         string            `json:"rpcUrl"`
+	ExplorerAPIURL *string           `json:"explorerApiUrl,omitempty"`
+}
+
 type UpdateManualInstrumentInput struct {
 	Symbol           string              `json:"symbol"`
 	Name             string              `json:"name"`
@@ -2096,6 +2141,79 @@ type ValidationResult struct {
 	Message *string `json:"message,omitempty"`
 }
 
+type WalletAccount struct {
+	ID                  string                      `json:"id"`
+	PortfolioID         *string                     `json:"portfolioId,omitempty"`
+	DeviceID            *string                     `json:"deviceId,omitempty"`
+	Device              *WalletDevice               `json:"device,omitempty"`
+	Network             BlockchainNetwork           `json:"network"`
+	AddressOrXpub       string                      `json:"addressOrXpub"`
+	IsXpub              bool                        `json:"isXpub"`
+	Label               *string                     `json:"label,omitempty"`
+	IsActive            bool                        `json:"isActive"`
+	LastSyncAt          *time.Time                  `json:"lastSyncAt,omitempty"`
+	HistoryStatus       string                      `json:"historyStatus"`
+	CapabilityLevel     model.WalletCapabilityLevel `json:"capabilityLevel"`
+	DiscoveredAddresses *string                     `json:"discoveredAddresses,omitempty"`
+	LastSyncError       *string                     `json:"lastSyncError,omitempty"`
+	Balances            []*WalletBalance            `json:"balances"`
+	CreatedAt           time.Time                   `json:"createdAt"`
+	UpdatedAt           time.Time                   `json:"updatedAt"`
+}
+
+type WalletActivityReview struct {
+	ID               string    `json:"id"`
+	WalletActivityID string    `json:"walletActivityId"`
+	ReviewStatus     string    `json:"reviewStatus"`
+	SuggestedType    string    `json:"suggestedType"`
+	Notes            *string   `json:"notes,omitempty"`
+	CreatedAt        time.Time `json:"createdAt"`
+}
+
+type WalletBalance struct {
+	ID                 string     `json:"id"`
+	Symbol             string     `json:"symbol"`
+	Name               *string    `json:"name,omitempty"`
+	Decimals           int32      `json:"decimals"`
+	RawBalance         string     `json:"rawBalance"`
+	FormattedQuantity  float64    `json:"formattedQuantity"`
+	TokenAddress       *string    `json:"tokenAddress,omitempty"`
+	IsSpam             bool       `json:"isSpam"`
+	IsHidden           bool       `json:"isHidden"`
+	IsStale            bool       `json:"isStale"`
+	CostBasisPerUnit   *float64   `json:"costBasisPerUnit,omitempty"`
+	CostBasisCurrency  *string    `json:"costBasisCurrency,omitempty"`
+	CostBasisType      *string    `json:"costBasisType,omitempty"`
+	AutoEstimatedBasis *float64   `json:"autoEstimatedBasis,omitempty"`
+	AcquiredAt         *time.Time `json:"acquiredAt,omitempty"`
+	LastUpdatedAt      time.Time  `json:"lastUpdatedAt"`
+	CurrentPrice       *float64   `json:"currentPrice,omitempty"`
+	CurrentValue       *float64   `json:"currentValue,omitempty"`
+	DayChange24h       *float64   `json:"dayChange24h,omitempty"`
+	PriceUpdatedAt     *time.Time `json:"priceUpdatedAt,omitempty"`
+	PriceSource        *string    `json:"priceSource,omitempty"`
+	IsPriceResolved    bool       `json:"isPriceResolved"`
+}
+
+type WalletCUUsage struct {
+	BillingMonth  string  `json:"billingMonth"`
+	ConsumedUnits int32   `json:"consumedUnits"`
+	MaxQuota      int32   `json:"maxQuota"`
+	IsThrottled   bool    `json:"isThrottled"`
+	HasKey        bool    `json:"hasKey"`
+	KeySource     *string `json:"keySource,omitempty"`
+	MaskedKey     *string `json:"maskedKey,omitempty"`
+}
+
+type WalletDevice struct {
+	ID         string           `json:"id"`
+	Name       string           `json:"name"`
+	DeviceType WalletDeviceType `json:"deviceType"`
+	Accounts   []*WalletAccount `json:"accounts"`
+	CreatedAt  time.Time        `json:"createdAt"`
+	UpdatedAt  time.Time        `json:"updatedAt"`
+}
+
 type Watch struct {
 	ID               string      `json:"id"`
 	Name             string      `json:"name"`
@@ -2174,6 +2292,7 @@ const (
 	AccountTypeBroker         AccountType = "BROKER"
 	AccountTypeBank           AccountType = "BANK"
 	AccountTypeCryptoExchange AccountType = "CRYPTO_EXCHANGE"
+	AccountTypeCryptoWallet   AccountType = "CRYPTO_WALLET"
 	AccountTypeOther          AccountType = "OTHER"
 )
 
@@ -2181,12 +2300,13 @@ var AllAccountType = []AccountType{
 	AccountTypeBroker,
 	AccountTypeBank,
 	AccountTypeCryptoExchange,
+	AccountTypeCryptoWallet,
 	AccountTypeOther,
 }
 
 func (e AccountType) IsValid() bool {
 	switch e {
-	case AccountTypeBroker, AccountTypeBank, AccountTypeCryptoExchange, AccountTypeOther:
+	case AccountTypeBroker, AccountTypeBank, AccountTypeCryptoExchange, AccountTypeCryptoWallet, AccountTypeOther:
 		return true
 	}
 	return false
@@ -2650,6 +2770,71 @@ func (e *AssetSyncType) UnmarshalJSON(b []byte) error {
 }
 
 func (e AssetSyncType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type BlockchainNetwork string
+
+const (
+	BlockchainNetworkEthereum BlockchainNetwork = "ETHEREUM"
+	BlockchainNetworkBase     BlockchainNetwork = "BASE"
+	BlockchainNetworkArbitrum BlockchainNetwork = "ARBITRUM"
+	BlockchainNetworkOptimism BlockchainNetwork = "OPTIMISM"
+	BlockchainNetworkPolygon  BlockchainNetwork = "POLYGON"
+	BlockchainNetworkSolana   BlockchainNetwork = "SOLANA"
+	BlockchainNetworkBitcoin  BlockchainNetwork = "BITCOIN"
+)
+
+var AllBlockchainNetwork = []BlockchainNetwork{
+	BlockchainNetworkEthereum,
+	BlockchainNetworkBase,
+	BlockchainNetworkArbitrum,
+	BlockchainNetworkOptimism,
+	BlockchainNetworkPolygon,
+	BlockchainNetworkSolana,
+	BlockchainNetworkBitcoin,
+}
+
+func (e BlockchainNetwork) IsValid() bool {
+	switch e {
+	case BlockchainNetworkEthereum, BlockchainNetworkBase, BlockchainNetworkArbitrum, BlockchainNetworkOptimism, BlockchainNetworkPolygon, BlockchainNetworkSolana, BlockchainNetworkBitcoin:
+		return true
+	}
+	return false
+}
+
+func (e BlockchainNetwork) String() string {
+	return string(e)
+}
+
+func (e *BlockchainNetwork) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = BlockchainNetwork(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid BlockchainNetwork", str)
+	}
+	return nil
+}
+
+func (e BlockchainNetwork) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *BlockchainNetwork) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e BlockchainNetwork) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -3782,6 +3967,63 @@ func (e *UserOrderField) UnmarshalJSON(b []byte) error {
 }
 
 func (e UserOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type WalletDeviceType string
+
+const (
+	WalletDeviceTypeHardware   WalletDeviceType = "HARDWARE"
+	WalletDeviceTypeSoftware   WalletDeviceType = "SOFTWARE"
+	WalletDeviceTypeStandalone WalletDeviceType = "STANDALONE"
+)
+
+var AllWalletDeviceType = []WalletDeviceType{
+	WalletDeviceTypeHardware,
+	WalletDeviceTypeSoftware,
+	WalletDeviceTypeStandalone,
+}
+
+func (e WalletDeviceType) IsValid() bool {
+	switch e {
+	case WalletDeviceTypeHardware, WalletDeviceTypeSoftware, WalletDeviceTypeStandalone:
+		return true
+	}
+	return false
+}
+
+func (e WalletDeviceType) String() string {
+	return string(e)
+}
+
+func (e *WalletDeviceType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = WalletDeviceType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid WalletDeviceType", str)
+	}
+	return nil
+}
+
+func (e WalletDeviceType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *WalletDeviceType) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e WalletDeviceType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

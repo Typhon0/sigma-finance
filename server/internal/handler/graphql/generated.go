@@ -8,6 +8,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"strconv"
 	"sync/atomic"
@@ -296,6 +297,14 @@ type ComplexityRoot struct {
 	BenchmarkResult struct {
 		Name  func(childComplexity int) int
 		Value func(childComplexity int) int
+	}
+
+	BlockchainNetworkConfig struct {
+		ExplorerAPIURL func(childComplexity int) int
+		Network        func(childComplexity int) int
+		RPCURL         func(childComplexity int) int
+		Source         func(childComplexity int) int
+		UpdatedAt      func(childComplexity int) int
 	}
 
 	CalculationMethod struct {
@@ -688,6 +697,7 @@ type ComplexityRoot struct {
 		LastValidatedAt func(childComplexity int) int
 		Priority        func(childComplexity int) int
 		Provider        func(childComplexity int) int
+		Source          func(childComplexity int) int
 		UpdatedAt       func(childComplexity int) int
 	}
 
@@ -809,11 +819,16 @@ type ComplexityRoot struct {
 		AcknowledgeAlert                 func(childComplexity int, alertID string) int
 		AddAssetToPortfolio              func(childComplexity int, input gqlModel.PortfolioAssetInput) int
 		AddAssetToWatchlist              func(childComplexity int, watchlistID string, assetID string) int
+		AddCustomToken                   func(childComplexity int, input gqlModel.AddCustomTokenInput) int
 		AddInstrumentToPortfolio         func(childComplexity int, input gqlModel.AddInstrumentHoldingInput) int
+		AddMultiNetworkWallet            func(childComplexity int, input gqlModel.AddMultiNetworkWalletInput) int
+		AddWalletAccount                 func(childComplexity int, input gqlModel.AddWalletAccountInput) int
 		ArchiveManualInstrument          func(childComplexity int, id string) int
+		AssignWalletDevice               func(childComplexity int, walletAccountID string, deviceID *string) int
 		CancelMarketDataPackJob          func(childComplexity int, jobID string) int
 		CancelPackBuildJob               func(childComplexity int, id string) int
 		CompleteAggregatorAuth           func(childComplexity int, connectionID string, sessionToken string) int
+		ConfigureAlchemyKey              func(childComplexity int, apiKey string) int
 		ConfirmPasswordReset             func(childComplexity int, input gqlModel.PasswordResetConfirmInput) int
 		CreateAccount                    func(childComplexity int, input gqlModel.CreateAccountInput) int
 		CreateAlert                      func(childComplexity int, input gqlModel.CreateAlertInput) int
@@ -828,6 +843,7 @@ type ComplexityRoot struct {
 		CreateRealEstateAsset            func(childComplexity int, input gqlModel.CreateRealEstateInput) int
 		CreateStockAsset                 func(childComplexity int, input gqlModel.CreateStockInput) int
 		CreateUser                       func(childComplexity int, input gqlModel.CreateUserInput) int
+		CreateWalletDevice               func(childComplexity int, input gqlModel.CreateWalletDeviceInput) int
 		CreateWatchAsset                 func(childComplexity int, input gqlModel.CreateWatchInput) int
 		CreateWatchlist                  func(childComplexity int, input gqlModel.CreateWatchlistInput) int
 		DeactivateBatchAlerts            func(childComplexity int, input gqlModel.BatchDeactivateInput) int
@@ -854,28 +870,38 @@ type ComplexityRoot struct {
 		RefreshAssetPrices               func(childComplexity int, assetID *string) int
 		RefreshSingleAssetPrice          func(childComplexity int, assetID string) int
 		RefreshToken                     func(childComplexity int, input gqlModel.RefreshTokenInput) int
+		RefreshWalletBalancePrice        func(childComplexity int, balanceID string) int
 		Register                         func(childComplexity int, input gqlModel.RegisterInput) int
 		RegisterSyncCredential           func(childComplexity int, provider string, credentials map[string]any, portfolioID *string) int
 		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string) int
 		RemoveAssetFromWatchlist         func(childComplexity int, watchlistID string, assetID string) int
 		RemoveMarketDataPack             func(childComplexity int, packID string) int
+		RemoveWalletAccount              func(childComplexity int, id string) int
+		RemoveWalletDevice               func(childComplexity int, id string) int
 		ReorderPortfolios                func(childComplexity int, input gqlModel.ReorderPortfoliosInput) int
 		RepairMarketDataPack             func(childComplexity int, packID string) int
 		ResendVerification               func(childComplexity int, input gqlModel.ResendVerificationInput) int
+		ResetBlockchainNetworkConfig     func(childComplexity int, network gqlModel.BlockchainNetwork) int
 		ResetPassword                    func(childComplexity int, input gqlModel.PasswordResetInput) int
+		ResetWalletBalanceCostBasis      func(childComplexity int, balanceID string) int
+		ResolveWalletReview              func(childComplexity int, reviewID string, action string, customType *string) int
 		RestoreManualInstrument          func(childComplexity int, id string) int
 		RetryHistoricalDataBackfillJob   func(childComplexity int, id string) int
+		SetWalletBalanceCostBasis        func(childComplexity int, balanceID string, costBasisPerUnit float64, currency *string) int
 		StartLocalPackBuild              func(childComplexity int, input gqlModel.StartLocalPackBuildInput) int
 		TagAsset                         func(childComplexity int, assetID string, tagID string) int
 		TagPortfolio                     func(childComplexity int, portfolioID string, tagID string) int
+		ToggleSpamToken                  func(childComplexity int, balanceID string, isHidden bool) int
 		TriggerAccountSync               func(childComplexity int, accountID string) int
 		TriggerFinanceDatabaseSync       func(childComplexity int, assetType gqlModel.AssetSyncType) int
+		TriggerWalletSync                func(childComplexity int, id string) int
 		UntagAsset                       func(childComplexity int, assetID string, tagID string) int
 		UntagPortfolio                   func(childComplexity int, portfolioID string, tagID string) int
 		UpdateAccount                    func(childComplexity int, id string, input gqlModel.UpdateAccountInput) int
 		UpdateAlert                      func(childComplexity int, id string, input gqlModel.UpdateAlertInput) int
 		UpdateAlertRule                  func(childComplexity int, id string, input gqlModel.AlertRuleInput) int
 		UpdateAssetInPortfolio           func(childComplexity int, input gqlModel.PortfolioAssetInput) int
+		UpdateBlockchainNetworkConfig    func(childComplexity int, input gqlModel.UpdateBlockchainNetworkConfigInput) int
 		UpdateFinanceDatabaseSyncEnabled func(childComplexity int, assetType gqlModel.AssetSyncType, enabled bool) int
 		UpdateManualInstrument           func(childComplexity int, id string, input gqlModel.UpdateManualInstrumentInput) int
 		UpdateMarketDataPack             func(childComplexity int, packID string) int
@@ -887,6 +913,7 @@ type ComplexityRoot struct {
 		UpdateUserDisplayCurrency        func(childComplexity int, input gqlModel.UpdateUserDisplayCurrencyInput) int
 		UpdateUserTaxJurisdiction        func(childComplexity int, input gqlModel.UpdateUserTaxJurisdictionInput) int
 		UpdateUserThemePreferences       func(childComplexity int, input gqlModel.UpdateUserThemePreferencesInput) int
+		UpdateWalletDevice               func(childComplexity int, id string, name string, deviceType gqlModel.WalletDeviceType) int
 		UpsertMarketDataCredential       func(childComplexity int, provider string, apiKey string, isEnabled *bool, priority *int32) int
 		ValidateProviderCredentials      func(childComplexity int, provider string, apiKey string) int
 		VerifyEmail                      func(childComplexity int, input gqlModel.EmailVerificationInput) int
@@ -1145,6 +1172,7 @@ type ComplexityRoot struct {
 		AvailableMarketDataPacks        func(childComplexity int) int
 		AvailableProviders              func(childComplexity int, instrumentID string, dataType string) int
 		BenchmarkComparison             func(childComplexity int, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) int
+		BlockchainNetworkConfigs        func(childComplexity int) int
 		Candles                         func(childComplexity int, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) int
 		CandlesByInstrument             func(childComplexity int, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) int
 		CatalogSyncStatus               func(childComplexity int, source gqlModel.CatalogSource) int
@@ -1171,6 +1199,7 @@ type ComplexityRoot struct {
 		Metrics                         func(childComplexity int) int
 		PackBuildJob                    func(childComplexity int, id string) int
 		PackBuildJobs                   func(childComplexity int, limit *int32) int
+		PendingWalletReviews            func(childComplexity int, portfolioID string) int
 		PerformanceMetrics              func(childComplexity int, timeRange *string) int
 		PerformanceSnapshots            func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		Portfolio                       func(childComplexity int, id string) int
@@ -1202,6 +1231,9 @@ type ComplexityRoot struct {
 		User                            func(childComplexity int, id string) int
 		UserEngagementMetrics           func(childComplexity int, timeRange *string) int
 		Users                           func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
+		WalletAccounts                  func(childComplexity int, portfolioID *string) int
+		WalletCUUsage                   func(childComplexity int) int
+		WalletDevices                   func(childComplexity int) int
 		Watchlist                       func(childComplexity int, id string) int
 		Watchlists                      func(childComplexity int, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) int
 		WorstPerformingAssets           func(childComplexity int, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) int
@@ -1328,6 +1360,7 @@ type ComplexityRoot struct {
 		CreatedAt func(childComplexity int) int
 		ID        func(childComplexity int) int
 		Provider  func(childComplexity int) int
+		Source    func(childComplexity int) int
 		Status    func(childComplexity int) int
 		UpdatedAt func(childComplexity int) int
 	}
@@ -1501,6 +1534,79 @@ type ComplexityRoot struct {
 		Valid   func(childComplexity int) int
 	}
 
+	WalletAccount struct {
+		AddressOrXpub       func(childComplexity int) int
+		Balances            func(childComplexity int, includeSpam *bool) int
+		CapabilityLevel     func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		Device              func(childComplexity int) int
+		DeviceID            func(childComplexity int) int
+		DiscoveredAddresses func(childComplexity int) int
+		HistoryStatus       func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		IsActive            func(childComplexity int) int
+		IsXpub              func(childComplexity int) int
+		Label               func(childComplexity int) int
+		LastSyncAt          func(childComplexity int) int
+		LastSyncError       func(childComplexity int) int
+		Network             func(childComplexity int) int
+		PortfolioID         func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+	}
+
+	WalletActivityReview struct {
+		CreatedAt        func(childComplexity int) int
+		ID               func(childComplexity int) int
+		Notes            func(childComplexity int) int
+		ReviewStatus     func(childComplexity int) int
+		SuggestedType    func(childComplexity int) int
+		WalletActivityID func(childComplexity int) int
+	}
+
+	WalletBalance struct {
+		AcquiredAt         func(childComplexity int) int
+		AutoEstimatedBasis func(childComplexity int) int
+		CostBasisCurrency  func(childComplexity int) int
+		CostBasisPerUnit   func(childComplexity int) int
+		CostBasisType      func(childComplexity int) int
+		CurrentPrice       func(childComplexity int) int
+		CurrentValue       func(childComplexity int) int
+		DayChange24h       func(childComplexity int) int
+		Decimals           func(childComplexity int) int
+		FormattedQuantity  func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		IsHidden           func(childComplexity int) int
+		IsPriceResolved    func(childComplexity int) int
+		IsSpam             func(childComplexity int) int
+		IsStale            func(childComplexity int) int
+		LastUpdatedAt      func(childComplexity int) int
+		Name               func(childComplexity int) int
+		PriceSource        func(childComplexity int) int
+		PriceUpdatedAt     func(childComplexity int) int
+		RawBalance         func(childComplexity int) int
+		Symbol             func(childComplexity int) int
+		TokenAddress       func(childComplexity int) int
+	}
+
+	WalletCUUsage struct {
+		BillingMonth  func(childComplexity int) int
+		ConsumedUnits func(childComplexity int) int
+		HasKey        func(childComplexity int) int
+		IsThrottled   func(childComplexity int) int
+		KeySource     func(childComplexity int) int
+		MaskedKey     func(childComplexity int) int
+		MaxQuota      func(childComplexity int) int
+	}
+
+	WalletDevice struct {
+		Accounts   func(childComplexity int) int
+		CreatedAt  func(childComplexity int) int
+		DeviceType func(childComplexity int) int
+		ID         func(childComplexity int) int
+		Name       func(childComplexity int) int
+		UpdatedAt  func(childComplexity int) int
+	}
+
 	Watch struct {
 		AssetType        func(childComplexity int) int
 		Brand            func(childComplexity int) int
@@ -1622,6 +1728,23 @@ type MutationResolver interface {
 	TriggerAccountSync(ctx context.Context, accountID string) (*gqlModel.SyncRun, error)
 	UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) (string, error)
+	CreateWalletDevice(ctx context.Context, input gqlModel.CreateWalletDeviceInput) (*gqlModel.WalletDevice, error)
+	UpdateWalletDevice(ctx context.Context, id string, name string, deviceType gqlModel.WalletDeviceType) (*gqlModel.WalletDevice, error)
+	RemoveWalletDevice(ctx context.Context, id string) (bool, error)
+	AssignWalletDevice(ctx context.Context, walletAccountID string, deviceID *string) (bool, error)
+	AddWalletAccount(ctx context.Context, input gqlModel.AddWalletAccountInput) (*gqlModel.WalletAccount, error)
+	AddMultiNetworkWallet(ctx context.Context, input gqlModel.AddMultiNetworkWalletInput) ([]*gqlModel.WalletAccount, error)
+	AddCustomToken(ctx context.Context, input gqlModel.AddCustomTokenInput) (*gqlModel.WalletBalance, error)
+	UpdateBlockchainNetworkConfig(ctx context.Context, input gqlModel.UpdateBlockchainNetworkConfigInput) (*gqlModel.BlockchainNetworkConfig, error)
+	ResetBlockchainNetworkConfig(ctx context.Context, network gqlModel.BlockchainNetwork) (*gqlModel.BlockchainNetworkConfig, error)
+	RemoveWalletAccount(ctx context.Context, id string) (bool, error)
+	TriggerWalletSync(ctx context.Context, id string) (bool, error)
+	ToggleSpamToken(ctx context.Context, balanceID string, isHidden bool) (bool, error)
+	RefreshWalletBalancePrice(ctx context.Context, balanceID string) (*gqlModel.WalletBalance, error)
+	SetWalletBalanceCostBasis(ctx context.Context, balanceID string, costBasisPerUnit float64, currency *string) (bool, error)
+	ResetWalletBalanceCostBasis(ctx context.Context, balanceID string) (bool, error)
+	ResolveWalletReview(ctx context.Context, reviewID string, action string, customType *string) (bool, error)
+	ConfigureAlchemyKey(ctx context.Context, apiKey string) (bool, error)
 }
 type QueryResolver interface {
 	User(ctx context.Context, id string) (*gqlModel.User, error)
@@ -1699,6 +1822,11 @@ type QueryResolver interface {
 	TaxHarvestOpportunities(ctx context.Context, portfolioID string) ([]*gqlModel.TaxHarvestOpportunity, error)
 	DispositionsByPosition(ctx context.Context, positionID string) ([]*gqlModel.TaxLotDisposition, error)
 	RealizedGains(ctx context.Context, portfolioID string, dateFrom time.Time, dateTo time.Time) (*gqlModel.RealizedGainsSummary, error)
+	WalletDevices(ctx context.Context) ([]*gqlModel.WalletDevice, error)
+	WalletAccounts(ctx context.Context, portfolioID *string) ([]*gqlModel.WalletAccount, error)
+	WalletCUUsage(ctx context.Context) (*gqlModel.WalletCUUsage, error)
+	PendingWalletReviews(ctx context.Context, portfolioID string) ([]*gqlModel.WalletActivityReview, error)
+	BlockchainNetworkConfigs(ctx context.Context) ([]*gqlModel.BlockchainNetworkConfig, error)
 }
 type SubscriptionResolver interface {
 	PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error)
@@ -2846,6 +2974,37 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.BenchmarkResult.Value(childComplexity), true
+
+	case "BlockchainNetworkConfig.explorerApiUrl":
+		if e.ComplexityRoot.BlockchainNetworkConfig.ExplorerAPIURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BlockchainNetworkConfig.ExplorerAPIURL(childComplexity), true
+	case "BlockchainNetworkConfig.network":
+		if e.ComplexityRoot.BlockchainNetworkConfig.Network == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BlockchainNetworkConfig.Network(childComplexity), true
+	case "BlockchainNetworkConfig.rpcUrl":
+		if e.ComplexityRoot.BlockchainNetworkConfig.RPCURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BlockchainNetworkConfig.RPCURL(childComplexity), true
+	case "BlockchainNetworkConfig.source":
+		if e.ComplexityRoot.BlockchainNetworkConfig.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BlockchainNetworkConfig.Source(childComplexity), true
+	case "BlockchainNetworkConfig.updatedAt":
+		if e.ComplexityRoot.BlockchainNetworkConfig.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.BlockchainNetworkConfig.UpdatedAt(childComplexity), true
 
 	case "CalculationMethod.assumptions":
 		if e.ComplexityRoot.CalculationMethod.Assumptions == nil {
@@ -4603,6 +4762,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.MarketDataCredential.Provider(childComplexity), true
+	case "MarketDataCredential.source":
+		if e.ComplexityRoot.MarketDataCredential.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.MarketDataCredential.Source(childComplexity), true
 	case "MarketDataCredential.updatedAt":
 		if e.ComplexityRoot.MarketDataCredential.UpdatedAt == nil {
 			break
@@ -5191,6 +5356,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddAssetToWatchlist(childComplexity, args["watchlistID"].(string), args["assetID"].(string)), true
+	case "Mutation.addCustomToken":
+		if e.ComplexityRoot.Mutation.AddCustomToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addCustomToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddCustomToken(childComplexity, args["input"].(gqlModel.AddCustomTokenInput)), true
 	case "Mutation.addInstrumentToPortfolio":
 		if e.ComplexityRoot.Mutation.AddInstrumentToPortfolio == nil {
 			break
@@ -5202,6 +5378,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddInstrumentToPortfolio(childComplexity, args["input"].(gqlModel.AddInstrumentHoldingInput)), true
+	case "Mutation.addMultiNetworkWallet":
+		if e.ComplexityRoot.Mutation.AddMultiNetworkWallet == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addMultiNetworkWallet_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddMultiNetworkWallet(childComplexity, args["input"].(gqlModel.AddMultiNetworkWalletInput)), true
+	case "Mutation.addWalletAccount":
+		if e.ComplexityRoot.Mutation.AddWalletAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addWalletAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddWalletAccount(childComplexity, args["input"].(gqlModel.AddWalletAccountInput)), true
 	case "Mutation.archiveManualInstrument":
 		if e.ComplexityRoot.Mutation.ArchiveManualInstrument == nil {
 			break
@@ -5213,6 +5411,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ArchiveManualInstrument(childComplexity, args["id"].(string)), true
+	case "Mutation.assignWalletDevice":
+		if e.ComplexityRoot.Mutation.AssignWalletDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_assignWalletDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AssignWalletDevice(childComplexity, args["walletAccountId"].(string), args["deviceId"].(*string)), true
 	case "Mutation.cancelMarketDataPackJob":
 		if e.ComplexityRoot.Mutation.CancelMarketDataPackJob == nil {
 			break
@@ -5246,6 +5455,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CompleteAggregatorAuth(childComplexity, args["connectionId"].(string), args["sessionToken"].(string)), true
+	case "Mutation.configureAlchemyKey":
+		if e.ComplexityRoot.Mutation.ConfigureAlchemyKey == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_configureAlchemyKey_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ConfigureAlchemyKey(childComplexity, args["apiKey"].(string)), true
 	case "Mutation.confirmPasswordReset":
 		if e.ComplexityRoot.Mutation.ConfirmPasswordReset == nil {
 			break
@@ -5400,6 +5620,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateUser(childComplexity, args["input"].(gqlModel.CreateUserInput)), true
+	case "Mutation.createWalletDevice":
+		if e.ComplexityRoot.Mutation.CreateWalletDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_createWalletDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CreateWalletDevice(childComplexity, args["input"].(gqlModel.CreateWalletDeviceInput)), true
 	case "Mutation.createWatchAsset":
 		if e.ComplexityRoot.Mutation.CreateWatchAsset == nil {
 			break
@@ -5686,6 +5917,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RefreshToken(childComplexity, args["input"].(gqlModel.RefreshTokenInput)), true
+	case "Mutation.refreshWalletBalancePrice":
+		if e.ComplexityRoot.Mutation.RefreshWalletBalancePrice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_refreshWalletBalancePrice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RefreshWalletBalancePrice(childComplexity, args["balanceId"].(string)), true
 	case "Mutation.register":
 		if e.ComplexityRoot.Mutation.Register == nil {
 			break
@@ -5741,6 +5983,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RemoveMarketDataPack(childComplexity, args["packId"].(string)), true
+	case "Mutation.removeWalletAccount":
+		if e.ComplexityRoot.Mutation.RemoveWalletAccount == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeWalletAccount_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveWalletAccount(childComplexity, args["id"].(string)), true
+	case "Mutation.removeWalletDevice":
+		if e.ComplexityRoot.Mutation.RemoveWalletDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_removeWalletDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RemoveWalletDevice(childComplexity, args["id"].(string)), true
 	case "Mutation.reorderPortfolios":
 		if e.ComplexityRoot.Mutation.ReorderPortfolios == nil {
 			break
@@ -5774,6 +6038,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResendVerification(childComplexity, args["input"].(gqlModel.ResendVerificationInput)), true
+	case "Mutation.resetBlockchainNetworkConfig":
+		if e.ComplexityRoot.Mutation.ResetBlockchainNetworkConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetBlockchainNetworkConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResetBlockchainNetworkConfig(childComplexity, args["network"].(gqlModel.BlockchainNetwork)), true
 	case "Mutation.resetPassword":
 		if e.ComplexityRoot.Mutation.ResetPassword == nil {
 			break
@@ -5785,6 +6060,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ResetPassword(childComplexity, args["input"].(gqlModel.PasswordResetInput)), true
+	case "Mutation.resetWalletBalanceCostBasis":
+		if e.ComplexityRoot.Mutation.ResetWalletBalanceCostBasis == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resetWalletBalanceCostBasis_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResetWalletBalanceCostBasis(childComplexity, args["balanceId"].(string)), true
+	case "Mutation.resolveWalletReview":
+		if e.ComplexityRoot.Mutation.ResolveWalletReview == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_resolveWalletReview_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ResolveWalletReview(childComplexity, args["reviewId"].(string), args["action"].(string), args["customType"].(*string)), true
 	case "Mutation.restoreManualInstrument":
 		if e.ComplexityRoot.Mutation.RestoreManualInstrument == nil {
 			break
@@ -5807,6 +6104,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RetryHistoricalDataBackfillJob(childComplexity, args["id"].(string)), true
+	case "Mutation.setWalletBalanceCostBasis":
+		if e.ComplexityRoot.Mutation.SetWalletBalanceCostBasis == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setWalletBalanceCostBasis_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.SetWalletBalanceCostBasis(childComplexity, args["balanceId"].(string), args["costBasisPerUnit"].(float64), args["currency"].(*string)), true
 	case "Mutation.startLocalPackBuild":
 		if e.ComplexityRoot.Mutation.StartLocalPackBuild == nil {
 			break
@@ -5840,6 +6148,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TagPortfolio(childComplexity, args["portfolioID"].(string), args["tagID"].(string)), true
+	case "Mutation.toggleSpamToken":
+		if e.ComplexityRoot.Mutation.ToggleSpamToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_toggleSpamToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.ToggleSpamToken(childComplexity, args["balanceId"].(string), args["isHidden"].(bool)), true
 	case "Mutation.triggerAccountSync":
 		if e.ComplexityRoot.Mutation.TriggerAccountSync == nil {
 			break
@@ -5862,6 +6181,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.TriggerFinanceDatabaseSync(childComplexity, args["assetType"].(gqlModel.AssetSyncType)), true
+	case "Mutation.triggerWalletSync":
+		if e.ComplexityRoot.Mutation.TriggerWalletSync == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_triggerWalletSync_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.TriggerWalletSync(childComplexity, args["id"].(string)), true
 	case "Mutation.untagAsset":
 		if e.ComplexityRoot.Mutation.UntagAsset == nil {
 			break
@@ -5928,6 +6258,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateAssetInPortfolio(childComplexity, args["input"].(gqlModel.PortfolioAssetInput)), true
+	case "Mutation.updateBlockchainNetworkConfig":
+		if e.ComplexityRoot.Mutation.UpdateBlockchainNetworkConfig == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateBlockchainNetworkConfig_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateBlockchainNetworkConfig(childComplexity, args["input"].(gqlModel.UpdateBlockchainNetworkConfigInput)), true
 	case "Mutation.updateFinanceDatabaseSyncEnabled":
 		if e.ComplexityRoot.Mutation.UpdateFinanceDatabaseSyncEnabled == nil {
 			break
@@ -6049,6 +6390,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateUserThemePreferences(childComplexity, args["input"].(gqlModel.UpdateUserThemePreferencesInput)), true
+	case "Mutation.updateWalletDevice":
+		if e.ComplexityRoot.Mutation.UpdateWalletDevice == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateWalletDevice_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateWalletDevice(childComplexity, args["id"].(string), args["name"].(string), args["deviceType"].(gqlModel.WalletDeviceType)), true
 	case "Mutation.upsertMarketDataCredential":
 		if e.ComplexityRoot.Mutation.UpsertMarketDataCredential == nil {
 			break
@@ -7286,6 +7638,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.BenchmarkComparison(childComplexity, args["portfolioId"].(string), args["benchmarkAssetId"].(string), args["timeRange"].(gqlModel.PerformanceTimeRangeInput)), true
+	case "Query.blockchainNetworkConfigs":
+		if e.ComplexityRoot.Query.BlockchainNetworkConfigs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.BlockchainNetworkConfigs(childComplexity), true
 	case "Query.candles":
 		if e.ComplexityRoot.Query.Candles == nil {
 			break
@@ -7548,6 +7906,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PackBuildJobs(childComplexity, args["limit"].(*int32)), true
+	case "Query.pendingWalletReviews":
+		if e.ComplexityRoot.Query.PendingWalletReviews == nil {
+			break
+		}
+
+		args, err := ec.field_Query_pendingWalletReviews_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.PendingWalletReviews(childComplexity, args["portfolioId"].(string)), true
 	case "Query.performanceMetrics":
 		if e.ComplexityRoot.Query.PerformanceMetrics == nil {
 			break
@@ -7864,6 +8233,29 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Users(childComplexity, args["filter"].(*gqlModel.UserFilter), args["pagination"].(*gqlModel.PaginationInput), args["orderBy"].(*gqlModel.UserOrder)), true
+	case "Query.walletAccounts":
+		if e.ComplexityRoot.Query.WalletAccounts == nil {
+			break
+		}
+
+		args, err := ec.field_Query_walletAccounts_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.WalletAccounts(childComplexity, args["portfolioId"].(*string)), true
+	case "Query.walletCUUsage":
+		if e.ComplexityRoot.Query.WalletCUUsage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.WalletCUUsage(childComplexity), true
+	case "Query.walletDevices":
+		if e.ComplexityRoot.Query.WalletDevices == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.WalletDevices(childComplexity), true
 	case "Query.watchlist":
 		if e.ComplexityRoot.Query.Watchlist == nil {
 			break
@@ -8490,6 +8882,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SyncCredential.Provider(childComplexity), true
+	case "SyncCredential.source":
+		if e.ComplexityRoot.SyncCredential.Source == nil {
+			break
+		}
+
+		return e.ComplexityRoot.SyncCredential.Source(childComplexity), true
 	case "SyncCredential.status":
 		if e.ComplexityRoot.SyncCredential.Status == nil {
 			break
@@ -9245,6 +9643,364 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ValidationResult.Valid(childComplexity), true
 
+	case "WalletAccount.addressOrXpub":
+		if e.ComplexityRoot.WalletAccount.AddressOrXpub == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.AddressOrXpub(childComplexity), true
+	case "WalletAccount.balances":
+		if e.ComplexityRoot.WalletAccount.Balances == nil {
+			break
+		}
+
+		args, err := ec.field_WalletAccount_balances_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.WalletAccount.Balances(childComplexity, args["includeSpam"].(*bool)), true
+	case "WalletAccount.capabilityLevel":
+		if e.ComplexityRoot.WalletAccount.CapabilityLevel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.CapabilityLevel(childComplexity), true
+	case "WalletAccount.createdAt":
+		if e.ComplexityRoot.WalletAccount.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.CreatedAt(childComplexity), true
+	case "WalletAccount.device":
+		if e.ComplexityRoot.WalletAccount.Device == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.Device(childComplexity), true
+	case "WalletAccount.deviceId":
+		if e.ComplexityRoot.WalletAccount.DeviceID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.DeviceID(childComplexity), true
+	case "WalletAccount.discoveredAddresses":
+		if e.ComplexityRoot.WalletAccount.DiscoveredAddresses == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.DiscoveredAddresses(childComplexity), true
+	case "WalletAccount.historyStatus":
+		if e.ComplexityRoot.WalletAccount.HistoryStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.HistoryStatus(childComplexity), true
+	case "WalletAccount.id":
+		if e.ComplexityRoot.WalletAccount.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.ID(childComplexity), true
+	case "WalletAccount.isActive":
+		if e.ComplexityRoot.WalletAccount.IsActive == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.IsActive(childComplexity), true
+	case "WalletAccount.isXpub":
+		if e.ComplexityRoot.WalletAccount.IsXpub == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.IsXpub(childComplexity), true
+	case "WalletAccount.label":
+		if e.ComplexityRoot.WalletAccount.Label == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.Label(childComplexity), true
+	case "WalletAccount.lastSyncAt":
+		if e.ComplexityRoot.WalletAccount.LastSyncAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.LastSyncAt(childComplexity), true
+	case "WalletAccount.lastSyncError":
+		if e.ComplexityRoot.WalletAccount.LastSyncError == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.LastSyncError(childComplexity), true
+	case "WalletAccount.network":
+		if e.ComplexityRoot.WalletAccount.Network == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.Network(childComplexity), true
+	case "WalletAccount.portfolioId":
+		if e.ComplexityRoot.WalletAccount.PortfolioID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.PortfolioID(childComplexity), true
+	case "WalletAccount.updatedAt":
+		if e.ComplexityRoot.WalletAccount.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletAccount.UpdatedAt(childComplexity), true
+
+	case "WalletActivityReview.createdAt":
+		if e.ComplexityRoot.WalletActivityReview.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.CreatedAt(childComplexity), true
+	case "WalletActivityReview.id":
+		if e.ComplexityRoot.WalletActivityReview.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.ID(childComplexity), true
+	case "WalletActivityReview.notes":
+		if e.ComplexityRoot.WalletActivityReview.Notes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.Notes(childComplexity), true
+	case "WalletActivityReview.reviewStatus":
+		if e.ComplexityRoot.WalletActivityReview.ReviewStatus == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.ReviewStatus(childComplexity), true
+	case "WalletActivityReview.suggestedType":
+		if e.ComplexityRoot.WalletActivityReview.SuggestedType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.SuggestedType(childComplexity), true
+	case "WalletActivityReview.walletActivityId":
+		if e.ComplexityRoot.WalletActivityReview.WalletActivityID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletActivityReview.WalletActivityID(childComplexity), true
+
+	case "WalletBalance.acquiredAt":
+		if e.ComplexityRoot.WalletBalance.AcquiredAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.AcquiredAt(childComplexity), true
+	case "WalletBalance.autoEstimatedBasis":
+		if e.ComplexityRoot.WalletBalance.AutoEstimatedBasis == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.AutoEstimatedBasis(childComplexity), true
+	case "WalletBalance.costBasisCurrency":
+		if e.ComplexityRoot.WalletBalance.CostBasisCurrency == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.CostBasisCurrency(childComplexity), true
+	case "WalletBalance.costBasisPerUnit":
+		if e.ComplexityRoot.WalletBalance.CostBasisPerUnit == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.CostBasisPerUnit(childComplexity), true
+	case "WalletBalance.costBasisType":
+		if e.ComplexityRoot.WalletBalance.CostBasisType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.CostBasisType(childComplexity), true
+	case "WalletBalance.currentPrice":
+		if e.ComplexityRoot.WalletBalance.CurrentPrice == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.CurrentPrice(childComplexity), true
+	case "WalletBalance.currentValue":
+		if e.ComplexityRoot.WalletBalance.CurrentValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.CurrentValue(childComplexity), true
+	case "WalletBalance.dayChange24h":
+		if e.ComplexityRoot.WalletBalance.DayChange24h == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.DayChange24h(childComplexity), true
+	case "WalletBalance.decimals":
+		if e.ComplexityRoot.WalletBalance.Decimals == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.Decimals(childComplexity), true
+	case "WalletBalance.formattedQuantity":
+		if e.ComplexityRoot.WalletBalance.FormattedQuantity == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.FormattedQuantity(childComplexity), true
+	case "WalletBalance.id":
+		if e.ComplexityRoot.WalletBalance.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.ID(childComplexity), true
+	case "WalletBalance.isHidden":
+		if e.ComplexityRoot.WalletBalance.IsHidden == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.IsHidden(childComplexity), true
+	case "WalletBalance.isPriceResolved":
+		if e.ComplexityRoot.WalletBalance.IsPriceResolved == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.IsPriceResolved(childComplexity), true
+	case "WalletBalance.isSpam":
+		if e.ComplexityRoot.WalletBalance.IsSpam == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.IsSpam(childComplexity), true
+	case "WalletBalance.isStale":
+		if e.ComplexityRoot.WalletBalance.IsStale == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.IsStale(childComplexity), true
+	case "WalletBalance.lastUpdatedAt":
+		if e.ComplexityRoot.WalletBalance.LastUpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.LastUpdatedAt(childComplexity), true
+	case "WalletBalance.name":
+		if e.ComplexityRoot.WalletBalance.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.Name(childComplexity), true
+	case "WalletBalance.priceSource":
+		if e.ComplexityRoot.WalletBalance.PriceSource == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.PriceSource(childComplexity), true
+	case "WalletBalance.priceUpdatedAt":
+		if e.ComplexityRoot.WalletBalance.PriceUpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.PriceUpdatedAt(childComplexity), true
+	case "WalletBalance.rawBalance":
+		if e.ComplexityRoot.WalletBalance.RawBalance == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.RawBalance(childComplexity), true
+	case "WalletBalance.symbol":
+		if e.ComplexityRoot.WalletBalance.Symbol == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.Symbol(childComplexity), true
+	case "WalletBalance.tokenAddress":
+		if e.ComplexityRoot.WalletBalance.TokenAddress == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletBalance.TokenAddress(childComplexity), true
+
+	case "WalletCUUsage.billingMonth":
+		if e.ComplexityRoot.WalletCUUsage.BillingMonth == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.BillingMonth(childComplexity), true
+	case "WalletCUUsage.consumedUnits":
+		if e.ComplexityRoot.WalletCUUsage.ConsumedUnits == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.ConsumedUnits(childComplexity), true
+	case "WalletCUUsage.hasKey":
+		if e.ComplexityRoot.WalletCUUsage.HasKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.HasKey(childComplexity), true
+	case "WalletCUUsage.isThrottled":
+		if e.ComplexityRoot.WalletCUUsage.IsThrottled == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.IsThrottled(childComplexity), true
+	case "WalletCUUsage.keySource":
+		if e.ComplexityRoot.WalletCUUsage.KeySource == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.KeySource(childComplexity), true
+	case "WalletCUUsage.maskedKey":
+		if e.ComplexityRoot.WalletCUUsage.MaskedKey == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.MaskedKey(childComplexity), true
+	case "WalletCUUsage.maxQuota":
+		if e.ComplexityRoot.WalletCUUsage.MaxQuota == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletCUUsage.MaxQuota(childComplexity), true
+
+	case "WalletDevice.accounts":
+		if e.ComplexityRoot.WalletDevice.Accounts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.Accounts(childComplexity), true
+	case "WalletDevice.createdAt":
+		if e.ComplexityRoot.WalletDevice.CreatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.CreatedAt(childComplexity), true
+	case "WalletDevice.deviceType":
+		if e.ComplexityRoot.WalletDevice.DeviceType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.DeviceType(childComplexity), true
+	case "WalletDevice.id":
+		if e.ComplexityRoot.WalletDevice.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.ID(childComplexity), true
+	case "WalletDevice.name":
+		if e.ComplexityRoot.WalletDevice.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.Name(childComplexity), true
+	case "WalletDevice.updatedAt":
+		if e.ComplexityRoot.WalletDevice.UpdatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WalletDevice.UpdatedAt(childComplexity), true
+
 	case "Watch.assetType":
 		if e.ComplexityRoot.Watch.AssetType == nil {
 			break
@@ -9429,7 +10185,10 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := newExecutionContext(opCtx, e, make(chan graphql.DeferredResult))
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
+		ec.unmarshalInputAddCustomTokenInput,
 		ec.unmarshalInputAddInstrumentHoldingInput,
+		ec.unmarshalInputAddMultiNetworkWalletInput,
+		ec.unmarshalInputAddWalletAccountInput,
 		ec.unmarshalInputAlertActionInput,
 		ec.unmarshalInputAlertFilter,
 		ec.unmarshalInputAlertHistoryFilter,
@@ -9450,6 +10209,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateRealEstateInput,
 		ec.unmarshalInputCreateStockInput,
 		ec.unmarshalInputCreateUserInput,
+		ec.unmarshalInputCreateWalletDeviceInput,
 		ec.unmarshalInputCreateWatchInput,
 		ec.unmarshalInputCreateWatchlistInput,
 		ec.unmarshalInputDashboardEventInput,
@@ -9485,6 +10245,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputTransactionOrder,
 		ec.unmarshalInputUpdateAccountInput,
 		ec.unmarshalInputUpdateAlertInput,
+		ec.unmarshalInputUpdateBlockchainNetworkConfigInput,
 		ec.unmarshalInputUpdateManualInstrumentInput,
 		ec.unmarshalInputUpdatePortfolioInput,
 		ec.unmarshalInputUpdateTransactionInput,
@@ -9586,7 +10347,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/sync.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/watchlist.graphqls"
+//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/sync.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/wallet.graphqls" "schema/watchlist.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -9618,6 +10379,7 @@ var sources = []*ast.Source{
 	{Name: "schema/tax_lot.graphqls", Input: sourceData("schema/tax_lot.graphqls"), BuiltIn: false},
 	{Name: "schema/transaction.graphqls", Input: sourceData("schema/transaction.graphqls"), BuiltIn: false},
 	{Name: "schema/user.graphqls", Input: sourceData("schema/user.graphqls"), BuiltIn: false},
+	{Name: "schema/wallet.graphqls", Input: sourceData("schema/wallet.graphqls"), BuiltIn: false},
 	{Name: "schema/watchlist.graphqls", Input: sourceData("schema/watchlist.graphqls"), BuiltIn: false},
 }
 var parsedSchema = gqlparser.MustLoadSchema(sources...)
@@ -9664,10 +10426,43 @@ func (ec *executionContext) field_Mutation_addAssetToWatchlist_args(ctx context.
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addCustomToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddCustomTokenInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddCustomTokenInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addInstrumentToPortfolio_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddInstrumentHoldingInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddInstrumentHoldingInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addMultiNetworkWallet_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddMultiNetworkWalletInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddMultiNetworkWalletInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_addWalletAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddWalletAccountInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddWalletAccountInput)
 	if err != nil {
 		return nil, err
 	}
@@ -9683,6 +10478,22 @@ func (ec *executionContext) field_Mutation_archiveManualInstrument_args(ctx cont
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_assignWalletDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "walletAccountId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["walletAccountId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "deviceId", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["deviceId"] = arg1
 	return args, nil
 }
 
@@ -9721,6 +10532,17 @@ func (ec *executionContext) field_Mutation_completeAggregatorAuth_args(ctx conte
 		return nil, err
 	}
 	args["sessionToken"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_configureAlchemyKey_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "apiKey", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["apiKey"] = arg0
 	return args, nil
 }
 
@@ -9876,6 +10698,17 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCreateUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_createWalletDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNCreateWalletDeviceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCreateWalletDeviceInput)
 	if err != nil {
 		return nil, err
 	}
@@ -10199,6 +11032,17 @@ func (ec *executionContext) field_Mutation_refreshToken_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_refreshWalletBalancePrice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "balanceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["balanceId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_registerSyncCredential_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10274,6 +11118,28 @@ func (ec *executionContext) field_Mutation_removeMarketDataPack_args(ctx context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_removeWalletAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_removeWalletDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_reorderPortfolios_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10307,6 +11173,17 @@ func (ec *executionContext) field_Mutation_resendVerification_args(ctx context.C
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_resetBlockchainNetworkConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "network", ec.unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork)
+	if err != nil {
+		return nil, err
+	}
+	args["network"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_resetPassword_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10315,6 +11192,38 @@ func (ec *executionContext) field_Mutation_resetPassword_args(ctx context.Contex
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resetWalletBalanceCostBasis_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "balanceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["balanceId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_resolveWalletReview_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "reviewId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["reviewId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "action", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["action"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "customType", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["customType"] = arg2
 	return args, nil
 }
 
@@ -10337,6 +11246,27 @@ func (ec *executionContext) field_Mutation_retryHistoricalDataBackfillJob_args(c
 		return nil, err
 	}
 	args["id"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_setWalletBalanceCostBasis_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "balanceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["balanceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "costBasisPerUnit", ec.unmarshalNFloat2float64)
+	if err != nil {
+		return nil, err
+	}
+	args["costBasisPerUnit"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "currency", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["currency"] = arg2
 	return args, nil
 }
 
@@ -10383,6 +11313,22 @@ func (ec *executionContext) field_Mutation_tagPortfolio_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_toggleSpamToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "balanceId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["balanceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "isHidden", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["isHidden"] = arg1
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_triggerAccountSync_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10402,6 +11348,17 @@ func (ec *executionContext) field_Mutation_triggerFinanceDatabaseSync_args(ctx c
 		return nil, err
 	}
 	args["assetType"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_triggerWalletSync_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -10489,6 +11446,17 @@ func (ec *executionContext) field_Mutation_updateAssetInPortfolio_args(ctx conte
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNPortfolioAssetInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioAssetInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateBlockchainNetworkConfig_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateBlockchainNetworkConfigInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateBlockchainNetworkConfigInput)
 	if err != nil {
 		return nil, err
 	}
@@ -10644,6 +11612,27 @@ func (ec *executionContext) field_Mutation_updateUser_args(ctx context.Context, 
 		return nil, err
 	}
 	args["input"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateWalletDevice_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "name", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["name"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "deviceType", ec.unmarshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType)
+	if err != nil {
+		return nil, err
+	}
+	args["deviceType"] = arg2
 	return args, nil
 }
 
@@ -11225,6 +12214,17 @@ func (ec *executionContext) field_Query_packBuildJobs_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_pendingWalletReviews_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_performanceMetrics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11631,6 +12631,17 @@ func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs 
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_walletAccounts_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_watchlist_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11731,6 +12742,17 @@ func (ec *executionContext) field_Subscription_transactionUpdates_args(ctx conte
 		return nil, err
 	}
 	args["userID"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_WalletAccount_balances_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "includeSpam", ec.unmarshalOBoolean2ᚖbool)
+	if err != nil {
+		return nil, err
+	}
+	args["includeSpam"] = arg0
 	return args, nil
 }
 
@@ -17334,6 +18356,151 @@ func (ec *executionContext) fieldContext_BenchmarkResult_value(_ context.Context
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockchainNetworkConfig_network(ctx context.Context, field graphql.CollectedField, obj *gqlModel.BlockchainNetworkConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BlockchainNetworkConfig_network,
+		func(ctx context.Context) (any, error) {
+			return obj.Network, nil
+		},
+		nil,
+		ec.marshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BlockchainNetworkConfig_network(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockchainNetworkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BlockchainNetwork does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockchainNetworkConfig_rpcUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.BlockchainNetworkConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BlockchainNetworkConfig_rpcUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.RPCURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BlockchainNetworkConfig_rpcUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockchainNetworkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockchainNetworkConfig_explorerApiUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.BlockchainNetworkConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BlockchainNetworkConfig_explorerApiUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.ExplorerAPIURL, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_BlockchainNetworkConfig_explorerApiUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockchainNetworkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockchainNetworkConfig_source(ctx context.Context, field graphql.CollectedField, obj *gqlModel.BlockchainNetworkConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BlockchainNetworkConfig_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BlockchainNetworkConfig_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockchainNetworkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _BlockchainNetworkConfig_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.BlockchainNetworkConfig) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_BlockchainNetworkConfig_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_BlockchainNetworkConfig_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "BlockchainNetworkConfig",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -26334,6 +27501,35 @@ func (ec *executionContext) fieldContext_MarketDataCredential_priority(_ context
 	return fc, nil
 }
 
+func (ec *executionContext) _MarketDataCredential_source(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_MarketDataCredential_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_MarketDataCredential_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "MarketDataCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _MarketDataCredential_lastValidatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MarketDataCredential) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -33579,6 +34775,8 @@ func (ec *executionContext) fieldContext_Mutation_upsertMarketDataCredential(ctx
 				return ec.fieldContext_MarketDataCredential_isEnabled(ctx, field)
 			case "priority":
 				return ec.fieldContext_MarketDataCredential_priority(ctx, field)
+			case "source":
+				return ec.fieldContext_MarketDataCredential_source(ctx, field)
 			case "lastValidatedAt":
 				return ec.fieldContext_MarketDataCredential_lastValidatedAt(ctx, field)
 			case "createdAt":
@@ -34897,6 +36095,8 @@ func (ec *executionContext) fieldContext_Mutation_registerSyncCredential(ctx con
 				return ec.fieldContext_SyncCredential_provider(ctx, field)
 			case "status":
 				return ec.fieldContext_SyncCredential_status(ctx, field)
+			case "source":
+				return ec.fieldContext_SyncCredential_source(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_SyncCredential_createdAt(ctx, field)
 			case "updatedAt":
@@ -35347,6 +36547,919 @@ func (ec *executionContext) fieldContext_Mutation_deleteTransaction(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_createWalletDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_createWalletDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CreateWalletDevice(ctx, fc.Args["input"].(gqlModel.CreateWalletDeviceInput))
+		},
+		nil,
+		ec.marshalNWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_createWalletDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletDevice_id(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletDevice_name(ctx, field)
+			case "deviceType":
+				return ec.fieldContext_WalletDevice_deviceType(ctx, field)
+			case "accounts":
+				return ec.fieldContext_WalletDevice_accounts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletDevice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletDevice_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletDevice", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_createWalletDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateWalletDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateWalletDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateWalletDevice(ctx, fc.Args["id"].(string), fc.Args["name"].(string), fc.Args["deviceType"].(gqlModel.WalletDeviceType))
+		},
+		nil,
+		ec.marshalNWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateWalletDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletDevice_id(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletDevice_name(ctx, field)
+			case "deviceType":
+				return ec.fieldContext_WalletDevice_deviceType(ctx, field)
+			case "accounts":
+				return ec.fieldContext_WalletDevice_accounts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletDevice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletDevice_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletDevice", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateWalletDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeWalletDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeWalletDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveWalletDevice(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeWalletDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeWalletDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_assignWalletDevice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_assignWalletDevice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AssignWalletDevice(ctx, fc.Args["walletAccountId"].(string), fc.Args["deviceId"].(*string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_assignWalletDevice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_assignWalletDevice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addWalletAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addWalletAccount,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddWalletAccount(ctx, fc.Args["input"].(gqlModel.AddWalletAccountInput))
+		},
+		nil,
+		ec.marshalNWalletAccount2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccount,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addWalletAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletAccount_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_WalletAccount_portfolioId(ctx, field)
+			case "deviceId":
+				return ec.fieldContext_WalletAccount_deviceId(ctx, field)
+			case "device":
+				return ec.fieldContext_WalletAccount_device(ctx, field)
+			case "network":
+				return ec.fieldContext_WalletAccount_network(ctx, field)
+			case "addressOrXpub":
+				return ec.fieldContext_WalletAccount_addressOrXpub(ctx, field)
+			case "isXpub":
+				return ec.fieldContext_WalletAccount_isXpub(ctx, field)
+			case "label":
+				return ec.fieldContext_WalletAccount_label(ctx, field)
+			case "isActive":
+				return ec.fieldContext_WalletAccount_isActive(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_WalletAccount_lastSyncAt(ctx, field)
+			case "historyStatus":
+				return ec.fieldContext_WalletAccount_historyStatus(ctx, field)
+			case "capabilityLevel":
+				return ec.fieldContext_WalletAccount_capabilityLevel(ctx, field)
+			case "discoveredAddresses":
+				return ec.fieldContext_WalletAccount_discoveredAddresses(ctx, field)
+			case "lastSyncError":
+				return ec.fieldContext_WalletAccount_lastSyncError(ctx, field)
+			case "balances":
+				return ec.fieldContext_WalletAccount_balances(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletAccount_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletAccount_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addWalletAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addMultiNetworkWallet(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addMultiNetworkWallet,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddMultiNetworkWallet(ctx, fc.Args["input"].(gqlModel.AddMultiNetworkWalletInput))
+		},
+		nil,
+		ec.marshalNWalletAccount2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccountᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addMultiNetworkWallet(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletAccount_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_WalletAccount_portfolioId(ctx, field)
+			case "deviceId":
+				return ec.fieldContext_WalletAccount_deviceId(ctx, field)
+			case "device":
+				return ec.fieldContext_WalletAccount_device(ctx, field)
+			case "network":
+				return ec.fieldContext_WalletAccount_network(ctx, field)
+			case "addressOrXpub":
+				return ec.fieldContext_WalletAccount_addressOrXpub(ctx, field)
+			case "isXpub":
+				return ec.fieldContext_WalletAccount_isXpub(ctx, field)
+			case "label":
+				return ec.fieldContext_WalletAccount_label(ctx, field)
+			case "isActive":
+				return ec.fieldContext_WalletAccount_isActive(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_WalletAccount_lastSyncAt(ctx, field)
+			case "historyStatus":
+				return ec.fieldContext_WalletAccount_historyStatus(ctx, field)
+			case "capabilityLevel":
+				return ec.fieldContext_WalletAccount_capabilityLevel(ctx, field)
+			case "discoveredAddresses":
+				return ec.fieldContext_WalletAccount_discoveredAddresses(ctx, field)
+			case "lastSyncError":
+				return ec.fieldContext_WalletAccount_lastSyncError(ctx, field)
+			case "balances":
+				return ec.fieldContext_WalletAccount_balances(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletAccount_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletAccount_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addMultiNetworkWallet_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addCustomToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addCustomToken,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddCustomToken(ctx, fc.Args["input"].(gqlModel.AddCustomTokenInput))
+		},
+		nil,
+		ec.marshalNWalletBalance2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalance,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addCustomToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletBalance_id(ctx, field)
+			case "symbol":
+				return ec.fieldContext_WalletBalance_symbol(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletBalance_name(ctx, field)
+			case "decimals":
+				return ec.fieldContext_WalletBalance_decimals(ctx, field)
+			case "rawBalance":
+				return ec.fieldContext_WalletBalance_rawBalance(ctx, field)
+			case "formattedQuantity":
+				return ec.fieldContext_WalletBalance_formattedQuantity(ctx, field)
+			case "tokenAddress":
+				return ec.fieldContext_WalletBalance_tokenAddress(ctx, field)
+			case "isSpam":
+				return ec.fieldContext_WalletBalance_isSpam(ctx, field)
+			case "isHidden":
+				return ec.fieldContext_WalletBalance_isHidden(ctx, field)
+			case "isStale":
+				return ec.fieldContext_WalletBalance_isStale(ctx, field)
+			case "costBasisPerUnit":
+				return ec.fieldContext_WalletBalance_costBasisPerUnit(ctx, field)
+			case "costBasisCurrency":
+				return ec.fieldContext_WalletBalance_costBasisCurrency(ctx, field)
+			case "costBasisType":
+				return ec.fieldContext_WalletBalance_costBasisType(ctx, field)
+			case "autoEstimatedBasis":
+				return ec.fieldContext_WalletBalance_autoEstimatedBasis(ctx, field)
+			case "acquiredAt":
+				return ec.fieldContext_WalletBalance_acquiredAt(ctx, field)
+			case "lastUpdatedAt":
+				return ec.fieldContext_WalletBalance_lastUpdatedAt(ctx, field)
+			case "currentPrice":
+				return ec.fieldContext_WalletBalance_currentPrice(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_WalletBalance_currentValue(ctx, field)
+			case "dayChange24h":
+				return ec.fieldContext_WalletBalance_dayChange24h(ctx, field)
+			case "priceUpdatedAt":
+				return ec.fieldContext_WalletBalance_priceUpdatedAt(ctx, field)
+			case "priceSource":
+				return ec.fieldContext_WalletBalance_priceSource(ctx, field)
+			case "isPriceResolved":
+				return ec.fieldContext_WalletBalance_isPriceResolved(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletBalance", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addCustomToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateBlockchainNetworkConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateBlockchainNetworkConfig,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateBlockchainNetworkConfig(ctx, fc.Args["input"].(gqlModel.UpdateBlockchainNetworkConfigInput))
+		},
+		nil,
+		ec.marshalNBlockchainNetworkConfig2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfig,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateBlockchainNetworkConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "network":
+				return ec.fieldContext_BlockchainNetworkConfig_network(ctx, field)
+			case "rpcUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_rpcUrl(ctx, field)
+			case "explorerApiUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_explorerApiUrl(ctx, field)
+			case "source":
+				return ec.fieldContext_BlockchainNetworkConfig_source(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_BlockchainNetworkConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockchainNetworkConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateBlockchainNetworkConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetBlockchainNetworkConfig(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resetBlockchainNetworkConfig,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResetBlockchainNetworkConfig(ctx, fc.Args["network"].(gqlModel.BlockchainNetwork))
+		},
+		nil,
+		ec.marshalNBlockchainNetworkConfig2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfig,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetBlockchainNetworkConfig(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "network":
+				return ec.fieldContext_BlockchainNetworkConfig_network(ctx, field)
+			case "rpcUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_rpcUrl(ctx, field)
+			case "explorerApiUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_explorerApiUrl(ctx, field)
+			case "source":
+				return ec.fieldContext_BlockchainNetworkConfig_source(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_BlockchainNetworkConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockchainNetworkConfig", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetBlockchainNetworkConfig_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_removeWalletAccount(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_removeWalletAccount,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RemoveWalletAccount(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_removeWalletAccount(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_removeWalletAccount_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_triggerWalletSync(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_triggerWalletSync,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().TriggerWalletSync(ctx, fc.Args["id"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_triggerWalletSync(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_triggerWalletSync_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_toggleSpamToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_toggleSpamToken,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ToggleSpamToken(ctx, fc.Args["balanceId"].(string), fc.Args["isHidden"].(bool))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_toggleSpamToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_toggleSpamToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_refreshWalletBalancePrice(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_refreshWalletBalancePrice,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RefreshWalletBalancePrice(ctx, fc.Args["balanceId"].(string))
+		},
+		nil,
+		ec.marshalNWalletBalance2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalance,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_refreshWalletBalancePrice(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletBalance_id(ctx, field)
+			case "symbol":
+				return ec.fieldContext_WalletBalance_symbol(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletBalance_name(ctx, field)
+			case "decimals":
+				return ec.fieldContext_WalletBalance_decimals(ctx, field)
+			case "rawBalance":
+				return ec.fieldContext_WalletBalance_rawBalance(ctx, field)
+			case "formattedQuantity":
+				return ec.fieldContext_WalletBalance_formattedQuantity(ctx, field)
+			case "tokenAddress":
+				return ec.fieldContext_WalletBalance_tokenAddress(ctx, field)
+			case "isSpam":
+				return ec.fieldContext_WalletBalance_isSpam(ctx, field)
+			case "isHidden":
+				return ec.fieldContext_WalletBalance_isHidden(ctx, field)
+			case "isStale":
+				return ec.fieldContext_WalletBalance_isStale(ctx, field)
+			case "costBasisPerUnit":
+				return ec.fieldContext_WalletBalance_costBasisPerUnit(ctx, field)
+			case "costBasisCurrency":
+				return ec.fieldContext_WalletBalance_costBasisCurrency(ctx, field)
+			case "costBasisType":
+				return ec.fieldContext_WalletBalance_costBasisType(ctx, field)
+			case "autoEstimatedBasis":
+				return ec.fieldContext_WalletBalance_autoEstimatedBasis(ctx, field)
+			case "acquiredAt":
+				return ec.fieldContext_WalletBalance_acquiredAt(ctx, field)
+			case "lastUpdatedAt":
+				return ec.fieldContext_WalletBalance_lastUpdatedAt(ctx, field)
+			case "currentPrice":
+				return ec.fieldContext_WalletBalance_currentPrice(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_WalletBalance_currentValue(ctx, field)
+			case "dayChange24h":
+				return ec.fieldContext_WalletBalance_dayChange24h(ctx, field)
+			case "priceUpdatedAt":
+				return ec.fieldContext_WalletBalance_priceUpdatedAt(ctx, field)
+			case "priceSource":
+				return ec.fieldContext_WalletBalance_priceSource(ctx, field)
+			case "isPriceResolved":
+				return ec.fieldContext_WalletBalance_isPriceResolved(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletBalance", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_refreshWalletBalancePrice_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setWalletBalanceCostBasis(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_setWalletBalanceCostBasis,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().SetWalletBalanceCostBasis(ctx, fc.Args["balanceId"].(string), fc.Args["costBasisPerUnit"].(float64), fc.Args["currency"].(*string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setWalletBalanceCostBasis(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setWalletBalanceCostBasis_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resetWalletBalanceCostBasis(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resetWalletBalanceCostBasis,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResetWalletBalanceCostBasis(ctx, fc.Args["balanceId"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resetWalletBalanceCostBasis(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resetWalletBalanceCostBasis_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_resolveWalletReview(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_resolveWalletReview,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ResolveWalletReview(ctx, fc.Args["reviewId"].(string), fc.Args["action"].(string), fc.Args["customType"].(*string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_resolveWalletReview(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_resolveWalletReview_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_configureAlchemyKey(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_configureAlchemyKey,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().ConfigureAlchemyKey(ctx, fc.Args["apiKey"].(string))
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_configureAlchemyKey(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_configureAlchemyKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -43523,6 +45636,8 @@ func (ec *executionContext) fieldContext_Query_marketDataCredentials(_ context.C
 				return ec.fieldContext_MarketDataCredential_isEnabled(ctx, field)
 			case "priority":
 				return ec.fieldContext_MarketDataCredential_priority(ctx, field)
+			case "source":
+				return ec.fieldContext_MarketDataCredential_source(ctx, field)
 			case "lastValidatedAt":
 				return ec.fieldContext_MarketDataCredential_lastValidatedAt(ctx, field)
 			case "createdAt":
@@ -46034,6 +48149,8 @@ func (ec *executionContext) fieldContext_Query_syncCredentials(_ context.Context
 				return ec.fieldContext_SyncCredential_provider(ctx, field)
 			case "status":
 				return ec.fieldContext_SyncCredential_status(ctx, field)
+			case "source":
+				return ec.fieldContext_SyncCredential_source(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_SyncCredential_createdAt(ctx, field)
 			case "updatedAt":
@@ -46369,6 +48486,267 @@ func (ec *executionContext) fieldContext_Query_realizedGains(ctx context.Context
 	if fc.Args, err = ec.field_Query_realizedGains_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_walletDevices(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_walletDevices,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().WalletDevices(ctx)
+		},
+		nil,
+		ec.marshalNWalletDevice2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_walletDevices(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletDevice_id(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletDevice_name(ctx, field)
+			case "deviceType":
+				return ec.fieldContext_WalletDevice_deviceType(ctx, field)
+			case "accounts":
+				return ec.fieldContext_WalletDevice_accounts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletDevice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletDevice_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletDevice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_walletAccounts(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_walletAccounts,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().WalletAccounts(ctx, fc.Args["portfolioId"].(*string))
+		},
+		nil,
+		ec.marshalNWalletAccount2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccountᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_walletAccounts(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletAccount_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_WalletAccount_portfolioId(ctx, field)
+			case "deviceId":
+				return ec.fieldContext_WalletAccount_deviceId(ctx, field)
+			case "device":
+				return ec.fieldContext_WalletAccount_device(ctx, field)
+			case "network":
+				return ec.fieldContext_WalletAccount_network(ctx, field)
+			case "addressOrXpub":
+				return ec.fieldContext_WalletAccount_addressOrXpub(ctx, field)
+			case "isXpub":
+				return ec.fieldContext_WalletAccount_isXpub(ctx, field)
+			case "label":
+				return ec.fieldContext_WalletAccount_label(ctx, field)
+			case "isActive":
+				return ec.fieldContext_WalletAccount_isActive(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_WalletAccount_lastSyncAt(ctx, field)
+			case "historyStatus":
+				return ec.fieldContext_WalletAccount_historyStatus(ctx, field)
+			case "capabilityLevel":
+				return ec.fieldContext_WalletAccount_capabilityLevel(ctx, field)
+			case "discoveredAddresses":
+				return ec.fieldContext_WalletAccount_discoveredAddresses(ctx, field)
+			case "lastSyncError":
+				return ec.fieldContext_WalletAccount_lastSyncError(ctx, field)
+			case "balances":
+				return ec.fieldContext_WalletAccount_balances(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletAccount_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletAccount_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletAccount", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_walletAccounts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_walletCUUsage(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_walletCUUsage,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().WalletCUUsage(ctx)
+		},
+		nil,
+		ec.marshalNWalletCUUsage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletCUUsage,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_walletCUUsage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "billingMonth":
+				return ec.fieldContext_WalletCUUsage_billingMonth(ctx, field)
+			case "consumedUnits":
+				return ec.fieldContext_WalletCUUsage_consumedUnits(ctx, field)
+			case "maxQuota":
+				return ec.fieldContext_WalletCUUsage_maxQuota(ctx, field)
+			case "isThrottled":
+				return ec.fieldContext_WalletCUUsage_isThrottled(ctx, field)
+			case "hasKey":
+				return ec.fieldContext_WalletCUUsage_hasKey(ctx, field)
+			case "keySource":
+				return ec.fieldContext_WalletCUUsage_keySource(ctx, field)
+			case "maskedKey":
+				return ec.fieldContext_WalletCUUsage_maskedKey(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletCUUsage", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_pendingWalletReviews(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_pendingWalletReviews,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().PendingWalletReviews(ctx, fc.Args["portfolioId"].(string))
+		},
+		nil,
+		ec.marshalNWalletActivityReview2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletActivityReviewᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_pendingWalletReviews(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletActivityReview_id(ctx, field)
+			case "walletActivityId":
+				return ec.fieldContext_WalletActivityReview_walletActivityId(ctx, field)
+			case "reviewStatus":
+				return ec.fieldContext_WalletActivityReview_reviewStatus(ctx, field)
+			case "suggestedType":
+				return ec.fieldContext_WalletActivityReview_suggestedType(ctx, field)
+			case "notes":
+				return ec.fieldContext_WalletActivityReview_notes(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletActivityReview_createdAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletActivityReview", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_pendingWalletReviews_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_blockchainNetworkConfigs(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_blockchainNetworkConfigs,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().BlockchainNetworkConfigs(ctx)
+		},
+		nil,
+		ec.marshalNBlockchainNetworkConfig2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfigᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_blockchainNetworkConfigs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "network":
+				return ec.fieldContext_BlockchainNetworkConfig_network(ctx, field)
+			case "rpcUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_rpcUrl(ctx, field)
+			case "explorerApiUrl":
+				return ec.fieldContext_BlockchainNetworkConfig_explorerApiUrl(ctx, field)
+			case "source":
+				return ec.fieldContext_BlockchainNetworkConfig_source(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_BlockchainNetworkConfig_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type BlockchainNetworkConfig", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -49453,6 +51831,35 @@ func (ec *executionContext) _SyncCredential_status(ctx context.Context, field gr
 }
 
 func (ec *executionContext) fieldContext_SyncCredential_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "SyncCredential",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _SyncCredential_source(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncCredential) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_SyncCredential_source,
+		func(ctx context.Context) (any, error) {
+			return obj.Source, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_SyncCredential_source(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "SyncCredential",
 		Field:      field,
@@ -53234,6 +55641,1795 @@ func (ec *executionContext) fieldContext_ValidationResult_message(_ context.Cont
 	return fc, nil
 }
 
+func (ec *executionContext) _WalletAccount_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_portfolioId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_portfolioId,
+		func(ctx context.Context) (any, error) {
+			return obj.PortfolioID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_portfolioId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_deviceId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_deviceId,
+		func(ctx context.Context) (any, error) {
+			return obj.DeviceID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_deviceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_device(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_device,
+		func(ctx context.Context) (any, error) {
+			return obj.Device, nil
+		},
+		nil,
+		ec.marshalOWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_device(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletDevice_id(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletDevice_name(ctx, field)
+			case "deviceType":
+				return ec.fieldContext_WalletDevice_deviceType(ctx, field)
+			case "accounts":
+				return ec.fieldContext_WalletDevice_accounts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletDevice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletDevice_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletDevice", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_network(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_network,
+		func(ctx context.Context) (any, error) {
+			return obj.Network, nil
+		},
+		nil,
+		ec.marshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_network(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type BlockchainNetwork does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_addressOrXpub(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_addressOrXpub,
+		func(ctx context.Context) (any, error) {
+			return obj.AddressOrXpub, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_addressOrXpub(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_isXpub(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_isXpub,
+		func(ctx context.Context) (any, error) {
+			return obj.IsXpub, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_isXpub(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_label(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_label,
+		func(ctx context.Context) (any, error) {
+			return obj.Label, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_label(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_isActive(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_isActive,
+		func(ctx context.Context) (any, error) {
+			return obj.IsActive, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_isActive(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_lastSyncAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_lastSyncAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastSyncAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_lastSyncAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_historyStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_historyStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.HistoryStatus, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_historyStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_capabilityLevel(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_capabilityLevel,
+		func(ctx context.Context) (any, error) {
+			return obj.CapabilityLevel, nil
+		},
+		nil,
+		ec.marshalNWalletCapabilityLevel2sigma_financeᚋinternalᚋdomainᚋmodelᚐWalletCapabilityLevel,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_capabilityLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WalletCapabilityLevel does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_discoveredAddresses(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_discoveredAddresses,
+		func(ctx context.Context) (any, error) {
+			return obj.DiscoveredAddresses, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_discoveredAddresses(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_lastSyncError(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_lastSyncError,
+		func(ctx context.Context) (any, error) {
+			return obj.LastSyncError, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_lastSyncError(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_balances(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_balances,
+		func(ctx context.Context) (any, error) {
+			return obj.Balances, nil
+		},
+		nil,
+		ec.marshalNWalletBalance2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalanceᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_balances(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletBalance_id(ctx, field)
+			case "symbol":
+				return ec.fieldContext_WalletBalance_symbol(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletBalance_name(ctx, field)
+			case "decimals":
+				return ec.fieldContext_WalletBalance_decimals(ctx, field)
+			case "rawBalance":
+				return ec.fieldContext_WalletBalance_rawBalance(ctx, field)
+			case "formattedQuantity":
+				return ec.fieldContext_WalletBalance_formattedQuantity(ctx, field)
+			case "tokenAddress":
+				return ec.fieldContext_WalletBalance_tokenAddress(ctx, field)
+			case "isSpam":
+				return ec.fieldContext_WalletBalance_isSpam(ctx, field)
+			case "isHidden":
+				return ec.fieldContext_WalletBalance_isHidden(ctx, field)
+			case "isStale":
+				return ec.fieldContext_WalletBalance_isStale(ctx, field)
+			case "costBasisPerUnit":
+				return ec.fieldContext_WalletBalance_costBasisPerUnit(ctx, field)
+			case "costBasisCurrency":
+				return ec.fieldContext_WalletBalance_costBasisCurrency(ctx, field)
+			case "costBasisType":
+				return ec.fieldContext_WalletBalance_costBasisType(ctx, field)
+			case "autoEstimatedBasis":
+				return ec.fieldContext_WalletBalance_autoEstimatedBasis(ctx, field)
+			case "acquiredAt":
+				return ec.fieldContext_WalletBalance_acquiredAt(ctx, field)
+			case "lastUpdatedAt":
+				return ec.fieldContext_WalletBalance_lastUpdatedAt(ctx, field)
+			case "currentPrice":
+				return ec.fieldContext_WalletBalance_currentPrice(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_WalletBalance_currentValue(ctx, field)
+			case "dayChange24h":
+				return ec.fieldContext_WalletBalance_dayChange24h(ctx, field)
+			case "priceUpdatedAt":
+				return ec.fieldContext_WalletBalance_priceUpdatedAt(ctx, field)
+			case "priceSource":
+				return ec.fieldContext_WalletBalance_priceSource(ctx, field)
+			case "isPriceResolved":
+				return ec.fieldContext_WalletBalance_isPriceResolved(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletBalance", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_WalletAccount_balances_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletAccount_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletAccount) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletAccount_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletAccount_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletAccount",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_walletActivityId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_walletActivityId,
+		func(ctx context.Context) (any, error) {
+			return obj.WalletActivityID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_walletActivityId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_reviewStatus(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_reviewStatus,
+		func(ctx context.Context) (any, error) {
+			return obj.ReviewStatus, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_reviewStatus(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_suggestedType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_suggestedType,
+		func(ctx context.Context) (any, error) {
+			return obj.SuggestedType, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_suggestedType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_notes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_notes,
+		func(ctx context.Context) (any, error) {
+			return obj.Notes, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_notes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletActivityReview_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletActivityReview) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletActivityReview_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletActivityReview_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletActivityReview",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_symbol(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_symbol,
+		func(ctx context.Context) (any, error) {
+			return obj.Symbol, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_symbol(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_decimals(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_decimals,
+		func(ctx context.Context) (any, error) {
+			return obj.Decimals, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_decimals(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_rawBalance(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_rawBalance,
+		func(ctx context.Context) (any, error) {
+			return obj.RawBalance, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_rawBalance(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_formattedQuantity(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_formattedQuantity,
+		func(ctx context.Context) (any, error) {
+			return obj.FormattedQuantity, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_formattedQuantity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_tokenAddress(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_tokenAddress,
+		func(ctx context.Context) (any, error) {
+			return obj.TokenAddress, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_tokenAddress(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_isSpam(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_isSpam,
+		func(ctx context.Context) (any, error) {
+			return obj.IsSpam, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_isSpam(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_isHidden(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_isHidden,
+		func(ctx context.Context) (any, error) {
+			return obj.IsHidden, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_isHidden(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_isStale(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_isStale,
+		func(ctx context.Context) (any, error) {
+			return obj.IsStale, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_isStale(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_costBasisPerUnit(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_costBasisPerUnit,
+		func(ctx context.Context) (any, error) {
+			return obj.CostBasisPerUnit, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_costBasisPerUnit(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_costBasisCurrency(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_costBasisCurrency,
+		func(ctx context.Context) (any, error) {
+			return obj.CostBasisCurrency, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_costBasisCurrency(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_costBasisType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_costBasisType,
+		func(ctx context.Context) (any, error) {
+			return obj.CostBasisType, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_costBasisType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_autoEstimatedBasis(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_autoEstimatedBasis,
+		func(ctx context.Context) (any, error) {
+			return obj.AutoEstimatedBasis, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_autoEstimatedBasis(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_acquiredAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_acquiredAt,
+		func(ctx context.Context) (any, error) {
+			return obj.AcquiredAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_acquiredAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_lastUpdatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_lastUpdatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastUpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_lastUpdatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_currentPrice(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_currentPrice,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentPrice, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_currentPrice(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_currentValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_currentValue,
+		func(ctx context.Context) (any, error) {
+			return obj.CurrentValue, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_currentValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_dayChange24h(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_dayChange24h,
+		func(ctx context.Context) (any, error) {
+			return obj.DayChange24h, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_dayChange24h(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_priceUpdatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_priceUpdatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.PriceUpdatedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_priceUpdatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_priceSource(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_priceSource,
+		func(ctx context.Context) (any, error) {
+			return obj.PriceSource, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_priceSource(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletBalance_isPriceResolved(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletBalance) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletBalance_isPriceResolved,
+		func(ctx context.Context) (any, error) {
+			return obj.IsPriceResolved, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletBalance_isPriceResolved(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletBalance",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_billingMonth(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_billingMonth,
+		func(ctx context.Context) (any, error) {
+			return obj.BillingMonth, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_billingMonth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_consumedUnits(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_consumedUnits,
+		func(ctx context.Context) (any, error) {
+			return obj.ConsumedUnits, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_consumedUnits(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_maxQuota(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_maxQuota,
+		func(ctx context.Context) (any, error) {
+			return obj.MaxQuota, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_maxQuota(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_isThrottled(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_isThrottled,
+		func(ctx context.Context) (any, error) {
+			return obj.IsThrottled, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_isThrottled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_hasKey(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_hasKey,
+		func(ctx context.Context) (any, error) {
+			return obj.HasKey, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_hasKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_keySource(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_keySource,
+		func(ctx context.Context) (any, error) {
+			return obj.KeySource, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_keySource(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletCUUsage_maskedKey(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletCUUsage) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletCUUsage_maskedKey,
+		func(ctx context.Context) (any, error) {
+			return obj.MaskedKey, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletCUUsage_maskedKey(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletCUUsage",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_deviceType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_deviceType,
+		func(ctx context.Context) (any, error) {
+			return obj.DeviceType, nil
+		},
+		nil,
+		ec.marshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_deviceType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WalletDeviceType does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_accounts(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_accounts,
+		func(ctx context.Context) (any, error) {
+			return obj.Accounts, nil
+		},
+		nil,
+		ec.marshalNWalletAccount2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccountᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_accounts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletAccount_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_WalletAccount_portfolioId(ctx, field)
+			case "deviceId":
+				return ec.fieldContext_WalletAccount_deviceId(ctx, field)
+			case "device":
+				return ec.fieldContext_WalletAccount_device(ctx, field)
+			case "network":
+				return ec.fieldContext_WalletAccount_network(ctx, field)
+			case "addressOrXpub":
+				return ec.fieldContext_WalletAccount_addressOrXpub(ctx, field)
+			case "isXpub":
+				return ec.fieldContext_WalletAccount_isXpub(ctx, field)
+			case "label":
+				return ec.fieldContext_WalletAccount_label(ctx, field)
+			case "isActive":
+				return ec.fieldContext_WalletAccount_isActive(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_WalletAccount_lastSyncAt(ctx, field)
+			case "historyStatus":
+				return ec.fieldContext_WalletAccount_historyStatus(ctx, field)
+			case "capabilityLevel":
+				return ec.fieldContext_WalletAccount_capabilityLevel(ctx, field)
+			case "discoveredAddresses":
+				return ec.fieldContext_WalletAccount_discoveredAddresses(ctx, field)
+			case "lastSyncError":
+				return ec.fieldContext_WalletAccount_lastSyncError(ctx, field)
+			case "balances":
+				return ec.fieldContext_WalletAccount_balances(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletAccount_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletAccount_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletAccount", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_createdAt,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WalletDevice_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WalletDevice) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WalletDevice_updatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WalletDevice_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WalletDevice",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Watch_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Watch) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55591,6 +59787,43 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
+func (ec *executionContext) unmarshalInputAddCustomTokenInput(ctx context.Context, obj any) (gqlModel.AddCustomTokenInput, error) {
+	var it gqlModel.AddCustomTokenInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"walletAccountId", "tokenAddress"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "walletAccountId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("walletAccountId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WalletAccountID = data
+		case "tokenAddress":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("tokenAddress"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TokenAddress = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAddInstrumentHoldingInput(ctx context.Context, obj any) (gqlModel.AddInstrumentHoldingInput, error) {
 	var it gqlModel.AddInstrumentHoldingInput
 	if obj == nil {
@@ -55651,6 +59884,136 @@ func (ec *executionContext) unmarshalInputAddInstrumentHoldingInput(ctx context.
 				return it, err
 			}
 			it.PurchaseDate = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAddMultiNetworkWalletInput(ctx context.Context, obj any) (gqlModel.AddMultiNetworkWalletInput, error) {
+	var it gqlModel.AddMultiNetworkWalletInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"portfolioId", "address", "networks", "label", "deviceName", "deviceType"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "portfolioId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioID = data
+		case "address":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Address = data
+		case "networks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("networks"))
+			data, err := ec.unmarshalNBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Networks = data
+		case "label":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("label"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Label = data
+		case "deviceName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceName = data
+		case "deviceType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceType"))
+			data, err := ec.unmarshalOWalletDeviceType2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceType = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAddWalletAccountInput(ctx context.Context, obj any) (gqlModel.AddWalletAccountInput, error) {
+	var it gqlModel.AddWalletAccountInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"portfolioId", "network", "addressOrXpub", "isXpub", "label", "deviceId"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "portfolioId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioID = data
+		case "network":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("network"))
+			data, err := ec.unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Network = data
+		case "addressOrXpub":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addressOrXpub"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddressOrXpub = data
+		case "isXpub":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isXpub"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsXpub = data
+		case "label":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("label"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Label = data
+		case "deviceId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceID = data
 		}
 	}
 	return it, nil
@@ -57109,6 +61472,43 @@ func (ec *executionContext) unmarshalInputCreateUserInput(ctx context.Context, o
 				return it, err
 			}
 			it.Password = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputCreateWalletDeviceInput(ctx context.Context, obj any) (gqlModel.CreateWalletDeviceInput, error) {
+	var it gqlModel.CreateWalletDeviceInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "deviceType"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "deviceType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceType"))
+			data, err := ec.unmarshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceType = data
 		}
 	}
 	return it, nil
@@ -58916,6 +63316,50 @@ func (ec *executionContext) unmarshalInputUpdateAlertInput(ctx context.Context, 
 				return it, err
 			}
 			it.NotificationMethods = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputUpdateBlockchainNetworkConfigInput(ctx context.Context, obj any) (gqlModel.UpdateBlockchainNetworkConfigInput, error) {
+	var it gqlModel.UpdateBlockchainNetworkConfigInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"network", "rpcUrl", "explorerApiUrl"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "network":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("network"))
+			data, err := ec.unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Network = data
+		case "rpcUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rpcUrl"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RPCURL = data
+		case "explorerApiUrl":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("explorerApiUrl"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ExplorerAPIURL = data
 		}
 	}
 	return it, nil
@@ -61287,6 +65731,62 @@ func (ec *executionContext) _BenchmarkResult(ctx context.Context, sel ast.Select
 	return out
 }
 
+var blockchainNetworkConfigImplementors = []string{"BlockchainNetworkConfig"}
+
+func (ec *executionContext) _BlockchainNetworkConfig(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.BlockchainNetworkConfig) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, blockchainNetworkConfigImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("BlockchainNetworkConfig")
+		case "network":
+			out.Values[i] = ec._BlockchainNetworkConfig_network(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rpcUrl":
+			out.Values[i] = ec._BlockchainNetworkConfig_rpcUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "explorerApiUrl":
+			out.Values[i] = ec._BlockchainNetworkConfig_explorerApiUrl(ctx, field, obj)
+		case "source":
+			out.Values[i] = ec._BlockchainNetworkConfig_source(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._BlockchainNetworkConfig_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var calculationMethodImplementors = []string{"CalculationMethod"}
 
 func (ec *executionContext) _CalculationMethod(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.CalculationMethod) graphql.Marshaler {
@@ -63513,6 +68013,8 @@ func (ec *executionContext) _MarketDataCredential(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "source":
+			out.Values[i] = ec._MarketDataCredential_source(ctx, field, obj)
 		case "lastValidatedAt":
 			out.Values[i] = ec._MarketDataCredential_lastValidatedAt(ctx, field, obj)
 		case "createdAt":
@@ -64828,6 +69330,125 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteTransaction":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createWalletDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_createWalletDevice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateWalletDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateWalletDevice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeWalletDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeWalletDevice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "assignWalletDevice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_assignWalletDevice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addWalletAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addWalletAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addMultiNetworkWallet":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addMultiNetworkWallet(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addCustomToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addCustomToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updateBlockchainNetworkConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateBlockchainNetworkConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetBlockchainNetworkConfig":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetBlockchainNetworkConfig(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "removeWalletAccount":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_removeWalletAccount(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "triggerWalletSync":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_triggerWalletSync(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "toggleSpamToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_toggleSpamToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "refreshWalletBalancePrice":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshWalletBalancePrice(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "setWalletBalanceCostBasis":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setWalletBalanceCostBasis(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resetWalletBalanceCostBasis":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resetWalletBalanceCostBasis(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "resolveWalletReview":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_resolveWalletReview(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "configureAlchemyKey":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_configureAlchemyKey(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -67941,6 +72562,116 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "walletDevices":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_walletDevices(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "walletAccounts":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_walletAccounts(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "walletCUUsage":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_walletCUUsage(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "pendingWalletReviews":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_pendingWalletReviews(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "blockchainNetworkConfigs":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_blockchainNetworkConfigs(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "__type":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Query___type(ctx, field)
@@ -68606,6 +73337,8 @@ func (ec *executionContext) _SyncCredential(ctx context.Context, sel ast.Selecti
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "source":
+			out.Values[i] = ec._SyncCredential_source(ctx, field, obj)
 		case "createdAt":
 			out.Values[i] = ec._SyncCredential_createdAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -69728,6 +74461,400 @@ func (ec *executionContext) _ValidationResult(ctx context.Context, sel ast.Selec
 	return out
 }
 
+var walletAccountImplementors = []string{"WalletAccount"}
+
+func (ec *executionContext) _WalletAccount(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WalletAccount) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, walletAccountImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WalletAccount")
+		case "id":
+			out.Values[i] = ec._WalletAccount_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "portfolioId":
+			out.Values[i] = ec._WalletAccount_portfolioId(ctx, field, obj)
+		case "deviceId":
+			out.Values[i] = ec._WalletAccount_deviceId(ctx, field, obj)
+		case "device":
+			out.Values[i] = ec._WalletAccount_device(ctx, field, obj)
+		case "network":
+			out.Values[i] = ec._WalletAccount_network(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addressOrXpub":
+			out.Values[i] = ec._WalletAccount_addressOrXpub(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isXpub":
+			out.Values[i] = ec._WalletAccount_isXpub(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "label":
+			out.Values[i] = ec._WalletAccount_label(ctx, field, obj)
+		case "isActive":
+			out.Values[i] = ec._WalletAccount_isActive(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastSyncAt":
+			out.Values[i] = ec._WalletAccount_lastSyncAt(ctx, field, obj)
+		case "historyStatus":
+			out.Values[i] = ec._WalletAccount_historyStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "capabilityLevel":
+			out.Values[i] = ec._WalletAccount_capabilityLevel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "discoveredAddresses":
+			out.Values[i] = ec._WalletAccount_discoveredAddresses(ctx, field, obj)
+		case "lastSyncError":
+			out.Values[i] = ec._WalletAccount_lastSyncError(ctx, field, obj)
+		case "balances":
+			out.Values[i] = ec._WalletAccount_balances(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._WalletAccount_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._WalletAccount_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var walletActivityReviewImplementors = []string{"WalletActivityReview"}
+
+func (ec *executionContext) _WalletActivityReview(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WalletActivityReview) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, walletActivityReviewImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WalletActivityReview")
+		case "id":
+			out.Values[i] = ec._WalletActivityReview_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "walletActivityId":
+			out.Values[i] = ec._WalletActivityReview_walletActivityId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "reviewStatus":
+			out.Values[i] = ec._WalletActivityReview_reviewStatus(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "suggestedType":
+			out.Values[i] = ec._WalletActivityReview_suggestedType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "notes":
+			out.Values[i] = ec._WalletActivityReview_notes(ctx, field, obj)
+		case "createdAt":
+			out.Values[i] = ec._WalletActivityReview_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var walletBalanceImplementors = []string{"WalletBalance"}
+
+func (ec *executionContext) _WalletBalance(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WalletBalance) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, walletBalanceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WalletBalance")
+		case "id":
+			out.Values[i] = ec._WalletBalance_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "symbol":
+			out.Values[i] = ec._WalletBalance_symbol(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._WalletBalance_name(ctx, field, obj)
+		case "decimals":
+			out.Values[i] = ec._WalletBalance_decimals(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rawBalance":
+			out.Values[i] = ec._WalletBalance_rawBalance(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "formattedQuantity":
+			out.Values[i] = ec._WalletBalance_formattedQuantity(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "tokenAddress":
+			out.Values[i] = ec._WalletBalance_tokenAddress(ctx, field, obj)
+		case "isSpam":
+			out.Values[i] = ec._WalletBalance_isSpam(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isHidden":
+			out.Values[i] = ec._WalletBalance_isHidden(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isStale":
+			out.Values[i] = ec._WalletBalance_isStale(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "costBasisPerUnit":
+			out.Values[i] = ec._WalletBalance_costBasisPerUnit(ctx, field, obj)
+		case "costBasisCurrency":
+			out.Values[i] = ec._WalletBalance_costBasisCurrency(ctx, field, obj)
+		case "costBasisType":
+			out.Values[i] = ec._WalletBalance_costBasisType(ctx, field, obj)
+		case "autoEstimatedBasis":
+			out.Values[i] = ec._WalletBalance_autoEstimatedBasis(ctx, field, obj)
+		case "acquiredAt":
+			out.Values[i] = ec._WalletBalance_acquiredAt(ctx, field, obj)
+		case "lastUpdatedAt":
+			out.Values[i] = ec._WalletBalance_lastUpdatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "currentPrice":
+			out.Values[i] = ec._WalletBalance_currentPrice(ctx, field, obj)
+		case "currentValue":
+			out.Values[i] = ec._WalletBalance_currentValue(ctx, field, obj)
+		case "dayChange24h":
+			out.Values[i] = ec._WalletBalance_dayChange24h(ctx, field, obj)
+		case "priceUpdatedAt":
+			out.Values[i] = ec._WalletBalance_priceUpdatedAt(ctx, field, obj)
+		case "priceSource":
+			out.Values[i] = ec._WalletBalance_priceSource(ctx, field, obj)
+		case "isPriceResolved":
+			out.Values[i] = ec._WalletBalance_isPriceResolved(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var walletCUUsageImplementors = []string{"WalletCUUsage"}
+
+func (ec *executionContext) _WalletCUUsage(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WalletCUUsage) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, walletCUUsageImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WalletCUUsage")
+		case "billingMonth":
+			out.Values[i] = ec._WalletCUUsage_billingMonth(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "consumedUnits":
+			out.Values[i] = ec._WalletCUUsage_consumedUnits(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "maxQuota":
+			out.Values[i] = ec._WalletCUUsage_maxQuota(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "isThrottled":
+			out.Values[i] = ec._WalletCUUsage_isThrottled(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "hasKey":
+			out.Values[i] = ec._WalletCUUsage_hasKey(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "keySource":
+			out.Values[i] = ec._WalletCUUsage_keySource(ctx, field, obj)
+		case "maskedKey":
+			out.Values[i] = ec._WalletCUUsage_maskedKey(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var walletDeviceImplementors = []string{"WalletDevice"}
+
+func (ec *executionContext) _WalletDevice(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WalletDevice) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, walletDeviceImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WalletDevice")
+		case "id":
+			out.Values[i] = ec._WalletDevice_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._WalletDevice_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "deviceType":
+			out.Values[i] = ec._WalletDevice_deviceType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "accounts":
+			out.Values[i] = ec._WalletDevice_accounts(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "createdAt":
+			out.Values[i] = ec._WalletDevice_createdAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "updatedAt":
+			out.Values[i] = ec._WalletDevice_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var watchImplementors = []string{"Watch", "Asset"}
 
 func (ec *executionContext) _Watch(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Watch) graphql.Marshaler {
@@ -70277,8 +75404,23 @@ func (ec *executionContext) marshalNAccountType2sigma_financeᚋinternalᚋhandl
 	return v
 }
 
+func (ec *executionContext) unmarshalNAddCustomTokenInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddCustomTokenInput(ctx context.Context, v any) (gqlModel.AddCustomTokenInput, error) {
+	res, err := ec.unmarshalInputAddCustomTokenInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNAddInstrumentHoldingInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddInstrumentHoldingInput(ctx context.Context, v any) (gqlModel.AddInstrumentHoldingInput, error) {
 	res, err := ec.unmarshalInputAddInstrumentHoldingInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAddMultiNetworkWalletInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddMultiNetworkWalletInput(ctx context.Context, v any) (gqlModel.AddMultiNetworkWalletInput, error) {
+	res, err := ec.unmarshalInputAddMultiNetworkWalletInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAddWalletAccountInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddWalletAccountInput(ctx context.Context, v any) (gqlModel.AddWalletAccountInput, error) {
+	res, err := ec.unmarshalInputAddWalletAccountInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -70888,6 +76030,77 @@ func (ec *executionContext) marshalNBenchmarkResult2ᚖsigma_financeᚋinternal�
 	return ec._BenchmarkResult(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx context.Context, v any) (gqlModel.BlockchainNetwork, error) {
+	var res gqlModel.BlockchainNetwork
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx context.Context, sel ast.SelectionSet, v gqlModel.BlockchainNetwork) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) unmarshalNBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx context.Context, v any) ([]gqlModel.BlockchainNetwork, error) {
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]gqlModel.BlockchainNetwork, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalNBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx context.Context, sel ast.SelectionSet, v []gqlModel.BlockchainNetwork) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBlockchainNetworkConfig2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfig(ctx context.Context, sel ast.SelectionSet, v gqlModel.BlockchainNetworkConfig) graphql.Marshaler {
+	return ec._BlockchainNetworkConfig(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNBlockchainNetworkConfig2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfigᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.BlockchainNetworkConfig) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBlockchainNetworkConfig2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfig(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNBlockchainNetworkConfig2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkConfig(ctx context.Context, sel ast.SelectionSet, v *gqlModel.BlockchainNetworkConfig) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._BlockchainNetworkConfig(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNBoolean2bool(ctx context.Context, v any) (bool, error) {
 	res, err := graphql.UnmarshalBoolean(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -71072,6 +76285,11 @@ func (ec *executionContext) unmarshalNCreateStockInput2sigma_financeᚋinternal�
 
 func (ec *executionContext) unmarshalNCreateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCreateUserInput(ctx context.Context, v any) (gqlModel.CreateUserInput, error) {
 	res, err := ec.unmarshalInputCreateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNCreateWalletDeviceInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCreateWalletDeviceInput(ctx context.Context, v any) (gqlModel.CreateWalletDeviceInput, error) {
+	res, err := ec.unmarshalInputCreateWalletDeviceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -73110,6 +78328,11 @@ func (ec *executionContext) unmarshalNUpdateAlertInput2sigma_financeᚋinternal�
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNUpdateBlockchainNetworkConfigInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateBlockchainNetworkConfigInput(ctx context.Context, v any) (gqlModel.UpdateBlockchainNetworkConfigInput, error) {
+	res, err := ec.unmarshalInputUpdateBlockchainNetworkConfigInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNUpdateManualInstrumentInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateManualInstrumentInput(ctx context.Context, v any) (gqlModel.UpdateManualInstrumentInput, error) {
 	res, err := ec.unmarshalInputUpdateManualInstrumentInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -73211,6 +78434,163 @@ func (ec *executionContext) marshalNValidationResult2ᚖsigma_financeᚋinternal
 		return graphql.Null
 	}
 	return ec._ValidationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWalletAccount2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccount(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletAccount) graphql.Marshaler {
+	return ec._WalletAccount(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWalletAccount2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccountᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.WalletAccount) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNWalletAccount2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccount(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWalletAccount2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccount(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletAccount) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WalletAccount(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWalletActivityReview2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletActivityReviewᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.WalletActivityReview) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNWalletActivityReview2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletActivityReview(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWalletActivityReview2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletActivityReview(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletActivityReview) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WalletActivityReview(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWalletBalance2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalance(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletBalance) graphql.Marshaler {
+	return ec._WalletBalance(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWalletBalance2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalanceᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.WalletBalance) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNWalletBalance2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalance(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWalletBalance2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletBalance(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletBalance) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WalletBalance(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWalletCUUsage2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletCUUsage(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletCUUsage) graphql.Marshaler {
+	return ec._WalletCUUsage(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWalletCUUsage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletCUUsage(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletCUUsage) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WalletCUUsage(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWalletCapabilityLevel2sigma_financeᚋinternalᚋdomainᚋmodelᚐWalletCapabilityLevel(ctx context.Context, v any) (model.WalletCapabilityLevel, error) {
+	tmp, err := graphql.UnmarshalString(v)
+	res := model.WalletCapabilityLevel(tmp)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWalletCapabilityLevel2sigma_financeᚋinternalᚋdomainᚋmodelᚐWalletCapabilityLevel(ctx context.Context, sel ast.SelectionSet, v model.WalletCapabilityLevel) graphql.Marshaler {
+	_ = sel
+	res := graphql.MarshalString(string(v))
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+	}
+	return res
+}
+
+func (ec *executionContext) marshalNWalletDevice2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletDevice) graphql.Marshaler {
+	return ec._WalletDevice(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWalletDevice2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.WalletDevice) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletDevice) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WalletDevice(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx context.Context, v any) (gqlModel.WalletDeviceType, error) {
+	var res gqlModel.WalletDeviceType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletDeviceType) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNWatch2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWatch(ctx context.Context, sel ast.SelectionSet, v gqlModel.Watch) graphql.Marshaler {
@@ -74145,6 +79525,29 @@ func (ec *executionContext) unmarshalOUserOrder2ᚖsigma_financeᚋinternalᚋha
 	}
 	res, err := ec.unmarshalInputUserOrder(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletDevice) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._WalletDevice(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOWalletDeviceType2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx context.Context, v any) (*gqlModel.WalletDeviceType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlModel.WalletDeviceType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOWalletDeviceType2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletDeviceType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOWatchlist2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWatchlist(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Watchlist) graphql.Marshaler {

@@ -6,6 +6,7 @@ import (
 	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"sigma_finance/internal/service/crypto"
 	"strings"
 	"time"
 )
@@ -103,6 +104,9 @@ func deriveProviderIdentity(instrument *model.Instrument, provider string) (stri
 	}
 
 	providerSymbol := symbol
+	if instrument.AssetType == model.InstrumentAssetTypeCrypto {
+		providerSymbol = crypto.NormalizeCryptoSymbol(symbol)
+	}
 	providerMarket := strings.TrimSpace(firstNonEmpty(
 		stringOrEmpty(instrument.ExchangeCode),
 		instrument.Exchange,

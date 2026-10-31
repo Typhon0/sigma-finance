@@ -13,8 +13,53 @@ import (
 // accountTestUOW implements a lightweight in-memory stub of repository.IUnitOfWork for AccountService tests
 type accountTestUOW struct {
 	repository.IUnitOfWork
-	portfolios map[string]*model.Portfolio
-	accounts   map[string]*model.Account
+	portfolios  map[string]*model.Portfolio
+	accounts    map[string]*model.Account
+	connections map[string]*model.SyncConnection
+	credentials map[string]*model.SyncCredential
+}
+
+type accountTestSyncRepo struct {
+	repository.ISyncRepository
+	uow *accountTestUOW
+}
+
+func (r *accountTestSyncRepo) GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error) {
+	for _, c := range r.uow.connections {
+		if c.AccountID != nil && *c.AccountID == accountID {
+			return c, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *accountTestSyncRepo) DeleteConnection(ctx context.Context, id string) error {
+	delete(r.uow.connections, id)
+	return nil
+}
+
+func (r *accountTestSyncRepo) ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error) {
+	var res []*model.SyncConnection
+	for _, c := range r.uow.connections {
+		if c.PortfolioID == portfolioID {
+			res = append(res, c)
+		}
+	}
+	return res, nil
+}
+
+func (r *accountTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID, provider string) (*model.SyncCredential, error) {
+	for _, c := range r.uow.credentials {
+		if c.UserID == userID && c.Provider == provider {
+			return c, nil
+		}
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (r *accountTestSyncRepo) DeleteCredential(ctx context.Context, id string) error {
+	delete(r.uow.credentials, id)
+	return nil
 }
 
 type accountTestPortfolioRepo struct {
@@ -102,10 +147,20 @@ func (u *accountTestUOW) Account() repository.IAccountRepository {
 	return &accountTestAccountRepo{uow: u}
 }
 
+func (u *accountTestUOW) Sync() repository.ISyncRepository {
+	return &accountTestSyncRepo{uow: u}
+}
+
+func (u *accountTestUOW) Do(ctx context.Context, fn func(uow repository.IUnitOfWork) error) error {
+	return fn(u)
+}
+
 func setupAccountTestService() (*AccountService, *accountTestUOW) {
 	uow := &accountTestUOW{
-		portfolios: make(map[string]*model.Portfolio),
-		accounts:   make(map[string]*model.Account),
+		portfolios:  make(map[string]*model.Portfolio),
+		accounts:    make(map[string]*model.Account),
+		connections: make(map[string]*model.SyncConnection),
+		credentials: make(map[string]*model.SyncCredential),
 	}
 
 	uow.portfolios["pf-1"] = &model.Portfolio{
@@ -170,7 +225,7 @@ func TestAccountService_CreateAccount(t *testing.T) {
 }
 
 func TestAccountService_GetAndUpdateAccount(t *testing.T) {
-	svc, _ := setupAccountTestService()
+	svc, uow := setupAccountTestService()
 	ctx := context.Background()
 
 	created, err := svc.CreateAccount(ctx, "user-1", CreateAccountInput{
@@ -207,5 +262,46 @@ func TestAccountService_GetAndUpdateAccount(t *testing.T) {
 
 		_, err = svc.GetAccount(ctx, "user-1", created.ID)
 		assert.ErrorIs(t, err, ErrAccountNotFound)
+	})
+
+	t.Run("delete account cleans up sync connection and credential", func(t *testing.T) {
+		krakenProvider := model.SyncProviderKraken
+		syncAcc, err := svc.CreateAccount(ctx, "user-1", CreateAccountInput{
+			PortfolioID:  "pf-1",
+			Name:         "Kraken Trading Account",
+			Type:         model.AccountTypeCryptoExchange,
+			TaxWrapper:   model.TaxWrapperCryptoVault,
+			SyncProvider: &krakenProvider,
+		})
+		require.NoError(t, err)
+
+		cred := &model.SyncCredential{
+			ID:       "cred-kraken-1",
+			UserID:   "user-1",
+			Provider: model.SyncProviderKraken,
+		}
+		uow.credentials[cred.ID] = cred
+
+		conn := &model.SyncConnection{
+			ID:           "conn-kraken-1",
+			UserID:       "user-1",
+			PortfolioID:  "pf-1",
+			CredentialID: cred.ID,
+			AccountID:    &syncAcc.ID,
+			Provider:     model.SyncProviderKraken,
+		}
+		uow.connections[conn.ID] = conn
+
+		// Delete account
+		err = svc.DeleteAccount(ctx, "user-1", syncAcc.ID)
+		require.NoError(t, err)
+
+		// Account should be deleted
+		_, err = svc.GetAccount(ctx, "user-1", syncAcc.ID)
+		assert.ErrorIs(t, err, ErrAccountNotFound)
+
+		// Connection and orphaned credential should be deleted
+		assert.NotContains(t, uow.connections, conn.ID)
+		assert.NotContains(t, uow.credentials, cred.ID)
 	})
 }

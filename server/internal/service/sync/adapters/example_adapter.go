@@ -35,18 +35,18 @@ const (
 // API into the unified synchronization pipeline by implementing [syncservice.SyncAdapter].
 //
 // Key Responsibilities:
-//   1. Decrypt & parse credentials stored in [model.SyncCredential]
-//   2. Query external REST / JSON / GraphQL endpoints with timeouts & cancellation
-//   3. Map vendor-specific responses into canonical DTOs:
-//      - [syncservice.RawAccount]
-//      - [syncservice.RawBalance]
-//      - [syncservice.RawHolding]
-//      - [syncservice.RawTransaction]
-//   4. Normalize financial precision:
-//      - Asset quantities -> [decimal.Decimal]
-//      - Monetary values  -> [model.Money] (integer cents / minor units scaled by 100)
-//   5. Normalize regional currencies (USD, EUR, GBP, JPY, CNY, HKD)
-//   6. Translate vendor errors to sentinel errors ([syncservice.ErrRateLimited], [syncservice.ErrInvalidCredentials])
+//  1. Decrypt & parse credentials stored in [model.SyncCredential]
+//  2. Query external REST / JSON / GraphQL endpoints with timeouts & cancellation
+//  3. Map vendor-specific responses into canonical DTOs:
+//     - [syncservice.RawAccount]
+//     - [syncservice.RawBalance]
+//     - [syncservice.RawHolding]
+//     - [syncservice.RawTransaction]
+//  4. Normalize financial precision:
+//     - Asset quantities -> [decimal.Decimal]
+//     - Monetary values  -> [model.Money] (integer cents / minor units scaled by 100)
+//  5. Normalize regional currencies (USD, EUR, GBP, JPY, CNY, HKD)
+//  6. Translate vendor errors to sentinel errors ([syncservice.ErrRateLimited], [syncservice.ErrInvalidCredentials])
 type ExampleAdapter struct {
 	baseURL    string
 	httpClient *http.Client
@@ -196,11 +196,11 @@ func (a *ExampleAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCred
 	type apiAccount struct {
 		ID            string `json:"id"`
 		Name          string `json:"name"`
-		Type          string `json:"type"`          // "broker", "checking", "savings", "margin"
-		TaxCategory   string `json:"tax_category"`  // "standard", "nisa", "isa", "ira"
-		Institution   string `json:"institution"`   // "Example Securities"
+		Type          string `json:"type"`         // "broker", "checking", "savings", "margin"
+		TaxCategory   string `json:"tax_category"` // "standard", "nisa", "isa", "ira"
+		Institution   string `json:"institution"`  // "Example Securities"
 		AccountNumber string `json:"account_number"`
-		Currency      string `json:"currency"`      // "USD", "JPY", "EUR", "CNY"
+		Currency      string `json:"currency"` // "USD", "JPY", "EUR", "CNY"
 	}
 
 	var response struct {
@@ -330,15 +330,15 @@ func (a *ExampleAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCred
 
 	type apiHolding struct {
 		ID            string `json:"id"`
-		Symbol        string `json:"symbol"`         // Ticker symbol (e.g. "AAPL", "7203", "BTC")
-		Name          string `json:"name"`           // Asset name (e.g. "Apple Inc.", "Toyota Motor Corp")
-		ISIN          string `json:"isin"`           // 12-character ISIN (e.g. "US0378331005")
-		AssetType     string `json:"asset_type"`     // "stock", "etf", "crypto", "fund"
-		Quantity      string `json:"quantity"`       // "100.5"
+		Symbol        string `json:"symbol"`          // Ticker symbol (e.g. "AAPL", "7203", "BTC")
+		Name          string `json:"name"`            // Asset name (e.g. "Apple Inc.", "Toyota Motor Corp")
+		ISIN          string `json:"isin"`            // 12-character ISIN (e.g. "US0378331005")
+		AssetType     string `json:"asset_type"`      // "stock", "etf", "crypto", "fund"
+		Quantity      string `json:"quantity"`        // "100.5"
 		CostBasisUnit string `json:"cost_basis_unit"` // Unit cost in quote currency
-		TotalCost     string `json:"total_cost"`     // Total cost in quote currency
-		CurrentPrice  string `json:"current_price"`  // Latest market price
-		Currency      string `json:"currency"`       // Quote currency (e.g. "USD", "JPY")
+		TotalCost     string `json:"total_cost"`      // Total cost in quote currency
+		CurrentPrice  string `json:"current_price"`   // Latest market price
+		Currency      string `json:"currency"`        // Quote currency (e.g. "USD", "JPY")
 	}
 
 	var response struct {
@@ -449,16 +449,16 @@ func (a *ExampleAdapter) FetchTransactions(
 
 	type apiTransaction struct {
 		ID         string `json:"id"`
-		Type       string `json:"type"`       // "BUY", "SELL", "DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"
-		Symbol     string `json:"symbol"`     // "AAPL", "7203"
-		Name       string `json:"name"`       // "Apple Inc."
+		Type       string `json:"type"`   // "BUY", "SELL", "DEPOSIT", "WITHDRAWAL", "DIVIDEND", "FEE"
+		Symbol     string `json:"symbol"` // "AAPL", "7203"
+		Name       string `json:"name"`   // "Apple Inc."
 		ISIN       string `json:"isin"`
-		Quantity   string `json:"quantity"`   // "10.0"
-		UnitPrice  string `json:"unit_price"` // "180.50"
-		Amount     string `json:"amount"`     // Total settlement amount "1805.00"
-		Currency   string `json:"currency"`   // "USD"
-		Fees       string `json:"fees"`       // "1.50"
-		ExecutedAt string `json:"executed_at"`// "2026-10-25T14:30:00Z"
+		Quantity   string `json:"quantity"`    // "10.0"
+		UnitPrice  string `json:"unit_price"`  // "180.50"
+		Amount     string `json:"amount"`      // Total settlement amount "1805.00"
+		Currency   string `json:"currency"`    // "USD"
+		Fees       string `json:"fees"`        // "1.50"
+		ExecutedAt string `json:"executed_at"` // "2026-10-25T14:30:00Z"
 		Notes      string `json:"notes"`
 	}
 

@@ -227,12 +227,46 @@ func (s *AccountService) UpdateAccount(ctx context.Context, userID, accountID st
 	return acc, nil
 }
 
-// DeleteAccount removes an account if it belongs to the user
+// DeleteAccount removes an account if it belongs to the user, cleaning up linked sync connections and credentials.
 func (s *AccountService) DeleteAccount(ctx context.Context, userID, accountID string) error {
 	acc, err := s.GetAccount(ctx, userID, accountID)
 	if err != nil {
 		return err
 	}
 
-	return s.uow.Account().Delete(ctx, acc.ID)
+	return s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		// Clean up sync connection linked to this account, and any orphaned connections
+		var credID string
+		conn, err := uow.Sync().GetConnectionByAccountID(ctx, acc.ID)
+		if err == nil && conn != nil {
+			credID = conn.CredentialID
+			_ = uow.Sync().DeleteConnection(ctx, conn.ID)
+		} else if acc.SyncProvider != "" && acc.SyncProvider != "MANUAL" {
+			if cred, credErr := uow.Sync().GetCredentialByProvider(ctx, userID, acc.SyncProvider); credErr == nil && cred != nil {
+				credID = cred.ID
+			}
+		}
+
+		// Clean up orphaned connections in this portfolio
+		conns, listErr := uow.Sync().ListConnectionsByPortfolio(ctx, acc.PortfolioID)
+		if listErr == nil {
+			hasOther := false
+			for _, c := range conns {
+				if c.AccountID == nil || *c.AccountID == "" || *c.AccountID == acc.ID {
+					_ = uow.Sync().DeleteConnection(ctx, c.ID)
+					continue
+				}
+				if credID != "" && c.CredentialID == credID {
+					hasOther = true
+				}
+			}
+			if !hasOther && credID != "" {
+				_ = uow.Sync().DeleteCredential(ctx, credID)
+			}
+		} else if credID != "" {
+			_ = uow.Sync().DeleteCredential(ctx, credID)
+		}
+
+		return uow.Account().Delete(ctx, acc.ID)
+	})
 }

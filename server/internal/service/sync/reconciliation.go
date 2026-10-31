@@ -29,8 +29,12 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 		activeCashCurrencies[bal.Currency] = true
 
 		symbol := fmt.Sprintf("%s_CASH_%s", bal.Currency, account.ID)
-		asset, err := uow.Asset().GetBySymbol(ctx, symbol)
-		if err != nil || asset == nil {
+		var asset *model.Asset
+		existingAssets, err := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &symbol})
+		if err == nil && len(existingAssets) > 0 {
+			asset = &existingAssets[0]
+		}
+		if asset == nil {
 			metaBytes, _ := json.Marshal(map[string]interface{}{
 				"account_id": account.ID,
 				"currency":   string(bal.Currency),
@@ -166,7 +170,30 @@ func ReconcileHoldings(
 ) (imported int, updated int, warnings []string, activeAssetIDs map[string]bool, err error) {
 	activeAssetIDs = make(map[string]bool)
 
+	// Defensively aggregate holdings by symbol to prevent separate lots from overwriting each other
+	aggregatedHoldings := make(map[string]RawHolding)
+	var holdingOrder []string
 	for _, h := range holdings {
+		sym := strings.ToUpper(strings.TrimSpace(h.Symbol))
+		if existing, ok := aggregatedHoldings[sym]; ok {
+			existing.Quantity = existing.Quantity.Add(h.Quantity)
+			if h.TotalCostBasis != nil {
+				if existing.TotalCostBasis != nil {
+					total := *existing.TotalCostBasis + *h.TotalCostBasis
+					existing.TotalCostBasis = &total
+				} else {
+					existing.TotalCostBasis = h.TotalCostBasis
+				}
+			}
+			aggregatedHoldings[sym] = existing
+		} else {
+			aggregatedHoldings[sym] = h
+			holdingOrder = append(holdingOrder, sym)
+		}
+	}
+
+	for _, sym := range holdingOrder {
+		h := aggregatedHoldings[sym]
 		asset, isUnmapped, resolveErr := resolveOrCreateAsset(ctx, uow, instrumentService, h)
 		if resolveErr != nil {
 			return imported, updated, warnings, activeAssetIDs, fmt.Errorf("failed to resolve asset for %s: %w", h.Symbol, resolveErr)
@@ -213,9 +240,103 @@ func ReconcileHoldings(
 			}
 			updated++
 		}
+
+		// Keep portfolio_asset synchronized with holding quantities
+		syncPortfolioAssetForHolding(ctx, uow, conn.PortfolioID, asset, h.Quantity, h.CostBasisPerUnit, h.Currency)
+
+		// Trigger historical backfill asynchronously if asset has an instrument
+		if instrumentService != nil && asset.InstrumentID != nil && *asset.InstrumentID != "" {
+			backfillFrom := time.Now().UTC().AddDate(-5, 0, 0)
+			var uid *string
+			if conn.UserID != "" {
+				uid = &conn.UserID
+			}
+			go func(pID, aID, instID string, from time.Time, u *string) {
+				bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+				defer cancel()
+				_, _ = instrumentService.EnqueueHistoricalBackfillJob(bgCtx, pID, aID, instID, from, u)
+			}(conn.PortfolioID, asset.ID, *asset.InstrumentID, backfillFrom, uid)
+		}
 	}
 
 	return imported, updated, warnings, activeAssetIDs, nil
+}
+
+func syncPortfolioAssetForHolding(ctx context.Context, uow repository.IUnitOfWork, portfolioID string, asset *model.Asset, fallbackQuantity decimal.Decimal, fallbackCostBasis *decimal.Decimal, fallbackCurrency model.Currency) {
+	if uow == nil {
+		return
+	}
+	defer func() {
+		// Guard against mock UOWs in unit tests that do not implement PortfolioAsset
+		_ = recover()
+	}()
+
+	paRepo := uow.PortfolioAsset()
+	if paRepo == nil {
+		return
+	}
+
+	totalQty := decimal.Zero
+	var totalCost decimal.Decimal
+	hasPositions := false
+
+	if posRepo := uow.Position(); posRepo != nil {
+		positions, err := posRepo.GetPortfolioPositions(ctx, portfolioID)
+		if err == nil {
+			for _, p := range positions {
+				if p.AssetID == asset.ID && p.Quantity.GreaterThan(decimal.Zero) {
+					hasPositions = true
+					totalQty = totalQty.Add(p.Quantity)
+					if p.AverageCostBasis != nil {
+						totalCost = totalCost.Add(p.Quantity.Mul(*p.AverageCostBasis))
+					}
+				}
+			}
+		}
+	}
+
+	if !hasPositions {
+		totalQty = fallbackQuantity
+		if fallbackCostBasis != nil {
+			totalCost = fallbackQuantity.Mul(*fallbackCostBasis)
+		}
+	}
+
+	q, _ := totalQty.Float64()
+	var avgPrice float64
+	if !totalQty.IsZero() && totalCost.GreaterThan(decimal.Zero) {
+		avg, _ := totalCost.Div(totalQty).Float64()
+		avgPrice = avg
+	} else if fallbackCostBasis != nil {
+		avgPrice, _ = fallbackCostBasis.Float64()
+	}
+
+	currency := fallbackCurrency
+	if !currency.IsValid() {
+		currency = model.CurrencyUSD
+	}
+
+	pa, err := paRepo.FindByPortfolioAndAsset(ctx, portfolioID, asset.ID)
+	if err != nil || pa == nil {
+		newPA := &model.PortfolioAsset{
+			PortfolioID:          portfolioID,
+			AssetID:              asset.ID,
+			InstrumentID:         asset.InstrumentID,
+			Quantity:             q,
+			AveragePurchasePrice: avgPrice,
+			QuoteCurrency:        currency,
+		}
+		_, _ = paRepo.Create(ctx, newPA)
+	} else {
+		pa.Quantity = q
+		if avgPrice > 0 {
+			pa.AveragePurchasePrice = avgPrice
+		}
+		if currency.IsValid() {
+			pa.QuoteCurrency = currency
+		}
+		_ = paRepo.Update(ctx, pa)
+	}
 }
 
 // ReconcileLiquidatedPositions sets Quantity to 0 for positions previously held in this account
@@ -247,6 +368,9 @@ func ReconcileLiquidatedPositions(ctx context.Context, uow repository.IUnitOfWor
 			pos.TotalCostBasis = nil
 			if updateErr := uow.Position().Update(ctx, &pos); updateErr != nil {
 				return liquidatedCount, fmt.Errorf("failed to set liquidated position quantity to zero: %w", updateErr)
+			}
+			if asset != nil {
+				syncPortfolioAssetForHolding(ctx, uow, conn.PortfolioID, asset, decimal.Zero, nil, pos.QuoteCurrency)
 			}
 			liquidatedCount++
 		}
@@ -361,8 +485,15 @@ func ReconcileTransactions(ctx context.Context, uow repository.IUnitOfWork, conn
 	return imported, updated, nil
 }
 
-// ReconcileResidualTaxLots creates baseline opening tax lots for any residual quantities
-// where the authoritative FetchHoldings quantity exceeds historical buy transactions / open lots.
+// ReconcileResidualTaxLots keeps each position's baseline opening tax lot in step
+// with the holding it exists for: it covers exactly the quantity that the
+// imported transactions do not explain, and disappears once they do.
+//
+// The baseline lot is derived, never authoritative. The history owns the buy
+// dates and cost basis, so once transactions explain the holding the placeholder
+// is removed instead of being counted on top of them: otherwise every position
+// imported before its history was complete would report a fabricated
+// acquisition date (the sync date) and roughly twice its real lot quantity.
 func ReconcileResidualTaxLots(ctx context.Context, uow repository.IUnitOfWork, conn *model.SyncConnection, holdings []RawHolding) error {
 	if conn.AccountID == nil {
 		return nil
@@ -383,64 +514,78 @@ func ReconcileResidualTaxLots(ctx context.Context, uow repository.IUnitOfWork, c
 			continue
 		}
 
-		// Calculate total quantity currently tracked in active tax lots
-		// and collect transaction IDs that already have a tax lot.
+		// Coverage the history provides on its own: remaining quantity of lots
+		// tied to a transaction, plus buy transactions that have no lot yet.
+		// Synthetic lots (no transaction ID) are excluded on purpose: they are
+		// what this function recomputes.
 		existingLots, _ := uow.TaxLot().FindByPositionID(ctx, pos.ID)
-		totalRemainingInLots := decimal.Zero
+		historyTracked := decimal.Zero
 		allocatedLotTxIDs := make(map[string]bool)
+		syntheticLots := make([]*model.TaxLot, 0)
 		for _, lot := range existingLots {
-			if lot.Status != model.TaxLotStatusClosed {
-				totalRemainingInLots = totalRemainingInLots.Add(lot.RemainingQuantity)
+			if lot.TransactionID == nil {
+				if lot.Status != model.TaxLotStatusClosed {
+					syntheticLots = append(syntheticLots, lot)
+				}
+				continue
 			}
-			if lot.TransactionID != nil {
-				allocatedLotTxIDs[*lot.TransactionID] = true
+			allocatedLotTxIDs[*lot.TransactionID] = true
+			if lot.Status != model.TaxLotStatusClosed {
+				historyTracked = historyTracked.Add(lot.RemainingQuantity)
 			}
 		}
 
 		// Retrieve historical buy transactions to find earliest cost basis and unallocated tx quantity
 		txs, _ := uow.Transaction().FindByPositionID(ctx, pos.ID)
-		unallocatedTxQty := decimal.Zero
 		var earliestBuy *model.Transaction
-		for _, tx := range txs {
-			if tx.Type == model.TransactionTypeBuy && tx.Quantity != nil {
-				if earliestBuy == nil || tx.ExecutedAt.Before(earliestBuy.ExecutedAt) {
-					earliestBuy = &tx
-				}
-				// Only count buy transactions that don't already have a tax lot
-				if !allocatedLotTxIDs[tx.ID] {
-					unallocatedTxQty = unallocatedTxQty.Add(*tx.Quantity)
-				}
+		for i := range txs {
+			tx := txs[i]
+			if tx.Type != model.TransactionTypeBuy || tx.Quantity == nil {
+				continue
+			}
+			if earliestBuy == nil || tx.ExecutedAt.Before(earliestBuy.ExecutedAt) {
+				earliestBuy = &txs[i]
+			}
+			// Only count buy transactions that don't already have a tax lot
+			if !allocatedLotTxIDs[tx.ID] {
+				historyTracked = historyTracked.Add(*tx.Quantity)
 			}
 		}
 
-		// Accounted quantity is all open tax lots (including existing baseline lots) plus unallocated buy transactions
-		accountedQuantity := totalRemainingInLots.Add(unallocatedTxQty)
+		residualQuantity := h.Quantity.Sub(historyTracked)
 
-		if h.Quantity.GreaterThan(accountedQuantity) {
-			residualQuantity := h.Quantity.Sub(accountedQuantity)
-
-			// Determine earliest cost basis
-			costBasisPerUnit := decimal.Zero
-			if h.CostBasisPerUnit != nil && h.CostBasisPerUnit.IsPositive() {
-				costBasisPerUnit = *h.CostBasisPerUnit
-			} else if earliestBuy != nil && earliestBuy.UnitPriceAmount != nil {
-				costBasisPerUnit = *earliestBuy.UnitPriceAmount
+		if !residualQuantity.IsPositive() {
+			for _, lot := range syntheticLots {
+				if delErr := deleteSyntheticTaxLot(ctx, uow, lot); delErr != nil {
+					return delErr
+				}
 			}
+			continue
+		}
 
-			acquiredAt := time.Now()
-			if earliestBuy != nil {
-				acquiredAt = earliestBuy.ExecutedAt
-			}
+		// Determine earliest cost basis
+		costBasisPerUnit := decimal.Zero
+		if h.CostBasisPerUnit != nil && h.CostBasisPerUnit.IsPositive() {
+			costBasisPerUnit = *h.CostBasisPerUnit
+		} else if earliestBuy != nil && earliestBuy.UnitPriceAmount != nil {
+			costBasisPerUnit = *earliestBuy.UnitPriceAmount
+		}
 
-			totalCostCents := model.Money(costBasisPerUnit.Mul(residualQuantity).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
-			currency := pos.QuoteCurrency
-			if !currency.IsValid() && earliestBuy != nil {
-				currency = earliestBuy.UnitPriceCurrency
-			}
-			if !currency.IsValid() {
-				currency = model.CurrencyUSD
-			}
+		acquiredAt := time.Now()
+		if earliestBuy != nil {
+			acquiredAt = earliestBuy.ExecutedAt
+		}
 
+		totalCostCents := model.Money(costBasisPerUnit.Mul(residualQuantity).Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+		currency := pos.QuoteCurrency
+		if !currency.IsValid() && earliestBuy != nil {
+			currency = earliestBuy.UnitPriceCurrency
+		}
+		if !currency.IsValid() {
+			currency = model.CurrencyUSD
+		}
+
+		if len(syntheticLots) == 0 {
 			baselineLot := &model.TaxLot{
 				PortfolioID:       conn.PortfolioID,
 				PositionID:        pos.ID,
@@ -457,9 +602,52 @@ func ReconcileResidualTaxLots(ctx context.Context, uow repository.IUnitOfWork, c
 			if _, createErr := uow.TaxLot().Create(ctx, baselineLot); createErr != nil {
 				return fmt.Errorf("failed to create baseline tax lot for %s: %w", h.Symbol, createErr)
 			}
+			continue
+		}
+
+		// A single placeholder survives and tracks the residual, so repeated
+		// syncs cannot stack baseline lots on top of each other.
+		baselineLot := syntheticLots[0]
+		baselineLot.AcquiredAt = acquiredAt
+		baselineLot.InitialQuantity = residualQuantity
+		baselineLot.RemainingQuantity = residualQuantity
+		baselineLot.CostBasisPerUnit = costBasisPerUnit
+		baselineLot.TotalCostBasis = totalCostCents
+		baselineLot.Currency = currency
+		baselineLot.Status = model.TaxLotStatusOpen
+		if updateErr := uow.TaxLot().Update(ctx, baselineLot); updateErr != nil {
+			return fmt.Errorf("failed to update baseline tax lot for %s: %w", h.Symbol, updateErr)
+		}
+		for _, duplicate := range syntheticLots[1:] {
+			if delErr := deleteSyntheticTaxLot(ctx, uow, duplicate); delErr != nil {
+				return delErr
+			}
 		}
 	}
 
+	return nil
+}
+
+// deleteSyntheticTaxLot removes a reconciler-owned opening lot unless a sale was
+// already matched against it: dispositions cascade with their lot, so deleting a
+// used one would erase recorded capital gain. A used lot is reported and left in
+// place rather than silently rewritten.
+func deleteSyntheticTaxLot(ctx context.Context, uow repository.IUnitOfWork, lot *model.TaxLot) error {
+	dispositions, err := uow.TaxLotDisposition().FindByPositionID(ctx, lot.PositionID)
+	if err != nil {
+		log.Printf("[WARN] [SyncService] keeping opening tax lot %s: could not check its dispositions: %v", lot.ID, err)
+		return nil
+	}
+	for _, disposition := range dispositions {
+		if disposition.LotID == lot.ID {
+			log.Printf("[WARN] [SyncService] keeping opening tax lot %s: a disposal is matched against it", lot.ID)
+			return nil
+		}
+	}
+
+	if err := uow.TaxLot().Delete(ctx, lot.ID); err != nil {
+		return fmt.Errorf("failed to remove stale opening tax lot %s: %w", lot.ID, err)
+	}
 	return nil
 }
 
@@ -475,7 +663,9 @@ func resolveOrCreateAsset(
 	if holding.Symbol != "" {
 		asset, err := uow.Asset().GetBySymbol(ctx, holding.Symbol)
 		if err == nil && asset != nil {
-			return asset, false, nil
+			if !holding.AssetType.IsValid() || asset.Type == holding.AssetType {
+				return asset, false, nil
+			}
 		}
 	}
 
@@ -492,18 +682,64 @@ func resolveOrCreateAsset(
 		}
 	}
 
-	// 3. Try InstrumentSearchService if available
+	// 3. Try InstrumentSearchService (Local + Online Discovery) if available
 	if instrumentService != nil && holding.Symbol != "" {
-		searchRes, err := instrumentService.SearchLocal(ctx, holding.Symbol, service.InstrumentSearchFilter{Limit: 1}, nil)
-		if err == nil && searchRes != nil && len(searchRes.LocalResults) > 0 {
-			inst := searchRes.LocalResults[0].Instrument
-			if inst != nil {
-				asset, err := uow.Asset().GetByInstrumentID(ctx, inst.ID)
-				if err == nil && asset != nil {
-					return asset, false, nil
+		var assetTypes []model.InstrumentAssetType
+		if holding.AssetType == model.AssetTypeCrypto {
+			assetTypes = []model.InstrumentAssetType{model.InstrumentAssetTypeCrypto}
+		} else if holding.AssetType == model.AssetTypeStock {
+			assetTypes = []model.InstrumentAssetType{
+				model.InstrumentAssetTypeStock,
+				model.InstrumentAssetTypeETF,
+				model.InstrumentAssetTypeFund,
+			}
+		}
+
+		filter := service.InstrumentSearchFilter{
+			AssetTypes: assetTypes,
+			Limit:      5,
+		}
+
+		// 3a. Search Local Catalog
+		searchRes, err := instrumentService.SearchLocal(ctx, holding.Symbol, filter, nil)
+		if err == nil && searchRes != nil {
+			for _, res := range searchRes.LocalResults {
+				inst := res.Instrument
+				if inst == nil {
+					continue
 				}
-				// Instrument matched in catalog, but Asset entity not yet created -> provision real tradeable asset
-				return createAssetFromInstrument(ctx, uow, inst)
+				if holding.AssetType == model.AssetTypeCrypto && inst.AssetType != model.InstrumentAssetTypeCrypto {
+					continue
+				}
+				if strings.EqualFold(inst.NormalizedSymbol, holding.Symbol) || (res.MatchedAlias != nil && strings.EqualFold(*res.MatchedAlias, holding.Symbol)) {
+					asset, err := uow.Asset().GetByInstrumentID(ctx, inst.ID)
+					if err == nil && asset != nil {
+						return asset, false, nil
+					}
+					return createAssetFromInstrument(ctx, uow, inst)
+				}
+			}
+		}
+
+		// 3b. Search Online Discovery (e.g. CoinMarketCap API for Crypto)
+		onlineRes, err := instrumentService.SearchOnline(ctx, holding.Symbol, filter, nil)
+		if err == nil && onlineRes != nil {
+			for _, disc := range onlineRes.OnlineResults {
+				if holding.AssetType == model.AssetTypeCrypto && disc.AssetType != model.InstrumentAssetTypeCrypto {
+					continue
+				}
+				if strings.EqualFold(disc.Symbol, holding.Symbol) {
+					details, persistErr := instrumentService.PersistDiscoveredInstrument(ctx, service.PersistDiscoveredInstrumentInput{
+						Instrument: disc,
+					}, nil)
+					if persistErr == nil && details != nil && details.Instrument != nil {
+						asset, err := uow.Asset().GetByInstrumentID(ctx, details.Instrument.ID)
+						if err == nil && asset != nil {
+							return asset, false, nil
+						}
+						return createAssetFromInstrument(ctx, uow, details.Instrument)
+					}
+				}
 			}
 		}
 	}
@@ -535,7 +771,7 @@ func resolveOrCreateAsset(
 		Metadata:         metaBytes,
 	}
 
-	created, err := uow.Asset().Create(ctx, placeholder)
+	created, err := uow.Asset().UpsertTradeable(ctx, placeholder)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to create unmapped placeholder asset: %w", err)
 	}
@@ -569,7 +805,7 @@ func createAssetFromInstrument(ctx context.Context, uow repository.IUnitOfWork, 
 		MarketDataSource: &inst.ProviderSource,
 	}
 
-	created, err := uow.Asset().Create(ctx, newAsset)
+	created, err := uow.Asset().UpsertTradeable(ctx, newAsset)
 	if err != nil {
 		return nil, false, fmt.Errorf("failed to create asset from matched instrument %s: %w", sym, err)
 	}

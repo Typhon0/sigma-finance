@@ -144,20 +144,30 @@ func (r *MarketDataPackRepository) ListCoverage(ctx context.Context, instrumentI
 						// Binance-style concatenated pair: BTCUSDT, ETHUSDT.
 						// The instrument's base/quote currency fields give us
 						// the canonical pair, but packs may vary the quote
-						// (USDT vs USD).  Try both base+quote and base alone.
-						if inst.BaseCurrency != nil {
-							base := strings.ToLower(strings.TrimSpace(*inst.BaseCurrency))
-							if base != "" {
-								// Exact pair: base||quote (e.g. BTCUSDT)
-								if inst.QuoteCurrency != nil {
-									quote := strings.ToLower(strings.TrimSpace(*inst.QuoteCurrency))
-									if quote != "" {
-										q = q.WhereOr("LOWER(symbol) = ?", base+quote)
-									}
-								}
-								// Fallback: base followed by any quote (BTC%)
-								q = q.WhereOr("LOWER(symbol) LIKE ?", base+"%")
+						// (USDT vs USD).  Try both base+quote, base alone, and symbol.
+						base := ""
+						if inst.BaseCurrency != nil && strings.TrimSpace(*inst.BaseCurrency) != "" {
+							base = strings.ToLower(strings.TrimSpace(*inst.BaseCurrency))
+						} else if symbol != "" {
+							// If instrument symbol has a dash (e.g. BTC-USD), split it
+							if parts := strings.Split(symbol, "-"); len(parts) > 1 {
+								base = strings.ToLower(strings.TrimSpace(parts[0]))
+							} else {
+								base = strings.ToLower(strings.TrimSpace(symbol))
 							}
+						}
+
+						if base != "" {
+							// Exact pair: base||quote (e.g. BTCUSDT)
+							if inst.QuoteCurrency != nil {
+								quote := strings.ToLower(strings.TrimSpace(*inst.QuoteCurrency))
+								if quote != "" {
+									q = q.WhereOr("LOWER(symbol) = ?", base+quote)
+								}
+							}
+							q = q.WhereOr("LOWER(symbol) = ?", base+"usdt").
+								WhereOr("LOWER(symbol) = ?", base+"usd").
+								WhereOr("LOWER(symbol) LIKE ?", base+"%")
 						}
 
 					case model.InstrumentAssetTypeCurrency:
@@ -447,14 +457,14 @@ func normalizeAssetTypes(assetTypes []string) []string {
 func (r *MarketDataPackRepository) BridgeCoverage(ctx context.Context, packID string) error {
 	_, err := r.db.ExecContext(ctx, `
 		WITH coverage_syms AS (
-			SELECT instrument_id, symbol, asset_type
+			SELECT COALESCE(pack_instrument_id, instrument_id) AS original_pack_id, symbol, asset_type
 			FROM sigma_finance.market_data_pack_coverage
-			WHERE pack_id = ? AND pack_instrument_id IS NULL
+			WHERE pack_id = ?
 		),
 		-- Stocks/ETFs/Funds/Indices: strip exchange suffix (.US, .HK, etc.)
 		stock_matched AS (
-			SELECT DISTINCT ON (cs.instrument_id)
-				cs.instrument_id AS old_pack_id,
+			SELECT DISTINCT ON (cs.original_pack_id)
+				cs.original_pack_id AS old_pack_id,
 				i.id AS db_instrument_id
 			FROM coverage_syms cs
 			JOIN sigma_finance.instruments i
@@ -464,32 +474,54 @@ func (r *MarketDataPackRepository) BridgeCoverage(ctx context.Context, packID st
 			            ELSE cs.symbol END)
 			 AND i.asset_type = cs.asset_type
 			WHERE cs.asset_type IN ('STOCK','ETF','FUND','INDEX')
-			ORDER BY cs.instrument_id, i.name
+			ORDER BY cs.original_pack_id, i.name
 		),
-		-- Crypto: match by base+quote exact or base prefix
+		-- Crypto: match by symbol or base+quote exact, prioritizing active portfolio/watchlist assets
 		crypto_matched AS (
-			SELECT DISTINCT ON (cs.instrument_id)
-				cs.instrument_id AS old_pack_id,
+			SELECT DISTINCT ON (cs.original_pack_id)
+				cs.original_pack_id AS old_pack_id,
 				i.id AS db_instrument_id
 			FROM coverage_syms cs
 			JOIN sigma_finance.instruments i
 			  ON i.asset_type = 'CRYPTO'
-			 AND (LOWER(cs.symbol) = LOWER(COALESCE(i.base_currency,'') || COALESCE(i.quote_currency,''))
-			   OR LOWER(cs.symbol) LIKE LOWER(COALESCE(i.base_currency,'')) || '%')
+			 AND (
+			       LOWER(cs.symbol) = LOWER(i.symbol || 'USDT')
+			    OR LOWER(cs.symbol) = LOWER(i.symbol || 'USD')
+			    OR LOWER(cs.symbol) = LOWER(i.symbol)
+			    OR (i.base_currency IS NOT NULL AND i.base_currency <> '' AND (
+			           LOWER(cs.symbol) = LOWER(i.base_currency || COALESCE(i.quote_currency, 'USDT'))
+			        OR LOWER(cs.symbol) = LOWER(i.base_currency || 'USDT')
+			        OR LOWER(cs.symbol) = LOWER(i.base_currency || 'USD')
+			       ))
+			 )
 			WHERE cs.asset_type = 'CRYPTO'
-			ORDER BY cs.instrument_id, i.name
+			ORDER BY cs.original_pack_id,
+			         -- Priority 1: actively used by an asset in user portfolio/watchlist
+			         CASE WHEN EXISTS (SELECT 1 FROM sigma_finance.assets a WHERE a.instrument_id = i.id) THEN 0 ELSE 1 END,
+			         -- Priority 2: exact symbol matches
+			         CASE WHEN LOWER(cs.symbol) = LOWER(i.symbol || 'USDT') THEN 1
+			              WHEN LOWER(cs.symbol) = LOWER(i.symbol || 'USD') THEN 2
+			              WHEN LOWER(cs.symbol) = LOWER(i.symbol) THEN 3
+			              WHEN i.quote_currency IN ('USD', 'USDT') THEN 4
+			              ELSE 5 END,
+			         -- Priority 3: penalize testnets, pegged, wrapped
+			         CASE WHEN i.name ILIKE '%testnet%' THEN 3
+			              WHEN i.name ILIKE '%pegged%' THEN 2
+			              WHEN i.name ILIKE '%wrapped%' THEN 2
+			              ELSE 0 END,
+			         i.name
 		),
 		-- Currency: match by base+quote exact
 		currency_matched AS (
-			SELECT DISTINCT ON (cs.instrument_id)
-				cs.instrument_id AS old_pack_id,
+			SELECT DISTINCT ON (cs.original_pack_id)
+				cs.original_pack_id AS old_pack_id,
 				i.id AS db_instrument_id
 			FROM coverage_syms cs
 			JOIN sigma_finance.instruments i
 			  ON i.asset_type = 'CURRENCY'
 			 AND LOWER(cs.symbol) = LOWER(COALESCE(i.base_currency,'') || COALESCE(i.quote_currency,''))
 			WHERE cs.asset_type = 'CURRENCY'
-			ORDER BY cs.instrument_id, i.name
+			ORDER BY cs.original_pack_id, i.name
 		),
 		all_matched AS (
 			SELECT * FROM stock_matched
@@ -500,7 +532,7 @@ func (r *MarketDataPackRepository) BridgeCoverage(ctx context.Context, packID st
 		SET instrument_id = am.db_instrument_id,
 		    pack_instrument_id = am.old_pack_id
 		FROM all_matched am
-		WHERE mpc.instrument_id = am.old_pack_id
+		WHERE COALESCE(mpc.pack_instrument_id, mpc.instrument_id) = am.old_pack_id
 		  AND mpc.pack_id = ?
 	`, packID, packID)
 	return err

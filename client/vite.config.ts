@@ -5,6 +5,14 @@ import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import codegen from "vite-plugin-graphql-codegen";
 
+// Clear stale shell-exported localhost:8080 endpoints so proxy /graphql is used
+if (
+	process.env.VITE_GRAPHQL_ENDPOINT &&
+	process.env.VITE_GRAPHQL_ENDPOINT.includes("localhost:8080")
+) {
+	delete process.env.VITE_GRAPHQL_ENDPOINT;
+}
+
 export default defineConfig({
 	plugins: [
 		tanstackRouter({
@@ -48,12 +56,22 @@ export default defineConfig({
 			"/graphql": {
 				target: "http://localhost:8080",
 				changeOrigin: true,
+				ws: true,
+			},
+			"/ws": {
+				target: "http://localhost:8080",
+				changeOrigin: true,
+				ws: true,
 			},
 			"/playground": {
 				target: "http://localhost:8080",
 				changeOrigin: true,
 			},
 			"/market-data": {
+				target: "http://localhost:8080",
+				changeOrigin: true,
+			},
+			"/api": {
 				target: "http://localhost:8080",
 				changeOrigin: true,
 			},

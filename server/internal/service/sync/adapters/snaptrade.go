@@ -16,9 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"sigma_finance/internal/domain/model"
 	syncservice "sigma_finance/internal/service/sync"
+
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -472,13 +473,13 @@ func (s *SnapTradeAdapter) FetchBalances(ctx context.Context, cred *model.SyncCr
 }
 
 type snapTradePositionSymbol struct {
-	ID           string `json:"id"`
-	Symbol       string `json:"symbol"`
-	RawSymbol    string `json:"raw_symbol"`
-	Description  string `json:"description"`
-	ISIN         string `json:"isin"`
-	ISINAlt      string `json:"ISIN"`
-	Currency     struct {
+	ID          string `json:"id"`
+	Symbol      string `json:"symbol"`
+	RawSymbol   string `json:"raw_symbol"`
+	Description string `json:"description"`
+	ISIN        string `json:"isin"`
+	ISINAlt     string `json:"ISIN"`
+	Currency    struct {
 		Code string `json:"code"`
 	} `json:"currency"`
 	SecurityType struct {
@@ -650,7 +651,7 @@ func extractISIN(pos snapTradePosition) string {
 func resolveAssetType(sym *snapTradePositionSymbol) model.AssetType {
 	typeStr := strings.ToUpper(sym.SecurityType.Code + " " + sym.SecurityType.Name + " " + sym.Type.Code + " " + sym.Type.Description)
 	if sym.UniversalSymbol != nil {
-		typeStr += " " + strings.ToUpper(sym.UniversalSymbol.SecurityType.Code + " " + sym.UniversalSymbol.SecurityType.Name)
+		typeStr += " " + strings.ToUpper(sym.UniversalSymbol.SecurityType.Code+" "+sym.UniversalSymbol.SecurityType.Name)
 	}
 
 	if strings.Contains(typeStr, "CRYPTO") {

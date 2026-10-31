@@ -90,6 +90,7 @@ export const GET_SYNC_CREDENTIALS = gql`
       id
       provider
       status
+      source
       createdAt
       updatedAt
     }

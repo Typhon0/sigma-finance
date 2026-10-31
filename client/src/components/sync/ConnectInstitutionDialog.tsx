@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { AddWalletDialog } from "@/features/wallets";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -72,9 +73,10 @@ export function ConnectInstitutionDialog({
 	portfolioId,
 	onSuccess,
 }: ConnectInstitutionDialogProps) {
-	const [activeProviderTab, setActiveProviderTab] = useState<"kraken" | "snaptrade" | "gocardless">(
-		"kraken",
-	);
+	const [activeProviderTab, setActiveProviderTab] = useState<
+		"kraken" | "snaptrade" | "gocardless" | "wallets"
+	>("kraken");
+	const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
 
 	// Kraken Form State
 	const [krakenApiKey, setKrakenApiKey] = useState("");
@@ -233,23 +235,8 @@ export function ConnectInstitutionDialog({
 				throw new Error("Failed to register Kraken credentials");
 			}
 
-			// If auto-create account is chosen, create an account if user doesn't already have one mapped
-			if (mappingMode === "auto") {
-				await createAccount({
-					variables: {
-						input: {
-							portfolioId,
-							name: "Kraken Spot Account",
-							type: "CRYPTO_EXCHANGE",
-							taxWrapper: "CRYPTO_VAULT",
-							institution: "Kraken",
-							currency: "EUR",
-							syncProvider: "KRAKEN",
-						},
-					},
-				});
-			} else if (mappingMode === "existing" && selectedAccountId) {
-				// If a sync connection for Kraken already exists, link it
+			// When mappingMode is existing, link the discovered connection to the selected account
+			if (mappingMode === "existing" && selectedAccountId) {
 				const krakenConn = syncConnsData?.syncConnections.find(
 					(c) => c.provider === "KRAKEN" && (!c.accountId || c.accountId === selectedAccountId),
 				);
@@ -427,7 +414,8 @@ export function ConnectInstitutionDialog({
 	};
 
 	return (
-		<Dialog
+		<>
+			<Dialog
 			open={open}
 			onOpenChange={(val) => {
 				if (!val) resetForm();
@@ -454,8 +442,8 @@ export function ConnectInstitutionDialog({
 						<div className="space-y-1">
 							<h3 className="font-semibold text-lg">Waiting for authorization...</h3>
 							<p className="text-sm text-muted-foreground max-w-sm">
-								Please complete the authentication process in the institution's portal. Once approved,
-								click below to discover accounts and initiate synchronization.
+								Please complete the authentication process in the institution's portal. Once
+								approved, click below to discover accounts and initiate synchronization.
 							</p>
 						</div>
 						<div className="flex flex-col gap-2 w-full max-w-xs pt-2">
@@ -501,87 +489,186 @@ export function ConnectInstitutionDialog({
 						onValueChange={(val) => setActiveProviderTab(val as typeof activeProviderTab)}
 						className="mt-2"
 					>
-					<TabsList className="grid w-full grid-cols-3">
-						<TabsTrigger
-							value="kraken"
-							onClick={() => setActiveProviderTab("kraken")}
-							className="flex items-center gap-1.5 text-xs sm:text-sm"
-						>
-							<Wallet className="h-4 w-4" />
-							<span>Kraken</span>
-						</TabsTrigger>
-						<TabsTrigger
-							value="snaptrade"
-							onClick={() => setActiveProviderTab("snaptrade")}
-							className="flex items-center gap-1.5 text-xs sm:text-sm"
-						>
-							<Building2 className="h-4 w-4" />
-							<span>Trade Republic</span>
-						</TabsTrigger>
-						<TabsTrigger
-							value="gocardless"
-							onClick={() => setActiveProviderTab("gocardless")}
-							className="flex items-center gap-1.5 text-xs sm:text-sm"
-						>
-							<Landmark className="h-4 w-4" />
-							<span>European Banks</span>
-						</TabsTrigger>
-					</TabsList>
+						<TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+							<TabsTrigger
+								value="kraken"
+								onClick={() => setActiveProviderTab("kraken")}
+								className="flex items-center gap-1.5 text-xs sm:text-sm"
+							>
+								<Wallet className="h-4 w-4" />
+								<span>Kraken</span>
+							</TabsTrigger>
+							<TabsTrigger
+								value="snaptrade"
+								onClick={() => setActiveProviderTab("snaptrade")}
+								className="flex items-center gap-1.5 text-xs sm:text-sm"
+							>
+								<Building2 className="h-4 w-4" />
+								<span>Trade Republic</span>
+							</TabsTrigger>
+							<TabsTrigger
+								value="gocardless"
+								onClick={() => setActiveProviderTab("gocardless")}
+								className="flex items-center gap-1.5 text-xs sm:text-sm"
+							>
+								<Landmark className="h-4 w-4" />
+								<span>European Banks</span>
+							</TabsTrigger>
+							<TabsTrigger
+								value="wallets"
+								onClick={() => setActiveProviderTab("wallets")}
+								className="flex items-center gap-1.5 text-xs sm:text-sm"
+							>
+								<Wallet className="h-4 w-4 text-violet-500" />
+								<span>Crypto Wallets</span>
+							</TabsTrigger>
+						</TabsList>
 
-					{/* 1. KRAKEN TAB */}
-					<TabsContent value="kraken" className="space-y-4 pt-3">
-						<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-1">
-							<div className="flex items-center gap-2 font-medium text-foreground">
-								<ShieldCheck className="h-4 w-4 text-emerald-500" />
-								<span>Direct Read-Only Exchange Integration</span>
-							</div>
-							<p className="text-muted-foreground leading-relaxed">
-								Generate an API key in your account security settings. Only enable
-								<strong className="text-foreground"> "Query Funds"</strong> and
-								<strong className="text-foreground"> "Query Closed Orders & Trades"</strong>. Never
-								enable withdrawal or trading permissions.
-							</p>
-						</div>
-
-						<form onSubmit={handleConnectKraken} className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="kraken-key">API Key *</Label>
-								<div className="relative">
-									<Input
-										id="kraken-key"
-										placeholder="e.g. abcd1234efgh5678..."
-										value={krakenApiKey}
-										onChange={(e) => setKrakenApiKey(e.target.value)}
-										required
-										autoFocus
-									/>
-									<Key className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+						{/* 1. KRAKEN TAB */}
+						<TabsContent value="kraken" className="space-y-4 pt-3">
+							<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-1">
+								<div className="flex items-center gap-2 font-medium text-foreground">
+									<ShieldCheck className="h-4 w-4 text-emerald-500" />
+									<span>Direct Read-Only Exchange Integration</span>
 								</div>
+								<p className="text-muted-foreground leading-relaxed">
+									Generate an API key in your account security settings. Only enable
+									<strong className="text-foreground"> "Query Funds"</strong> and
+									<strong className="text-foreground"> "Query Closed Orders & Trades"</strong>.
+									Never enable withdrawal or trading permissions.
+								</p>
 							</div>
 
-							<div className="space-y-2">
-								<Label htmlFor="kraken-secret">Private Key (Secret) *</Label>
-								<div className="relative">
-									<Input
-										id="kraken-secret"
-										type={showSecret ? "text" : "password"}
-										placeholder="Enter API Private Key"
-										value={krakenApiSecret}
-										onChange={(e) => setKrakenApiSecret(e.target.value)}
-										required
-									/>
-									<button
-										type="button"
-										onClick={() => setShowSecret((v) => !v)}
-										className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-										aria-label={showSecret ? "Hide secret" : "Show secret"}
+							<form onSubmit={handleConnectKraken} className="space-y-4">
+								<div className="space-y-2">
+									<Label htmlFor="kraken-key">API Key *</Label>
+									<div className="relative">
+										<Input
+											id="kraken-key"
+											placeholder="e.g. abcd1234efgh5678..."
+											value={krakenApiKey}
+											onChange={(e) => setKrakenApiKey(e.target.value)}
+											required
+											autoFocus
+										/>
+										<Key className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+									</div>
+								</div>
+
+								<div className="space-y-2">
+									<Label htmlFor="kraken-secret">Private Key (Secret) *</Label>
+									<div className="relative">
+										<Input
+											id="kraken-secret"
+											type={showSecret ? "text" : "password"}
+											placeholder="Enter API Private Key"
+											value={krakenApiSecret}
+											onChange={(e) => setKrakenApiSecret(e.target.value)}
+											required
+										/>
+										<button
+											type="button"
+											onClick={() => setShowSecret((v) => !v)}
+											className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+											aria-label={showSecret ? "Hide secret" : "Show secret"}
+										>
+											{showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+										</button>
+									</div>
+								</div>
+
+								{/* Account Mapping Option */}
+								<div className="space-y-3 pt-2 border-t">
+									<Label className="text-sm font-medium">Account Mapping</Label>
+									<RadioGroup
+										value={mappingMode}
+										onValueChange={(v) => setMappingMode(v as typeof mappingMode)}
+										className="gap-2"
 									>
-										{showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-									</button>
+										<div className="flex items-center space-x-2">
+											<RadioGroupItem value="auto" id="kraken-map-auto" />
+											<Label
+												htmlFor="kraken-map-auto"
+												className="cursor-pointer text-xs sm:text-sm"
+											>
+												Auto-create a dedicated exchange account in this portfolio
+											</Label>
+										</div>
+										{accounts.length > 0 && (
+											<div className="flex items-center space-x-2">
+												<RadioGroupItem value="existing" id="kraken-map-existing" />
+												<Label
+													htmlFor="kraken-map-existing"
+													className="cursor-pointer text-xs sm:text-sm"
+												>
+													Link to an existing account
+												</Label>
+											</div>
+										)}
+									</RadioGroup>
+
+									{mappingMode === "existing" && accounts.length > 0 && (
+										<div className="pt-1">
+											<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+												<SelectTrigger>
+													<SelectValue placeholder="Select existing account" />
+												</SelectTrigger>
+												<SelectContent>
+													{accounts.map((acc) => (
+														<SelectItem key={acc.id} value={acc.id}>
+															{acc.name} ({acc.type})
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+									)}
+								</div>
+
+								<DialogFooter className="pt-2">
+									<Button
+										type="button"
+										variant="outline"
+										onClick={() => onOpenChange(false)}
+										disabled={isBusy}
+									>
+										Cancel
+									</Button>
+									<Button type="submit" disabled={isBusy || !krakenApiKey || !krakenApiSecret}>
+										{registeringKraken || creatingAccount ? (
+											<>
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												Connecting...
+											</>
+										) : (
+											<>
+												Connect Account
+												<ArrowRight className="ml-2 h-4 w-4" />
+											</>
+										)}
+									</Button>
+								</DialogFooter>
+							</form>
+						</TabsContent>
+
+						{/* 2. SNAPTRADE TAB (Trade Republic, IBKR, etc.) */}
+						<TabsContent value="snaptrade" className="space-y-4 pt-3">
+							<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-2">
+								<div className="flex items-center gap-2 font-medium text-foreground">
+									<Building2 className="h-4 w-4 text-primary" />
+									<span>Retail Brokerages & Stock Accounts</span>
+								</div>
+								<p className="text-muted-foreground leading-relaxed">
+									Connect Interactive Brokers, Robinhood, Degiro, Charles Schwab, and 100+ stock
+									brokerages securely via SnapTrade Open Brokerage API.
+								</p>
+								<div className="flex flex-wrap gap-1.5 pt-1">
+									<Badge variant="secondary">Interactive Brokers</Badge>
+									<Badge variant="secondary">Degiro</Badge>
+									<Badge variant="secondary">Robinhood</Badge>
 								</div>
 							</div>
 
-							{/* Account Mapping Option */}
 							<div className="space-y-3 pt-2 border-t">
 								<Label className="text-sm font-medium">Account Mapping</Label>
 								<RadioGroup
@@ -590,19 +677,19 @@ export function ConnectInstitutionDialog({
 									className="gap-2"
 								>
 									<div className="flex items-center space-x-2">
-										<RadioGroupItem value="auto" id="kraken-map-auto" />
-										<Label htmlFor="kraken-map-auto" className="cursor-pointer text-xs sm:text-sm">
-											Auto-create a dedicated exchange account in this portfolio
+										<RadioGroupItem value="auto" id="snap-map-auto" />
+										<Label htmlFor="snap-map-auto" className="cursor-pointer text-xs sm:text-sm">
+											Auto-create accounts discovered from the brokerage connection
 										</Label>
 									</div>
 									{accounts.length > 0 && (
 										<div className="flex items-center space-x-2">
-											<RadioGroupItem value="existing" id="kraken-map-existing" />
+											<RadioGroupItem value="existing" id="snap-map-existing" />
 											<Label
-												htmlFor="kraken-map-existing"
+												htmlFor="snap-map-existing"
 												className="cursor-pointer text-xs sm:text-sm"
 											>
-												Link to an existing account
+												Link to existing account in portfolio
 											</Label>
 										</div>
 									)}
@@ -635,200 +722,231 @@ export function ConnectInstitutionDialog({
 								>
 									Cancel
 								</Button>
-								<Button type="submit" disabled={isBusy || !krakenApiKey || !krakenApiSecret}>
-									{registeringKraken || creatingAccount ? (
+								<Button type="button" onClick={handleConnectSnapTrade} disabled={isBusy}>
+									{generatingLink ? (
 										<>
 											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-											Connecting...
+											Generating Portal...
 										</>
 									) : (
 										<>
-											Connect Account
-											<ArrowRight className="ml-2 h-4 w-4" />
+											Connect via SnapTrade
+											<ExternalLink className="ml-2 h-4 w-4" />
 										</>
 									)}
 								</Button>
 							</DialogFooter>
-						</form>
-					</TabsContent>
+						</TabsContent>
 
-					{/* 2. SNAPTRADE TAB (Trade Republic, IBKR, etc.) */}
-					<TabsContent value="snaptrade" className="space-y-4 pt-3">
-						<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-2">
-							<div className="flex items-center gap-2 font-medium text-foreground">
-								<Building2 className="h-4 w-4 text-primary" />
-								<span>Retail Brokerages & Stock Accounts</span>
-							</div>
-							<p className="text-muted-foreground leading-relaxed">
-								Connect Interactive Brokers, Robinhood, Degiro, Charles Schwab, and 100+ stock
-								brokerages securely via SnapTrade Open Brokerage API.
-							</p>
-							<div className="flex flex-wrap gap-1.5 pt-1">
-								<Badge variant="secondary">Interactive Brokers</Badge>
-								<Badge variant="secondary">Degiro</Badge>
-								<Badge variant="secondary">Robinhood</Badge>
-							</div>
-						</div>
-
-						<div className="space-y-3 pt-2 border-t">
-							<Label className="text-sm font-medium">Account Mapping</Label>
-							<RadioGroup
-								value={mappingMode}
-								onValueChange={(v) => setMappingMode(v as typeof mappingMode)}
-								className="gap-2"
-							>
-								<div className="flex items-center space-x-2">
-									<RadioGroupItem value="auto" id="snap-map-auto" />
-									<Label htmlFor="snap-map-auto" className="cursor-pointer text-xs sm:text-sm">
-										Auto-create accounts discovered from the brokerage connection
-									</Label>
+						{/* 3. GOCARDLESS TAB (European Banks) */}
+						<TabsContent value="gocardless" className="space-y-4 pt-3">
+							<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-2">
+								<div className="flex items-center gap-2 font-medium text-foreground">
+									<Landmark className="h-4 w-4 text-emerald-500" />
+									<span>Open Banking (PSD2)</span>
 								</div>
-								{accounts.length > 0 && (
+								<p className="text-muted-foreground leading-relaxed">
+									Connect over 2,500+ financial institutions in 31 countries via GoCardless
+									(formerly Nordigen) PSD2 Open Banking. Sync checking, savings, and deposit
+									accounts with read-only bank consent.
+								</p>
+								<div className="flex flex-wrap gap-1.5 pt-1">
+									<Badge variant="secondary">BNP Paribas</Badge>
+									<Badge variant="secondary">Crédit Agricole</Badge>
+									<Badge variant="secondary">Revolut</Badge>
+									<Badge variant="secondary">N26</Badge>
+									<Badge variant="secondary">Fortuneo</Badge>
+									<Badge variant="secondary">Boursorama</Badge>
+								</div>
+							</div>
+
+							<div className="space-y-3 pt-2 border-t">
+								<Label className="text-sm font-medium">Account Mapping</Label>
+								<RadioGroup
+									value={mappingMode}
+									onValueChange={(v) => setMappingMode(v as typeof mappingMode)}
+									className="gap-2"
+								>
 									<div className="flex items-center space-x-2">
-										<RadioGroupItem value="existing" id="snap-map-existing" />
-										<Label
-											htmlFor="snap-map-existing"
-											className="cursor-pointer text-xs sm:text-sm"
-										>
-											Link to existing account in portfolio
+										<RadioGroupItem value="auto" id="gc-map-auto" />
+										<Label htmlFor="gc-map-auto" className="cursor-pointer text-xs sm:text-sm">
+											Auto-create bank accounts discovered during authentication
 										</Label>
 									</div>
-								)}
-							</RadioGroup>
+									{accounts.length > 0 && (
+										<div className="flex items-center space-x-2">
+											<RadioGroupItem value="existing" id="gc-map-existing" />
+											<Label
+												htmlFor="gc-map-existing"
+												className="cursor-pointer text-xs sm:text-sm"
+											>
+												Link to existing account in portfolio
+											</Label>
+										</div>
+									)}
+								</RadioGroup>
 
-							{mappingMode === "existing" && accounts.length > 0 && (
-								<div className="pt-1">
-									<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select existing account" />
-										</SelectTrigger>
-										<SelectContent>
-											{accounts.map((acc) => (
-												<SelectItem key={acc.id} value={acc.id}>
-													{acc.name} ({acc.type})
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-								</div>
-							)}
-						</div>
-
-						<DialogFooter className="pt-2">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-								disabled={isBusy}
-							>
-								Cancel
-							</Button>
-							<Button type="button" onClick={handleConnectSnapTrade} disabled={isBusy}>
-								{generatingLink ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										Generating Portal...
-									</>
-								) : (
-									<>
-										Connect via SnapTrade
-										<ExternalLink className="ml-2 h-4 w-4" />
-									</>
-								)}
-							</Button>
-						</DialogFooter>
-					</TabsContent>
-
-					{/* 3. GOCARDLESS TAB (European Banks) */}
-					<TabsContent value="gocardless" className="space-y-4 pt-3">
-						<div className="rounded-lg border border-primary/20 bg-primary/5 p-3.5 text-xs sm:text-sm space-y-2">
-							<div className="flex items-center gap-2 font-medium text-foreground">
-								<Landmark className="h-4 w-4 text-emerald-500" />
-								<span>Open Banking (PSD2)</span>
-							</div>
-							<p className="text-muted-foreground leading-relaxed">
-								Connect over 2,500+ financial institutions in 31 countries via GoCardless (formerly
-								Nordigen) PSD2 Open Banking. Sync checking, savings, and deposit accounts with
-								read-only bank consent.
-							</p>
-							<div className="flex flex-wrap gap-1.5 pt-1">
-								<Badge variant="secondary">BNP Paribas</Badge>
-								<Badge variant="secondary">Crédit Agricole</Badge>
-								<Badge variant="secondary">Revolut</Badge>
-								<Badge variant="secondary">N26</Badge>
-								<Badge variant="secondary">Fortuneo</Badge>
-								<Badge variant="secondary">Boursorama</Badge>
-							</div>
-						</div>
-
-						<div className="space-y-3 pt-2 border-t">
-							<Label className="text-sm font-medium">Account Mapping</Label>
-							<RadioGroup
-								value={mappingMode}
-								onValueChange={(v) => setMappingMode(v as typeof mappingMode)}
-								className="gap-2"
-							>
-								<div className="flex items-center space-x-2">
-									<RadioGroupItem value="auto" id="gc-map-auto" />
-									<Label htmlFor="gc-map-auto" className="cursor-pointer text-xs sm:text-sm">
-										Auto-create bank accounts discovered during authentication
-									</Label>
-								</div>
-								{accounts.length > 0 && (
-									<div className="flex items-center space-x-2">
-										<RadioGroupItem value="existing" id="gc-map-existing" />
-										<Label htmlFor="gc-map-existing" className="cursor-pointer text-xs sm:text-sm">
-											Link to existing account in portfolio
-										</Label>
+								{mappingMode === "existing" && accounts.length > 0 && (
+									<div className="pt-1">
+										<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
+											<SelectTrigger>
+												<SelectValue placeholder="Select existing account" />
+											</SelectTrigger>
+											<SelectContent>
+												{accounts.map((acc) => (
+													<SelectItem key={acc.id} value={acc.id}>
+														{acc.name} ({acc.type})
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
 									</div>
 								)}
-							</RadioGroup>
+							</div>
 
-							{mappingMode === "existing" && accounts.length > 0 && (
-								<div className="pt-1">
-									<Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select existing account" />
-										</SelectTrigger>
-										<SelectContent>
-											{accounts.map((acc) => (
-												<SelectItem key={acc.id} value={acc.id}>
-													{acc.name} ({acc.type})
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
+							<DialogFooter className="pt-2">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+									disabled={isBusy}
+								>
+									Cancel
+								</Button>
+								<Button type="button" onClick={handleConnectGoCardless} disabled={isBusy}>
+									{generatingLink ? (
+										<>
+											<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+											Opening Gateway...
+										</>
+									) : (
+										<>
+											Connect via Open Banking
+											<ExternalLink className="ml-2 h-4 w-4" />
+										</>
+									)}
+								</Button>
+							</DialogFooter>
+						</TabsContent>
+
+						{/* 4. ON-CHAIN WALLETS TAB */}
+						<TabsContent value="wallets" className="space-y-4 pt-3">
+							<div className="rounded-lg border border-violet-500/20 bg-violet-500/5 p-3.5 text-xs sm:text-sm space-y-2">
+								<div className="flex items-center gap-2 font-medium text-foreground">
+									<ShieldCheck className="h-4 w-4 text-violet-500" />
+									<span>Public Address & Device Synchronization</span>
 								</div>
-							)}
-						</div>
+								<p className="text-muted-foreground leading-relaxed">
+									Track public wallet addresses, extended public keys (xpub/zpub), or hardware containers without private keys. Sync balances, smart swaps, and transactions automatically.
+								</p>
+							</div>
 
-						<DialogFooter className="pt-2">
-							<Button
-								type="button"
-								variant="outline"
-								onClick={() => onOpenChange(false)}
-								disabled={isBusy}
-							>
-								Cancel
-							</Button>
-							<Button type="button" onClick={handleConnectGoCardless} disabled={isBusy}>
-								{generatingLink ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										Opening Gateway...
-									</>
-								) : (
-									<>
-										Connect via Open Banking
-										<ExternalLink className="ml-2 h-4 w-4" />
-									</>
-								)}
-							</Button>
-						</DialogFooter>
-					</TabsContent>
-				</Tabs>
+							<div className="space-y-2">
+								<Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+									Supported Blockchains & Networks (7)
+								</Label>
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">💎</span>
+										<div>
+											<p className="font-medium">Ethereum</p>
+											<p className="text-[10px] text-muted-foreground">EVM Mainnet</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">🔵</span>
+										<div>
+											<p className="font-medium">Base</p>
+											<p className="text-[10px] text-muted-foreground">Coinbase L2</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">🔷</span>
+										<div>
+											<p className="font-medium">Arbitrum</p>
+											<p className="text-[10px] text-muted-foreground">Arbitrum One L2</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">🔴</span>
+										<div>
+											<p className="font-medium">Optimism</p>
+											<p className="text-[10px] text-muted-foreground">OP Mainnet L2</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">🟣</span>
+										<div>
+											<p className="font-medium">Polygon PoS</p>
+											<p className="text-[10px] text-muted-foreground">Sidechain</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs">
+										<span className="font-mono text-base">🟣</span>
+										<div>
+											<p className="font-medium">Solana</p>
+											<p className="text-[10px] text-muted-foreground">SVM & SPL</p>
+										</div>
+									</div>
+									<div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/50 p-2 text-xs col-span-2 sm:col-span-1">
+										<span className="font-mono text-base">₿</span>
+										<div>
+											<p className="font-medium">Bitcoin</p>
+											<p className="text-[10px] text-muted-foreground">Native & xpub/zpub</p>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							<div className="rounded-lg border border-border/50 bg-muted/20 p-3 text-xs space-y-1.5 text-muted-foreground">
+								<p className="flex items-center gap-1.5 font-medium text-foreground">
+									<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+									Zero-cost single-key Alchemy API architecture (30M CU free tier)
+								</p>
+								<p className="flex items-center gap-1.5 font-medium text-foreground">
+									<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+									Automated smart swap & staged DeFi transaction detector
+								</p>
+								<p className="flex items-center gap-1.5 font-medium text-foreground">
+									<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+									Trust Wallet verified token lists & spam NFT shielding
+								</p>
+							</div>
+
+							<DialogFooter className="pt-2">
+								<Button
+									type="button"
+									variant="outline"
+									onClick={() => onOpenChange(false)}
+								>
+									Cancel
+								</Button>
+								<Button
+									type="button"
+									className="bg-violet-600 hover:bg-violet-700 text-white"
+									onClick={() => {
+										onOpenChange(false);
+										setShowAddWalletDialog(true);
+									}}
+								>
+									<Wallet className="mr-2 h-4 w-4" />
+									Connect On-Chain Wallet
+								</Button>
+							</DialogFooter>
+						</TabsContent>
+					</Tabs>
 				)}
 			</DialogContent>
 		</Dialog>
+
+		<AddWalletDialog
+			open={showAddWalletDialog}
+			onOpenChange={setShowAddWalletDialog}
+			portfolioId={portfolioId}
+			onSuccess={() => {
+				onSuccess?.();
+			}}
+		/>
+	</>
 	);
 }

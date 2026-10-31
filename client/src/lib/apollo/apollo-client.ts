@@ -16,7 +16,7 @@ if (import.meta.env.MODE === "development") {
 
 // HTTP link to the GraphQL server
 const httpLink = createHttpLink({
-	uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || "http://localhost:8080/graphql",
+	uri: import.meta.env.VITE_GRAPHQL_ENDPOINT || "/graphql",
 	credentials: "include",
 });
 const retryLink = new RetryLink({

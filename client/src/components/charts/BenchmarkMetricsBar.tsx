@@ -116,74 +116,91 @@ export function BenchmarkMetricsBar({
 
 	return (
 		<TooltipProvider delayDuration={150}>
-			<div className="shrink-0 flex flex-wrap items-center justify-center gap-x-5 gap-y-1 border-t border-border/30 bg-card/60 px-4 py-2 text-micro backdrop-blur-xs">
-				<div className="flex items-center gap-1.5">
-					<BarChart3 className="h-3 w-3 text-muted-foreground" />
-					<MetricTerm
-						term="Excess Return"
-						spoken="Excess Return"
-						definition="Cumulative outperformance of the portfolio compared to the benchmark over this period (Time-Weighted Return difference)."
-					/>
-					<span
-						className={`font-mono font-semibold ${metrics.excessReturn >= 0 ? "text-gain" : "text-loss"}`}
-					>
-						{metrics.excessReturn >= 0 ? "+" : ""}
-						{metrics.excessReturn.toFixed(2)}%
-					</span>
+			<div className="shrink-0 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 border-t border-border/30 bg-card/60 px-4 py-2 text-micro backdrop-blur-xs">
+				{/* Group 1: Outperformance */}
+				<div className="flex items-center gap-3">
+					<div className="flex items-center gap-1.5">
+						<BarChart3 className="h-3 w-3 text-muted-foreground" />
+						<MetricTerm
+							term="Excess Return"
+							spoken="Excess Return"
+							definition="Cumulative outperformance of the portfolio compared to the benchmark over this period (Time-Weighted Return difference)."
+						/>
+						<span
+							className={`font-mono font-semibold ${metrics.excessReturn >= 0 ? "text-gain" : "text-loss"}`}
+						>
+							{metrics.excessReturn >= 0 ? "+" : ""}
+							{metrics.excessReturn.toFixed(2)}%
+						</span>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<MetricTerm
+							term="Alpha (α)"
+							spoken="Jensen's Alpha"
+							definition="Annualized excess return beyond what this portfolio's market exposure (β) alone would predict (CAPM risk-adjusted alpha)."
+						/>
+						<span
+							className={`font-mono font-semibold ${metrics.riskAdjustedAlpha >= 0 ? "text-gain" : "text-loss"}`}
+						>
+							{metrics.riskAdjustedAlpha >= 0 ? "+" : ""}
+							{metrics.riskAdjustedAlpha.toFixed(2)}%/yr
+						</span>
+					</div>
 				</div>
-				<div className="flex items-center gap-1.5">
-					<MetricTerm
-						term="Alpha (α)"
-						spoken="Jensen's Alpha"
-						definition="Annualized excess return beyond what this portfolio's market exposure (β) alone would predict (CAPM risk-adjusted alpha)."
-					/>
-					<span
-						className={`font-mono font-semibold ${metrics.riskAdjustedAlpha >= 0 ? "text-gain" : "text-loss"}`}
-					>
-						{metrics.riskAdjustedAlpha >= 0 ? "+" : ""}
-						{metrics.riskAdjustedAlpha.toFixed(2)}%/yr
-					</span>
+
+				<div className="hidden sm:block h-3 w-px bg-border/50" />
+
+				{/* Group 2: Systematic Risk & Tracking */}
+				<div className="flex items-center gap-3">
+					<div className="flex items-center gap-1.5">
+						<MetricTerm
+							term="β"
+							spoken="Beta"
+							definition="Sensitivity to the benchmark's swings. 1.00 moves in lockstep; above 1 amplifies both gains and losses."
+						/>
+						<span className="font-mono font-semibold text-foreground">
+							{metrics.beta.toFixed(2)}
+						</span>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<MetricTerm
+							term="TE"
+							spoken="Tracking error"
+							definition="Volatility of the gap between portfolio and benchmark returns. Higher means returns wander further from the index."
+						/>
+						<span className="font-mono font-semibold text-foreground">
+							{metrics.trackingError.toFixed(2)}%
+						</span>
+					</div>
 				</div>
-				<div className="flex items-center gap-1.5">
-					<MetricTerm
-						term="β"
-						spoken="Beta"
-						definition="Sensitivity to the benchmark's swings. 1.00 moves in lockstep; above 1 amplifies both gains and losses."
-					/>
-					<span className="font-mono font-semibold text-foreground">{metrics.beta.toFixed(2)}</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<MetricTerm
-						term="ρ"
-						spoken="Correlation"
-						definition="How closely portfolio returns track the benchmark, from −1 to +1. Below 1 means the two partly diverge."
-					/>
-					<span className="font-mono font-semibold text-foreground">
-						{metrics.correlation.toFixed(2)}
-					</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<MetricTerm
-						term="TE"
-						spoken="Tracking error"
-						definition="Volatility of the gap between portfolio and benchmark returns. Higher means returns wander further from the index."
-					/>
-					<span className="font-mono font-semibold text-foreground">
-						{metrics.trackingError.toFixed(2)}%
-					</span>
-				</div>
-				<div className="flex items-center gap-1.5">
-					<MetricTerm
-						term="IR"
-						spoken="Information ratio"
-						definition="Excess return earned for each unit of tracking error. Above 0 means the extra risk against the benchmark is being paid for."
-					/>
-					<span
-						className={`font-mono font-semibold ${metrics.informationRatio >= 0 ? "text-gain" : "text-loss"}`}
-					>
-						{metrics.informationRatio >= 0 ? "+" : ""}
-						{metrics.informationRatio.toFixed(2)}
-					</span>
+
+				<div className="hidden sm:block h-3 w-px bg-border/50" />
+
+				{/* Group 3: Co-movement & Efficiency */}
+				<div className="flex items-center gap-3">
+					<div className="flex items-center gap-1.5">
+						<MetricTerm
+							term="ρ"
+							spoken="Correlation"
+							definition="How closely portfolio returns track the benchmark, from −1 to +1. Below 1 means the two partly diverge."
+						/>
+						<span className="font-mono font-semibold text-foreground">
+							{metrics.correlation.toFixed(2)}
+						</span>
+					</div>
+					<div className="flex items-center gap-1.5">
+						<MetricTerm
+							term="IR"
+							spoken="Information ratio"
+							definition="Excess return earned for each unit of tracking error. Above 0 means the extra risk against the benchmark is being paid for."
+						/>
+						<span
+							className={`font-mono font-semibold ${metrics.informationRatio >= 0 ? "text-gain" : "text-loss"}`}
+						>
+							{metrics.informationRatio >= 0 ? "+" : ""}
+							{metrics.informationRatio.toFixed(2)}
+						</span>
+					</div>
 				</div>
 			</div>
 		</TooltipProvider>

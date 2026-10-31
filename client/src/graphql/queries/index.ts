@@ -6,3 +6,4 @@ export * from "./performance";
 export * from "./portfolios";
 export * from "./sync";
 export * from "./tax-lots";
+export * from "./wallets";

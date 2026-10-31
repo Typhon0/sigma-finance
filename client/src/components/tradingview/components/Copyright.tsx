@@ -17,19 +17,23 @@ const Copyright: React.FC<CopyrightProps> = ({
 }) => {
 	const defaultStyles: CopyrightStyles = {
 		parent: {
-			fontSize: "13px",
-			lineHeight: "32px",
+			fontSize: "11px",
+			lineHeight: "18px",
 			textAlign: "center",
-			verticalAlign: "center",
-			fontFamily: "Trebuchet MS, Arial, sans-serif",
-			color: "#9db2bd",
+			verticalAlign: "middle",
+			fontFamily: "inherit",
+			color: "var(--muted-foreground, #71717a)",
+			marginTop: "4px",
+			marginBottom: "2px",
+			opacity: 0.65,
 		},
 		link: {
 			textDecoration: "none",
-			color: "#9db2bd",
+			color: "inherit",
 		},
 		span: {
-			color: "#2962FF",
+			color: "inherit",
+			fontWeight: 500,
 		},
 	};
 
@@ -43,6 +47,7 @@ const Copyright: React.FC<CopyrightProps> = ({
 				href={href}
 				target="_blank"
 				rel="noopener"
+				className="hover:underline transition-opacity hover:opacity-100"
 			>
 				<span style={Object.assign({}, defaultStyles.span, copyrightStyles?.span)}>
 					{spanText}{" "}

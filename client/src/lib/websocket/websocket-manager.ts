@@ -205,8 +205,12 @@ let wsManager: WebSocketManager | null = null;
 
 export function getWebSocketManager(): WebSocketManager {
 	if (!wsManager) {
-		// Use environment variable or default to localhost
-		const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:8080/ws";
+		// Use environment variable or default to current host /ws (fallback localhost:8080 for SSR/tests)
+		const fallbackWsUrl =
+			typeof window !== "undefined" && window.location?.host
+				? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
+				: "ws://localhost:8080/ws";
+		const wsUrl = import.meta.env.VITE_WS_URL || fallbackWsUrl;
 		wsManager = new WebSocketManager(wsUrl);
 	}
 	return wsManager;

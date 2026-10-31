@@ -2,35 +2,49 @@ package adapters
 
 import (
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
-	"crypto/sha512"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"sigma_finance/internal/domain/model"
 	syncservice "sigma_finance/internal/service/sync"
+
+	"github.com/krakenfx/api-go/v2/pkg/spot"
+	"github.com/shopspring/decimal"
 )
 
 const (
 	defaultKrakenBaseURL = "https://api.kraken.com"
 	defaultKrakenTimeout = 30 * time.Second
+	// Kraken Spot expects POST parameters to be form-encoded ("nonce=...&start=...");
+	// the SDK defaults to a JSON body, so every private call states the media type
+	// the API documents and that its signature is computed against.
+	krakenFormContentType = "application/x-www-form-urlencoded"
 )
 
 // KrakenAdapter implements syncservice.SyncAdapter for Kraken crypto exchange.
+//
+// Transport, request signing, nonce generation and the API error envelope come from
+// Kraken's official Go SDK (github.com/krakenfx/api-go/v2); the ledger-to-transaction
+// mapping is ours, because /0/private/Ledgers and /0/private/OpenPositions are not
+// among the endpoints the SDK wraps yet.
 type KrakenAdapter struct {
 	baseURL    string
 	httpClient *http.Client
+	// nonce generates the strictly increasing request nonce Kraken requires. It is
+	// shared across calls so two requests in the same nanosecond still differ.
+	nonce func() string
+	// assetNames resolves ledger asset codes through Kraken's own asset list, so
+	// newly listed or renamed assets resolve without a code change here.
+	assetNames *krakenAssetDictionary
 }
 
 // NewKrakenAdapter creates a new KrakenAdapter instance.
@@ -44,6 +58,10 @@ func NewKrakenAdapter(opts ...KrakenOption) *KrakenAdapter {
 	for _, opt := range opts {
 		opt(k)
 	}
+
+	k.nonce = newKrakenNonce()
+
+	k.assetNames = newKrakenAssetDictionary(k.baseURL, k.httpClient, krakenAssetDictionaryTTL, krakenAssetDictionaryRetryDelay)
 	return k
 }
 
@@ -57,6 +75,33 @@ type krakenCredentials struct {
 	APIKeyAlt string `json:"api_key"`
 	Secret    string `json:"apiSecret"`
 	SecretAlt string `json:"api_secret"`
+}
+
+// newKrakenNonce returns a strict, 64-bit nonce generator — the value Kraken compares
+// against the last nonce used with the API key.
+//
+// The SDK's epoch counter builds its nonce as timestamp plus a three digit counter, so
+// at nanosecond precision it exceeds what Kraken accepts as an integer (EAPI:Bad
+// request), while its second/millisecond presets are smaller than the nanosecond nonces
+// this adapter sent before the SDK migration and are rejected as EAPI:Invalid nonce.
+// The plain nanosecond timestamp is what has always worked here; the guard keeps it
+// strictly increasing even for two requests inside the same nanosecond.
+func newKrakenNonce() func() string {
+	var mu sync.Mutex
+	var last int64
+
+	return func() string {
+		mu.Lock()
+		defer mu.Unlock()
+
+		now := time.Now().UnixNano()
+		if now <= last {
+			now = last + 1
+		}
+		last = now
+
+		return strconv.FormatInt(now, 10)
+	}
 }
 
 func parseKrakenCredentials(cred *model.SyncCredential) (string, string, error) {
@@ -88,6 +133,12 @@ func parseKrakenCredentials(cred *model.SyncCredential) (string, string, error) 
 		return "", "", syncservice.ErrInvalidCredentials
 	}
 
+	// The SDK decodes the secret while signing; validating it here keeps a malformed
+	// secret reported as a credential problem instead of an opaque signing failure.
+	if _, err := base64.StdEncoding.DecodeString(secret); err != nil {
+		return "", "", fmt.Errorf("%w: invalid base64 secret", syncservice.ErrInvalidCredentials)
+	}
+
 	return apiKey, secret, nil
 }
 
@@ -96,17 +147,19 @@ func parseKrakenCredentials(cred *model.SyncCredential) (string, string, error) 
 func NormalizeKrakenAsset(code string) (string, bool) {
 	c := strings.ToUpper(strings.TrimSpace(code))
 
-	// Strip Kraken staking suffixes (e.g. "ETH.S", "DOT.S", "ADA2.S")
+	// Strip Kraken staking/earn/bonded/parachain suffixes (e.g. "ETH.S", "DOT.S", "XBT.M", "SUI.B", "DOT.P")
 	if idx := strings.Index(c, "."); idx != -1 {
 		c = c[:idx]
 	}
 
-	// Known legacy mappings
+	// Known legacy mappings & staking variants
 	switch c {
 	case "XXBT", "XBT":
 		return "BTC", false
-	case "XETH":
+	case "XETH", "ETH2":
 		return "ETH", false
+	case "ADA2":
+		return "ADA", false
 	case "XXRP":
 		return "XRP", false
 	case "XXLM":
@@ -139,6 +192,11 @@ func NormalizeKrakenAsset(code string) (string, bool) {
 		return "CHF", true
 	}
 
+	// Kraken numbered staking allocations (e.g. SOL01, SOL02, SOL03, ADA01, DOT01, etc.)
+	if len(c) >= 5 && c[len(c)-2] >= '0' && c[len(c)-2] <= '9' && c[len(c)-1] >= '0' && c[len(c)-1] <= '9' {
+		c = c[:len(c)-2]
+	}
+
 	// Kraken 4-character prefix normalization:
 	// Z + 3-character fiat code
 	if len(c) == 4 && c[0] == 'Z' {
@@ -166,98 +224,76 @@ func isFiatCurrency(c string) bool {
 	}
 }
 
-// computeSignature calculates the Kraken HMAC-SHA512 API-Sign header value.
-// Formula: base64(hmac_sha512(path + sha256(nonce + postdata), base64_decode(secret)))
-func computeSignature(apiPath string, postData string, nonce string, base64Secret string) (string, error) {
-	secretBytes, err := base64.StdEncoding.DecodeString(base64Secret)
-	if err != nil {
-		return "", fmt.Errorf("invalid base64 secret: %w", err)
-	}
-
-	sha := sha256.New()
-	sha.Write([]byte(nonce + postData))
-	shaSum := sha.Sum(nil)
-
-	mac := hmac.New(sha512.New, secretBytes)
-	mac.Write(append([]byte(apiPath), shaSum...))
-	return base64.StdEncoding.EncodeToString(mac.Sum(nil)), nil
-}
-
-type krakenEnvelope[T any] struct {
-	Error  []string `json:"error"`
-	Result T        `json:"result"`
-}
-
-func (k *KrakenAdapter) postPrivate(ctx context.Context, cred *model.SyncCredential, path string, params url.Values) ([]byte, error) {
+// spotREST builds an SDK client bound to this request's context, credentials and
+// base URL. The SDK derives the nonce, signs the request
+// (base64(hmac_sha512(path + sha256(nonce + postdata), base64_decode(secret)))) and
+// submits it through the injected HTTP client, so timeouts and test transports stay ours.
+func (k *KrakenAdapter) spotREST(ctx context.Context, cred *model.SyncCredential) (*spot.REST, error) {
 	apiKey, secret, err := parseKrakenCredentials(cred)
 	if err != nil {
 		return nil, err
 	}
 
+	rest := spot.NewREST()
+	rest.PublicKey = apiKey
+	rest.PrivateKey = secret
+	rest.BaseURL = k.baseURL
+	if k.nonce != nil {
+		rest.Nonce = k.nonce
+	}
+	rest.Executor = func(req *http.Request) (*http.Response, error) {
+		return k.httpClient.Do(req.WithContext(ctx))
+	}
+
+	return rest, nil
+}
+
+// krakenCall submits an authenticated Spot request through the official SDK and
+// returns its `result` payload decoded into T. Transport and API failures are mapped
+// onto the sentinel errors the sync service reacts to (rate limit, invalid credentials).
+func krakenCall[T any](k *KrakenAdapter, ctx context.Context, cred *model.SyncCredential, apiPath string, params map[string]any) (T, error) {
+	var result T
+
+	rest, err := k.spotREST(ctx, cred)
+	if err != nil {
+		return result, err
+	}
+
 	if params == nil {
-		params = url.Values{}
+		params = map[string]any{}
 	}
 
-	nonce := strconv.FormatInt(time.Now().UnixNano(), 10)
-	params.Set("nonce", nonce)
-	postData := params.Encode()
+	resp, callErr := spot.Call[T](rest, spot.RequestOptions{
+		Auth:        true,
+		Method:      http.MethodPost,
+		Path:        apiPath,
+		Body:        params,
+		ContentType: krakenFormContentType,
+	})
 
-	signature, err := computeSignature(path, postData, nonce, secret)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %v", syncservice.ErrInvalidCredentials, err)
+	if resp == nil {
+		// No HTTP response at all: a transport failure or an SDK signing error.
+		return result, fmt.Errorf("kraken http request failed: %w", callErr)
+	}
+	if resp.Http != nil && resp.Http.Response != nil {
+		if statusErr := krakenStatusError(resp.Http.StatusCode); statusErr != nil {
+			return result, statusErr
+		}
+	}
+	if len(resp.Error) > 0 {
+		return result, krakenAPIError(resp.Error)
+	}
+	if callErr != nil {
+		return result, fmt.Errorf("failed to parse kraken response: %w", callErr)
 	}
 
-	reqURL := k.baseURL + path
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, reqURL, strings.NewReader(postData))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create http request: %w", err)
-	}
-
-	req.Header.Set("API-Key", apiKey)
-	req.Header.Set("API-Sign", signature)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := k.httpClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("kraken http request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	bodyBytes, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if resp.StatusCode == http.StatusTooManyRequests {
-		return nil, syncservice.ErrRateLimited
-	}
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return nil, syncservice.ErrInvalidCredentials
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, fmt.Errorf("kraken http error (status %d): %s", resp.StatusCode, string(bodyBytes))
-	}
-
-	return bodyBytes, nil
+	return resp.Result, nil
 }
 
 // TestConnection verifies that the provided credentials can successfully communicate with Kraken.
 func (k *KrakenAdapter) TestConnection(ctx context.Context, cred *model.SyncCredential) error {
-	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/Balance", nil)
-	if err != nil {
-		return err
-	}
-
-	var env krakenEnvelope[map[string]string]
-	if err := json.Unmarshal(bodyBytes, &env); err != nil {
-		return fmt.Errorf("failed to parse kraken response: %w", err)
-	}
-
-	if len(env.Error) > 0 {
-		return checkKrakenErrors(env.Error)
-	}
-
-	return nil
+	_, err := krakenCall[map[string]string](k, ctx, cred, "/0/private/Balance", nil)
+	return err
 }
 
 // FetchAccounts returns the single unified Kraken Spot exchange account.
@@ -271,7 +307,7 @@ func (k *KrakenAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCrede
 			ExternalID:    "kraken-spot",
 			Name:          "Kraken Spot",
 			Type:          model.AccountTypeCryptoExchange,
-			TaxWrapper:    model.TaxWrapperStandardTaxable,
+			TaxWrapper:    model.TaxWrapperCryptoVault,
 			Institution:   "Kraken",
 			AccountNumber: "Kraken Spot",
 			Currency:      model.CurrencyEUR,
@@ -281,28 +317,21 @@ func (k *KrakenAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCrede
 
 // FetchBalances queries /0/private/Balance and extracts all fiat cash balances.
 func (k *KrakenAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
-	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/Balance", nil)
+	// Kraken reports balances as decimal strings; they stay strings until
+	// shopspring/decimal parses them so no precision is lost on the way in.
+	balancesByAsset, err := krakenCall[map[string]string](k, ctx, cred, "/0/private/Balance", nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var env krakenEnvelope[map[string]string]
-	if err := json.Unmarshal(bodyBytes, &env); err != nil {
-		return nil, fmt.Errorf("failed to parse balance response: %w", err)
-	}
-
-	if len(env.Error) > 0 {
-		return nil, checkKrakenErrors(env.Error)
-	}
-
 	var balances []syncservice.RawBalance
-	for rawAsset, amountStr := range env.Result {
+	for rawAsset, amountStr := range balancesByAsset {
 		amt, parseErr := decimal.NewFromString(amountStr)
 		if parseErr != nil {
 			continue
 		}
 
-		symbol, isFiat := NormalizeKrakenAsset(rawAsset)
+		symbol, isFiat := k.assetSymbol(ctx, rawAsset)
 		if !isFiat {
 			continue
 		}
@@ -338,31 +367,22 @@ type krakenOpenPositionRecord struct {
 
 // FetchHoldings queries /0/private/Balance and /0/private/OpenPositions to extract non-fiat crypto positions.
 func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
-	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/Balance", nil)
+	balancesByAsset, err := krakenCall[map[string]string](k, ctx, cred, "/0/private/Balance", nil)
 	if err != nil {
 		return nil, err
-	}
-
-	var env krakenEnvelope[map[string]string]
-	if err := json.Unmarshal(bodyBytes, &env); err != nil {
-		return nil, fmt.Errorf("failed to parse balance response: %w", err)
-	}
-
-	if len(env.Error) > 0 {
-		return nil, checkKrakenErrors(env.Error)
 	}
 
 	// Try querying /0/private/OpenPositions to enrich cost basis for margin/spot positions
 	openPositions := k.fetchOpenPositionsSilently(ctx, cred)
 
-	var holdings []syncservice.RawHolding
-	for rawAsset, amountStr := range env.Result {
+	aggregated := make(map[string]*syncservice.RawHolding)
+	for rawAsset, amountStr := range balancesByAsset {
 		amt, parseErr := decimal.NewFromString(amountStr)
 		if parseErr != nil {
 			continue
 		}
 
-		symbol, isFiat := NormalizeKrakenAsset(rawAsset)
+		symbol, isFiat := k.assetSymbol(ctx, rawAsset)
 		if isFiat {
 			continue
 		}
@@ -371,15 +391,22 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 			continue
 		}
 
-		holding := syncservice.RawHolding{
-			ExternalID: fmt.Sprintf("kraken-%s", symbol),
-			Symbol:     symbol,
-			Name:       symbol,
-			AssetType:  model.AssetTypeCrypto,
-			Quantity:   amt,
-			Currency:   model.CurrencyUSD,
+		if existing, ok := aggregated[symbol]; ok {
+			existing.Quantity = existing.Quantity.Add(amt)
+		} else {
+			aggregated[symbol] = &syncservice.RawHolding{
+				ExternalID: fmt.Sprintf("kraken-%s", symbol),
+				Symbol:     symbol,
+				Name:       symbol,
+				AssetType:  model.AssetTypeCrypto,
+				Quantity:   amt,
+				Currency:   model.CurrencyUSD,
+			}
 		}
+	}
 
+	var holdings []syncservice.RawHolding
+	for symbol, holding := range aggregated {
 		// Enrich cost basis if matching open positions are recorded
 		if pos, ok := openPositions[symbol]; ok {
 			vol, _ := decimal.NewFromString(pos.Vol)
@@ -392,8 +419,7 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 				holding.TotalCostBasis = &cents
 			}
 		}
-
-		holdings = append(holdings, holding)
+		holdings = append(holdings, *holding)
 	}
 
 	// Sort for deterministic results
@@ -432,27 +458,23 @@ func ExtractBaseAssetFromPair(pair string) string {
 
 func (k *KrakenAdapter) fetchOpenPositionsSilently(ctx context.Context, cred *model.SyncCredential) map[string]krakenOpenPositionRecord {
 	out := make(map[string]krakenOpenPositionRecord)
-	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/OpenPositions", nil)
+	positions, err := krakenCall[map[string]krakenOpenPositionRecord](k, ctx, cred, "/0/private/OpenPositions", nil)
 	if err != nil {
 		return out
 	}
 
-	var env krakenEnvelope[map[string]krakenOpenPositionRecord]
-	if err := json.Unmarshal(bodyBytes, &env); err != nil {
-		return out
-	}
-
-	keys := make([]string, 0, len(env.Result))
-	for k := range env.Result {
-		keys = append(keys, k)
+	keys := make([]string, 0, len(positions))
+	for assetID := range positions {
+		keys = append(keys, assetID)
 	}
 	sort.Strings(keys)
 
-	for _, k := range keys {
-		pos := env.Result[k]
+	for _, assetID := range keys {
+		pos := positions[assetID]
 		sym := ExtractBaseAssetFromPair(pos.Pair)
 		out[sym] = pos
 	}
+
 	return out
 }
 
@@ -471,6 +493,42 @@ type krakenLedgerRecord struct {
 type krakenLedgersResult struct {
 	Count  int                           `json:"count"`
 	Ledger map[string]krakenLedgerRecord `json:"ledger"`
+	Cursor krakenLedgerCursor            `json:"cursor"`
+}
+
+// krakenLedgerCursor carries the pagination token of /0/private/Ledgers.
+// Kraken documents it as {"next": "..."} and has also returned it as a bare
+// string, so both shapes decode; an unrecognised shape ends pagination instead
+// of failing the sync.
+type krakenLedgerCursor struct {
+	Next string
+}
+
+func (c *krakenLedgerCursor) UnmarshalJSON(data []byte) error {
+	trimmed := strings.TrimSpace(string(data))
+	if trimmed == "" || trimmed == "null" {
+		return nil
+	}
+
+	var raw string
+	if err := json.Unmarshal(data, &raw); err == nil {
+		c.Next = strings.TrimSpace(raw)
+		return nil
+	}
+
+	var obj struct {
+		Next    string `json:"next"`
+		HasMore *bool  `json:"has_more"`
+	}
+	if err := json.Unmarshal(data, &obj); err != nil {
+		log.Printf("[WARN] [KrakenAdapter] unrecognised ledger cursor payload %q: %v", trimmed, err)
+		return nil
+	}
+	if obj.HasMore != nil && !*obj.HasMore {
+		return nil
+	}
+	c.Next = strings.TrimSpace(obj.Next)
+	return nil
 }
 
 type parsedTradeLeg struct {
@@ -478,34 +536,130 @@ type parsedTradeLeg struct {
 	execTime time.Time
 	symbol   string
 	isFiat   bool
+	// isQuote marks the leg that prices the trade: a government currency or a
+	// USD-pegged stablecoin. Kraken lists stablecoin-quoted trades (XBT/USDT) as two
+	// non-fiat legs, which used to fall through to the barter branch.
+	isQuote  bool
 	amt      decimal.Decimal
 	feeCents model.Money
 }
 
+// krakenUSDStablecoins are the tokens Kraken quotes trades in that are redeemable
+// one-for-one against the dollar, so their leg prices the trade at dollar parity.
+var krakenUSDStablecoins = map[string]bool{
+	"USDT": true, "USDC": true, "USDP": true, "GUSD": true, "DAI": true,
+	"TUSD": true, "USDD": true, "PYUSD": true, "FDUSD": true, "USDE": true,
+	"USDG": true, "USDS": true,
+}
+
+// isUSDStablecoin reports whether a ticker names a USD-pegged stablecoin.
+func isUSDStablecoin(symbol string) bool {
+	return krakenUSDStablecoins[strings.ToUpper(strings.TrimSpace(symbol))]
+}
+
+// krakenPriceCurrency resolves the currency a trade is priced in. Stablecoin legs are
+// recorded as USD (parity), while anything else keeps its own ticker: the app's money
+// model only understands USD/EUR/GBP, and mislabelling an exotic quote as USD would
+// corrupt the numbers that feed portfolio valuation.
+func krakenPriceCurrency(symbol string) (model.Currency, bool) {
+	if isUSDStablecoin(symbol) {
+		return model.CurrencyUSD, true
+	}
+	currency := model.Currency(strings.ToUpper(strings.TrimSpace(symbol)))
+	return currency, currency.IsValid()
+}
+
+// Kraken returns /0/private/Ledgers 50 entries at a time, newest first, and only
+// hands out older entries through cursor pagination. A single unpaged call
+// therefore imports roughly the last few weeks of a busy account: buy dates
+// older than that never reach the ledger, so positions get placeholder tax lots
+// dated "today" and any history chart starts at the sync date.
+const (
+	// Hard stop for a cursor that never terminates (50 entries x 200 pages).
+	krakenLedgersMaxPages = 200
+	// Kraken meters private endpoints with a counter capped at 20 that decays by
+	// 0.5/s; Ledgers costs 4 per call while Balance/OpenPositions already spent
+	// about 3 in this run. Without pacing, a long backfill trips ErrRateLimited
+	// mid-pagination and the sync fails with the older history still missing.
+	krakenPrivateCounterLimit       = 20.0
+	krakenPrivateCounterDecayPerSec = 0.5
+	krakenLedgersCallCost           = 4.0
+	krakenCallsBeforeLedgers        = 3.0
+)
+
+// krakenLedgerPageWait returns how long to wait before the next Ledgers call so
+// the private counter stays under its cap.
+func krakenLedgerPageWait(counter float64) time.Duration {
+	if counter+krakenLedgersCallCost <= krakenPrivateCounterLimit {
+		return 0
+	}
+	deficit := counter + krakenLedgersCallCost - krakenPrivateCounterLimit
+	seconds := deficit / krakenPrivateCounterDecayPerSec
+	return time.Duration(seconds*float64(time.Second)) + time.Second
+}
+
 // FetchTransactions queries /0/private/Ledgers and converts records into syncservice.RawTransaction items.
+// It pages through the whole ledger (or everything after `since`), because the
+// oldest entries are the ones that carry the buy dates.
 func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time) ([]syncservice.RawTransaction, error) {
-	params := url.Values{}
-	if since != nil {
-		params.Set("start", strconv.FormatInt(since.Unix(), 10))
+	ledger := make(map[string]krakenLedgerRecord)
+	lastLedgerCount := 0
+	cursor := ""
+	counter := krakenCallsBeforeLedgers
+
+	for page := 0; page < krakenLedgersMaxPages; page++ {
+		if wait := krakenLedgerPageWait(counter); wait > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(wait):
+			}
+			counter = krakenPrivateCounterLimit - krakenLedgersCallCost
+		}
+		counter += krakenLedgersCallCost
+		if counter > krakenPrivateCounterLimit {
+			counter = krakenPrivateCounterLimit
+		}
+
+		params := map[string]any{"with_cursor": "true"}
+		if since != nil {
+			params["start"] = strconv.FormatInt(since.Unix(), 10)
+		}
+		if cursor != "" {
+			params["cursor"] = cursor
+		}
+
+		result, err := krakenCall[krakenLedgersResult](k, ctx, cred, "/0/private/Ledgers", params)
+		if err != nil {
+			return nil, err
+		}
+
+		for id, record := range result.Ledger {
+			ledger[id] = record
+		}
+		lastLedgerCount = result.Count
+
+		next := strings.TrimSpace(result.Cursor.Next)
+		if next == "" || next == cursor {
+			cursor = ""
+			break
+		}
+		cursor = next
 	}
 
-	bodyBytes, err := k.postPrivate(ctx, cred, "/0/private/Ledgers", params)
-	if err != nil {
-		return nil, err
+	if cursor != "" {
+		log.Printf("[WARN] [KrakenAdapter] ledger pagination stopped after %d pages; older entries were not fetched", krakenLedgersMaxPages)
 	}
-
-	var env krakenEnvelope[krakenLedgersResult]
-	if err := json.Unmarshal(bodyBytes, &env); err != nil {
-		return nil, fmt.Errorf("failed to parse ledgers response: %w", err)
-	}
-
-	if len(env.Error) > 0 {
-		return nil, checkKrakenErrors(env.Error)
+	// Kraken reports count as null while cursor pagination is honoured; a count
+	// larger than what we collected means the server ignored with_cursor and the
+	// response was truncated to one page.
+	if ledgerCount := lastLedgerCount; ledgerCount > 0 && ledgerCount > len(ledger) {
+		log.Printf("[WARN] [KrakenAdapter] imported %d of %d ledger entries: Kraken did not hand out a pagination cursor", len(ledger), ledgerCount)
 	}
 
 	// Sort ledger keys to guarantee deterministic order
-	keys := make([]string, 0, len(env.Result.Ledger))
-	for k := range env.Result.Ledger {
+	keys := make([]string, 0, len(ledger))
+	for k := range ledger {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -515,14 +669,14 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 	var tradeRefOrder []string
 
 	for _, id := range keys {
-		entry := env.Result.Ledger[id]
+		entry := ledger[id]
 		amt, parseErr := decimal.NewFromString(entry.Amount)
 		if parseErr != nil {
 			continue
 		}
 
 		fee, _ := decimal.NewFromString(entry.Fee)
-		symbol, isFiat := NormalizeKrakenAsset(entry.Asset)
+		symbol, isFiat := k.assetSymbol(ctx, entry.Asset)
 
 		sec := int64(entry.Time)
 		nsec := int64((entry.Time - float64(sec)) * 1e9)
@@ -542,8 +696,11 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				amtCents = 1
 			}
 			curr := model.CurrencyUSD
+			var qty *decimal.Decimal
 			if isFiat {
 				curr = model.Currency(symbol)
+			} else {
+				qty = &amtAbs
 			}
 			txs = append(txs, syncservice.RawTransaction{
 				ExternalID:   id,
@@ -551,6 +708,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				Symbol:       symbol,
 				Name:         symbol,
 				Amount:       amtCents,
+				Quantity:     qty,
 				Currency:     curr,
 				FeesAmount:   feeCents,
 				FeesCurrency: feeCurrency,
@@ -565,8 +723,11 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				amtCents = -1
 			}
 			curr := model.CurrencyUSD
+			var qty *decimal.Decimal
 			if isFiat {
 				curr = model.Currency(symbol)
+			} else {
+				qty = &amtAbs
 			}
 			txs = append(txs, syncservice.RawTransaction{
 				ExternalID:   id,
@@ -574,6 +735,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				Symbol:       symbol,
 				Name:         symbol,
 				Amount:       amtCents,
+				Quantity:     qty,
 				Currency:     curr,
 				FeesAmount:   feeCents,
 				FeesCurrency: feeCurrency,
@@ -617,6 +779,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 				execTime: execTime,
 				symbol:   symbol,
 				isFiat:   isFiat,
+				isQuote:  isFiat || isUSDStablecoin(symbol),
 				amt:      amt,
 				feeCents: feeCents,
 			})
@@ -663,36 +826,39 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 	}
 
 	// Process trade groups paired by refid:
-	// A Kraken trade consists of double-entry ledger records (e.g. crypto leg +0.05 BTC and fiat leg -2500 EUR).
-	// We generate a single transaction for the crypto asset and extract execution price & monetary amount
-	// from the counter-fiat leg. We never emit BUY/SELL transactions for fiat currencies.
+	// A Kraken trade consists of double-entry ledger records (e.g. crypto leg +0.05 BTC and
+	// a counter leg -2500 EUR, or -2500 USDT on a stablecoin pair).
+	// We generate a single transaction for the crypto asset and extract execution price &
+	// monetary amount from the counter leg. We never emit BUY/SELL transactions for fiat
+	// currencies or for stablecoins, which move between a crypto and a cash balance.
 	for _, refID := range tradeRefOrder {
 		legs := tradeGroups[refID]
 
 		var cryptoLegs []parsedTradeLeg
-		var fiatLegs []parsedTradeLeg
+		var quoteLegs []parsedTradeLeg
 
 		for _, l := range legs {
-			if l.isFiat {
-				fiatLegs = append(fiatLegs, l)
+			if l.isQuote {
+				quoteLegs = append(quoteLegs, l)
 			} else {
 				cryptoLegs = append(cryptoLegs, l)
 			}
 		}
 
-		// Case A: Crypto leg paired with counter-fiat leg
-		if len(cryptoLegs) > 0 && len(fiatLegs) > 0 {
-			totalFiatAmount := decimal.Zero
-			totalFiatFees := model.Money(0)
-			fiatCurrency := model.CurrencyUSD
+		// Case A: Crypto leg priced by a counter leg (fiat or USD stablecoin)
+		if len(cryptoLegs) > 0 && len(quoteLegs) > 0 {
+			totalQuoteAmount := decimal.Zero
+			totalQuoteFees := model.Money(0)
+			quoteCurrency := model.CurrencyUSD
+			quoteSupported := true
 
-			for _, fl := range fiatLegs {
-				totalFiatAmount = totalFiatAmount.Add(fl.amt.Abs())
-				totalFiatFees += fl.feeCents
-				fiatCurrency = model.Currency(fl.symbol)
+			for _, ql := range quoteLegs {
+				totalQuoteAmount = totalQuoteAmount.Add(ql.amt.Abs())
+				totalQuoteFees += ql.feeCents
+				quoteCurrency, quoteSupported = krakenPriceCurrency(ql.symbol)
 			}
-			if !fiatCurrency.IsValid() {
-				fiatCurrency = model.CurrencyUSD
+			if !quoteSupported {
+				log.Printf("[WARN] [KrakenAdapter] trade priced in %s; portfolio valuation only handles USD, EUR and GBP", quoteCurrency)
 			}
 
 			for _, cl := range cryptoLegs {
@@ -701,21 +867,21 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 					continue
 				}
 
-				unitPrice := totalFiatAmount.Div(cryptoQty)
-				totalFees := cl.feeCents + totalFiatFees
-				fiatCents := model.Money(totalFiatAmount.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
-				if fiatCents <= 0 {
-					fiatCents = 1
+				unitPrice := totalQuoteAmount.Div(cryptoQty)
+				totalFees := cl.feeCents + totalQuoteFees
+				quoteCents := model.Money(totalQuoteAmount.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+				if quoteCents <= 0 {
+					quoteCents = 1
 				}
 
 				var txType model.TransactionType
 				var amtCents model.Money
 				if cl.amt.IsPositive() {
 					txType = model.TransactionTypeBuy
-					amtCents = fiatCents
+					amtCents = quoteCents
 				} else {
 					txType = model.TransactionTypeSell
-					amtCents = -fiatCents
+					amtCents = -quoteCents
 				}
 
 				txs = append(txs, syncservice.RawTransaction{
@@ -725,17 +891,19 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 					Name:              cl.symbol,
 					Quantity:          &cryptoQty,
 					UnitPriceAmount:   &unitPrice,
-					UnitPriceCurrency: fiatCurrency,
+					UnitPriceCurrency: quoteCurrency,
 					Amount:            amtCents,
-					Currency:          fiatCurrency,
+					Currency:          quoteCurrency,
 					FeesAmount:        totalFees,
-					FeesCurrency:      fiatCurrency,
+					FeesCurrency:      quoteCurrency,
 					ExecutedAt:        cl.execTime,
-					Notes:             fmt.Sprintf("Kraken trade %s %s %s @ %s %s", txType, cryptoQty.String(), cl.symbol, unitPrice.String(), fiatCurrency),
+					Notes:             fmt.Sprintf("Kraken trade %s %s %s @ %s %s", txType, cryptoQty.String(), cl.symbol, unitPrice.String(), quoteCurrency),
 				})
 			}
-		} else if len(cryptoLegs) >= 2 && len(fiatLegs) == 0 {
-			// Case B: Crypto-to-crypto trade (e.g. bought ETH with BTC)
+		} else if len(cryptoLegs) >= 2 && len(quoteLegs) == 0 {
+			// Case B: barter trade with neither a fiat nor a stablecoin leg (e.g. bought ETH with BTC).
+			// The sold asset prices the buy and is recorded as-is: the app cannot convert it, so
+			// flagging it beats silently pricing the trade as dollars.
 			var boughtLeg, soldLeg *parsedTradeLeg
 			for i := range cryptoLegs {
 				if cryptoLegs[i].amt.IsPositive() {
@@ -754,6 +922,11 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 					cents = 1
 				}
 
+				priceCurrency, supported := krakenPriceCurrency(soldLeg.symbol)
+				if !supported {
+					log.Printf("[WARN] [KrakenAdapter] barter trade %s for %s is priced in %s, which portfolio valuation does not handle", boughtLeg.symbol, soldLeg.symbol, priceCurrency)
+				}
+
 				txs = append(txs, syncservice.RawTransaction{
 					ExternalID:        boughtLeg.id,
 					Type:              model.TransactionTypeBuy,
@@ -761,9 +934,9 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 					Name:              boughtLeg.symbol,
 					Quantity:          &buyQty,
 					UnitPriceAmount:   &unitPrice,
-					UnitPriceCurrency: model.Currency(soldLeg.symbol),
+					UnitPriceCurrency: priceCurrency,
 					Amount:            cents,
-					Currency:          model.Currency(soldLeg.symbol),
+					Currency:          priceCurrency,
 					FeesAmount:        boughtLeg.feeCents + soldLeg.feeCents,
 					FeesCurrency:      model.CurrencyUSD,
 					ExecutedAt:        boughtLeg.execTime,
@@ -787,8 +960,32 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 	return txs, nil
 }
 
-func checkKrakenErrors(errList []string) error {
-	fullErr := strings.Join(errList, "; ")
+// krakenStatusError maps the HTTP statuses Kraken uses for throttling and
+// authentication failures, before the response body is inspected.
+func krakenStatusError(status int) error {
+	switch status {
+	case http.StatusTooManyRequests:
+		return syncservice.ErrRateLimited
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return syncservice.ErrInvalidCredentials
+	}
+	if status < 200 || status >= 300 {
+		return fmt.Errorf("kraken http error (status %d)", status)
+	}
+	return nil
+}
+
+// krakenAPIError converts the SDK's decoded `error` array into the sentinel errors
+// the sync service reacts to.
+func krakenAPIError(errList []any) error {
+	parts := make([]string, 0, len(errList))
+	for _, entry := range errList {
+		parts = append(parts, fmt.Sprint(entry))
+	}
+	return krakenErrorText(strings.Join(parts, "; "))
+}
+
+func krakenErrorText(fullErr string) error {
 	lower := strings.ToLower(fullErr)
 
 	if strings.Contains(lower, "rate limit") {

@@ -72,11 +72,11 @@ func main() {
 func dbRequired(args []string) bool {
 	// Commands that can run without a DB connection.
 	noDBCommands := map[string]bool{
-		"build":         true,
-		"validate":      true,
-		"validate-spec": true,
-		"archive":       true,
-		"sign":          true,
+		"build":          true,
+		"validate":       true,
+		"validate-spec":  true,
+		"archive":        true,
+		"sign":           true,
 		"registry-entry": true,
 	}
 

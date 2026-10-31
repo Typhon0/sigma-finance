@@ -304,8 +304,8 @@ export function CollectiblesList({
 							<p className="text-sm text-blue-700 dark:text-blue-300">
 								Your portfolio should contain 15 collectibles (watches, art, vehicles, jewelry,
 								wines, precious metals). Go to{" "}
-								<strong>Settings → Preferences → Reset to Default Data</strong> to load the
-								complete portfolio with all examples.
+								<strong>Settings → Preferences → Reset to Default Data</strong> to load the complete
+								portfolio with all examples.
 							</p>
 						</div>
 					</div>

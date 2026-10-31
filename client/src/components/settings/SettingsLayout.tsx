@@ -4,6 +4,8 @@ import {
 	CloudDownload,
 	Database,
 	Key,
+	KeyRound,
+	Link2,
 	NotebookPen,
 	Palette,
 	ScrollText,
@@ -15,6 +17,8 @@ import { cn } from "@/lib/utils";
 
 type SettingsSection =
 	| "account"
+	| "connections"
+	| "api-keys"
 	| "market-data"
 	| "historical-data-jobs"
 	| "display"
@@ -41,6 +45,18 @@ const sections: {
 		label: "Account & Profile",
 		icon: User,
 		href: "/settings/account",
+	},
+	{
+		id: "connections",
+		label: "Connected Accounts & Wallets",
+		icon: Link2,
+		href: "/settings/connections",
+	},
+	{
+		id: "api-keys",
+		label: "API Keys & Integrations",
+		icon: KeyRound,
+		href: "/settings/api-keys",
 	},
 	{
 		id: "market-data",

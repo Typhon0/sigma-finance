@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"time"
 
 	_ "github.com/lib/pq"
 	"github.com/uptrace/bun"
@@ -62,9 +63,11 @@ func NewDBWithConfig(cfg DBConfig) (*bun.DB, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	// Configure connection pool
+	// Configure connection pool with robust lifecycle controls
 	sqldb.SetMaxOpenConns(25)
 	sqldb.SetMaxIdleConns(5)
+	sqldb.SetConnMaxLifetime(5 * time.Minute)
+	sqldb.SetConnMaxIdleTime(2 * time.Minute)
 
 	db := bun.NewDB(sqldb, pgdialect.New())
 	return db, nil

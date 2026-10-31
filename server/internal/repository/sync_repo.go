@@ -18,11 +18,13 @@ type ISyncRepository interface {
 	GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error)
 	ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error)
 	UpdateCredential(ctx context.Context, cred *model.SyncCredential) error
+	DeleteCredential(ctx context.Context, id string) error
 	CreateConnection(ctx context.Context, conn *model.SyncConnection) error
 	GetConnectionByID(ctx context.Context, id string) (*model.SyncConnection, error)
 	GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
 	UpdateConnection(ctx context.Context, conn *model.SyncConnection) error
+	DeleteConnection(ctx context.Context, id string) error
 	CreateSyncRun(ctx context.Context, run *model.SyncRun) error
 	UpdateSyncRun(ctx context.Context, run *model.SyncRun) error
 	GetSyncRunByID(ctx context.Context, id string) (*model.SyncRun, error)
@@ -39,6 +41,7 @@ func NewSyncRepository(db bun.IDB) *SyncRepository {
 }
 
 // CreateCredential persists a new sync credential, storing encrypted data.
+// Handles upsert if a credential already exists for (user_id, provider).
 func (r *SyncRepository) CreateCredential(ctx context.Context, cred *model.SyncCredential) error {
 	if cred.Status == "" {
 		cred.Status = model.SyncCredentialStatusActive
@@ -51,13 +54,18 @@ func (r *SyncRepository) CreateCredential(ctx context.Context, cred *model.SyncC
 		cred.UpdatedAt = now
 	}
 
-	var err error
+	q := r.db.NewInsert().Model(cred)
 	if cred.ID == "" {
-		err = r.db.NewInsert().Model(cred).ExcludeColumn("id").Returning("*").Scan(ctx)
-	} else {
-		err = r.db.NewInsert().Model(cred).Returning("*").Scan(ctx)
+		q = q.ExcludeColumn("id")
 	}
-	return err
+	if cred.UserID != "" {
+		q = q.On("CONFLICT (user_id, provider) WHERE user_id IS NOT NULL DO UPDATE").
+			Set("encrypted_data = EXCLUDED.encrypted_data").
+			Set("status = EXCLUDED.status").
+			Set("updated_at = EXCLUDED.updated_at")
+	}
+
+	return q.Returning("*").Scan(ctx)
 }
 
 // GetCredentialByID retrieves a sync credential by primary key.
@@ -117,6 +125,19 @@ func (r *SyncRepository) ListCredentialsByUser(ctx context.Context, userID strin
 func (r *SyncRepository) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
 	cred.UpdatedAt = time.Now()
 	res, err := r.db.NewUpdate().Model(cred).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteCredential removes a credential by ID.
+func (r *SyncRepository) DeleteCredential(ctx context.Context, id string) error {
+	res, err := r.db.NewDelete().Model((*model.SyncCredential)(nil)).Where("id = ?", id).Exec(ctx)
 	if err != nil {
 		return err
 	}
@@ -206,6 +227,19 @@ func (r *SyncRepository) ListConnectionsByPortfolio(ctx context.Context, portfol
 func (r *SyncRepository) UpdateConnection(ctx context.Context, conn *model.SyncConnection) error {
 	conn.UpdatedAt = time.Now()
 	res, err := r.db.NewUpdate().Model(conn).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteConnection removes a sync connection by ID.
+func (r *SyncRepository) DeleteConnection(ctx context.Context, id string) error {
+	res, err := r.db.NewDelete().Model((*model.SyncConnection)(nil)).Where("id = ?", id).Exec(ctx)
 	if err != nil {
 		return err
 	}

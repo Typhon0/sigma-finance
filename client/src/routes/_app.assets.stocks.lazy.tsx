@@ -7,7 +7,12 @@ export const Route = createLazyFileRoute("/_app/assets/stocks")({
 		const navigate = useNavigate();
 		return (
 			<ProtectedRoute>
-				<StocksFundsModule onBack={() => navigate({ to: "/portfolios" })} detailMode="panel" />
+				<StocksFundsModule
+					detailMode="panel"
+					onSelectAccount={(_accountName) => {
+						navigate({ to: "/assets/accounts" });
+					}}
+				/>
 			</ProtectedRoute>
 		);
 	},

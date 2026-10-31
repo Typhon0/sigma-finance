@@ -11,5 +11,29 @@
 		"typescript.tsdk": "./client/node_modules/typescript/lib",
 		"typescript.enablePromptUseWorkspaceTsdk": true
 	},
-	"typescript.tsdk": "node_modules/typescript/lib"
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"typescript.tsserver.maxTsServerMemory": 512,
+	"makefile.configureOnOpen": false,
+	"files.watcherExclude": {
+		"**/.git/objects/**": true,
+		"**/.git/subtree-cache/**": true,
+		"**/node_modules/**": true,
+		"**/.venv/**": true,
+		"**/data/**": true,
+		"**/.mypy_cache/**": true,
+		"**/dist/**": true
+	},
+	"search.exclude": {
+		"**/node_modules": true,
+		"**/.venv": true,
+		"**/data": true,
+		"**/.git": true,
+		"**/dist": true
+	},
+	"gopls": {
+		"build.directoryFilters": [
+			"-client",
+			"-server/cmd/yfinance-service"
+		]
+	}
 }

@@ -89,7 +89,8 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 							toast.success("External accounts synchronized successfully!", { id: "agg-auth" });
 						})
 						.catch((err: unknown) => {
-							const msg = err instanceof Error ? err.message : "Failed to complete account connection";
+							const msg =
+								err instanceof Error ? err.message : "Failed to complete account connection";
 							toast.error(msg, { id: "agg-auth" });
 						});
 				}
@@ -214,7 +215,22 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 					);
 				}
 				return (
-					<CryptoList onSelectCrypto={setSelectedCryptoId} onSelectAccount={handleSelectAccount} />
+					<CryptoList
+						onSelectCrypto={setSelectedCryptoId}
+						onSelectAccount={(accountName) => {
+							const accountAsset = assets.find(
+								(a) =>
+									(a.name === accountName || a.accountName === accountName || a.institution === accountName) &&
+									["bank", "savings", "securities", "wallet"].includes(a.type),
+							);
+							if (accountAsset) {
+								setSelectedAccountId(accountAsset.id);
+								setActiveView("accounts");
+							} else {
+								navigate({ to: "/settings/connections" });
+							}
+						}}
+					/>
 				);
 
 			case "insurance":

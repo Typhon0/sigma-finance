@@ -100,3 +100,38 @@ func TestTrimLeadingZeroPoints(t *testing.T) {
 		})
 	}
 }
+
+func TestScopedHistoryCache(t *testing.T) {
+	svc := &PortfolioService{
+		scopedCache: make(map[string]scopedHistoryCacheEntry),
+	}
+
+	key1 := "port-123:STOCK,MUTUAL_FUND"
+	key2 := "port-123:CRYPTO"
+	key3 := "port-456:STOCK"
+
+	pts1 := []PerformancePoint{{Date: day(2026, time.April, 1), Value: 100}}
+	pts2 := []PerformancePoint{{Date: day(2026, time.April, 1), Value: 200}}
+
+	svc.scopedCacheMu.Lock()
+	svc.scopedCache[key1] = scopedHistoryCacheEntry{points: pts1, createdAt: time.Now()}
+	svc.scopedCache[key2] = scopedHistoryCacheEntry{points: pts2, createdAt: time.Now()}
+	svc.scopedCache[key3] = scopedHistoryCacheEntry{points: pts1, createdAt: time.Now()}
+	svc.scopedCacheMu.Unlock()
+
+	svc.invalidateScopedHistoryCache("port-123")
+
+	svc.scopedCacheMu.RLock()
+	defer svc.scopedCacheMu.RUnlock()
+
+	if _, ok := svc.scopedCache[key1]; ok {
+		t.Errorf("expected %s to be invalidated", key1)
+	}
+	if _, ok := svc.scopedCache[key2]; ok {
+		t.Errorf("expected %s to be invalidated", key2)
+	}
+	if _, ok := svc.scopedCache[key3]; !ok {
+		t.Errorf("expected %s to remain in cache", key3)
+	}
+}
+

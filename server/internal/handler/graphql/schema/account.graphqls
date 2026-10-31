@@ -4,6 +4,7 @@ enum AccountType {
     BROKER
     BANK
     CRYPTO_EXCHANGE
+    CRYPTO_WALLET
     OTHER
 }
 

@@ -40,9 +40,9 @@ type TaxLot struct {
 	AssetID           string          `bun:"asset_id,notnull"`
 	TransactionID     *string         `bun:"transaction_id"`
 	AcquiredAt        time.Time       `bun:"acquired_at,notnull"`
-	InitialQuantity   decimal.Decimal `bun:"initial_quantity,type:decimal(20,8),notnull"`
-	RemainingQuantity decimal.Decimal `bun:"remaining_quantity,type:decimal(20,8),notnull"`
-	CostBasisPerUnit  decimal.Decimal `bun:"cost_basis_per_unit,type:decimal(20,8),notnull"`
+	InitialQuantity   decimal.Decimal `bun:"initial_quantity,type:numeric,notnull"`
+	RemainingQuantity decimal.Decimal `bun:"remaining_quantity,type:numeric,notnull"`
+	CostBasisPerUnit  decimal.Decimal `bun:"cost_basis_per_unit,type:numeric,notnull"`
 	TotalCostBasis    Money           `bun:"total_cost_basis,notnull"` // In cents
 	Currency          Currency        `bun:"currency,notnull"`
 	Status            TaxLotStatus    `bun:"status,notnull"`
@@ -241,9 +241,9 @@ type TaxLotDisposition struct {
 	TransactionID     *string         `bun:"transaction_id"`
 	AcquiredAt        time.Time       `bun:"acquired_at,notnull"`
 	SoldAt            time.Time       `bun:"sold_at,notnull"`
-	Quantity          decimal.Decimal `bun:"quantity,type:decimal(20,8),notnull"`
-	CostBasisPerUnit  decimal.Decimal `bun:"cost_basis_per_unit,type:decimal(20,8),notnull"`
-	SellPricePerUnit  decimal.Decimal `bun:"sell_price_per_unit,type:decimal(20,8),notnull"`
+	Quantity          decimal.Decimal `bun:"quantity,type:numeric,notnull"`
+	CostBasisPerUnit  decimal.Decimal `bun:"cost_basis_per_unit,type:numeric,notnull"`
+	SellPricePerUnit  decimal.Decimal `bun:"sell_price_per_unit,type:numeric,notnull"`
 	CostBasis         Money           `bun:"cost_basis,notnull"`         // In cents
 	Proceeds          Money           `bun:"proceeds,notnull"`           // In cents
 	RealizedGainLoss  Money           `bun:"realized_gain_loss,notnull"` // Fiscal, lot-matched, in cents

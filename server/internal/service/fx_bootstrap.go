@@ -27,17 +27,18 @@ type packCandleParquetRow struct {
 	Source        string    `parquet:"source"`
 }
 
-func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
-	if len(raw) == 0 {
-		return decimal.Zero
+func isCorruptedSliceHeader(raw []byte) bool {
+	if len(raw) != 16 {
+		return false
 	}
-	if len(raw) == 16 && raw[15] == 0 && raw[0] != 0 {
-		reversed := make([]byte, len(raw))
-		for i := range raw {
-			reversed[len(raw)-1-i] = raw[i]
-		}
-		i := new(big.Int).SetBytes(reversed)
-		return decimal.NewFromBigInt(i, -scale)
+	hasPointerMarker := raw[4] == 0xc0 || raw[5] == 0xc0 || raw[6] == 0xc0 || raw[7] == 0xc0
+	hasLength16 := raw[8] == 0x10 && raw[9] == 0x00 && raw[10] == 0x00 && raw[11] == 0x00 && raw[12] == 0x00 && raw[13] == 0x00 && raw[14] == 0x00 && raw[15] == 0x00
+	return hasPointerMarker && hasLength16
+}
+
+func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
+	if len(raw) == 0 || isCorruptedSliceHeader(raw) {
+		return decimal.Zero
 	}
 
 	i := new(big.Int).SetBytes(raw)
@@ -45,7 +46,11 @@ func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
 		max := new(big.Int).Lsh(big.NewInt(1), uint(len(raw))*8)
 		i.Sub(i, max)
 	}
-	return decimal.NewFromBigInt(i, -scale)
+	val := decimal.NewFromBigInt(i, -scale)
+	if val.GreaterThanOrEqual(decimal.NewFromFloat(295.147905)) && val.LessThanOrEqual(decimal.NewFromFloat(295.147907)) {
+		return decimal.Zero
+	}
+	return val
 }
 
 // ensureFXRatesTable creates the FX rates table when older environments are missing it.

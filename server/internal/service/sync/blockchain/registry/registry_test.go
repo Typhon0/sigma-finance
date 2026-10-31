@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/service/sync/blockchain"
 )
@@ -48,6 +49,27 @@ func TestAdapterRegistry_PersistentTokenAccountProvider(t *testing.T) {
 	tap.LoadKnownTokenAccounts(walletAddr, ataMap)
 	loaded := tap.GetKnownTokenAccounts(walletAddr)
 	assert.Equal(t, "MintUSDC1", loaded["ATAPubkey1"])
+}
+
+func TestAdapterRegistry_BitcoinFailoverEndpoints(t *testing.T) {
+	// 1. Without custom endpoints: Mempool primary + Blockstream failover
+	regDefault := NewAdapterRegistry("", "", nil)
+	require.NotNil(t, regDefault.bitcoinClient)
+	eps := regDefault.bitcoinClient.Endpoints()
+	require.Len(t, eps, 2)
+	assert.Equal(t, "https://mempool.space/api", eps[0])
+	assert.Equal(t, "https://blockstream.info/api", eps[1])
+
+	// 2. With custom Esplora endpoint: Custom primary + Mempool + Blockstream
+	customMap := map[model.BlockchainNetwork]string{
+		model.BlockchainNetworkBitcoin: "https://my-esplora.org/api",
+	}
+	regCustom := NewAdapterRegistry("", "", customMap)
+	epsCustom := regCustom.bitcoinClient.Endpoints()
+	require.Len(t, epsCustom, 3)
+	assert.Equal(t, "https://my-esplora.org/api", epsCustom[0])
+	assert.Equal(t, "https://mempool.space/api", epsCustom[1])
+	assert.Equal(t, "https://blockstream.info/api", epsCustom[2])
 }
 
 

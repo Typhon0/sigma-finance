@@ -59,7 +59,7 @@ const AdvancedRealTimeChart: React.FC<AdvancedRealTimeChartProps> = ({
 	theme = "light",
 	style = "1",
 	locale = "en",
-	toolbar_bg = "#f1f3f6",
+	toolbar_bg: customToolbarBg,
 	enable_publishing = false,
 	hide_top_toolbar = false,
 	hide_legend = false,
@@ -78,7 +78,7 @@ const AdvancedRealTimeChart: React.FC<AdvancedRealTimeChartProps> = ({
 	disabled_features = undefined,
 	enabled_features = undefined,
 	container_id: containerIdProp,
-	backgroundColor = undefined,
+	backgroundColor: customBackgroundColor,
 
 	copyrightStyles,
 
@@ -96,6 +96,8 @@ const AdvancedRealTimeChart: React.FC<AdvancedRealTimeChartProps> = ({
 		containerIdRef.current = containerIdProp ?? `tradingview_${createId(5)}`;
 	}
 	const container_id = containerIdRef.current;
+	const toolbar_bg = customToolbarBg ?? (theme === "dark" ? "#131722" : "#f1f3f6");
+	const backgroundColor = customBackgroundColor ?? (theme === "dark" ? "#09090b" : "#ffffff");
 
 	return (
 		<Widget

@@ -1,4 +1,4 @@
-import { useQuery } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import ReactECharts from "echarts-for-react";
 import {
 	Building2,
@@ -6,8 +6,10 @@ import {
 	Coins,
 	Eye,
 	LayoutGrid,
+	Link2,
 	List,
 	MoreVertical,
+	Pencil,
 	PieChart,
 	Plus,
 	RefreshCw,
@@ -18,10 +20,13 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { type PortfolioAssetItem, usePortfolio } from "@/components/PortfolioProvider";
 import { SearchInput } from "@/components/ui/search-input";
+import { TRIGGER_ACCOUNT_SYNC } from "@/graphql/mutations/sync";
 import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import { CreateAccountDialog } from "./account/CreateAccountDialog";
+import { DeleteAccountDialog } from "./account/DeleteAccountDialog";
+import { EditAccountDialog } from "./account/EditAccountDialog";
 import { AddSavingForm, type SavingsFormData } from "./assets/savings/AddSavingForm";
 import { ConnectInstitutionDialog } from "./sync/ConnectInstitutionDialog";
 import { SyncStatusBadge } from "./sync/SyncStatusBadge";
@@ -29,6 +34,10 @@ import { TrendArrowDown, TrendArrowUp } from "./TrendArrows";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import {
+	AddWalletDialog,
+	DeFiReviewQueueBanner,
+} from "@/features/wallets";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -45,13 +54,13 @@ interface AccountsListProps {
 }
 
 type ViewMode = "cards" | "table";
-type AccountType = "all" | "CEX" | "Bank" | "Broker";
+type AccountType = "all" | "Wallet" | "CEX" | "Bank" | "Broker";
 
 /** Account-level view derived from portfolio assets */
 interface AccountData {
 	id: string;
 	name: string;
-	type: "CEX" | "Bank" | "Broker";
+	type: "Wallet" | "CEX" | "Bank" | "Broker";
 	taxWrapper?: string;
 	assetClass: string;
 	totalValue: number;
@@ -59,6 +68,8 @@ interface AccountData {
 	profitLoss: number;
 	profitLossPercent: number;
 	accountNumber: string;
+	institution?: string | null;
+	currency?: string | null;
 	color: string;
 	symbol?: string;
 	dayChange?: number;
@@ -79,7 +90,11 @@ function mapAssetTypeToAccountType(asset: PortfolioAssetItem): AccountData["type
 		case "bank":
 			return "Bank";
 		case "crypto":
-			return "CEX";
+			return /wallet|ledger|trezor|metamask|phantom/i.test(
+				asset.institution || asset.exchange || asset.name || "",
+			)
+				? "Wallet"
+				: "CEX";
 		case "stock":
 		case "fund":
 			return "Broker";
@@ -90,6 +105,7 @@ function mapAssetTypeToAccountType(asset: PortfolioAssetItem): AccountData["type
 
 /** Derive a color per account type */
 const ACCOUNT_TYPE_COLORS: Record<AccountData["type"], string> = {
+	Wallet: "#8B5CF6",
 	CEX: "#F3BA2F",
 	Bank: "#117ACA",
 	Broker: "#C52328",
@@ -108,6 +124,9 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [showCreateAccountModal, setShowCreateAccountModal] = useState(false);
 	const [showConnectInstitution, setShowConnectInstitution] = useState(false);
+	const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
+	const [accountToEdit, setAccountToEdit] = useState<AccountData | null>(null);
+	const [accountToDelete, setAccountToDelete] = useState<AccountData | null>(null);
 	const [hoveredAccountData, setHoveredAccountData] = useState<{
 		name: string;
 		value: number;
@@ -117,7 +136,26 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const { data: accountsData } = useQuery(GET_ACCOUNTS, {
 		variables: { portfolioId: currentPortfolio },
 		skip: !currentPortfolio,
+		fetchPolicy: "cache-and-network",
 	});
+
+	const [triggerSync] = useMutation(TRIGGER_ACCOUNT_SYNC, {
+		refetchQueries: currentPortfolio
+			? [{ query: GET_ACCOUNTS, variables: { portfolioId: currentPortfolio } }]
+			: undefined,
+	});
+
+	const handleTriggerSync = async (accountId: string, accountName: string) => {
+		const toastId = toast.loading(`Triggering sync for ${accountName}...`);
+		try {
+			await triggerSync({ variables: { accountId } });
+			toast.success(`Sync started for ${accountName}`, { id: toastId });
+			await refetch();
+		} catch (err: unknown) {
+			const msg = err instanceof Error ? err.message : "Failed to trigger sync";
+			toast.error(msg, { id: toastId });
+		}
+	};
 
 	const handleAddAccount = async (data: SavingsFormData) => {
 		if (!currentPortfolio) {
@@ -157,7 +195,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				(a: {
 					id: string;
 					name: string;
-					type: "BROKER" | "BANK" | "CRYPTO_EXCHANGE" | "OTHER";
+					type: "BROKER" | "BANK" | "CRYPTO_EXCHANGE" | "CRYPTO_WALLET" | "OTHER";
 					taxWrapper?: string;
 					institution?: string | null;
 					accountNumber?: string | null;
@@ -172,8 +210,15 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 					} | null;
 				}) => {
 					const type: AccountData["type"] =
-						a.type === "CRYPTO_EXCHANGE" ? "CEX" : a.type === "BROKER" ? "Broker" : "Bank";
-					const assetClass = type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
+						a.type === "CRYPTO_WALLET"
+							? "Wallet"
+							: a.type === "CRYPTO_EXCHANGE"
+							? "CEX"
+							: a.type === "BROKER"
+							? "Broker"
+							: "Bank";
+					const assetClass =
+						type === "Wallet" || type === "CEX" ? "Crypto" : type === "Bank" ? "Cash" : "Stocks";
 					const totalVal = a.totalValue ?? 0;
 
 					return {
@@ -187,6 +232,8 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 						profitLoss: 0,
 						profitLossPercent: 0,
 						accountNumber: a.accountNumber || (a.institution ? a.institution : "Main Account"),
+						institution: a.institution,
+						currency: (a as { currency?: string | null }).currency || "EUR",
 						color: ACCOUNT_TYPE_COLORS[type],
 						syncProvider: a.syncProvider,
 						syncConnection: a.syncConnection,
@@ -502,6 +549,13 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				</CardContent>
 			</Card>
 
+			{/* DeFi Reviews */}
+			{currentPortfolio && (
+				<div className="space-y-4">
+					<DeFiReviewQueueBanner portfolioId={currentPortfolio} />
+				</div>
+			)}
+
 			{/* Accounts List */}
 			<Card>
 				<CardHeader>
@@ -517,11 +571,28 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 							</Button>
 							<Button
 								variant="outline"
+								onClick={() => setShowAddWalletDialog(true)}
+								disabled={!currentPortfolio}
+							>
+								<Wallet className="h-4 w-4 mr-2 text-primary" />
+								Connect Crypto Wallet
+							</Button>
+							<Button
+								variant="outline"
 								onClick={() => setShowConnectInstitution(true)}
 								disabled={!currentPortfolio}
 							>
 								<RefreshCw className="h-4 w-4 mr-2" />
 								Connect Institution
+							</Button>
+							<Button
+								variant="outline"
+								onClick={() => {
+									window.location.href = "/settings/connections";
+								}}
+							>
+								<Link2 className="h-4 w-4 mr-2 text-primary" />
+								Manage Synced Accounts
 							</Button>
 							<Button variant="outline" onClick={() => setShowAddForm(true)}>
 								<Wallet className="h-4 w-4 mr-2" />
@@ -548,6 +619,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 								</SelectTrigger>
 								<SelectContent>
 									<SelectItem value="all">All Types</SelectItem>
+									<SelectItem value="Wallet">Wallets</SelectItem>
 									<SelectItem value="CEX">Exchanges</SelectItem>
 									<SelectItem value="Bank">Banks</SelectItem>
 									<SelectItem value="Broker">Brokers</SelectItem>
@@ -633,13 +705,13 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																	)}
 																</div>
 																<CardDescription className="text-xs">
-																	{account.type} • {account.assetClass}
+																	{account.type === "Wallet" ? "On-Chain Wallet" : account.type} • {account.assetClass}
 																</CardDescription>
 															</div>
 														</div>
 														<DropdownMenu>
 															<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-																<Button variant="ghost" size="icon">
+																<Button variant="ghost" size="icon" aria-label="Account actions">
 																	<MoreVertical className="h-4 w-4" />
 																</Button>
 															</DropdownMenuTrigger>
@@ -653,10 +725,33 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																	<Eye className="h-4 w-4 mr-2" />
 																	View Details
 																</DropdownMenuItem>
+																<DropdownMenuItem
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		setAccountToEdit(account);
+																	}}
+																>
+																	<Pencil className="h-4 w-4 mr-2" />
+																	Edit Account
+																</DropdownMenuItem>
+																{account.syncProvider && account.syncProvider !== "MANUAL" && (
+																	<DropdownMenuItem
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			void handleTriggerSync(account.id, account.name);
+																		}}
+																	>
+																		<RefreshCw className="h-4 w-4 mr-2" />
+																		Sync Now
+																	</DropdownMenuItem>
+																)}
 																<DropdownMenuSeparator />
 																<DropdownMenuItem
-																	className="text-destructive"
-																	onClick={(e) => e.stopPropagation()}
+																	className="text-destructive focus:text-destructive"
+																	onClick={(e) => {
+																		e.stopPropagation();
+																		setAccountToDelete(account);
+																	}}
 																>
 																	<Trash2 className="h-4 w-4 mr-2" />
 																	Delete
@@ -834,7 +929,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 															)}
 															<DropdownMenu>
 																<DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-																	<Button variant="ghost" size="icon">
+																	<Button variant="ghost" size="icon" aria-label="Account actions">
 																		<MoreVertical className="h-4 w-4" />
 																	</Button>
 																</DropdownMenuTrigger>
@@ -848,10 +943,33 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 																		<Eye className="h-4 w-4 mr-2" />
 																		View Details
 																	</DropdownMenuItem>
+																	<DropdownMenuItem
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			setAccountToEdit(account);
+																		}}
+																	>
+																		<Pencil className="h-4 w-4 mr-2" />
+																		Edit Account
+																	</DropdownMenuItem>
+																	{account.syncProvider && account.syncProvider !== "MANUAL" && (
+																		<DropdownMenuItem
+																			onClick={(e) => {
+																				e.stopPropagation();
+																				void handleTriggerSync(account.id, account.name);
+																			}}
+																		>
+																			<RefreshCw className="h-4 w-4 mr-2" />
+																			Sync Now
+																		</DropdownMenuItem>
+																	)}
 																	<DropdownMenuSeparator />
 																	<DropdownMenuItem
-																		className="text-destructive"
-																		onClick={(e) => e.stopPropagation()}
+																		className="text-destructive focus:text-destructive"
+																		onClick={(e) => {
+																			e.stopPropagation();
+																			setAccountToDelete(account);
+																		}}
 																	>
 																		<Trash2 className="h-4 w-4 mr-2" />
 																		Delete
@@ -900,10 +1018,49 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 				portfolioId={currentPortfolio || ""}
 			/>
 
+			{accountToEdit && (
+				<EditAccountDialog
+					open={Boolean(accountToEdit)}
+					onOpenChange={(open) => {
+						if (!open) setAccountToEdit(null);
+					}}
+					account={accountToEdit}
+					portfolioId={currentPortfolio || undefined}
+					onSuccess={() => {
+						setAccountToEdit(null);
+						void refetch();
+					}}
+				/>
+			)}
+
+			{accountToDelete && (
+				<DeleteAccountDialog
+					open={Boolean(accountToDelete)}
+					onOpenChange={(open) => {
+						if (!open) setAccountToDelete(null);
+					}}
+					accountId={accountToDelete.id}
+					accountName={accountToDelete.name}
+					portfolioId={currentPortfolio || undefined}
+					onSuccess={() => {
+						setAccountToDelete(null);
+						void refetch();
+					}}
+				/>
+			)}
+
 			{currentPortfolio && (
 				<ConnectInstitutionDialog
 					open={showConnectInstitution}
 					onOpenChange={setShowConnectInstitution}
+					portfolioId={currentPortfolio}
+				/>
+			)}
+
+			{currentPortfolio && (
+				<AddWalletDialog
+					open={showAddWalletDialog}
+					onOpenChange={setShowAddWalletDialog}
 					portfolioId={currentPortfolio}
 				/>
 			)}

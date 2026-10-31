@@ -154,6 +154,27 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		assetIDs = append(assetIDs, domPa.AssetID)
 	}
 
+	// Look up positions for this portfolio to resolve account / exchange information
+	accountNameByAssetID := make(map[string]string)
+	if r.UOW != nil {
+		func() {
+			defer func() { _ = recover() }()
+			if posRepo := r.UOW.Position(); posRepo != nil {
+				if positions, err := posRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+					return q.Where("position.portfolio_id = ?", portfolioID).Relation("Account")
+				}); err == nil {
+					for _, pos := range positions {
+						if pos.Account != nil && pos.Account.Name != "" && pos.AssetID != "" {
+							accountNameByAssetID[pos.AssetID] = pos.Account.Name
+						}
+					}
+				} else {
+					log.Printf("[WARN] buildPortfolioAssets: failed to fetch positions with accounts: %v", err)
+				}
+			}
+		}()
+	}
+
 	prefetchedAssets, batchErr := r.getAssetsWithDetailsBatch(ctx, assetIDs)
 	if batchErr != nil {
 		log.Printf("[ERROR] buildPortfolioAssets: batch fetch failed for portfolio %s: %v", portfolioID, batchErr)
@@ -167,6 +188,20 @@ func (r *Resolver) buildPortfolioAssets(ctx context.Context, portfolioID string)
 		if !ok || gqlAsset == nil {
 			log.Printf("[WARN] buildPortfolioAssets: skipping asset %s in portfolio %s: not found in batch", domPa.AssetID, portfolioID)
 			continue
+		}
+
+		if c, ok := gqlAsset.(*gqlModel.Crypto); ok {
+			if accountName, exists := accountNameByAssetID[domPa.AssetID]; exists && accountName != "" {
+				copyCrypto := *c
+				copyCrypto.Exchange = &accountName
+				gqlAsset = &copyCrypto
+			}
+		} else if s, ok := gqlAsset.(*gqlModel.Stock); ok {
+			if accountName, exists := accountNameByAssetID[domPa.AssetID]; exists && accountName != "" && (s.Exchange == nil || *s.Exchange == "" || *s.Exchange == "Manual") {
+				copyStock := *s
+				copyStock.Exchange = &accountName
+				gqlAsset = &copyStock
+			}
 		}
 		avgPP := domPa.AveragePurchasePrice
 		var currentVal *float64

@@ -2,12 +2,31 @@ package repository
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"sigma_finance/internal/domain/model"
 	"time"
 
 	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
+
+// latestPriceLookback bounds the "latest price" lookups to the recent
+// partitions of asset_prices. The table is partitioned by month; without a
+// timestamp predicate PostgreSQL plans a MergeAppend over every partition
+// (253 at the time of writing), even though each partition's
+// (asset_id, timestamp) index makes the actual row lookup trivial.
+//
+// The lookback is only a fast path: GetLatestPrice/GetLatestPrices fall back
+// to an unbounded lookup for assets that have not been priced recently
+// (delisted instruments, real estate, bank accounts, ...), so correctness is
+// preserved.
+const latestPriceLookback = 30 * 24 * time.Hour
+
+// latestPriceUpperBound keeps the planner from including future partitions.
+// Prices are historical, but a one-day grace period avoids dropping a row
+// written with a slightly future timestamp by an upstream feed.
+const latestPriceUpperBound = 24 * time.Hour
 
 // TimeRange represents a time range for price queries
 type TimeRange struct {
@@ -114,10 +133,33 @@ func (r *PriceRepository) Create(ctx context.Context, entity *model.AssetPrice) 
 	return entity, err
 }
 
-// GetLatestPrice retrieves the most recent price for an asset
+// GetLatestPrice retrieves the most recent price for an asset.
+//
+// The fast path is bounded to the recent partitions so PostgreSQL can prune
+// asset_prices instead of merging every monthly partition. Assets that have
+// no price in the lookback window fall back to an unbounded lookup, which is
+// rare and still returns the correct last known price.
 func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID string) (*model.AssetPrice, error) {
+	now := time.Now()
 	var price model.AssetPrice
 	err := r.db.NewSelect().
+		Model(&price).
+		Where("asset_id = ?", assetID).
+		Where("timestamp >= ?", now.Add(-latestPriceLookback)).
+		Where("timestamp <= ?", now.Add(latestPriceUpperBound)).
+		Order("timestamp DESC").
+		Limit(1).
+		Scan(ctx)
+	if err == nil {
+		return &price, nil
+	}
+	if !errors.Is(err, sql.ErrNoRows) {
+		return nil, err
+	}
+
+	// Slow path: the asset has no recent price. Keep the previous semantics
+	// (last known price regardless of age) rather than returning no price.
+	err = r.db.NewSelect().
 		Model(&price).
 		Where("asset_id = ?", assetID).
 		Order("timestamp DESC").
@@ -131,20 +173,55 @@ func (r *PriceRepository) GetLatestPrice(ctx context.Context, assetID string) (*
 
 // GetLatestPrices retrieves the most recent prices for multiple assets.
 // Uses DISTINCT ON to avoid correlated subquery issues with partitioned tables.
+// The first pass is bounded to the recent partitions; only assets with no
+// recent price are looked up again without a time bound.
 func (r *PriceRepository) GetLatestPrices(ctx context.Context, assetIDs []string) ([]model.AssetPrice, error) {
 	if len(assetIDs) == 0 {
 		return []model.AssetPrice{}, nil
 	}
 
+	now := time.Now()
 	var prices []model.AssetPrice
 	err := r.db.NewSelect().
 		Model(&prices).
 		Where("asset_id IN (?)", bun.In(assetIDs)).
+		Where("timestamp >= ?", now.Add(-latestPriceLookback)).
+		Where("timestamp <= ?", now.Add(latestPriceUpperBound)).
 		Order("asset_id", "timestamp DESC").
 		DistinctOn("asset_id").
 		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
 
-	return prices, err
+	found := make(map[string]struct{}, len(prices))
+	for _, price := range prices {
+		found[price.AssetID] = struct{}{}
+	}
+	missing := make([]string, 0, len(assetIDs))
+	for _, assetID := range assetIDs {
+		if _, ok := found[assetID]; !ok {
+			missing = append(missing, assetID)
+		}
+	}
+	if len(missing) == 0 {
+		return prices, nil
+	}
+
+	// Slow path: only the assets without a recent price are looked up
+	// unbounded. Usually this is zero or a handful of illiquid assets.
+	var fallback []model.AssetPrice
+	err = r.db.NewSelect().
+		Model(&fallback).
+		Where("asset_id IN (?)", bun.In(missing)).
+		Order("asset_id", "timestamp DESC").
+		DistinctOn("asset_id").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return append(prices, fallback...), nil
 }
 
 // GetPriceHistory retrieves price history for an asset within a time range
@@ -411,15 +488,21 @@ func (r *PriceRepository) GetPriceStatisticsBatch(ctx context.Context, assetIDs 
 		validAssetIDs = append(validAssetIDs, lp.AssetID)
 	}
 
-	// 2. Get previous day's price for change calculation across all assets
-	var prevPrices []model.AssetPrice
+	// 2. Get previous day's price for change calculation across all assets.
+	// Use the daily rollup so this does not plan a MergeAppend over every
+	// monthly asset_prices partition.
+	var prevPrices []struct {
+		AssetID string          `bun:"asset_id"`
+		Price   decimal.Decimal `bun:"price"`
+	}
 	_ = r.db.NewSelect().
-		Model(&prevPrices).
+		TableExpr("sigma_finance.asset_prices_daily").
+		Column("asset_id", "price").
 		Where("asset_id IN (?)", bun.In(validAssetIDs)).
-		Where("timestamp <= ?", dayAgo).
-		Order("asset_id", "timestamp DESC").
+		Where("price_date <= ?", dayAgo).
+		Order("asset_id", "price_date DESC").
 		DistinctOn("asset_id").
-		Scan(ctx)
+		Scan(ctx, &prevPrices)
 
 	prevPriceMap := make(map[string]decimal.Decimal, len(prevPrices))
 	for _, pp := range prevPrices {

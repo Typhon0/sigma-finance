@@ -1,0 +1,28 @@
+# Exclude node_modules and client dist
+client/node_modules
+client/dist
+client/.turbo
+
+# Exclude Python venv and caches
+server/cmd/yfinance-service/.venv
+server/cmd/yfinance-service/**/__pycache__
+*.pyc
+*.pyo
+
+# Exclude compiled binaries and test artifacts
+*.test
+*.out
+*.exe
+server/main
+server/sigma-finance-server
+server/sigma-finance
+server/market-data-pack-ci
+coverage.out
+
+# Exclude git, editor, and data
+.git
+.agents
+.codex
+.vscode
+data/
+

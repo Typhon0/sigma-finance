@@ -15,10 +15,10 @@ import (
 
 // PoolManager manages database connection pools with performance optimizations
 type PoolManager struct {
-	primary   *bun.DB
-	replicas  []*bun.DB
-	config    *config.DatabasePerformanceConfig
-	stats     *PoolStats
+	primary  *bun.DB
+	replicas []*bun.DB
+	config   *config.DatabasePerformanceConfig
+	stats    *PoolStats
 }
 
 // PoolStats tracks connection pool statistics
@@ -49,7 +49,7 @@ func NewPoolManager(dbConfig *config.DatabaseConfig, perfConfig *config.Database
 		for i, host := range perfConfig.ReadReplicaHosts {
 			replicaConfig := *dbConfig
 			replicaConfig.Host = host
-			
+
 			replica, err := createOptimizedConnection(&replicaConfig, perfConfig, fmt.Sprintf("replica-%d", i))
 			if err != nil {
 				log.Printf("Warning: Failed to create replica connection to %s: %v", host, err)
@@ -70,8 +70,21 @@ func createOptimizedConnection(dbConfig *config.DatabaseConfig, perfConfig *conf
 	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
 		dbConfig.User, dbConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.DBName, dbConfig.SSLMode)
 
-	sqldb := sql.OpenDB(pgdriver.NewConnector(pgdriver.WithDSN(dsn)))
-	
+	// statement_timeout is a safety net for pathological plans (for example an
+	// unbounded as-of price lookup over every asset_prices partition). Without
+	// it, one bad query can hold a connection and hundreds of MB for hours.
+	// database/sql closes the connection when the server cancels the statement.
+	connParams := map[string]interface{}{}
+	if perfConfig.QueryTimeout > 0 {
+		connParams["statement_timeout"] = fmt.Sprintf("%dms", perfConfig.QueryTimeout.Milliseconds())
+		connParams["idle_in_transaction_session_timeout"] = fmt.Sprintf("%dms", (2 * perfConfig.QueryTimeout).Milliseconds())
+	}
+
+	sqldb := sql.OpenDB(pgdriver.NewConnector(
+		pgdriver.WithDSN(dsn),
+		pgdriver.WithConnParams(connParams),
+	))
+
 	// Configure connection pool for optimal performance
 	sqldb.SetMaxOpenConns(perfConfig.MaxOpenConns)
 	sqldb.SetMaxIdleConns(perfConfig.MaxIdleConns)
@@ -92,7 +105,7 @@ func createOptimizedConnection(dbConfig *config.DatabaseConfig, perfConfig *conf
 	// Test the connection
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := db.PingContext(ctx); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -123,13 +136,13 @@ func (pm *PoolManager) shouldUseReplica() bool {
 	if pm.config.ReadReplicaRatio <= 0 {
 		return false
 	}
-	
+
 	// Simple probability-based selection
 	totalQueries := pm.stats.TotalQueries + pm.stats.ReplicaQueries
 	if totalQueries == 0 {
 		return true
 	}
-	
+
 	currentRatio := float64(pm.stats.ReplicaQueries) / float64(totalQueries)
 	return currentRatio < pm.config.ReadReplicaRatio
 }
@@ -147,7 +160,7 @@ func (pm *PoolManager) monitorConnections() {
 // logPoolStats logs connection pool statistics
 func (pm *PoolManager) logPoolStats() {
 	primaryStats := pm.primary.Stats()
-	
+
 	log.Printf("DB Pool Stats - Primary: Open=%d, InUse=%d, Idle=%d, WaitCount=%d, WaitDuration=%v",
 		primaryStats.OpenConnections,
 		primaryStats.InUse,
@@ -202,11 +215,11 @@ func (h *QueryMonitorHook) BeforeQuery(ctx context.Context, event *bun.QueryEven
 
 func (h *QueryMonitorHook) AfterQuery(ctx context.Context, event *bun.QueryEvent) {
 	duration := time.Since(event.StartTime)
-	
+
 	if h.slowThreshold > 0 && duration > h.slowThreshold {
 		log.Printf("SLOW QUERY [%s] %v: %s", h.name, duration, event.Query)
 	}
-	
+
 	if h.enableLogging {
 		log.Printf("QUERY [%s] %v: %s", h.name, duration, event.Query)
 	}

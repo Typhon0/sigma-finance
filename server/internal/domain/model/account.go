@@ -15,12 +15,13 @@ const (
 	AccountTypeBroker         AccountType = "BROKER"
 	AccountTypeBank           AccountType = "BANK"
 	AccountTypeCryptoExchange AccountType = "CRYPTO_EXCHANGE"
+	AccountTypeCryptoWallet   AccountType = "CRYPTO_WALLET"
 	AccountTypeOther          AccountType = "OTHER"
 )
 
 func (at AccountType) IsValid() bool {
 	switch at {
-	case AccountTypeBroker, AccountTypeBank, AccountTypeCryptoExchange, AccountTypeOther:
+	case AccountTypeBroker, AccountTypeBank, AccountTypeCryptoExchange, AccountTypeCryptoWallet, AccountTypeOther:
 		return true
 	}
 	return false

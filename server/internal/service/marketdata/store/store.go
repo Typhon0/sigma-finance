@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"os"
@@ -164,6 +165,9 @@ func (s *PackCandleStore) GetRange(ctx context.Context, query CandleRangeQuery) 
 			}
 			reqQuery := query
 			reqQuery.InstrumentID = packFilterID
+			if cov.Symbol != "" {
+				reqQuery.Symbol = cov.Symbol
+			}
 			candles, err := s.readPackFile(pack.FilePath, relPath, reqQuery)
 			if err != nil {
 				return nil, err
@@ -272,7 +276,17 @@ func (s *PackCandleStore) readPackFile(packPath, relPath string, query CandleRan
 
 	out := make([]model.Candle, 0, len(rows))
 	for _, row := range rows {
-		if query.InstrumentID != "" && row.InstrumentID != query.InstrumentID && (query.Symbol == "" || !strings.EqualFold(row.Symbol, query.Symbol)) {
+		if query.Symbol != "" {
+			symMatches := strings.EqualFold(row.Symbol, query.Symbol) ||
+				strings.EqualFold(row.Symbol, query.Symbol+"USDT") ||
+				strings.EqualFold(row.Symbol, query.Symbol+"USD") ||
+				(strings.HasSuffix(strings.ToUpper(query.Symbol), "USDT") && strings.EqualFold(row.Symbol, strings.TrimSuffix(query.Symbol, "USDT"))) ||
+				(strings.HasSuffix(strings.ToUpper(query.Symbol), "-USD") && strings.EqualFold(row.Symbol, strings.TrimSuffix(query.Symbol, "-USD")+"USDT"))
+
+			if !symMatches && (query.InstrumentID == "" || row.InstrumentID != query.InstrumentID) {
+				continue
+			}
+		} else if query.InstrumentID != "" && row.InstrumentID != query.InstrumentID {
 			continue
 		}
 		if query.Interval != "" && !strings.EqualFold(row.Interval, string(query.Interval)) {
@@ -286,6 +300,9 @@ func (s *PackCandleStore) readPackFile(packPath, relPath string, query CandleRan
 		}
 		candle, err := row.toModel()
 		if err != nil {
+			if errors.Is(err, errCorruptedPrice) {
+				continue
+			}
 			return nil, err
 		}
 		if query.InstrumentID != "" {
@@ -366,16 +383,41 @@ type packCandleParquetRow struct {
 	Source        string    `parquet:"source"`
 }
 
+var errCorruptedPrice = errors.New("corrupted price: detected Go slice header in parquet fixed_len_byte_array")
+
+func isCorruptedSliceHeader(raw []byte) bool {
+	if len(raw) != 16 {
+		return false
+	}
+	hasPointerMarker := raw[4] == 0xc0 || raw[5] == 0xc0 || raw[6] == 0xc0 || raw[7] == 0xc0
+	hasLength16 := raw[8] == 0x10 && raw[9] == 0x00 && raw[10] == 0x00 && raw[11] == 0x00 && raw[12] == 0x00 && raw[13] == 0x00 && raw[14] == 0x00 && raw[15] == 0x00
+	return hasPointerMarker && hasLength16
+}
+
 func (r packCandleParquetRow) toModel() (model.Candle, error) {
-	openPrice := decimalFromParquetBytes(r.Open, 18)
-	highPrice := decimalFromParquetBytes(r.High, 18)
-	lowPrice := decimalFromParquetBytes(r.Low, 18)
-	closePrice := decimalFromParquetBytes(r.Close, 18)
-	volume := decimalFromParquetBytes(r.Volume, 8)
+	openPrice, err := decimalFromParquetBytes(r.Open, 18)
+	if err != nil {
+		return model.Candle{}, err
+	}
+	highPrice, err := decimalFromParquetBytes(r.High, 18)
+	if err != nil {
+		return model.Candle{}, err
+	}
+	lowPrice, err := decimalFromParquetBytes(r.Low, 18)
+	if err != nil {
+		return model.Candle{}, err
+	}
+	closePrice, err := decimalFromParquetBytes(r.Close, 18)
+	if err != nil {
+		return model.Candle{}, err
+	}
+	volume, _ := decimalFromParquetBytes(r.Volume, 8)
 	var adjustedClose *decimal.Decimal
 	if len(r.AdjustedClose) > 0 {
-		value := decimalFromParquetBytes(r.AdjustedClose, 18)
-		adjustedClose = &value
+		value, err := decimalFromParquetBytes(r.AdjustedClose, 18)
+		if err == nil {
+			adjustedClose = &value
+		}
 	}
 	instrumentID := r.InstrumentID
 	return model.Candle{
@@ -395,17 +437,12 @@ func (r packCandleParquetRow) toModel() (model.Candle, error) {
 	}, nil
 }
 
-func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
+func decimalFromParquetBytes(raw []byte, scale int32) (decimal.Decimal, error) {
 	if len(raw) == 0 {
-		return decimal.Zero
+		return decimal.Zero, nil
 	}
-	if len(raw) == 16 && raw[15] == 0 && raw[0] != 0 {
-		reversed := make([]byte, len(raw))
-		for i := range raw {
-			reversed[len(raw)-1-i] = raw[i]
-		}
-		i := new(big.Int).SetBytes(reversed)
-		return decimal.NewFromBigInt(i, -scale)
+	if isCorruptedSliceHeader(raw) {
+		return decimal.Zero, errCorruptedPrice
 	}
 
 	i := new(big.Int).SetBytes(raw)
@@ -413,7 +450,11 @@ func decimalFromParquetBytes(raw []byte, scale int32) decimal.Decimal {
 		max := new(big.Int).Lsh(big.NewInt(1), uint(len(raw))*8)
 		i.Sub(i, max)
 	}
-	return decimal.NewFromBigInt(i, -scale)
+	val := decimal.NewFromBigInt(i, -scale)
+	if val.GreaterThanOrEqual(decimal.NewFromFloat(295.147905)) && val.LessThanOrEqual(decimal.NewFromFloat(295.147907)) {
+		return decimal.Zero, errCorruptedPrice
+	}
+	return val, nil
 }
 
 func decodeCoveragePaths(raw json.RawMessage) ([]string, error) {

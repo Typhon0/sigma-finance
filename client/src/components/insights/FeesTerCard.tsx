@@ -1,6 +1,7 @@
 import { FileSpreadsheet } from "lucide-react";
 import { memo } from "react";
 import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import type { FeesTerData } from "./types";
 
 interface FeesTerCardProps {
@@ -9,6 +10,10 @@ interface FeesTerCardProps {
 	isRecommended: boolean;
 	formatCurrency: (value: number) => string;
 	setActiveTab: (tab: string) => void;
+	/** Brief-row fit: the annual figure and the ratio, not the explainer block. */
+	compact?: boolean;
+	/** No card of its own: the insight strip owns the surface. */
+	bare?: boolean;
 }
 
 export const FeesTerCard = memo(function FeesTerCard({
@@ -17,18 +22,32 @@ export const FeesTerCard = memo(function FeesTerCard({
 	isRecommended,
 	formatCurrency,
 	setActiveTab,
+	compact = false,
+	bare = false,
 }: FeesTerCardProps) {
+	const Wrapper = bare ? "div" : Card;
+
 	return (
-		<Card
+		<Wrapper
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className={cn(
+				"relative flex flex-col justify-between",
+				!bare &&
+					"overflow-hidden border border-border/40 bg-card/25 hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out",
+				!bare && (compact ? "min-h-[160px] p-3.5" : "min-h-[220px] p-5"),
+			)}
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
-						Fees & TER
+					<span
+						className={cn(
+							"text-muted-foreground",
+							bare ? "text-xs font-medium" : "text-micro font-bold uppercase tracking-widest",
+						)}
+					>
+						Fees &amp; TER
 					</span>
-					{isRecommended && (
+					{isRecommended && !bare && (
 						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
@@ -36,7 +55,7 @@ export const FeesTerCard = memo(function FeesTerCard({
 				</div>
 
 				{feesTerData ? (
-					<div className="space-y-3">
+					<div className={cn("space-y-3", bare && "space-y-1")}>
 						<div className="flex items-baseline gap-1.5">
 							<span className="text-2xl font-bold font-mono text-foreground">
 								{feesTerData.annualCost === null ? (
@@ -53,42 +72,59 @@ export const FeesTerCard = memo(function FeesTerCard({
 							<span className="text-xs text-muted-foreground">est. annual cost</span>
 						</div>
 
-						<div className="space-y-2 mt-1">
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span className="text-muted-foreground font-medium">Funds/ETFs</span>
-								<span className="font-semibold text-foreground">{feesTerData.count} assets</span>
-							</div>
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span
-									className="text-muted-foreground font-medium cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
-									title="Total Expense Ratio (TER): annual percentage fee charged by the fund managers to cover administrative and operational costs."
-								>
-									Avg. Expense Ratio
-								</span>
+						{bare ? (
+							<p className="text-micro text-muted-foreground">
+								<span className="font-semibold text-foreground">{feesTerData.count} funds</span> ·
+								avg TER{" "}
 								<span className="font-mono font-semibold text-gain">
-									{feesTerData.avgTer === null ? (
-										<span
-											className="text-warning"
-											title="Unknown for every fund in this portfolio."
-										>
-											n/a
-										</span>
-									) : (
-										`${feesTerData.avgTer}%`
-									)}
+									{feesTerData.avgTer === null ? "n/a" : `${feesTerData.avgTer}%`}
 								</span>
+								{feesTerData.unknownCount > 0 && ` · ${feesTerData.unknownCount} unpriced`}
+							</p>
+						) : (
+							<div className="space-y-2 mt-1">
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span className="text-muted-foreground font-medium">Funds/ETFs</span>
+									<span className="font-semibold text-foreground">{feesTerData.count} assets</span>
+								</div>
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span
+										className="text-muted-foreground font-medium cursor-help underline decoration-dotted decoration-muted-foreground/40 underline-offset-2"
+										title="Total Expense Ratio (TER): annual percentage fee charged by the fund managers to cover administrative and operational costs."
+									>
+										Avg. Expense Ratio
+									</span>
+									<span className="font-mono font-semibold text-gain">
+										{feesTerData.avgTer === null ? (
+											<span
+												className="text-warning"
+												title="Unknown for every fund in this portfolio."
+											>
+												n/a
+											</span>
+										) : (
+											`${feesTerData.avgTer}%`
+										)}
+									</span>
+								</div>
+								{feesTerData.unknownCount > 0 && !compact && (
+									<p className="text-micro text-warning leading-normal">
+										{feesTerData.unknownCount} of {feesTerData.count} holdings have no published
+										expense ratio and are excluded from this figure.
+									</p>
+								)}
 							</div>
-							{feesTerData.unknownCount > 0 && (
-								<p className="text-micro text-warning leading-normal">
-									{feesTerData.unknownCount} of {feesTerData.count} holdings have no published
-									expense ratio and are excluded from this figure.
-								</p>
-							)}
-						</div>
-						<p className="text-micro text-muted-foreground leading-normal mt-1.5 italic">
-							Fees eat into returns. Prefer index funds with low expense ratios.
-						</p>
+						)}
+						{!compact && !bare && (
+							<p className="text-micro text-muted-foreground leading-normal mt-1.5 italic">
+								Fees eat into returns. Prefer index funds with low expense ratios.
+							</p>
+						)}
 					</div>
+				) : bare ? (
+					<p className="text-xs text-muted-foreground">
+						No funds yet — fees apply to ETFs and mutual funds.
+					</p>
 				) : (
 					<div className="flex flex-col items-center justify-center text-center h-[130px] gap-1.5 py-4">
 						<FileSpreadsheet className="h-6 w-6 text-muted-foreground/40 shrink-0" />
@@ -100,15 +136,17 @@ export const FeesTerCard = memo(function FeesTerCard({
 				)}
 			</div>
 
-			<div className="flex justify-end mt-2 z-10">
-				<button
-					type="button"
-					onClick={() => setActiveTab("positions")}
-					className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
-				>
-					View positions →
-				</button>
-			</div>
-		</Card>
+			{!bare && (
+				<div className="flex justify-end mt-2 z-10">
+					<button
+						type="button"
+						onClick={() => setActiveTab("positions")}
+						className="text-micro text-primary hover:text-primary/80 font-semibold flex items-center gap-0.5 cursor-pointer transition-colors"
+					>
+						View positions →
+					</button>
+				</div>
+			)}
+		</Wrapper>
 	);
 });

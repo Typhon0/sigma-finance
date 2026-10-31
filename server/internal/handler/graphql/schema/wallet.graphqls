@@ -1,0 +1,167 @@
+# internal/handler/graphql/schema/wallet.graphqls
+
+enum BlockchainNetwork {
+    ETHEREUM
+    BASE
+    ARBITRUM
+    OPTIMISM
+    POLYGON
+    SOLANA
+    BITCOIN
+}
+
+enum WalletCapabilityLevel {
+    BALANCE_ONLY
+    ACTIVITY_INDEXED
+    ENHANCED_HISTORY
+}
+
+enum WalletDeviceType {
+    HARDWARE
+    SOFTWARE
+    STANDALONE
+}
+
+type WalletDevice {
+    id: ID!
+    name: String!
+    deviceType: WalletDeviceType!
+    accounts: [WalletAccount!]!
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+type WalletAccount {
+    id: ID!
+    portfolioId: ID
+    deviceId: ID
+    device: WalletDevice
+    network: BlockchainNetwork!
+    addressOrXpub: String!
+    isXpub: Boolean!
+    label: String
+    isActive: Boolean!
+    lastSyncAt: Time
+    historyStatus: String!
+    capabilityLevel: WalletCapabilityLevel!
+    discoveredAddresses: String
+    lastSyncError: String
+    balances(includeSpam: Boolean): [WalletBalance!]!
+    createdAt: Time!
+    updatedAt: Time!
+}
+
+type WalletBalance {
+    id: ID!
+    symbol: String!
+    name: String
+    decimals: Int!
+    rawBalance: String!
+    formattedQuantity: Float!
+    tokenAddress: String
+    isSpam: Boolean!
+    isHidden: Boolean!
+    isStale: Boolean!
+    costBasisPerUnit: Float
+    costBasisCurrency: String
+    costBasisType: String
+    autoEstimatedBasis: Float
+    acquiredAt: Time
+    lastUpdatedAt: Time!
+    # Persisted Market Valuation
+    currentPrice: Float
+    currentValue: Float
+    dayChange24h: Float
+    priceUpdatedAt: Time
+    priceSource: String
+    isPriceResolved: Boolean!
+}
+
+type WalletCUUsage {
+    billingMonth: String!
+    consumedUnits: Int!
+    maxQuota: Int!
+    isThrottled: Boolean!
+    hasKey: Boolean!
+    keySource: String
+    maskedKey: String
+}
+
+type WalletActivityReview {
+    id: ID!
+    walletActivityId: ID!
+    reviewStatus: String!
+    suggestedType: String!
+    notes: String
+    createdAt: Time!
+}
+
+input AddWalletAccountInput {
+    portfolioId: ID!
+    network: BlockchainNetwork!
+    addressOrXpub: String!
+    isXpub: Boolean
+    label: String
+    deviceId: ID
+}
+
+input CreateWalletDeviceInput {
+    name: String!
+    deviceType: WalletDeviceType!
+}
+
+type BlockchainNetworkConfig {
+    network: BlockchainNetwork!
+    rpcUrl: String!
+    explorerApiUrl: String
+    source: String!
+    updatedAt: Time!
+}
+
+input UpdateBlockchainNetworkConfigInput {
+    network: BlockchainNetwork!
+    rpcUrl: String!
+    explorerApiUrl: String
+}
+
+input AddMultiNetworkWalletInput {
+    portfolioId: ID!
+    address: String!
+    networks: [BlockchainNetwork!]!
+    label: String
+    deviceName: String
+    deviceType: WalletDeviceType
+}
+
+input AddCustomTokenInput {
+    walletAccountId: ID!
+    tokenAddress: String!
+}
+
+extend type Query {
+    walletDevices: [WalletDevice!]!
+    walletAccounts(portfolioId: ID): [WalletAccount!]!
+    walletCUUsage: WalletCUUsage!
+    pendingWalletReviews(portfolioId: ID!): [WalletActivityReview!]!
+    blockchainNetworkConfigs: [BlockchainNetworkConfig!]!
+}
+
+extend type Mutation {
+    createWalletDevice(input: CreateWalletDeviceInput!): WalletDevice!
+    updateWalletDevice(id: ID!, name: String!, deviceType: WalletDeviceType!): WalletDevice!
+    removeWalletDevice(id: ID!): Boolean!
+    assignWalletDevice(walletAccountId: ID!, deviceId: ID): Boolean!
+    addWalletAccount(input: AddWalletAccountInput!): WalletAccount!
+    addMultiNetworkWallet(input: AddMultiNetworkWalletInput!): [WalletAccount!]!
+    addCustomToken(input: AddCustomTokenInput!): WalletBalance!
+    updateBlockchainNetworkConfig(input: UpdateBlockchainNetworkConfigInput!): BlockchainNetworkConfig!
+    resetBlockchainNetworkConfig(network: BlockchainNetwork!): BlockchainNetworkConfig!
+    removeWalletAccount(id: ID!): Boolean!
+    triggerWalletSync(id: ID!): Boolean!
+    toggleSpamToken(balanceId: ID!, isHidden: Boolean!): Boolean!
+    refreshWalletBalancePrice(balanceId: ID!): WalletBalance!
+    setWalletBalanceCostBasis(balanceId: ID!, costBasisPerUnit: Float!, currency: String): Boolean!
+    resetWalletBalanceCostBasis(balanceId: ID!): Boolean!
+    resolveWalletReview(reviewId: ID!, action: String!, customType: String): Boolean!
+    configureAlchemyKey(apiKey: String!): Boolean!
+}

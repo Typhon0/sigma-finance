@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -53,8 +54,24 @@ func newTestCredential() *model.SyncCredential {
 	}
 }
 
+// krakenAssetListUnavailable answers Kraken's public asset endpoints with a 404 and
+// reports whether it handled the request. The adapter loads Kraken's asset list to
+// resolve codes its built-in mapping does not recognise; when that load fails it falls
+// back to the built-in mapping, which is what these request-asserting handlers expect.
+func krakenAssetListUnavailable(w http.ResponseWriter, r *http.Request) bool {
+	if strings.HasPrefix(r.URL.Path, "/0/public/") {
+		http.NotFound(w, r)
+		return true
+	}
+	return false
+}
+
 func TestKrakenAdapter_FetchBalancesAndHoldings(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if krakenAssetListUnavailable(w, r) {
+			return
+		}
+
 		assert.Equal(t, "POST", r.Method)
 		assert.Equal(t, testAPIKey, r.Header.Get("API-Key"))
 
@@ -403,8 +420,113 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 	assert.Len(t, txsNoSince, 4)
 }
 
+func TestKrakenAdapter_Ledgers_PagesThroughCursor(t *testing.T) {
+	// Kraken returns 50 ledger entries per page, newest first, and only exposes
+	// older entries through cursor.next. Truncating that walk drops the buy dates
+	// of anything bought longer ago than the newest page, which is what left
+	// imported positions with a placeholder acquisition date.
+	var requestedCursors []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/0/private/Ledgers", r.URL.Path)
+
+		bodyBytes, err := io.ReadAll(r.Body)
+		assert.NoError(t, err)
+		values, err := url.ParseQuery(string(bodyBytes))
+		assert.NoError(t, err)
+		assert.Equal(t, "true", values.Get("with_cursor"))
+
+		cursor := values.Get("cursor")
+		requestedCursors = append(requestedCursors, cursor)
+
+		w.Header().Set("Content-Type", "application/json")
+		switch cursor {
+		case "":
+			_, _ = w.Write([]byte(`{
+				"error": [],
+				"result": {
+					"count": null,
+					"ledger": {
+						"L-RECENT-CRYPTO": {
+							"refid": "REF-RECENT",
+							"time": 1770000000.0,
+							"type": "trade",
+							"asset": "XXBT",
+							"amount": "0.01000000",
+							"fee": "0.00001000"
+						},
+						"L-RECENT-FIAT": {
+							"refid": "REF-RECENT",
+							"time": 1770000000.0,
+							"type": "trade",
+							"asset": "ZEUR",
+							"amount": "-500.0000",
+							"fee": "0.0000"
+						}
+					},
+					"cursor": {"next": "CURSOR-PAGE-2"}
+				}
+			}`))
+		case "CURSOR-PAGE-2":
+			_, _ = w.Write([]byte(`{
+				"error": [],
+				"result": {
+					"count": null,
+					"ledger": {
+						"L-OLD-CRYPTO": {
+							"refid": "REF-OLD",
+							"time": 1700000000.0,
+							"type": "trade",
+							"asset": "XXBT",
+							"amount": "0.05000000",
+							"fee": "0.00005000"
+						},
+						"L-OLD-FIAT": {
+							"refid": "REF-OLD",
+							"time": 1700000000.0,
+							"type": "trade",
+							"asset": "ZEUR",
+							"amount": "-1000.0000",
+							"fee": "0.0000"
+						}
+					}
+				}
+			}`))
+		default:
+			t.Errorf("unexpected ledger cursor %q", cursor)
+			http.Error(w, "unexpected cursor", http.StatusBadRequest)
+		}
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+	)
+
+	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	require.NoError(t, err)
+	assert.Equal(t, []string{"", "CURSOR-PAGE-2"}, requestedCursors, "older pages must be fetched until Kraken stops handing out a cursor")
+
+	byID := make(map[string]syncservice.RawTransaction, len(txs))
+	for _, tx := range txs {
+		byID[tx.ExternalID] = tx
+	}
+	require.Len(t, txs, 2)
+
+	oldBuy, ok := byID["L-OLD-CRYPTO"]
+	require.True(t, ok, "an older ledger page must reach the transaction stream")
+	assert.Equal(t, model.TransactionTypeBuy, oldBuy.Type)
+	assert.True(t, time.Unix(1700000000, 0).Equal(oldBuy.ExecutedAt), "the old buy must keep its real execution date")
+
+	assert.True(t, time.Unix(1770000000, 0).Equal(txs[len(txs)-1].ExecutedAt), "transactions still sort oldest to newest")
+}
+
 func TestKrakenAdapter_TradeLedgerPairing_BuySellAndOrphan(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if krakenAssetListUnavailable(w, r) {
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`{
 			"error": [],
@@ -615,7 +737,6 @@ func TestKrakenAdapter_CredentialParsing(t *testing.T) {
 	})
 }
 
-
 func TestKrakenAdapter_AssetNormalization(t *testing.T) {
 	tests := []struct {
 		input          string
@@ -634,6 +755,15 @@ func TestKrakenAdapter_AssetNormalization(t *testing.T) {
 		{"ZJPY", "JPY", true},
 		{"ZCAD", "CAD", true},
 		{"SOL", "SOL", false},
+		{"SOL03.S", "SOL", false},
+		{"SOL03", "SOL", false},
+		{"ETH2.S", "ETH", false},
+		{"ETH2", "ETH", false},
+		{"ADA2", "ADA", false},
+		{"ADA02", "ADA", false},
+		{"XBT.M", "BTC", false},
+		{"SUI.B", "SUI", false},
+		{"DOT.P", "DOT", false},
 		{"DOT", "DOT", false},
 		{"USDT", "USDT", false},
 		{"EUR", "EUR", true},
@@ -645,4 +775,222 @@ func TestKrakenAdapter_AssetNormalization(t *testing.T) {
 		assert.Equal(t, tc.expectedSymbol, sym, "symbol mismatch for %s", tc.input)
 		assert.Equal(t, tc.expectedFiat, isFiat, "isFiat mismatch for %s", tc.input)
 	}
+}
+
+func TestKrakenAdapter_FetchHoldings_AggregatesStakedAndSpotBalances(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/0/private/Balance":
+			_, _ = w.Write([]byte(`{
+				"error": [],
+				"result": {
+					"XXBT": "0.01041399",
+					"XBT.M": "0.07288802",
+					"ETH2.S": "0.39949460",
+					"SOL03.S": "17.95214990",
+					"ZEUR": "100.00"
+				}
+			}`))
+		case "/0/private/OpenPositions":
+			_, _ = w.Write([]byte(`{
+				"error": [],
+				"result": {}
+			}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(adapters.WithKrakenBaseURL(server.URL))
+	cred := newTestCredential()
+
+	holdings, err := adapter.FetchHoldings(context.Background(), cred, "ext-1")
+	require.NoError(t, err)
+
+	// Should have 3 aggregated holdings: BTC, ETH, SOL
+	require.Len(t, holdings, 3)
+
+	assert.Equal(t, "BTC", holdings[0].Symbol)
+	// 0.01041399 + 0.07288802 = 0.08330201
+	expectedBTC, _ := decimal.NewFromString("0.08330201")
+	assert.True(t, holdings[0].Quantity.Equal(expectedBTC), "expected %s, got %s", expectedBTC, holdings[0].Quantity)
+
+	assert.Equal(t, "ETH", holdings[1].Symbol)
+	expectedETH, _ := decimal.NewFromString("0.39949460")
+	assert.True(t, holdings[1].Quantity.Equal(expectedETH))
+
+	assert.Equal(t, "SOL", holdings[2].Symbol)
+	expectedSOL, _ := decimal.NewFromString("17.95214990")
+	assert.True(t, holdings[2].Quantity.Equal(expectedSOL))
+}
+
+func TestKrakenAdapter_StablecoinQuotedTradePricesInDollars(t *testing.T) {
+	// Kraken writes a stablecoin-quoted trade as two non-fiat ledger legs
+	// (BTC +0.01000000 / USDT -350.00000000). The USDT leg has to price the trade:
+	// left unclassified it fell into the barter branch, which stored "USDT" as the
+	// transaction currency — wider than the old column allowed, and outside the
+	// currencies portfolio valuation understands.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if krakenAssetListUnavailable(w, r) {
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"error": [],
+			"result": {
+				"count": 2,
+				"ledger": {
+					"L-BUY-CRYPTO": {
+						"refid": "REF-USDT",
+						"time": 1760000000.0,
+						"type": "trade",
+						"asset": "XXBT",
+						"amount": "0.01000000",
+						"fee": "0.00001000"
+					},
+					"L-BUY-STABLE": {
+						"refid": "REF-USDT",
+						"time": 1760000000.0,
+						"type": "trade",
+						"asset": "USDT",
+						"amount": "-350.00000000",
+						"fee": "0.00000000"
+					}
+				}
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+	)
+
+	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	require.NoError(t, err)
+	require.Len(t, txs, 1, "the stablecoin leg must not produce a phantom transaction")
+
+	buy := txs[0]
+	assert.Equal(t, "L-BUY-CRYPTO", buy.ExternalID)
+	assert.Equal(t, model.TransactionTypeBuy, buy.Type)
+	assert.Equal(t, "BTC", buy.Symbol)
+	require.NotNil(t, buy.Quantity)
+	assert.True(t, decimal.RequireFromString("0.01").Equal(*buy.Quantity))
+	require.NotNil(t, buy.UnitPriceAmount)
+	assert.True(t, decimal.RequireFromString("35000").Equal(*buy.UnitPriceAmount))
+	assert.Equal(t, model.CurrencyUSD, buy.UnitPriceCurrency)
+	assert.Equal(t, model.Money(35000), buy.Amount)
+	assert.Equal(t, model.CurrencyUSD, buy.Currency)
+	assert.True(t, buy.UnitPriceCurrency.IsValid(), "the price currency must stay inside the currencies valuation understands")
+}
+
+func TestKrakenAdapter_ExoticFiatQuoteKeepsItsOwnCurrency(t *testing.T) {
+	// JPY sits outside the app's money model (USD/EUR/GBP). Reporting it as USD would
+	// invent a dollar price for a yen trade, so the leg keeps its own currency and
+	// valuation skips the trade instead of valuing it wrongly.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if krakenAssetListUnavailable(w, r) {
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{
+			"error": [],
+			"result": {
+				"count": 2,
+				"ledger": {
+					"L-BUY-CRYPTO": {
+						"refid": "REF-JPY",
+						"time": 1760000000.0,
+						"type": "trade",
+						"asset": "XXBT",
+						"amount": "0.00500000",
+						"fee": "0.00000500"
+					},
+					"L-BUY-FIAT": {
+						"refid": "REF-JPY",
+						"time": 1760000000.0,
+						"type": "trade",
+						"asset": "ZJPY",
+						"amount": "-750000.0000",
+						"fee": "0.0000"
+					}
+				}
+			}
+		}`))
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+	)
+
+	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	require.NoError(t, err)
+	require.Len(t, txs, 1)
+
+	buy := txs[0]
+	assert.Equal(t, model.Currency("JPY"), buy.UnitPriceCurrency)
+	assert.Equal(t, model.Money(75000000), buy.Amount)
+	assert.False(t, buy.UnitPriceCurrency.IsValid())
+}
+
+func TestKrakenAdapter_AssetDictionaryResolvesRenamedAssets(t *testing.T) {
+	// Kraken's own asset list is the source of truth for codes the built-in mapping does
+	// not recognise, so renamed listings (MATIC -> POL) keep resolving without a code
+	// change here. Names that are not tickers, such as the pair name "G/USD", must be
+	// rejected in favour of the built-in mapping.
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.URL.Path == "/0/public/Assets" && r.URL.Query().Get("assetVersion") == "1":
+			_, _ = w.Write([]byte(`{"error": [], "result": {
+				"POL": {"aclass": "currency", "altname": "POL", "decimals": 8},
+				"G": {"aclass": "currency", "altname": "G", "decimals": 8},
+				"USD": {"aclass": "currency", "altname": "USD", "decimals": 8}
+			}}`))
+		case r.URL.Path == "/0/public/Assets":
+			_, _ = w.Write([]byte(`{"error": [], "result": {
+				"MATIC": {"aclass": "currency", "altname": "POL", "decimals": 8},
+				"GUSD": {"aclass": "currency", "altname": "GUSD", "decimals": 8}
+			}}`))
+		case r.URL.Path == "/0/public/AssetPairs":
+			_, _ = w.Write([]byte(`{"error": [], "result": {
+				"GUSD": {"wsname": "G/USD", "base": "G", "quote": "USD"}
+			}}`))
+		case r.URL.Path == "/0/private/Balance":
+			_, _ = w.Write([]byte(`{"error": [], "result": {"MATIC": "10.00000000", "GUSD": "5.00000000"}}`))
+		case r.URL.Path == "/0/private/OpenPositions":
+			_, _ = w.Write([]byte(`{"error": [], "result": {}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	adapter := adapters.NewKrakenAdapter(
+		adapters.WithBaseURL(server.URL),
+		adapters.WithHTTPClient(server.Client()),
+	)
+
+	holdings, err := adapter.FetchHoldings(context.Background(), newTestCredential(), "kraken-spot")
+	require.NoError(t, err)
+	require.Len(t, holdings, 2)
+
+	bySymbol := make(map[string]syncservice.RawHolding, len(holdings))
+	for _, holding := range holdings {
+		bySymbol[holding.Symbol] = holding
+	}
+
+	renamed, ok := bySymbol["POL"]
+	require.True(t, ok, "Kraken's asset list should resolve MATIC to its current ticker, got %v", bySymbol)
+	assert.True(t, decimal.RequireFromString("10").Equal(renamed.Quantity))
+
+	_, ok = bySymbol["GUSD"]
+	assert.True(t, ok, "a pair name such as G/USD is not a ticker; the built-in mapping must win")
 }

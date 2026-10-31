@@ -111,7 +111,30 @@ func TestEncodeDecimalFixedPreservesPrecision(t *testing.T) {
 	if err != nil {
 		t.Fatalf("encode decimal fixed: %v", err)
 	}
-	decoded := decodeDecimalFixed(encoded, 18)
+	decoded := decodeDecimalFixed(encoded[:], 18)
+	if !decoded.Equal(value) {
+		t.Fatalf("expected %s got %s", value, decoded)
+	}
+}
+
+func TestEncodeDecimalFixedDoesNotDumpSliceHeader(t *testing.T) {
+	// Values like 0.077 should encode to big-endian two's complement,
+	// never dumping 64-bit slice pointer (0xc0...) or slice len 16 into bytes.
+	value := mustDecimal(t, "0.077")
+	encoded, err := encodeDecimalFixed(value, 18, 38, 16)
+	if err != nil {
+		t.Fatalf("encode: %v", err)
+	}
+	// In 16-byte two's complement with scale 18:
+	// 0.077 * 10^18 = 77000000000000000 = 0x01118f178fb48000
+	// Bytes 0..7 must be 0x00, not a heap pointer (0xc0...)
+	if encoded[0] != 0 || encoded[1] != 0 || encoded[2] != 0 || encoded[3] != 0 {
+		t.Fatalf("expected high bytes 0, got %x", encoded[:4])
+	}
+	if encoded[4] == 0xc0 || encoded[5] == 0xc0 {
+		t.Fatalf("detected heap pointer 0xc0 in encoded decimal: %x", encoded)
+	}
+	decoded := decodeDecimalFixed(encoded[:], 18)
 	if !decoded.Equal(value) {
 		t.Fatalf("expected %s got %s", value, decoded)
 	}

@@ -88,6 +88,10 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
     watchlists(filter: { userID: $userID }) {
       id
       name
+      assets {
+        id
+        symbol
+      }
     }
   }
 `);

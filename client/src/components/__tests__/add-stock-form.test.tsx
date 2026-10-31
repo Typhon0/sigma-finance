@@ -31,23 +31,25 @@ const localSearchResults = [
 	},
 ];
 
-vi.mock("@apollo/client", () => ({
-	gql: (strings: TemplateStringsArray) => strings.join(""),
-	graphql: (strings: TemplateStringsArray) => strings.join(""),
-	useQuery: () => ({
-		data: { searchInstruments: { localResults: localSearchResults, hasMore: false } },
-		loading: false,
-		error: undefined,
-	}),
-	useLazyQuery: () => [
-		vi.fn().mockResolvedValue({ data: undefined }),
-		{ data: undefined, loading: false, error: undefined },
-	],
-	useMutation: () => [
-		vi.fn().mockResolvedValue({ data: { persistDiscoveredInstrument: null } }),
-		{ loading: false, error: undefined },
-	],
-}));
+vi.mock("@apollo/client", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@apollo/client")>();
+	return {
+		...actual,
+		useQuery: () => ({
+			data: { searchInstruments: { localResults: localSearchResults, hasMore: false } },
+			loading: false,
+			error: undefined,
+		}),
+		useLazyQuery: () => [
+			vi.fn().mockResolvedValue({ data: undefined }),
+			{ data: undefined, loading: false, error: undefined },
+		],
+		useMutation: () => [
+			vi.fn().mockResolvedValue({ data: { persistDiscoveredInstrument: null } }),
+			{ loading: false, error: undefined },
+		],
+	};
+});
 
 vi.mock("@/hooks/use-asset-management", () => ({
 	useAssets: () => ({

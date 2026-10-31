@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "token": {
+        "address": "0x912CE59144191C1204E64559FE8253a0e49E6548",
+        "decimals": "18",
+        "name": "Arbitrum",
+        "symbol": "ARB",
+        "type": "ERC-20"
+      },
+      "token_id": null,
+      "token_instance": null,
+      "value": "25500000000000000000"
+    }
+  ],
+  "next_page_params": null
+}

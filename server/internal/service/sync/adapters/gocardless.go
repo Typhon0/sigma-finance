@@ -14,9 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/shopspring/decimal"
 	"sigma_finance/internal/domain/model"
 	syncservice "sigma_finance/internal/service/sync"
+
+	"github.com/shopspring/decimal"
 )
 
 const (
@@ -647,21 +648,21 @@ func (g *GoCardlessAdapter) FetchHoldings(
 }
 
 type gcTransactionItem struct {
-	TransactionID                         string `json:"transactionId"`
-	InternalTransactionID                 string `json:"internalTransactionId"`
-	BookingDate                           string `json:"bookingDate"`
-	BookingDateTime                       string `json:"bookingDateTime"`
-	ValueDate                             string `json:"valueDate"`
-	ValueDateTime                         string `json:"valueDateTime"`
-	TransactionAmount                     struct {
+	TransactionID         string `json:"transactionId"`
+	InternalTransactionID string `json:"internalTransactionId"`
+	BookingDate           string `json:"bookingDate"`
+	BookingDateTime       string `json:"bookingDateTime"`
+	ValueDate             string `json:"valueDate"`
+	ValueDateTime         string `json:"valueDateTime"`
+	TransactionAmount     struct {
 		Amount   any    `json:"amount"`
 		Currency string `json:"currency"`
 	} `json:"transactionAmount"`
 	RemittanceInformationUnstructured      string   `json:"remittanceInformationUnstructured"`
 	RemittanceInformationUnstructuredArray []string `json:"remittanceInformationUnstructuredArray"`
-	DebtorName                            string   `json:"debtorName"`
-	CreditorName                          string   `json:"creditorName"`
-	ProprietaryBankTransactionCode        string   `json:"proprietaryBankTransactionCode"`
+	DebtorName                             string   `json:"debtorName"`
+	CreditorName                           string   `json:"creditorName"`
+	ProprietaryBankTransactionCode         string   `json:"proprietaryBankTransactionCode"`
 }
 
 type gcTransactionsResponse struct {

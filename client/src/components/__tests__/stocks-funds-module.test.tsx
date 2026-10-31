@@ -323,6 +323,80 @@ describe("StocksFundsModule", () => {
 			expect(screen.getByText(/Add Position/)).toBeInTheDocument();
 		});
 
+		it("renders insights in place instead of behind a third tab", () => {
+			localStorage.setItem("sf_show_insights_strip", "true");
+			try {
+				render(<StocksFundsModule />);
+
+				expect(screen.getByRole("heading", { name: "Insights" })).toBeInTheDocument();
+				expect(screen.queryByRole("tab", { name: /Insights/i })).not.toBeInTheDocument();
+				expect(screen.getByRole("tab", { name: /Transactions/i })).toBeInTheDocument();
+			} finally {
+				localStorage.removeItem("sf_show_insights_strip");
+			}
+		});
+
+		it("places the insight row between the chart and the ledger, collapsible", () => {
+			localStorage.setItem("sf_show_insights_strip", "true");
+			localStorage.setItem("sf_insights_expanded", "true");
+			try {
+				render(<StocksFundsModule />);
+
+				const heading = screen.getByRole("heading", { name: "Insights" });
+				const tablist = screen.getByRole("tablist");
+				// The row belongs to the brief, not to the workspace: it precedes the tabs.
+				expect(heading.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+					Node.DOCUMENT_POSITION_FOLLOWING,
+				);
+
+				fireEvent.click(screen.getByRole("button", { name: "Hide" }));
+
+				expect(screen.getByRole("button", { name: "Show" })).toHaveAttribute(
+					"aria-expanded",
+					"false",
+				);
+				expect(document.getElementById("insights-body")).toHaveClass("hidden");
+			} finally {
+				localStorage.removeItem("sf_show_insights_strip");
+				localStorage.removeItem("sf_insights_expanded");
+			}
+		});
+
+		it("renders the insight row as one hairline strip, not a row of cards", () => {
+			localStorage.setItem("sf_show_insights_strip", "true");
+			try {
+				render(<StocksFundsModule />);
+
+				const body = document.getElementById("insights-body");
+				expect(body).not.toBeNull();
+				// The strip owns the surface and the rules between cells. A card inside
+				// it would put a box in a box and rebuild the card wall the redesign
+				// removed, so no card chrome may render inside the strip.
+				expect(body?.querySelectorAll('[data-slot="card"]')).toHaveLength(0);
+				// One grid, hairline rules between cells, no enclosing border.
+				const strip = body?.firstElementChild;
+				expect(strip?.className).toContain("divide-y");
+				// A standalone border utility would make it a box again; the dividers
+				// are the only rules it may draw.
+				expect(strip?.className ?? "").not.toMatch(/(^|\s)border(\s|$)/);
+			} finally {
+				localStorage.removeItem("sf_show_insights_strip");
+			}
+		});
+
+		it("keeps the allocation card and adds the performer panel to the page, not a tab", () => {
+			localStorage.setItem("sf_show_insights_strip", "true");
+			try {
+				render(<StocksFundsModule />);
+
+				expect(screen.getByTestId("stocks-distribution-widget")).toBeInTheDocument();
+				// In the strip the panel is labelled for the cell, not for a card title.
+				expect(screen.getByRole("heading", { name: /Movers/i })).toBeInTheDocument();
+			} finally {
+				localStorage.removeItem("sf_show_insights_strip");
+			}
+		});
+
 		it("displays in-viewport cross-filter banner when filter is active and clears cleanly", () => {
 			render(<StocksFundsModule />);
 

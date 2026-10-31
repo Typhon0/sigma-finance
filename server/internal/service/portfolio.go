@@ -11,6 +11,7 @@ import (
 	"os"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -76,6 +77,14 @@ type analyticsCacheEntry struct {
 	createdAt time.Time
 }
 
+// scopedHistoryCacheEntry holds cached scoped performance points with a timestamp.
+type scopedHistoryCacheEntry struct {
+	points    []PerformancePoint
+	createdAt time.Time
+}
+
+const scopedHistoryCacheTTL = 60 * time.Second
+
 // PortfolioService is the concrete implementation of IPortfolioService.
 type PortfolioService struct {
 	uow              repository.IUnitOfWork
@@ -85,6 +94,10 @@ type PortfolioService struct {
 	// Short-lived analytics cache to deduplicate concurrent requests.
 	analyticsMu    sync.Mutex
 	analyticsCache map[string]analyticsCacheEntry
+
+	// In-memory cache for scoped performance history (<10µs response on repeat reads)
+	scopedCacheMu sync.RWMutex
+	scopedCache   map[string]scopedHistoryCacheEntry
 }
 
 // NewPortfolioService is the constructor for PortfolioService.
@@ -103,6 +116,7 @@ func NewPortfolioService(uow repository.IUnitOfWork, valuationService ...IPortfo
 		uow:              uow,
 		valuationService: vs,
 		analyticsCache:   make(map[string]analyticsCacheEntry),
+		scopedCache:      make(map[string]scopedHistoryCacheEntry),
 	}
 }
 
@@ -1119,6 +1133,34 @@ func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfol
 		return err
 	}
 
+	// 3. --- Invalidate Analytics Cache & Rebuild Snapshots ---
+	s.analyticsMu.Lock()
+	for k := range s.analyticsCache {
+		if strings.HasPrefix(k, portfolioID+":") {
+			delete(s.analyticsCache, k)
+		}
+	}
+	s.analyticsMu.Unlock()
+	s.invalidateScopedHistoryCache(portfolioID)
+
+	// Update today's snapshot immediately
+	now := time.Now().UTC()
+	startDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	endDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
+	if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); rebuildErr != nil {
+		log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: today snapshot rebuild failed portfolio=%s err=%v", portfolioID, rebuildErr)
+	}
+
+	// Launch background full recalculation so historical snapshots reflect the removal
+	go func(pid string) {
+		bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+		defer cancel()
+		startDate := s.performanceHistoryStartDate(bgCtx, pid)
+		if bgErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(bgCtx, pid, startDate, time.Now()); bgErr != nil {
+			log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: full background snapshot rebuild failed portfolio=%s err=%v", pid, bgErr)
+		}
+	}(portfolioID)
+
 	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return nil
 }
@@ -1614,6 +1656,71 @@ func (s *PortfolioService) performanceHistoryStartDate(ctx context.Context, port
 	if earliestPrice := s.getEarliestPortfolioAssetPriceDate(ctx, portfolioID); !earliestPrice.IsZero() && earliestPrice.Before(startDate) {
 		startDate = earliestPrice
 	}
+	// Cap the default window. The chart does not need the full 2015->today
+	// history, and every extra day multiplies the as-of price lookups in
+	// GetScopedPerformanceHistory. Set PERFORMANCE_HISTORY_MAX_DAYS=0 to
+	// restore the previous full-history behaviour.
+	if maxDays := performanceHistoryMaxDays(); maxDays > 0 {
+		if maxStart := now.AddDate(0, 0, -maxDays); startDate.Before(maxStart) {
+			startDate = maxStart
+		}
+	}
+	return startDate
+}
+
+// performanceHistoryMaxDays returns the maximum default history window in
+// days. 0 disables the cap so the chart returns the full portfolio history.
+func performanceHistoryMaxDays() int {
+	raw := strings.TrimSpace(os.Getenv("PERFORMANCE_HISTORY_MAX_DAYS"))
+	if raw == "" {
+		return 0
+	}
+	days, err := strconv.Atoi(raw)
+	if err != nil {
+		log.Printf("[WARN] [performanceHistoryMaxDays] invalid PERFORMANCE_HISTORY_MAX_DAYS=%q; using 0", raw)
+		return 0
+	}
+	if days < 0 {
+		return 0
+	}
+	return days
+}
+
+func (s *PortfolioService) scopedPerformanceHistoryStartDate(ctx context.Context, portfolioID string, types []string) time.Time {
+	now := time.Now()
+	startDate := now.AddDate(0, 0, -30) // Default fallback
+
+	unit, ok := s.uow.(*repository.UnitOfWork)
+	if ok && unit.GetDB() != nil && len(types) > 0 {
+		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(types)), ",")
+		args := make([]any, 0, 1+len(types))
+		args = append(args, portfolioID)
+		for _, t := range types {
+			args = append(args, t)
+		}
+		var row struct {
+			ScopedStart *time.Time `bun:"scoped_start"`
+		}
+		query := `
+SELECT LEAST(
+    COALESCE(MIN(t.executed_at), MIN(p.created_at)),
+    MIN(p.created_at)
+) AS scoped_start
+FROM sigma_finance.positions p
+JOIN sigma_finance.assets a ON a.id = p.asset_id
+LEFT JOIN sigma_finance.transactions t ON t.position_id = p.id
+WHERE p.portfolio_id = ? AND a.type IN (` + placeholders + `)`
+		if err := unit.GetDB().NewRaw(query, args...).Scan(ctx, &row); err == nil && row.ScopedStart != nil && !row.ScopedStart.IsZero() {
+			startDate = time.Date(row.ScopedStart.Year(), row.ScopedStart.Month(), row.ScopedStart.Day(), 0, 0, 0, 0, row.ScopedStart.Location())
+		}
+	}
+
+	if maxDays := performanceHistoryMaxDays(); maxDays > 0 {
+		if maxStart := now.AddDate(0, 0, -maxDays); startDate.Before(maxStart) {
+			startDate = maxStart
+		}
+	}
+
 	return startDate
 }
 
@@ -1780,7 +1887,17 @@ func (s *PortfolioService) GetScopedPerformanceHistory(ctx context.Context, port
 		return nil, fmt.Errorf("scoped performance history: no asset types requested")
 	}
 
-	from := s.performanceHistoryStartDate(ctx, portfolioID)
+	cacheKey := portfolioID + ":" + strings.Join(types, ",")
+	s.scopedCacheMu.RLock()
+	if entry, ok := s.scopedCache[cacheKey]; ok {
+		if time.Since(entry.createdAt) < scopedHistoryCacheTTL {
+			s.scopedCacheMu.RUnlock()
+			return entry.points, nil
+		}
+	}
+	s.scopedCacheMu.RUnlock()
+
+	from := s.scopedPerformanceHistoryStartDate(ctx, portfolioID, types)
 	to := time.Now()
 
 	placeholders := strings.TrimSuffix(strings.Repeat("?,", len(types)), ",")
@@ -1798,11 +1915,6 @@ func (s *PortfolioService) GetScopedPerformanceHistory(ctx context.Context, port
 WITH date_series AS (
     SELECT generate_series(?::date, ?::date, '1 day'::interval)::date AS snapshot_date
 ),
-positions_with_tx AS (
-    SELECT DISTINCT position_id
-    FROM sigma_finance.transactions
-    WHERE position_id IS NOT NULL
-),
 quantity_per_position_per_day AS (
     SELECT
         p.id AS position_id,
@@ -1811,21 +1923,27 @@ quantity_per_position_per_day AS (
         p.ownership_percentage,
         ds.snapshot_date,
         CASE
-            WHEN p.id IN (SELECT position_id FROM positions_with_tx) THEN
+            WHEN ds.snapshot_date < date_trunc('day', LEAST(
+                p.created_at,
                 COALESCE((
-                    SELECT SUM(
-                        CASE
-                            WHEN t.type IN ('BUY','DEPOSIT','TRANSFER_IN') THEN  t.quantity
-                            WHEN t.type IN ('SELL','WITHDRAWAL','TRANSFER_OUT') THEN -t.quantity
-                            ELSE 0
-                        END
-                    )
+                    SELECT MIN(t.executed_at)
                     FROM sigma_finance.transactions t
                     WHERE t.position_id = p.id
-                      AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
-                ), 0)
-            WHEN ds.snapshot_date >= date_trunc('day', p.created_at)::date THEN p.quantity
-            ELSE 0
+                ), p.created_at)
+            ))::date THEN 0
+            ELSE GREATEST(0, p.quantity - COALESCE((
+                SELECT SUM(
+                    CASE
+                        WHEN t.type IN ('BUY','DEPOSIT','TRANSFER_IN') THEN  t.quantity
+                        WHEN t.type IN ('SELL','WITHDRAWAL','TRANSFER_OUT') THEN -t.quantity
+                        ELSE 0
+                    END
+                )
+                FROM sigma_finance.transactions t
+                WHERE t.position_id = p.id
+                  AND t.executed_at > ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+                  AND t.quantity IS NOT NULL
+            ), 0))
         END AS quantity_at_date
     FROM sigma_finance.positions p
     JOIN sigma_finance.assets a ON a.id = p.asset_id
@@ -1843,10 +1961,10 @@ priced_metrics AS (
     FROM quantity_per_position_per_day qppd
     LEFT JOIN LATERAL (
         SELECT price
-        FROM sigma_finance.asset_prices
+        FROM sigma_finance.asset_prices_daily
         WHERE asset_id = qppd.asset_id
-          AND timestamp <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
-        ORDER BY timestamp DESC
+          AND price_date <= qppd.snapshot_date
+        ORDER BY price_date DESC
         LIMIT 1
     ) ap ON true
     LEFT JOIN LATERAL (
@@ -1875,7 +1993,34 @@ ORDER BY snapshot_date ASC
 		value, _ := row.TotalValue.Float64()
 		history = append(history, PerformancePoint{Date: row.Date, Value: value / 100.0})
 	}
-	return trimLeadingZeroPoints(history), nil
+
+	trimmed := trimLeadingZeroPoints(history)
+
+	now := time.Now()
+	s.scopedCacheMu.Lock()
+	for k, e := range s.scopedCache {
+		if now.Sub(e.createdAt) >= scopedHistoryCacheTTL {
+			delete(s.scopedCache, k)
+		}
+	}
+	s.scopedCache[cacheKey] = scopedHistoryCacheEntry{
+		points:    trimmed,
+		createdAt: now,
+	}
+	s.scopedCacheMu.Unlock()
+
+	return trimmed, nil
+}
+
+func (s *PortfolioService) invalidateScopedHistoryCache(portfolioID string) {
+	s.scopedCacheMu.Lock()
+	defer s.scopedCacheMu.Unlock()
+	prefix := portfolioID + ":"
+	for k := range s.scopedCache {
+		if strings.HasPrefix(k, prefix) {
+			delete(s.scopedCache, k)
+		}
+	}
 }
 
 // trimLeadingZeroPoints drops the initial run of zero-value days from a series.

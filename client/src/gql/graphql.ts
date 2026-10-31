@@ -47,8 +47,14 @@ export enum AccountType {
   Bank = 'BANK',
   Broker = 'BROKER',
   CryptoExchange = 'CRYPTO_EXCHANGE',
+  CryptoWallet = 'CRYPTO_WALLET',
   Other = 'OTHER'
 }
+
+export type AddCustomTokenInput = {
+  tokenAddress: Scalars['String']['input'];
+  walletAccountId: Scalars['ID']['input'];
+};
 
 export type AddInstrumentHoldingInput = {
   averagePurchasePrice: Scalars['Float']['input'];
@@ -57,6 +63,24 @@ export type AddInstrumentHoldingInput = {
   purchaseDate?: InputMaybe<Scalars['Time']['input']>;
   quantity: Scalars['Float']['input'];
   unitPriceCurrency?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AddMultiNetworkWalletInput = {
+  address: Scalars['String']['input'];
+  deviceName?: InputMaybe<Scalars['String']['input']>;
+  deviceType?: InputMaybe<WalletDeviceType>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  networks: Array<BlockchainNetwork>;
+  portfolioId: Scalars['ID']['input'];
+};
+
+export type AddWalletAccountInput = {
+  addressOrXpub: Scalars['String']['input'];
+  deviceId?: InputMaybe<Scalars['ID']['input']>;
+  isXpub?: InputMaybe<Scalars['Boolean']['input']>;
+  label?: InputMaybe<Scalars['String']['input']>;
+  network: BlockchainNetwork;
+  portfolioId: Scalars['ID']['input'];
 };
 
 export type AggregatorAuthSession = {
@@ -451,6 +475,25 @@ export type BenchmarkResult = {
   value: Scalars['Float']['output'];
 };
 
+export enum BlockchainNetwork {
+  Arbitrum = 'ARBITRUM',
+  Base = 'BASE',
+  Bitcoin = 'BITCOIN',
+  Ethereum = 'ETHEREUM',
+  Optimism = 'OPTIMISM',
+  Polygon = 'POLYGON',
+  Solana = 'SOLANA'
+}
+
+export type BlockchainNetworkConfig = {
+  __typename?: 'BlockchainNetworkConfig';
+  explorerApiUrl?: Maybe<Scalars['String']['output']>;
+  network: BlockchainNetwork;
+  rpcUrl: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+  updatedAt: Scalars['Time']['output'];
+};
+
 export type CalculationMethod = {
   __typename?: 'CalculationMethod';
   assumptions: Array<Scalars['String']['output']>;
@@ -665,6 +708,11 @@ export type CreateUserInput = {
   email: Scalars['String']['input'];
   password: Scalars['String']['input'];
   username: Scalars['String']['input'];
+};
+
+export type CreateWalletDeviceInput = {
+  deviceType: WalletDeviceType;
+  name: Scalars['String']['input'];
 };
 
 export type CreateWatchInput = {
@@ -1161,6 +1209,7 @@ export type MarketDataCredential = {
   lastValidatedAt?: Maybe<Scalars['Time']['output']>;
   priority: Scalars['Int']['output'];
   provider: Scalars['String']['output'];
+  source?: Maybe<Scalars['String']['output']>;
   updatedAt: Scalars['Time']['output'];
 };
 
@@ -1301,11 +1350,16 @@ export type Mutation = {
   acknowledgeAlert: Scalars['Boolean']['output'];
   addAssetToPortfolio: PortfolioAsset;
   addAssetToWatchlist: Watchlist;
+  addCustomToken: WalletBalance;
   addInstrumentToPortfolio: PortfolioAsset;
+  addMultiNetworkWallet: Array<WalletAccount>;
+  addWalletAccount: WalletAccount;
   archiveManualInstrument: Instrument;
+  assignWalletDevice: Scalars['Boolean']['output'];
   cancelMarketDataPackJob: MarketDataPackJob;
   cancelPackBuildJob: MarketDataPackBuildJob;
   completeAggregatorAuth: Array<SyncConnection>;
+  configureAlchemyKey: Scalars['Boolean']['output'];
   confirmPasswordReset: PasswordResetResponse;
   createAccount: Account;
   createAlert: Alert;
@@ -1321,6 +1375,7 @@ export type Mutation = {
   createRealEstateAsset: RealEstate;
   createStockAsset: Stock;
   createUser: User;
+  createWalletDevice: WalletDevice;
   createWatchAsset: Watch;
   createWatchlist: Watchlist;
   deactivateBatchAlerts: BatchDeactivateResult;
@@ -1349,22 +1404,31 @@ export type Mutation = {
   refreshAssetPrices: RefreshAssetPricesResult;
   refreshSingleAssetPrice: AssetPricePoint;
   refreshToken: AuthResponse;
+  refreshWalletBalancePrice: WalletBalance;
   register: AuthResponse;
   registerSyncCredential: SyncCredential;
   removeAssetFromPortfolio: Scalars['ID']['output'];
   removeAssetFromWatchlist: Watchlist;
   removeMarketDataPack: MarketDataPackJob;
+  removeWalletAccount: Scalars['Boolean']['output'];
+  removeWalletDevice: Scalars['Boolean']['output'];
   reorderPortfolios: Array<Portfolio>;
   repairMarketDataPack: MarketDataPackJob;
   resendVerification: EmailVerificationResponse;
+  resetBlockchainNetworkConfig: BlockchainNetworkConfig;
   resetPassword: PasswordResetResponse;
+  resetWalletBalanceCostBasis: Scalars['Boolean']['output'];
+  resolveWalletReview: Scalars['Boolean']['output'];
   restoreManualInstrument: Instrument;
   retryHistoricalDataBackfillJob: HistoricalDataBackfillJob;
+  setWalletBalanceCostBasis: Scalars['Boolean']['output'];
   startLocalPackBuild: MarketDataPackBuildJob;
   tagAsset: Asset;
   tagPortfolio: Portfolio;
+  toggleSpamToken: Scalars['Boolean']['output'];
   triggerAccountSync: SyncRun;
   triggerFinanceDatabaseSync: TriggerFinanceDatabaseSyncPayload;
+  triggerWalletSync: Scalars['Boolean']['output'];
   untagAsset: Asset;
   untagPortfolio: Portfolio;
   updateAccount: Account;
@@ -1372,6 +1436,7 @@ export type Mutation = {
   /** Update an alert rule */
   updateAlertRule: AlertRule;
   updateAssetInPortfolio: PortfolioAsset;
+  updateBlockchainNetworkConfig: BlockchainNetworkConfig;
   updateFinanceDatabaseSyncEnabled: FinanceDatabaseSyncItem;
   updateManualInstrument: Instrument;
   updateMarketDataPack: MarketDataPackJob;
@@ -1383,6 +1448,7 @@ export type Mutation = {
   updateUserDisplayCurrency: User;
   updateUserTaxJurisdiction: User;
   updateUserThemePreferences: User;
+  updateWalletDevice: WalletDevice;
   upsertMarketDataCredential: MarketDataCredential;
   validateProviderCredentials: ValidationResult;
   verifyEmail: EmailVerificationResponse;
@@ -1405,13 +1471,34 @@ export type MutationAddAssetToWatchlistArgs = {
 };
 
 
+export type MutationAddCustomTokenArgs = {
+  input: AddCustomTokenInput;
+};
+
+
 export type MutationAddInstrumentToPortfolioArgs = {
   input: AddInstrumentHoldingInput;
 };
 
 
+export type MutationAddMultiNetworkWalletArgs = {
+  input: AddMultiNetworkWalletInput;
+};
+
+
+export type MutationAddWalletAccountArgs = {
+  input: AddWalletAccountInput;
+};
+
+
 export type MutationArchiveManualInstrumentArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationAssignWalletDeviceArgs = {
+  deviceId?: InputMaybe<Scalars['ID']['input']>;
+  walletAccountId: Scalars['ID']['input'];
 };
 
 
@@ -1428,6 +1515,11 @@ export type MutationCancelPackBuildJobArgs = {
 export type MutationCompleteAggregatorAuthArgs = {
   connectionId: Scalars['ID']['input'];
   sessionToken: Scalars['String']['input'];
+};
+
+
+export type MutationConfigureAlchemyKeyArgs = {
+  apiKey: Scalars['String']['input'];
 };
 
 
@@ -1499,6 +1591,11 @@ export type MutationCreateStockAssetArgs = {
 
 export type MutationCreateUserArgs = {
   input: CreateUserInput;
+};
+
+
+export type MutationCreateWalletDeviceArgs = {
+  input: CreateWalletDeviceInput;
 };
 
 
@@ -1638,6 +1735,11 @@ export type MutationRefreshTokenArgs = {
 };
 
 
+export type MutationRefreshWalletBalancePriceArgs = {
+  balanceId: Scalars['ID']['input'];
+};
+
+
 export type MutationRegisterArgs = {
   input: RegisterInput;
 };
@@ -1667,6 +1769,16 @@ export type MutationRemoveMarketDataPackArgs = {
 };
 
 
+export type MutationRemoveWalletAccountArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
+export type MutationRemoveWalletDeviceArgs = {
+  id: Scalars['ID']['input'];
+};
+
+
 export type MutationReorderPortfoliosArgs = {
   input: ReorderPortfoliosInput;
 };
@@ -1682,8 +1794,25 @@ export type MutationResendVerificationArgs = {
 };
 
 
+export type MutationResetBlockchainNetworkConfigArgs = {
+  network: BlockchainNetwork;
+};
+
+
 export type MutationResetPasswordArgs = {
   input: PasswordResetInput;
+};
+
+
+export type MutationResetWalletBalanceCostBasisArgs = {
+  balanceId: Scalars['ID']['input'];
+};
+
+
+export type MutationResolveWalletReviewArgs = {
+  action: Scalars['String']['input'];
+  customType?: InputMaybe<Scalars['String']['input']>;
+  reviewId: Scalars['ID']['input'];
 };
 
 
@@ -1694,6 +1823,13 @@ export type MutationRestoreManualInstrumentArgs = {
 
 export type MutationRetryHistoricalDataBackfillJobArgs = {
   id: Scalars['ID']['input'];
+};
+
+
+export type MutationSetWalletBalanceCostBasisArgs = {
+  balanceId: Scalars['ID']['input'];
+  costBasisPerUnit: Scalars['Float']['input'];
+  currency?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1714,6 +1850,12 @@ export type MutationTagPortfolioArgs = {
 };
 
 
+export type MutationToggleSpamTokenArgs = {
+  balanceId: Scalars['ID']['input'];
+  isHidden: Scalars['Boolean']['input'];
+};
+
+
 export type MutationTriggerAccountSyncArgs = {
   accountId: Scalars['ID']['input'];
 };
@@ -1721,6 +1863,11 @@ export type MutationTriggerAccountSyncArgs = {
 
 export type MutationTriggerFinanceDatabaseSyncArgs = {
   assetType: AssetSyncType;
+};
+
+
+export type MutationTriggerWalletSyncArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -1756,6 +1903,11 @@ export type MutationUpdateAlertRuleArgs = {
 
 export type MutationUpdateAssetInPortfolioArgs = {
   input: PortfolioAssetInput;
+};
+
+
+export type MutationUpdateBlockchainNetworkConfigArgs = {
+  input: UpdateBlockchainNetworkConfigInput;
 };
 
 
@@ -1817,6 +1969,13 @@ export type MutationUpdateUserTaxJurisdictionArgs = {
 
 export type MutationUpdateUserThemePreferencesArgs = {
   input: UpdateUserThemePreferencesInput;
+};
+
+
+export type MutationUpdateWalletDeviceArgs = {
+  deviceType: WalletDeviceType;
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
 };
 
 
@@ -2197,6 +2356,7 @@ export type Query = {
   availableMarketDataPacks: Array<MarketDataPackRegistryEntry>;
   availableProviders: Array<AvailableProvider>;
   benchmarkComparison: BenchmarkComparison;
+  blockchainNetworkConfigs: Array<BlockchainNetworkConfig>;
   candles: Array<Candle>;
   candlesByInstrument: MarketDataCandlesPayload;
   catalogSyncStatus?: Maybe<CatalogSyncRun>;
@@ -2224,6 +2384,7 @@ export type Query = {
   metrics: Array<Metric>;
   packBuildJob?: Maybe<MarketDataPackBuildJob>;
   packBuildJobs: Array<MarketDataPackBuildJob>;
+  pendingWalletReviews: Array<WalletActivityReview>;
   /** Get dashboard performance metrics */
   performanceMetrics: DashboardPerformanceMetrics;
   performanceSnapshots: Array<PerformanceSnapshot>;
@@ -2258,6 +2419,9 @@ export type Query = {
   /** Get user engagement analytics */
   userEngagementMetrics: UserEngagementMetrics;
   users: Array<User>;
+  walletAccounts: Array<WalletAccount>;
+  walletCUUsage: WalletCuUsage;
+  walletDevices: Array<WalletDevice>;
   watchlist?: Maybe<Watchlist>;
   watchlists: Array<Watchlist>;
   worstPerformingAssets: Array<PositionPerformance>;
@@ -2462,6 +2626,11 @@ export type QueryPackBuildJobsArgs = {
 };
 
 
+export type QueryPendingWalletReviewsArgs = {
+  portfolioId: Scalars['ID']['input'];
+};
+
+
 export type QueryPerformanceMetricsArgs = {
   timeRange?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2613,6 +2782,11 @@ export type QueryUsersArgs = {
   filter?: InputMaybe<UserFilter>;
   orderBy?: InputMaybe<UserOrder>;
   pagination?: InputMaybe<PaginationInput>;
+};
+
+
+export type QueryWalletAccountsArgs = {
+  portfolioId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 
@@ -2848,6 +3022,7 @@ export type SyncCredential = {
   createdAt: Scalars['Time']['output'];
   id: Scalars['ID']['output'];
   provider: Scalars['String']['output'];
+  source?: Maybe<Scalars['String']['output']>;
   status: Scalars['String']['output'];
   updatedAt: Scalars['Time']['output'];
 };
@@ -3094,6 +3269,12 @@ export type UpdateAlertInput = {
   thresholdValue?: InputMaybe<Scalars['Float']['input']>;
 };
 
+export type UpdateBlockchainNetworkConfigInput = {
+  explorerApiUrl?: InputMaybe<Scalars['String']['input']>;
+  network: BlockchainNetwork;
+  rpcUrl: Scalars['String']['input'];
+};
+
 export type UpdateManualInstrumentInput = {
   assetType: InstrumentAssetType;
   baseCurrency?: InputMaybe<Scalars['String']['input']>;
@@ -3219,6 +3400,101 @@ export type ValidationResult = {
   message?: Maybe<Scalars['String']['output']>;
   valid: Scalars['Boolean']['output'];
 };
+
+export type WalletAccount = {
+  __typename?: 'WalletAccount';
+  addressOrXpub: Scalars['String']['output'];
+  balances: Array<WalletBalance>;
+  capabilityLevel: WalletCapabilityLevel;
+  createdAt: Scalars['Time']['output'];
+  device?: Maybe<WalletDevice>;
+  deviceId?: Maybe<Scalars['ID']['output']>;
+  discoveredAddresses?: Maybe<Scalars['String']['output']>;
+  historyStatus: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  isActive: Scalars['Boolean']['output'];
+  isXpub: Scalars['Boolean']['output'];
+  label?: Maybe<Scalars['String']['output']>;
+  lastSyncAt?: Maybe<Scalars['Time']['output']>;
+  lastSyncError?: Maybe<Scalars['String']['output']>;
+  network: BlockchainNetwork;
+  portfolioId?: Maybe<Scalars['ID']['output']>;
+  updatedAt: Scalars['Time']['output'];
+};
+
+
+export type WalletAccountBalancesArgs = {
+  includeSpam?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type WalletActivityReview = {
+  __typename?: 'WalletActivityReview';
+  createdAt: Scalars['Time']['output'];
+  id: Scalars['ID']['output'];
+  notes?: Maybe<Scalars['String']['output']>;
+  reviewStatus: Scalars['String']['output'];
+  suggestedType: Scalars['String']['output'];
+  walletActivityId: Scalars['ID']['output'];
+};
+
+export type WalletBalance = {
+  __typename?: 'WalletBalance';
+  acquiredAt?: Maybe<Scalars['Time']['output']>;
+  autoEstimatedBasis?: Maybe<Scalars['Float']['output']>;
+  costBasisCurrency?: Maybe<Scalars['String']['output']>;
+  costBasisPerUnit?: Maybe<Scalars['Float']['output']>;
+  costBasisType?: Maybe<Scalars['String']['output']>;
+  currentPrice?: Maybe<Scalars['Float']['output']>;
+  currentValue?: Maybe<Scalars['Float']['output']>;
+  dayChange24h?: Maybe<Scalars['Float']['output']>;
+  decimals: Scalars['Int']['output'];
+  formattedQuantity: Scalars['Float']['output'];
+  id: Scalars['ID']['output'];
+  isHidden: Scalars['Boolean']['output'];
+  isPriceResolved: Scalars['Boolean']['output'];
+  isSpam: Scalars['Boolean']['output'];
+  isStale: Scalars['Boolean']['output'];
+  lastUpdatedAt: Scalars['Time']['output'];
+  name?: Maybe<Scalars['String']['output']>;
+  priceSource?: Maybe<Scalars['String']['output']>;
+  priceUpdatedAt?: Maybe<Scalars['Time']['output']>;
+  rawBalance: Scalars['String']['output'];
+  symbol: Scalars['String']['output'];
+  tokenAddress?: Maybe<Scalars['String']['output']>;
+};
+
+export type WalletCuUsage = {
+  __typename?: 'WalletCUUsage';
+  billingMonth: Scalars['String']['output'];
+  consumedUnits: Scalars['Int']['output'];
+  hasKey: Scalars['Boolean']['output'];
+  isThrottled: Scalars['Boolean']['output'];
+  keySource?: Maybe<Scalars['String']['output']>;
+  maskedKey?: Maybe<Scalars['String']['output']>;
+  maxQuota: Scalars['Int']['output'];
+};
+
+export enum WalletCapabilityLevel {
+  ActivityIndexed = 'ACTIVITY_INDEXED',
+  BalanceOnly = 'BALANCE_ONLY',
+  EnhancedHistory = 'ENHANCED_HISTORY'
+}
+
+export type WalletDevice = {
+  __typename?: 'WalletDevice';
+  accounts: Array<WalletAccount>;
+  createdAt: Scalars['Time']['output'];
+  deviceType: WalletDeviceType;
+  id: Scalars['ID']['output'];
+  name: Scalars['String']['output'];
+  updatedAt: Scalars['Time']['output'];
+};
+
+export enum WalletDeviceType {
+  Hardware = 'HARDWARE',
+  Software = 'SOFTWARE',
+  Standalone = 'STANDALONE'
+}
 
 export type Watch = Asset & {
   __typename?: 'Watch';
@@ -3683,6 +3959,133 @@ export type UpdateUserTaxJurisdictionMutationVariables = Exact<{
 
 export type UpdateUserTaxJurisdictionMutation = { __typename?: 'Mutation', updateUserTaxJurisdiction: { __typename?: 'User', id: string, taxJurisdiction: string } };
 
+export type CreateWalletDeviceMutationVariables = Exact<{
+  input: CreateWalletDeviceInput;
+}>;
+
+
+export type CreateWalletDeviceMutation = { __typename?: 'Mutation', createWalletDevice: { __typename?: 'WalletDevice', id: string, name: string, deviceType: WalletDeviceType, createdAt: any, updatedAt: any } };
+
+export type AddWalletAccountMutationVariables = Exact<{
+  input: AddWalletAccountInput;
+}>;
+
+
+export type AddWalletAccountMutation = { __typename?: 'Mutation', addWalletAccount: { __typename?: 'WalletAccount', id: string, portfolioId?: string | null, network: BlockchainNetwork, addressOrXpub: string, isXpub: boolean, label?: string | null, isActive: boolean, historyStatus: string, createdAt: any, balances: Array<{ __typename?: 'WalletBalance', id: string, symbol: string, formattedQuantity: number }> } };
+
+export type RemoveWalletAccountMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveWalletAccountMutation = { __typename?: 'Mutation', removeWalletAccount: boolean };
+
+export type TriggerWalletSyncMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type TriggerWalletSyncMutation = { __typename?: 'Mutation', triggerWalletSync: boolean };
+
+export type ToggleSpamTokenMutationVariables = Exact<{
+  balanceId: Scalars['ID']['input'];
+  isHidden: Scalars['Boolean']['input'];
+}>;
+
+
+export type ToggleSpamTokenMutation = { __typename?: 'Mutation', toggleSpamToken: boolean };
+
+export type RefreshWalletBalancePriceMutationVariables = Exact<{
+  balanceId: Scalars['ID']['input'];
+}>;
+
+
+export type RefreshWalletBalancePriceMutation = { __typename?: 'Mutation', refreshWalletBalancePrice: { __typename?: 'WalletBalance', id: string, symbol: string, currentPrice?: number | null, currentValue?: number | null, dayChange24h?: number | null, priceUpdatedAt?: any | null, priceSource?: string | null, isPriceResolved: boolean } };
+
+export type ResolveWalletReviewMutationVariables = Exact<{
+  reviewId: Scalars['ID']['input'];
+  action: Scalars['String']['input'];
+  customType?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type ResolveWalletReviewMutation = { __typename?: 'Mutation', resolveWalletReview: boolean };
+
+export type ConfigureAlchemyKeyMutationVariables = Exact<{
+  apiKey: Scalars['String']['input'];
+}>;
+
+
+export type ConfigureAlchemyKeyMutation = { __typename?: 'Mutation', configureAlchemyKey: boolean };
+
+export type SetWalletBalanceCostBasisMutationVariables = Exact<{
+  balanceId: Scalars['ID']['input'];
+  costBasisPerUnit: Scalars['Float']['input'];
+  currency?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type SetWalletBalanceCostBasisMutation = { __typename?: 'Mutation', setWalletBalanceCostBasis: boolean };
+
+export type ResetWalletBalanceCostBasisMutationVariables = Exact<{
+  balanceId: Scalars['ID']['input'];
+}>;
+
+
+export type ResetWalletBalanceCostBasisMutation = { __typename?: 'Mutation', resetWalletBalanceCostBasis: boolean };
+
+export type AssignWalletDeviceMutationVariables = Exact<{
+  walletAccountId: Scalars['ID']['input'];
+  deviceId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type AssignWalletDeviceMutation = { __typename?: 'Mutation', assignWalletDevice: boolean };
+
+export type UpdateWalletDeviceMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  name: Scalars['String']['input'];
+  deviceType: WalletDeviceType;
+}>;
+
+
+export type UpdateWalletDeviceMutation = { __typename?: 'Mutation', updateWalletDevice: { __typename?: 'WalletDevice', id: string, name: string, deviceType: WalletDeviceType, updatedAt: any } };
+
+export type RemoveWalletDeviceMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RemoveWalletDeviceMutation = { __typename?: 'Mutation', removeWalletDevice: boolean };
+
+export type AddMultiNetworkWalletMutationVariables = Exact<{
+  input: AddMultiNetworkWalletInput;
+}>;
+
+
+export type AddMultiNetworkWalletMutation = { __typename?: 'Mutation', addMultiNetworkWallet: Array<{ __typename?: 'WalletAccount', id: string, portfolioId?: string | null, deviceId?: string | null, network: BlockchainNetwork, addressOrXpub: string, label?: string | null, isActive: boolean, historyStatus: string, capabilityLevel: WalletCapabilityLevel, createdAt: any }> };
+
+export type AddCustomTokenMutationVariables = Exact<{
+  input: AddCustomTokenInput;
+}>;
+
+
+export type AddCustomTokenMutation = { __typename?: 'Mutation', addCustomToken: { __typename?: 'WalletBalance', id: string, symbol: string, name?: string | null, decimals: number, formattedQuantity: number, rawBalance: string, tokenAddress?: string | null } };
+
+export type UpdateBlockchainNetworkConfigMutationVariables = Exact<{
+  input: UpdateBlockchainNetworkConfigInput;
+}>;
+
+
+export type UpdateBlockchainNetworkConfigMutation = { __typename?: 'Mutation', updateBlockchainNetworkConfig: { __typename?: 'BlockchainNetworkConfig', network: BlockchainNetwork, rpcUrl: string, explorerApiUrl?: string | null, source: string, updatedAt: any } };
+
+export type ResetBlockchainNetworkConfigMutationVariables = Exact<{
+  network: BlockchainNetwork;
+}>;
+
+
+export type ResetBlockchainNetworkConfigMutation = { __typename?: 'Mutation', resetBlockchainNetworkConfig: { __typename?: 'BlockchainNetworkConfig', network: BlockchainNetwork, rpcUrl: string, explorerApiUrl?: string | null, source: string, updatedAt: any } };
+
 export type WatchlistResultFragment = { __typename?: 'Watchlist', id: string, name: string, createdAt: any } & { ' $fragmentName'?: 'WatchlistResultFragment' };
 
 export type CreateWatchlistMutationVariables = Exact<{
@@ -3832,7 +4235,7 @@ export type HistoricalDataBackfillJobsQuery = { __typename?: 'Query', historical
 export type GetMarketDataCredentialsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetMarketDataCredentialsQuery = { __typename?: 'Query', marketDataCredentials: Array<{ __typename?: 'MarketDataCredential', id: string, provider: string, isEnabled: boolean, priority: number, lastValidatedAt?: any | null, createdAt: any, updatedAt: any }> };
+export type GetMarketDataCredentialsQuery = { __typename?: 'Query', marketDataCredentials: Array<{ __typename?: 'MarketDataCredential', id: string, provider: string, isEnabled: boolean, priority: number, source?: string | null, lastValidatedAt?: any | null, createdAt: any, updatedAt: any }> };
 
 export type GetAvailableProvidersQueryVariables = Exact<{
   instrumentId: Scalars['ID']['input'];
@@ -3864,7 +4267,7 @@ export type GetMarketDataSettingsQueryVariables = Exact<{
 }>;
 
 
-export type GetMarketDataSettingsQuery = { __typename?: 'Query', marketDataCredentials: Array<{ __typename?: 'MarketDataCredential', id: string, provider: string, isEnabled: boolean, priority: number, lastValidatedAt?: any | null, createdAt: any, updatedAt: any }>, supportedProviders: Array<{ __typename?: 'ProviderInfo', id: string, name: string, type: string, requiresKey: boolean, intervals: Array<string>, supportsRealtime: boolean, rateLimit: { __typename?: 'RateLimit', requestsPerMinute: number, requestsPerDay: number, burstLimit: number } }>, providerHealth: Array<{ __typename?: 'ProviderHealth', provider: string, assetType: string, healthy: boolean, apiKeyValid?: boolean | null, lastChecked: any }>, providerRoutingPreferences: { __typename?: 'ProviderRoutingPreferences', id: string, userId: string, useIntelligentRouting: boolean, enableFallback: boolean, staleDataThresholdMinutes: number, createdAt: any, updatedAt: any, preferredProviders: Array<{ __typename?: 'ProviderPreference', provider: string, priority: number, enabled: boolean }> } };
+export type GetMarketDataSettingsQuery = { __typename?: 'Query', marketDataCredentials: Array<{ __typename?: 'MarketDataCredential', id: string, provider: string, isEnabled: boolean, priority: number, source?: string | null, lastValidatedAt?: any | null, createdAt: any, updatedAt: any }>, supportedProviders: Array<{ __typename?: 'ProviderInfo', id: string, name: string, type: string, requiresKey: boolean, intervals: Array<string>, supportsRealtime: boolean, rateLimit: { __typename?: 'RateLimit', requestsPerMinute: number, requestsPerDay: number, burstLimit: number } }>, providerHealth: Array<{ __typename?: 'ProviderHealth', provider: string, assetType: string, healthy: boolean, apiKeyValid?: boolean | null, lastChecked: any }>, providerRoutingPreferences: { __typename?: 'ProviderRoutingPreferences', id: string, userId: string, useIntelligentRouting: boolean, enableFallback: boolean, staleDataThresholdMinutes: number, createdAt: any, updatedAt: any, preferredProviders: Array<{ __typename?: 'ProviderPreference', provider: string, priority: number, enabled: boolean }> } };
 
 export type GetMarketDataPacksCenterQueryVariables = Exact<{
   instrumentId: Scalars['ID']['input'];
@@ -3955,7 +4358,7 @@ export type GetSyncConnectionsQuery = { __typename?: 'Query', syncConnections: A
 export type GetSyncCredentialsQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetSyncCredentialsQuery = { __typename?: 'Query', syncCredentials: Array<{ __typename?: 'SyncCredential', id: string, provider: string, status: string, createdAt: any, updatedAt: any }> };
+export type GetSyncCredentialsQuery = { __typename?: 'Query', syncCredentials: Array<{ __typename?: 'SyncCredential', id: string, provider: string, status: string, source?: string | null, createdAt: any, updatedAt: any }> };
 
 export type GetTaxLotsByPositionQueryVariables = Exact<{
   positionId: Scalars['ID']['input'];
@@ -3986,6 +4389,35 @@ export type GetRealizedGainsQueryVariables = Exact<{
 
 
 export type GetRealizedGainsQuery = { __typename?: 'Query', realizedGains: { __typename?: 'RealizedGainsSummary', portfolioId: string, dateFrom: any, dateTo: any, totalRealized: number, shortTermGains: number, longTermGains: number, dispositionCount: number, transactionCount: number, taxWrapper: string, taxJurisdiction: string, isTaxExempt: boolean } };
+
+export type GetWalletDevicesQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetWalletDevicesQuery = { __typename?: 'Query', walletDevices: Array<{ __typename?: 'WalletDevice', id: string, name: string, deviceType: WalletDeviceType, createdAt: any, accounts: Array<{ __typename?: 'WalletAccount', id: string, portfolioId?: string | null, network: BlockchainNetwork, addressOrXpub: string, isActive: boolean, lastSyncAt?: any | null, historyStatus: string, capabilityLevel: WalletCapabilityLevel, balances: Array<{ __typename?: 'WalletBalance', id: string, symbol: string, name?: string | null, decimals: number, formattedQuantity: number, rawBalance: string, tokenAddress?: string | null, isSpam: boolean, isHidden: boolean, isStale: boolean, costBasisPerUnit?: number | null, costBasisCurrency?: string | null, costBasisType?: string | null, autoEstimatedBasis?: number | null, acquiredAt?: any | null, currentPrice?: number | null, currentValue?: number | null, dayChange24h?: number | null, priceUpdatedAt?: any | null, priceSource?: string | null, isPriceResolved: boolean }> }> }> };
+
+export type GetWalletAccountsQueryVariables = Exact<{
+  portfolioId?: InputMaybe<Scalars['ID']['input']>;
+}>;
+
+
+export type GetWalletAccountsQuery = { __typename?: 'Query', walletAccounts: Array<{ __typename?: 'WalletAccount', id: string, portfolioId?: string | null, deviceId?: string | null, network: BlockchainNetwork, addressOrXpub: string, isXpub: boolean, label?: string | null, isActive: boolean, lastSyncAt?: any | null, historyStatus: string, capabilityLevel: WalletCapabilityLevel, lastSyncError?: string | null, createdAt: any, updatedAt: any, device?: { __typename?: 'WalletDevice', id: string, name: string, deviceType: WalletDeviceType } | null, balances: Array<{ __typename?: 'WalletBalance', id: string, symbol: string, name?: string | null, decimals: number, formattedQuantity: number, rawBalance: string, tokenAddress?: string | null, isSpam: boolean, isHidden: boolean, isStale: boolean, costBasisPerUnit?: number | null, costBasisCurrency?: string | null, costBasisType?: string | null, autoEstimatedBasis?: number | null, acquiredAt?: any | null, currentPrice?: number | null, currentValue?: number | null, dayChange24h?: number | null, priceUpdatedAt?: any | null, priceSource?: string | null, isPriceResolved: boolean, lastUpdatedAt: any }> }> };
+
+export type GetWalletCuUsageQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetWalletCuUsageQuery = { __typename?: 'Query', walletCUUsage: { __typename?: 'WalletCUUsage', billingMonth: string, consumedUnits: number, maxQuota: number, isThrottled: boolean, hasKey: boolean, keySource?: string | null, maskedKey?: string | null } };
+
+export type GetPendingWalletReviewsQueryVariables = Exact<{
+  portfolioId: Scalars['ID']['input'];
+}>;
+
+
+export type GetPendingWalletReviewsQuery = { __typename?: 'Query', pendingWalletReviews: Array<{ __typename?: 'WalletActivityReview', id: string, walletActivityId: string, reviewStatus: string, suggestedType: string, notes?: string | null, createdAt: any }> };
+
+export type GetBlockchainNetworkConfigsQueryVariables = Exact<{ [key: string]: never; }>;
+
+
+export type GetBlockchainNetworkConfigsQuery = { __typename?: 'Query', blockchainNetworkConfigs: Array<{ __typename?: 'BlockchainNetworkConfig', network: BlockchainNetwork, rpcUrl: string, explorerApiUrl?: string | null, source: string, updatedAt: any }> };
 
 export type PortfolioUpdateSubscriptionSubscriptionVariables = Exact<{
   userID: Scalars['ID']['input'];
@@ -4210,6 +4642,23 @@ export const DeleteTransactionDocument = {"kind":"Document","definitions":[{"kin
 export const UpdateUserDisplayCurrencyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateUserDisplayCurrency"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateUserDisplayCurrencyInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateUserDisplayCurrency"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}}]}}]}}]} as unknown as DocumentNode<UpdateUserDisplayCurrencyMutation, UpdateUserDisplayCurrencyMutationVariables>;
 export const UpdateUserThemePreferencesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateUserThemePreferences"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateUserThemePreferencesInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateUserThemePreferences"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"themePreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeBaseColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeAccentColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeFontPreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeHeadingFont"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuAccent"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeStyle"}},{"kind":"Field","name":{"kind":"Name","value":"themeRadius"}},{"kind":"Field","name":{"kind":"Name","value":"themeRTL"}}]}}]}}]} as unknown as DocumentNode<UpdateUserThemePreferencesMutation, UpdateUserThemePreferencesMutationVariables>;
 export const UpdateUserTaxJurisdictionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateUserTaxJurisdiction"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateUserTaxJurisdictionInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateUserTaxJurisdiction"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"taxJurisdiction"}}]}}]}}]} as unknown as DocumentNode<UpdateUserTaxJurisdictionMutation, UpdateUserTaxJurisdictionMutationVariables>;
+export const CreateWalletDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWalletDevice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateWalletDeviceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWalletDevice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"deviceType"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<CreateWalletDeviceMutation, CreateWalletDeviceMutationVariables>;
+export const AddWalletAccountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddWalletAccount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddWalletAccountInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addWalletAccount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"addressOrXpub"}},{"kind":"Field","name":{"kind":"Name","value":"isXpub"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"historyStatus"}},{"kind":"Field","name":{"kind":"Name","value":"balances"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"formattedQuantity"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<AddWalletAccountMutation, AddWalletAccountMutationVariables>;
+export const RemoveWalletAccountDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveWalletAccount"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeWalletAccount"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveWalletAccountMutation, RemoveWalletAccountMutationVariables>;
+export const TriggerWalletSyncDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"TriggerWalletSync"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"triggerWalletSync"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<TriggerWalletSyncMutation, TriggerWalletSyncMutationVariables>;
+export const ToggleSpamTokenDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ToggleSpamToken"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"isHidden"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Boolean"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"toggleSpamToken"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"balanceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"isHidden"},"value":{"kind":"Variable","name":{"kind":"Name","value":"isHidden"}}}]}]}}]} as unknown as DocumentNode<ToggleSpamTokenMutation, ToggleSpamTokenMutationVariables>;
+export const RefreshWalletBalancePriceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshWalletBalancePrice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshWalletBalancePrice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"balanceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange24h"}},{"kind":"Field","name":{"kind":"Name","value":"priceUpdatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"priceSource"}},{"kind":"Field","name":{"kind":"Name","value":"isPriceResolved"}}]}}]}}]} as unknown as DocumentNode<RefreshWalletBalancePriceMutation, RefreshWalletBalancePriceMutationVariables>;
+export const ResolveWalletReviewDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResolveWalletReview"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"reviewId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"action"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"customType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resolveWalletReview"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"reviewId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"reviewId"}}},{"kind":"Argument","name":{"kind":"Name","value":"action"},"value":{"kind":"Variable","name":{"kind":"Name","value":"action"}}},{"kind":"Argument","name":{"kind":"Name","value":"customType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"customType"}}}]}]}}]} as unknown as DocumentNode<ResolveWalletReviewMutation, ResolveWalletReviewMutationVariables>;
+export const ConfigureAlchemyKeyDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ConfigureAlchemyKey"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"apiKey"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configureAlchemyKey"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"apiKey"},"value":{"kind":"Variable","name":{"kind":"Name","value":"apiKey"}}}]}]}}]} as unknown as DocumentNode<ConfigureAlchemyKeyMutation, ConfigureAlchemyKeyMutationVariables>;
+export const SetWalletBalanceCostBasisDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"SetWalletBalanceCostBasis"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"costBasisPerUnit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"currency"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"setWalletBalanceCostBasis"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"balanceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}}},{"kind":"Argument","name":{"kind":"Name","value":"costBasisPerUnit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"costBasisPerUnit"}}},{"kind":"Argument","name":{"kind":"Name","value":"currency"},"value":{"kind":"Variable","name":{"kind":"Name","value":"currency"}}}]}]}}]} as unknown as DocumentNode<SetWalletBalanceCostBasisMutation, SetWalletBalanceCostBasisMutationVariables>;
+export const ResetWalletBalanceCostBasisDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResetWalletBalanceCostBasis"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resetWalletBalanceCostBasis"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"balanceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"balanceId"}}}]}]}}]} as unknown as DocumentNode<ResetWalletBalanceCostBasisMutation, ResetWalletBalanceCostBasisMutationVariables>;
+export const AssignWalletDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AssignWalletDevice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"walletAccountId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assignWalletDevice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"walletAccountId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"walletAccountId"}}},{"kind":"Argument","name":{"kind":"Name","value":"deviceId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceId"}}}]}]}}]} as unknown as DocumentNode<AssignWalletDeviceMutation, AssignWalletDeviceMutationVariables>;
+export const UpdateWalletDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateWalletDevice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"name"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"deviceType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"WalletDeviceType"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateWalletDevice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"name"},"value":{"kind":"Variable","name":{"kind":"Name","value":"name"}}},{"kind":"Argument","name":{"kind":"Name","value":"deviceType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"deviceType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"deviceType"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<UpdateWalletDeviceMutation, UpdateWalletDeviceMutationVariables>;
+export const RemoveWalletDeviceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveWalletDevice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeWalletDevice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}]}]}}]} as unknown as DocumentNode<RemoveWalletDeviceMutation, RemoveWalletDeviceMutationVariables>;
+export const AddMultiNetworkWalletDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddMultiNetworkWallet"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddMultiNetworkWalletInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addMultiNetworkWallet"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"deviceId"}},{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"addressOrXpub"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"historyStatus"}},{"kind":"Field","name":{"kind":"Name","value":"capabilityLevel"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<AddMultiNetworkWalletMutation, AddMultiNetworkWalletMutationVariables>;
+export const AddCustomTokenDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddCustomToken"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AddCustomTokenInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addCustomToken"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"decimals"}},{"kind":"Field","name":{"kind":"Name","value":"formattedQuantity"}},{"kind":"Field","name":{"kind":"Name","value":"rawBalance"}},{"kind":"Field","name":{"kind":"Name","value":"tokenAddress"}}]}}]}}]} as unknown as DocumentNode<AddCustomTokenMutation, AddCustomTokenMutationVariables>;
+export const UpdateBlockchainNetworkConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateBlockchainNetworkConfig"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateBlockchainNetworkConfigInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateBlockchainNetworkConfig"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"rpcUrl"}},{"kind":"Field","name":{"kind":"Name","value":"explorerApiUrl"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<UpdateBlockchainNetworkConfigMutation, UpdateBlockchainNetworkConfigMutationVariables>;
+export const ResetBlockchainNetworkConfigDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"ResetBlockchainNetworkConfig"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"network"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"BlockchainNetwork"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"resetBlockchainNetworkConfig"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"network"},"value":{"kind":"Variable","name":{"kind":"Name","value":"network"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"rpcUrl"}},{"kind":"Field","name":{"kind":"Name","value":"explorerApiUrl"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<ResetBlockchainNetworkConfigMutation, ResetBlockchainNetworkConfigMutationVariables>;
 export const CreateWatchlistDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWatchlist"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateWatchlistInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWatchlist"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<CreateWatchlistMutation, CreateWatchlistMutationVariables>;
 export const AddAssetToWatchlistDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddAssetToWatchlist"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"watchlistID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addAssetToWatchlist"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"watchlistID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"watchlistID"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"WatchlistResult"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"WatchlistResult"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Watchlist"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]} as unknown as DocumentNode<AddAssetToWatchlistMutation, AddAssetToWatchlistMutationVariables>;
 export const RemoveAssetFromWatchlistDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveAssetFromWatchlist"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"watchlistID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeAssetFromWatchlist"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"watchlistID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"watchlistID"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}}]}}]}}]} as unknown as DocumentNode<RemoveAssetFromWatchlistMutation, RemoveAssetFromWatchlistMutationVariables>;
@@ -4229,12 +4678,12 @@ export const SearchInstrumentsOnlineDocument = {"kind":"Document","definitions":
 export const ManualInstrumentsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"ManualInstruments"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ManualInstrumentFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PaginationInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"manualInstruments"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"items"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"normalizedSymbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"normalizedName"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"exchangeCode"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"baseCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"underlyingSymbol"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"providerSource"}},{"kind":"Field","name":{"kind":"Name","value":"providerExternalId"}},{"kind":"Field","name":{"kind":"Name","value":"summary"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"industryGroup"}},{"kind":"Field","name":{"kind":"Name","value":"industry"}},{"kind":"Field","name":{"kind":"Name","value":"categoryGroup"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"family"}},{"kind":"Field","name":{"kind":"Name","value":"website"}},{"kind":"Field","name":{"kind":"Name","value":"marketCap"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"zipcode"}},{"kind":"Field","name":{"kind":"Name","value":"firstSeenAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastVerifiedAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastUsedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"syncState"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"instrumentID"}},{"kind":"Field","name":{"kind":"Name","value":"syncStatus"}},{"kind":"Field","name":{"kind":"Name","value":"stale"}},{"kind":"Field","name":{"kind":"Name","value":"verificationConfidence"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncAttempt"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncSuccess"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncSource"}},{"kind":"Field","name":{"kind":"Name","value":"syncErrorMessage"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"hasMore"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}},{"kind":"Field","name":{"kind":"Name","value":"offset"}}]}}]}}]} as unknown as DocumentNode<ManualInstrumentsQuery, ManualInstrumentsQueryVariables>;
 export const LatestHistoricalDataBackfillJobDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"LatestHistoricalDataBackfillJob"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"latestHistoricalDataBackfillJob"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"step"}},{"kind":"Field","name":{"kind":"Name","value":"progress"}},{"kind":"Field","name":{"kind":"Name","value":"rowsWritten"}},{"kind":"Field","name":{"kind":"Name","value":"errorCode"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}}]}}]}}]} as unknown as DocumentNode<LatestHistoricalDataBackfillJobQuery, LatestHistoricalDataBackfillJobQueryVariables>;
 export const HistoricalDataBackfillJobsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"HistoricalDataBackfillJobs"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"HistoricalDataBackfillJobFilterInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PaginationInput"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"historicalDataBackfillJobs"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"instrumentId"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"step"}},{"kind":"Field","name":{"kind":"Name","value":"progress"}},{"kind":"Field","name":{"kind":"Name","value":"rowsWritten"}},{"kind":"Field","name":{"kind":"Name","value":"errorCode"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}},{"kind":"Field","name":{"kind":"Name","value":"requestedFrom"}},{"kind":"Field","name":{"kind":"Name","value":"requestedTo"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}}]}}]}}]} as unknown as DocumentNode<HistoricalDataBackfillJobsQuery, HistoricalDataBackfillJobsQueryVariables>;
-export const GetMarketDataCredentialsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"lastValidatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataCredentialsQuery, GetMarketDataCredentialsQueryVariables>;
+export const GetMarketDataCredentialsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"lastValidatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataCredentialsQuery, GetMarketDataCredentialsQueryVariables>;
 export const GetAvailableProvidersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAvailableProviders"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"instrumentId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dataType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"availableProviders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"instrumentId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"instrumentId"}}},{"kind":"Argument","name":{"kind":"Name","value":"dataType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dataType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"capability"}},{"kind":"Field","name":{"kind":"Name","value":"requiresApiKey"}},{"kind":"Field","name":{"kind":"Name","value":"hasCredential"}},{"kind":"Field","name":{"kind":"Name","value":"credentialValid"}},{"kind":"Field","name":{"kind":"Name","value":"credentialEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"mappingStatus"}},{"kind":"Field","name":{"kind":"Name","value":"effectiveEnabled"}}]}}]}}]} as unknown as DocumentNode<GetAvailableProvidersQuery, GetAvailableProvidersQueryVariables>;
 export const GetSupportedProvidersDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSupportedProviders"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"supportedProviders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"requiresKey"}},{"kind":"Field","name":{"kind":"Name","value":"intervals"}},{"kind":"Field","name":{"kind":"Name","value":"rateLimit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"requestsPerMinute"}},{"kind":"Field","name":{"kind":"Name","value":"requestsPerDay"}},{"kind":"Field","name":{"kind":"Name","value":"burstLimit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supportsRealtime"}}]}}]}}]} as unknown as DocumentNode<GetSupportedProvidersQuery, GetSupportedProvidersQueryVariables>;
 export const GetProviderHealthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProviderHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"providerHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"healthy"}},{"kind":"Field","name":{"kind":"Name","value":"lastChecked"}}]}}]}}]} as unknown as DocumentNode<GetProviderHealthQuery, GetProviderHealthQueryVariables>;
 export const GetProviderRoutingPreferencesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetProviderRoutingPreferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"providerRoutingPreferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"preferredProviders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"useIntelligentRouting"}},{"kind":"Field","name":{"kind":"Name","value":"enableFallback"}},{"kind":"Field","name":{"kind":"Name","value":"staleDataThresholdMinutes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetProviderRoutingPreferencesQuery, GetProviderRoutingPreferencesQueryVariables>;
-export const GetMarketDataSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"lastValidatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supportedProviders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"requiresKey"}},{"kind":"Field","name":{"kind":"Name","value":"intervals"}},{"kind":"Field","name":{"kind":"Name","value":"rateLimit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"requestsPerMinute"}},{"kind":"Field","name":{"kind":"Name","value":"requestsPerDay"}},{"kind":"Field","name":{"kind":"Name","value":"burstLimit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supportsRealtime"}}]}},{"kind":"Field","name":{"kind":"Name","value":"providerHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"healthy"}},{"kind":"Field","name":{"kind":"Name","value":"apiKeyValid"}},{"kind":"Field","name":{"kind":"Name","value":"lastChecked"}}]}},{"kind":"Field","name":{"kind":"Name","value":"providerRoutingPreferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"preferredProviders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"useIntelligentRouting"}},{"kind":"Field","name":{"kind":"Name","value":"enableFallback"}},{"kind":"Field","name":{"kind":"Name","value":"staleDataThresholdMinutes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataSettingsQuery, GetMarketDataSettingsQueryVariables>;
+export const GetMarketDataSettingsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataSettings"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketDataCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"lastValidatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supportedProviders"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"requiresKey"}},{"kind":"Field","name":{"kind":"Name","value":"intervals"}},{"kind":"Field","name":{"kind":"Name","value":"rateLimit"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"requestsPerMinute"}},{"kind":"Field","name":{"kind":"Name","value":"requestsPerDay"}},{"kind":"Field","name":{"kind":"Name","value":"burstLimit"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supportsRealtime"}}]}},{"kind":"Field","name":{"kind":"Name","value":"providerHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"healthy"}},{"kind":"Field","name":{"kind":"Name","value":"apiKeyValid"}},{"kind":"Field","name":{"kind":"Name","value":"lastChecked"}}]}},{"kind":"Field","name":{"kind":"Name","value":"providerRoutingPreferences"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"preferredProviders"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"priority"}},{"kind":"Field","name":{"kind":"Name","value":"enabled"}}]}},{"kind":"Field","name":{"kind":"Name","value":"useIntelligentRouting"}},{"kind":"Field","name":{"kind":"Name","value":"enableFallback"}},{"kind":"Field","name":{"kind":"Name","value":"staleDataThresholdMinutes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataSettingsQuery, GetMarketDataSettingsQueryVariables>;
 export const GetMarketDataPacksCenterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataPacksCenter"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"instrumentId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"availableMarketDataPacks"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"packId"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"sizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"compressedSizeBytes"}},{"kind":"Field","name":{"kind":"Name","value":"assetsCount"}},{"kind":"Field","name":{"kind":"Name","value":"rowsCount"}},{"kind":"Field","name":{"kind":"Name","value":"interval"}},{"kind":"Field","name":{"kind":"Name","value":"assetTypes"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrencies"}},{"kind":"Field","name":{"kind":"Name","value":"downloadUrl"}},{"kind":"Field","name":{"kind":"Name","value":"checksum"}},{"kind":"Field","name":{"kind":"Name","value":"signatureUrl"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"recommended"}}]}},{"kind":"Field","name":{"kind":"Name","value":"installedMarketDataPacks"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"formatVersion"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"parentPackId"}},{"kind":"Field","name":{"kind":"Name","value":"packPriority"}},{"kind":"Field","name":{"kind":"Name","value":"filePath"}},{"kind":"Field","name":{"kind":"Name","value":"checksum"}},{"kind":"Field","name":{"kind":"Name","value":"signatureVerified"}},{"kind":"Field","name":{"kind":"Name","value":"assetsCount"}},{"kind":"Field","name":{"kind":"Name","value":"rowsCount"}},{"kind":"Field","name":{"kind":"Name","value":"installedAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketDataCoverage"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"instrumentId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"instrumentId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"packId"}},{"kind":"Field","name":{"kind":"Name","value":"instrumentId"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"interval"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"firstDate"}},{"kind":"Field","name":{"kind":"Name","value":"lastDate"}},{"kind":"Field","name":{"kind":"Name","value":"rowCount"}},{"kind":"Field","name":{"kind":"Name","value":"filePaths"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataPacksCenterQuery, GetMarketDataPacksCenterQueryVariables>;
 export const GetMarketDataPackJobDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMarketDataPackJob"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketDataPackJob"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"packId"}},{"kind":"Field","name":{"kind":"Name","value":"jobType"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"progressPercent"}},{"kind":"Field","name":{"kind":"Name","value":"downloadedBytes"}},{"kind":"Field","name":{"kind":"Name","value":"totalBytes"}},{"kind":"Field","name":{"kind":"Name","value":"importedRows"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}}]}}]}}]} as unknown as DocumentNode<GetMarketDataPackJobQuery, GetMarketDataPackJobQueryVariables>;
 export const GetPackBuildJobDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPackBuildJob"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"packBuildJob"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"packId"}},{"kind":"Field","name":{"kind":"Name","value":"sourceProvider"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"progressPercent"}},{"kind":"Field","name":{"kind":"Name","value":"currentSymbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentDate"}},{"kind":"Field","name":{"kind":"Name","value":"currentAssetType"}},{"kind":"Field","name":{"kind":"Name","value":"totalSymbols"}},{"kind":"Field","name":{"kind":"Name","value":"completedSymbols"}},{"kind":"Field","name":{"kind":"Name","value":"failedSymbols"}},{"kind":"Field","name":{"kind":"Name","value":"completedDates"}},{"kind":"Field","name":{"kind":"Name","value":"totalDates"}},{"kind":"Field","name":{"kind":"Name","value":"rowsWritten"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"startedAt"}},{"kind":"Field","name":{"kind":"Name","value":"finishedAt"}}]}}]}}]} as unknown as DocumentNode<GetPackBuildJobQuery, GetPackBuildJobQueryVariables>;
@@ -4247,11 +4696,16 @@ export const GetFinanceDatabaseSyncStatusDocument = {"kind":"Document","definiti
 export const GetFinanceDatabaseSyncHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabaseSyncHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabaseSyncHistory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"recordCount"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabaseSyncHistoryQuery, GetFinanceDatabaseSyncHistoryQueryVariables>;
 export const GetFinanceDatabasePreviewDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabasePreview"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetSyncType"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabasePreview"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabasePreviewQuery, GetFinanceDatabasePreviewQueryVariables>;
 export const GetSyncConnectionsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSyncConnections"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncConnections"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"accountId"}},{"kind":"Field","name":{"kind":"Name","value":"account"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}}]}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"externalInstitutionId"}},{"kind":"Field","name":{"kind":"Name","value":"externalAccountId"}},{"kind":"Field","name":{"kind":"Name","value":"institutionName"}},{"kind":"Field","name":{"kind":"Name","value":"syncStatus"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncAt"}},{"kind":"Field","name":{"kind":"Name","value":"lastError"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetSyncConnectionsQuery, GetSyncConnectionsQueryVariables>;
-export const GetSyncCredentialsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSyncCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetSyncCredentialsQuery, GetSyncCredentialsQueryVariables>;
+export const GetSyncCredentialsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSyncCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"syncCredentials"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"provider"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetSyncCredentialsQuery, GetSyncCredentialsQueryVariables>;
 export const GetTaxLotsByPositionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTaxLotsByPosition"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"positionId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"taxLotsByPosition"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"positionId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"positionId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"transactionId"}},{"kind":"Field","name":{"kind":"Name","value":"acquiredAt"}},{"kind":"Field","name":{"kind":"Name","value":"initialQuantity"}},{"kind":"Field","name":{"kind":"Name","value":"remainingQuantity"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisPerUnit"}},{"kind":"Field","name":{"kind":"Name","value":"totalCostBasis"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"holdingPeriodDays"}},{"kind":"Field","name":{"kind":"Name","value":"isLongTerm"}},{"kind":"Field","name":{"kind":"Name","value":"currentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"unrealizedGainLossPercent"}}]}}]}}]} as unknown as DocumentNode<GetTaxLotsByPositionQuery, GetTaxLotsByPositionQueryVariables>;
 export const GetDispositionsByPositionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDispositionsByPosition"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"positionId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dispositionsByPosition"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"positionId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"positionId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"lotId"}},{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"transactionId"}},{"kind":"Field","name":{"kind":"Name","value":"acquiredAt"}},{"kind":"Field","name":{"kind":"Name","value":"soldAt"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisPerUnit"}},{"kind":"Field","name":{"kind":"Name","value":"sellPricePerUnit"}},{"kind":"Field","name":{"kind":"Name","value":"costBasis"}},{"kind":"Field","name":{"kind":"Name","value":"proceeds"}},{"kind":"Field","name":{"kind":"Name","value":"realizedGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"method"}},{"kind":"Field","name":{"kind":"Name","value":"holdingPeriodDays"}},{"kind":"Field","name":{"kind":"Name","value":"isLongTerm"}},{"kind":"Field","name":{"kind":"Name","value":"isTaxExempt"}}]}}]}}]} as unknown as DocumentNode<GetDispositionsByPositionQuery, GetDispositionsByPositionQueryVariables>;
 export const GetTaxHarvestOpportunitiesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetTaxHarvestOpportunities"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"taxHarvestOpportunities"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"harvestableLoss"}},{"kind":"Field","name":{"kind":"Name","value":"eligibleLotsCount"}}]}}]}}]} as unknown as DocumentNode<GetTaxHarvestOpportunitiesQuery, GetTaxHarvestOpportunitiesQueryVariables>;
 export const GetRealizedGainsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetRealizedGains"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dateFrom"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Time"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"dateTo"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Time"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"realizedGains"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}},{"kind":"Argument","name":{"kind":"Name","value":"dateFrom"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dateFrom"}}},{"kind":"Argument","name":{"kind":"Name","value":"dateTo"},"value":{"kind":"Variable","name":{"kind":"Name","value":"dateTo"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"dateFrom"}},{"kind":"Field","name":{"kind":"Name","value":"dateTo"}},{"kind":"Field","name":{"kind":"Name","value":"totalRealized"}},{"kind":"Field","name":{"kind":"Name","value":"shortTermGains"}},{"kind":"Field","name":{"kind":"Name","value":"longTermGains"}},{"kind":"Field","name":{"kind":"Name","value":"dispositionCount"}},{"kind":"Field","name":{"kind":"Name","value":"transactionCount"}},{"kind":"Field","name":{"kind":"Name","value":"taxWrapper"}},{"kind":"Field","name":{"kind":"Name","value":"taxJurisdiction"}},{"kind":"Field","name":{"kind":"Name","value":"isTaxExempt"}}]}}]}}]} as unknown as DocumentNode<GetRealizedGainsQuery, GetRealizedGainsQueryVariables>;
+export const GetWalletDevicesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetWalletDevices"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"walletDevices"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"deviceType"}},{"kind":"Field","name":{"kind":"Name","value":"accounts"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"addressOrXpub"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncAt"}},{"kind":"Field","name":{"kind":"Name","value":"historyStatus"}},{"kind":"Field","name":{"kind":"Name","value":"capabilityLevel"}},{"kind":"Field","name":{"kind":"Name","value":"balances"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"decimals"}},{"kind":"Field","name":{"kind":"Name","value":"formattedQuantity"}},{"kind":"Field","name":{"kind":"Name","value":"rawBalance"}},{"kind":"Field","name":{"kind":"Name","value":"tokenAddress"}},{"kind":"Field","name":{"kind":"Name","value":"isSpam"}},{"kind":"Field","name":{"kind":"Name","value":"isHidden"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisPerUnit"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisType"}},{"kind":"Field","name":{"kind":"Name","value":"autoEstimatedBasis"}},{"kind":"Field","name":{"kind":"Name","value":"acquiredAt"}},{"kind":"Field","name":{"kind":"Name","value":"currentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange24h"}},{"kind":"Field","name":{"kind":"Name","value":"priceUpdatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"priceSource"}},{"kind":"Field","name":{"kind":"Name","value":"isPriceResolved"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetWalletDevicesQuery, GetWalletDevicesQueryVariables>;
+export const GetWalletAccountsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetWalletAccounts"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"walletAccounts"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"portfolioId"}},{"kind":"Field","name":{"kind":"Name","value":"deviceId"}},{"kind":"Field","name":{"kind":"Name","value":"device"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"deviceType"}}]}},{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"addressOrXpub"}},{"kind":"Field","name":{"kind":"Name","value":"isXpub"}},{"kind":"Field","name":{"kind":"Name","value":"label"}},{"kind":"Field","name":{"kind":"Name","value":"isActive"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncAt"}},{"kind":"Field","name":{"kind":"Name","value":"historyStatus"}},{"kind":"Field","name":{"kind":"Name","value":"capabilityLevel"}},{"kind":"Field","name":{"kind":"Name","value":"lastSyncError"}},{"kind":"Field","name":{"kind":"Name","value":"balances"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"decimals"}},{"kind":"Field","name":{"kind":"Name","value":"formattedQuantity"}},{"kind":"Field","name":{"kind":"Name","value":"rawBalance"}},{"kind":"Field","name":{"kind":"Name","value":"tokenAddress"}},{"kind":"Field","name":{"kind":"Name","value":"isSpam"}},{"kind":"Field","name":{"kind":"Name","value":"isHidden"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisPerUnit"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisType"}},{"kind":"Field","name":{"kind":"Name","value":"autoEstimatedBasis"}},{"kind":"Field","name":{"kind":"Name","value":"acquiredAt"}},{"kind":"Field","name":{"kind":"Name","value":"currentPrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange24h"}},{"kind":"Field","name":{"kind":"Name","value":"priceUpdatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"priceSource"}},{"kind":"Field","name":{"kind":"Name","value":"isPriceResolved"}},{"kind":"Field","name":{"kind":"Name","value":"lastUpdatedAt"}}]}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetWalletAccountsQuery, GetWalletAccountsQueryVariables>;
+export const GetWalletCuUsageDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetWalletCUUsage"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"walletCUUsage"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"billingMonth"}},{"kind":"Field","name":{"kind":"Name","value":"consumedUnits"}},{"kind":"Field","name":{"kind":"Name","value":"maxQuota"}},{"kind":"Field","name":{"kind":"Name","value":"isThrottled"}},{"kind":"Field","name":{"kind":"Name","value":"hasKey"}},{"kind":"Field","name":{"kind":"Name","value":"keySource"}},{"kind":"Field","name":{"kind":"Name","value":"maskedKey"}}]}}]}}]} as unknown as DocumentNode<GetWalletCuUsageQuery, GetWalletCuUsageQueryVariables>;
+export const GetPendingWalletReviewsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPendingWalletReviews"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pendingWalletReviews"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"walletActivityId"}},{"kind":"Field","name":{"kind":"Name","value":"reviewStatus"}},{"kind":"Field","name":{"kind":"Name","value":"suggestedType"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetPendingWalletReviewsQuery, GetPendingWalletReviewsQueryVariables>;
+export const GetBlockchainNetworkConfigsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetBlockchainNetworkConfigs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"blockchainNetworkConfigs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"rpcUrl"}},{"kind":"Field","name":{"kind":"Name","value":"explorerApiUrl"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetBlockchainNetworkConfigsQuery, GetBlockchainNetworkConfigsQueryVariables>;
 export const PortfolioUpdateSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"PortfolioUpdateSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioUpdates"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<PortfolioUpdateSubscriptionSubscription, PortfolioUpdateSubscriptionSubscriptionVariables>;
 export const InvalidationProbeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvalidationProbe"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolios"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"watchlists"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<InvalidationProbeQuery, InvalidationProbeQueryVariables>;
 export const GetAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PaginationInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"orderBy"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetOrder"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}}},{"kind":"Argument","name":{"kind":"Name","value":"orderBy"},"value":{"kind":"Variable","name":{"kind":"Name","value":"orderBy"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssetsQuery, GetAssetsQueryVariables>;

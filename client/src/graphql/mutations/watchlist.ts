@@ -32,3 +32,19 @@ export const ADD_ASSET_TO_WATCHLIST = gql`
     }
   }
 `;
+
+/**
+ * Removing an asset reads the list back complete so the membership state a
+ * "Watching" indicator depends on stays truthful without a refetch.
+ */
+export const REMOVE_ASSET_FROM_WATCHLIST = gql`
+  mutation RemoveAssetFromWatchlist($watchlistID: ID!, $assetID: ID!) {
+    removeAssetFromWatchlist(watchlistID: $watchlistID, assetID: $assetID) {
+      id
+      name
+      assets {
+        id
+      }
+    }
+  }
+`;

@@ -3,6 +3,7 @@ package registry
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/service/sync/blockchain"
@@ -28,8 +29,16 @@ func NewAdapterRegistry(
 ) *AdapterRegistry {
 	btcEndpoints := []string{}
 	if ep, ok := customEndpoints[model.BlockchainNetworkBitcoin]; ok && ep != "" {
-		btcEndpoints = append(btcEndpoints, ep)
+		ep = strings.TrimSpace(ep)
+		if ep != bitcoin.DefaultMempoolEndpoint && ep != bitcoin.DefaultBlockstreamEndpoint {
+			// Custom user-configured Esplora endpoint has priority
+			btcEndpoints = append(btcEndpoints, ep)
+		}
 	}
+	// Mempool as primary default
+	btcEndpoints = append(btcEndpoints, bitcoin.DefaultMempoolEndpoint)
+	// Blockstream as failover default
+	btcEndpoints = append(btcEndpoints, bitcoin.DefaultBlockstreamEndpoint)
 
 	solanaEndpoint := ""
 	if ep, ok := customEndpoints[model.BlockchainNetworkSolana]; ok && ep != "" {

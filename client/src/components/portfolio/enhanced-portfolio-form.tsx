@@ -17,7 +17,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { PortfolioTaxWrapperField } from "./portfolio-form-fields";
 import {
 	type PortfolioFormData,
 	type PortfolioFormError,
@@ -27,6 +26,7 @@ import {
 	portfolioFormSchema,
 	portfolioValidationHelpers,
 } from "@/lib/validations/portfolio.schemas";
+import { PortfolioTaxWrapperField } from "./portfolio-form-fields";
 
 export interface EnhancedPortfolioFormProps {
 	/** Portfolio data for edit mode */

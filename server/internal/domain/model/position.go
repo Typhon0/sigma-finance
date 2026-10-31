@@ -17,9 +17,9 @@ type Position struct {
 	PortfolioID         string           `bun:"portfolio_id,notnull"`
 	AccountID           string           `bun:"account_id,notnull"`
 	AssetID             string           `bun:"asset_id,notnull"`
-	Quantity            decimal.Decimal  `bun:"quantity,type:decimal(20,8),notnull,default:0"`
+	Quantity            decimal.Decimal  `bun:"quantity,type:numeric,notnull,default:0"`
 	OwnershipPercentage decimal.Decimal  `bun:"ownership_percentage,type:decimal(5,2),default:100.00"`
-	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:decimal(20,8)"` // Cost per unit
+	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:numeric"` // Cost per unit
 	TotalCostBasis      *Money           `bun:"total_cost_basis"`                      // Total cost in cents
 	// RealizedGainLoss is the cumulative ECONOMIC realized P/L (average-cost
 	// method). It is deliberately a different number from the FISCAL

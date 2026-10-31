@@ -9,6 +9,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"time"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 )
 
@@ -168,9 +171,30 @@ func (r *queryResolver) SyncCredentials(ctx context.Context) ([]*gqlModel.SyncCr
 		return nil, err
 	}
 
+	hasKraken := false
 	res := make([]*gqlModel.SyncCredential, len(creds))
 	for i, c := range creds {
+		if strings.EqualFold(c.Provider, "KRAKEN") {
+			hasKraken = true
+		}
 		res[i] = mapSyncCredentialToGQL(c)
 	}
+
+	// If Kraken is not configured in DB but present in ENV, append virtual credential
+	if !hasKraken {
+		if krakenKey := strings.TrimSpace(os.Getenv("KRAKEN_API_KEY")); krakenKey != "" {
+			sourceEnv := "ENV"
+			now := time.Now()
+			res = append(res, &gqlModel.SyncCredential{
+				ID:        "env-kraken",
+				Provider:  "KRAKEN",
+				Status:    "ACTIVE",
+				Source:    &sourceEnv,
+				CreatedAt: now,
+				UpdatedAt: now,
+			})
+		}
+	}
+
 	return res, nil
 }

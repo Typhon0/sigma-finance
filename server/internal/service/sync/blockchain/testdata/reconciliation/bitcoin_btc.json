@@ -1,0 +1,30 @@
+{
+  "address": "bc1qgefekhtr7vu2w2dl3fvlvhswwx2d2exx9srjpy",
+  "chain_stats": {
+    "funded_txo_count": 1,
+    "funded_txo_sum": 900726,
+    "spent_txo_count": 0,
+    "spent_txo_sum": 0,
+    "tx_count": 1
+  },
+  "mempool_stats": {
+    "funded_txo_count": 0,
+    "funded_txo_sum": 0,
+    "spent_txo_count": 0,
+    "spent_txo_sum": 0,
+    "tx_count": 0
+  },
+  "utxos": [
+    {
+      "txid": "dbb71965bc5b9186d8fcfd0ca643a798c71e78178dbd46c1e3a645229d62a0c2",
+      "vout": 2,
+      "status": {
+        "confirmed": true,
+        "block_height": 868412,
+        "block_hash": "00000000000000000001a013c8295981dc8d0bf58dfd4a6a91e930677560fdc1",
+        "block_time": 1730467015
+      },
+      "value": 900726
+    }
+  ]
+}

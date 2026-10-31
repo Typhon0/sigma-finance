@@ -93,6 +93,21 @@ func (s *SyncService) RegisterCredential(ctx context.Context, userID string, pro
 		return nil, fmt.Errorf("credential validation failed: %w", err)
 	}
 
+	// Check if a credential already exists for this user and provider (upsert)
+	existing, getErr := s.uow.Sync().GetCredentialByProvider(ctx, userID, provider)
+	if getErr == nil && existing != nil {
+		existing.RawData = rawJSON
+		if err := existing.Encrypt(); err != nil {
+			return nil, fmt.Errorf("failed to encrypt credential: %w", err)
+		}
+		existing.Status = model.SyncCredentialStatusActive
+		existing.UpdatedAt = time.Now()
+		if err := s.uow.Sync().UpdateCredential(ctx, existing); err != nil {
+			return nil, fmt.Errorf("failed to update credential: %w", err)
+		}
+		return existing, nil
+	}
+
 	if err := cred.Encrypt(); err != nil {
 		return nil, fmt.Errorf("failed to encrypt credential: %w", err)
 	}
@@ -640,6 +655,12 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 			}
 		}
 
+		existingAccounts, _ := uow.Account().GetAccountsByPortfolioID(ctx, portfolioID)
+		usedAccountNames := make(map[string]bool)
+		for _, a := range existingAccounts {
+			usedAccountNames[a.Name] = true
+		}
+
 		for _, rawAcc := range rawAccounts {
 			conn, exists := existingByExtAccID[rawAcc.ExternalID]
 			if !exists {
@@ -663,10 +684,25 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 			}
 
 			if conn.AccountID == nil || *conn.AccountID == "" {
-				accountName := rawAcc.Name
-				if accountName == "" {
-					accountName = fmt.Sprintf("%s Account", conn.InstitutionName)
+				baseName := rawAcc.Name
+				if baseName == "" {
+					baseName = fmt.Sprintf("%s Account", conn.InstitutionName)
 				}
+				accountName := baseName
+				if usedAccountNames[accountName] {
+					suffix := rawAcc.ExternalID
+					if len(suffix) > 4 {
+						suffix = suffix[len(suffix)-4:]
+					}
+					if suffix != "" {
+						accountName = fmt.Sprintf("%s (%s)", baseName, suffix)
+					}
+					if usedAccountNames[accountName] {
+						accountName = fmt.Sprintf("%s (%s)", baseName, rawAcc.ExternalID)
+					}
+				}
+				usedAccountNames[accountName] = true
+
 				accountType := rawAcc.Type
 				if accountType == "" {
 					accountType = model.AccountTypeBroker

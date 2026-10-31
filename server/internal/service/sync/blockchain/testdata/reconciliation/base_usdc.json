@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "token": {
+        "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        "decimals": "6",
+        "name": "USD Coin",
+        "symbol": "USDC",
+        "type": "ERC-20"
+      },
+      "token_id": null,
+      "token_instance": null,
+      "value": "250000000"
+    }
+  ],
+  "next_page_params": null
+}

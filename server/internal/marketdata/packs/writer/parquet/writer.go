@@ -47,12 +47,12 @@ type parquetCandleRow struct {
 	AssetType     string    `parquet:"asset_type"`
 	Interval      string    `parquet:"interval"`
 	Timestamp     time.Time `parquet:"timestamp,timestamp(microsecond)"`
-	Open          []byte    `parquet:"open,decimal(18:38)"`
-	High          []byte    `parquet:"high,decimal(18:38)"`
-	Low           []byte    `parquet:"low,decimal(18:38)"`
-	Close         []byte    `parquet:"close,decimal(18:38)"`
-	AdjustedClose []byte    `parquet:"adjusted_close,decimal(18:38),optional"`
-	Volume        []byte    `parquet:"volume,decimal(8:38)"`
+	Open          [16]byte  `parquet:"open,decimal(18:38)"`
+	High          [16]byte  `parquet:"high,decimal(18:38)"`
+	Low           [16]byte  `parquet:"low,decimal(18:38)"`
+	Close         [16]byte  `parquet:"close,decimal(18:38)"`
+	AdjustedClose *[16]byte `parquet:"adjusted_close,optional"`
+	Volume        [16]byte  `parquet:"volume,decimal(8:38)"`
 	QuoteCurrency string    `parquet:"quote_currency"`
 	Source        string    `parquet:"source"`
 }
@@ -249,13 +249,13 @@ func toParquetRow(candle sources.NormalizedCandle) (parquetCandleRow, error) {
 		return parquetCandleRow{}, fmt.Errorf("encode volume for %s: %w", candle.Symbol, err)
 	}
 
-	var adjusted []byte
+	var adjusted *[16]byte
 	if candle.AdjustedClose != nil {
 		value, err := encodeDecimalFixed(*candle.AdjustedClose, priceScale, maxPrecision, decimalFixedLengthBytes)
 		if err != nil {
 			return parquetCandleRow{}, fmt.Errorf("encode adjusted_close for %s: %w", candle.Symbol, err)
 		}
-		adjusted = value
+		adjusted = &value
 	}
 
 	return parquetCandleRow{
@@ -275,14 +275,14 @@ func toParquetRow(candle sources.NormalizedCandle) (parquetCandleRow, error) {
 	}, nil
 }
 
-func encodeDecimalFixed(value decimal.Decimal, scale int32, precision int, size int) ([]byte, error) {
+func encodeDecimalFixed(value decimal.Decimal, scale int32, precision int, size int) ([16]byte, error) {
 	scaled := value.Shift(scale)
 	if !scaled.IsInteger() {
-		return nil, fmt.Errorf("value %s has more than %d fractional digits", value.String(), scale)
+		return [16]byte{}, fmt.Errorf("value %s has more than %d fractional digits", value.String(), scale)
 	}
 	unscaled := scaled.BigInt()
 	if digitsCount(unscaled) > precision {
-		return nil, fmt.Errorf("value %s exceeds decimal(%d,%d) precision", value.String(), precision, scale)
+		return [16]byte{}, fmt.Errorf("value %s exceeds decimal(%d,%d) precision", value.String(), precision, scale)
 	}
 
 	bits := uint(size * 8)
@@ -291,22 +291,22 @@ func encodeDecimalFixed(value decimal.Decimal, scale int32, precision int, size 
 	minNegative := new(big.Int).Lsh(big.NewInt(1), bits-1)
 	minNegative.Neg(minNegative)
 	if unscaled.Cmp(maxPositive) > 0 || unscaled.Cmp(minNegative) < 0 {
-		return nil, fmt.Errorf("value %s out of range for %d-byte two's complement", value.String(), size)
+		return [16]byte{}, fmt.Errorf("value %s out of range for %d-byte two's complement", value.String(), size)
 	}
 
 	if unscaled.Sign() >= 0 {
-		out := make([]byte, size)
-		unscaled.FillBytes(out)
+		var out [16]byte
+		unscaled.FillBytes(out[:])
 		return out, nil
 	}
 
 	modulus := new(big.Int).Lsh(big.NewInt(1), bits)
 	twos := new(big.Int).Add(modulus, unscaled)
 	if twos.Sign() < 0 {
-		return nil, fmt.Errorf("invalid negative value %s", value.String())
+		return [16]byte{}, fmt.Errorf("invalid negative value %s", value.String())
 	}
-	out := make([]byte, size)
-	twos.FillBytes(out)
+	var out [16]byte
+	twos.FillBytes(out[:])
 	return out, nil
 }
 

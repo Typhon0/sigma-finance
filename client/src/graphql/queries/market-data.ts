@@ -7,6 +7,7 @@ export const GET_MARKET_DATA_CREDENTIALS = gql`
       provider
       isEnabled
       priority
+      source
       lastValidatedAt
       createdAt
       updatedAt
@@ -85,6 +86,7 @@ export const GET_MARKET_DATA_SETTINGS = gql`
       provider
       isEnabled
       priority
+      source
       lastValidatedAt
       createdAt
       updatedAt

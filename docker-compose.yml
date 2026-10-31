@@ -28,6 +28,11 @@ services:
       - sigma-network
     restart: on-failure
     user: "1000:1000"
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   server:
     build:
@@ -49,18 +54,35 @@ services:
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - JWT_SECRET=${JWT_SECRET}
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      - ALCHEMY_API_KEY=${ALCHEMY_API_KEY}
       - MARKET_DATA_PACK_STORAGE_PATH=/data/market-data/packs
       - MARKET_DATA_PACK_REGISTRY_URL=file:///data/market-data/dist/registry.json
       - MARKET_DATA_AUTO_INSTALL=false
       - MARKET_DATA_DEFAULT_PACKS=core-daily
+      - LOGOS_STORAGE_PATH=/data/logos
+      - GOMEMLIMIT=512MiB
+      - GOGC=50
     volumes:
       - ./data/market-data:/data/market-data
+      - ./data/logos:/data/logos
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+          cpus: "1.0"
+        reservations:
+          memory: 128M
     depends_on:
       yfinance-service:
         condition: service_started
     networks:
       - sigma-network
     restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # postgres:
   #   image: postgres:15-alpine
@@ -83,6 +105,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: sigma-redis
+    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru --save ""
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.2"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -91,6 +119,11 @@ services:
     networks:
       - sigma-network
     restart: on-failure
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres-data:

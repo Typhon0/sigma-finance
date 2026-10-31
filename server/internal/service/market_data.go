@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"sigma_finance/internal/config"
 	"sigma_finance/internal/domain/model"
@@ -860,8 +861,15 @@ func (s *marketDataService) GetCurrentAssetPrice(ctx context.Context, assetID uu
 	// Get latest price from database
 	latestPrice, err := s.priceRepo.GetLatestPrice(ctx, assetIDStr)
 	if err != nil {
-		// If no price in database, try to fetch from external source
-		return s.fetchAndStoreAssetPriceFromProvider(ctx, asset, nil)
+		// If no price in database, kick off background fetch so the caller is not blocked
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+			defer cancel()
+			if _, bgErr := s.fetchAndStoreAssetPriceFromProvider(bgCtx, asset, nil); bgErr != nil {
+				log.Printf("[WARN] [GetAssetPrice] background price fetch failed for %s: %v", asset.Name, bgErr)
+			}
+		}()
+		return nil, fmt.Errorf("price not available yet for asset %s: %w", asset.Name, err)
 	}
 
 	// Check if price is stale
@@ -1306,27 +1314,49 @@ func (s *marketDataService) resolveInstrumentIDBySymbol(ctx context.Context, sym
 
 func (s *marketDataService) credentialStateByProvider(ctx context.Context, userID string) (map[string]userCredentialState, error) {
 	state := make(map[string]userCredentialState)
-	if strings.TrimSpace(userID) == "" {
-		return state, nil
-	}
+	if strings.TrimSpace(userID) != "" {
+		creds, err := s.credRepo.ListByUser(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
 
-	creds, err := s.credRepo.ListByUser(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, cred := range creds {
-		providerID := strings.ToUpper(strings.TrimSpace(cred.Provider))
-		apiKey := strings.TrimSpace(cred.APIKey)
-		if s.security != nil && apiKey != "" {
-			if decrypted, decryptErr := s.security.DecryptString(apiKey); decryptErr == nil {
-				apiKey = strings.TrimSpace(decrypted)
+		for _, cred := range creds {
+			providerID := strings.ToUpper(strings.TrimSpace(cred.Provider))
+			apiKey := strings.TrimSpace(cred.APIKey)
+			if s.security != nil && apiKey != "" {
+				if decrypted, decryptErr := s.security.DecryptString(apiKey); decryptErr == nil {
+					apiKey = strings.TrimSpace(decrypted)
+				}
+			}
+			state[providerID] = userCredentialState{
+				present: true,
+				enabled: cred.IsEnabled,
+				apiKey:  apiKey,
 			}
 		}
-		state[providerID] = userCredentialState{
-			present: true,
-			enabled: cred.IsEnabled,
-			apiKey:  apiKey,
+	}
+
+	// Environment variable fallback for unconfigured providers
+	envMappings := map[string][]string{
+		"TIINGO":       {"TIINGO_API_KEY"},
+		"FINNHUB":      {"FINNHUB_API_KEY"},
+		"ALPHAVANTAGE": {"ALPHA_VANTAGE_API_KEY", "ALPHAVANTAGE_API_KEY"},
+		"COINGECKO":    {"COINGECKO_API_KEY"},
+	}
+
+	for providerID, envKeys := range envMappings {
+		if _, exists := state[providerID]; !exists {
+			for _, k := range envKeys {
+				val := strings.TrimSpace(os.Getenv(k))
+				if val != "" {
+					state[providerID] = userCredentialState{
+						present: true,
+						enabled: true,
+						apiKey:  val,
+					}
+					break
+				}
+			}
 		}
 	}
 
@@ -2652,20 +2682,6 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 		}
 	}
 
-	provider, ok := s.providerManager.GetProvider("YFINANCE")
-	if !ok {
-		return nil, &HistoricalBackfillError{
-			Code:     "YFINANCE_UNAVAILABLE",
-			Provider: "YFINANCE",
-			Message:  "Yahoo Finance historical backfill provider is not registered; check YFINANCE_HOST/YFINANCE_PORT and sidecar startup",
-		}
-	}
-
-	providerSymbol, err := s.resolveYFinanceBackfillSymbol(ctx, provider, instrument)
-	if err != nil {
-		return nil, err
-	}
-
 	requestedFrom := normalizeUTCDate(from)
 	requestedTo := normalizeUTCDate(to)
 	if requestedTo.Before(requestedFrom) {
@@ -2679,8 +2695,8 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 	if err != nil {
 		return nil, &HistoricalBackfillError{
 			Code:     "BACKFILL_READ_FAILED",
-			Provider: provider.ID(),
-			Symbol:   providerSymbol,
+			Provider: "DATABASE",
+			Symbol:   instrument.Symbol,
 			Message:  "failed to inspect existing historical prices before backfill",
 			Err:      err,
 		}
@@ -2690,11 +2706,11 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 		RequestedFrom:  requestedFrom,
 		RequestedTo:    requestedTo,
 		FetchedWindows: len(missingWindows),
-		ProviderSymbol: providerSymbol,
+		ProviderSymbol: instrument.Symbol,
 	}
 	if len(missingWindows) == 0 {
 		outcome.SkippedAsCovered = true
-		log.Printf("[WARN] [BackfillAssetPrices] skipping fetch asset=%s instrument=%s symbol=%s from=%s to=%s reason=already_covered", assetID, instrumentID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly))
+		log.Printf("[WARN] [BackfillAssetPrices] skipping fetch asset=%s instrument=%s symbol=%s from=%s to=%s reason=already_covered", assetID, instrumentID, instrument.Symbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly))
 		return outcome, nil
 	}
 
@@ -2705,84 +2721,193 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 	toUpsert := make([]model.AssetPrice, 0, 512)
 	var firstAffected *time.Time
 	var lastAffected *time.Time
-	var returnedAnyCandles bool
 
-	for _, window := range missingWindows {
-		fetchFrom := window.Start
-		fetchTo := window.End.AddDate(0, 0, 1) // yfinance end is exclusive
-		resp, fetchErr := provider.GetCandles(ctx, providers.CandleRequest{
-			Symbol:    providerSymbol,
-			AssetType: string(instrument.AssetType),
-			Interval:  model.Interval1d,
-			From:      fetchFrom,
-			To:        fetchTo,
-			Limit:     5000,
+	// 1. Ingest historical candles from local market data packs / candle overlay store
+	if s.candleStore != nil {
+		quoteCurrency := strings.ToUpper(strings.TrimSpace(firstNonEmpty(
+			stringOrEmpty(instrument.QuoteCurrency),
+			stringOrEmpty(instrument.Currency),
+			"USD",
+		)))
+		storeTo := requestedTo.Add(24 * time.Hour)
+		packCandles, storeErr := s.candleStore.GetRange(ctx, marketdatastore.CandleRangeQuery{
+			InstrumentID:  instrument.ID,
+			Symbol:        instrument.Symbol,
+			AssetType:     string(instrument.AssetType),
+			Interval:      model.Interval1d,
+			From:          requestedFrom,
+			To:            storeTo,
+			QuoteCurrency: quoteCurrency,
 		})
-		if fetchErr != nil {
-			code := "HISTORY_FETCH_FAILED"
-			if isYFinanceSymbolNotFound(fetchErr) {
-				code = "YFINANCE_SYMBOL_NOT_FOUND"
-			}
-			log.Printf("[ERROR] [BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
-			return nil, &HistoricalBackfillError{
-				Code:     code,
-				Provider: provider.ID(),
-				Symbol:   providerSymbol,
-				Message:  fmt.Sprintf("failed to fetch Yahoo Finance history for symbol %s", providerSymbol),
-				Err:      fetchErr,
-			}
-		}
+		latestKnownPrice, _ := s.priceRepo.GetLatestPrice(ctx, assetID.String())
+		if storeErr == nil && len(packCandles) > 0 {
+			for _, candle := range packCandles {
+				if candle.Close.IsZero() || candle.Close.IsNegative() {
+					continue
+				}
+				// Pointer detector: drop candles with known pointer signature $295.147905..$295.147907
+				if candle.Close.GreaterThanOrEqual(decimal.NewFromFloat(295.147905)) && candle.Close.LessThanOrEqual(decimal.NewFromFloat(295.147907)) {
+					log.Printf("[WARN] [BackfillAssetPrices] rejecting corrupted pack candle: asset=%s symbol=%s date=%s price=%s (pointer signature match)", assetID, instrument.Symbol, candle.Timestamp.Format(time.DateOnly), candle.Close.String())
+					continue
+				}
+				// Relative jump guard: drop pack candles that deviate by > 1,000x from the asset's existing live price
+				if latestKnownPrice != nil && latestKnownPrice.Price.IsPositive() {
+					ratio := candle.Close.Div(latestKnownPrice.Price)
+					invRatio := latestKnownPrice.Price.Div(candle.Close)
+					if ratio.GreaterThan(decimal.NewFromInt(1000)) || invRatio.GreaterThan(decimal.NewFromInt(1000)) {
+						log.Printf("[WARN] [BackfillAssetPrices] rejecting anomalous pack candle: asset=%s symbol=%s date=%s price=%s vs latest=%s (>1,000x jump)", assetID, instrument.Symbol, candle.Timestamp.Format(time.DateOnly), candle.Close.String(), latestKnownPrice.Price.String())
+						continue
+					}
+				}
 
-		candles := []model.Candle(nil)
-		if resp != nil {
-			candles = resp.Candles
-		}
-		if len(candles) == 0 {
-			if fetchTo.Sub(fetchFrom) <= 72*time.Hour {
-				log.Printf("[INFO] [BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
-				continue
+				candidate := model.AssetPrice{
+					AssetID:   assetID.String(),
+					Price:     candle.Close,
+					Timestamp: candle.Timestamp.UTC(),
+					Source:    firstNonEmpty(candle.Source, "PACK"),
+				}
+				if candle.Volume.IsPositive() {
+					vol := candle.Volume.IntPart()
+					candidate.Volume = &vol
+				}
+				existingPrice, exists := pricesByTimestamp[candidate.Timestamp]
+				if exists && assetPriceEquals(existingPrice, candidate) {
+					outcome.RowsSkipped++
+					continue
+				}
+				if exists {
+					outcome.RowsUpdated++
+				} else {
+					outcome.RowsInserted++
+				}
+				pricesByTimestamp[candidate.Timestamp] = candidate
+				toUpsert = append(toUpsert, candidate)
+				ts := candidate.Timestamp
+				if firstAffected == nil || ts.Before(*firstAffected) {
+					firstAffected = &ts
+				}
+				if lastAffected == nil || ts.After(*lastAffected) {
+					lastAffected = &ts
+				}
 			}
-			log.Printf("[INFO] [BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
-			continue
-		}
-		returnedAnyCandles = true
-
-		for _, candle := range candles {
-			candidate := model.AssetPrice{
-				AssetID:   assetID.String(),
-				Price:     candle.Close,
-				Timestamp: candle.Timestamp.UTC(),
-				Source:    provider.ID(),
-			}
-			if candle.Volume.IsPositive() {
-				vol := candle.Volume.IntPart()
-				candidate.Volume = &vol
-			}
-			existingPrice, exists := pricesByTimestamp[candidate.Timestamp]
-			if exists && assetPriceEquals(existingPrice, candidate) {
-				outcome.RowsSkipped++
-				continue
-			}
-			if exists {
-				outcome.RowsUpdated++
-			} else {
-				outcome.RowsInserted++
-			}
-			pricesByTimestamp[candidate.Timestamp] = candidate
-			toUpsert = append(toUpsert, candidate)
-			ts := candidate.Timestamp
-			if firstAffected == nil || ts.Before(*firstAffected) {
-				firstAffected = &ts
-			}
-			if lastAffected == nil || ts.After(*lastAffected) {
-				lastAffected = &ts
-			}
+			log.Printf("[INFO] [BackfillAssetPrices] loaded %d candles from pack store for asset %s symbol=%s", len(packCandles), assetID, instrument.Symbol)
 		}
 	}
 
-	if !returnedAnyCandles {
-		outcome.RowsSkipped = len(missingWindows)
-		return outcome, nil
+	// 2. Determine remaining missing windows after pack ingestion
+	combined := make([]model.AssetPrice, 0, len(existing)+len(toUpsert))
+	combined = append(combined, existing...)
+	combined = append(combined, toUpsert...)
+	remainingWindows := buildMissingBackfillWindows(requestedFrom, requestedTo, combined, model.AssetType(instrument.AssetType))
+
+	// 3. Fallback to external provider (e.g. YFINANCE) for remaining windows
+	if len(remainingWindows) > 0 {
+		var windowsToFetch []backfillWindow
+		if len(toUpsert) > 0 && lastAffected != nil {
+			if requestedTo.After(*lastAffected) {
+				tailStart := lastAffected.AddDate(0, 0, 1)
+				if !requestedTo.Before(tailStart) {
+					windowsToFetch = []backfillWindow{{Start: tailStart, End: requestedTo}}
+				}
+			}
+		} else {
+			if len(remainingWindows) > 0 {
+				windowsToFetch = []backfillWindow{{Start: remainingWindows[0].Start, End: remainingWindows[len(remainingWindows)-1].End}}
+			}
+		}
+
+		if len(windowsToFetch) > 0 {
+			provider, ok := s.providerManager.GetProvider("YFINANCE")
+			if ok {
+				providerSymbol, err := s.resolveYFinanceBackfillSymbol(ctx, provider, instrument)
+				if err == nil && providerSymbol != "" {
+					outcome.ProviderSymbol = providerSymbol
+					for _, window := range windowsToFetch {
+						fetchFrom := window.Start
+						fetchTo := window.End.AddDate(0, 0, 1) // yfinance end is exclusive
+						resp, fetchErr := provider.GetCandles(ctx, providers.CandleRequest{
+							Symbol:    providerSymbol,
+							AssetType: string(instrument.AssetType),
+							Interval:  model.Interval1d,
+							From:      fetchFrom,
+							To:        fetchTo,
+							Limit:     5000,
+						})
+					if fetchErr != nil {
+						if len(toUpsert) > 0 {
+							log.Printf("[WARN] [BackfillAssetPrices] yfinance history fetch failed for remaining window asset=%s symbol=%s: %v", assetID, providerSymbol, fetchErr)
+							continue
+						}
+						code := "HISTORY_FETCH_FAILED"
+						if isYFinanceSymbolNotFound(fetchErr) {
+							code = "YFINANCE_SYMBOL_NOT_FOUND"
+						}
+						log.Printf("[ERROR] [BackfillAssetPrices] yfinance history fetch failed asset=%s instrument=%s symbol=%s code=%s err=%v", assetID, instrumentID, providerSymbol, code, fetchErr)
+						return nil, &HistoricalBackfillError{
+							Code:     code,
+							Provider: provider.ID(),
+							Symbol:   providerSymbol,
+							Message:  fmt.Sprintf("failed to fetch Yahoo Finance history for symbol %s", providerSymbol),
+							Err:      fetchErr,
+						}
+					}
+
+					candles := []model.Candle(nil)
+					if resp != nil {
+						candles = resp.Candles
+					}
+					if len(candles) == 0 {
+						if fetchTo.Sub(fetchFrom) <= 72*time.Hour {
+							log.Printf("[INFO] [BackfillAssetPrices] no candles for narrow window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.RFC3339), fetchTo.Format(time.RFC3339))
+							continue
+						}
+						log.Printf("[INFO] [BackfillAssetPrices] empty window asset=%s symbol=%s from=%s to=%s", assetID, providerSymbol, fetchFrom.Format(time.DateOnly), window.End.Format(time.DateOnly))
+						continue
+					}
+
+					for _, candle := range candles {
+						candidate := model.AssetPrice{
+							AssetID:   assetID.String(),
+							Price:     candle.Close,
+							Timestamp: candle.Timestamp.UTC(),
+							Source:    provider.ID(),
+						}
+						if candle.Volume.IsPositive() {
+							vol := candle.Volume.IntPart()
+							candidate.Volume = &vol
+						}
+						existingPrice, exists := pricesByTimestamp[candidate.Timestamp]
+						if exists && assetPriceEquals(existingPrice, candidate) {
+							outcome.RowsSkipped++
+							continue
+						}
+						if exists {
+							outcome.RowsUpdated++
+						} else {
+							outcome.RowsInserted++
+						}
+						pricesByTimestamp[candidate.Timestamp] = candidate
+						toUpsert = append(toUpsert, candidate)
+						ts := candle.Timestamp
+						if firstAffected == nil || ts.Before(*firstAffected) {
+							firstAffected = &ts
+						}
+						if lastAffected == nil || ts.After(*lastAffected) {
+							lastAffected = &ts
+						}
+					}
+				}
+			} else if len(toUpsert) == 0 {
+				return nil, err
+			}
+		} else if len(toUpsert) == 0 {
+			return nil, &HistoricalBackfillError{
+				Code:     "YFINANCE_UNAVAILABLE",
+				Provider: "YFINANCE",
+				Message:  "Yahoo Finance historical backfill provider is not registered; check YFINANCE_HOST/YFINANCE_PORT and sidecar startup",
+			}
+		}
+	}
 	}
 
 	if len(toUpsert) == 0 {
@@ -2790,20 +2915,33 @@ func (s *marketDataService) BackfillAssetPrices(ctx context.Context, userID stri
 		return outcome, nil
 	}
 
-	if err := s.priceRepo.UpsertPrices(ctx, toUpsert); err != nil {
+	// Deduplicate toUpsert by timestamp to avoid PostgreSQL "ON CONFLICT DO UPDATE cannot affect row a second time"
+	dedupedUpsertMap := make(map[time.Time]model.AssetPrice, len(toUpsert))
+	for _, p := range toUpsert {
+		dedupedUpsertMap[p.Timestamp] = p
+	}
+	dedupedUpsert := make([]model.AssetPrice, 0, len(dedupedUpsertMap))
+	for _, p := range dedupedUpsertMap {
+		dedupedUpsert = append(dedupedUpsert, p)
+	}
+	sort.Slice(dedupedUpsert, func(i, j int) bool {
+		return dedupedUpsert[i].Timestamp.Before(dedupedUpsert[j].Timestamp)
+	})
+
+	if err := s.priceRepo.UpsertPrices(ctx, dedupedUpsert); err != nil {
 		return nil, &HistoricalBackfillError{
 			Code:     "BACKFILL_WRITE_FAILED",
-			Provider: provider.ID(),
-			Symbol:   providerSymbol,
-			Message:  "failed to store Yahoo Finance historical prices",
+			Provider: "HYBRID",
+			Symbol:   outcome.ProviderSymbol,
+			Message:  "failed to store historical prices",
 			Err:      err,
 		}
 	}
 
-	outcome.RowsTouched = len(toUpsert)
+	outcome.RowsTouched = len(dedupedUpsert)
 	outcome.AffectedFrom = firstAffected
 	outcome.AffectedTo = lastAffected
-	log.Printf("[INFO] [BackfillAssetPrices] Successfully backfilled %d changed prices for asset %s symbol=%s from %s to %s windows=%d", len(toUpsert), assetID, providerSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly), len(missingWindows))
+	log.Printf("[INFO] [BackfillAssetPrices] Successfully backfilled %d changed prices for asset %s symbol=%s from %s to %s windows=%d", len(toUpsert), assetID, outcome.ProviderSymbol, requestedFrom.Format(time.DateOnly), requestedTo.Format(time.DateOnly), len(missingWindows))
 	return outcome, nil
 }
 
@@ -2945,6 +3083,9 @@ func (s *marketDataService) resolveYFinanceBackfillSymbol(ctx context.Context, p
 func isGenericBackfillSymbol(symbol string) bool {
 	normalized := strings.ToUpper(strings.TrimSpace(symbol))
 	if normalized == "" {
+		return true
+	}
+	if strings.Contains(normalized, ":") || strings.HasPrefix(normalized, "0X") {
 		return true
 	}
 	switch normalized {

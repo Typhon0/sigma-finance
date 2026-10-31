@@ -9,6 +9,8 @@ interface BenchmarkComparisonCardProps {
 	benchmarkComparison: BenchmarkComparisonData | null;
 	isRecommended: boolean;
 	setActiveTab: (tab: string) => void;
+	/** No card of its own: the insight strip owns the surface. */
+	bare?: boolean;
 }
 
 export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
@@ -16,18 +18,30 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 	benchmarkComparison,
 	isRecommended,
 	setActiveTab,
+	bare = false,
 }: BenchmarkComparisonCardProps) {
+	const Wrapper = bare ? "div" : Card;
+
 	return (
-		<Card
+		<Wrapper
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className={cn(
+				"relative flex flex-col justify-between",
+				!bare &&
+					"overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out",
+			)}
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
-						vs S&P 500
+					<span
+						className={cn(
+							"text-muted-foreground",
+							bare ? "text-xs font-medium" : "text-micro font-bold uppercase tracking-widest",
+						)}
+					>
+						vs S&amp;P 500
 					</span>
-					{isRecommended && (
+					{isRecommended && !bare && (
 						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
@@ -35,7 +49,7 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 				</div>
 
 				{benchmarkComparison ? (
-					<div className="space-y-3">
+					<div className={cn("space-y-3", bare && "space-y-1")}>
 						<div className="flex items-baseline gap-1.5">
 							<span
 								className={cn(
@@ -49,9 +63,9 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 							<span className="text-xs text-muted-foreground font-semibold">outperformance</span>
 						</div>
 
-						<div className="space-y-2 mt-1">
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span className="text-muted-foreground font-medium">Your return</span>
+						{bare ? (
+							<p className="text-micro text-muted-foreground">
+								You{" "}
 								<span
 									className={cn(
 										"font-mono font-semibold",
@@ -60,17 +74,41 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 								>
 									{benchmarkComparison.portfolioReturn >= 0 ? "+" : ""}
 									{benchmarkComparison.portfolioReturn.toFixed(1)}%
-								</span>
-							</div>
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span className="text-muted-foreground font-medium">S&P 500 Return</span>
-								<span className="font-mono font-semibold text-muted-foreground">
+								</span>{" "}
+								· S&amp;P 500{" "}
+								<span className="font-mono font-semibold text-foreground">
 									{benchmarkComparison.sp500Return >= 0 ? "+" : ""}
 									{benchmarkComparison.sp500Return.toFixed(1)}%
 								</span>
+							</p>
+						) : (
+							<div className="space-y-2 mt-1">
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span className="text-muted-foreground font-medium">Your return</span>
+									<span
+										className={cn(
+											"font-mono font-semibold",
+											benchmarkComparison.portfolioReturn >= 0 ? "text-gain" : "text-loss",
+										)}
+									>
+										{benchmarkComparison.portfolioReturn >= 0 ? "+" : ""}
+										{benchmarkComparison.portfolioReturn.toFixed(1)}%
+									</span>
+								</div>
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span className="text-muted-foreground font-medium">S&amp;P 500 Return</span>
+									<span className="font-mono font-semibold text-muted-foreground">
+										{benchmarkComparison.sp500Return >= 0 ? "+" : ""}
+										{benchmarkComparison.sp500Return.toFixed(1)}%
+									</span>
+								</div>
 							</div>
-						</div>
+						)}
 					</div>
+				) : bare ? (
+					<p className="text-xs text-muted-foreground">
+						Needs purchase history to compare against an index.
+					</p>
 				) : (
 					<div className="flex flex-col items-center justify-center text-center h-[130px] gap-1.5 py-4">
 						<TrendingUp className="h-6 w-6 text-muted-foreground/40 shrink-0" />
@@ -82,7 +120,7 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 				)}
 			</div>
 
-			{benchmarkComparison && (
+			{benchmarkComparison && !bare && (
 				<div className="flex justify-end mt-2 z-10">
 					<button
 						type="button"
@@ -93,6 +131,6 @@ export const BenchmarkComparisonCard = memo(function BenchmarkComparisonCard({
 					</button>
 				</div>
 			)}
-		</Card>
+		</Wrapper>
 	);
 });

@@ -14,17 +14,17 @@ import (
 )
 
 type mockSyncService struct {
-	registerAdapterFn        func(adapter syncservice.SyncAdapter)
-	triggerSyncFn            func(ctx context.Context, connectionID string) (*model.SyncRun, error)
-	triggerAccountSyncFn     func(ctx context.Context, accountID string) (*model.SyncRun, error)
-	registerCredentialFn     func(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
-	linkAccountFn            func(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
-	getConnectionFn          func(ctx context.Context, connectionID string) (*model.SyncConnection, error)
-	listConnectionsFn        func(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
-	listCredentialsFn        func(ctx context.Context, userID string) ([]*model.SyncCredential, error)
-	getAdapterFn             func(provider string) (syncservice.SyncAdapter, bool)
-	generateAggregatorLinkFn func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
-	completeAggregatorAuthFn func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
+	registerAdapterFn              func(adapter syncservice.SyncAdapter)
+	triggerSyncFn                  func(ctx context.Context, connectionID string) (*model.SyncRun, error)
+	triggerAccountSyncFn           func(ctx context.Context, accountID string) (*model.SyncRun, error)
+	registerCredentialFn           func(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
+	linkAccountFn                  func(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
+	getConnectionFn                func(ctx context.Context, connectionID string) (*model.SyncConnection, error)
+	listConnectionsFn              func(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
+	listCredentialsFn              func(ctx context.Context, userID string) ([]*model.SyncCredential, error)
+	getAdapterFn                   func(provider string) (syncservice.SyncAdapter, bool)
+	generateAggregatorLinkFn       func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
+	completeAggregatorAuthFn       func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
 	discoverAndCreateConnectionsFn func(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
 }
 

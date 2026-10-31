@@ -43,11 +43,29 @@ export function ThemeProvider({
 		return isTheme(storedTheme) ? storedTheme : defaultTheme;
 	});
 	const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() => {
+		if (typeof document !== "undefined" && document.documentElement.classList.contains("dark")) {
+			return "dark";
+		}
 		if (theme === "system") {
 			return getSystemTheme();
 		}
 		return theme;
 	});
+
+	// Keep resolvedTheme in sync if the document dark class changes externally (e.g. ThemeChooser)
+	useEffect(() => {
+		const root = window.document.documentElement;
+		const observer = new MutationObserver(() => {
+			const isDark = root.classList.contains("dark");
+			setResolvedTheme((prev) => {
+				const next = isDark ? "dark" : "light";
+				return prev === next ? prev : next;
+			});
+		});
+
+		observer.observe(root, { attributes: true, attributeFilter: ["class"] });
+		return () => observer.disconnect();
+	}, []);
 
 	useEffect(() => {
 		const root = window.document.documentElement;

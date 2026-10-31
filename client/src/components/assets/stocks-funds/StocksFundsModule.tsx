@@ -1,4 +1,5 @@
 import { useQuery } from "@apollo/client";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
 	Activity,
 	AlertTriangle,
@@ -15,21 +16,17 @@ import {
 	Sliders,
 	X,
 } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { memo, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { PerformerPanel } from "@/components/assets/stocks-funds/PerformerPanel";
 import type { InsightFilter as DistributionInsightFilter } from "@/components/assets/stocks-funds/StocksDistributionWidget";
 import { StocksDistributionWidget } from "@/components/assets/stocks-funds/StocksDistributionWidget";
-import {
-	filterByRange,
-	PortfolioHeroChart as SharedPortfolioHeroChart,
-} from "@/components/charts/PortfolioHeroChart";
+import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts";
 import { BenchmarkComparisonCard } from "@/components/insights/BenchmarkComparisonCard";
 import { CurrencyExposureCard } from "@/components/insights/CurrencyExposureCard";
 import { FeesTerCard } from "@/components/insights/FeesTerCard";
 import { IncomeForecastCard } from "@/components/insights/IncomeForecastCard";
 import { MissingDataCard } from "@/components/insights/MissingDataCard";
-import { PerformanceDriversCard } from "@/components/insights/PerformanceDriversCard";
 import { PortfolioHealthCard } from "@/components/insights/PortfolioHealthCard";
 import { DEFAULT_TARGET_WEIGHTS, RebalancingCard } from "@/components/insights/RebalancingCard";
 import type { FeesTerData } from "@/components/insights/types";
@@ -39,7 +36,6 @@ import { resolvePositionValue } from "@/components/stocks-funds/position-value";
 import type { Asset as StockAsset } from "@/components/stocks-funds/types";
 import { TrendArrowUp } from "@/components/TrendArrows";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -47,12 +43,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import ErrorBoundary from "@/components/ui/error-boundary";
 import {
 	Sheet,
@@ -68,6 +58,7 @@ import { GET_SCOPED_PERFORMANCE_HISTORY } from "@/graphql/queries/portfolios";
 import { useCurrency } from "@/hooks/use-currency";
 import { usePortfolioRiskMetrics } from "@/hooks/use-portfolio-risk-metrics";
 import { useBenchmarkInstrumentId } from "@/hooks/useBenchmarkInstrumentId";
+import { computePortfolioPnl, computePositionPnl } from "@/lib/money/pnl";
 import { allocatePercentages, fromMinorUnits, sumMoney, toMinorUnits } from "@/lib/money/rounding";
 import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
@@ -86,13 +77,6 @@ interface StocksFundsModuleProps {
 }
 
 type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
-type BenchmarkMode = "none" | "sp500" | "nasdaq" | "btc";
-
-interface PerformancePoint {
-	date: Date;
-	portfolioValue: number;
-	benchmarkValue: number;
-}
 
 export interface RawAsset {
 	id?: string;
@@ -196,20 +180,20 @@ export function computeFeesTerData(funds: StockAsset[]): FeesTerData {
  */
 function InsightCardSkeleton() {
 	return (
-		<Card
-			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between"
+		<div
+			className="flex flex-col justify-between gap-3 py-4 md:px-6 md:py-0 md:first:pl-0 md:last:pr-0"
 			aria-busy="true"
 		>
 			<span className="sr-only">Loading insight…</span>
-			<div className="space-y-3">
-				<Skeleton className="h-2.5 w-24" />
-				<Skeleton className="h-7 w-32" />
-			</div>
 			<div className="space-y-2">
-				<Skeleton className="h-3 w-full" />
-				<Skeleton className="h-3 w-4/5" />
+				<Skeleton className="h-2.5 w-24" />
+				<Skeleton className="h-6 w-28" />
 			</div>
-		</Card>
+			<div className="space-y-1.5">
+				<Skeleton className="h-2.5 w-full" />
+				<Skeleton className="h-2.5 w-4/5" />
+			</div>
+		</div>
 	);
 }
 
@@ -225,13 +209,13 @@ function InsightCardSkeleton() {
  * Shared by the first-render initializer and the "Reset to Smart Defaults"
  * action so both stay in sync.
  */
-const INSIGHT_CARD_SMART_DEFAULTS = ["performance-drivers", "portfolio-health", "income-forecast"];
+const INSIGHT_CARD_SMART_DEFAULTS = ["performers", "portfolio-health", "income-forecast"];
 
 const INSIGHT_CARD_CATALOGUE = [
 	{
-		id: "performance-drivers",
-		title: "Performance Drivers",
-		description: "Explains why the portfolio moved with top contributors and worst draggers.",
+		id: "performers",
+		title: "Top & Bottom Performers",
+		description: "Ranks holdings by session move or unrealized return, in money or in rate.",
 		icon: TrendArrowUp,
 	},
 	{
@@ -321,25 +305,24 @@ export function normalizeStockAssets(
 		// same-currency basis keeps the local math - no FX was involved.
 		// Without a display-currency basis the P&L itself is unknowable: null
 		// suppresses both the dollar figure and the percentage.
-		let totalReturn: number | null = null;
-		let totalReturnPercentage = 0;
-		if (canShowPercentage) {
-			if (
-				fx.basis === "converted-basis" &&
-				fx.displayValue !== null &&
-				fx.costBasisDisplay !== null
-			) {
-				if (fx.costBasisDisplay > 0) {
-					totalReturn = fx.displayValue - fx.costBasisDisplay;
-					totalReturnPercentage = (totalReturn / fx.costBasisDisplay) * 100;
-				} else {
-					totalReturn = 0;
-				}
-			} else if (costBasis > 0) {
-				totalReturn = totalPositionValue - costBasis;
-				totalReturnPercentage = (totalReturn / costBasis) * 100;
-			}
-		}
+		// Which value/basis pair the return describes follows the basis: a
+		// converted basis uses the server's display-currency sums; a same-currency
+		// basis keeps the local price math. The shared helper owns the arithmetic
+		// and the "unknown basis" rule, so this module and crypto cannot drift.
+		const basisValue =
+			fx.basis === "converted-basis" && fx.displayValue !== null
+				? fx.displayValue
+				: totalPositionValue;
+		const basisCost =
+			fx.basis === "converted-basis" && fx.costBasisDisplay !== null
+				? fx.costBasisDisplay
+				: costBasis;
+		const positionPnl = computePositionPnl(basisValue, basisCost);
+		// Two independent gates must both allow a figure: the server decides
+		// whether a percentage is meaningful at all, the helper decides whether
+		// there is a cost basis to measure against.
+		const totalReturn = canShowPercentage ? positionPnl.pnl : null;
+		const totalReturnPercentage = (canShowPercentage ? positionPnl.pnlPercent : null) ?? 0;
 		// Presence and value are resolved separately: a missing day-change
 		// figure is not a flat session, so the detail panel hides the delta
 		// instead of printing $0.00. Same resolution as the holdings table.
@@ -395,307 +378,7 @@ export function normalizeStockAssets(
 	});
 }
 
-/** Session-scoped latch so the dev tripwire below cannot spam the console. */
-let warnedPerformanceMismatch = false;
-
-function buildPerformanceSeries(
-	history: Array<{ date: string; value: number }>,
-	fallbackValue: number,
-): PerformancePoint[] {
-	if (history.length === 0) {
-		const fallbackDate = new Date();
-		return [
-			{
-				date: fallbackDate,
-				portfolioValue: fallbackValue,
-				benchmarkValue: fallbackValue,
-			},
-		];
-	}
-
-	const points = history
-		.map((point) => ({
-			date: new Date(point.date),
-			portfolioValue: toFiniteNumber(point.value, fallbackValue),
-		}))
-		.sort((a, b) => a.date.getTime() - b.date.getTime());
-
-	// Dev-only tripwire for the bug this used to ship: a unit or scope mismatch
-	// between the history feed and the live total (cents vs major units, or a
-	// whole-portfolio curve paired with a subset subtotal) showed up as an axis
-	// that contradicted the headline. A lagging tail is legitimate, so only
-	// order-of-magnitude breaks are flagged, once per session.
-	if (import.meta.env.DEV && import.meta.env.MODE !== "test" && fallbackValue > 0) {
-		const tail = points[points.length - 1]?.portfolioValue ?? 0;
-		const ratio = tail / fallbackValue;
-		if ((ratio > 2.5 || ratio < 0.4) && !warnedPerformanceMismatch) {
-			warnedPerformanceMismatch = true;
-			// biome-ignore lint/suspicious/noConsole: dev-only tripwire for the axis/headline mismatch bug
-			console.warn(
-				`[StocksFunds] performance tail ${tail.toFixed(2)} vs live total ${fallbackValue.toFixed(2)} (x${ratio.toFixed(2)}) — check units/scope`,
-			);
-		}
-	}
-
-	return points.map((point) => ({
-		date: point.date,
-		portfolioValue: point.portfolioValue,
-		benchmarkValue: point.portfolioValue,
-	}));
-}
-
-function SignedDelta({
-	value,
-	percent,
-	label,
-	title,
-	formatCurrency,
-}: {
-	value: number;
-	percent: number | null;
-	label: string;
-	title: string;
-	formatCurrency: (value: number) => string;
-}) {
-	const isUp = value >= 0;
-	return (
-		<span
-			className={cn(
-				"inline-flex items-center gap-1.5 text-sm font-semibold",
-				isUp ? "text-gain" : "text-loss",
-			)}
-			title={title}
-		>
-			<span className="font-mono tabular-nums">
-				{isUp ? "+" : ""}
-				{formatCurrency(value)}
-				{percent !== null && ` (${isUp ? "+" : ""}${percent.toFixed(2)}%)`}
-			</span>
-			<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
-				{label}
-			</span>
-		</span>
-	);
-}
-
-interface PortfolioHeroChartProps {
-	data: PerformancePoint[];
-	totalEquity: number;
-	totalGain?: number;
-	totalGainPercent?: number;
-	formatCurrency: (value: number) => string;
-	timeRange: TimeRange;
-	onTimeRangeChange: (range: TimeRange) => void;
-	portfolioID?: string;
-	loading?: boolean;
-}
-
-const PortfolioHeroChart = memo(function PortfolioHeroChart({
-	data,
-	totalEquity,
-	totalGain,
-	totalGainPercent,
-	formatCurrency,
-	timeRange,
-	onTimeRangeChange,
-	portfolioID,
-	loading = false,
-}: PortfolioHeroChartProps) {
-	const shouldReduceMotion = useReducedMotion();
-	const [benchmarkMode, setBenchmarkMode] = useState<BenchmarkMode>("sp500");
-	const benchmarkName =
-		benchmarkMode === "sp500"
-			? "S&P 500"
-			: benchmarkMode === "nasdaq"
-				? "NASDAQ 100"
-				: benchmarkMode === "btc"
-					? "Bitcoin"
-					: "Benchmark";
-
-	const rangeData = useMemo(() => filterByRange(data, timeRange), [data, timeRange]);
-
-	// The header displays the single performance delta for the active timeframe:
-	// 1D when 1D is selected, range delta when a multi-day range is selected, or
-	// all-time performance when ALL is active.
-	const activeDelta = useMemo(() => {
-		if (data.length < 2) {
-			if (timeRange === "ALL" && totalGain !== undefined && totalGainPercent !== undefined) {
-				return {
-					value: totalGain,
-					percent: totalGainPercent,
-					label: "All-Time",
-					title: "Unrealized gain/loss based on current holdings vs cost basis",
-				};
-			}
-			return null;
-		}
-
-		if (timeRange === "1D") {
-			const latestPoint = data[data.length - 1];
-			const cutoff = latestPoint.date.getTime() - 24 * 60 * 60 * 1000;
-			let priorPoint: PerformancePoint | null = null;
-			for (const point of data) {
-				if (point.date.getTime() <= cutoff) priorPoint = point;
-				else break;
-			}
-
-			// When weekend or market closure causes identical consecutive prices (latest === priorPoint),
-			// look back to the most recent trading session with a price movement for a meaningful 1D delta.
-			if (priorPoint && latestPoint.portfolioValue === priorPoint.portfolioValue) {
-				for (let i = data.length - 2; i >= 0; i--) {
-					if (data[i].portfolioValue !== latestPoint.portfolioValue) {
-						priorPoint = data[i];
-						break;
-					}
-				}
-			}
-
-			if (priorPoint) {
-				const dayDelta = latestPoint.portfolioValue - priorPoint.portfolioValue;
-				return {
-					value: dayDelta,
-					percent: priorPoint.portfolioValue > 0 ? (dayDelta / priorPoint.portfolioValue) * 100 : null,
-					label: "1D",
-					title: "Change over the last trading session",
-				};
-			}
-		}
-
-		// Calculate delta across the active time range (e.g. 7D, 1M, 3M, YTD, 1Y, ALL)
-		const latestPoint = data[data.length - 1];
-		const rangeStartPoint = rangeData.length > 0 ? rangeData[0] : data[0];
-		const rangeDelta = latestPoint.portfolioValue - rangeStartPoint.portfolioValue;
-
-		return {
-			value: rangeDelta,
-			percent:
-				rangeStartPoint.portfolioValue > 0
-					? (rangeDelta / rangeStartPoint.portfolioValue) * 100
-					: null,
-			label: timeRange === "ALL" ? "All-Time" : timeRange,
-			title: `Change over the selected ${timeRange === "ALL" ? "all-time" : timeRange} period`,
-		};
-	}, [data, rangeData, timeRange, totalGain, totalGainPercent]);
-
-	return (
-		<div className="flex flex-col space-y-4">
-			{/* ECharts Header */}
-			<div className="flex flex-col justify-between gap-3 border-b border-border/10 pb-3 sm:flex-row sm:items-center">
-				<div className="flex flex-col">
-					<span
-						className="text-micro font-bold uppercase tracking-wider text-muted-foreground"
-						title="Total value of the stocks and funds held in this portfolio"
-					>
-						Stocks & Funds Value
-					</span>
-					<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-						<span className="font-mono text-[2rem] leading-8 font-bold tracking-tight text-foreground">
-							{formatCurrency(totalEquity)}
-						</span>
-						<motion.div
-							key={`${timeRange}-${benchmarkMode}`}
-							initial={shouldReduceMotion ? false : { opacity: 0.5, y: -2 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-							className="flex flex-wrap items-center gap-x-3 gap-y-1"
-						>
-							{activeDelta && (
-								<SignedDelta
-									value={activeDelta.value}
-									percent={activeDelta.percent}
-									label={activeDelta.label}
-									title={activeDelta.title}
-									formatCurrency={formatCurrency}
-								/>
-							)}
-						</motion.div>
-					</div>
-				</div>
-
-				{/* Chart controls (benchmark picker + range pills) are hidden on
-				    phones per DESIGN.md — "hide chart controls below 768px". */}
-				<div className="hidden md:flex items-center gap-2">
-					<div className="flex items-center rounded-full bg-secondary/35 border border-border/50 p-0.5">
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 gap-1 rounded-full px-2.5 text-micro text-muted-foreground hover:text-foreground cursor-pointer active:translate-y-px"
-								>
-									{benchmarkMode === "none" ? "No Benchmark" : `vs ${benchmarkName}`}
-									<ChevronDown className="h-2.5 w-2.5" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem onClick={() => setBenchmarkMode("none")}>None</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setBenchmarkMode("sp500")}>
-									S&P 500
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setBenchmarkMode("nasdaq")}>
-									NASDAQ 100
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setBenchmarkMode("btc")}>
-									Bitcoin (BTC)
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-
-						<div className="h-3 w-[1px] bg-border/40 mx-1" />
-
-						{(["1D", "7D", "1M", "3M", "YTD", "1Y", "ALL"] as const).map((range) => {
-							const isSelected = timeRange === range;
-							return (
-								<Button
-									key={range}
-									variant="ghost"
-									size="sm"
-									aria-pressed={isSelected}
-									aria-label={`Show ${range} performance`}
-									className={cn(
-										"relative h-9 rounded-full px-3 text-micro font-semibold transition-colors duration-150 min-w-[36px] cursor-pointer active:translate-y-px",
-										isSelected
-											? "text-foreground font-bold"
-											: "text-muted-foreground hover:text-foreground",
-									)}
-									onClick={() => onTimeRangeChange(range)}
-								>
-									{isSelected && (
-										<motion.span
-											layoutId="heroRangePillActive"
-											className="absolute inset-0 rounded-full bg-secondary-foreground/15 shadow-xs"
-											transition={
-												shouldReduceMotion
-													? { duration: 0 }
-													: { type: "spring", stiffness: 500, damping: 35 }
-											}
-										/>
-									)}
-									<span className="relative z-10">{range}</span>
-								</Button>
-							);
-						})}
-					</div>
-				</div>
-			</div>
-
-			{/* ECharts view using the shared chart with real benchmark comparison */}
-			<div className="h-[250px] w-full relative">
-				<SharedPortfolioHeroChart
-					data={data}
-					totalEquity={totalEquity}
-					formatCurrency={formatCurrency}
-					timeRange={timeRange}
-					benchmarkMode={benchmarkMode}
-					portfolioID={portfolioID}
-					loading={loading}
-				/>
-			</div>
-		</div>
-	);
-});
-
-type ActiveTab = "positions" | "insights" | "transactions";
+type ActiveTab = "positions" | "transactions";
 
 export function StocksFundsModule({
 	onBack,
@@ -705,6 +388,8 @@ export function StocksFundsModule({
 	detailMode = "panel",
 }: StocksFundsModuleProps) {
 	const shouldReduceMotion = useReducedMotion();
+	const showInsightsSection =
+		typeof window !== "undefined" && localStorage.getItem("sf_show_insights_strip") === "true";
 	const [activeTab, setActiveTab] = useState<ActiveTab>("positions");
 	const [isAddOpen, setIsAddOpen] = useState(false);
 	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
@@ -793,7 +478,13 @@ export function StocksFundsModule({
 		try {
 			const saved = localStorage.getItem("sf_insight_selected_cards");
 			if (saved) {
-				return JSON.parse(saved);
+				const parsed: unknown = JSON.parse(saved);
+				if (Array.isArray(parsed)) {
+					// The starved "performance-drivers" card became "performers". A
+					// stored selection from before that rename must keep working
+					// instead of rendering an empty slot.
+					return parsed.map((id) => (id === "performance-drivers" ? "performers" : String(id)));
+				}
 			}
 		} catch {}
 		return [...INSIGHT_CARD_SMART_DEFAULTS];
@@ -826,6 +517,28 @@ export function StocksFundsModule({
 		}
 		return false;
 	});
+
+	// Default insights to collapsed on desktop & mobile so the holdings table
+	// takes immediate precedence. Users can toggle it open anytime.
+	const [insightsOpen, setInsightsOpen] = useState(() => {
+		if (typeof window !== "undefined") {
+			try {
+				const saved = localStorage.getItem("sf_insights_expanded");
+				if (saved !== null) return saved === "true";
+			} catch {}
+		}
+		return false;
+	});
+
+	const toggleInsightsOpen = useCallback(() => {
+		setInsightsOpen((prev) => {
+			const next = !prev;
+			try {
+				localStorage.setItem("sf_insights_expanded", String(next));
+			} catch {}
+			return next;
+		});
+	}, []);
 
 	const [targetWeights, setTargetWeights] = useState<Record<string, number>>(() => {
 		try {
@@ -923,8 +636,8 @@ export function StocksFundsModule({
 			return {
 				totalValue: 0,
 				totalCost: 0,
-				totalGain: 0,
-				totalGainPercent: 0,
+				totalGain: null as number | null,
+				totalGainPercent: null as number | null,
 				sortedByValue: [] as StockAsset[],
 				sectorValueMap: new Map<string, number>(),
 				currencyValueMap: new Map<string, number>(),
@@ -940,7 +653,9 @@ export function StocksFundsModule({
 		// cent-value sum of the rows, not a float sum that can drift by ~1e-13.
 		let totalValueMinor = 0;
 		let totalValue = 0;
-		let totalCost = 0;
+		// Value/cost pairs for the shared P&L helper, which is the single source
+		// of truth for how unpriced positions are treated.
+		const pnlInputs: Array<{ value: number; cost: number }> = [];
 		const sectorValueMap = new Map<string, number>();
 		const currencyValueMap = new Map<string, number>();
 		const dividendAssets: StockAsset[] = [];
@@ -952,7 +667,7 @@ export function StocksFundsModule({
 		for (const asset of assets) {
 			totalValueMinor += toMinorUnits(asset.totalValue);
 			const costBasis = asset.avgCost * asset.quantity;
-			totalCost += costBasis;
+			pnlInputs.push({ value: asset.totalValue, cost: costBasis });
 
 			// Sector map
 			const sec = asset.sector || "Other";
@@ -999,8 +714,13 @@ export function StocksFundsModule({
 		gainContributors.sort((a, b) => b.gain - a.gain);
 
 		const sortedByValue = [...assets].sort((a, b) => b.totalValue - a.totalValue);
-		const totalGain = totalValue - totalCost;
-		const totalGainPercent = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+		// Only positions with a known cost basis contribute to the gain, and the
+		// total is withheld entirely when too little of the portfolio is priced —
+		// otherwise unpriced holdings book their whole value as profit.
+		const pnlTotals = computePortfolioPnl(pnlInputs);
+		const totalGain = pnlTotals.pnl;
+		const totalGainPercent = pnlTotals.pnlPercent;
+		const totalCost = pnlTotals.coveredCost;
 
 		return {
 			totalValue,
@@ -1019,7 +739,7 @@ export function StocksFundsModule({
 	}, [normalizedAssets]);
 
 	// Destructure for convenience
-	const { totalValue, totalCost, totalGain } = assetPrecomputed;
+	const { totalValue } = assetPrecomputed;
 
 	// biome-ignore lint/correctness/noUnusedVariables: used by insight cards & template
 	const totalGainPercent = assetPrecomputed.totalGainPercent;
@@ -1066,30 +786,46 @@ export function StocksFundsModule({
 	// the snapshots. The previous pairing — stocks subtotal headline over the
 	// portfolio-wide series — produced a chart axis that contradicted the
 	// headline on mixed portfolios: a $6.6K headline over a $68K–$78K axis.
-	const { data: scopedHistoryData, loading: scopedHistoryLoading } = useQuery(
-		GET_SCOPED_PERFORMANCE_HISTORY,
-		{
-			variables: {
-				portfolioID: selectedPortfolio?.id ?? "",
-				assetTypes: ["STOCK", "FUND"],
-			},
-			skip: !selectedPortfolio?.id,
+	const { data: scopedHistoryData } = useQuery(GET_SCOPED_PERFORMANCE_HISTORY, {
+		variables: {
+			portfolioID: selectedPortfolio?.id ?? "",
+			assetTypes: ["STOCK", "FUND"],
 		},
-	);
+		skip: !selectedPortfolio?.id,
+	});
 	const performanceData = useMemo(
 		() => buildPerformanceSeries(scopedHistoryData?.scopedPerformanceHistory ?? [], totalValue),
 		[scopedHistoryData, totalValue],
 	);
 
-	const performanceDrivers = useMemo(() => {
-		if (assetPrecomputed.gainContributors.length === 0 || totalCost === 0) return null;
-		const topContributors = assetPrecomputed.gainContributors.filter((c) => c.gain > 0).slice(0, 3);
-		const worstDraggers = [...assetPrecomputed.gainContributors]
-			.reverse()
-			.filter((c) => c.gain < 0)
-			.slice(0, 2);
-		return { totalGain, topContributors, worstDraggers };
-	}, [assetPrecomputed, totalCost, totalGain]);
+	const chartHoldings = useMemo(
+		() =>
+			normalizedAssets.map((asset) => ({
+				value: asset.totalValue,
+				currentPrice: asset.currentPrice,
+				changePercent: asset.dayChangePercentage,
+				sparklineData: asset.sparklineData,
+			})),
+		[normalizedAssets],
+	);
+
+	// The performer panel ranks the same normalized rows the table prints, so a
+	// "top performer" here and the table's Total P&L column can never disagree.
+	const performerAssets = useMemo(
+		() =>
+			normalizedAssets.map((asset) => ({
+				id: asset.id,
+				symbol: asset.symbol,
+				name: asset.name,
+				totalValue: asset.totalValue,
+				totalReturn: asset.totalReturn,
+				totalReturnPercentage: asset.totalReturnPercentage,
+				canShowPercentage: asset.fx.canShowPercentage,
+				dayChangePercentage: asset.dayChangePercentage,
+				hasDayChange: asset.hasDayChange,
+			})),
+		[normalizedAssets],
+	);
 
 	const portfolioHealth = useMemo(() => {
 		const sorted = assetPrecomputed.sortedByValue;
@@ -1314,7 +1050,7 @@ export function StocksFundsModule({
 		[smartRecommendedCards],
 	);
 
-	const { formatCurrencyCompact: formatCurrency } = useCurrency();
+	const { formatCurrency } = useCurrency();
 
 	const handleAddPosition = async (formData: {
 		instrumentID?: string;
@@ -1352,6 +1088,178 @@ export function StocksFundsModule({
 			toast.error("Failed to add position. Please try again.");
 		}
 	};
+
+	// The insight-card grid, hoisted so both placement prototypes can render
+	// it: the third workspace tab ("tabs" layout) or a band above the holdings
+	// table ("band" layout). Same component, same content, one variable.
+	// The strip is one surface with hairlines between cells, not three boxes:
+	// the header above it is charts and rules, so cards here were the only
+	// chrome on the page and read as a second dashboard bolted to the first.
+	const insightGrid = (
+		<div className="grid grid-cols-1 divide-y divide-border/30 md:grid-cols-3 md:divide-x md:divide-y-0">
+			{portfolioLoading || forceSkeleton ? (
+				selectedCards.map((cardId) => <InsightCardSkeleton key={cardId} />)
+			) : selectedCards.length === 0 ? (
+				<div className="flex flex-wrap items-center gap-3 py-4 md:col-span-3">
+					<p className="text-xs text-muted-foreground">
+						No insights shown. Pick up to three to sit under the chart.
+					</p>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={openCustomizeDialog}
+						className="h-7 text-xs font-semibold"
+					>
+						Choose insights
+					</Button>
+				</div>
+			) : (
+				selectedCards.map((cardId, index) => {
+					const isRecommended = recommendedCardIds.has(cardId);
+					let cardElement: React.ReactNode = null;
+					switch (cardId) {
+						case "performers":
+							cardElement = (
+								<PerformerPanel
+									key={cardId}
+									assets={performerAssets}
+									formatCurrency={formatCurrency}
+									onSelectAsset={handleSelectAsset}
+									compact
+									bare
+								/>
+							);
+							break;
+						case "portfolio-health":
+							cardElement = (
+								<PortfolioHealthCard
+									key={cardId}
+									cardId={cardId}
+									portfolioHealth={portfolioHealth}
+									riskMetrics={portfolioRisk.metrics}
+									riskMetricsLoading={portfolioRisk.loading}
+									isRecommended={isRecommended}
+									setActiveTab={handleSetActiveTab}
+									compact
+									bare
+									onCheckDiversification={() => {
+										const sector = portfolioHealth?.largestSectorName;
+										if (sector && sector !== "None") {
+											handleSetInsightFilter({
+												mode: "sector",
+												value: sector,
+												label: sector,
+											});
+											scrollToPositions();
+											return;
+										}
+										handleSetActiveTab("positions");
+									}}
+								/>
+							);
+							break;
+						case "income-forecast":
+							cardElement = (
+								<IncomeForecastCard
+									key={cardId}
+									cardId={cardId}
+									incomeForecast={incomeForecast}
+									isRecommended={isRecommended}
+									formatCurrency={formatCurrency}
+									setActiveTab={handleSetActiveTab}
+									compact
+									bare
+								/>
+							);
+							break;
+						case "fees-ter":
+							cardElement = (
+								<FeesTerCard
+									key={cardId}
+									cardId={cardId}
+									feesTerData={feesTerData}
+									isRecommended={isRecommended}
+									formatCurrency={formatCurrency}
+									setActiveTab={handleSetActiveTab}
+									compact
+									bare
+								/>
+							);
+							break;
+						case "rebalancing":
+							cardElement = (
+								<RebalancingCard
+									key={cardId}
+									cardId={cardId}
+									rebalancingData={rebalancingData}
+									isRecommended={isRecommended}
+									setActiveTab={handleSetActiveTab}
+									targetWeights={targetWeights}
+									onUpdateTargetWeights={handleUpdateTargetWeights}
+									bare
+								/>
+							);
+							break;
+						case "currency-exposure":
+							cardElement = (
+								<CurrencyExposureCard
+									key={cardId}
+									cardId={cardId}
+									currencyExposure={currencyExposure}
+									isRecommended={isRecommended}
+									formatCurrency={formatCurrency}
+									setActiveTab={handleSetActiveTab}
+									bare
+								/>
+							);
+							break;
+						case "missing-data":
+							cardElement = (
+								<MissingDataCard
+									key={cardId}
+									cardId={cardId}
+									dataQuality={dataQuality}
+									isRecommended={isRecommended}
+									setInsightFilter={handleSetInsightFilter}
+									bare
+								/>
+							);
+							break;
+						case "benchmark-comparison":
+							cardElement = (
+								<BenchmarkComparisonCard
+									key={cardId}
+									cardId={cardId}
+									benchmarkComparison={benchmarkComparison}
+									isRecommended={isRecommended}
+									setActiveTab={handleSetActiveTab}
+									bare
+								/>
+							);
+							break;
+						default:
+							return null;
+					}
+					if (!cardElement) return null;
+					return (
+						<motion.div
+							key={cardId}
+							initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{
+								delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.16),
+								duration: 0.25,
+								ease: [0.16, 1, 0.3, 1],
+							}}
+							className="flex flex-col justify-between py-4 md:px-6 md:py-0 md:first:pl-0 md:last:pr-0"
+						>
+							<ErrorBoundary>{cardElement}</ErrorBoundary>
+						</motion.div>
+					);
+				})
+			)}
+		</div>
+	);
 
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
@@ -1415,26 +1323,34 @@ export function StocksFundsModule({
 				</div>
 			)}
 
-			{/* Unified Dashboard Grid: Chart + Distribution side by side with vertical separator */}
-			<div className="grid grid-cols-1 gap-6 lg:grid-cols-10 border-b border-border/30 pb-6">
-				{/* Unified Left Section: Chart */}
+			{/*
+			    The brief. One live number and its trend on the left, where the value
+			    actually sits on the right. This replaces the old hero-chart + donut
+			    pair, which spent ~600px of header restating the table's Weight column
+			    in a radial form and pushed the ledger below the fold.
+			*/}
+			<div className="grid grid-cols-1 gap-6 border-b border-border/30 pb-6 lg:grid-cols-10">
 				<div className="lg:col-span-7 pr-0 lg:pr-6 flex flex-col justify-between">
 					<ErrorBoundary>
-						<PortfolioHeroChart
+						<AssetHeroChart
+							title="Stocks & Funds Value"
+							titleTooltip="Total value of the stocks and funds held in this portfolio"
 							data={performanceData}
+							holdings={chartHoldings}
 							totalEquity={totalValue}
-							totalGain={assetPrecomputed.totalGain}
-							totalGainPercent={assetPrecomputed.totalGainPercent}
+							totalGain={assetPrecomputed.totalGain ?? undefined}
+							totalGainPercent={assetPrecomputed.totalGainPercent ?? undefined}
 							formatCurrency={formatCurrency}
 							timeRange={timeRange}
 							onTimeRangeChange={setTimeRange}
 							portfolioID={selectedPortfolio?.id}
-							loading={portfolioLoading || scopedHistoryLoading || forceSkeleton}
+							loading={portfolioLoading || forceSkeleton}
+							defaultBenchmark="sp500"
+							layoutId="stocksHeroRangePillActive"
 						/>
 					</ErrorBoundary>
 				</div>
 
-				{/* Unified Right Section: Distribution */}
 				<div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-border/30 pt-6 lg:pt-0 pl-0 lg:pl-6 flex flex-col justify-between">
 					<ErrorBoundary>
 						<StocksDistributionWidget
@@ -1479,8 +1395,8 @@ export function StocksFundsModule({
 							</span>
 							<span className="text-muted-foreground text-micro sm:text-xs">
 								({activeFilterStats.count} holding{activeFilterStats.count !== 1 ? "s" : ""} •{" "}
-								{formatCurrency(activeFilterStats.value)} • {activeFilterStats.percent.toFixed(1)}% of
-								stocks)
+								{formatCurrency(activeFilterStats.value)} • {activeFilterStats.percent.toFixed(1)}%
+								of stocks)
 							</span>
 						</div>
 						<div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
@@ -1510,11 +1426,66 @@ export function StocksFundsModule({
 				</motion.div>
 			)}
 
+			{/*
+			    Insights strip — disabled by default per user critique (removes low-signal cards
+			    and empty states to keep holdings front-and-center).
+			    Preserved intact for easy reversion: toggle SHOW_INSIGHTS_SECTION or run
+			    localStorage.setItem("sf_show_insights_strip", "true") in browser console.
+			*/}
+			{showInsightsSection && (
+				<section aria-labelledby="insights-heading" className="space-y-3">
+					<div className="flex items-center justify-between gap-2">
+						<div className="flex items-center gap-2">
+							<h2 id="insights-heading" className="text-title text-foreground">
+								Insights
+							</h2>
+							<span className="rounded-full bg-secondary/80 px-2 py-0.5 font-mono text-micro text-foreground/80">
+								{selectedCards.length}
+							</span>
+							{!insightsOpen && (
+								<span className="text-micro text-muted-foreground hidden sm:inline-block">
+									• Collapsed (click Show to expand)
+								</span>
+							)}
+						</div>
+						<div className="flex items-center gap-1.5">
+							<button
+								type="button"
+								onClick={openCustomizeDialog}
+								className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border/40 px-2.5 py-1 text-micro font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground touch-target min-h-[32px]"
+							>
+								<Sliders aria-hidden className="h-3 w-3" />
+								<span>Customize</span>
+							</button>
+							<button
+								type="button"
+								aria-expanded={insightsOpen}
+								aria-controls="insights-body"
+								onClick={toggleInsightsOpen}
+								className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-border/40 px-2.5 py-1 text-micro font-semibold text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground touch-target min-h-[32px]"
+							>
+								<span>{insightsOpen ? "Hide" : "Show"}</span>
+								<ChevronDown
+									aria-hidden
+									className={cn(
+										"h-3 w-3 transition-transform duration-200",
+										insightsOpen && "rotate-180",
+									)}
+								/>
+							</button>
+						</div>
+					</div>
+					<div id="insights-body" className={cn(!insightsOpen && "hidden")}>
+						{insightGrid}
+					</div>
+				</section>
+			)}
+
 			{/* Segmented Mode Navigation & View Switcher */}
 			<div id="positions-section" className="flex flex-col space-y-4">
 				<div className="flex items-center justify-between border-b border-border/20 pb-3 mt-2">
 					<div
-						className="relative flex p-0.5 rounded-lg bg-muted border border-border/40"
+						className="relative flex max-w-full overflow-x-auto p-0.5 rounded-lg bg-muted border border-border/40"
 						role="tablist"
 						aria-label="Stocks and funds workspace view"
 					>
@@ -1524,7 +1495,7 @@ export function StocksFundsModule({
 							aria-selected={activeTab === "positions"}
 							onClick={() => setActiveTab("positions")}
 							className={cn(
-								"relative px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px",
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px min-h-[44px] md:min-h-[36px] touch-target",
 								activeTab === "positions"
 									? "text-foreground font-bold"
 									: "text-foreground/70 hover:text-foreground border border-transparent",
@@ -1549,39 +1520,10 @@ export function StocksFundsModule({
 						<button
 							type="button"
 							role="tab"
-							aria-selected={activeTab === "insights"}
-							onClick={() => setActiveTab("insights")}
-							className={cn(
-								"relative px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px",
-								activeTab === "insights"
-									? "text-foreground font-bold"
-									: "text-foreground/70 hover:text-foreground border border-transparent",
-							)}
-						>
-							{activeTab === "insights" && (
-								<motion.span
-									layoutId="stocksActiveTabIndicator"
-									className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
-									transition={
-										shouldReduceMotion
-											? { duration: 0 }
-											: { type: "spring", stiffness: 500, damping: 38 }
-									}
-								/>
-							)}
-							<Activity className="relative z-10 h-3.5 w-3.5 text-primary" />
-							<span className="relative z-10">Insights & Analytics</span>
-							<span className="relative z-10 text-micro font-mono px-1.5 py-0.5 rounded-full bg-secondary/80 text-foreground/80 font-normal">
-								{selectedCards.length}
-							</span>
-						</button>
-						<button
-							type="button"
-							role="tab"
 							aria-selected={activeTab === "transactions"}
 							onClick={() => setActiveTab("transactions")}
 							className={cn(
-								"relative px-3.5 py-1.5 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px",
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:translate-y-px min-h-[44px] md:min-h-[36px] touch-target",
 								activeTab === "transactions"
 									? "text-foreground font-bold"
 									: "text-foreground/70 hover:text-foreground border border-transparent",
@@ -1601,17 +1543,6 @@ export function StocksFundsModule({
 							<span className="relative z-10">Transactions</span>
 						</button>
 					</div>
-
-					{activeTab === "insights" && (
-						<button
-							type="button"
-							onClick={openCustomizeDialog}
-							className="text-xs text-primary hover:text-primary/90 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors bg-primary/10 hover:bg-primary/20 px-3 py-1.5 rounded-lg border border-primary/20 shadow-xs touch-target active:translate-y-px"
-						>
-							<Sliders className="h-3 w-3" />
-							<span>Customize Cockpit</span>
-						</button>
-					)}
 				</div>
 
 				<AnimatePresence mode="wait">
@@ -1640,166 +1571,6 @@ export function StocksFundsModule({
 							</ErrorBoundary>
 						</motion.div>
 					)}
-
-					{/* Active View: Insights Cockpit */}
-					{activeTab === "insights" && (
-						<motion.div
-							key="insights"
-							initial={shouldReduceMotion ? false : { opacity: 0, y: 6 }}
-							animate={{ opacity: 1, y: 0 }}
-							exit={shouldReduceMotion ? undefined : { opacity: 0, y: -6 }}
-							transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-							className="flex flex-col space-y-4"
-						>
-							<div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-								{portfolioLoading || forceSkeleton ? (
-									selectedCards.map((cardId) => <InsightCardSkeleton key={cardId} />)
-								) : selectedCards.length === 0 ? (
-									<Card className="col-span-full border border-dashed border-border/50 bg-secondary/5 p-8 flex flex-col items-center justify-center text-center gap-3 animate-in fade-in duration-300 min-h-[220px]">
-										<div className="rounded-full bg-primary/10 p-3 text-primary border border-primary/20">
-											<LayoutGrid className="h-6 w-6" />
-										</div>
-										<div className="space-y-1">
-											<p className="text-sm font-semibold text-foreground">Cockpit Customized</p>
-											<p className="text-xs text-muted-foreground max-w-sm">
-												All insights cards are currently hidden. Click "Customize" to select which
-												cards to display on your dashboard.
-											</p>
-										</div>
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={openCustomizeDialog}
-											className="h-8 text-xs bg-primary/10 hover:bg-primary/20 text-primary border-primary/25 font-semibold mt-1"
-										>
-											Choose insights
-										</Button>
-									</Card>
-								) : (
-									selectedCards.map((cardId, index) => {
-										const isRecommended = recommendedCardIds.has(cardId);
-										let cardElement: React.ReactNode = null;
-										switch (cardId) {
-											case "performance-drivers":
-												cardElement = (
-													<PerformanceDriversCard
-														key={cardId}
-														cardId={cardId}
-														performanceDrivers={performanceDrivers}
-														isRecommended={isRecommended}
-														formatCurrency={formatCurrency}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											case "portfolio-health":
-												cardElement = (
-													<PortfolioHealthCard
-														key={cardId}
-														cardId={cardId}
-														portfolioHealth={portfolioHealth}
-														riskMetrics={portfolioRisk.metrics}
-														riskMetricsLoading={portfolioRisk.loading}
-														isRecommended={isRecommended}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											case "income-forecast":
-												cardElement = (
-													<IncomeForecastCard
-														key={cardId}
-														cardId={cardId}
-														incomeForecast={incomeForecast}
-														isRecommended={isRecommended}
-														formatCurrency={formatCurrency}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											case "fees-ter":
-												cardElement = (
-													<FeesTerCard
-														key={cardId}
-														cardId={cardId}
-														feesTerData={feesTerData}
-														isRecommended={isRecommended}
-														formatCurrency={formatCurrency}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											case "rebalancing":
-												cardElement = (
-													<RebalancingCard
-														key={cardId}
-														cardId={cardId}
-														rebalancingData={rebalancingData}
-														isRecommended={isRecommended}
-														setActiveTab={handleSetActiveTab}
-														targetWeights={targetWeights}
-														onUpdateTargetWeights={handleUpdateTargetWeights}
-													/>
-												);
-												break;
-											case "currency-exposure":
-												cardElement = (
-													<CurrencyExposureCard
-														key={cardId}
-														cardId={cardId}
-														currencyExposure={currencyExposure}
-														isRecommended={isRecommended}
-														formatCurrency={formatCurrency}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											case "missing-data":
-												cardElement = (
-													<MissingDataCard
-														key={cardId}
-														cardId={cardId}
-														dataQuality={dataQuality}
-														isRecommended={isRecommended}
-														setInsightFilter={handleSetInsightFilter}
-													/>
-												);
-												break;
-											case "benchmark-comparison":
-												cardElement = (
-													<BenchmarkComparisonCard
-														key={cardId}
-														cardId={cardId}
-														benchmarkComparison={benchmarkComparison}
-														isRecommended={isRecommended}
-														setActiveTab={handleSetActiveTab}
-													/>
-												);
-												break;
-											default:
-												return null;
-										}
-										if (!cardElement) return null;
-										return (
-											<motion.div
-												key={cardId}
-												initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-												animate={{ opacity: 1, y: 0 }}
-												transition={{
-													delay: shouldReduceMotion ? 0 : Math.min(index * 0.04, 0.16),
-													duration: 0.25,
-													ease: [0.16, 1, 0.3, 1],
-												}}
-											>
-												<ErrorBoundary>{cardElement}</ErrorBoundary>
-											</motion.div>
-										);
-									})
-								)}
-							</div>
-						</motion.div>
-					)}
-
 					{/* Active View: Transactions */}
 					{activeTab === "transactions" && (
 						<motion.div
@@ -1822,7 +1593,7 @@ export function StocksFundsModule({
 				</AnimatePresence>
 
 				{/* Customize Insights Dialog Modal */}
-				<Dialog open={isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
+				<Dialog open={showInsightsSection && isCustomizeOpen} onOpenChange={setIsCustomizeOpen}>
 					<DialogContent
 						className="max-w-2xl bg-card border border-border/60 p-6 overflow-hidden flex flex-col max-h-[85vh]"
 						onCloseAutoFocus={restoreOverlayFocus}
@@ -1967,7 +1738,6 @@ export function StocksFundsModule({
 							symbol={selectedStockSymbol}
 							position={selectedStockAsset}
 							positionId={selectedStockAsset?.id}
-							quantity={selectedStockAsset?.quantity}
 							currentPrice={selectedStockAsset?.currentPrice}
 							currency={selectedStockAsset?.currency}
 							onBack={() => setSelectedStockSymbol(null)}
@@ -1978,7 +1748,10 @@ export function StocksFundsModule({
 								setSelectedStockSymbol(null);
 								setIsAddOpen(true);
 							}}
-							isPanel={true}
+							onNavigateToTransactions={() => {
+								setSelectedStockSymbol(null);
+								setActiveTab("transactions");
+							}}
 						/>
 					)}
 				</SheetContent>

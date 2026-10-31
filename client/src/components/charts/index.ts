@@ -5,6 +5,13 @@ export type {
 	AllocationDataPoint,
 } from "./AllocationChart";
 export { default as AllocationChart } from "./AllocationChart";
+export type { AssetHeroChartProps } from "./AssetHeroChart";
+export {
+	AssetHeroChart,
+	buildPerformanceSeries,
+	SignedDelta,
+	TIME_RANGES,
+} from "./AssetHeroChart";
 export type { BenchmarkMetricsBarProps } from "./BenchmarkMetricsBar";
 export { BenchmarkMetricsBar } from "./BenchmarkMetricsBar";
 // Existing chart components
@@ -55,5 +62,14 @@ export type {
 	TimeRange,
 } from "./PortfolioHeroChart";
 export { filterByRange, PortfolioHeroChart } from "./PortfolioHeroChart";
+export type { CurveHoldingInput } from "./performance-series";
+export {
+	buildHistoryDate,
+	buildMarketSynthesizedSeries,
+	computeFallbackSparkline,
+	getHistoryPointCount,
+	resampleSeries,
+	resolveHybridPerformanceSeries,
+} from "./performance-series";
 export { default as SimpleChart } from "./SimpleChart";
 export { default as TradingViewChart } from "./TradingViewChart";

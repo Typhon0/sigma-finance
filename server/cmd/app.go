@@ -20,9 +20,14 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	catalogservice "sigma_finance/internal/service/catalog"
+	logoservice "sigma_finance/internal/service/logo"
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
 	syncservice "sigma_finance/internal/service/sync"
 	syncadapters "sigma_finance/internal/service/sync/adapters"
+	"sigma_finance/internal/service/sync/blockchain"
+	"sigma_finance/internal/service/sync/blockchain/alchemy"
+	"sigma_finance/internal/service/sync/blockchain/registry"
+	cryptosvc "sigma_finance/internal/service/crypto"
 	"slices"
 	"strconv"
 	"strings"
@@ -31,6 +36,7 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/compress"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
@@ -135,11 +141,47 @@ func NewApp() (*AppContainer, error) {
 	}
 	log.Printf("[INFO] [app] background processor wired (uow injected, tick=5m, snapshots use CalculateAndSaveHistoricalSnapshots)")
 
+	// Wire crypto wallet balance pricing background worker (multi-source CEX/DEX, 5m tick)
+	cryptoPricingService := cryptosvc.NewPricingService(db)
+	go func() {
+		// Immediate run on startup in background
+		time.Sleep(5 * time.Second)
+		if err := cryptoPricingService.RefreshAllActiveBalances(context.Background()); err != nil {
+			log.Printf("[WARN] [app] startup crypto price refresh failed: %v", err)
+		}
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			if err := cryptoPricingService.RefreshAllActiveBalances(context.Background()); err != nil {
+				log.Printf("[WARN] [app] periodic crypto price refresh failed: %v", err)
+			}
+		}
+	}()
+	log.Printf("[INFO] [app] crypto wallet balance pricing background worker wired (multi-source CEX/DEX, tick=5m)")
+
 	// Initialize Sync Service with registered adapters
 	syncService := syncservice.NewSyncService(uow, serviceContainer.Instrument)
 	syncService.RegisterAdapter(syncadapters.NewKrakenAdapter())
 	syncService.RegisterAdapter(syncadapters.NewSnapTradeAdapter())
 	syncService.RegisterAdapter(syncadapters.NewGoCardlessAdapter())
+
+	// Wire blockchain wallet sync background worker unconditionally with multi-provider registry
+	var netConfigs []model.BlockchainNetworkConfig
+	_ = db.NewSelect().Model(&netConfigs).Scan(context.Background())
+	customEndpoints := make(map[model.BlockchainNetwork]string)
+	for _, c := range netConfigs {
+		if c.RPCURL != "" {
+			customEndpoints[c.Network] = c.RPCURL
+		}
+	}
+	alchemyAPIKey := os.Getenv("ALCHEMY_API_KEY")
+	heliusAPIKey := os.Getenv("HELIUS_API_KEY")
+	cuTracker := alchemy.NewCUTracker(db)
+	multiRegistry := registry.NewAdapterRegistry(alchemyAPIKey, heliusAPIKey, customEndpoints)
+	walletSyncService := blockchain.NewWalletSyncService(db, uow, multiRegistry)
+	walletSyncWorker := blockchain.NewBackgroundSyncWorker(walletSyncService, cuTracker)
+	walletSyncWorker.Start(context.Background())
+	log.Printf("[INFO] [app] blockchain wallet sync background worker wired (multi-provider registry, keyless-first, tick=12h)")
 
 	// Initialize GraphQL resolver
 	resolver := &graphql.Resolver{
@@ -196,6 +238,46 @@ func NewApp() (*AppContainer, error) {
 	}))
 	app.Use(logger.New())
 	app.Use(recover.New())
+	app.Use(compress.New(compress.Config{
+		Next: func(c *fiber.Ctx) bool {
+			// Skip compression for SSE / streaming endpoints
+			return strings.HasPrefix(c.Path(), "/api/admin/logs") || c.Get("Accept") == "text/event-stream"
+		},
+		Level: compress.LevelBestSpeed,
+	}))
+
+	logosDir := os.Getenv("LOGOS_STORAGE_PATH")
+	if logosDir == "" {
+		logosDir = "/data/logos"
+		if _, err := os.Stat("/data"); os.IsNotExist(err) {
+			logosDir = "./data/logos"
+		}
+	}
+	logoService := logoservice.NewService(logosDir, trustwallet.NewClient(), uow.Instrument())
+
+	// Public asset logo proxy with persistent local disk cache
+	app.Get("/api/v1/logos/:assetType/:identifier", func(c *fiber.Ctx) error {
+		assetType := c.Params("assetType")
+		identifier := c.Params("identifier")
+
+		// 1. If already on disk, stream file directly
+		if cachedPath, mime, ok := logoService.GetCachedPath(assetType, identifier); ok {
+			c.Set("Content-Type", mime)
+			c.Set("Cache-Control", "public, max-age=31536000, immutable")
+			return c.SendFile(cachedPath)
+		}
+
+		// 2. Fetch, validate, cache locally, and stream
+		data, mime, err := logoService.GetLogo(c.Context(), assetType, identifier)
+		if err != nil || len(data) == 0 {
+			c.Set("Cache-Control", "public, max-age=3600")
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{"error": "logo not found"})
+		}
+
+		c.Set("Content-Type", mime)
+		c.Set("Cache-Control", "public, max-age=31536000, immutable")
+		return c.Send(data)
+	})
 
 	localPackBuildGroup := app.Group("/market-data/packs/build-jobs", middleware.AuthMiddleware(serviceContainer.Session))
 	localPackBuildGroup.Get("/", func(c *fiber.Ctx) error {

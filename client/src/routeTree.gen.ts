@@ -31,6 +31,8 @@ import { Route as AppSettingsHistoricalDataJobsRouteImport } from './routes/_app
 import { Route as AppSettingsFinanceDatabaseRouteImport } from './routes/_app.settings.finance-database'
 import { Route as AppSettingsDisplayRouteImport } from './routes/_app.settings.display'
 import { Route as AppSettingsDataRouteImport } from './routes/_app.settings.data'
+import { Route as AppSettingsConnectionsRouteImport } from './routes/_app.settings.connections'
+import { Route as AppSettingsApiKeysRouteImport } from './routes/_app.settings.api-keys'
 import { Route as AppSettingsAccountRouteImport } from './routes/_app.settings.account'
 import { Route as AppPortfoliosCreateRouteImport } from './routes/_app.portfolios.create'
 import { Route as AppPortfoliosPortfolioIdRouteImport } from './routes/_app.portfolios.$portfolioId'
@@ -192,6 +194,20 @@ const AppSettingsDataRoute = AppSettingsDataRouteImport.update({
   getParentRoute: () => AppSettingsRoute,
 } as any).lazy(() =>
   import('./routes/_app.settings.data.lazy').then((d) => d.Route),
+)
+const AppSettingsConnectionsRoute = AppSettingsConnectionsRouteImport.update({
+  id: '/connections',
+  path: '/connections',
+  getParentRoute: () => AppSettingsRoute,
+} as any).lazy(() =>
+  import('./routes/_app.settings.connections.lazy').then((d) => d.Route),
+)
+const AppSettingsApiKeysRoute = AppSettingsApiKeysRouteImport.update({
+  id: '/api-keys',
+  path: '/api-keys',
+  getParentRoute: () => AppSettingsRoute,
+} as any).lazy(() =>
+  import('./routes/_app.settings.api-keys.lazy').then((d) => d.Route),
 )
 const AppSettingsAccountRoute = AppSettingsAccountRouteImport.update({
   id: '/account',
@@ -384,6 +400,8 @@ export interface FileRoutesByFullPath {
   '/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
   '/portfolios/create': typeof AppPortfoliosCreateRoute
   '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/settings/connections': typeof AppSettingsConnectionsRoute
   '/settings/data': typeof AppSettingsDataRoute
   '/settings/display': typeof AppSettingsDisplayRoute
   '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
@@ -427,6 +445,8 @@ export interface FileRoutesByTo {
   '/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
   '/portfolios/create': typeof AppPortfoliosCreateRoute
   '/settings/account': typeof AppSettingsAccountRoute
+  '/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/settings/connections': typeof AppSettingsConnectionsRoute
   '/settings/data': typeof AppSettingsDataRoute
   '/settings/display': typeof AppSettingsDisplayRoute
   '/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
@@ -472,6 +492,8 @@ export interface FileRoutesById {
   '/_app/portfolios/$portfolioId': typeof AppPortfoliosPortfolioIdRouteWithChildren
   '/_app/portfolios/create': typeof AppPortfoliosCreateRoute
   '/_app/settings/account': typeof AppSettingsAccountRoute
+  '/_app/settings/api-keys': typeof AppSettingsApiKeysRoute
+  '/_app/settings/connections': typeof AppSettingsConnectionsRoute
   '/_app/settings/data': typeof AppSettingsDataRoute
   '/_app/settings/display': typeof AppSettingsDisplayRoute
   '/_app/settings/finance-database': typeof AppSettingsFinanceDatabaseRoute
@@ -517,6 +539,8 @@ export interface FileRouteTypes {
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
     | '/settings/account'
+    | '/settings/api-keys'
+    | '/settings/connections'
     | '/settings/data'
     | '/settings/display'
     | '/settings/finance-database'
@@ -560,6 +584,8 @@ export interface FileRouteTypes {
     | '/portfolios/$portfolioId'
     | '/portfolios/create'
     | '/settings/account'
+    | '/settings/api-keys'
+    | '/settings/connections'
     | '/settings/data'
     | '/settings/display'
     | '/settings/finance-database'
@@ -604,6 +630,8 @@ export interface FileRouteTypes {
     | '/_app/portfolios/$portfolioId'
     | '/_app/portfolios/create'
     | '/_app/settings/account'
+    | '/_app/settings/api-keys'
+    | '/_app/settings/connections'
     | '/_app/settings/data'
     | '/_app/settings/display'
     | '/_app/settings/finance-database'
@@ -775,6 +803,20 @@ declare module '@tanstack/react-router' {
       path: '/data'
       fullPath: '/settings/data'
       preLoaderRoute: typeof AppSettingsDataRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/connections': {
+      id: '/_app/settings/connections'
+      path: '/connections'
+      fullPath: '/settings/connections'
+      preLoaderRoute: typeof AppSettingsConnectionsRouteImport
+      parentRoute: typeof AppSettingsRoute
+    }
+    '/_app/settings/api-keys': {
+      id: '/_app/settings/api-keys'
+      path: '/api-keys'
+      fullPath: '/settings/api-keys'
+      preLoaderRoute: typeof AppSettingsApiKeysRouteImport
       parentRoute: typeof AppSettingsRoute
     }
     '/_app/settings/account': {
@@ -1020,6 +1062,8 @@ const AppPortfoliosRouteWithChildren = AppPortfoliosRoute._addFileChildren(
 
 interface AppSettingsRouteChildren {
   AppSettingsAccountRoute: typeof AppSettingsAccountRoute
+  AppSettingsApiKeysRoute: typeof AppSettingsApiKeysRoute
+  AppSettingsConnectionsRoute: typeof AppSettingsConnectionsRoute
   AppSettingsDataRoute: typeof AppSettingsDataRoute
   AppSettingsDisplayRoute: typeof AppSettingsDisplayRoute
   AppSettingsFinanceDatabaseRoute: typeof AppSettingsFinanceDatabaseRoute
@@ -1032,6 +1076,8 @@ interface AppSettingsRouteChildren {
 
 const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsAccountRoute: AppSettingsAccountRoute,
+  AppSettingsApiKeysRoute: AppSettingsApiKeysRoute,
+  AppSettingsConnectionsRoute: AppSettingsConnectionsRoute,
   AppSettingsDataRoute: AppSettingsDataRoute,
   AppSettingsDisplayRoute: AppSettingsDisplayRoute,
   AppSettingsFinanceDatabaseRoute: AppSettingsFinanceDatabaseRoute,

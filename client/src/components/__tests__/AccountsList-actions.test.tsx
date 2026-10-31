@@ -3,6 +3,7 @@ import { MockedProvider } from "@apollo/client/testing";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
+import { GET_PENDING_WALLET_REVIEWS, GET_WALLET_ACCOUNTS } from "@/graphql/queries/wallets";
 import { AccountsList } from "../AccountsList";
 
 // Mock resize-observer and echarts
@@ -61,11 +62,20 @@ describe("AccountsList actions", () => {
 		},
 		{
 			request: {
-				query: GET_ACCOUNTS,
+				query: GET_WALLET_ACCOUNTS,
 				variables: { portfolioId: "port-1" },
 			},
 			result: {
-				data: { accounts: mockAccounts },
+				data: { walletAccounts: [] },
+			},
+		},
+		{
+			request: {
+				query: GET_PENDING_WALLET_REVIEWS,
+				variables: { portfolioId: "port-1" },
+			},
+			result: {
+				data: { pendingWalletReviews: [] },
 			},
 		},
 	];

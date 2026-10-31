@@ -18,20 +18,20 @@ type DatabasePerformanceConfig struct {
 	MaxIdleConns    int
 	ConnMaxLifetime time.Duration
 	ConnMaxIdleTime time.Duration
-	
+
 	// Query optimization settings
-	QueryTimeout        time.Duration
-	SlowQueryThreshold  time.Duration
-	EnableQueryLogging  bool
-	
+	QueryTimeout       time.Duration
+	SlowQueryThreshold time.Duration
+	EnableQueryLogging bool
+
 	// Batch processing settings
-	BatchSize           int
-	MaxBatchWaitTime    time.Duration
-	
+	BatchSize        int
+	MaxBatchWaitTime time.Duration
+
 	// Read replica settings
-	EnableReadReplicas  bool
-	ReadReplicaHosts    []string
-	ReadReplicaRatio    float64 // 0.0-1.0, percentage of reads to route to replicas
+	EnableReadReplicas bool
+	ReadReplicaHosts   []string
+	ReadReplicaRatio   float64 // 0.0-1.0, percentage of reads to route to replicas
 }
 
 // CacheConfig holds caching configuration
@@ -41,17 +41,17 @@ type CacheConfig struct {
 	RedisPort     string
 	RedisPassword string
 	RedisDB       int
-	
+
 	// Cache TTL settings
-	MarketDataTTL       time.Duration
-	PerformanceTTL      time.Duration
-	PortfolioTTL        time.Duration
-	ChartDataTTL        time.Duration
-	
+	MarketDataTTL  time.Duration
+	PerformanceTTL time.Duration
+	PortfolioTTL   time.Duration
+	ChartDataTTL   time.Duration
+
 	// Cache size limits
-	MaxMemoryUsage      string // e.g., "100mb"
-	EvictionPolicy      string // e.g., "allkeys-lru"
-	
+	MaxMemoryUsage string // e.g., "100mb"
+	EvictionPolicy string // e.g., "allkeys-lru"
+
 	// Background refresh settings
 	EnableBackgroundRefresh bool
 	RefreshInterval         time.Duration
@@ -61,15 +61,15 @@ type CacheConfig struct {
 // ChartConfig holds chart performance settings
 type ChartConfig struct {
 	// Data sampling settings
-	MaxDataPoints       int
-	SamplingThreshold   int
-	SamplingAlgorithm   string // "lttb", "average", "min-max"
-	
+	MaxDataPoints     int
+	SamplingThreshold int
+	SamplingAlgorithm string // "lttb", "average", "min-max"
+
 	// Virtualization settings
 	EnableVirtualization bool
 	VirtualChunkSize     int
 	PreloadChunks        int
-	
+
 	// Compression settings
 	EnableCompression    bool
 	CompressionLevel     int
@@ -80,18 +80,22 @@ type ChartConfig struct {
 func LoadPerformanceConfig() *PerformanceConfig {
 	return &PerformanceConfig{
 		Database: DatabasePerformanceConfig{
-			MaxOpenConns:        getEnvIntOrDefault("DB_MAX_OPEN_CONNS", 25),
-			MaxIdleConns:        getEnvIntOrDefault("DB_MAX_IDLE_CONNS", 5),
-			ConnMaxLifetime:     getEnvDurationOrDefault("DB_CONN_MAX_LIFETIME", 5*time.Minute),
-			ConnMaxIdleTime:     getEnvDurationOrDefault("DB_CONN_MAX_IDLE_TIME", 5*time.Minute),
-			QueryTimeout:        getEnvDurationOrDefault("DB_QUERY_TIMEOUT", 30*time.Second),
-			SlowQueryThreshold:  getEnvDurationOrDefault("DB_SLOW_QUERY_THRESHOLD", 1*time.Second),
-			EnableQueryLogging:  getEnvBoolOrDefault("DB_ENABLE_QUERY_LOGGING", false),
-			BatchSize:           getEnvIntOrDefault("DB_BATCH_SIZE", 100),
-			MaxBatchWaitTime:    getEnvDurationOrDefault("DB_MAX_BATCH_WAIT_TIME", 10*time.Millisecond),
-			EnableReadReplicas:  getEnvBoolOrDefault("DB_ENABLE_READ_REPLICAS", false),
-			ReadReplicaHosts:    getEnvSliceOrDefault("DB_READ_REPLICA_HOSTS", []string{}),
-			ReadReplicaRatio:    getEnvFloatOrDefault("DB_READ_REPLICA_RATIO", 0.7),
+			// Bound the number of simultaneous heavy backends. The old default
+			// of 25 let a handful of pathological portfolio queries pin most of
+			// the server's memory; 12 is still above the 8 background workers
+			// (5 calculation + 3 refresh) and leaves room for request traffic.
+			MaxOpenConns:       getEnvIntOrDefault("DB_MAX_OPEN_CONNS", 12),
+			MaxIdleConns:       getEnvIntOrDefault("DB_MAX_IDLE_CONNS", 5),
+			ConnMaxLifetime:    getEnvDurationOrDefault("DB_CONN_MAX_LIFETIME", 5*time.Minute),
+			ConnMaxIdleTime:    getEnvDurationOrDefault("DB_CONN_MAX_IDLE_TIME", 2*time.Minute),
+			QueryTimeout:       getEnvDurationOrDefault("DB_QUERY_TIMEOUT", 120*time.Second),
+			SlowQueryThreshold: getEnvDurationOrDefault("DB_SLOW_QUERY_THRESHOLD", 1*time.Second),
+			EnableQueryLogging: getEnvBoolOrDefault("DB_ENABLE_QUERY_LOGGING", false),
+			BatchSize:          getEnvIntOrDefault("DB_BATCH_SIZE", 100),
+			MaxBatchWaitTime:   getEnvDurationOrDefault("DB_MAX_BATCH_WAIT_TIME", 10*time.Millisecond),
+			EnableReadReplicas: getEnvBoolOrDefault("DB_ENABLE_READ_REPLICAS", false),
+			ReadReplicaHosts:   getEnvSliceOrDefault("DB_READ_REPLICA_HOSTS", []string{}),
+			ReadReplicaRatio:   getEnvFloatOrDefault("DB_READ_REPLICA_RATIO", 0.7),
 		},
 		Cache: CacheConfig{
 			RedisHost:               getEnvOrDefault("REDIS_HOST", "localhost"),

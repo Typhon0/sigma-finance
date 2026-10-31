@@ -70,11 +70,11 @@ type Transaction struct {
 	PositionID        *string          `bun:"position_id"` // Optional for some transaction types (e.g. account cash flows)
 	Type              TransactionType  `bun:"type,notnull"`
 	Amount            Money            `bun:"amount,notnull"`                       // Amount in cents
-	Quantity          *decimal.Decimal `bun:"quantity,type:decimal(20,8)"`          // For quantity-based transactions
-	UnitPriceAmount   *decimal.Decimal `bun:"unit_price_amount,type:decimal(20,8)"` // Price per unit at execution time
-	UnitPriceCurrency Currency         `bun:"unit_price_currency,type:varchar(3),default:USD"`
+	Quantity          *decimal.Decimal `bun:"quantity,type:numeric"`          // For quantity-based transactions
+	UnitPriceAmount   *decimal.Decimal `bun:"unit_price_amount,type:numeric"` // Price per unit at execution time
+	UnitPriceCurrency Currency         `bun:"unit_price_currency,type:varchar(10),default:USD"`
 	FeesAmount        Money            `bun:"fees_amount,default:0"` // Transaction fees in cents
-	FeesCurrency      Currency         `bun:"fees_currency,type:varchar(3),default:USD"`
+	FeesCurrency      Currency         `bun:"fees_currency,type:varchar(10),default:USD"`
 	Notes             *string          `bun:"notes"`
 	ExternalID        *string          `bun:"external_id"`
 	ExecutedAt        time.Time        `bun:"executed_at,notnull"`

@@ -936,6 +936,17 @@ func (r *PerformanceRepository) CalculateBenchmarkComparison(ctx context.Context
 // in generatePerformanceHistory skips its self-healing call.
 func (r *PerformanceRepository) CalculateAndSaveHistoricalSnapshots(ctx context.Context, portfolioID string, startDate, endDate time.Time) error {
 	logSnapshotRebuildCaller("CalculateAndSaveHistoricalSnapshots", portfolioID, startDate, endDate)
+
+	// The background processor refreshes exactly one day per tick. That path
+	// used to run the full date_series x LATERAL query, which planned a
+	// MergeAppend over every asset_prices partition for each position. The
+	// single-day variant below is set-based and only probes the recent
+	// partitions; multi-day backfills keep the historical query for exact
+	// as-of semantics.
+	if sameCalendarDay(startDate, endDate) {
+		return r.calculateSingleDaySnapshot(ctx, portfolioID, startDate)
+	}
+
 	query := `
 WITH date_series AS (
     SELECT generate_series(?::date, ?::date, '1 day'::interval)::date AS snapshot_date
@@ -944,6 +955,8 @@ positions_with_tx AS (
     SELECT DISTINCT position_id
     FROM sigma_finance.transactions
     WHERE position_id IS NOT NULL
+      AND type IN ('BUY','SELL','DEPOSIT','WITHDRAWAL','TRANSFER_IN','TRANSFER_OUT')
+      AND quantity IS NOT NULL
 ),
 quantity_per_position_per_day AS (
     SELECT
@@ -967,7 +980,14 @@ quantity_per_position_per_day AS (
                     WHERE t.position_id = p.id
                       AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
                 ), 0)
-            WHEN ds.snapshot_date >= date_trunc('day', p.created_at)::date THEN p.quantity
+            WHEN ds.snapshot_date >= date_trunc('day', LEAST(
+                p.created_at,
+                COALESCE((
+                    SELECT MIN(t.executed_at)
+                    FROM sigma_finance.transactions t
+                    WHERE t.position_id = p.id
+                ), p.created_at)
+            ))::date THEN p.quantity
             ELSE 0
         END AS quantity_at_date
     FROM sigma_finance.positions p
@@ -987,10 +1007,10 @@ priced_metrics AS (
     FROM quantity_per_position_per_day qppd
     LEFT JOIN LATERAL (
         SELECT price
-        FROM sigma_finance.asset_prices
+        FROM sigma_finance.asset_prices_daily
         WHERE asset_id = qppd.asset_id
-          AND timestamp <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
-        ORDER BY timestamp DESC
+          AND price_date <= qppd.snapshot_date
+        ORDER BY price_date DESC
         LIMIT 1
     ) ap ON true
 ),
@@ -1043,6 +1063,130 @@ ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
     created_at = EXCLUDED.created_at;
 `
 	_, err := r.db.ExecContext(ctx, query, startDate, endDate, portfolioID, portfolioID, portfolioID)
+	return err
+}
+
+// sameCalendarDay reports whether two timestamps fall on the same calendar
+// day. The background refresh passes today 00:00:00..today 23:59:59, so this
+// selects the single-day fast path without changing the public method.
+func sameCalendarDay(a, b time.Time) bool {
+	ay, am, ad := a.Date()
+	by, bm, bd := b.Date()
+	return ay == by && am == bm && ad == bd
+}
+
+// calculateSingleDaySnapshot computes one portfolio_performance row with a
+// set-based query. It preserves the semantics of the historical query for a
+// single date but avoids the per-position x per-day LATERAL over asset_prices.
+//
+// Price lookup strategy:
+//   - asset_prices_daily is a one-row-per-asset-per-day rollup maintained by
+//     a trigger on asset_prices. It removes the 253-partition MergeAppend that
+//     the raw asset_prices table forces for an as-of price.
+//   - latest_prices picks the last rollup row at or before the snapshot date,
+//     once for all positions in the portfolio.
+func (r *PerformanceRepository) calculateSingleDaySnapshot(ctx context.Context, portfolioID string, snapshotDate time.Time) error {
+	date := snapshotDate.Format(time.DateOnly)
+	query := `
+WITH date_params AS (
+    SELECT ?::date AS snapshot_date
+),
+portfolio_positions AS (
+    SELECT
+        p.id,
+        p.asset_id,
+        p.ownership_percentage,
+        p.quantity,
+        p.total_cost_basis,
+        p.created_at,
+        CASE
+            WHEN EXISTS (
+                SELECT 1
+                FROM sigma_finance.transactions t
+                WHERE t.position_id = p.id
+                  AND t.type IN ('BUY','SELL','DEPOSIT','WITHDRAWAL','TRANSFER_IN','TRANSFER_OUT')
+                  AND t.quantity IS NOT NULL
+            ) THEN COALESCE((
+                SELECT SUM(
+                    CASE
+                        WHEN t.type IN ('BUY','DEPOSIT','TRANSFER_IN') THEN t.quantity
+                        WHEN t.type IN ('SELL','WITHDRAWAL','TRANSFER_OUT') THEN -t.quantity
+                        ELSE 0
+                    END
+                )
+                FROM sigma_finance.transactions t
+                WHERE t.position_id = p.id
+                  AND t.executed_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+            ), 0)
+            WHEN (SELECT snapshot_date FROM date_params) >= date_trunc('day', LEAST(
+                p.created_at,
+                COALESCE((
+                    SELECT MIN(t.executed_at)
+                    FROM sigma_finance.transactions t
+                    WHERE t.position_id = p.id
+                ), p.created_at)
+            ))::date THEN p.quantity
+            ELSE 0
+        END AS quantity_at_date
+    FROM sigma_finance.positions p
+    WHERE p.portfolio_id = ?
+),
+asset_ids AS (
+    SELECT DISTINCT asset_id FROM portfolio_positions
+),
+latest_prices AS (
+    SELECT DISTINCT ON (apd.asset_id)
+        apd.asset_id,
+        apd.price
+    FROM sigma_finance.asset_prices_daily apd
+    JOIN asset_ids a ON a.asset_id = apd.asset_id
+    WHERE apd.price_date <= (SELECT snapshot_date FROM date_params)
+    ORDER BY apd.asset_id, apd.price_date DESC
+),
+metrics AS (
+    SELECT
+        SUM(pp.quantity_at_date * COALESCE(lp.price, 0) * COALESCE(pp.ownership_percentage, 100) / 100) * 100 AS total_value,
+        SUM(CASE WHEN pp.quantity_at_date > 0 THEN COALESCE(pp.total_cost_basis, 0) ELSE 0 END) AS total_cost_basis
+    FROM portfolio_positions pp
+    LEFT JOIN latest_prices lp USING (asset_id)
+),
+realized AS (
+    SELECT COALESCE(SUM(
+        ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0)
+    ), 0) AS realized_gain_loss
+    FROM sigma_finance.positions p
+    JOIN sigma_finance.transactions t ON t.position_id = p.id
+    WHERE p.portfolio_id = ?
+      AND t.type = 'SELL'
+      AND t.executed_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+)
+INSERT INTO sigma_finance.portfolio_performance (
+    portfolio_id, snapshot_date, total_value, total_cost_basis, unrealized_gain_loss, realized_gain_loss, return_percentage, created_at
+)
+SELECT
+    ?,
+    (SELECT snapshot_date FROM date_params),
+    m.total_value,
+    m.total_cost_basis,
+    m.total_value - m.total_cost_basis,
+    r.realized_gain_loss,
+    CASE
+        WHEN m.total_cost_basis > 0 THEN
+            ((m.total_value - m.total_cost_basis + r.realized_gain_loss) / m.total_cost_basis::numeric) * 100
+        ELSE 0
+    END,
+    NOW()
+FROM metrics m
+CROSS JOIN realized r
+ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
+    total_value = EXCLUDED.total_value,
+    total_cost_basis = EXCLUDED.total_cost_basis,
+    unrealized_gain_loss = EXCLUDED.unrealized_gain_loss,
+    realized_gain_loss = EXCLUDED.realized_gain_loss,
+    return_percentage = EXCLUDED.return_percentage,
+    created_at = EXCLUDED.created_at;
+`
+	_, err := r.db.ExecContext(ctx, query, date, portfolioID, portfolioID, portfolioID)
 	return err
 }
 

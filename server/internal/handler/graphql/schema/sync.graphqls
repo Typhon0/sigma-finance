@@ -24,6 +24,7 @@ type SyncCredential {
     id: ID!
     provider: String!
     status: String!
+    source: String
     createdAt: Time!
     updatedAt: Time!
 }

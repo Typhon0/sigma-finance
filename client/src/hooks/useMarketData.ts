@@ -255,15 +255,14 @@ export const useMarketData = ({
 		useInstrumentPath,
 	]);
 
-	const { data, loading, error, refetch } = useQuery<SymbolQueryData | InstrumentQueryData>(
-		queryDocument,
-		{
-			variables,
-			skip: skipQuery,
-			pollInterval: autoRefresh ? refreshInterval : 0,
-			fetchPolicy: chartOnly ? "cache-first" : "network-only",
-		},
-	);
+	const { data, loading, error, refetch, networkStatus } = useQuery<
+		SymbolQueryData | InstrumentQueryData
+	>(queryDocument, {
+		variables,
+		skip: skipQuery,
+		pollInterval: autoRefresh ? refreshInterval : 0,
+		fetchPolicy: chartOnly ? "cache-first" : "network-only",
+	});
 
 	const state = useMemo(() => {
 		if (skipQuery) {
@@ -363,6 +362,13 @@ export const useMarketData = ({
 
 	return {
 		...state,
+		// True only when a fresh fetch is in flight WHILE older data is on
+		// screen — the staleness window a UI must mark. Distinct from the
+		// first load: there, nothing stale is being shown, `loading` carries
+		// that state. NetworkStatus 2 = setVariables remount, 3 = fetchMore,
+		// 4 = refetch, 6 = poll; 1 (loading) counts only when data is already
+		// present (a dispatch over a cached result).
+		isRefetching: data != null && (loading || [1, 2, 3, 4, 6].includes(networkStatus)),
 		refetch,
 	};
 };

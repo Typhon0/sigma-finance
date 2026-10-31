@@ -9,6 +9,9 @@ export const Route = createLazyFileRoute("/_app/assets/crypto")({
 			<ProtectedRoute>
 				<CryptoList
 					onSelectCrypto={() => {}}
+					onSelectAccount={(_accountName) => {
+						navigate({ to: "/settings/connections" });
+					}}
 					onBack={() => navigate({ to: "/portfolios" })}
 					detailMode="panel"
 				/>

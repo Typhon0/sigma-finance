@@ -50,6 +50,7 @@ type InstrumentCatalogService interface {
 	ImportInstrumentFromSource(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
 	ImportInstrumentFromCatalog(ctx context.Context, source string, externalID string, forceEnrich bool, userID *string) (*InstrumentDetails, error)
 	GetCatalogSyncStatus(ctx context.Context, source string) (*model.CatalogSyncRun, error)
+	EnqueueHistoricalBackfillJob(ctx context.Context, portfolioID string, assetID string, instrumentID string, from time.Time, userID *string) (*model.HistoricalDataBackfillJob, error)
 	GetHistoricalDataBackfillJob(ctx context.Context, id string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error)
 	GetLatestHistoricalDataBackfillJob(ctx context.Context, portfolioID string, assetID string, userID *string, includeAll bool) (*model.HistoricalDataBackfillJob, error)
 	ListHistoricalDataBackfillJobs(ctx context.Context, filter repository.HistoricalDataBackfillJobFilter, userID *string, includeAll bool) ([]model.HistoricalDataBackfillJob, error)
@@ -664,6 +665,10 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 	}
 
 	return created, nil
+}
+
+func (s *instrumentService) EnqueueHistoricalBackfillJob(ctx context.Context, portfolioID string, assetID string, instrumentID string, from time.Time, userID *string) (*model.HistoricalDataBackfillJob, error) {
+	return s.enqueueHistoricalBackfillJob(ctx, portfolioID, assetID, instrumentID, from, userID)
 }
 
 func (s *instrumentService) enqueueHistoricalBackfillJob(ctx context.Context, portfolioID string, assetID string, instrumentID string, from time.Time, userID *string) (*model.HistoricalDataBackfillJob, error) {

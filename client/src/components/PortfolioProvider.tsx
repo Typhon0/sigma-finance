@@ -64,6 +64,7 @@ export interface PortfolioAssetItem {
 	// BankAccount-specific metadata
 	accountType?: string;
 	institution?: string;
+	account?: string;
 	accountNumber?: string;
 	currency?: string;
 	interestRate?: number | null;
@@ -275,6 +276,8 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					fx: resolveAssetFx(p.id, a.asset?.id),
 					positionId: resolvePositionId(p.id, a.asset?.id),
 					...bankFields,
+					institution: bankFields.institution || a.asset?.exchange || undefined,
+					account: a.asset?.exchange || bankFields.institution || undefined,
 					// Ensure type is set correctly after spread (bankFields may override)
 					type: bankFields.type || assetType,
 				};
@@ -338,6 +341,8 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				fx: resolveAssetFx(selectedPortfolio.id, a.asset?.id),
 				positionId: resolvePositionId(selectedPortfolio.id, a.asset?.id),
 				...bankFields,
+				institution: bankFields.institution || a.asset?.exchange || undefined,
+				account: a.asset?.exchange || bankFields.institution || undefined,
 				// Ensure type is set correctly after spread (bankFields may override)
 				type: bankFields.type || assetType,
 			};

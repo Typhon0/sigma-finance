@@ -84,7 +84,9 @@ export function AccountSettings() {
 	const { user } = useAuth();
 	const [name, setName] = useState(user?.name || "");
 	const [email, setEmail] = useState(user?.email || "");
-	const [selectedCountries, setSelectedCountries] = useState<string[]>([user?.taxJurisdiction || "FR"]);
+	const [selectedCountries, setSelectedCountries] = useState<string[]>([
+		user?.taxJurisdiction || "FR",
+	]);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [selectedRegion, setSelectedRegion] = useState("All");
 	const [activeSubSection, setActiveSubSection] = useState<

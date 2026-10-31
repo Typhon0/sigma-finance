@@ -1,0 +1,17 @@
+{
+  "items": [
+    {
+      "token": {
+        "address": "0x4200000000000000000000000000000000000042",
+        "decimals": "18",
+        "name": "Optimism",
+        "symbol": "OP",
+        "type": "ERC-20"
+      },
+      "token_id": null,
+      "token_instance": null,
+      "value": "120000000000000000000"
+    }
+  ],
+  "next_page_params": null
+}

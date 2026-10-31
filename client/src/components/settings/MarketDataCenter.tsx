@@ -45,6 +45,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlchemySettingsCard } from "@/features/wallets";
 import {
 	CANCEL_PACK_BUILD_JOB,
 	INSTALL_MARKET_DATA_PACK,
@@ -53,6 +54,7 @@ import {
 	START_LOCAL_PACK_BUILD,
 	UPDATE_MARKET_DATA_PACK,
 } from "@/graphql/mutations/market-data";
+import { REGISTER_SYNC_CREDENTIAL } from "@/graphql/mutations/sync";
 import {
 	GET_MARKET_DATA_CREDENTIALS,
 	GET_MARKET_DATA_PACK_JOB,
@@ -60,7 +62,6 @@ import {
 	GET_PACK_BUILD_JOB,
 	GET_PACK_BUILD_JOBS,
 } from "@/graphql/queries/market-data";
-import { REGISTER_SYNC_CREDENTIAL } from "@/graphql/mutations/sync";
 import { GET_SYNC_CREDENTIALS } from "@/graphql/queries/sync";
 
 interface RegistryPack {
@@ -223,7 +224,9 @@ export function MarketDataCenter() {
 	const [loadingLocalBuildItems, setLoadingLocalBuildItems] = useState(false);
 	const instrumentId = coverageInstrumentId.trim() || emptyInstrumentId;
 	const graphqlEndpoint = import.meta.env.VITE_GRAPHQL_ENDPOINT || "/graphql";
-	const apiBaseURL = graphqlEndpoint.startsWith("http") ? graphqlEndpoint.replace(/\/graphql$/, "") : "";
+	const apiBaseURL = graphqlEndpoint.startsWith("http")
+		? graphqlEndpoint.replace(/\/graphql$/, "")
+		: "";
 
 	const { data, loading, error, refetch } = useQuery<PackCenterData>(GET_MARKET_DATA_PACKS_CENTER, {
 		variables: { instrumentId },
@@ -265,10 +268,13 @@ export function MarketDataCenter() {
 	const [newSyncApiSecret, setNewSyncApiSecret] = useState("");
 	const [showSyncSecret, setShowSyncSecret] = useState(false);
 
-	const { data: syncCredsData, loading: loadingSyncCreds, refetch: refetchSyncCreds } =
-		useQuery<SyncCredentialsData>(GET_SYNC_CREDENTIALS, {
-			fetchPolicy: "cache-and-network",
-		});
+	const {
+		data: syncCredsData,
+		loading: loadingSyncCreds,
+		refetch: refetchSyncCreds,
+	} = useQuery<SyncCredentialsData>(GET_SYNC_CREDENTIALS, {
+		fetchPolicy: "cache-and-network",
+	});
 
 	const [registerSyncCred, { loading: registeringSyncCred }] =
 		useMutation(REGISTER_SYNC_CREDENTIAL);
@@ -1119,6 +1125,8 @@ export function MarketDataCenter() {
 			</TabsContent>
 
 			<TabsContent value="sync" className="space-y-6">
+				<AlchemySettingsCard />
+
 				<Card>
 					<CardHeader className="flex flex-row items-start justify-between pb-3">
 						<div>
@@ -1128,10 +1136,7 @@ export function MarketDataCenter() {
 							</CardDescription>
 						</div>
 						{currentPortfolio && (
-							<Button
-								size="sm"
-								onClick={() => setShowConnectDialog(true)}
-							>
+							<Button size="sm" onClick={() => setShowConnectDialog(true)}>
 								<RefreshCw className="mr-2 h-4 w-4" />
 								Institution Wizard
 							</Button>
@@ -1176,7 +1181,8 @@ export function MarketDataCenter() {
 											colSpan={4}
 											className="py-8 text-center text-sm text-muted-foreground"
 										>
-											No sync credentials configured yet. Register a new API key below or use the wizard.
+											No sync credentials configured yet. Register a new API key below or use the
+											wizard.
 										</TableCell>
 									</TableRow>
 								)}
@@ -1241,7 +1247,10 @@ export function MarketDataCenter() {
 								</div>
 							</div>
 
-							<Button type="submit" disabled={registeringSyncCred || !newSyncApiKey || !newSyncApiSecret}>
+							<Button
+								type="submit"
+								disabled={registeringSyncCred || !newSyncApiKey || !newSyncApiSecret}
+							>
 								{registeringSyncCred ? (
 									<>
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />

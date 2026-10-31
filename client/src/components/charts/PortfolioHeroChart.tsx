@@ -9,6 +9,7 @@ import { type BenchmarkMode, useBenchmarkInstrumentId } from "@/hooks/useBenchma
 import { useMarketData } from "@/hooks/useMarketData";
 import { getChartThemeColors } from "@/lib/chart-colors";
 import { useChartTheme } from "@/lib/charts/config";
+import { downsampleLTTB } from "@/lib/charts/lttb";
 import { cn } from "@/lib/utils";
 
 export type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
@@ -175,7 +176,6 @@ export function PortfolioHeroChartSkeleton({ className }: { className?: string }
 
 export function PortfolioHeroChart({
 	data,
-	// biome-ignore lint/correctness/noUnusedFunctionParameters: required by props
 	totalEquity,
 	formatCurrency,
 	timeRange,
@@ -187,12 +187,24 @@ export function PortfolioHeroChart({
 	const { echarts: echartsTheme, isDark } = useChartTheme();
 	const { currency } = useCurrency();
 	const filteredData = useMemo(() => filterByRange(data, timeRange), [data, timeRange]);
+	const displayData = useMemo(() => downsampleLTTB(filteredData, 350), [filteredData]);
 	const axisDateFormat = useMemo(() => {
-		if (timeRange === "ALL" || filteredData.length > 365) return "year";
-		if (timeRange === "1Y" || filteredData.length > 90) return "month";
 		if (timeRange === "1D") return "hour";
+		if (timeRange === "7D" || timeRange === "1M" || timeRange === "3M") return "day";
+		if (timeRange === "YTD" || timeRange === "1Y") return "month";
+		if (timeRange === "ALL") {
+			if (filteredData.length < 2) return "month";
+			const firstTime = new Date(filteredData[0].date).getTime();
+			const lastTime = new Date(filteredData[filteredData.length - 1].date).getTime();
+			const spanDays = Math.max(1, (lastTime - firstTime) / (1000 * 60 * 60 * 24));
+			if (spanDays <= 90) return "day";
+			if (spanDays <= 730) return "month";
+			return "year";
+		}
+		if (filteredData.length > 365) return "year";
+		if (filteredData.length > 90) return "month";
 		return "day";
-	}, [filteredData.length, timeRange]);
+	}, [filteredData, timeRange]);
 	const benchmarkName =
 		benchmarkMode === "sp500"
 			? "S&P 500"
@@ -224,8 +236,9 @@ export function PortfolioHeroChart({
 			return Math.max(100, spanDays * 96 + 50);
 		}
 		// Crypto trades 365 days/year (stocks ~252 days/year).
-		// Use spanDays + 30 buffer so crypto never exhausts its candle budget mid-range.
-		return Math.max(100, spanDays + 30);
+		// Cap multi-year benchmark candles to 350 so large historical spans never trigger
+		// bloated 2000+ candle network payloads and main-thread parsing.
+		return Math.min(350, Math.max(100, spanDays + 30));
 	}, [filteredData, marketDataInterval]);
 
 	const benchmarkFromDate = useMemo(() => {
@@ -255,7 +268,7 @@ export function PortfolioHeroChart({
 	// No synthetic fallback — if real data is insufficient, show an error.
 	// -----------------------------------------------------------------------
 	const benchmarkData = useMemo(() => {
-		if (benchmarkMode === "none" || filteredData.length === 0) {
+		if (benchmarkMode === "none" || displayData.length === 0) {
 			return [];
 		}
 
@@ -279,7 +292,7 @@ export function PortfolioHeroChart({
 		// Two-pointer continuous sliding window alignment: O(n+m) instead of O(n*m).
 		const alignedCloses: (number | null)[] = [];
 		let candleIdx = 0;
-		for (const point of filteredData) {
+		for (const point of displayData) {
 			const targetTime = point.date.getTime();
 			if (targetTime <= firstCandleTime) {
 				alignedCloses.push(sortedCandles[0].close);
@@ -305,7 +318,7 @@ export function PortfolioHeroChart({
 			if (c !== null && c > 0) {
 				if (firstRealClose === 0) {
 					firstRealClose = c;
-					firstPortfolioValue = filteredData[i]?.portfolioValue ?? 0;
+					firstPortfolioValue = displayData[i]?.portfolioValue ?? 0;
 				}
 				lastRealClose = c;
 			}
@@ -314,7 +327,7 @@ export function PortfolioHeroChart({
 		if (firstRealClose <= 0) return [];
 
 		const latestPortfolioValue =
-			filteredData[filteredData.length - 1]?.portfolioValue ?? totalEquity;
+			displayData[displayData.length - 1]?.portfolioValue ?? totalEquity;
 
 		const startsNearZero =
 			firstPortfolioValue <= 0 ||
@@ -332,7 +345,7 @@ export function PortfolioHeroChart({
 			if (close === null) return null;
 			return firstPortfolioValue * (close / firstRealClose);
 		});
-	}, [benchmarkMode, filteredData, marketCandles, totalEquity]);
+	}, [benchmarkMode, displayData, marketCandles, totalEquity]);
 
 	// True when the benchmark instrument could not be found in the database
 	// (search queries completed but returned no results).
@@ -389,11 +402,12 @@ export function PortfolioHeroChart({
 	// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	const chartOption = useMemo(() => {
 		const themeColors = getChartThemeColors();
-		const portfolioSeries = filteredData.map((point) => [
+		const isDense = displayData.length > 250;
+		const portfolioSeries = displayData.map((point) => [
 			point.date.getTime(),
 			point.portfolioValue,
 		]);
-		const benchmarkSeries = filteredData.map((point, index) => [
+		const benchmarkSeries = displayData.map((point, index) => [
 			point.date.getTime(),
 			benchmarkData[index] ?? null,
 		]);
@@ -403,9 +417,9 @@ export function PortfolioHeroChart({
 
 		return {
 			animation: true,
-			animationDuration: 400,
+			animationDuration: isDense ? 200 : 400,
 			animationEasing: "cubicOut",
-			animationDurationUpdate: 400,
+			animationDurationUpdate: isDense ? 200 : 400,
 			animationEasingUpdate: "cubicOut",
 			animationThreshold: 8000,
 			backgroundColor: "transparent",
@@ -481,6 +495,7 @@ export function PortfolioHeroChart({
 				axisLine: { show: false },
 				axisTick: { show: false },
 				splitLine: { show: false },
+				minInterval: axisDateFormat === "year" ? 365 * 24 * 3600 * 1000 : undefined,
 				axisLabel: {
 					color: themeColors.mutedForeground,
 					fontSize: 11,
@@ -489,7 +504,7 @@ export function PortfolioHeroChart({
 					formatter: (value: number) => {
 						const date = new Date(value);
 						if (axisDateFormat === "year") {
-							return date.toLocaleDateString("en-US", { year: "2-digit" });
+							return date.toLocaleDateString("en-US", { year: "numeric" });
 						}
 						if (axisDateFormat === "month") {
 							return date.toLocaleDateString("en-US", {
@@ -542,17 +557,36 @@ export function PortfolioHeroChart({
 					id: "portfolio-main-series",
 					name: "Portfolio",
 					type: "line",
-					smooth: 0.25,
+					smooth: isDense ? 0.2 : 0.35,
 					showSymbol: false,
 					itemStyle: {
 						color: portfolioLineColor,
 					},
 					lineStyle: {
 						color: portfolioLineColor,
-						width: 1.5,
+						width: 2.2,
+					},
+					areaStyle: {
+						color: {
+							type: "linear",
+							x: 0,
+							y: 0,
+							x2: 0,
+							y2: 1,
+							colorStops: [
+								{
+									offset: 0,
+									color: isUp ? "rgba(16, 185, 129, 0.28)" : "rgba(239, 68, 68, 0.28)",
+								},
+								{
+									offset: 1,
+									color: isUp ? "rgba(16, 185, 129, 0.00)" : "rgba(239, 68, 68, 0.00)",
+								},
+							],
+						},
 					},
 					sampling: "lttb",
-					animationDurationUpdate: 600,
+					animationDurationUpdate: isDense ? 200 : 400,
 					animationEasingUpdate: "cubicInOut",
 					data: portfolioSeries,
 				},
@@ -562,7 +596,7 @@ export function PortfolioHeroChart({
 								id: "benchmark-comparison-series",
 								name: benchmarkName,
 								type: "line",
-								smooth: 0.25,
+								smooth: isDense ? 0.15 : 0.25,
 								showSymbol: false,
 								sampling: "lttb",
 								z: 5,
@@ -575,7 +609,7 @@ export function PortfolioHeroChart({
 									type: "dashed",
 									opacity: isBenchmarkLoading ? 0.35 : 0.75,
 								},
-								animationDurationUpdate: 600,
+								animationDurationUpdate: isDense ? 200 : 400,
 								animationEasingUpdate: "cubicInOut",
 								data: benchmarkSeries,
 							},
@@ -588,7 +622,7 @@ export function PortfolioHeroChart({
 		benchmarkData,
 		benchmarkMode,
 		benchmarkName,
-		filteredData,
+		displayData,
 		formatCurrency,
 		echartsTheme,
 		currency,
@@ -640,7 +674,7 @@ export function PortfolioHeroChart({
 				<ReactECharts
 					option={chartOption}
 					notMerge={true}
-					lazyUpdate={false}
+					lazyUpdate={true}
 					style={{ height: "100%", width: "100%" }}
 					opts={{ renderer: "canvas" }}
 				/>

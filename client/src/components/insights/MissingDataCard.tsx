@@ -9,6 +9,8 @@ interface MissingDataCardProps {
 	dataQuality: DataQualityData | null;
 	isRecommended: boolean;
 	setInsightFilter: (filter: { mode: "sector" | "asset-class"; value: string } | null) => void;
+	/** No card of its own: the insight strip owns the surface. */
+	bare?: boolean;
 }
 
 export const MissingDataCard = memo(function MissingDataCard({
@@ -16,20 +18,31 @@ export const MissingDataCard = memo(function MissingDataCard({
 	dataQuality,
 	isRecommended,
 	setInsightFilter,
+	bare = false,
 }: MissingDataCardProps) {
+	const Wrapper = bare ? "div" : Card;
 	const issuesCount = (dataQuality?.missingCostCount ?? 0) + (dataQuality?.missingSectorCount ?? 0);
 
 	return (
-		<Card
+		<Wrapper
 			key={cardId}
-			className="relative overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] flex flex-col justify-between hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out group/card animate-in fade-in duration-300"
+			className={cn(
+				"relative flex flex-col justify-between",
+				!bare &&
+					"overflow-hidden border border-border/40 bg-card/25 p-5 min-h-[220px] hover:border-primary/30 hover:bg-card/75 transition-all duration-300 ease-in-out",
+			)}
 		>
 			<div>
 				<div className="flex items-center justify-between mb-3">
-					<span className="text-micro font-bold uppercase tracking-widest text-muted-foreground">
+					<span
+						className={cn(
+							"text-muted-foreground",
+							bare ? "text-xs font-medium" : "text-micro font-bold uppercase tracking-widest",
+						)}
+					>
 						Data Quality
 					</span>
-					{isRecommended && (
+					{isRecommended && !bare && (
 						<span className="bg-primary/5 text-primary border border-primary/15 px-2 py-0.5 rounded text-micro font-extrabold uppercase tracking-wider select-none">
 							Recommended
 						</span>
@@ -37,7 +50,7 @@ export const MissingDataCard = memo(function MissingDataCard({
 				</div>
 
 				{dataQuality ? (
-					<div className="space-y-3">
+					<div className={cn("space-y-3", bare && "space-y-1")}>
 						<div className="flex items-baseline gap-1.5">
 							<span
 								className={cn(
@@ -50,31 +63,58 @@ export const MissingDataCard = memo(function MissingDataCard({
 							<span className="text-xs text-muted-foreground font-semibold">health score</span>
 						</div>
 
-						<div className="space-y-2 mt-1">
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span className="text-muted-foreground font-medium">Missing purchase price</span>
+						{bare ? (
+							<p className="text-micro text-muted-foreground">
 								<span
 									className={cn(
 										"font-mono font-semibold",
 										dataQuality.missingCostCount > 0 ? "text-warning" : "text-foreground",
 									)}
 								>
-									{dataQuality.missingCostCount} assets
-								</span>
-							</div>
-							<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
-								<span className="text-muted-foreground font-medium">Missing sector data</span>
+									{dataQuality.missingCostCount}
+								</span>{" "}
+								missing price ·{" "}
 								<span
 									className={cn(
 										"font-mono font-semibold",
 										dataQuality.missingSectorCount > 0 ? "text-warning" : "text-foreground",
 									)}
 								>
-									{dataQuality.missingSectorCount} assets
-								</span>
+									{dataQuality.missingSectorCount}
+								</span>{" "}
+								missing sector
+							</p>
+						) : (
+							<div className="space-y-2 mt-1">
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span className="text-muted-foreground font-medium">Missing purchase price</span>
+									<span
+										className={cn(
+											"font-mono font-semibold",
+											dataQuality.missingCostCount > 0 ? "text-warning" : "text-foreground",
+										)}
+									>
+										{dataQuality.missingCostCount} assets
+									</span>
+								</div>
+								<div className="flex justify-between items-center text-xs pb-1.5 border-b border-border/30">
+									<span className="text-muted-foreground font-medium">Missing sector data</span>
+									<span
+										className={cn(
+											"font-mono font-semibold",
+											dataQuality.missingSectorCount > 0 ? "text-warning" : "text-foreground",
+										)}
+									>
+										{dataQuality.missingSectorCount} assets
+									</span>
+								</div>
 							</div>
-						</div>
+						)}
 					</div>
+				) : bare ? (
+					<p className="text-xs text-muted-foreground">
+						Nothing missing — every position has a price and a sector.
+					</p>
 				) : (
 					<div className="flex flex-col items-center justify-center text-center h-[130px] gap-1.5 py-4">
 						<Info className="h-6 w-6 text-muted-foreground/40 shrink-0" />
@@ -100,6 +140,6 @@ export const MissingDataCard = memo(function MissingDataCard({
 					</button>
 				</div>
 			)}
-		</Card>
+		</Wrapper>
 	);
 });

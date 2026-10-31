@@ -45,7 +45,10 @@ const TradingViewChart: React.FC<TradingViewChartProps> = ({
 }) => {
 	const [viewMode, setViewMode] = useState<"local" | "widget">("local");
 	const { resolvedTheme } = useTheme();
-	const theme = customTheme || resolvedTheme;
+	const isDark =
+		resolvedTheme === "dark" ||
+		(typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+	const theme = customTheme || (isDark ? "dark" : "light");
 
 	const widgetSymbol = resolveTradingViewSymbol({
 		symbol,

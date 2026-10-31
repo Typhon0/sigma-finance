@@ -1,0 +1,33 @@
+# Exclude Python service and virtual environments
+cmd/yfinance-service
+cmd/yfinance-service/**
+.venv
+.mypy_cache
+__pycache__
+*.pyc
+*.pyo
+
+# Exclude compiled binaries and test artifacts
+*.test
+*.out
+*.exe
+main
+sigma-finance-server
+sigma-finance
+market-data-pack-ci
+coverage.out
+
+# Exclude git and dev metadata
+.git
+.gitignore
+.agents
+.codex
+.vscode
+
+# Exclude large data and CI dirs
+data
+data/**
+market-data-pack-ci
+public
+tmp
+

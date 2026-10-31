@@ -26,13 +26,16 @@ global.ResizeObserver = vi.fn().mockImplementation(() => ({
 	disconnect: vi.fn(),
 }));
 
-// Mock localStorage
+// Mock localStorage with actual store
+const store = new Map<string, string>();
 const localStorageMock = {
-	getItem: vi.fn(),
-	setItem: vi.fn(),
-	removeItem: vi.fn(),
-	clear: vi.fn(),
-	length: 0,
-	key: vi.fn().mockReturnValue(null),
+	getItem: vi.fn((key: string) => store.get(key) ?? null),
+	setItem: vi.fn((key: string, value: string) => store.set(key, String(value))),
+	removeItem: vi.fn((key: string) => store.delete(key)),
+	clear: vi.fn(() => store.clear()),
+	get length() {
+		return store.size;
+	},
+	key: vi.fn((index: number) => Array.from(store.keys())[index] ?? null),
 };
-global.localStorage = localStorageMock as Storage;
+global.localStorage = localStorageMock as unknown as Storage;

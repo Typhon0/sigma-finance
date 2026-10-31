@@ -59,12 +59,13 @@ func (s *WalletSyncService) SyncWalletAccount(ctx context.Context, walletAccount
 	}
 
 	account.HistoryStatus = model.WalletHistoryStatusInProgress
+	account.LastSyncError = nil
 	capLevel := model.WalletCapabilityBalanceOnly
 	if cr, ok := s.provider.(CapabilityProvider); ok {
 		capLevel = cr.GetCapability(account.Network)
 	}
 	account.CapabilityLevel = capLevel
-	_, _ = s.db.NewUpdate().Model(&account).Column("history_status", "capability_level").WherePK().Exec(ctx)
+	_, _ = s.db.NewUpdate().Model(&account).Column("history_status", "capability_level", "last_sync_error").WherePK().Exec(ctx)
 
 	// 1. Fetch Balances (with persistent HD derivation for Bitcoin xpubs and persistent ATAs for Solana)
 	if account.Network == model.BlockchainNetworkSolana {
@@ -96,6 +97,8 @@ func (s *WalletSyncService) SyncWalletAccount(ctx context.Context, walletAccount
 						IsNative:     true,
 					},
 				}
+			} else {
+				log.Printf("[WARN] [WalletSyncService] Persistent HD scan failed for %s: %v. Falling back to FetchBalances.", account.AddressOrXpub, errBtc)
 			}
 		}
 	}
@@ -104,10 +107,22 @@ func (s *WalletSyncService) SyncWalletAccount(ctx context.Context, walletAccount
 		var err error
 		balances, err = s.provider.FetchBalances(ctx, account.Network, account.AddressOrXpub)
 		if err != nil {
+			var existingCount int
+			existingCount, _ = s.db.NewSelect().
+				Model((*model.WalletBalance)(nil)).
+				Where("wallet_account_id = ?", account.ID).
+				Count(ctx)
+
 			account.HistoryStatus = model.WalletHistoryStatusError
-			errMsg := err.Error()
+			errMsg := fmt.Sprintf("provider unavailable: %v", err)
 			account.LastSyncError = &errMsg
 			_, _ = s.db.NewUpdate().Model(&account).Column("history_status", "last_sync_error").WherePK().Exec(ctx)
+
+			if existingCount > 0 {
+				log.Printf("[WARN] [WalletSyncService] Provider unavailable for wallet %s (%s). Preserved %d existing balance(s) without erasing.",
+					account.ID, account.AddressOrXpub, existingCount)
+				return fmt.Errorf("provider unavailable: %w (existing balances preserved)", err)
+			}
 			return fmt.Errorf("failed to fetch balances: %w", err)
 		}
 

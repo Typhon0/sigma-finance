@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -58,9 +59,25 @@ func TestHybridCandleStoreDBOverlayWins(t *testing.T) {
 
 func TestDecimalFromParquetBytesPreservesTinyPrice(t *testing.T) {
 	scaled := decimal.RequireFromString("0.000023").Shift(18).BigInt().Bytes()
-	got := decimalFromParquetBytes(scaled, 18)
+	got, err := decimalFromParquetBytes(scaled, 18)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if !got.Equal(decimal.RequireFromString("0.000023")) {
 		t.Fatalf("expected exact tiny price, got %s", got)
+	}
+}
+
+func TestDecimalFromParquetBytesRejectsSliceHeader(t *testing.T) {
+	// A Go slice header struct dumped into 16 bytes:
+	// pointer (e.g. 0xc00b854020) + len 16
+	corrupted := []byte{0x20, 0x40, 0x85, 0x0b, 0xc0, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00}
+	_, err := decimalFromParquetBytes(corrupted, 18)
+	if err == nil {
+		t.Fatalf("expected error for corrupted slice header bytes, got nil")
+	}
+	if !errors.Is(err, errCorruptedPrice) {
+		t.Fatalf("expected errCorruptedPrice, got %v", err)
 	}
 }
 

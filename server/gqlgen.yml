@@ -164,6 +164,9 @@ models:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
+  WalletCapabilityLevel:
+    model:
+      - sigma_finance/internal/domain/model.WalletCapabilityLevel
   JSON:
     model:
       - github.com/99designs/gqlgen/graphql.Map

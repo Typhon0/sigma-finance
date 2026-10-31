@@ -126,19 +126,24 @@ func (c *ActivityClassifier) Classify(
 				if isInternal {
 					notes = fmt.Sprintf("Internal transfer to owned wallet %s", act.ToAddress)
 				}
-
-				tx := &model.Transaction{
-					UserID:            account.UserID,
-					AccountID:         account.AccountID,
-					Type:              txType,
-					Amount:            1, // Satisfies valid_amount CHECK (amount <> 0)
-					ExecutedAt:        act.ExecutedAt,
-					Quantity:          &act.FormattedAmount,
-					UnitPriceCurrency: model.CurrencyUSD,
-					FeesCurrency:      model.CurrencyUSD,
-					Notes:             stringPtr(notes),
+				if isWSOLUnwrapAct(act) {
+					notes = fmt.Sprintf("Unwrap WSOL to native SOL (tx: %s)", truncateHash(txHash))
 				}
-				result.Transactions = append(result.Transactions, tx)
+
+				if act.FormattedAmount.GreaterThan(decimal.Zero) {
+					tx := &model.Transaction{
+						UserID:            account.UserID,
+						AccountID:         account.AccountID,
+						Type:              txType,
+						Amount:            1, // Satisfies valid_amount CHECK (amount <> 0)
+						ExecutedAt:        act.ExecutedAt,
+						Quantity:          &act.FormattedAmount,
+						UnitPriceCurrency: model.CurrencyUSD,
+						FeesCurrency:      model.CurrencyUSD,
+						Notes:             stringPtr(notes),
+					}
+					result.Transactions = append(result.Transactions, tx)
+				}
 
 				// Record separate native FEE disposal if fee was spent
 				if act.FeeAmount != "" && act.FeeAmount != "0" {
@@ -177,19 +182,24 @@ func (c *ActivityClassifier) Classify(
 				if isInternal {
 					notes = fmt.Sprintf("Internal transfer from owned wallet %s", act.FromAddress)
 				}
-
-				tx := &model.Transaction{
-					UserID:            account.UserID,
-					AccountID:         account.AccountID,
-					Type:              txType,
-					Amount:            1, // Satisfies valid_amount CHECK (amount <> 0)
-					ExecutedAt:        act.ExecutedAt,
-					Quantity:          &act.FormattedAmount,
-					UnitPriceCurrency: model.CurrencyUSD,
-					FeesCurrency:      model.CurrencyUSD,
-					Notes:             stringPtr(notes),
+				if isWSOLUnwrapAct(act) {
+					notes = fmt.Sprintf("Unwrapped native SOL from WSOL (tx: %s)", truncateHash(txHash))
 				}
-				result.Transactions = append(result.Transactions, tx)
+
+				if act.FormattedAmount.GreaterThan(decimal.Zero) {
+					tx := &model.Transaction{
+						UserID:            account.UserID,
+						AccountID:         account.AccountID,
+						Type:              txType,
+						Amount:            1, // Satisfies valid_amount CHECK (amount <> 0)
+						ExecutedAt:        act.ExecutedAt,
+						Quantity:          &act.FormattedAmount,
+						UnitPriceCurrency: model.CurrencyUSD,
+						FeesCurrency:      model.CurrencyUSD,
+						Notes:             stringPtr(notes),
+					}
+					result.Transactions = append(result.Transactions, tx)
+				}
 			}
 		}
 	}
@@ -227,7 +237,23 @@ func isRentRecoveryOrClosure(acts []*model.WalletActivity) bool {
 				if c, ok := m["is_account_closure"].(bool); ok && c {
 					return true
 				}
+				if w, ok := m["is_wsol_unwrap"].(bool); ok && w {
+					return true
+				}
 			}
+		}
+	}
+	return false
+}
+
+func isWSOLUnwrapAct(act *model.WalletActivity) bool {
+	if len(act.RawMetadata) == 0 {
+		return false
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(act.RawMetadata, &m); err == nil {
+		if w, ok := m["is_wsol_unwrap"].(bool); ok && w {
+			return true
 		}
 	}
 	return false

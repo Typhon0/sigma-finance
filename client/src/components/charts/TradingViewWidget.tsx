@@ -10,7 +10,10 @@ interface TradingViewWidgetProps {
 function TradingViewWidget({ symbol, theme: customTheme, height = 400 }: TradingViewWidgetProps) {
 	const containerRef = useRef<HTMLDivElement>(null);
 	const { resolvedTheme } = useTheme();
-	const theme = customTheme || resolvedTheme;
+	const isDark =
+		resolvedTheme === "dark" ||
+		(typeof document !== "undefined" && document.documentElement.classList.contains("dark"));
+	const theme = customTheme || (isDark ? "dark" : "light");
 
 	const symbolsList = useMemo(() => {
 		if (symbol) {
