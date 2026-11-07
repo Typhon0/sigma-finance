@@ -12,7 +12,11 @@ func init() {
 		func(ctx context.Context, db *bun.DB) error {
 			fmt.Print(" [up migration] Repair market data pack tables ")
 			_, err := db.ExecContext(ctx, `
-				CREATE SCHEMA IF NOT EXISTS sigma_finance;
+				DO $$ BEGIN
+					IF NOT EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'sigma_finance') THEN
+						EXECUTE 'CREATE SCHEMA sigma_finance';
+					END IF;
+				END $$;
 
 				CREATE TABLE IF NOT EXISTS sigma_finance.market_data_packs (
 					id TEXT PRIMARY KEY,

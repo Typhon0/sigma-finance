@@ -250,6 +250,7 @@ func TestDomainModelValidation(t *testing.T) {
 	t.Run("Position model validation", func(t *testing.T) {
 		position := model.Position{
 			ID:                  uuid.NewString(),
+			AccountID:           uuid.NewString(),
 			PortfolioID:         uuid.NewString(),
 			AssetID:             uuid.NewString(),
 			Quantity:            decimal.NewFromInt(100),

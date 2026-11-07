@@ -31,8 +31,17 @@ func init() {
 				DROP CONSTRAINT IF EXISTS tag_name_key;
 
 				-- Add composite unique constraint on (user_id, name)
-				ALTER TABLE sigma_finance.tag
-				ADD CONSTRAINT tag_user_id_name_key UNIQUE (user_id, name);
+				DO $$
+				BEGIN
+					IF NOT EXISTS (
+						SELECT 1 FROM pg_constraint
+						WHERE conname = 'tag_user_id_name_key'
+							AND conrelid = 'sigma_finance.tag'::regclass
+					) THEN
+						ALTER TABLE sigma_finance.tag
+							ADD CONSTRAINT tag_user_id_name_key UNIQUE (user_id, name);
+					END IF;
+				END $$;
 			`)
 			return err
 		},

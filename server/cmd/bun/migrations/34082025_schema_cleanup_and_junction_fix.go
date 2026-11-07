@@ -71,6 +71,7 @@ func init() {
 				-- Primary key: (user_id, asset_id) - let's keep it composite or add ID too?
 				-- To be consistent, let's add ID to ownership too.
 				ALTER TABLE sigma_finance.ownership ADD COLUMN IF NOT EXISTS id UUID DEFAULT gen_random_uuid();
+				ALTER TABLE sigma_finance.ownership DROP CONSTRAINT IF EXISTS ownership_pkey CASCADE;
 				ALTER TABLE sigma_finance.ownership ADD PRIMARY KEY (id);
 
 				-- 4. Final timestamp fix for junction tables

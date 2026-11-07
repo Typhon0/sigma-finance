@@ -10,6 +10,7 @@ import (
 
 func TestPosition_Validate(t *testing.T) {
 	portfolioID := uuid.New().String()
+	accountID := uuid.New().String()
 	assetID := uuid.New().String()
 
 	tests := []struct {
@@ -23,6 +24,7 @@ func TestPosition_Validate(t *testing.T) {
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -36,6 +38,7 @@ func TestPosition_Validate(t *testing.T) {
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(50.0),
 				OwnershipPercentage: decimal.NewFromFloat(25.5),
@@ -48,6 +51,7 @@ func TestPosition_Validate(t *testing.T) {
 			name: "invalid position - missing portfolio ID",
 			position: &Position{
 				ID:                  uuid.New().String(),
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -58,10 +62,25 @@ func TestPosition_Validate(t *testing.T) {
 			errMsg:  "portfolio ID is required",
 		},
 		{
+			name: "invalid position - missing account ID",
+			position: &Position{
+				ID:                  uuid.New().String(),
+				PortfolioID:         portfolioID,
+				AssetID:             assetID,
+				Quantity:            decimal.NewFromFloat(100.0),
+				OwnershipPercentage: decimal.NewFromFloat(100.0),
+				CreatedAt:           time.Now(),
+				UpdatedAt:           time.Now(),
+			},
+			wantErr: true,
+			errMsg:  "account ID is required",
+		},
+		{
 			name: "invalid position - missing asset ID",
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
 				CreatedAt:           time.Now(),
@@ -75,6 +94,7 @@ func TestPosition_Validate(t *testing.T) {
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(-10.0),
 				OwnershipPercentage: decimal.NewFromFloat(100.0),
@@ -89,6 +109,7 @@ func TestPosition_Validate(t *testing.T) {
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(0.0),
@@ -103,6 +124,7 @@ func TestPosition_Validate(t *testing.T) {
 			position: &Position{
 				ID:                  uuid.New().String(),
 				PortfolioID:         portfolioID,
+				AccountID:           accountID,
 				AssetID:             assetID,
 				Quantity:            decimal.NewFromFloat(100.0),
 				OwnershipPercentage: decimal.NewFromFloat(150.0),

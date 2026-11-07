@@ -2,10 +2,17 @@ package middleware
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
+	"sigma_finance/internal/domain/model"
+
+	"github.com/gofiber/fiber/v2"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetUserFromContext(t *testing.T) {
@@ -142,6 +149,76 @@ func TestParseUserID(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result := parseUserID(tt.userID)
 			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestAuthMiddleware_QueryTokenRestrictions(t *testing.T) {
+	mockSession := &mockSessionService{}
+	validSession := &model.Session{
+		ID:     "session-123",
+		UserID: "user-456",
+	}
+
+	mockSession.On("ValidateSession", mock.Anything, "valid-token").Return(validSession, nil)
+
+	app := fiber.New()
+	app.Use(AuthMiddleware(mockSession))
+
+	app.Get("/api/positions", func(c *fiber.Ctx) error {
+		return c.SendString("ok")
+	})
+	app.Get("/admin/logs/sse", func(c *fiber.Ctx) error {
+		return c.SendString("sse-ok")
+	})
+
+	tests := []struct {
+		name           string
+		path           string
+		headers        map[string]string
+		expectedStatus int
+	}{
+		{
+			name:           "Standard route with bearer header succeeds",
+			path:           "/api/positions",
+			headers:        map[string]string{"Authorization": "Bearer valid-token"},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Standard route with query token is rejected with 401",
+			path:           "/api/positions?token=valid-token",
+			headers:        nil,
+			expectedStatus: http.StatusUnauthorized,
+		},
+		{
+			name:           "SSE route with query token succeeds",
+			path:           "/admin/logs/sse?token=valid-token",
+			headers:        nil,
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Standard route with query token and Accept text/event-stream succeeds",
+			path:           "/api/positions?token=valid-token",
+			headers:        map[string]string{"Accept": "text/event-stream"},
+			expectedStatus: http.StatusOK,
+		},
+		{
+			name:           "Standard route with no token fails with 401",
+			path:           "/api/positions",
+			headers:        nil,
+			expectedStatus: http.StatusUnauthorized,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
+			for k, v := range tt.headers {
+				req.Header.Set(k, v)
+			}
+			resp, err := app.Test(req)
+			require.NoError(t, err)
+			assert.Equal(t, tt.expectedStatus, resp.StatusCode)
 		})
 	}
 }

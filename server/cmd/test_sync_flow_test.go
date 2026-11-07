@@ -48,25 +48,38 @@ func (m *mockE2ESyncAdapter) FetchAccounts(ctx context.Context, cred *model.Sync
 	return m.rawAccounts, nil
 }
 
-func (m *mockE2ESyncAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
+func (m *mockE2ESyncAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.BalancesSnapshot, error) {
 	if m.fetchBalancesErr != nil {
-		return nil, m.fetchBalancesErr
+		return syncservice.BalancesSnapshot{}, m.fetchBalancesErr
 	}
-	return m.rawBalances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   m.rawBalances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
-func (m *mockE2ESyncAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
+func (m *mockE2ESyncAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.HoldingsSnapshot, error) {
 	if m.fetchHoldingsErr != nil {
-		return nil, m.fetchHoldingsErr
+		return syncservice.HoldingsSnapshot{}, m.fetchHoldingsErr
 	}
-	return m.rawHoldings, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       m.rawHoldings,
+		IsComplete:     true,
+		PaginationDone: true,
+		AsOf:           time.Now(),
+	}, nil
 }
 
-func (m *mockE2ESyncAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time) ([]syncservice.RawTransaction, error) {
+func (m *mockE2ESyncAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time, cursors syncservice.StreamCursors) (syncservice.TransactionsSnapshot, error) {
 	if m.fetchTxErr != nil {
-		return nil, m.fetchTxErr
+		return syncservice.TransactionsSnapshot{}, m.fetchTxErr
 	}
-	return m.rawTransactions, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   m.rawTransactions,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 // In-Memory Unit of Work for E2E integration test
@@ -258,6 +271,16 @@ func (r *e2eAccountRepo) GetByID(ctx context.Context, id string) (*model.Account
 func (r *e2eAccountRepo) Update(ctx context.Context, acc *model.Account) error {
 	r.u.accounts[acc.ID] = acc
 	return nil
+}
+
+func (r *e2eAccountRepo) GetAccountsByAccountNumber(ctx context.Context, accountNumber string) ([]model.Account, error) {
+	var matched []model.Account
+	for _, a := range r.u.accounts {
+		if a.AccountNumber != nil && *a.AccountNumber == accountNumber {
+			matched = append(matched, *a)
+		}
+	}
+	return matched, nil
 }
 
 type e2ePortfolioRepo struct {
@@ -493,6 +516,10 @@ func (r *e2eInstrumentRepo) GetByGlobalIdentifier(ctx context.Context, field, va
 		}
 	}
 	return nil, repository.ErrNotFound
+}
+
+func (r *e2eInstrumentRepo) ResolveByGlobalIdentifier(ctx context.Context, field, value string, preferredCurrency model.Currency) (*model.Instrument, error) {
+	return r.GetByGlobalIdentifier(ctx, field, value)
 }
 
 // TestFullSyncLifecycle verifies the entire end-to-end sync lifecycle:

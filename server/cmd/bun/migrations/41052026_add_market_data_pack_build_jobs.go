@@ -14,7 +14,7 @@ func init() {
 			_, err := db.ExecContext(ctx, `
 				CREATE TABLE IF NOT EXISTS sigma_finance.market_data_pack_build_jobs (
 					id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-					user_id UUID NOT NULL REFERENCES sigma_finance.users(id) ON DELETE CASCADE,
+					user_id UUID NOT NULL REFERENCES sigma_finance."user"(id) ON DELETE CASCADE,
 					pack_id TEXT NOT NULL,
 					source_provider TEXT NOT NULL,
 					build_config JSONB NOT NULL DEFAULT '{}'::jsonb,

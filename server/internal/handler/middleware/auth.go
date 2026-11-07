@@ -60,9 +60,13 @@ func AuthMiddleware(sessionService service.SessionService) fiber.Handler {
 			return c.Next()
 		}
 
-		// Get token from header or query param (query param needed for EventSource SSE)
+		// Get token from header or query param (query param only allowed for EventSource SSE)
 		token := ""
 		authHeader := c.Get("Authorization")
+		isSSE := strings.HasPrefix(path, "/admin/logs") ||
+			strings.HasPrefix(path, "/api/admin/logs") ||
+			c.Get("Accept") == "text/event-stream"
+
 		if authHeader != "" {
 			tokenParts := strings.Split(authHeader, " ")
 			if len(tokenParts) != 2 || strings.ToLower(tokenParts[0]) != "bearer" {
@@ -71,8 +75,8 @@ func AuthMiddleware(sessionService service.SessionService) fiber.Handler {
 				})
 			}
 			token = tokenParts[1]
-		} else if qToken := c.Query("token"); qToken != "" {
-			token = qToken
+		} else if isSSE && c.Query("token") != "" {
+			token = c.Query("token")
 		} else {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Authorization header required",

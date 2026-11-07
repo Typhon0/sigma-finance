@@ -1,6 +1,10 @@
 package model
 
-import "github.com/shopspring/decimal"
+import (
+	"math"
+
+	"github.com/shopspring/decimal"
+)
 
 // Money represents a monetary amount in the smallest currency unit (e.g. cents for USD).
 // All monetary values must use this type to avoid floating point precision issues.
@@ -10,7 +14,7 @@ type Money int64
 
 // FromFloat converts a decimal float price into Money assuming 2 decimal places.
 // NOTE: Do not use for crypto assets requiring >2 decimals without revisiting scaling.
-func FromFloat(v float64) Money { return Money(v * 100) }
+func FromFloat(v float64) Money { return Money(math.Round(v * 100)) }
 
 // ToFloat converts Money back to a float with 2 decimal places.
 func (m Money) ToFloat() float64 { return float64(m) / 100.0 }

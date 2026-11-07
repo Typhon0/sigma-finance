@@ -39,6 +39,16 @@ func setupDispositionWorld(t *testing.T) (*TestDBContext, *model.Portfolio, *mod
 	})
 	require.NoError(t, err)
 
+	account, err := uow.Account().Create(ctx, &model.Account{
+		ID:          uuid.NewString(),
+		UserID:      user.ID,
+		PortfolioID: portfolio.ID,
+		Name:        "Test Account",
+		Type:        model.AccountTypeBroker,
+		Currency:    "USD",
+	})
+	require.NoError(t, err)
+
 	asset, err := uow.Asset().Create(ctx, &model.Asset{
 		ID:          uuid.NewString(),
 		Type:        model.AssetTypeStock,
@@ -49,10 +59,12 @@ func setupDispositionWorld(t *testing.T) (*TestDBContext, *model.Portfolio, *mod
 	require.NoError(t, err)
 
 	position, err := uow.Position().Create(ctx, &model.Position{
-		ID:          uuid.NewString(),
-		PortfolioID: portfolio.ID,
-		AssetID:     asset.ID,
-		Quantity:    decimal.NewFromInt(100),
+		ID:            uuid.NewString(),
+		AccountID:     account.ID,
+		PortfolioID:   portfolio.ID,
+		AssetID:       asset.ID,
+		Quantity:      decimal.NewFromInt(100),
+		QuoteCurrency: "USD",
 	})
 	require.NoError(t, err)
 

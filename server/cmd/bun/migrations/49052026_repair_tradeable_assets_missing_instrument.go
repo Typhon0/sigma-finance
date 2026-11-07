@@ -28,12 +28,12 @@ func init() {
 					WHERE
 						a.is_tradeable = TRUE
 						AND a.instrument_id IS NULL
-						AND a.type IN ('STOCK', 'FUND', 'CRYPTO')
+						AND a.type::TEXT IN ('STOCK', 'FUND', 'CRYPTO')
 						AND i.status <> 'ARCHIVED'
 						AND (
-							(a.type = 'STOCK' AND i.asset_type = 'STOCK')
-							OR (a.type = 'FUND' AND i.asset_type IN ('FUND', 'ETF'))
-							OR (a.type = 'CRYPTO' AND i.asset_type = 'CRYPTO')
+							(a.type::TEXT = 'STOCK' AND i.asset_type = 'STOCK')
+							OR (a.type::TEXT = 'FUND' AND i.asset_type IN ('FUND', 'ETF'))
+							OR (a.type::TEXT = 'CRYPTO' AND i.asset_type = 'CRYPTO')
 						)
 				)
 				UPDATE sigma_finance.assets a

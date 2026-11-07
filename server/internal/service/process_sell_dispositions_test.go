@@ -40,6 +40,16 @@ func setupSellWorld(t *testing.T) (context.Context, repository.IUnitOfWork, *mod
 	})
 	require.NoError(t, err)
 
+	account, err := uow.Account().Create(ctx, &model.Account{
+		ID:          uuid.NewString(),
+		UserID:      user.ID,
+		PortfolioID: portfolio.ID,
+		Name:        "Sell Account",
+		Type:        model.AccountTypeBroker,
+		Currency:    "USD",
+	})
+	require.NoError(t, err)
+
 	asset, err := uow.Asset().Create(ctx, &model.Asset{
 		ID:          uuid.NewString(),
 		Type:        model.AssetTypeStock,
@@ -52,10 +62,12 @@ func setupSellWorld(t *testing.T) (context.Context, repository.IUnitOfWork, *mod
 	avg := decimal.NewFromFloat(15)
 	position, err := uow.Position().Create(ctx, &model.Position{
 		ID:               uuid.NewString(),
+		AccountID:        account.ID,
 		PortfolioID:      portfolio.ID,
 		AssetID:          asset.ID,
 		Quantity:         decimal.NewFromInt(100),
 		AverageCostBasis: &avg,
+		QuoteCurrency:    "USD",
 	})
 	require.NoError(t, err)
 

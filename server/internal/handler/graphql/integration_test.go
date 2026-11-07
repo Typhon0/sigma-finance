@@ -504,11 +504,24 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	err := testDB.DB.NewInsert().Model(portfolio).Returning("*").Scan(ctx, portfolio)
 	require.NoError(t, err)
 
+	// Create an account
+	account := &model.Account{
+		UserID:      testUser.ID,
+		PortfolioID: portfolio.ID,
+		Name:        "Test Account",
+		Type:        model.AccountTypeBroker,
+		Currency:    "USD",
+	}
+	err = testDB.DB.NewInsert().Model(account).Returning("*").Scan(ctx, account)
+	require.NoError(t, err)
+
 	// Create a position
 	position := &model.Position{
-		PortfolioID: portfolio.ID,
-		AssetID:     testAsset.ID,
-		Quantity:    decimal.NewFromInt(10),
+		AccountID:     account.ID,
+		PortfolioID:   portfolio.ID,
+		AssetID:       testAsset.ID,
+		Quantity:      decimal.NewFromInt(10),
+		QuoteCurrency: "USD",
 	}
 	err = testDB.DB.NewInsert().Model(position).Returning("*").Scan(ctx, position)
 	require.NoError(t, err)
@@ -954,7 +967,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 		assert.Equal(t, 150.0, updatedPortfolioAsset.Quantity)
 
 		// Remove asset from portfolio
-		removedAssetID, err := mutationResolver.RemoveAssetFromPortfolio(ctx, portfolio.ID, crypto.ID)
+		removedAssetID, err := mutationResolver.RemoveAssetFromPortfolio(ctx, portfolio.ID, crypto.ID, nil)
 		require.NoError(t, err)
 		assert.Equal(t, crypto.ID, removedAssetID)
 	})

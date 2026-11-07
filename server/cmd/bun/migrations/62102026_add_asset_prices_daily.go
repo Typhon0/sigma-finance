@@ -22,6 +22,9 @@ func init() {
 					PRIMARY KEY (asset_id, price_date)
 				);
 
+				ALTER TABLE sigma_finance.asset_prices_daily
+					ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now();
+
 				CREATE INDEX IF NOT EXISTS idx_asset_prices_daily_date
 					ON sigma_finance.asset_prices_daily (price_date);
 

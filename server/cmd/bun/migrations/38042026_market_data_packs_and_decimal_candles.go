@@ -37,7 +37,7 @@ func init() {
 					ALTER COLUMN quote_currency SET NOT NULL;
 
 				WITH unique_instruments AS (
-					SELECT normalized_symbol, asset_type::TEXT AS asset_type, MIN(id) AS instrument_id
+					SELECT normalized_symbol, asset_type::TEXT AS asset_type, MIN(id::text)::uuid AS instrument_id
 					FROM sigma_finance.instruments
 					GROUP BY normalized_symbol, asset_type::TEXT
 					HAVING COUNT(*) = 1

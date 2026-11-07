@@ -251,6 +251,16 @@ func (m *MockPositionRepository) GetEmptyPositions(ctx context.Context, portfoli
 	return args.Get(0).([]model.Position), args.Error(1)
 }
 
+func (m *MockPositionRepository) GetPositionsByAccount(ctx context.Context, accountID string) ([]model.Position, error) {
+	args := m.Called(ctx, accountID)
+	return args.Get(0).([]model.Position), args.Error(1)
+}
+
+func (m *MockPositionRepository) UpdateOwnershipByAccount(ctx context.Context, accountID string, ownership decimal.Decimal) error {
+	args := m.Called(ctx, accountID, ownership)
+	return args.Error(0)
+}
+
 func (m *MockPositionRepository) CreateBatch(ctx context.Context, positions []model.Position) error {
 	args := m.Called(ctx, positions)
 	return args.Error(0)
@@ -380,11 +390,13 @@ func TestPositionService_CreatePosition(t *testing.T) {
 	ctx := context.Background()
 
 	portfolioID := uuid.NewString()
+	accountID := uuid.NewString()
 	assetID := uuid.NewString()
 
 	t.Run("successful position creation", func(t *testing.T) {
 		req := CreatePositionRequest{
 			PortfolioID: portfolioID,
+			AccountID:   accountID,
 			AssetID:     assetID,
 			Quantity:    decimal.NewFromFloat(100),
 		}
@@ -398,6 +410,7 @@ func TestPositionService_CreatePosition(t *testing.T) {
 		expectedPosition := &model.Position{
 			ID:                  uuid.NewString(),
 			PortfolioID:         portfolioID,
+			AccountID:           accountID,
 			AssetID:             assetID,
 			Quantity:            decimal.NewFromFloat(100),
 			OwnershipPercentage: decimal.NewFromInt(100),
@@ -412,8 +425,37 @@ func TestPositionService_CreatePosition(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NotNil(t, result)
 		assert.Equal(t, portfolioID, result.PortfolioID)
+		assert.Equal(t, accountID, result.AccountID)
 		assert.Equal(t, assetID, result.AssetID)
 		assert.Equal(t, decimal.NewFromFloat(100), result.Quantity)
+		mockAssetRepo.AssertExpectations(t)
+		mockPositionRepo.AssertExpectations(t)
+	})
+
+	t.Run("missing account ID validation", func(t *testing.T) {
+		mockAssetRepo.ExpectedCalls = nil
+		mockPositionRepo.ExpectedCalls = nil
+
+		req := CreatePositionRequest{
+			PortfolioID: portfolioID,
+			AssetID:     assetID,
+			Quantity:    decimal.NewFromFloat(100),
+		}
+
+		asset := &model.Asset{
+			ID:   assetID,
+			Type: model.AssetTypeStock,
+			Name: "Apple Inc.",
+		}
+
+		mockAssetRepo.On("GetByID", ctx, assetID).Return(asset, nil)
+		mockPositionRepo.On("GetByPortfolioAndAsset", ctx, portfolioID, assetID).Return(nil, repository.ErrNotFound)
+
+		result, err := service.CreatePosition(ctx, req)
+
+		assert.Error(t, err)
+		assert.Nil(t, result)
+		assert.Contains(t, err.Error(), "account ID is required")
 		mockAssetRepo.AssertExpectations(t)
 		mockPositionRepo.AssertExpectations(t)
 	})

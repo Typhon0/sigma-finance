@@ -164,6 +164,9 @@ func NewApp() (*AppContainer, error) {
 	syncService.RegisterAdapter(syncadapters.NewKrakenAdapter())
 	syncService.RegisterAdapter(syncadapters.NewSnapTradeAdapter())
 	syncService.RegisterAdapter(syncadapters.NewGoCardlessAdapter())
+	syncService.RegisterAdapter(syncadapters.NewTradeRepublicAdapter())
+	syncService.RegisterAdapter(syncadapters.NewEnableBankingAdapter())
+	syncService.RegisterAdapter(syncadapters.NewWoobAdapter("", nil))
 
 	// Wire blockchain wallet sync background worker unconditionally with multi-provider registry
 	var netConfigs []model.BlockchainNetworkConfig
@@ -212,6 +215,8 @@ func NewApp() (*AppContainer, error) {
 		allowedOrigins = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173,http://localhost:8080,http://127.0.0.1:8080"
 	}
 
+	isProd := strings.EqualFold(os.Getenv("ENVIRONMENT"), "production") || strings.EqualFold(os.Getenv("ENV"), "production")
+
 	app.Use(cors.New(cors.Config{
 		AllowOriginsFunc: func(origin string) bool {
 			if allowedOrigins == "*" {
@@ -223,12 +228,14 @@ func NewApp() (*AppContainer, error) {
 				}
 			}
 			// In development allow any localhost/127.0.0.1/local-network origin
-			if strings.HasPrefix(origin, "http://localhost:") ||
-				strings.HasPrefix(origin, "http://127.0.0.1:") ||
-				strings.HasPrefix(origin, "http://192.168.") ||
-				strings.HasPrefix(origin, "http://10.") ||
-				strings.HasPrefix(origin, "http://172.") {
-				return true
+			if !isProd {
+				if strings.HasPrefix(origin, "http://localhost:") ||
+					strings.HasPrefix(origin, "http://127.0.0.1:") ||
+					strings.HasPrefix(origin, "http://192.168.") ||
+					strings.HasPrefix(origin, "http://10.") ||
+					strings.HasPrefix(origin, "http://172.") {
+					return true
+				}
 			}
 			return false
 		},
@@ -241,7 +248,7 @@ func NewApp() (*AppContainer, error) {
 	app.Use(compress.New(compress.Config{
 		Next: func(c *fiber.Ctx) bool {
 			// Skip compression for SSE / streaming endpoints
-			return strings.HasPrefix(c.Path(), "/api/admin/logs") || c.Get("Accept") == "text/event-stream"
+			return strings.HasPrefix(c.Path(), "/admin/logs") || strings.HasPrefix(c.Path(), "/api/admin/logs") || c.Get("Accept") == "text/event-stream"
 		},
 		Level: compress.LevelBestSpeed,
 	}))
@@ -391,6 +398,24 @@ func NewApp() (*AppContainer, error) {
 		middleware.AuthMiddleware(serviceContainer.Session),
 		middleware.AdminMiddleware(serviceContainer.User),
 	)
+	// Admin log discovery: lists core Go server + active registered sidecars
+	adminGroup.Get("/logs/services", func(c *fiber.Ctx) error {
+		services := []SidecarDescriptor{
+			{
+				ID:          "go",
+				Name:        "Go Server",
+				Type:        "core",
+				Description: "Core API backend and background worker logs",
+				Available:   true,
+			},
+		}
+		services = append(services, getRegisteredSidecars()...)
+		return c.JSON(fiber.Map{
+			"services": services,
+			"total":    len(services),
+		})
+	})
+
 	adminGroup.Get("/logs/go", func(c *fiber.Ctx) error {
 		// Check for SSE stream vs initial fetch
 		if c.Get("Accept") == "text/event-stream" || c.Query("stream") == "true" {
@@ -412,31 +437,71 @@ func NewApp() (*AppContainer, error) {
 		})
 	})
 
-	// Proxy yfinance logs
-	adminGroup.Get("/logs/yfinance", func(c *fiber.Ctx) error {
-		yfinanceHost := os.Getenv("YFINANCE_HOST")
-		yfinanceHTTPPort := os.Getenv("YFINANCE_HTTP_PORT")
-		if yfinanceHTTPPort == "" {
-			yfinanceHTTPPort = "50052"
+	// Universal dynamic sidecar log proxy and stream
+	adminGroup.Get("/logs/:service", func(c *fiber.Ctx) error {
+		serviceName := strings.ToLower(strings.TrimSpace(c.Params("service")))
+
+		// If "go", route directly to Go log handler
+		if serviceName == "go" {
+			if c.Get("Accept") == "text/event-stream" || c.Query("stream") == "true" {
+				return handleLogSSE(c, serviceContainer.LogBuffer)
+			}
+			limit := c.QueryInt("limit", 200)
+			filter := c.Query("filter", "")
+			level := c.Query("level", "")
+			entries := serviceContainer.LogBuffer.Recent(limit)
+			filtered := filterLogEntries(entries, filter, level)
+			return c.JSON(fiber.Map{
+				"logs":       filtered,
+				"total":      len(filtered),
+				"bufferSize": len(entries),
+			})
 		}
-		if yfinanceHost == "" {
-			yfinanceHost = "localhost"
+
+		// Check registered sidecars
+		sidecars := getRegisteredSidecars()
+		var target *SidecarDescriptor
+		for i := range sidecars {
+			if strings.EqualFold(sidecars[i].ID, serviceName) {
+				target = &sidecars[i]
+				break
+			}
 		}
 
-		limit := c.Query("limit", "200")
-		filter := c.Query("filter", "")
-		level := c.Query("level", "")
+		if target == nil {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": fmt.Sprintf("Log service '%s' not found", serviceName),
+			})
+		}
 
-		yfURL := fmt.Sprintf("http://%s:%s/logs?limit=%s&filter=%s&level=%s",
-			yfinanceHost, yfinanceHTTPPort,
-			url.QueryEscape(limit), url.QueryEscape(filter), url.QueryEscape(level))
+		params := url.Values{}
+		if limit := c.Query("limit", ""); limit != "" {
+			params.Set("limit", limit)
+		} else {
+			params.Set("limit", "200")
+		}
+		if filter := c.Query("filter", ""); filter != "" {
+			params.Set("filter", filter)
+		}
+		if level := c.Query("level", ""); level != "" {
+			params.Set("level", level)
+		}
 
-		// Use a custom HTTP client to proxy the request
+		upstreamURL := fmt.Sprintf("%s/logs?%s", target.BaseURL, params.Encode())
+
+		// SSE stream
+		if c.Get("Accept") == "text/event-stream" || c.Query("stream") == "true" {
+			params.Set("limit", "1000")
+			streamURL := fmt.Sprintf("%s/logs?%s", target.BaseURL, params.Encode())
+			return handleSidecarLogSSE(c, streamURL, target.ID)
+		}
+
+		// Snapshot proxy
 		client := &http.Client{Timeout: 10 * time.Second}
-		resp, err := client.Get(yfURL)
+		resp, err := client.Get(upstreamURL)
 		if err != nil {
 			return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-				"error": fmt.Sprintf("Failed to reach yfinance service: %v", err),
+				"error": fmt.Sprintf("Failed to reach %s service: %v", target.Name, err),
 			})
 		}
 		defer resp.Body.Close()
@@ -446,7 +511,11 @@ func NewApp() (*AppContainer, error) {
 
 		var result interface{}
 		decoder := json.NewDecoder(resp.Body)
-		decoder.Decode(&result)
+		if err := decoder.Decode(&result); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": fmt.Sprintf("Failed to decode response from %s: %v", target.Name, err),
+			})
+		}
 		return c.JSON(result)
 	})
 
@@ -510,10 +579,10 @@ func NewApp() (*AppContainer, error) {
 					token := tokenParts[1]
 
 					// Validate the session
-					session, err := serviceContainer.Session.ValidateSession(context.Background(), token)
+					session, err := serviceContainer.Session.ValidateSession(ctx, token)
 					if err == nil {
 						// Get user information using ID
-						user, err := serviceContainer.User.GetByID(context.Background(), session.UserID)
+						user, err := serviceContainer.User.GetByID(ctx, session.UserID)
 						if err == nil {
 							// Add authenticated user to context
 							authenticatedUser := &middleware.AuthenticatedUser{
@@ -753,15 +822,18 @@ func handleLogSSE(c *fiber.Ctx, lb *service.LogBuffer) error {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
-	c.Set("Transfer-Encoding", "chunked")
+	// Stop reverse proxies (nginx) from buffering the stream.
+	c.Set("X-Accel-Buffering", "no")
 
 	filter := c.Query("filter", "")
 	level := c.Query("level", "")
 
-	ch, unsubscribe := lb.Subscribe()
-
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		// Subscribe from inside the stream goroutine so a request that never
+		// starts streaming cannot leak a watcher.
+		ch, unsubscribe := lb.Subscribe()
 		defer unsubscribe()
+
 		ticker := time.NewTicker(1 * time.Second)
 		defer ticker.Stop()
 
@@ -796,6 +868,239 @@ func handleLogSSE(c *fiber.Ctx, lb *service.LogBuffer) error {
 	})
 
 	return nil
+}
+
+type SidecarDescriptor struct {
+	ID          string `json:"id"`
+	Name        string `json:"name"`
+	Type        string `json:"type"` // "core" | "sidecar"
+	Description string `json:"description"`
+	BaseURL     string `json:"-"`
+	Available   bool   `json:"available"`
+}
+
+// yfinanceHTTPBaseURL resolves the yfinance service HTTP log endpoint.
+func yfinanceHTTPBaseURL() string {
+	host := os.Getenv("YFINANCE_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	port := os.Getenv("YFINANCE_HTTP_PORT")
+	if port == "" {
+		port = "50052"
+	}
+	return fmt.Sprintf("http://%s:%s", host, port)
+}
+
+// woobHTTPBaseURL resolves the Woob service HTTP log endpoint.
+func woobHTTPBaseURL() string {
+	baseURL := os.Getenv("WOOB_SERVICE_URL")
+	if baseURL != "" {
+		return strings.TrimRight(baseURL, "/")
+	}
+	host := os.Getenv("WOOB_HOST")
+	if host == "" {
+		host = "localhost"
+	}
+	port := os.Getenv("WOOB_PORT")
+	if port == "" {
+		port = "50055"
+	}
+	return fmt.Sprintf("http://%s:%s", host, port)
+}
+
+func checkSidecarHealth(healthURL string) bool {
+	client := &http.Client{Timeout: 1 * time.Second}
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		return false
+	}
+	defer resp.Body.Close()
+	return resp.StatusCode == http.StatusOK
+}
+
+func getRegisteredSidecars() []SidecarDescriptor {
+	return []SidecarDescriptor{
+		{
+			ID:          "yfinance",
+			Name:        "yfinance",
+			Type:        "sidecar",
+			Description: "Market data quotes & historical prices",
+			BaseURL:     yfinanceHTTPBaseURL(),
+			Available:   checkSidecarHealth(fmt.Sprintf("%s/health", yfinanceHTTPBaseURL())),
+		},
+		{
+			ID:          "woob",
+			Name:        "Woob",
+			Type:        "sidecar",
+			Description: "French banking & wealth synchronization engine",
+			BaseURL:     woobHTTPBaseURL(),
+			Available:   checkSidecarHealth(fmt.Sprintf("%s/health", woobHTTPBaseURL())),
+		},
+	}
+}
+
+type sidecarLogEntry struct {
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"`
+	Message   string `json:"message"`
+	Service   string `json:"service"`
+}
+
+type yfinanceLogEntry = sidecarLogEntry
+
+type sidecarLogsResponse struct {
+	Logs []sidecarLogEntry `json:"logs"`
+}
+
+type yfinanceLogsResponse = sidecarLogsResponse
+
+// handleSidecarLogSSE streams sidecar log entries over SSE. The upstream
+// service exposes a snapshot endpoint, so new entries are tailed by
+// timestamp and pushed to the dashboard instead of it polling.
+func handleSidecarLogSSE(c *fiber.Ctx, upstreamURL string, defaultServiceName string) error {
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+
+	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
+		fetch := func() ([]sidecarLogEntry, error) {
+			resp, err := client.Get(upstreamURL)
+			if err != nil {
+				return nil, err
+			}
+			defer resp.Body.Close()
+			if resp.StatusCode != http.StatusOK {
+				return nil, fmt.Errorf("%s logs: unexpected status %d", defaultServiceName, resp.StatusCode)
+			}
+			var payload sidecarLogsResponse
+			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+				return nil, err
+			}
+			for i := range payload.Logs {
+				if payload.Logs[i].Service == "" {
+					payload.Logs[i].Service = defaultServiceName
+				}
+			}
+			return payload.Logs, nil
+		}
+
+		var cursor sidecarLogCursor
+		if entries, err := fetch(); err == nil {
+			cursor.Seed(entries)
+		}
+
+		// Start the chunked response immediately so the client can mark the
+		// stream connected without waiting for the first log entry.
+		if _, err := fmt.Fprint(w, ": connected\n\n"); err != nil {
+			return
+		}
+		if err := w.Flush(); err != nil {
+			return
+		}
+
+		poll := time.NewTicker(1 * time.Second)
+		defer poll.Stop()
+		keepalive := time.NewTicker(15 * time.Second)
+		defer keepalive.Stop()
+
+		for {
+			select {
+			case <-poll.C:
+				entries, err := fetch()
+				if err != nil {
+					continue
+				}
+				for _, entry := range cursor.Advance(entries) {
+					data, err := json.Marshal(entry)
+					if err != nil {
+						continue
+					}
+					if _, err := fmt.Fprintf(w, "data: %s\n\n", data); err != nil {
+						return
+					}
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			case <-keepalive.C:
+				if _, err := fmt.Fprint(w, ": keepalive\n\n"); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
+					return
+				}
+			}
+		}
+	})
+
+	return nil
+}
+
+func handleYFinanceLogSSE(c *fiber.Ctx, upstreamURL string) error {
+	return handleSidecarLogSSE(c, upstreamURL, "yfinance")
+}
+
+func newestSidecarLogTimestamp(entries []sidecarLogEntry) string {
+	if len(entries) == 0 {
+		return ""
+	}
+	return entries[len(entries)-1].Timestamp
+}
+
+func newestYFinanceLogTimestamp(entries []yfinanceLogEntry) string {
+	return newestSidecarLogTimestamp(entries)
+}
+
+func isNewerSidecarLog(candidate, cursor string) bool {
+	candidateTime, candidateErr := time.Parse(time.RFC3339Nano, candidate)
+	cursorTime, cursorErr := time.Parse(time.RFC3339Nano, cursor)
+	if candidateErr != nil || cursorErr != nil {
+		return candidate > cursor
+	}
+	return candidateTime.After(cursorTime)
+}
+
+func isNewerYFinanceLog(candidate, cursor string) bool {
+	return isNewerSidecarLog(candidate, cursor)
+}
+
+// sidecarLogCursor tracks which entries from the upstream snapshot endpoint
+// have already been emitted, so polling the same snapshot can never duplicate
+// or replay log lines.
+type sidecarLogCursor struct {
+	lastTimestamp string
+	initialized   bool
+}
+
+type yfinanceLogCursor = sidecarLogCursor
+
+// Seed positions the cursor at the newest entry of the current snapshot without
+// emitting it. The client loads that backlog with its initial request.
+func (c *sidecarLogCursor) Seed(entries []sidecarLogEntry) {
+	c.lastTimestamp = newestSidecarLogTimestamp(entries)
+	c.initialized = true
+}
+
+// Advance returns the entries newer than the cursor and moves it forward.
+func (c *sidecarLogCursor) Advance(entries []sidecarLogEntry) []sidecarLogEntry {
+	if !c.initialized {
+		c.Seed(entries)
+		return nil
+	}
+
+	var fresh []sidecarLogEntry
+	for _, entry := range entries {
+		if c.lastTimestamp != "" && !isNewerSidecarLog(entry.Timestamp, c.lastTimestamp) {
+			continue
+		}
+		fresh = append(fresh, entry)
+		c.lastTimestamp = entry.Timestamp
+	}
+	return fresh
 }
 
 // filterLogEntries filters log entries by keyword and level.

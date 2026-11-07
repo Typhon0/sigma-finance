@@ -7,6 +7,7 @@ import (
 	"log"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
+	"sort"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -118,6 +119,7 @@ type CashTransactionRequest struct {
 type TransactionFilter struct {
 	UserID          *string                `json:"user_id,omitempty"`
 	PositionID      *string                `json:"position_id,omitempty"`
+	AccountID       *string                `json:"account_id,omitempty"`
 	PortfolioID     *string                `json:"portfolio_id,omitempty"`
 	AssetID         *string                `json:"asset_id,omitempty"`
 	TransactionType *model.TransactionType `json:"transaction_type,omitempty"`
@@ -318,6 +320,14 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 				return fmt.Errorf("failed to get position transactions: %w", err)
 			}
 
+			// Sort chronologically (executed_at ASC, created_at ASC) so sales replay after their buys
+			sort.SliceStable(allTxns, func(i, j int) bool {
+				if allTxns[i].ExecutedAt.Equal(allTxns[j].ExecutedAt) {
+					return allTxns[i].CreatedAt.Before(allTxns[j].CreatedAt)
+				}
+				return allTxns[i].ExecutedAt.Before(allTxns[j].ExecutedAt)
+			})
+
 			pos.Quantity = decimal.Zero
 			pos.AverageCostBasis = nil
 			pos.TotalCostBasis = nil
@@ -368,6 +378,7 @@ func (s *TransactionService) GetTransactionHistory(ctx context.Context, filter T
 	repoFilter := repository.TransactionFilter{
 		UserID:          filter.UserID,
 		PositionID:      filter.PositionID,
+		AccountID:       filter.AccountID,
 		PortfolioID:     filter.PortfolioID,
 		AssetID:         filter.AssetID,
 		TransactionType: filter.TransactionType,
@@ -525,6 +536,25 @@ func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyT
 				accounts, _ := uow.Account().GetAccountsByPortfolioID(ctx, req.PortfolioID)
 				if len(accounts) > 0 {
 					targetAccountID = accounts[0].ID
+				} else {
+					portfolio, pErr := uow.Portfolio().GetByID(ctx, req.PortfolioID)
+					if pErr != nil {
+						return fmt.Errorf("failed to get portfolio for default account: %w", pErr)
+					}
+					defaultAccount := &model.Account{
+						PortfolioID:  req.PortfolioID,
+						UserID:       portfolio.UserID,
+						Name:         portfolio.Name + " - Main Account",
+						Type:         model.AccountTypeBroker,
+						TaxWrapper:   portfolio.TaxWrapper,
+						Currency:     "EUR",
+						SyncProvider: "MANUAL",
+					}
+					acc, createAccErr := uow.Account().Create(ctx, defaultAccount)
+					if createAccErr != nil {
+						return fmt.Errorf("failed to ensure default account: %w", createAccErr)
+					}
+					targetAccountID = acc.ID
 				}
 			}
 

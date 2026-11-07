@@ -78,6 +78,10 @@ func (p *Position) Validate() error {
 		return errors.New("portfolio ID is required")
 	}
 
+	if p.AccountID == "" {
+		return errors.New("account ID is required")
+	}
+
 	if p.AssetID == "" {
 		return errors.New("asset ID is required")
 	}

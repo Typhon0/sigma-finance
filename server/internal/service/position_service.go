@@ -55,6 +55,7 @@ type IPositionService interface {
 
 type CreatePositionRequest struct {
 	PortfolioID         string           `json:"portfolio_id" validate:"required"`
+	AccountID           string           `json:"account_id,omitempty"`
 	AssetID             string           `json:"asset_id" validate:"required"`
 	Quantity            decimal.Decimal  `json:"quantity" validate:"required"`
 	OwnershipPercentage *decimal.Decimal `json:"ownership_percentage,omitempty"`
@@ -115,6 +116,7 @@ func (s *PositionService) CreatePosition(ctx context.Context, req CreatePosition
 	// Create position model
 	position := &model.Position{
 		PortfolioID: req.PortfolioID,
+		AccountID:   req.AccountID,
 		AssetID:     req.AssetID,
 		Quantity:    req.Quantity,
 	}
