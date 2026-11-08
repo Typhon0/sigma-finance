@@ -167,8 +167,10 @@ func TestGoCardlessAdapter_FetchBankBalancesAndTransactions(t *testing.T) {
 	cred := makeTestGCCredential(testGCSecretID, testGCSecretKey, testGCRequisitionID, "")
 
 	// 1. Fetch Balances
-	balances, err := adapter.FetchBalances(context.Background(), cred, testGCAccountID1)
+	balancesSnapshot, err := adapter.FetchBalances(context.Background(), cred, testGCAccountID1)
 	require.NoError(t, err)
+	assert.True(t, balancesSnapshot.IsComplete)
+	balances := balancesSnapshot.Balances
 	require.Len(t, balances, 1)
 
 	assert.Equal(t, model.Currency("EUR"), balances[0].Currency)
@@ -178,8 +180,11 @@ func TestGoCardlessAdapter_FetchBankBalancesAndTransactions(t *testing.T) {
 
 	// 2. Fetch Transactions
 	since := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
-	txs, err := adapter.FetchTransactions(context.Background(), cred, testGCAccountID1, &since)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, testGCAccountID1, &since, nil)
 	require.NoError(t, err)
+	assert.True(t, txsSnapshot.IsComplete)
+	assert.True(t, txsSnapshot.PaginationDone)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 2)
 
 	// Check deterministic sort by ExecutedAt ascending:
@@ -382,9 +387,9 @@ func TestGoCardlessAdapter_FetchHoldings_ReturnsEmpty(t *testing.T) {
 	adapter := adapters.NewGoCardlessAdapter()
 	cred := makeTestGCCredential("sid", "skey", "", "")
 
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, testGCAccountID1)
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, testGCAccountID1)
 	require.NoError(t, err)
-	assert.Empty(t, holdings)
+	assert.Empty(t, holdingsSnapshot.Holdings)
 }
 
 func TestGoCardlessAdapter_CredentialParsing(t *testing.T) {
@@ -469,8 +474,9 @@ func TestGoCardlessAdapter_TokenRefreshOn401(t *testing.T) {
 	// Pre-populate with stale token
 	cred := makeTestGCCredential(testGCSecretID, testGCSecretKey, "", "stale-token")
 
-	balances, err := adapter.FetchBalances(context.Background(), cred, testGCAccountID1)
+	balancesSnapshot, err := adapter.FetchBalances(context.Background(), cred, testGCAccountID1)
 	require.NoError(t, err)
+	balances := balancesSnapshot.Balances
 	require.Len(t, balances, 1)
 	assert.True(t, balances[0].Amount.Equal(decimal.NewFromFloat(100.00)))
 
@@ -519,8 +525,9 @@ func TestGoCardlessAdapter_FetchTransactions_DateFallbackAndSorting(t *testing.T
 	)
 
 	cred := makeTestGCCredential("sid", "skey", "", "")
-	txs, err := adapter.FetchTransactions(context.Background(), cred, testGCAccountID1, nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, testGCAccountID1, nil, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 2)
 
 	// Since both fell back to mockNow, TX-A must come before TX-B due to tie breaker

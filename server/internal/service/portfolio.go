@@ -18,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
+	"github.com/uptrace/bun"
 )
 
 // Portfolio-specific error types for better error handling and user experience
@@ -50,7 +51,7 @@ type IPortfolioService interface {
 	DeletePortfolio(ctx context.Context, id string) error
 	AddAssetToPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error)
 	UpdateAssetInPortfolio(ctx context.Context, portfolioID, assetID string, quantity float64, price float64) (*model.PortfolioAsset, error)
-	RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string) error
+	RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string, accountID *string) error
 	TagPortfolio(ctx context.Context, portfolioID, tagID string) error
 	UntagPortfolio(ctx context.Context, portfolioID, tagID string) error
 	GetPortfolioAssets(ctx context.Context, portfolioID string) ([]model.PortfolioAsset, error)
@@ -1102,9 +1103,9 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 	return updatedPortfolioAsset, nil
 }
 
-// RemoveAssetFromPortfolio handles removing an asset from a portfolio.
-func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string) error {
-	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s", portfolioID, assetID)
+// RemoveAssetFromPortfolio handles removing an asset or specific account position from a portfolio.
+func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfolioID, assetID string, accountID *string) error {
+	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: started portfolio=%s asset=%s accountID=%v", portfolioID, assetID, accountID)
 	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
 		// 1. --- Check Existence of Portfolio and Asset ---
 		if _, err := uow.Portfolio().GetByID(ctx, portfolioID); err != nil {
@@ -1114,15 +1115,113 @@ func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfol
 			return fmt.Errorf("asset with ID %s not found: %w", assetID, err)
 		}
 
-		// 2. --- Remove Position and Associated Portfolio Asset ---
-		if pos, err := uow.Position().GetByPortfolioAndAsset(ctx, portfolioID, assetID); err == nil && pos != nil {
-			if delErr := uow.Position().Delete(ctx, pos.ID); delErr != nil {
-				log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: failed to delete position %s: %v", pos.ID, delErr)
+		posRepo := uow.Position()
+		paRepo := uow.PortfolioAsset()
+
+		// 2. --- If accountID is specified, remove only the position for that specific account ---
+		if accountID != nil && *accountID != "" {
+			acc, err := uow.Account().GetByID(ctx, *accountID)
+			if err != nil {
+				return fmt.Errorf("account %s not found: %w", *accountID, err)
+			}
+			// Guard: Prevent manual deletion from automated synchronized accounts
+			if acc.SyncProvider != "" && acc.SyncProvider != "MANUAL" {
+				return fmt.Errorf("cannot manually delete position from synchronized account %q (managed by %s)", acc.Name, acc.SyncProvider)
+			}
+
+			// Find position for this account and asset
+			targetPos, err := posRepo.GetByAccountAndAsset(ctx, *accountID, assetID)
+			if err == nil && targetPos != nil {
+				if delErr := posRepo.Delete(ctx, targetPos.ID); delErr != nil {
+					return fmt.Errorf("failed to delete position %s: %w", targetPos.ID, delErr)
+				}
+			}
+
+			// Recalculate remaining portfolio positions for this asset
+			allPositions, err := posRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+				return q.Where("position.portfolio_id = ? AND position.asset_id = ?", portfolioID, assetID)
+			})
+			remainingQty := decimal.Zero
+			var totalCost decimal.Decimal
+			activeCount := 0
+			if err == nil {
+				for _, p := range allPositions {
+					if p.Quantity.GreaterThan(decimal.Zero) {
+						remainingQty = remainingQty.Add(p.Quantity)
+						activeCount++
+						if p.AverageCostBasis != nil {
+							totalCost = totalCost.Add(p.Quantity.Mul(*p.AverageCostBasis))
+						}
+					}
+				}
+			}
+
+			// If remaining positions exist in other accounts, update portfolio_asset instead of deleting it!
+			if activeCount > 0 && remainingQty.GreaterThan(decimal.Zero) {
+				if paRepo != nil {
+					existingPA, paErr := paRepo.FindByPortfolioAndAsset(ctx, portfolioID, assetID)
+					if paErr == nil && existingPA != nil {
+						q, _ := remainingQty.Float64()
+						existingPA.Quantity = q
+						if totalCost.GreaterThan(decimal.Zero) {
+							avg, _ := totalCost.Div(remainingQty).Float64()
+							existingPA.AveragePurchasePrice = avg
+						}
+						_ = paRepo.UpdatePortfolioAsset(ctx, existingPA)
+					}
+				}
+			} else {
+				// No remaining positions in any account: delete portfolio_asset
+				if paRepo != nil {
+					_ = paRepo.DeleteByPortfolioAndAsset(ctx, portfolioID, assetID)
+				}
+			}
+			return nil
+		}
+
+		// 3. --- Fallback: No accountID specified (legacy portfolio-wide deletion) ---
+		// Remove manual positions while preserving synced holdings if any exist
+		allPositions, err := posRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+			return q.Where("position.portfolio_id = ? AND position.asset_id = ?", portfolioID, assetID).Relation("Account")
+		})
+		remainingQty := decimal.Zero
+		var totalCost decimal.Decimal
+		activeCount := 0
+		if err == nil {
+			for _, p := range allPositions {
+				if p.Account != nil && p.Account.SyncProvider != "" && p.Account.SyncProvider != "MANUAL" {
+					// Keep synced positions!
+					if p.Quantity.GreaterThan(decimal.Zero) {
+						remainingQty = remainingQty.Add(p.Quantity)
+						activeCount++
+						if p.AverageCostBasis != nil {
+							totalCost = totalCost.Add(p.Quantity.Mul(*p.AverageCostBasis))
+						}
+					}
+				} else {
+					// Delete manual position
+					_ = posRepo.Delete(ctx, p.ID)
+				}
 			}
 		}
 
-		if err := uow.PortfolioAsset().DeleteByPortfolioAndAsset(ctx, portfolioID, assetID); err != nil {
-			return fmt.Errorf("failed to remove asset from portfolio: %w", err)
+		if activeCount > 0 && remainingQty.GreaterThan(decimal.Zero) {
+			if paRepo != nil {
+				existingPA, paErr := paRepo.FindByPortfolioAndAsset(ctx, portfolioID, assetID)
+				if paErr == nil && existingPA != nil {
+					q, _ := remainingQty.Float64()
+					existingPA.Quantity = q
+					if totalCost.GreaterThan(decimal.Zero) {
+						avg, _ := totalCost.Div(remainingQty).Float64()
+						existingPA.AveragePurchasePrice = avg
+					}
+					_ = paRepo.UpdatePortfolioAsset(ctx, existingPA)
+				}
+			}
+		} else {
+			if paRepo != nil {
+				_ = paRepo.DeleteByPortfolioAndAsset(ctx, portfolioID, assetID)
+			}
 		}
 
 		return nil
@@ -1147,19 +1246,25 @@ func (s *PortfolioService) RemoveAssetFromPortfolio(ctx context.Context, portfol
 	now := time.Now().UTC()
 	startDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	endDay := time.Date(now.Year(), now.Month(), now.Day(), 23, 59, 59, 0, time.UTC)
-	if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); rebuildErr != nil {
-		log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: today snapshot rebuild failed portfolio=%s err=%v", portfolioID, rebuildErr)
+	if s.uow != nil && s.uow.Performance() != nil {
+		if rebuildErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(ctx, portfolioID, startDay, endDay); rebuildErr != nil {
+			log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: today snapshot rebuild failed portfolio=%s err=%v", portfolioID, rebuildErr)
+		}
 	}
 
 	// Launch background full recalculation so historical snapshots reflect the removal
-	go func(pid string) {
-		bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
-		defer cancel()
-		startDate := s.performanceHistoryStartDate(bgCtx, pid)
-		if bgErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(bgCtx, pid, startDate, time.Now()); bgErr != nil {
-			log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: full background snapshot rebuild failed portfolio=%s err=%v", pid, bgErr)
-		}
-	}(portfolioID)
+	if s.uow != nil && s.uow.Performance() != nil {
+		go func(pid string) {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+			defer cancel()
+			startDate := s.performanceHistoryStartDate(bgCtx, pid)
+			if s.uow != nil && s.uow.Performance() != nil {
+				if bgErr := s.uow.Performance().CalculateAndSaveHistoricalSnapshots(bgCtx, pid, startDate, time.Now()); bgErr != nil {
+					log.Printf("[WARN] [PortfolioService] RemoveAssetFromPortfolio: full background snapshot rebuild failed portfolio=%s err=%v", pid, bgErr)
+				}
+			}
+		}(portfolioID)
+	}
 
 	log.Printf("[INFO] [PortfolioService] RemoveAssetFromPortfolio: completed portfolio=%s asset=%s", portfolioID, assetID)
 	return nil
@@ -1693,25 +1798,46 @@ func (s *PortfolioService) scopedPerformanceHistoryStartDate(ctx context.Context
 	unit, ok := s.uow.(*repository.UnitOfWork)
 	if ok && unit.GetDB() != nil && len(types) > 0 {
 		placeholders := strings.TrimSuffix(strings.Repeat("?,", len(types)), ",")
-		args := make([]any, 0, 1+len(types))
+		args := make([]any, 0, 2*(1+len(types)))
+		args = append(args, portfolioID)
+		for _, t := range types {
+			args = append(args, t)
+		}
 		args = append(args, portfolioID)
 		for _, t := range types {
 			args = append(args, t)
 		}
 		var row struct {
-			ScopedStart *time.Time `bun:"scoped_start"`
+			OldestBuyTx *time.Time `bun:"oldest_buy_tx"`
+			OldestPos   *time.Time `bun:"oldest_pos"`
+			OldestPrice *time.Time `bun:"oldest_price"`
 		}
 		query := `
-SELECT LEAST(
-    COALESCE(MIN(t.executed_at), MIN(p.created_at)),
-    MIN(p.created_at)
-) AS scoped_start
+SELECT
+    MIN(t.executed_at) FILTER (WHERE t.type IN ('BUY', 'DEPOSIT', 'TRANSFER_IN')) AS oldest_buy_tx,
+    MIN(p.created_at) AS oldest_pos,
+    (
+        SELECT MIN(apd.price_date)::timestamp
+        FROM sigma_finance.asset_prices_daily apd
+        WHERE apd.asset_id IN (
+            SELECT p2.asset_id
+            FROM sigma_finance.positions p2
+            JOIN sigma_finance.assets a2 ON a2.id = p2.asset_id
+            WHERE p2.portfolio_id = ? AND a2.type IN (` + placeholders + `)
+        )
+    ) AS oldest_price
 FROM sigma_finance.positions p
 JOIN sigma_finance.assets a ON a.id = p.asset_id
 LEFT JOIN sigma_finance.transactions t ON t.position_id = p.id
 WHERE p.portfolio_id = ? AND a.type IN (` + placeholders + `)`
-		if err := unit.GetDB().NewRaw(query, args...).Scan(ctx, &row); err == nil && row.ScopedStart != nil && !row.ScopedStart.IsZero() {
-			startDate = time.Date(row.ScopedStart.Year(), row.ScopedStart.Month(), row.ScopedStart.Day(), 0, 0, 0, 0, row.ScopedStart.Location())
+		if err := unit.GetDB().NewRaw(query, args...).Scan(ctx, &row); err == nil {
+			if row.OldestBuyTx != nil && !row.OldestBuyTx.IsZero() {
+				startDate = time.Date(row.OldestBuyTx.Year(), row.OldestBuyTx.Month(), row.OldestBuyTx.Day(), 0, 0, 0, 0, row.OldestBuyTx.Location())
+			} else if row.OldestPrice != nil && !row.OldestPrice.IsZero() {
+				startDate = time.Date(row.OldestPrice.Year(), row.OldestPrice.Month(), row.OldestPrice.Day(), 0, 0, 0, 0, row.OldestPrice.Location())
+			} else if row.OldestPos != nil && !row.OldestPos.IsZero() {
+				startDate = time.Date(row.OldestPos.Year(), row.OldestPos.Month(), row.OldestPos.Day(), 0, 0, 0, 0, row.OldestPos.Location())
+			}
 		}
 	}
 
@@ -1919,17 +2045,20 @@ quantity_per_position_per_day AS (
     SELECT
         p.id AS position_id,
         p.asset_id,
-        COALESCE(p.quote_currency, a.metadata->>'currency', 'USD') AS quote_currency,
+        COALESCE(NULLIF(i.currency, ''), a.metadata->>'currency', 'USD') AS price_currency,
         p.ownership_percentage,
         ds.snapshot_date,
         CASE
-            WHEN ds.snapshot_date < date_trunc('day', LEAST(
-                p.created_at,
-                COALESCE((
-                    SELECT MIN(t.executed_at)
-                    FROM sigma_finance.transactions t
-                    WHERE t.position_id = p.id
-                ), p.created_at)
+            WHEN (
+                SELECT MIN(t.executed_at)
+                FROM sigma_finance.transactions t
+                WHERE t.position_id = p.id
+                  AND t.type IN ('BUY', 'DEPOSIT', 'TRANSFER_IN')
+            ) IS NOT NULL AND ds.snapshot_date < date_trunc('day', (
+                SELECT MIN(t.executed_at)
+                FROM sigma_finance.transactions t
+                WHERE t.position_id = p.id
+                  AND t.type IN ('BUY', 'DEPOSIT', 'TRANSFER_IN')
             ))::date THEN 0
             ELSE GREATEST(0, p.quantity - COALESCE((
                 SELECT SUM(
@@ -1947,6 +2076,7 @@ quantity_per_position_per_day AS (
         END AS quantity_at_date
     FROM sigma_finance.positions p
     JOIN sigma_finance.assets a ON a.id = p.asset_id
+    LEFT JOIN sigma_finance.instruments i ON i.id = a.instrument_id
     CROSS JOIN date_series ds
     WHERE p.portfolio_id = ?
       AND a.type IN (` + placeholders + `)
@@ -1955,9 +2085,9 @@ priced_metrics AS (
     SELECT
         qppd.snapshot_date,
         qppd.quantity_at_date,
-        COALESCE(ap.price, 0) AS price_at_date,
+        COALESCE(ap.price, ap_fallback.price, 0) AS price_at_date,
         COALESCE(qppd.ownership_percentage, 100) AS ownership_pct,
-        COALESCE(fx.rate, 1.0) AS fx_rate
+        COALESCE(fx_direct.rate, CASE WHEN fx_inverse.rate > 0 THEN 1.0 / fx_inverse.rate ELSE NULL END, 1.0) AS fx_rate
     FROM quantity_per_position_per_day qppd
     LEFT JOIN LATERAL (
         SELECT price
@@ -1968,14 +2098,31 @@ priced_metrics AS (
         LIMIT 1
     ) ap ON true
     LEFT JOIN LATERAL (
+        SELECT price
+        FROM sigma_finance.asset_prices_daily
+        WHERE asset_id = qppd.asset_id
+          AND price_date > qppd.snapshot_date
+        ORDER BY price_date ASC
+        LIMIT 1
+    ) ap_fallback ON ap.price IS NULL
+    LEFT JOIN LATERAL (
         SELECT rate
         FROM sigma_finance.fx_rates
-        WHERE base_currency = qppd.quote_currency
+        WHERE base_currency = qppd.price_currency
           AND quote_currency = 'USD'
           AND as_of <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
         ORDER BY as_of DESC
         LIMIT 1
-    ) fx ON qppd.quote_currency != 'USD'
+    ) fx_direct ON qppd.price_currency != 'USD'
+    LEFT JOIN LATERAL (
+        SELECT rate
+        FROM sigma_finance.fx_rates
+        WHERE base_currency = 'USD'
+          AND quote_currency = qppd.price_currency
+          AND as_of <= qppd.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ORDER BY as_of DESC
+        LIMIT 1
+    ) fx_inverse ON qppd.price_currency != 'USD' AND fx_direct.rate IS NULL
 )
 SELECT
     snapshot_date,

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/shopspring/decimal"
 	"github.com/uptrace/bun"
 )
 
@@ -40,14 +41,18 @@ type Account struct {
 	TaxWrapper    TaxWrapperType `bun:"tax_wrapper,notnull,default:'STANDARD_TAXABLE'"`
 	Institution   *string        `bun:"institution"`
 	AccountNumber *string        `bun:"account_number"`
-	Currency      Currency       `bun:"currency,type:varchar(3),default:EUR"`
-	SyncProvider  string         `bun:"sync_provider,default:MANUAL"`
-	ExternalID    *string        `bun:"external_id"`
-	CreatedAt     time.Time      `bun:"created_at,nullzero,notnull,default:current_timestamp"`
-	UpdatedAt     time.Time      `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+	Currency            Currency        `bun:"currency,type:varchar(3),default:EUR"`
+	SyncProvider        string          `bun:"sync_provider,default:MANUAL"`
+	ExternalID          *string         `bun:"external_id"`
+	OwnershipPercentage decimal.Decimal `bun:"ownership_percentage,default:100.00"`
+	CoOwnerName         *string         `bun:"co_owner_name"`
+	CoOwnerUserID       *string         `bun:"co_owner_user_id,type:uuid"`
+	CreatedAt           time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt           time.Time       `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 
 	// Relations
 	User           *User           `bun:"rel:belongs-to,join:user_id=id"`
+	CoOwnerUser    *User           `bun:"rel:belongs-to,join:co_owner_user_id=id"`
 	Portfolio      *Portfolio      `bun:"rel:belongs-to,join:portfolio_id=id"`
 	Positions      []*Position     `bun:"rel:has-many,join:id=account_id"`
 	SyncConnection *SyncConnection `bun:"rel:has-one,join:id=account_id"`
@@ -77,6 +82,11 @@ func (a *Account) Validate() error {
 	}
 	if a.TaxWrapper == "" {
 		a.TaxWrapper = TaxWrapperStandardTaxable
+	}
+	if a.OwnershipPercentage.IsZero() {
+		a.OwnershipPercentage = decimal.NewFromInt(100)
+	} else if a.OwnershipPercentage.IsNegative() || a.OwnershipPercentage.GreaterThan(decimal.NewFromInt(100)) {
+		return errors.New("ownership percentage must be between 0 and 100")
 	}
 	return nil
 }

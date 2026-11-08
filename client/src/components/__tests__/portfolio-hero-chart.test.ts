@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { filterByRange, type PerformancePoint } from "../charts/PortfolioHeroChart";
+import {
+	buildHistoryDate,
+	hasSufficientBackendData,
+	resolveHybridPerformanceSeries,
+} from "../charts/performance-series";
 
 describe("PortfolioHeroChart filterByRange", () => {
 	it("returns empty array when data is empty", () => {
@@ -94,5 +99,119 @@ describe("PortfolioHeroChart filterByRange", () => {
 		expect(allPoints[0].portfolioValue).toBe(37.85);
 		const allDelta = allPoints[allPoints.length - 1].portfolioValue - allPoints[0].portfolioValue;
 		expect(allDelta).toBeCloseTo(9162.15, 2);
+	});
+});
+
+describe("performance-series buildHistoryDate", () => {
+	it("spreads YTD points from Jan 1 of current year to now", () => {
+		const now = new Date("2026-11-02T12:00:00Z");
+		const points = 50;
+
+		const firstDate = buildHistoryDate(now, "YTD", points, 0);
+		const lastDate = buildHistoryDate(now, "YTD", points, points - 1);
+
+		expect(firstDate.getFullYear()).toBe(2026);
+		expect(firstDate.getMonth()).toBe(0); // January
+		expect(firstDate.getDate()).toBe(1); // 1st
+		expect(lastDate.getTime()).toBe(now.getTime());
+	});
+
+	it("spreads 1Y points from one year ago to now", () => {
+		const now = new Date("2026-11-02T12:00:00Z");
+		const points = 52;
+
+		const firstDate = buildHistoryDate(now, "1Y", points, 0);
+		const lastDate = buildHistoryDate(now, "1Y", points, points - 1);
+
+		expect(firstDate.getFullYear()).toBe(2025);
+		expect(firstDate.getMonth()).toBe(10); // November
+		expect(lastDate.getTime()).toBe(now.getTime());
+	});
+});
+
+describe("resolveHybridPerformanceSeries timeframe sufficiency", () => {
+	it("detects insufficient backend data when backend points only span 1 day for 1M/YTD/1Y/ALL", () => {
+		const points: PerformancePoint[] = [
+			{
+				date: new Date("2026-11-01T00:00:00Z"),
+				portfolioValue: 37033.96,
+				benchmarkValue: 37033.96,
+			},
+			{
+				date: new Date("2026-11-02T00:00:00Z"),
+				portfolioValue: 37033.96,
+				benchmarkValue: 37033.96,
+			},
+		];
+
+		expect(hasSufficientBackendData(points, "1D")).toBe(false);
+		expect(hasSufficientBackendData(points, "7D")).toBe(false);
+		expect(hasSufficientBackendData(points, "1M")).toBe(false);
+		expect(hasSufficientBackendData(points, "3M")).toBe(false);
+		expect(hasSufficientBackendData(points, "YTD")).toBe(false);
+		expect(hasSufficientBackendData(points, "1Y")).toBe(false);
+		expect(hasSufficientBackendData(points, "ALL")).toBe(false);
+	});
+
+	it("falls back to synthesized series when backend data is sparse/flat 2-point series for YTD", () => {
+		const now = new Date("2026-11-02T12:00:00Z");
+		const sparseBackend: PerformancePoint[] = [
+			{
+				date: new Date("2026-11-01T00:00:00Z"),
+				portfolioValue: 37033.96,
+				benchmarkValue: 37033.96,
+			},
+			{
+				date: new Date("2026-11-02T00:00:00Z"),
+				portfolioValue: 37033.96,
+				benchmarkValue: 37033.96,
+			},
+		];
+
+		const holdings = [
+			{ value: 20000, currentPrice: 150, changePercent: 1.5 },
+			{ value: 17033.96, currentPrice: 300, changePercent: -0.8 },
+		];
+
+		const result = resolveHybridPerformanceSeries({
+			backendSeries: sparseBackend,
+			holdings,
+			totalValue: 37033.96,
+			timeRange: "YTD",
+			now,
+		});
+
+		// Synthesized YTD points count is 50, not 2!
+		expect(result.length).toBe(50);
+		// Dates must span back to Jan 1, 2026
+		expect(result[0].date.getFullYear()).toBe(2026);
+		expect(result[0].date.getMonth()).toBe(0);
+		// Values must not be a flat line
+		const hasVariance = result.some(
+			(p) => Math.abs(p.portfolioValue - result[0].portfolioValue) > 0.01,
+		);
+		expect(hasVariance).toBe(true);
+	});
+
+	it("preserves backend series when backend data has sufficient history", () => {
+		const now = new Date("2026-11-02T12:00:00Z");
+		// 100 daily points spanning ~100 days
+		const robustBackend: PerformancePoint[] = Array.from({ length: 100 }, (_, i) => ({
+			date: new Date(now.getTime() - (99 - i) * 24 * 60 * 60 * 1000),
+			portfolioValue: 30000 + i * 50,
+			benchmarkValue: 30000 + i * 40,
+		}));
+
+		const result = resolveHybridPerformanceSeries({
+			backendSeries: robustBackend,
+			holdings: [{ value: 35000, currentPrice: 100, changePercent: 1.0 }],
+			totalValue: 35000,
+			timeRange: "1M",
+			now,
+		});
+
+		// Should retain backend points (not synthesized 30 points)
+		expect(result.length).toBeGreaterThanOrEqual(100);
+		expect(result[0].portfolioValue).toBe(30000);
 	});
 });

@@ -64,7 +64,7 @@ type Mutation {
     deletePortfolio(id: ID!): ID! @auth
     addAssetToPortfolio(input: PortfolioAssetInput!): PortfolioAsset! @auth
     updateAssetInPortfolio(input: PortfolioAssetInput!): PortfolioAsset! @auth
-    removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!): ID! @auth
+    removeAssetFromPortfolio(portfolioID: ID!, assetID: ID!, accountID: ID): ID! @auth
     tagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio! @auth
     untagPortfolio(portfolioID: ID!, tagID: ID!): Portfolio! @auth
     duplicatePortfolio(input: DuplicatePortfolioInput!): Portfolio! @auth

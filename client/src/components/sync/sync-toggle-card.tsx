@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 export type AssetType =
 	| "equities"
@@ -131,66 +131,94 @@ export function SyncToggleCard({
 	const config = normalizedAssetType ? assetTypeConfig[normalizedAssetType] : undefined;
 	const status = statusConfig[syncStatus];
 	const Icon = config?.icon ?? BarChart3;
-	const StatusIcon = status.icon;
+
+	const isSyncing = syncStatus === "syncing" || isBusy;
+	const isError = syncStatus === "error";
 
 	return (
-		<Card className={!isEnabled ? "opacity-60" : ""}>
-			<CardHeader className="pb-3">
-				<div className="flex items-start justify-between">
-					<div className="flex items-center gap-3">
-						<div className="bg-muted rounded-lg p-2">
-							<Icon className="h-5 w-5 text-muted-foreground" />
-						</div>
-						<div>
-							<CardTitle className="text-base">{config?.label ?? assetType}</CardTitle>
-							<CardDescription className="text-xs">
-								{config?.description ?? "Catalog sync settings"}
-							</CardDescription>
-						</div>
+		<div
+			className={cn(
+				"rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-4 flex flex-col justify-between gap-4 transition-all hover:border-border/80 shadow-xs",
+				!isEnabled && "opacity-60",
+			)}
+		>
+			<div className="flex items-start justify-between gap-3">
+				<div className="flex items-center gap-3 min-w-0">
+					<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 text-foreground/80">
+						<Icon className="h-4 w-4" />
 					</div>
-					<Switch
-						checked={isEnabled}
-						onCheckedChange={onToggle}
-						disabled={syncStatus === "syncing" || isBusy}
-					/>
+					<div className="min-w-0">
+						<h4 className="text-sm font-semibold tracking-tight text-foreground truncate">
+							{config?.label ?? assetType}
+						</h4>
+						<p className="text-[11px] text-muted-foreground truncate">
+							{config?.description ?? "Configuration du catalogue"}
+						</p>
+					</div>
 				</div>
-			</CardHeader>
-			<CardContent className="pt-0">
-				<div className="flex items-center justify-between text-sm">
-					<div className="flex items-center gap-2">
-						<Badge variant="outline" className="font-mono">
-							{recordCount.toLocaleString()} records
-						</Badge>
-						<Badge variant={status.variant} className="flex items-center gap-1">
-							<StatusIcon className="h-3 w-3" />
-							{status.label}
-						</Badge>
-					</div>
-					{lastSynced && (
-						<span className="text-xs text-muted-foreground">
-							{format(lastSynced, "MMM d, h:mm a")}
-						</span>
+				<Switch
+					checked={isEnabled}
+					onCheckedChange={onToggle}
+					disabled={isSyncing}
+					className="shrink-0 scale-90"
+				/>
+			</div>
+
+			<div className="space-y-3 pt-1 border-t border-border/30">
+				<div className="flex items-center justify-between text-xs">
+					<span className="font-mono tabular-nums text-foreground/90 font-medium text-xs">
+						{recordCount.toLocaleString()}{" "}
+						<span className="text-[11px] font-normal text-muted-foreground">titres</span>
+					</span>
+
+					<Badge
+						variant="outline"
+						className={cn(
+							"text-[10px] font-mono gap-1 px-1.5 py-0.5",
+							isSyncing
+								? "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400"
+								: isError
+									? "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400"
+									: syncStatus === "complete"
+										? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+										: "border-border/60 bg-muted/20 text-muted-foreground",
+						)}
+					>
+						<span
+							className={cn(
+								"h-1.5 w-1.5 rounded-full",
+								isSyncing
+									? "bg-sky-500 animate-pulse"
+									: isError
+										? "bg-rose-500"
+										: syncStatus === "complete"
+											? "bg-emerald-500"
+											: "bg-muted-foreground",
+							)}
+						/>
+						{isSyncing ? "Sync..." : status.label}
+					</Badge>
+				</div>
+
+				<div className="flex items-center justify-between gap-2 pt-0.5">
+					<span className="text-[10px] text-muted-foreground truncate">
+						{lastSynced ? format(lastSynced, "dd/MM/yyyy HH:mm") : "Jamais synchronisé"}
+					</span>
+
+					{isEnabled && (
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={onSync}
+							disabled={isSyncing}
+							className="h-7 px-2.5 text-[11px] gap-1.5 border-border/60 bg-card/40 hover:bg-muted/40 shrink-0"
+						>
+							<RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
+							{isSyncing ? "En cours" : "Sync"}
+						</Button>
 					)}
 				</div>
-				{isEnabled && syncStatus !== "syncing" && !isBusy && (
-					<Button onClick={onSync} className="mt-3 w-full" size="sm">
-						<RefreshCw className="h-4 w-4" />
-						Sync Now
-					</Button>
-				)}
-				{isEnabled && isBusy && syncStatus !== "syncing" && (
-					<div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-						<RefreshCw className="h-4 w-4 animate-spin" />
-						Sync in progress
-					</div>
-				)}
-				{syncStatus === "syncing" && (
-					<div className="mt-3 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-						<RefreshCw className="h-4 w-4 animate-spin" />
-						Syncing...
-					</div>
-				)}
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 }

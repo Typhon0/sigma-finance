@@ -23,6 +23,16 @@ export function buildHistoryDate(now: Date, range: TimeRange, points: number, in
 		date.setHours(now.getHours() - (points - 1 - index));
 		return date;
 	}
+	if (range === "YTD") {
+		const startOfYear = new Date(now.getFullYear(), 0, 1).getTime();
+		const totalMs = now.getTime() - startOfYear;
+		return new Date(startOfYear + (totalMs * index) / Math.max(1, points - 1));
+	}
+	if (range === "1Y") {
+		const startOfYearAgo = new Date(now).setFullYear(now.getFullYear() - 1);
+		const totalMs = now.getTime() - startOfYearAgo;
+		return new Date(startOfYearAgo + (totalMs * index) / Math.max(1, points - 1));
+	}
 	date.setDate(now.getDate() - (points - 1 - index));
 	return date;
 }
@@ -44,16 +54,39 @@ export function resampleSeries(data: number[], targetPoints: number): number[] {
 	});
 }
 
-export function computeFallbackSparkline(currentPrice: number, dayChangePercent: number): number[] {
+export function computeFallbackSparkline(
+	currentPrice: number,
+	dayChangePercent: number,
+	timeRange?: TimeRange,
+): number[] {
 	if (!Number.isFinite(currentPrice) || currentPrice <= 0) {
 		return [0, 0, 0, 0, 0, 0, 0];
 	}
 
 	const points = 7;
-	const startPrice = currentPrice / (1 + (dayChangePercent || 0) / 100);
+	const rangeScale =
+		timeRange === "1D"
+			? 1
+			: timeRange === "7D"
+				? 2
+				: timeRange === "1M"
+					? 3.5
+					: timeRange === "3M"
+						? 6
+						: timeRange === "YTD"
+							? 8
+							: timeRange === "1Y"
+								? 10
+								: timeRange === "ALL"
+									? 12
+									: 1;
+
+	const effectiveChange = (dayChangePercent || 0) * (rangeScale > 1 ? Math.sqrt(rangeScale) : 1);
+	const startPrice = currentPrice / (1 + effectiveChange / 100);
 	const drift = currentPrice - startPrice;
 	const volatility =
-		Math.max(Math.abs(dayChangePercent || 0) / 100, 0.005) * Math.max(currentPrice, startPrice);
+		Math.max(Math.abs(effectiveChange) / 100, 0.005 * Math.sqrt(rangeScale)) *
+		Math.max(currentPrice, startPrice);
 	const seed = (Math.round(currentPrice * 100) % 37) / 37;
 	const phaseA = seed * Math.PI * 2;
 	const phaseB = seed * Math.PI;
@@ -98,7 +131,7 @@ export function buildMarketSynthesizedSeries({
 		const source =
 			holding.sparklineData && holding.sparklineData.length >= 2
 				? holding.sparklineData
-				: computeFallbackSparkline(holding.currentPrice, holding.changePercent);
+				: computeFallbackSparkline(holding.currentPrice, holding.changePercent, timeRange);
 
 		const sampled = resampleSeries(
 			source.map((v) => (Number.isFinite(v) && v > 0 ? v : 1)),
@@ -139,6 +172,35 @@ export function buildMarketSynthesizedSeries({
 	return history;
 }
 
+export function hasSufficientBackendData(
+	backendSeries: PerformancePoint[],
+	timeRange: TimeRange,
+): boolean {
+	if (backendSeries.length < 2) return false;
+	if (timeRange === "1D") return false;
+
+	const first = backendSeries[0].date.getTime();
+	const last = backendSeries[backendSeries.length - 1].date.getTime();
+	const spanDays = Math.max(0, (last - first) / (1000 * 60 * 60 * 24));
+
+	switch (timeRange) {
+		case "7D":
+			return spanDays >= 3 && backendSeries.length >= 3;
+		case "1M":
+			return spanDays >= 14 && backendSeries.length >= 7;
+		case "3M":
+			return spanDays >= 45 && backendSeries.length >= 15;
+		case "YTD":
+			return spanDays >= 20 && backendSeries.length >= 10;
+		case "1Y":
+			return spanDays >= 120 && backendSeries.length >= 25;
+		case "ALL":
+			return spanDays >= 7 && backendSeries.length >= 5;
+		default:
+			return backendSeries.length >= 2;
+	}
+}
+
 export function resolveHybridPerformanceSeries({
 	backendSeries,
 	holdings,
@@ -152,11 +214,9 @@ export function resolveHybridPerformanceSeries({
 	timeRange: TimeRange;
 	now?: Date;
 }): PerformancePoint[] {
-	// For 1D or when backendSeries has fewer than 2 valid points, synthesize market curve
-	const isShortInterval = timeRange === "1D";
-	const hasSufficientBackendData = backendSeries.length >= 2;
+	const sufficient = hasSufficientBackendData(backendSeries, timeRange);
 
-	if (!hasSufficientBackendData || (isShortInterval && holdings && holdings.length > 0)) {
+	if (!sufficient) {
 		if (holdings && holdings.length > 0) {
 			return buildMarketSynthesizedSeries({
 				holdings,
@@ -165,9 +225,7 @@ export function resolveHybridPerformanceSeries({
 				now,
 			});
 		}
-	}
-
-	if (hasSufficientBackendData) {
+	} else {
 		// Ensure tail connects cleanly to totalValue at now if latest point is earlier than today
 		const result = [...backendSeries];
 		const last = result[result.length - 1];

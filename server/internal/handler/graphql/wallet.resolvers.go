@@ -858,6 +858,129 @@ func (r *mutationResolver) AddMultiNetworkWallet(ctx context.Context, input gqlM
 	return createdAccounts, nil
 }
 
+// AddMultiChainWallet creates a WalletDevice container and provisions accounts for EVM, Solana, and Bitcoin simultaneously
+func (r *mutationResolver) AddMultiChainWallet(ctx context.Context, input gqlModel.AddMultiChainWalletInput) (*gqlModel.WalletDevice, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+	db := r.getDB()
+	if db == nil {
+		return nil, errors.New("database connection unavailable")
+	}
+
+	// 1. Verify target portfolio exists and user has access
+	portfolio, err := r.PortfolioService.GetByID(ctx, input.PortfolioID)
+	if err != nil || portfolio == nil {
+		return nil, errors.New("portfolio not found or access denied")
+	}
+
+	deref := func(s *string) string {
+		if s == nil {
+			return ""
+		}
+		return *s
+	}
+
+	evmAddr := strings.TrimSpace(deref(input.EvmAddress))
+	solanaAddr := strings.TrimSpace(deref(input.SolanaAddress))
+	btcAddr := strings.TrimSpace(deref(input.BitcoinAddressOrXpub))
+
+	if evmAddr == "" && solanaAddr == "" && btcAddr == "" {
+		return nil, errors.New("at least one blockchain address must be provided")
+	}
+
+	// 2. Create the parent WalletDevice
+	devName := strings.TrimSpace(input.Name)
+	if devName == "" {
+		devName = "Multi-Chain Wallet"
+	}
+	devType := model.WalletDeviceType(input.DeviceType.String())
+	device := &model.WalletDevice{
+		UserID:     userID,
+		Name:       devName,
+		DeviceType: devType,
+		CreatedAt:  time.Now().UTC(),
+		UpdatedAt:  time.Now().UTC(),
+	}
+	if _, errDev := db.NewInsert().Model(device).Exec(ctx); errDev != nil {
+		return nil, fmt.Errorf("failed to create wallet device: %w", errDev)
+	}
+
+	var createdAccounts []*gqlModel.WalletAccount
+
+	// 3. Provision EVM accounts if EVM address is provided
+	if evmAddr != "" {
+		networks := input.EvmNetworks
+		if len(networks) == 0 {
+			networks = []gqlModel.BlockchainNetwork{
+				gqlModel.BlockchainNetworkEthereum,
+				gqlModel.BlockchainNetworkBase,
+				gqlModel.BlockchainNetworkArbitrum,
+				gqlModel.BlockchainNetworkOptimism,
+				gqlModel.BlockchainNetworkPolygon,
+			}
+		}
+		for _, netGQL := range networks {
+			label := fmt.Sprintf("%s (%s)", devName, netGQL)
+			accInput := gqlModel.AddWalletAccountInput{
+				PortfolioID:   input.PortfolioID,
+				Network:       netGQL,
+				AddressOrXpub: evmAddr,
+				Label:         &label,
+				DeviceID:      &device.ID,
+			}
+			wacc, errAdd := r.AddWalletAccount(ctx, accInput)
+			if errAdd == nil && wacc != nil {
+				createdAccounts = append(createdAccounts, wacc)
+			}
+		}
+	}
+
+	// 4. Provision Solana account if address provided
+	if solanaAddr != "" {
+		label := fmt.Sprintf("%s (Solana)", devName)
+		accInput := gqlModel.AddWalletAccountInput{
+			PortfolioID:   input.PortfolioID,
+			Network:       gqlModel.BlockchainNetworkSolana,
+			AddressOrXpub: solanaAddr,
+			Label:         &label,
+			DeviceID:      &device.ID,
+		}
+		wacc, errAdd := r.AddWalletAccount(ctx, accInput)
+		if errAdd == nil && wacc != nil {
+			createdAccounts = append(createdAccounts, wacc)
+		}
+	}
+
+	// 5. Provision Bitcoin account if address/xpub provided
+	if btcAddr != "" {
+		isXpub := strings.HasPrefix(btcAddr, "xpub") || strings.HasPrefix(btcAddr, "ypub") || strings.HasPrefix(btcAddr, "zpub")
+		label := fmt.Sprintf("%s (Bitcoin)", devName)
+		accInput := gqlModel.AddWalletAccountInput{
+			PortfolioID:   input.PortfolioID,
+			Network:       gqlModel.BlockchainNetworkBitcoin,
+			AddressOrXpub: btcAddr,
+			IsXpub:        &isXpub,
+			Label:         &label,
+			DeviceID:      &device.ID,
+		}
+		wacc, errAdd := r.AddWalletAccount(ctx, accInput)
+		if errAdd == nil && wacc != nil {
+			createdAccounts = append(createdAccounts, wacc)
+		}
+	}
+
+	return &gqlModel.WalletDevice{
+		ID:         device.ID,
+		Name:       device.Name,
+		DeviceType: input.DeviceType,
+		Accounts:   createdAccounts,
+		CreatedAt:  device.CreatedAt,
+		UpdatedAt:  device.UpdatedAt,
+	}, nil
+}
+
 // AddCustomToken introspects an ERC-20 contract and appends it to wallet balances
 func (r *mutationResolver) AddCustomToken(ctx context.Context, input gqlModel.AddCustomTokenInput) (*gqlModel.WalletBalance, error) {
 	userID, err := getUserIDFromContext(ctx)

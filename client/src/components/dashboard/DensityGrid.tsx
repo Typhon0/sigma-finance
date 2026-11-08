@@ -1,6 +1,5 @@
 import { format } from "date-fns";
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	ArrowDownRight,
@@ -11,6 +10,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import React from "react";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { useCurrency } from "@/hooks/use-currency";
 import { cn } from "@/lib/utils";
@@ -154,7 +154,7 @@ const AssetAllocationChart = ({
 
 	return (
 		<div className="h-[200px] w-full">
-			<ReactECharts
+			<EChart
 				option={option}
 				notMerge={true}
 				lazyUpdate={true}
@@ -364,7 +364,7 @@ export function DensityDashboard() {
 							<CardDescription>Time-weighted returns vs. S&P 500 benchmark</CardDescription>
 						</CardHeader>
 						<CardContent className="h-[320px]">
-							<ReactECharts
+							<EChart
 								option={performanceOption}
 								notMerge={true}
 								lazyUpdate={true}

@@ -8,10 +8,7 @@ import type { PerformancePoint } from "@/components/charts/PortfolioHeroChart";
  * @param data Array of PerformancePoint ordered chronologically
  * @param targetCount Maximum number of points desired (recommended: 250-400 for 1000px charts)
  */
-export function downsampleLTTB(
-	data: PerformancePoint[],
-	targetCount: number,
-): PerformancePoint[] {
+export function downsampleLTTB(data: PerformancePoint[], targetCount: number): PerformancePoint[] {
 	if (data.length <= targetCount || targetCount <= 2) {
 		return data;
 	}
@@ -77,4 +74,3 @@ export function downsampleLTTB(
 	sampled.push(data[data.length - 1]);
 	return sampled;
 }
-

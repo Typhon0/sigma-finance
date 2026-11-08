@@ -1,7 +1,7 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import { Download, Grid3X3, Maximize2, Minimize2, PieChart } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
+import EChart, { type EChartHandle } from "@/components/charts/EChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAssetTypeColor } from "@/lib/chart-colors";
@@ -51,7 +51,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	loading = false,
 	error,
 }) => {
-	const chartRef = useRef<ReactECharts>(null);
+	const chartRef = useRef<EChartHandle>(null);
 	const [isFullscreen, setIsFullscreen] = React.useState(false);
 	const [currentChartType, setCurrentChartType] = React.useState(chartType);
 
@@ -273,7 +273,7 @@ const AllocationChart: React.FC<AllocationChartProps> = ({
 	}
 
 	const chartContent = (
-		<ReactECharts
+		<EChart
 			ref={chartRef}
 			option={chartOption}
 			style={{

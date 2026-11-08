@@ -76,14 +76,10 @@ export function exportPositionsToCSV<T extends BasePositionItem>(
 	const link = document.createElement("a");
 	link.setAttribute("href", url);
 	const dateStr = new Date().toISOString().split("T")[0];
-	link.setAttribute(
-		"download",
-		options?.filename || `sigma_positions_export_${dateStr}.csv`,
-	);
+	link.setAttribute("download", options?.filename || `sigma_positions_export_${dateStr}.csv`);
 	document.body.appendChild(link);
 	link.click();
 	document.body.removeChild(link);
 	URL.revokeObjectURL(url);
 	toast.success(`Exported ${positions.length} positions to CSV`);
 }
-

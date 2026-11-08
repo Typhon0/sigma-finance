@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	ArrowRight,
 	BarChart3,
@@ -21,6 +20,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import exampleImage from "@/assets/placeholder.svg";
 import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
@@ -344,7 +344,7 @@ export function RealEstateList({
 											<MapPin className="h-4 w-4" />
 											<h4 className="text-sm font-medium">Geographic Distribution</h4>
 										</div>
-										<ReactECharts
+										<EChart
 											option={{
 												tooltip: {
 													trigger: "axis",
@@ -459,7 +459,7 @@ export function RealEstateList({
 											<Building2 className="h-4 w-4" />
 											<h4 className="text-sm font-medium">Property Types</h4>
 										</div>
-										<ReactECharts
+										<EChart
 											option={{
 												tooltip: {
 													trigger: "item",
@@ -550,7 +550,7 @@ export function RealEstateList({
 											Top {Math.min(6, realEstateAssets.length)} properties
 										</span>
 									</div>
-									<ReactECharts
+									<EChart
 										option={{
 											tooltip: {
 												trigger: "axis",

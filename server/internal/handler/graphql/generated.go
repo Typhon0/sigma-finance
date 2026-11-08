@@ -42,23 +42,40 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Account struct {
-		AccountNumber  func(childComplexity int) int
-		CreatedAt      func(childComplexity int) int
-		Currency       func(childComplexity int) int
-		ExternalID     func(childComplexity int) int
-		ID             func(childComplexity int) int
-		Institution    func(childComplexity int) int
-		Name           func(childComplexity int) int
-		Portfolio      func(childComplexity int) int
-		PortfolioID    func(childComplexity int) int
-		Positions      func(childComplexity int) int
-		PositionsCount func(childComplexity int) int
-		SyncConnection func(childComplexity int) int
-		SyncProvider   func(childComplexity int) int
-		TaxWrapper     func(childComplexity int) int
-		TotalValue     func(childComplexity int) int
-		Type           func(childComplexity int) int
-		UpdatedAt      func(childComplexity int) int
+		AccountNumber       func(childComplexity int) int
+		CoOwnerName         func(childComplexity int) int
+		CoOwnerUser         func(childComplexity int) int
+		CoOwnerUserID       func(childComplexity int) int
+		CreatedAt           func(childComplexity int) int
+		Currency            func(childComplexity int) int
+		ExternalID          func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		Institution         func(childComplexity int) int
+		Name                func(childComplexity int) int
+		OwnershipPercentage func(childComplexity int) int
+		Portfolio           func(childComplexity int) int
+		PortfolioID         func(childComplexity int) int
+		Positions           func(childComplexity int) int
+		PositionsCount      func(childComplexity int) int
+		SyncConnection      func(childComplexity int) int
+		SyncProvider        func(childComplexity int) int
+		TaxWrapper          func(childComplexity int) int
+		TotalValue          func(childComplexity int) int
+		Type                func(childComplexity int) int
+		UpdatedAt           func(childComplexity int) int
+	}
+
+	AdminUserStats struct {
+		ActiveUsers     func(childComplexity int) int
+		AdminUsers      func(childComplexity int) int
+		LockedUsers     func(childComplexity int) int
+		TotalUsers      func(childComplexity int) int
+		UnverifiedUsers func(childComplexity int) int
+	}
+
+	AdminUsersResponse struct {
+		TotalCount func(childComplexity int) int
+		Users      func(childComplexity int) int
 	}
 
 	AggregatorAuthSession struct {
@@ -218,6 +235,7 @@ type ComplexityRoot struct {
 		EmailVerified       func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		Name                func(childComplexity int) int
+		Role                func(childComplexity int) int
 		ThemeAccentColor    func(childComplexity int) int
 		ThemeBaseColor      func(childComplexity int) int
 		ThemeFontPreference func(childComplexity int) int
@@ -351,6 +369,12 @@ type ComplexityRoot struct {
 		Label          func(childComplexity int) int
 	}
 
+	CoOwnerCandidate struct {
+		Email func(childComplexity int) int
+		ID    func(childComplexity int) int
+		Name  func(childComplexity int) int
+	}
+
 	Crypto struct {
 		AssetType         func(childComplexity int) int
 		BlockchainNetwork func(childComplexity int) int
@@ -394,6 +418,21 @@ type ComplexityRoot struct {
 	EmailVerificationResponse struct {
 		Errors  func(childComplexity int) int
 		Success func(childComplexity int) int
+	}
+
+	EnableBankingAuthSession struct {
+		AuthSessionID func(childComplexity int) int
+		AuthURL       func(childComplexity int) int
+		ExpiresAt     func(childComplexity int) int
+		State         func(childComplexity int) int
+	}
+
+	EnableBankingInstitution struct {
+		Country  func(childComplexity int) int
+		Logo     func(childComplexity int) int
+		Name     func(childComplexity int) int
+		PsuTypes func(childComplexity int) int
+		Title    func(childComplexity int) int
 	}
 
 	ExportData struct {
@@ -821,13 +860,22 @@ type ComplexityRoot struct {
 		AddAssetToWatchlist              func(childComplexity int, watchlistID string, assetID string) int
 		AddCustomToken                   func(childComplexity int, input gqlModel.AddCustomTokenInput) int
 		AddInstrumentToPortfolio         func(childComplexity int, input gqlModel.AddInstrumentHoldingInput) int
+		AddMultiChainWallet              func(childComplexity int, input gqlModel.AddMultiChainWalletInput) int
 		AddMultiNetworkWallet            func(childComplexity int, input gqlModel.AddMultiNetworkWalletInput) int
 		AddWalletAccount                 func(childComplexity int, input gqlModel.AddWalletAccountInput) int
+		AdminCreateUser                  func(childComplexity int, input gqlModel.AdminCreateUserInput) int
+		AdminDeleteUser                  func(childComplexity int, id string, hardDelete bool) int
+		AdminSetUserEmailVerified        func(childComplexity int, id string, verified bool) int
+		AdminSetUserLock                 func(childComplexity int, id string, locked bool, lockUntil *time.Time) int
+		AdminSetUserPassword             func(childComplexity int, id string, password string) int
+		AdminSetUserRole                 func(childComplexity int, id string, role string) int
+		AdminUpdateUser                  func(childComplexity int, id string, input gqlModel.AdminUpdateUserInput) int
 		ArchiveManualInstrument          func(childComplexity int, id string) int
 		AssignWalletDevice               func(childComplexity int, walletAccountID string, deviceID *string) int
 		CancelMarketDataPackJob          func(childComplexity int, jobID string) int
 		CancelPackBuildJob               func(childComplexity int, id string) int
 		CompleteAggregatorAuth           func(childComplexity int, connectionID string, sessionToken string) int
+		CompleteEnableBankingAuth        func(childComplexity int, code string, state string, portfolioID string) int
 		ConfigureAlchemyKey              func(childComplexity int, apiKey string) int
 		ConfirmPasswordReset             func(childComplexity int, input gqlModel.PasswordResetConfirmInput) int
 		CreateAccount                    func(childComplexity int, input gqlModel.CreateAccountInput) int
@@ -861,11 +909,16 @@ type ComplexityRoot struct {
 		ImportFinanceDatabaseAssets      func(childComplexity int, assetType gqlModel.AssetSyncType, symbols []string) int
 		ImportInstrumentFromCatalog      func(childComplexity int, source gqlModel.CatalogSource, externalID string, forceEnrich *bool) int
 		ImportInstrumentFromSource       func(childComplexity int, input gqlModel.ImportInstrumentFromSourceInput) int
+		InitiateEnableBankingAuth        func(childComplexity int, aspspName string, aspspCountry string, redirectURL string, portfolioID string) int
+		InitiateTradeRepublicAuth        func(childComplexity int, phoneNumber string, pin string, portfolioID string) int
+		InitiateWoobAuth                 func(childComplexity int, institution string, login string, password string, region *string, portfolioID string) int
 		InstallMarketDataPack            func(childComplexity int, packID string) int
 		LinkSyncAccount                  func(childComplexity int, connectionID string, accountID *string, autoCreate *bool) int
 		Login                            func(childComplexity int, input gqlModel.LoginInput) int
 		Logout                           func(childComplexity int, input gqlModel.LogoutInput) int
 		PersistDiscoveredInstrument      func(childComplexity int, input gqlModel.PersistDiscoveredInstrumentInput) int
+		PollTradeRepublicAuth            func(childComplexity int, authSessionID string) int
+		PollWoobAuth                     func(childComplexity int, authSessionID string, otpCode *string) int
 		RecordDashboardEvent             func(childComplexity int, input gqlModel.DashboardEventInput) int
 		RefreshAssetPrices               func(childComplexity int, assetID *string) int
 		RefreshSingleAssetPrice          func(childComplexity int, assetID string) int
@@ -873,7 +926,7 @@ type ComplexityRoot struct {
 		RefreshWalletBalancePrice        func(childComplexity int, balanceID string) int
 		Register                         func(childComplexity int, input gqlModel.RegisterInput) int
 		RegisterSyncCredential           func(childComplexity int, provider string, credentials map[string]any, portfolioID *string) int
-		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string) int
+		RemoveAssetFromPortfolio         func(childComplexity int, portfolioID string, assetID string, accountID *string) int
 		RemoveAssetFromWatchlist         func(childComplexity int, watchlistID string, assetID string) int
 		RemoveMarketDataPack             func(childComplexity int, packID string) int
 		RemoveWalletAccount              func(childComplexity int, id string) int
@@ -1059,6 +1112,8 @@ type ComplexityRoot struct {
 	}
 
 	PortfolioAsset struct {
+		AccountID            func(childComplexity int) int
+		AccountName          func(childComplexity int) int
 		Asset                func(childComplexity int) int
 		AveragePurchasePrice func(childComplexity int) int
 		CurrentValue         func(childComplexity int) int
@@ -1066,6 +1121,7 @@ type ComplexityRoot struct {
 		DayChangePercent     func(childComplexity int) int
 		InstrumentID         func(childComplexity int) int
 		OwnershipPct         func(childComplexity int) int
+		PositionID           func(childComplexity int) int
 		Quantity             func(childComplexity int) int
 		QuoteCurrency        func(childComplexity int) int
 	}
@@ -1159,6 +1215,8 @@ type ComplexityRoot struct {
 	Query struct {
 		Account                         func(childComplexity int, id string) int
 		Accounts                        func(childComplexity int, portfolioID *string) int
+		AdminUserStats                  func(childComplexity int) int
+		AdminUsers                      func(childComplexity int, filter *gqlModel.AdminUserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
 		Alert                           func(childComplexity int, id string) int
 		AlertHistory                    func(childComplexity int, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) int
 		Alerts                          func(childComplexity int, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) int
@@ -1176,8 +1234,10 @@ type ComplexityRoot struct {
 		Candles                         func(childComplexity int, symbol string, assetType string, interval string, from time.Time, to time.Time, limit *int32) int
 		CandlesByInstrument             func(childComplexity int, instrumentID string, interval string, from time.Time, to time.Time, limit *int32, preferredProvider *string) int
 		CatalogSyncStatus               func(childComplexity int, source gqlModel.CatalogSource) int
+		CoOwnerCandidates               func(childComplexity int, search *string) int
 		ComparePortfolios               func(childComplexity int, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		DispositionsByPosition          func(childComplexity int, positionID string) int
+		EnableBankingInstitutions       func(childComplexity int, country string) int
 		ExportPortfolioData             func(childComplexity int, input gqlModel.ExportDataInput) int
 		FinanceDatabasePreview          func(childComplexity int, assetType gqlModel.AssetSyncType, search *string, limit *int32) int
 		FinanceDatabaseSyncHistory      func(childComplexity int, limit *int32) int
@@ -1470,9 +1530,23 @@ type ComplexityRoot struct {
 		TimeRange   func(childComplexity int) int
 	}
 
+	TradeRepublicAuthPollResult struct {
+		Connections  func(childComplexity int) int
+		ErrorMessage func(childComplexity int) int
+		Status       func(childComplexity int) int
+	}
+
+	TradeRepublicAuthSession struct {
+		AuthSessionID    func(childComplexity int) int
+		CountdownSeconds func(childComplexity int) int
+		ExpiresAt        func(childComplexity int) int
+		Status           func(childComplexity int) int
+	}
+
 	Transaction struct {
 		Account           func(childComplexity int) int
 		AccountID         func(childComplexity int) int
+		Amount            func(childComplexity int) int
 		Asset             func(childComplexity int) int
 		ExecutedAt        func(childComplexity int) int
 		FeesAmount        func(childComplexity int) int
@@ -1501,8 +1575,14 @@ type ComplexityRoot struct {
 		CreatedAt           func(childComplexity int) int
 		DisplayCurrency     func(childComplexity int) int
 		Email               func(childComplexity int) int
+		EmailVerified       func(childComplexity int) int
+		FailedLoginCount    func(childComplexity int) int
 		ID                  func(childComplexity int) int
+		IsLocked            func(childComplexity int) int
+		LastLoginAt         func(childComplexity int) int
+		LockedUntil         func(childComplexity int) int
 		Portfolios          func(childComplexity int) int
+		Role                func(childComplexity int) int
 		TaxJurisdiction     func(childComplexity int) int
 		ThemeAccentColor    func(childComplexity int) int
 		ThemeBaseColor      func(childComplexity int) int
@@ -1641,6 +1721,20 @@ type ComplexityRoot struct {
 		UpdatedAt func(childComplexity int) int
 		User      func(childComplexity int) int
 	}
+
+	WoobAuthPollResult struct {
+		Connections  func(childComplexity int) int
+		ErrorMessage func(childComplexity int) int
+		Status       func(childComplexity int) int
+	}
+
+	WoobAuthSession struct {
+		AuthSessionID    func(childComplexity int) int
+		ChallengeMessage func(childComplexity int) int
+		CountdownSeconds func(childComplexity int) int
+		ExpiresAt        func(childComplexity int) int
+		Status           func(childComplexity int) int
+	}
 }
 
 type MutationResolver interface {
@@ -1655,7 +1749,7 @@ type MutationResolver interface {
 	DeletePortfolio(ctx context.Context, id string) (string, error)
 	AddAssetToPortfolio(ctx context.Context, input gqlModel.PortfolioAssetInput) (*gqlModel.PortfolioAsset, error)
 	UpdateAssetInPortfolio(ctx context.Context, input gqlModel.PortfolioAssetInput) (*gqlModel.PortfolioAsset, error)
-	RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string) (string, error)
+	RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string, accountID *string) (string, error)
 	TagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error)
 	UntagPortfolio(ctx context.Context, portfolioID string, tagID string) (*gqlModel.Portfolio, error)
 	DuplicatePortfolio(ctx context.Context, input gqlModel.DuplicatePortfolioInput) (*gqlModel.Portfolio, error)
@@ -1726,14 +1820,28 @@ type MutationResolver interface {
 	CompleteAggregatorAuth(ctx context.Context, connectionID string, sessionToken string) ([]*gqlModel.SyncConnection, error)
 	LinkSyncAccount(ctx context.Context, connectionID string, accountID *string, autoCreate *bool) (*gqlModel.SyncConnection, error)
 	TriggerAccountSync(ctx context.Context, accountID string) (*gqlModel.SyncRun, error)
+	InitiateTradeRepublicAuth(ctx context.Context, phoneNumber string, pin string, portfolioID string) (*gqlModel.TradeRepublicAuthSession, error)
+	PollTradeRepublicAuth(ctx context.Context, authSessionID string) (*gqlModel.TradeRepublicAuthPollResult, error)
+	InitiateEnableBankingAuth(ctx context.Context, aspspName string, aspspCountry string, redirectURL string, portfolioID string) (*gqlModel.EnableBankingAuthSession, error)
+	CompleteEnableBankingAuth(ctx context.Context, code string, state string, portfolioID string) ([]*gqlModel.SyncConnection, error)
+	InitiateWoobAuth(ctx context.Context, institution string, login string, password string, region *string, portfolioID string) (*gqlModel.WoobAuthSession, error)
+	PollWoobAuth(ctx context.Context, authSessionID string, otpCode *string) (*gqlModel.WoobAuthPollResult, error)
 	UpdateTransaction(ctx context.Context, id string, input gqlModel.UpdateTransactionInput) (*gqlModel.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) (string, error)
+	AdminCreateUser(ctx context.Context, input gqlModel.AdminCreateUserInput) (*gqlModel.User, error)
+	AdminUpdateUser(ctx context.Context, id string, input gqlModel.AdminUpdateUserInput) (*gqlModel.User, error)
+	AdminSetUserRole(ctx context.Context, id string, role string) (*gqlModel.User, error)
+	AdminSetUserLock(ctx context.Context, id string, locked bool, lockUntil *time.Time) (*gqlModel.User, error)
+	AdminSetUserPassword(ctx context.Context, id string, password string) (bool, error)
+	AdminSetUserEmailVerified(ctx context.Context, id string, verified bool) (*gqlModel.User, error)
+	AdminDeleteUser(ctx context.Context, id string, hardDelete bool) (bool, error)
 	CreateWalletDevice(ctx context.Context, input gqlModel.CreateWalletDeviceInput) (*gqlModel.WalletDevice, error)
 	UpdateWalletDevice(ctx context.Context, id string, name string, deviceType gqlModel.WalletDeviceType) (*gqlModel.WalletDevice, error)
 	RemoveWalletDevice(ctx context.Context, id string) (bool, error)
 	AssignWalletDevice(ctx context.Context, walletAccountID string, deviceID *string) (bool, error)
 	AddWalletAccount(ctx context.Context, input gqlModel.AddWalletAccountInput) (*gqlModel.WalletAccount, error)
 	AddMultiNetworkWallet(ctx context.Context, input gqlModel.AddMultiNetworkWalletInput) ([]*gqlModel.WalletAccount, error)
+	AddMultiChainWallet(ctx context.Context, input gqlModel.AddMultiChainWalletInput) (*gqlModel.WalletDevice, error)
 	AddCustomToken(ctx context.Context, input gqlModel.AddCustomTokenInput) (*gqlModel.WalletBalance, error)
 	UpdateBlockchainNetworkConfig(ctx context.Context, input gqlModel.UpdateBlockchainNetworkConfigInput) (*gqlModel.BlockchainNetworkConfig, error)
 	ResetBlockchainNetworkConfig(ctx context.Context, network gqlModel.BlockchainNetwork) (*gqlModel.BlockchainNetworkConfig, error)
@@ -1764,6 +1872,7 @@ type QueryResolver interface {
 	Transactions(ctx context.Context, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) ([]*gqlModel.Transaction, error)
 	Accounts(ctx context.Context, portfolioID *string) ([]*gqlModel.Account, error)
 	Account(ctx context.Context, id string) (*gqlModel.Account, error)
+	CoOwnerCandidates(ctx context.Context, search *string) ([]*gqlModel.CoOwnerCandidate, error)
 	Alerts(ctx context.Context, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Alert, error)
 	Alert(ctx context.Context, id string) (*gqlModel.Alert, error)
 	AlertHistory(ctx context.Context, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.AlertTriggerEvent, error)
@@ -1818,10 +1927,13 @@ type QueryResolver interface {
 	ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error)
 	SyncConnections(ctx context.Context, portfolioID string) ([]*gqlModel.SyncConnection, error)
 	SyncCredentials(ctx context.Context) ([]*gqlModel.SyncCredential, error)
+	EnableBankingInstitutions(ctx context.Context, country string) ([]*gqlModel.EnableBankingInstitution, error)
 	TaxLotsByPosition(ctx context.Context, positionID string) ([]*gqlModel.TaxLot, error)
 	TaxHarvestOpportunities(ctx context.Context, portfolioID string) ([]*gqlModel.TaxHarvestOpportunity, error)
 	DispositionsByPosition(ctx context.Context, positionID string) ([]*gqlModel.TaxLotDisposition, error)
 	RealizedGains(ctx context.Context, portfolioID string, dateFrom time.Time, dateTo time.Time) (*gqlModel.RealizedGainsSummary, error)
+	AdminUsers(ctx context.Context, filter *gqlModel.AdminUserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) (*gqlModel.AdminUsersResponse, error)
+	AdminUserStats(ctx context.Context) (*gqlModel.AdminUserStats, error)
 	WalletDevices(ctx context.Context) ([]*gqlModel.WalletDevice, error)
 	WalletAccounts(ctx context.Context, portfolioID *string) ([]*gqlModel.WalletAccount, error)
 	WalletCUUsage(ctx context.Context) (*gqlModel.WalletCUUsage, error)
@@ -1858,6 +1970,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.AccountNumber(childComplexity), true
+	case "Account.coOwnerName":
+		if e.ComplexityRoot.Account.CoOwnerName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.CoOwnerName(childComplexity), true
+	case "Account.coOwnerUser":
+		if e.ComplexityRoot.Account.CoOwnerUser == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.CoOwnerUser(childComplexity), true
+	case "Account.coOwnerUserId":
+		if e.ComplexityRoot.Account.CoOwnerUserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.CoOwnerUserID(childComplexity), true
 	case "Account.createdAt":
 		if e.ComplexityRoot.Account.CreatedAt == nil {
 			break
@@ -1894,6 +2024,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.Name(childComplexity), true
+	case "Account.ownershipPercentage":
+		if e.ComplexityRoot.Account.OwnershipPercentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Account.OwnershipPercentage(childComplexity), true
 	case "Account.portfolio":
 		if e.ComplexityRoot.Account.Portfolio == nil {
 			break
@@ -1954,6 +2090,50 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Account.UpdatedAt(childComplexity), true
+
+	case "AdminUserStats.activeUsers":
+		if e.ComplexityRoot.AdminUserStats.ActiveUsers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUserStats.ActiveUsers(childComplexity), true
+	case "AdminUserStats.adminUsers":
+		if e.ComplexityRoot.AdminUserStats.AdminUsers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUserStats.AdminUsers(childComplexity), true
+	case "AdminUserStats.lockedUsers":
+		if e.ComplexityRoot.AdminUserStats.LockedUsers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUserStats.LockedUsers(childComplexity), true
+	case "AdminUserStats.totalUsers":
+		if e.ComplexityRoot.AdminUserStats.TotalUsers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUserStats.TotalUsers(childComplexity), true
+	case "AdminUserStats.unverifiedUsers":
+		if e.ComplexityRoot.AdminUserStats.UnverifiedUsers == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUserStats.UnverifiedUsers(childComplexity), true
+
+	case "AdminUsersResponse.totalCount":
+		if e.ComplexityRoot.AdminUsersResponse.TotalCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUsersResponse.TotalCount(childComplexity), true
+	case "AdminUsersResponse.users":
+		if e.ComplexityRoot.AdminUsersResponse.Users == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AdminUsersResponse.Users(childComplexity), true
 
 	case "AggregatorAuthSession.link":
 		if e.ComplexityRoot.AggregatorAuthSession.Link == nil {
@@ -2602,6 +2782,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AuthUser.Name(childComplexity), true
+	case "AuthUser.role":
+		if e.ComplexityRoot.AuthUser.Role == nil {
+			break
+		}
+
+		return e.ComplexityRoot.AuthUser.Role(childComplexity), true
 	case "AuthUser.themeAccentColor":
 		if e.ComplexityRoot.AuthUser.ThemeAccentColor == nil {
 			break
@@ -3185,6 +3371,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.ChartMetadata.Label(childComplexity), true
 
+	case "CoOwnerCandidate.email":
+		if e.ComplexityRoot.CoOwnerCandidate.Email == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CoOwnerCandidate.Email(childComplexity), true
+	case "CoOwnerCandidate.id":
+		if e.ComplexityRoot.CoOwnerCandidate.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CoOwnerCandidate.ID(childComplexity), true
+	case "CoOwnerCandidate.name":
+		if e.ComplexityRoot.CoOwnerCandidate.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.CoOwnerCandidate.Name(childComplexity), true
+
 	case "Crypto.assetType":
 		if e.ComplexityRoot.Crypto.AssetType == nil {
 			break
@@ -3369,6 +3574,62 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.EmailVerificationResponse.Success(childComplexity), true
+
+	case "EnableBankingAuthSession.authSessionId":
+		if e.ComplexityRoot.EnableBankingAuthSession.AuthSessionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingAuthSession.AuthSessionID(childComplexity), true
+	case "EnableBankingAuthSession.authUrl":
+		if e.ComplexityRoot.EnableBankingAuthSession.AuthURL == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingAuthSession.AuthURL(childComplexity), true
+	case "EnableBankingAuthSession.expiresAt":
+		if e.ComplexityRoot.EnableBankingAuthSession.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingAuthSession.ExpiresAt(childComplexity), true
+	case "EnableBankingAuthSession.state":
+		if e.ComplexityRoot.EnableBankingAuthSession.State == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingAuthSession.State(childComplexity), true
+
+	case "EnableBankingInstitution.country":
+		if e.ComplexityRoot.EnableBankingInstitution.Country == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingInstitution.Country(childComplexity), true
+	case "EnableBankingInstitution.logo":
+		if e.ComplexityRoot.EnableBankingInstitution.Logo == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingInstitution.Logo(childComplexity), true
+	case "EnableBankingInstitution.name":
+		if e.ComplexityRoot.EnableBankingInstitution.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingInstitution.Name(childComplexity), true
+	case "EnableBankingInstitution.psuTypes":
+		if e.ComplexityRoot.EnableBankingInstitution.PsuTypes == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingInstitution.PsuTypes(childComplexity), true
+	case "EnableBankingInstitution.title":
+		if e.ComplexityRoot.EnableBankingInstitution.Title == nil {
+			break
+		}
+
+		return e.ComplexityRoot.EnableBankingInstitution.Title(childComplexity), true
 
 	case "ExportData.data":
 		if e.ComplexityRoot.ExportData.Data == nil {
@@ -5378,6 +5639,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddInstrumentToPortfolio(childComplexity, args["input"].(gqlModel.AddInstrumentHoldingInput)), true
+	case "Mutation.addMultiChainWallet":
+		if e.ComplexityRoot.Mutation.AddMultiChainWallet == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_addMultiChainWallet_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AddMultiChainWallet(childComplexity, args["input"].(gqlModel.AddMultiChainWalletInput)), true
 	case "Mutation.addMultiNetworkWallet":
 		if e.ComplexityRoot.Mutation.AddMultiNetworkWallet == nil {
 			break
@@ -5400,6 +5672,83 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.AddWalletAccount(childComplexity, args["input"].(gqlModel.AddWalletAccountInput)), true
+	case "Mutation.adminCreateUser":
+		if e.ComplexityRoot.Mutation.AdminCreateUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminCreateUser_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminCreateUser(childComplexity, args["input"].(gqlModel.AdminCreateUserInput)), true
+	case "Mutation.adminDeleteUser":
+		if e.ComplexityRoot.Mutation.AdminDeleteUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminDeleteUser_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminDeleteUser(childComplexity, args["id"].(string), args["hardDelete"].(bool)), true
+	case "Mutation.adminSetUserEmailVerified":
+		if e.ComplexityRoot.Mutation.AdminSetUserEmailVerified == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminSetUserEmailVerified_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminSetUserEmailVerified(childComplexity, args["id"].(string), args["verified"].(bool)), true
+	case "Mutation.adminSetUserLock":
+		if e.ComplexityRoot.Mutation.AdminSetUserLock == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminSetUserLock_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminSetUserLock(childComplexity, args["id"].(string), args["locked"].(bool), args["lockUntil"].(*time.Time)), true
+	case "Mutation.adminSetUserPassword":
+		if e.ComplexityRoot.Mutation.AdminSetUserPassword == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminSetUserPassword_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminSetUserPassword(childComplexity, args["id"].(string), args["password"].(string)), true
+	case "Mutation.adminSetUserRole":
+		if e.ComplexityRoot.Mutation.AdminSetUserRole == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminSetUserRole_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminSetUserRole(childComplexity, args["id"].(string), args["role"].(string)), true
+	case "Mutation.adminUpdateUser":
+		if e.ComplexityRoot.Mutation.AdminUpdateUser == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_adminUpdateUser_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.AdminUpdateUser(childComplexity, args["id"].(string), args["input"].(gqlModel.AdminUpdateUserInput)), true
 	case "Mutation.archiveManualInstrument":
 		if e.ComplexityRoot.Mutation.ArchiveManualInstrument == nil {
 			break
@@ -5455,6 +5804,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CompleteAggregatorAuth(childComplexity, args["connectionId"].(string), args["sessionToken"].(string)), true
+	case "Mutation.completeEnableBankingAuth":
+		if e.ComplexityRoot.Mutation.CompleteEnableBankingAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_completeEnableBankingAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.CompleteEnableBankingAuth(childComplexity, args["code"].(string), args["state"].(string), args["portfolioId"].(string)), true
 	case "Mutation.configureAlchemyKey":
 		if e.ComplexityRoot.Mutation.ConfigureAlchemyKey == nil {
 			break
@@ -5818,6 +6178,39 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.ImportInstrumentFromSource(childComplexity, args["input"].(gqlModel.ImportInstrumentFromSourceInput)), true
+	case "Mutation.initiateEnableBankingAuth":
+		if e.ComplexityRoot.Mutation.InitiateEnableBankingAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_initiateEnableBankingAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.InitiateEnableBankingAuth(childComplexity, args["aspspName"].(string), args["aspspCountry"].(string), args["redirectUrl"].(string), args["portfolioId"].(string)), true
+	case "Mutation.initiateTradeRepublicAuth":
+		if e.ComplexityRoot.Mutation.InitiateTradeRepublicAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_initiateTradeRepublicAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.InitiateTradeRepublicAuth(childComplexity, args["phoneNumber"].(string), args["pin"].(string), args["portfolioId"].(string)), true
+	case "Mutation.initiateWoobAuth":
+		if e.ComplexityRoot.Mutation.InitiateWoobAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_initiateWoobAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.InitiateWoobAuth(childComplexity, args["institution"].(string), args["login"].(string), args["password"].(string), args["region"].(*string), args["portfolioId"].(string)), true
 	case "Mutation.installMarketDataPack":
 		if e.ComplexityRoot.Mutation.InstallMarketDataPack == nil {
 			break
@@ -5873,6 +6266,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.PersistDiscoveredInstrument(childComplexity, args["input"].(gqlModel.PersistDiscoveredInstrumentInput)), true
+	case "Mutation.pollTradeRepublicAuth":
+		if e.ComplexityRoot.Mutation.PollTradeRepublicAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_pollTradeRepublicAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.PollTradeRepublicAuth(childComplexity, args["authSessionId"].(string)), true
+	case "Mutation.pollWoobAuth":
+		if e.ComplexityRoot.Mutation.PollWoobAuth == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_pollWoobAuth_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.PollWoobAuth(childComplexity, args["authSessionId"].(string), args["otpCode"].(*string)), true
 	case "Mutation.recordDashboardEvent":
 		if e.ComplexityRoot.Mutation.RecordDashboardEvent == nil {
 			break
@@ -5960,7 +6375,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Mutation.RemoveAssetFromPortfolio(childComplexity, args["portfolioID"].(string), args["assetID"].(string)), true
+		return e.ComplexityRoot.Mutation.RemoveAssetFromPortfolio(childComplexity, args["portfolioID"].(string), args["assetID"].(string), args["accountID"].(*string)), true
 	case "Mutation.removeAssetFromWatchlist":
 		if e.ComplexityRoot.Mutation.RemoveAssetFromWatchlist == nil {
 			break
@@ -7065,6 +7480,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PortfolioAnalytics.TotalValue(childComplexity), true
 
+	case "PortfolioAsset.accountID":
+		if e.ComplexityRoot.PortfolioAsset.AccountID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortfolioAsset.AccountID(childComplexity), true
+	case "PortfolioAsset.accountName":
+		if e.ComplexityRoot.PortfolioAsset.AccountName == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortfolioAsset.AccountName(childComplexity), true
 	case "PortfolioAsset.asset":
 		if e.ComplexityRoot.PortfolioAsset.Asset == nil {
 			break
@@ -7107,6 +7534,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.PortfolioAsset.OwnershipPct(childComplexity), true
+	case "PortfolioAsset.positionID":
+		if e.ComplexityRoot.PortfolioAsset.PositionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.PortfolioAsset.PositionID(childComplexity), true
 	case "PortfolioAsset.quantity":
 		if e.ComplexityRoot.PortfolioAsset.Quantity == nil {
 			break
@@ -7505,6 +7938,23 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Accounts(childComplexity, args["portfolioId"].(*string)), true
+	case "Query.adminUserStats":
+		if e.ComplexityRoot.Query.AdminUserStats == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Query.AdminUserStats(childComplexity), true
+	case "Query.adminUsers":
+		if e.ComplexityRoot.Query.AdminUsers == nil {
+			break
+		}
+
+		args, err := ec.field_Query_adminUsers_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.AdminUsers(childComplexity, args["filter"].(*gqlModel.AdminUserFilter), args["pagination"].(*gqlModel.PaginationInput), args["orderBy"].(*gqlModel.UserOrder)), true
 	case "Query.alert":
 		if e.ComplexityRoot.Query.Alert == nil {
 			break
@@ -7677,6 +8127,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.CatalogSyncStatus(childComplexity, args["source"].(gqlModel.CatalogSource)), true
+	case "Query.coOwnerCandidates":
+		if e.ComplexityRoot.Query.CoOwnerCandidates == nil {
+			break
+		}
+
+		args, err := ec.field_Query_coOwnerCandidates_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.CoOwnerCandidates(childComplexity, args["search"].(*string)), true
 	case "Query.comparePortfolios":
 		if e.ComplexityRoot.Query.ComparePortfolios == nil {
 			break
@@ -7699,6 +8160,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.DispositionsByPosition(childComplexity, args["positionId"].(string)), true
+	case "Query.enableBankingInstitutions":
+		if e.ComplexityRoot.Query.EnableBankingInstitutions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_enableBankingInstitutions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.EnableBankingInstitutions(childComplexity, args["country"].(string)), true
 	case "Query.exportPortfolioData":
 		if e.ComplexityRoot.Query.ExportPortfolioData == nil {
 			break
@@ -9361,6 +9833,50 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.TimeSeriesData.TimeRange(childComplexity), true
 
+	case "TradeRepublicAuthPollResult.connections":
+		if e.ComplexityRoot.TradeRepublicAuthPollResult.Connections == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthPollResult.Connections(childComplexity), true
+	case "TradeRepublicAuthPollResult.errorMessage":
+		if e.ComplexityRoot.TradeRepublicAuthPollResult.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthPollResult.ErrorMessage(childComplexity), true
+	case "TradeRepublicAuthPollResult.status":
+		if e.ComplexityRoot.TradeRepublicAuthPollResult.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthPollResult.Status(childComplexity), true
+
+	case "TradeRepublicAuthSession.authSessionId":
+		if e.ComplexityRoot.TradeRepublicAuthSession.AuthSessionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthSession.AuthSessionID(childComplexity), true
+	case "TradeRepublicAuthSession.countdownSeconds":
+		if e.ComplexityRoot.TradeRepublicAuthSession.CountdownSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthSession.CountdownSeconds(childComplexity), true
+	case "TradeRepublicAuthSession.expiresAt":
+		if e.ComplexityRoot.TradeRepublicAuthSession.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthSession.ExpiresAt(childComplexity), true
+	case "TradeRepublicAuthSession.status":
+		if e.ComplexityRoot.TradeRepublicAuthSession.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.TradeRepublicAuthSession.Status(childComplexity), true
+
 	case "Transaction.account":
 		if e.ComplexityRoot.Transaction.Account == nil {
 			break
@@ -9373,6 +9889,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Transaction.AccountID(childComplexity), true
+	case "Transaction.amount":
+		if e.ComplexityRoot.Transaction.Amount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Transaction.Amount(childComplexity), true
 	case "Transaction.asset":
 		if e.ComplexityRoot.Transaction.Asset == nil {
 			break
@@ -9490,18 +10012,54 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.Email(childComplexity), true
+	case "User.emailVerified":
+		if e.ComplexityRoot.User.EmailVerified == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.EmailVerified(childComplexity), true
+	case "User.failedLoginCount":
+		if e.ComplexityRoot.User.FailedLoginCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.FailedLoginCount(childComplexity), true
 	case "User.id":
 		if e.ComplexityRoot.User.ID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.User.ID(childComplexity), true
+	case "User.isLocked":
+		if e.ComplexityRoot.User.IsLocked == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.IsLocked(childComplexity), true
+	case "User.lastLoginAt":
+		if e.ComplexityRoot.User.LastLoginAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.LastLoginAt(childComplexity), true
+	case "User.lockedUntil":
+		if e.ComplexityRoot.User.LockedUntil == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.LockedUntil(childComplexity), true
 	case "User.portfolios":
 		if e.ComplexityRoot.User.Portfolios == nil {
 			break
 		}
 
 		return e.ComplexityRoot.User.Portfolios(childComplexity), true
+	case "User.role":
+		if e.ComplexityRoot.User.Role == nil {
+			break
+		}
+
+		return e.ComplexityRoot.User.Role(childComplexity), true
 	case "User.taxJurisdiction":
 		if e.ComplexityRoot.User.TaxJurisdiction == nil {
 			break
@@ -10177,6 +10735,56 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Watchlist.User(childComplexity), true
 
+	case "WoobAuthPollResult.connections":
+		if e.ComplexityRoot.WoobAuthPollResult.Connections == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthPollResult.Connections(childComplexity), true
+	case "WoobAuthPollResult.errorMessage":
+		if e.ComplexityRoot.WoobAuthPollResult.ErrorMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthPollResult.ErrorMessage(childComplexity), true
+	case "WoobAuthPollResult.status":
+		if e.ComplexityRoot.WoobAuthPollResult.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthPollResult.Status(childComplexity), true
+
+	case "WoobAuthSession.authSessionId":
+		if e.ComplexityRoot.WoobAuthSession.AuthSessionID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthSession.AuthSessionID(childComplexity), true
+	case "WoobAuthSession.challengeMessage":
+		if e.ComplexityRoot.WoobAuthSession.ChallengeMessage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthSession.ChallengeMessage(childComplexity), true
+	case "WoobAuthSession.countdownSeconds":
+		if e.ComplexityRoot.WoobAuthSession.CountdownSeconds == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthSession.CountdownSeconds(childComplexity), true
+	case "WoobAuthSession.expiresAt":
+		if e.ComplexityRoot.WoobAuthSession.ExpiresAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthSession.ExpiresAt(childComplexity), true
+	case "WoobAuthSession.status":
+		if e.ComplexityRoot.WoobAuthSession.Status == nil {
+			break
+		}
+
+		return e.ComplexityRoot.WoobAuthSession.Status(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -10187,8 +10795,12 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputAddCustomTokenInput,
 		ec.unmarshalInputAddInstrumentHoldingInput,
+		ec.unmarshalInputAddMultiChainWalletInput,
 		ec.unmarshalInputAddMultiNetworkWalletInput,
 		ec.unmarshalInputAddWalletAccountInput,
+		ec.unmarshalInputAdminCreateUserInput,
+		ec.unmarshalInputAdminUpdateUserInput,
+		ec.unmarshalInputAdminUserFilter,
 		ec.unmarshalInputAlertActionInput,
 		ec.unmarshalInputAlertFilter,
 		ec.unmarshalInputAlertHistoryFilter,
@@ -10448,6 +11060,17 @@ func (ec *executionContext) field_Mutation_addInstrumentToPortfolio_args(ctx con
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_addMultiChainWallet_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAddMultiChainWalletInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddMultiChainWalletInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_addMultiNetworkWallet_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10467,6 +11090,118 @@ func (ec *executionContext) field_Mutation_addWalletAccount_args(ctx context.Con
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminCreateUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAdminCreateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminCreateUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminDeleteUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "hardDelete", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["hardDelete"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminSetUserEmailVerified_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "verified", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["verified"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminSetUserLock_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "locked", ec.unmarshalNBoolean2bool)
+	if err != nil {
+		return nil, err
+	}
+	args["locked"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "lockUntil", ec.unmarshalOTime2ᚖtimeᚐTime)
+	if err != nil {
+		return nil, err
+	}
+	args["lockUntil"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminSetUserPassword_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "password", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["password"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminSetUserRole_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "role", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["role"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_adminUpdateUser_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAdminUpdateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUpdateUserInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -10532,6 +11267,27 @@ func (ec *executionContext) field_Mutation_completeAggregatorAuth_args(ctx conte
 		return nil, err
 	}
 	args["sessionToken"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_completeEnableBankingAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "code", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["code"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "state", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["state"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg2
 	return args, nil
 }
 
@@ -10923,6 +11679,84 @@ func (ec *executionContext) field_Mutation_importInstrumentFromSource_args(ctx c
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_initiateEnableBankingAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "aspspName", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["aspspName"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "aspspCountry", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["aspspCountry"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "redirectUrl", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["redirectUrl"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_initiateTradeRepublicAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "phoneNumber", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["phoneNumber"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pin", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["pin"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_initiateWoobAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "institution", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["institution"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "login", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["login"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "password", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["password"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "region", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["region"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["portfolioId"] = arg4
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_installMarketDataPack_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -10985,6 +11819,33 @@ func (ec *executionContext) field_Mutation_persistDiscoveredInstrument_args(ctx 
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_pollTradeRepublicAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "authSessionId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["authSessionId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_pollWoobAuth_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "authSessionId", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["authSessionId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "otpCode", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["otpCode"] = arg1
 	return args, nil
 }
 
@@ -11088,6 +11949,11 @@ func (ec *executionContext) field_Mutation_removeAssetFromPortfolio_args(ctx con
 		return nil, err
 	}
 	args["assetID"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "accountID", ec.unmarshalOID2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["accountID"] = arg2
 	return args, nil
 }
 
@@ -11733,6 +12599,27 @@ func (ec *executionContext) field_Query_accounts_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_adminUsers_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "filter", ec.unmarshalOAdminUserFilter2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUserFilter)
+	if err != nil {
+		return nil, err
+	}
+	args["filter"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalOPaginationInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPaginationInput)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "orderBy", ec.unmarshalOUserOrder2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserOrder)
+	if err != nil {
+		return nil, err
+	}
+	args["orderBy"] = arg2
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_alertHistory_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11997,6 +12884,17 @@ func (ec *executionContext) field_Query_catalogSyncStatus_args(ctx context.Conte
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_coOwnerCandidates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "search", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["search"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Query_comparePortfolios_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12021,6 +12919,17 @@ func (ec *executionContext) field_Query_dispositionsByPosition_args(ctx context.
 		return nil, err
 	}
 	args["positionId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_enableBankingInstitutions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "country", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["country"] = arg0
 	return args, nil
 }
 
@@ -13126,6 +14035,174 @@ func (ec *executionContext) fieldContext_Account_syncProvider(_ context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Account_ownershipPercentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Account_ownershipPercentage,
+		func(ctx context.Context) (any, error) {
+			return obj.OwnershipPercentage, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Account_ownershipPercentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Account_coOwnerName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Account_coOwnerName,
+		func(ctx context.Context) (any, error) {
+			return obj.CoOwnerName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Account_coOwnerName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Account_coOwnerUserId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Account_coOwnerUserId,
+		func(ctx context.Context) (any, error) {
+			return obj.CoOwnerUserID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Account_coOwnerUserId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Account_coOwnerUser(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Account_coOwnerUser,
+		func(ctx context.Context) (any, error) {
+			return obj.CoOwnerUser, nil
+		},
+		nil,
+		ec.marshalOUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Account_coOwnerUser(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Account",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Account_externalId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -13370,6 +14447,261 @@ func (ec *executionContext) fieldContext_Account_updatedAt(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUserStats_totalUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUserStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUserStats_totalUsers,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalUsers, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUserStats_totalUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUserStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUserStats_activeUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUserStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUserStats_activeUsers,
+		func(ctx context.Context) (any, error) {
+			return obj.ActiveUsers, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUserStats_activeUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUserStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUserStats_lockedUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUserStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUserStats_lockedUsers,
+		func(ctx context.Context) (any, error) {
+			return obj.LockedUsers, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUserStats_lockedUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUserStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUserStats_adminUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUserStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUserStats_adminUsers,
+		func(ctx context.Context) (any, error) {
+			return obj.AdminUsers, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUserStats_adminUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUserStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUserStats_unverifiedUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUserStats) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUserStats_unverifiedUsers,
+		func(ctx context.Context) (any, error) {
+			return obj.UnverifiedUsers, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUserStats_unverifiedUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUserStats",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUsersResponse_users(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUsersResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUsersResponse_users,
+		func(ctx context.Context) (any, error) {
+			return obj.Users, nil
+		},
+		nil,
+		ec.marshalNUser2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUsersResponse_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUsersResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AdminUsersResponse_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AdminUsersResponse) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AdminUsersResponse_totalCount,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalCount, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AdminUsersResponse_totalCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AdminUsersResponse",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -16146,6 +17478,8 @@ func (ec *executionContext) fieldContext_AuthData_user(_ context.Context, field 
 				return ec.fieldContext_AuthUser_id(ctx, field)
 			case "email":
 				return ec.fieldContext_AuthUser_email(ctx, field)
+			case "role":
+				return ec.fieldContext_AuthUser_role(ctx, field)
 			case "name":
 				return ec.fieldContext_AuthUser_name(ctx, field)
 			case "emailVerified":
@@ -16417,6 +17751,35 @@ func (ec *executionContext) _AuthUser_email(ctx context.Context, field graphql.C
 }
 
 func (ec *executionContext) fieldContext_AuthUser_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "AuthUser",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _AuthUser_role(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AuthUser) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_AuthUser_role,
+		func(ctx context.Context) (any, error) {
+			return obj.Role, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_AuthUser_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "AuthUser",
 		Field:      field,
@@ -19367,6 +20730,93 @@ func (ec *executionContext) fieldContext_ChartMetadata_additionalData(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _CoOwnerCandidate_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CoOwnerCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CoOwnerCandidate_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CoOwnerCandidate_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CoOwnerCandidate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CoOwnerCandidate_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CoOwnerCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CoOwnerCandidate_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CoOwnerCandidate_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CoOwnerCandidate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _CoOwnerCandidate_email(ctx context.Context, field graphql.CollectedField, obj *gqlModel.CoOwnerCandidate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_CoOwnerCandidate_email,
+		func(ctx context.Context) (any, error) {
+			return obj.Email, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_CoOwnerCandidate_email(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "CoOwnerCandidate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Crypto_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Crypto) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -20380,6 +21830,267 @@ func (ec *executionContext) fieldContext_EmailVerificationResponse_errors(_ cont
 				return ec.fieldContext_AuthError_field(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type AuthError", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingAuthSession_authSessionId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingAuthSession_authSessionId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthSessionID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingAuthSession_authSessionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingAuthSession_authUrl(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingAuthSession_authUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingAuthSession_authUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingAuthSession_state(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingAuthSession_state,
+		func(ctx context.Context) (any, error) {
+			return obj.State, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingAuthSession_state(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingAuthSession_expiresAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingAuthSession_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingAuthSession_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingInstitution_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingInstitution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingInstitution_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingInstitution_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingInstitution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingInstitution_title(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingInstitution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingInstitution_title,
+		func(ctx context.Context) (any, error) {
+			return obj.Title, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingInstitution_title(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingInstitution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingInstitution_country(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingInstitution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingInstitution_country,
+		func(ctx context.Context) (any, error) {
+			return obj.Country, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingInstitution_country(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingInstitution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingInstitution_logo(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingInstitution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingInstitution_logo,
+		func(ctx context.Context) (any, error) {
+			return obj.Logo, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingInstitution_logo(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingInstitution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _EnableBankingInstitution_psuTypes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.EnableBankingInstitution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_EnableBankingInstitution_psuTypes,
+		func(ctx context.Context) (any, error) {
+			return obj.PsuTypes, nil
+		},
+		nil,
+		ec.marshalOString2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_EnableBankingInstitution_psuTypes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "EnableBankingInstitution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -30271,6 +31982,18 @@ func (ec *executionContext) fieldContext_Mutation_createUser(ctx context.Context
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -30365,6 +32088,18 @@ func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -30459,6 +32194,18 @@ func (ec *executionContext) fieldContext_Mutation_updateUserDisplayCurrency(ctx 
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -30553,6 +32300,18 @@ func (ec *executionContext) fieldContext_Mutation_updateUserThemePreferences(ctx
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -30647,6 +32406,18 @@ func (ec *executionContext) fieldContext_Mutation_updateUserTaxJurisdiction(ctx 
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -31025,6 +32796,12 @@ func (ec *executionContext) fieldContext_Mutation_addAssetToPortfolio(ctx contex
 				return ec.fieldContext_PortfolioAsset_dayChangePercent(ctx, field)
 			case "quoteCurrency":
 				return ec.fieldContext_PortfolioAsset_quoteCurrency(ctx, field)
+			case "accountName":
+				return ec.fieldContext_PortfolioAsset_accountName(ctx, field)
+			case "accountID":
+				return ec.fieldContext_PortfolioAsset_accountID(ctx, field)
+			case "positionID":
+				return ec.fieldContext_PortfolioAsset_positionID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -31099,6 +32876,12 @@ func (ec *executionContext) fieldContext_Mutation_updateAssetInPortfolio(ctx con
 				return ec.fieldContext_PortfolioAsset_dayChangePercent(ctx, field)
 			case "quoteCurrency":
 				return ec.fieldContext_PortfolioAsset_quoteCurrency(ctx, field)
+			case "accountName":
+				return ec.fieldContext_PortfolioAsset_accountName(ctx, field)
+			case "accountID":
+				return ec.fieldContext_PortfolioAsset_accountID(ctx, field)
+			case "positionID":
+				return ec.fieldContext_PortfolioAsset_positionID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -31125,7 +32908,7 @@ func (ec *executionContext) _Mutation_removeAssetFromPortfolio(ctx context.Conte
 		ec.fieldContext_Mutation_removeAssetFromPortfolio,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RemoveAssetFromPortfolio(ctx, fc.Args["portfolioID"].(string), fc.Args["assetID"].(string))
+			return ec.Resolvers.Mutation().RemoveAssetFromPortfolio(ctx, fc.Args["portfolioID"].(string), fc.Args["assetID"].(string), fc.Args["accountID"].(*string))
 		},
 		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
 			directive0 := next
@@ -32683,6 +34466,14 @@ func (ec *executionContext) fieldContext_Mutation_createAccount(ctx context.Cont
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -32773,6 +34564,14 @@ func (ec *executionContext) fieldContext_Mutation_updateAccount(ctx context.Cont
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -34171,6 +35970,12 @@ func (ec *executionContext) fieldContext_Mutation_addInstrumentToPortfolio(ctx c
 				return ec.fieldContext_PortfolioAsset_dayChangePercent(ctx, field)
 			case "quoteCurrency":
 				return ec.fieldContext_PortfolioAsset_quoteCurrency(ctx, field)
+			case "accountName":
+				return ec.fieldContext_PortfolioAsset_accountName(ctx, field)
+			case "accountID":
+				return ec.fieldContext_PortfolioAsset_accountID(ctx, field)
+			case "positionID":
+				return ec.fieldContext_PortfolioAsset_positionID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -36417,6 +38222,406 @@ func (ec *executionContext) fieldContext_Mutation_triggerAccountSync(ctx context
 	return fc, nil
 }
 
+func (ec *executionContext) _Mutation_initiateTradeRepublicAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_initiateTradeRepublicAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().InitiateTradeRepublicAuth(ctx, fc.Args["phoneNumber"].(string), fc.Args["pin"].(string), fc.Args["portfolioId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.TradeRepublicAuthSession
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNTradeRepublicAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthSession,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_initiateTradeRepublicAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "authSessionId":
+				return ec.fieldContext_TradeRepublicAuthSession_authSessionId(ctx, field)
+			case "status":
+				return ec.fieldContext_TradeRepublicAuthSession_status(ctx, field)
+			case "countdownSeconds":
+				return ec.fieldContext_TradeRepublicAuthSession_countdownSeconds(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_TradeRepublicAuthSession_expiresAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TradeRepublicAuthSession", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_initiateTradeRepublicAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_pollTradeRepublicAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_pollTradeRepublicAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().PollTradeRepublicAuth(ctx, fc.Args["authSessionId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.TradeRepublicAuthPollResult
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNTradeRepublicAuthPollResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthPollResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_pollTradeRepublicAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "status":
+				return ec.fieldContext_TradeRepublicAuthPollResult_status(ctx, field)
+			case "connections":
+				return ec.fieldContext_TradeRepublicAuthPollResult_connections(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_TradeRepublicAuthPollResult_errorMessage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TradeRepublicAuthPollResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_pollTradeRepublicAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_initiateEnableBankingAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_initiateEnableBankingAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().InitiateEnableBankingAuth(ctx, fc.Args["aspspName"].(string), fc.Args["aspspCountry"].(string), fc.Args["redirectUrl"].(string), fc.Args["portfolioId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.EnableBankingAuthSession
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNEnableBankingAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingAuthSession,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_initiateEnableBankingAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "authSessionId":
+				return ec.fieldContext_EnableBankingAuthSession_authSessionId(ctx, field)
+			case "authUrl":
+				return ec.fieldContext_EnableBankingAuthSession_authUrl(ctx, field)
+			case "state":
+				return ec.fieldContext_EnableBankingAuthSession_state(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_EnableBankingAuthSession_expiresAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EnableBankingAuthSession", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_initiateEnableBankingAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_completeEnableBankingAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_completeEnableBankingAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().CompleteEnableBankingAuth(ctx, fc.Args["code"].(string), fc.Args["state"].(string), fc.Args["portfolioId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.SyncConnection
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_completeEnableBankingAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_completeEnableBankingAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_initiateWoobAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_initiateWoobAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().InitiateWoobAuth(ctx, fc.Args["institution"].(string), fc.Args["login"].(string), fc.Args["password"].(string), fc.Args["region"].(*string), fc.Args["portfolioId"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.WoobAuthSession
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNWoobAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthSession,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_initiateWoobAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "authSessionId":
+				return ec.fieldContext_WoobAuthSession_authSessionId(ctx, field)
+			case "status":
+				return ec.fieldContext_WoobAuthSession_status(ctx, field)
+			case "countdownSeconds":
+				return ec.fieldContext_WoobAuthSession_countdownSeconds(ctx, field)
+			case "challengeMessage":
+				return ec.fieldContext_WoobAuthSession_challengeMessage(ctx, field)
+			case "expiresAt":
+				return ec.fieldContext_WoobAuthSession_expiresAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WoobAuthSession", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_initiateWoobAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_pollWoobAuth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_pollWoobAuth,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().PollWoobAuth(ctx, fc.Args["authSessionId"].(string), fc.Args["otpCode"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.WoobAuthPollResult
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNWoobAuthPollResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthPollResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_pollWoobAuth(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "status":
+				return ec.fieldContext_WoobAuthPollResult_status(ctx, field)
+			case "connections":
+				return ec.fieldContext_WoobAuthPollResult_connections(ctx, field)
+			case "errorMessage":
+				return ec.fieldContext_WoobAuthPollResult_errorMessage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WoobAuthPollResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_pollWoobAuth_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Mutation_updateTransaction(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -36465,6 +38670,8 @@ func (ec *executionContext) fieldContext_Mutation_updateTransaction(ctx context.
 				return ec.fieldContext_Transaction_account(ctx, field)
 			case "asset":
 				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "amount":
+				return ec.fieldContext_Transaction_amount(ctx, field)
 			case "transactionType":
 				return ec.fieldContext_Transaction_transactionType(ctx, field)
 			case "quantity":
@@ -36547,6 +38754,644 @@ func (ec *executionContext) fieldContext_Mutation_deleteTransaction(ctx context.
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteTransaction_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminCreateUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminCreateUser,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminCreateUser(ctx, fc.Args["input"].(gqlModel.AdminCreateUserInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminCreateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminCreateUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminUpdateUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminUpdateUser,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminUpdateUser(ctx, fc.Args["id"].(string), fc.Args["input"].(gqlModel.AdminUpdateUserInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminUpdateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminUpdateUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminSetUserRole(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminSetUserRole,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminSetUserRole(ctx, fc.Args["id"].(string), fc.Args["role"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminSetUserRole(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminSetUserRole_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminSetUserLock(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminSetUserLock,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminSetUserLock(ctx, fc.Args["id"].(string), fc.Args["locked"].(bool), fc.Args["lockUntil"].(*time.Time))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminSetUserLock(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminSetUserLock_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminSetUserPassword(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminSetUserPassword,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminSetUserPassword(ctx, fc.Args["id"].(string), fc.Args["password"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal bool
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminSetUserPassword(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminSetUserPassword_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminSetUserEmailVerified(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminSetUserEmailVerified,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminSetUserEmailVerified(ctx, fc.Args["id"].(string), fc.Args["verified"].(bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.User
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNUser2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUser,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminSetUserEmailVerified(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_User_id(ctx, field)
+			case "username":
+				return ec.fieldContext_User_username(ctx, field)
+			case "email":
+				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_User_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_User_updatedAt(ctx, field)
+			case "portfolios":
+				return ec.fieldContext_User_portfolios(ctx, field)
+			case "watchlists":
+				return ec.fieldContext_User_watchlists(ctx, field)
+			case "displayCurrency":
+				return ec.fieldContext_User_displayCurrency(ctx, field)
+			case "themePreference":
+				return ec.fieldContext_User_themePreference(ctx, field)
+			case "themeBaseColor":
+				return ec.fieldContext_User_themeBaseColor(ctx, field)
+			case "themeAccentColor":
+				return ec.fieldContext_User_themeAccentColor(ctx, field)
+			case "themeFontPreference":
+				return ec.fieldContext_User_themeFontPreference(ctx, field)
+			case "themeHeadingFont":
+				return ec.fieldContext_User_themeHeadingFont(ctx, field)
+			case "themeMenuAccent":
+				return ec.fieldContext_User_themeMenuAccent(ctx, field)
+			case "themeMenuColor":
+				return ec.fieldContext_User_themeMenuColor(ctx, field)
+			case "themeStyle":
+				return ec.fieldContext_User_themeStyle(ctx, field)
+			case "themeRadius":
+				return ec.fieldContext_User_themeRadius(ctx, field)
+			case "themeRTL":
+				return ec.fieldContext_User_themeRTL(ctx, field)
+			case "taxJurisdiction":
+				return ec.fieldContext_User_taxJurisdiction(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminSetUserEmailVerified_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_adminDeleteUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_adminDeleteUser,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AdminDeleteUser(ctx, fc.Args["id"].(string), fc.Args["hardDelete"].(bool))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal bool
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_adminDeleteUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_adminDeleteUser_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -36893,6 +39738,61 @@ func (ec *executionContext) fieldContext_Mutation_addMultiNetworkWallet(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_addMultiNetworkWallet_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_addMultiChainWallet(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_addMultiChainWallet,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().AddMultiChainWallet(ctx, fc.Args["input"].(gqlModel.AddMultiChainWalletInput))
+		},
+		nil,
+		ec.marshalNWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_addMultiChainWallet(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_WalletDevice_id(ctx, field)
+			case "name":
+				return ec.fieldContext_WalletDevice_name(ctx, field)
+			case "deviceType":
+				return ec.fieldContext_WalletDevice_deviceType(ctx, field)
+			case "accounts":
+				return ec.fieldContext_WalletDevice_accounts(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_WalletDevice_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_WalletDevice_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WalletDevice", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_addMultiChainWallet_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38308,6 +41208,18 @@ func (ec *executionContext) fieldContext_Ownership_user(_ context.Context, field
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -40024,6 +42936,18 @@ func (ec *executionContext) fieldContext_Portfolio_user(_ context.Context, field
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -40142,6 +43066,14 @@ func (ec *executionContext) fieldContext_Portfolio_accounts(_ context.Context, f
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -40205,6 +43137,12 @@ func (ec *executionContext) fieldContext_Portfolio_assets(_ context.Context, fie
 				return ec.fieldContext_PortfolioAsset_dayChangePercent(ctx, field)
 			case "quoteCurrency":
 				return ec.fieldContext_PortfolioAsset_quoteCurrency(ctx, field)
+			case "accountName":
+				return ec.fieldContext_PortfolioAsset_accountName(ctx, field)
+			case "accountID":
+				return ec.fieldContext_PortfolioAsset_accountID(ctx, field)
+			case "positionID":
+				return ec.fieldContext_PortfolioAsset_positionID(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type PortfolioAsset", field.Name)
 		},
@@ -40246,6 +43184,8 @@ func (ec *executionContext) fieldContext_Portfolio_transactions(_ context.Contex
 				return ec.fieldContext_Transaction_account(ctx, field)
 			case "asset":
 				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "amount":
+				return ec.fieldContext_Transaction_amount(ctx, field)
 			case "transactionType":
 				return ec.fieldContext_Transaction_transactionType(ctx, field)
 			case "quantity":
@@ -41216,6 +44156,93 @@ func (ec *executionContext) fieldContext_PortfolioAsset_quoteCurrency(_ context.
 	return fc, nil
 }
 
+func (ec *executionContext) _PortfolioAsset_accountName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAsset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PortfolioAsset_accountName,
+		func(ctx context.Context) (any, error) {
+			return obj.AccountName, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAsset_accountName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAsset_accountID(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAsset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PortfolioAsset_accountID,
+		func(ctx context.Context) (any, error) {
+			return obj.AccountID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAsset_accountID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _PortfolioAsset_positionID(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioAsset) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_PortfolioAsset_positionID,
+		func(ctx context.Context) (any, error) {
+			return obj.PositionID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_PortfolioAsset_positionID(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "PortfolioAsset",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PortfolioUpdatePayload_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioUpdatePayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -41461,6 +44488,14 @@ func (ec *executionContext) fieldContext_Position_account(_ context.Context, fie
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -43079,6 +46114,18 @@ func (ec *executionContext) fieldContext_Query_user(ctx context.Context, field g
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -43173,6 +46220,18 @@ func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field 
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -43977,6 +47036,8 @@ func (ec *executionContext) fieldContext_Query_transaction(ctx context.Context, 
 				return ec.fieldContext_Transaction_account(ctx, field)
 			case "asset":
 				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "amount":
+				return ec.fieldContext_Transaction_amount(ctx, field)
 			case "transactionType":
 				return ec.fieldContext_Transaction_transactionType(ctx, field)
 			case "quantity":
@@ -44059,6 +47120,8 @@ func (ec *executionContext) fieldContext_Query_transactions(ctx context.Context,
 				return ec.fieldContext_Transaction_account(ctx, field)
 			case "asset":
 				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "amount":
+				return ec.fieldContext_Transaction_amount(ctx, field)
 			case "transactionType":
 				return ec.fieldContext_Transaction_transactionType(ctx, field)
 			case "quantity":
@@ -44151,6 +47214,14 @@ func (ec *executionContext) fieldContext_Query_accounts(ctx context.Context, fie
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -44241,6 +47312,14 @@ func (ec *executionContext) fieldContext_Query_account(ctx context.Context, fiel
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -44267,6 +47346,68 @@ func (ec *executionContext) fieldContext_Query_account(ctx context.Context, fiel
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_account_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_coOwnerCandidates(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_coOwnerCandidates,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().CoOwnerCandidates(ctx, fc.Args["search"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.CoOwnerCandidate
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNCoOwnerCandidate2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoOwnerCandidateᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_coOwnerCandidates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_CoOwnerCandidate_id(ctx, field)
+			case "name":
+				return ec.fieldContext_CoOwnerCandidate_name(ctx, field)
+			case "email":
+				return ec.fieldContext_CoOwnerCandidate_email(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type CoOwnerCandidate", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_coOwnerCandidates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -44550,6 +47691,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_AuthUser_id(ctx, field)
 			case "email":
 				return ec.fieldContext_AuthUser_email(ctx, field)
+			case "role":
+				return ec.fieldContext_AuthUser_role(ctx, field)
 			case "name":
 				return ec.fieldContext_AuthUser_name(ctx, field)
 			case "emailVerified":
@@ -48162,6 +51305,72 @@ func (ec *executionContext) fieldContext_Query_syncCredentials(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_enableBankingInstitutions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_enableBankingInstitutions,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().EnableBankingInstitutions(ctx, fc.Args["country"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal []*gqlModel.EnableBankingInstitution
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNEnableBankingInstitution2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingInstitutionᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_enableBankingInstitutions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "name":
+				return ec.fieldContext_EnableBankingInstitution_name(ctx, field)
+			case "title":
+				return ec.fieldContext_EnableBankingInstitution_title(ctx, field)
+			case "country":
+				return ec.fieldContext_EnableBankingInstitution_country(ctx, field)
+			case "logo":
+				return ec.fieldContext_EnableBankingInstitution_logo(ctx, field)
+			case "psuTypes":
+				return ec.fieldContext_EnableBankingInstitution_psuTypes(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type EnableBankingInstitution", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_enableBankingInstitutions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_taxLotsByPosition(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -48486,6 +51695,120 @@ func (ec *executionContext) fieldContext_Query_realizedGains(ctx context.Context
 	if fc.Args, err = ec.field_Query_realizedGains_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_adminUsers(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_adminUsers,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().AdminUsers(ctx, fc.Args["filter"].(*gqlModel.AdminUserFilter), fc.Args["pagination"].(*gqlModel.PaginationInput), fc.Args["orderBy"].(*gqlModel.UserOrder))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.AdminUsersResponse
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNAdminUsersResponse2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUsersResponse,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_adminUsers(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "users":
+				return ec.fieldContext_AdminUsersResponse_users(ctx, field)
+			case "totalCount":
+				return ec.fieldContext_AdminUsersResponse_totalCount(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminUsersResponse", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_adminUsers_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_adminUserStats(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_adminUserStats,
+		func(ctx context.Context) (any, error) {
+			return ec.Resolvers.Query().AdminUserStats(ctx)
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.AdminUserStats
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNAdminUserStats2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUserStats,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_adminUserStats(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "totalUsers":
+				return ec.fieldContext_AdminUserStats_totalUsers(ctx, field)
+			case "activeUsers":
+				return ec.fieldContext_AdminUserStats_activeUsers(ctx, field)
+			case "lockedUsers":
+				return ec.fieldContext_AdminUserStats_lockedUsers(ctx, field)
+			case "adminUsers":
+				return ec.fieldContext_AdminUserStats_adminUsers(ctx, field)
+			case "unverifiedUsers":
+				return ec.fieldContext_AdminUserStats_unverifiedUsers(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type AdminUserStats", field.Name)
+		},
 	}
 	return fc, nil
 }
@@ -51474,6 +54797,14 @@ func (ec *executionContext) fieldContext_SyncConnection_account(_ context.Contex
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -54135,6 +57466,237 @@ func (ec *executionContext) fieldContext_TimeSeriesData_aggregation(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _TradeRepublicAuthPollResult_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthPollResult_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNTradeRepublicAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthPollResult_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type TradeRepublicAuthStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthPollResult_connections(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthPollResult_connections,
+		func(ctx context.Context) (any, error) {
+			return obj.Connections, nil
+		},
+		nil,
+		ec.marshalOSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthPollResult_connections(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthPollResult_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthPollResult_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthPollResult_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthSession_authSessionId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthSession_authSessionId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthSessionID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthSession_authSessionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthSession_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthSession_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNTradeRepublicAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthSession_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type TradeRepublicAuthStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthSession_countdownSeconds(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthSession_countdownSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.CountdownSeconds, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthSession_countdownSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TradeRepublicAuthSession_expiresAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TradeRepublicAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TradeRepublicAuthSession_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TradeRepublicAuthSession_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TradeRepublicAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Transaction_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Transaction) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -54294,6 +57856,14 @@ func (ec *executionContext) fieldContext_Transaction_account(_ context.Context, 
 				return ec.fieldContext_Account_currency(ctx, field)
 			case "syncProvider":
 				return ec.fieldContext_Account_syncProvider(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Account_ownershipPercentage(ctx, field)
+			case "coOwnerName":
+				return ec.fieldContext_Account_coOwnerName(ctx, field)
+			case "coOwnerUserId":
+				return ec.fieldContext_Account_coOwnerUserId(ctx, field)
+			case "coOwnerUser":
+				return ec.fieldContext_Account_coOwnerUser(ctx, field)
 			case "externalId":
 				return ec.fieldContext_Account_externalId(ctx, field)
 			case "syncConnection":
@@ -54325,9 +57895,9 @@ func (ec *executionContext) _Transaction_asset(ctx context.Context, field graphq
 			return obj.Asset, nil
 		},
 		nil,
-		ec.marshalNAsset2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAsset,
+		ec.marshalOAsset2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAsset,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -54339,6 +57909,35 @@ func (ec *executionContext) fieldContext_Transaction_asset(_ context.Context, fi
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Transaction_amount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Transaction) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Transaction_amount,
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Transaction_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Transaction",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -54639,6 +58238,8 @@ func (ec *executionContext) fieldContext_TransactionUpdatePayload_transaction(_ 
 				return ec.fieldContext_Transaction_account(ctx, field)
 			case "asset":
 				return ec.fieldContext_Transaction_asset(ctx, field)
+			case "amount":
+				return ec.fieldContext_Transaction_amount(ctx, field)
 			case "transactionType":
 				return ec.fieldContext_Transaction_transactionType(ctx, field)
 			case "quantity":
@@ -54849,6 +58450,180 @@ func (ec *executionContext) fieldContext_User_email(_ context.Context, field gra
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_role(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_role,
+		func(ctx context.Context) (any, error) {
+			return obj.Role, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_role(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_emailVerified(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_emailVerified,
+		func(ctx context.Context) (any, error) {
+			return obj.EmailVerified, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_emailVerified(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_lastLoginAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_lastLoginAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastLoginAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_lastLoginAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_failedLoginCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_failedLoginCount,
+		func(ctx context.Context) (any, error) {
+			return obj.FailedLoginCount, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_failedLoginCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_lockedUntil(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_lockedUntil,
+		func(ctx context.Context) (any, error) {
+			return obj.LockedUntil, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_lockedUntil(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_isLocked(ctx context.Context, field graphql.CollectedField, obj *gqlModel.User) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_User_isLocked,
+		func(ctx context.Context) (any, error) {
+			return obj.IsLocked, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_User_isLocked(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -58273,6 +62048,18 @@ func (ec *executionContext) fieldContext_Watchlist_user(_ context.Context, field
 				return ec.fieldContext_User_username(ctx, field)
 			case "email":
 				return ec.fieldContext_User_email(ctx, field)
+			case "role":
+				return ec.fieldContext_User_role(ctx, field)
+			case "emailVerified":
+				return ec.fieldContext_User_emailVerified(ctx, field)
+			case "lastLoginAt":
+				return ec.fieldContext_User_lastLoginAt(ctx, field)
+			case "failedLoginCount":
+				return ec.fieldContext_User_failedLoginCount(ctx, field)
+			case "lockedUntil":
+				return ec.fieldContext_User_lockedUntil(ctx, field)
+			case "isLocked":
+				return ec.fieldContext_User_isLocked(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_User_createdAt(ctx, field)
 			case "updatedAt":
@@ -58336,6 +62123,266 @@ func (ec *executionContext) fieldContext_Watchlist_assets(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("FieldContext.Child cannot be called on type INTERFACE")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthPollResult_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthPollResult_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNWoobAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthPollResult_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WoobAuthStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthPollResult_connections(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthPollResult_connections,
+		func(ctx context.Context) (any, error) {
+			return obj.Connections, nil
+		},
+		nil,
+		ec.marshalOSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthPollResult_connections(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_SyncConnection_id(ctx, field)
+			case "portfolioId":
+				return ec.fieldContext_SyncConnection_portfolioId(ctx, field)
+			case "accountId":
+				return ec.fieldContext_SyncConnection_accountId(ctx, field)
+			case "account":
+				return ec.fieldContext_SyncConnection_account(ctx, field)
+			case "provider":
+				return ec.fieldContext_SyncConnection_provider(ctx, field)
+			case "externalInstitutionId":
+				return ec.fieldContext_SyncConnection_externalInstitutionId(ctx, field)
+			case "externalAccountId":
+				return ec.fieldContext_SyncConnection_externalAccountId(ctx, field)
+			case "institutionName":
+				return ec.fieldContext_SyncConnection_institutionName(ctx, field)
+			case "syncStatus":
+				return ec.fieldContext_SyncConnection_syncStatus(ctx, field)
+			case "lastSyncAt":
+				return ec.fieldContext_SyncConnection_lastSyncAt(ctx, field)
+			case "lastError":
+				return ec.fieldContext_SyncConnection_lastError(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_SyncConnection_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_SyncConnection_updatedAt(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type SyncConnection", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthPollResult_errorMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthPollResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthPollResult_errorMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ErrorMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthPollResult_errorMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthPollResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthSession_authSessionId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthSession_authSessionId,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthSessionID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthSession_authSessionId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthSession_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthSession_status,
+		func(ctx context.Context) (any, error) {
+			return obj.Status, nil
+		},
+		nil,
+		ec.marshalNWoobAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthStatus,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthSession_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type WoobAuthStatus does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthSession_countdownSeconds(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthSession_countdownSeconds,
+		func(ctx context.Context) (any, error) {
+			return obj.CountdownSeconds, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthSession_countdownSeconds(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthSession_challengeMessage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthSession_challengeMessage,
+		func(ctx context.Context) (any, error) {
+			return obj.ChallengeMessage, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthSession_challengeMessage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WoobAuthSession_expiresAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.WoobAuthSession) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WoobAuthSession_expiresAt,
+		func(ctx context.Context) (any, error) {
+			return obj.ExpiresAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WoobAuthSession_expiresAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WoobAuthSession",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
 		},
 	}
 	return fc, nil
@@ -59889,6 +63936,78 @@ func (ec *executionContext) unmarshalInputAddInstrumentHoldingInput(ctx context.
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputAddMultiChainWalletInput(ctx context.Context, obj any) (gqlModel.AddMultiChainWalletInput, error) {
+	var it gqlModel.AddMultiChainWalletInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"portfolioId", "name", "deviceType", "evmAddress", "evmNetworks", "solanaAddress", "bitcoinAddressOrXpub"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "portfolioId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("portfolioId"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PortfolioID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "deviceType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("deviceType"))
+			data, err := ec.unmarshalNWalletDeviceType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDeviceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DeviceType = data
+		case "evmAddress":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("evmAddress"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EvmAddress = data
+		case "evmNetworks":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("evmNetworks"))
+			data, err := ec.unmarshalOBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EvmNetworks = data
+		case "solanaAddress":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("solanaAddress"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SolanaAddress = data
+		case "bitcoinAddressOrXpub":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bitcoinAddressOrXpub"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BitcoinAddressOrXpub = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputAddMultiNetworkWalletInput(ctx context.Context, obj any) (gqlModel.AddMultiNetworkWalletInput, error) {
 	var it gqlModel.AddMultiNetworkWalletInput
 	if obj == nil {
@@ -60014,6 +64133,173 @@ func (ec *executionContext) unmarshalInputAddWalletAccountInput(ctx context.Cont
 				return it, err
 			}
 			it.DeviceID = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAdminCreateUserInput(ctx context.Context, obj any) (gqlModel.AdminCreateUserInput, error) {
+	var it gqlModel.AdminCreateUserInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "email", "password", "role", "emailVerified"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "password":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Password = data
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
+		case "emailVerified":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emailVerified"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EmailVerified = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAdminUpdateUserInput(ctx context.Context, obj any) (gqlModel.AdminUpdateUserInput, error) {
+	var it gqlModel.AdminUpdateUserInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "email", "role", "taxJurisdiction", "displayCurrency"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
+		case "taxJurisdiction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("taxJurisdiction"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TaxJurisdiction = data
+		case "displayCurrency":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("displayCurrency"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.DisplayCurrency = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputAdminUserFilter(ctx context.Context, obj any) (gqlModel.AdminUserFilter, error) {
+	var it gqlModel.AdminUserFilter
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"search", "role", "isLocked", "emailVerified"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "search":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("search"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Search = data
+		case "role":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("role"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Role = data
+		case "isLocked":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isLocked"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsLocked = data
+		case "emailVerified":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("emailVerified"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EmailVerified = data
 		}
 	}
 	return it, nil
@@ -60472,7 +64758,7 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"portfolioId", "name", "type", "taxWrapper", "institution", "accountNumber", "currency", "syncProvider"}
+	fieldsInOrder := [...]string{"portfolioId", "name", "type", "taxWrapper", "institution", "accountNumber", "currency", "syncProvider", "ownershipPercentage", "coOwnerName", "coOwnerUserId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -60535,6 +64821,27 @@ func (ec *executionContext) unmarshalInputCreateAccountInput(ctx context.Context
 				return it, err
 			}
 			it.SyncProvider = data
+		case "ownershipPercentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipPercentage"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipPercentage = data
+		case "coOwnerName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coOwnerName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoOwnerName = data
+		case "coOwnerUserId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coOwnerUserId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoOwnerUserID = data
 		}
 	}
 	return it, nil
@@ -63093,7 +67400,7 @@ func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context,
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"userID", "portfolioID", "assetID", "transactionType", "dateFrom", "dateTo"}
+	fieldsInOrder := [...]string{"userID", "portfolioID", "accountID", "assetID", "transactionType", "dateFrom", "dateTo"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63114,6 +67421,13 @@ func (ec *executionContext) unmarshalInputTransactionFilter(ctx context.Context,
 				return it, err
 			}
 			it.PortfolioID = data
+		case "accountID":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("accountID"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AccountID = data
 		case "assetID":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("assetID"))
 			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
@@ -63202,7 +67516,7 @@ func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "type", "taxWrapper", "institution", "accountNumber", "currency"}
+	fieldsInOrder := [...]string{"name", "type", "taxWrapper", "institution", "accountNumber", "currency", "ownershipPercentage", "coOwnerName", "coOwnerUserId"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -63251,6 +67565,27 @@ func (ec *executionContext) unmarshalInputUpdateAccountInput(ctx context.Context
 				return it, err
 			}
 			it.Currency = data
+		case "ownershipPercentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipPercentage"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipPercentage = data
+		case "coOwnerName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coOwnerName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoOwnerName = data
+		case "coOwnerUserId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coOwnerUserId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoOwnerUserID = data
 		}
 	}
 	return it, nil
@@ -64105,6 +68440,17 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "ownershipPercentage":
+			out.Values[i] = ec._Account_ownershipPercentage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "coOwnerName":
+			out.Values[i] = ec._Account_coOwnerName(ctx, field, obj)
+		case "coOwnerUserId":
+			out.Values[i] = ec._Account_coOwnerUserId(ctx, field, obj)
+		case "coOwnerUser":
+			out.Values[i] = ec._Account_coOwnerUser(ctx, field, obj)
 		case "externalId":
 			out.Values[i] = ec._Account_externalId(ctx, field, obj)
 		case "syncConnection":
@@ -64128,6 +68474,109 @@ func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "updatedAt":
 			out.Values[i] = ec._Account_updatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminUserStatsImplementors = []string{"AdminUserStats"}
+
+func (ec *executionContext) _AdminUserStats(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AdminUserStats) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminUserStatsImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminUserStats")
+		case "totalUsers":
+			out.Values[i] = ec._AdminUserStats_totalUsers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "activeUsers":
+			out.Values[i] = ec._AdminUserStats_activeUsers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lockedUsers":
+			out.Values[i] = ec._AdminUserStats_lockedUsers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminUsers":
+			out.Values[i] = ec._AdminUserStats_adminUsers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "unverifiedUsers":
+			out.Values[i] = ec._AdminUserStats_unverifiedUsers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var adminUsersResponseImplementors = []string{"AdminUsersResponse"}
+
+func (ec *executionContext) _AdminUsersResponse(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AdminUsersResponse) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, adminUsersResponseImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("AdminUsersResponse")
+		case "users":
+			out.Values[i] = ec._AdminUsersResponse_users(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "totalCount":
+			out.Values[i] = ec._AdminUsersResponse_totalCount(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -65214,6 +69663,11 @@ func (ec *executionContext) _AuthUser(ctx context.Context, sel ast.SelectionSet,
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "role":
+			out.Values[i] = ec._AuthUser_role(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "name":
 			out.Values[i] = ec._AuthUser_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -66072,6 +70526,55 @@ func (ec *executionContext) _ChartMetadata(ctx context.Context, sel ast.Selectio
 	return out
 }
 
+var coOwnerCandidateImplementors = []string{"CoOwnerCandidate"}
+
+func (ec *executionContext) _CoOwnerCandidate(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.CoOwnerCandidate) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, coOwnerCandidateImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("CoOwnerCandidate")
+		case "id":
+			out.Values[i] = ec._CoOwnerCandidate_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "name":
+			out.Values[i] = ec._CoOwnerCandidate_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "email":
+			out.Values[i] = ec._CoOwnerCandidate_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var cryptoImplementors = []string{"Crypto", "Asset"}
 
 func (ec *executionContext) _Crypto(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Crypto) graphql.Marshaler {
@@ -66321,6 +70824,113 @@ func (ec *executionContext) _EmailVerificationResponse(ctx context.Context, sel 
 			}
 		case "errors":
 			out.Values[i] = ec._EmailVerificationResponse_errors(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var enableBankingAuthSessionImplementors = []string{"EnableBankingAuthSession"}
+
+func (ec *executionContext) _EnableBankingAuthSession(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.EnableBankingAuthSession) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, enableBankingAuthSessionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EnableBankingAuthSession")
+		case "authSessionId":
+			out.Values[i] = ec._EnableBankingAuthSession_authSessionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authUrl":
+			out.Values[i] = ec._EnableBankingAuthSession_authUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "state":
+			out.Values[i] = ec._EnableBankingAuthSession_state(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._EnableBankingAuthSession_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var enableBankingInstitutionImplementors = []string{"EnableBankingInstitution"}
+
+func (ec *executionContext) _EnableBankingInstitution(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.EnableBankingInstitution) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, enableBankingInstitutionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("EnableBankingInstitution")
+		case "name":
+			out.Values[i] = ec._EnableBankingInstitution_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "title":
+			out.Values[i] = ec._EnableBankingInstitution_title(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "country":
+			out.Values[i] = ec._EnableBankingInstitution_country(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "logo":
+			out.Values[i] = ec._EnableBankingInstitution_logo(ctx, field, obj)
+		case "psuTypes":
+			out.Values[i] = ec._EnableBankingInstitution_psuTypes(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -69320,6 +73930,48 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "initiateTradeRepublicAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_initiateTradeRepublicAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pollTradeRepublicAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_pollTradeRepublicAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "initiateEnableBankingAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_initiateEnableBankingAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "completeEnableBankingAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_completeEnableBankingAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "initiateWoobAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_initiateWoobAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "pollWoobAuth":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_pollWoobAuth(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "updateTransaction":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_updateTransaction(ctx, field)
@@ -69330,6 +73982,55 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deleteTransaction":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteTransaction(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminCreateUser":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminCreateUser(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminUpdateUser":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminUpdateUser(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminSetUserRole":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminSetUserRole(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminSetUserLock":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminSetUserLock(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminSetUserPassword":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminSetUserPassword(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminSetUserEmailVerified":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminSetUserEmailVerified(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "adminDeleteUser":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_adminDeleteUser(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -69372,6 +74073,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "addMultiNetworkWallet":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_addMultiNetworkWallet(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "addMultiChainWallet":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_addMultiChainWallet(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -70350,6 +75058,12 @@ func (ec *executionContext) _PortfolioAsset(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._PortfolioAsset_dayChangePercent(ctx, field, obj)
 		case "quoteCurrency":
 			out.Values[i] = ec._PortfolioAsset_quoteCurrency(ctx, field, obj)
+		case "accountName":
+			out.Values[i] = ec._PortfolioAsset_accountName(ctx, field, obj)
+		case "accountID":
+			out.Values[i] = ec._PortfolioAsset_accountID(ctx, field, obj)
+		case "positionID":
+			out.Values[i] = ec._PortfolioAsset_positionID(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -71313,6 +76027,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_account(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "coOwnerCandidates":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_coOwnerCandidates(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -72474,6 +77210,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "enableBankingInstitutions":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_enableBankingInstitutions(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "taxLotsByPosition":
 			field := field
 
@@ -72550,6 +77308,50 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_realizedGains(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "adminUsers":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_adminUsers(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "adminUserStats":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_adminUserStats(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -74042,6 +78844,103 @@ func (ec *executionContext) _TimeSeriesData(ctx context.Context, sel ast.Selecti
 	return out
 }
 
+var tradeRepublicAuthPollResultImplementors = []string{"TradeRepublicAuthPollResult"}
+
+func (ec *executionContext) _TradeRepublicAuthPollResult(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.TradeRepublicAuthPollResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tradeRepublicAuthPollResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TradeRepublicAuthPollResult")
+		case "status":
+			out.Values[i] = ec._TradeRepublicAuthPollResult_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connections":
+			out.Values[i] = ec._TradeRepublicAuthPollResult_connections(ctx, field, obj)
+		case "errorMessage":
+			out.Values[i] = ec._TradeRepublicAuthPollResult_errorMessage(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var tradeRepublicAuthSessionImplementors = []string{"TradeRepublicAuthSession"}
+
+func (ec *executionContext) _TradeRepublicAuthSession(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.TradeRepublicAuthSession) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tradeRepublicAuthSessionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TradeRepublicAuthSession")
+		case "authSessionId":
+			out.Values[i] = ec._TradeRepublicAuthSession_authSessionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._TradeRepublicAuthSession_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "countdownSeconds":
+			out.Values[i] = ec._TradeRepublicAuthSession_countdownSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "expiresAt":
+			out.Values[i] = ec._TradeRepublicAuthSession_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var transactionImplementors = []string{"Transaction"}
 
 func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Transaction) graphql.Marshaler {
@@ -74069,9 +78968,8 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 			out.Values[i] = ec._Transaction_account(ctx, field, obj)
 		case "asset":
 			out.Values[i] = ec._Transaction_asset(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
+		case "amount":
+			out.Values[i] = ec._Transaction_amount(ctx, field, obj)
 		case "transactionType":
 			out.Values[i] = ec._Transaction_transactionType(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -74245,6 +79143,30 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "email":
 			out.Values[i] = ec._User_email(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "role":
+			out.Values[i] = ec._User_role(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "emailVerified":
+			out.Values[i] = ec._User_emailVerified(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lastLoginAt":
+			out.Values[i] = ec._User_lastLoginAt(ctx, field, obj)
+		case "failedLoginCount":
+			out.Values[i] = ec._User_failedLoginCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "lockedUntil":
+			out.Values[i] = ec._User_lockedUntil(ctx, field, obj)
+		case "isLocked":
+			out.Values[i] = ec._User_isLocked(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -75029,6 +79951,105 @@ func (ec *executionContext) _Watchlist(ctx context.Context, sel ast.SelectionSet
 	return out
 }
 
+var woobAuthPollResultImplementors = []string{"WoobAuthPollResult"}
+
+func (ec *executionContext) _WoobAuthPollResult(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WoobAuthPollResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, woobAuthPollResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WoobAuthPollResult")
+		case "status":
+			out.Values[i] = ec._WoobAuthPollResult_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "connections":
+			out.Values[i] = ec._WoobAuthPollResult_connections(ctx, field, obj)
+		case "errorMessage":
+			out.Values[i] = ec._WoobAuthPollResult_errorMessage(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var woobAuthSessionImplementors = []string{"WoobAuthSession"}
+
+func (ec *executionContext) _WoobAuthSession(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.WoobAuthSession) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, woobAuthSessionImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WoobAuthSession")
+		case "authSessionId":
+			out.Values[i] = ec._WoobAuthSession_authSessionId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "status":
+			out.Values[i] = ec._WoobAuthSession_status(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "countdownSeconds":
+			out.Values[i] = ec._WoobAuthSession_countdownSeconds(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "challengeMessage":
+			out.Values[i] = ec._WoobAuthSession_challengeMessage(ctx, field, obj)
+		case "expiresAt":
+			out.Values[i] = ec._WoobAuthSession_expiresAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var __DirectiveImplementors = []string{"__Directive"}
 
 func (ec *executionContext) ___Directive(ctx context.Context, sel ast.SelectionSet, obj *introspection.Directive) graphql.Marshaler {
@@ -75414,6 +80435,11 @@ func (ec *executionContext) unmarshalNAddInstrumentHoldingInput2sigma_financeᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
+func (ec *executionContext) unmarshalNAddMultiChainWalletInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddMultiChainWalletInput(ctx context.Context, v any) (gqlModel.AddMultiChainWalletInput, error) {
+	res, err := ec.unmarshalInputAddMultiChainWalletInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNAddMultiNetworkWalletInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddMultiNetworkWalletInput(ctx context.Context, v any) (gqlModel.AddMultiNetworkWalletInput, error) {
 	res, err := ec.unmarshalInputAddMultiNetworkWalletInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -75422,6 +80448,44 @@ func (ec *executionContext) unmarshalNAddMultiNetworkWalletInput2sigma_finance�
 func (ec *executionContext) unmarshalNAddWalletAccountInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAddWalletAccountInput(ctx context.Context, v any) (gqlModel.AddWalletAccountInput, error) {
 	res, err := ec.unmarshalInputAddWalletAccountInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAdminCreateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminCreateUserInput(ctx context.Context, v any) (gqlModel.AdminCreateUserInput, error) {
+	res, err := ec.unmarshalInputAdminCreateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNAdminUpdateUserInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUpdateUserInput(ctx context.Context, v any) (gqlModel.AdminUpdateUserInput, error) {
+	res, err := ec.unmarshalInputAdminUpdateUserInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNAdminUserStats2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUserStats(ctx context.Context, sel ast.SelectionSet, v gqlModel.AdminUserStats) graphql.Marshaler {
+	return ec._AdminUserStats(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminUserStats2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUserStats(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AdminUserStats) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminUserStats(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNAdminUsersResponse2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUsersResponse(ctx context.Context, sel ast.SelectionSet, v gqlModel.AdminUsersResponse) graphql.Marshaler {
+	return ec._AdminUsersResponse(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNAdminUsersResponse2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUsersResponse(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AdminUsersResponse) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._AdminUsersResponse(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNAggregatorAuthSession2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAggregatorAuthSession(ctx context.Context, sel ast.SelectionSet, v gqlModel.AggregatorAuthSession) graphql.Marshaler {
@@ -76198,6 +81262,32 @@ func (ec *executionContext) marshalNChartDataPoint2ᚖsigma_financeᚋinternal�
 	return ec._ChartDataPoint(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNCoOwnerCandidate2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoOwnerCandidateᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.CoOwnerCandidate) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNCoOwnerCandidate2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoOwnerCandidate(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNCoOwnerCandidate2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐCoOwnerCandidate(ctx context.Context, sel ast.SelectionSet, v *gqlModel.CoOwnerCandidate) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._CoOwnerCandidate(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNConditionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐConditionType(ctx context.Context, v any) (gqlModel.ConditionType, error) {
 	var res gqlModel.ConditionType
 	err := res.UnmarshalGQL(v)
@@ -76410,6 +81500,46 @@ func (ec *executionContext) marshalNEmailVerificationResponse2ᚖsigma_finance�
 		return graphql.Null
 	}
 	return ec._EmailVerificationResponse(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEnableBankingAuthSession2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingAuthSession(ctx context.Context, sel ast.SelectionSet, v gqlModel.EnableBankingAuthSession) graphql.Marshaler {
+	return ec._EnableBankingAuthSession(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNEnableBankingAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingAuthSession(ctx context.Context, sel ast.SelectionSet, v *gqlModel.EnableBankingAuthSession) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EnableBankingAuthSession(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNEnableBankingInstitution2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingInstitutionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.EnableBankingInstitution) graphql.Marshaler {
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNEnableBankingInstitution2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingInstitution(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNEnableBankingInstitution2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEnableBankingInstitution(ctx context.Context, sel ast.SelectionSet, v *gqlModel.EnableBankingInstitution) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._EnableBankingInstitution(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNExportData2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportData(ctx context.Context, sel ast.SelectionSet, v gqlModel.ExportData) graphql.Marshaler {
@@ -78240,6 +83370,44 @@ func (ec *executionContext) marshalNTimeSeriesData2ᚖsigma_financeᚋinternal�
 	return ec._TimeSeriesData(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNTradeRepublicAuthPollResult2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthPollResult(ctx context.Context, sel ast.SelectionSet, v gqlModel.TradeRepublicAuthPollResult) graphql.Marshaler {
+	return ec._TradeRepublicAuthPollResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTradeRepublicAuthPollResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthPollResult(ctx context.Context, sel ast.SelectionSet, v *gqlModel.TradeRepublicAuthPollResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TradeRepublicAuthPollResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTradeRepublicAuthSession2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthSession(ctx context.Context, sel ast.SelectionSet, v gqlModel.TradeRepublicAuthSession) graphql.Marshaler {
+	return ec._TradeRepublicAuthSession(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTradeRepublicAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthSession(ctx context.Context, sel ast.SelectionSet, v *gqlModel.TradeRepublicAuthSession) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TradeRepublicAuthSession(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTradeRepublicAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthStatus(ctx context.Context, v any) (gqlModel.TradeRepublicAuthStatus, error) {
+	var res gqlModel.TradeRepublicAuthStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTradeRepublicAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTradeRepublicAuthStatus(ctx context.Context, sel ast.SelectionSet, v gqlModel.TradeRepublicAuthStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalNTransaction2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransaction(ctx context.Context, sel ast.SelectionSet, v gqlModel.Transaction) graphql.Marshaler {
 	return ec._Transaction(ctx, sel, &v)
 }
@@ -78637,6 +83805,44 @@ func (ec *executionContext) marshalNWatchlist2ᚖsigma_financeᚋinternalᚋhand
 	return ec._Watchlist(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNWoobAuthPollResult2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthPollResult(ctx context.Context, sel ast.SelectionSet, v gqlModel.WoobAuthPollResult) graphql.Marshaler {
+	return ec._WoobAuthPollResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWoobAuthPollResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthPollResult(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WoobAuthPollResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WoobAuthPollResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWoobAuthSession2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthSession(ctx context.Context, sel ast.SelectionSet, v gqlModel.WoobAuthSession) graphql.Marshaler {
+	return ec._WoobAuthSession(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWoobAuthSession2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthSession(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WoobAuthSession) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WoobAuthSession(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNWoobAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthStatus(ctx context.Context, v any) (gqlModel.WoobAuthStatus, error) {
+	var res gqlModel.WoobAuthStatus
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNWoobAuthStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWoobAuthStatus(ctx context.Context, sel ast.SelectionSet, v gqlModel.WoobAuthStatus) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
 	return ec.___Directive(ctx, sel, &v)
 }
@@ -78801,6 +84007,14 @@ func (ec *executionContext) marshalOAccountType2ᚖsigma_financeᚋinternalᚋha
 	return v
 }
 
+func (ec *executionContext) unmarshalOAdminUserFilter2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAdminUserFilter(ctx context.Context, v any) (*gqlModel.AdminUserFilter, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputAdminUserFilter(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) marshalOAlert2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlert(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Alert) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -78931,6 +84145,43 @@ func (ec *executionContext) marshalOAuthUser2ᚖsigma_financeᚋinternalᚋhandl
 		return graphql.Null
 	}
 	return ec._AuthUser(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx context.Context, v any) ([]gqlModel.BlockchainNetwork, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]gqlModel.BlockchainNetwork, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOBlockchainNetwork2ᚕsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetworkᚄ(ctx context.Context, sel ast.SelectionSet, v []gqlModel.BlockchainNetwork) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNBlockchainNetwork2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐBlockchainNetwork(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) unmarshalOBoolean2bool(ctx context.Context, v any) (bool, error) {
@@ -79415,6 +84666,25 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	_ = ctx
 	res := graphql.MarshalString(*v)
 	return res
+}
+
+func (ec *executionContext) marshalOSyncConnection2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnectionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.SyncConnection) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalOSyncConnection2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncConnection(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SyncConnection) graphql.Marshaler {

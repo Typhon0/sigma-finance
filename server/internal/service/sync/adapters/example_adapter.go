@@ -248,20 +248,20 @@ func (a *ExampleAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCred
 
 // FetchBalances queries current cash balances (uninvested cash, settled funds, buying power).
 // Reconciled as [model.AssetTypeBankAccount] positions in the reconciliation pipeline.
-func (a *ExampleAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
+func (a *ExampleAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.BalancesSnapshot, error) {
 	creds, err := parseExampleCredentials(cred)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	if strings.TrimSpace(externalAccountID) == "" {
-		return nil, fmt.Errorf("externalAccountID is required")
+		return syncservice.BalancesSnapshot{}, fmt.Errorf("externalAccountID is required")
 	}
 
 	path := fmt.Sprintf("/v1/accounts/%s/balances", url.PathEscape(externalAccountID))
 	body, _, err := a.executeRequest(ctx, creds, http.MethodGet, path, nil, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	type apiBalance struct {
@@ -274,7 +274,7 @@ func (a *ExampleAdapter) FetchBalances(ctx context.Context, cred *model.SyncCred
 		Balances []apiBalance `json:"balances"`
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse balances response: %w", err)
+		return syncservice.BalancesSnapshot{}, fmt.Errorf("failed to parse balances response: %w", err)
 	}
 
 	var balances []syncservice.RawBalance
@@ -300,7 +300,11 @@ func (a *ExampleAdapter) FetchBalances(ctx context.Context, cred *model.SyncCred
 		})
 	}
 
-	return balances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   balances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
 // FetchHoldings queries security holdings (stocks, ETFs, mutual funds, crypto) in the account.
@@ -312,20 +316,20 @@ func (a *ExampleAdapter) FetchBalances(ctx context.Context, cred *model.SyncCred
 //   - CurrentPrice / CostBasisPerUnit: Use [*decimal.Decimal] for unit prices.
 //   - ISIN: Always populate 12-character ISIN (e.g. "US0378331005", "JP3633400001") if provided by provider.
 //     The reconciliation engine uses ISIN for authoritative matching in the Instrument Catalog.
-func (a *ExampleAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
+func (a *ExampleAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.HoldingsSnapshot, error) {
 	creds, err := parseExampleCredentials(cred)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	if strings.TrimSpace(externalAccountID) == "" {
-		return nil, fmt.Errorf("externalAccountID is required")
+		return syncservice.HoldingsSnapshot{}, fmt.Errorf("externalAccountID is required")
 	}
 
 	path := fmt.Sprintf("/v1/accounts/%s/holdings", url.PathEscape(externalAccountID))
 	body, _, err := a.executeRequest(ctx, creds, http.MethodGet, path, nil, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	type apiHolding struct {
@@ -345,7 +349,7 @@ func (a *ExampleAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCred
 		Holdings []apiHolding `json:"holdings"`
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse holdings response: %w", err)
+		return syncservice.HoldingsSnapshot{}, fmt.Errorf("failed to parse holdings response: %w", err)
 	}
 
 	var holdings []syncservice.RawHolding
@@ -408,7 +412,12 @@ func (a *ExampleAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCred
 		})
 	}
 
-	return holdings, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       holdings,
+		IsComplete:     true,
+		AsOf:           time.Now(),
+		PaginationDone: true,
+	}, nil
 }
 
 // FetchTransactions queries executed trades, deposits, withdrawals, dividends, and fees.
@@ -425,14 +434,15 @@ func (a *ExampleAdapter) FetchTransactions(
 	cred *model.SyncCredential,
 	externalAccountID string,
 	since *time.Time,
-) ([]syncservice.RawTransaction, error) {
+	cursors syncservice.StreamCursors,
+) (syncservice.TransactionsSnapshot, error) {
 	creds, err := parseExampleCredentials(cred)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	if strings.TrimSpace(externalAccountID) == "" {
-		return nil, fmt.Errorf("externalAccountID is required")
+		return syncservice.TransactionsSnapshot{}, fmt.Errorf("externalAccountID is required")
 	}
 
 	path := fmt.Sprintf("/v1/accounts/%s/transactions", url.PathEscape(externalAccountID))
@@ -444,7 +454,7 @@ func (a *ExampleAdapter) FetchTransactions(
 
 	body, _, err := a.executeRequest(ctx, creds, http.MethodGet, path, queryParams, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	type apiTransaction struct {
@@ -466,7 +476,7 @@ func (a *ExampleAdapter) FetchTransactions(
 		Transactions []apiTransaction `json:"transactions"`
 	}
 	if err := json.Unmarshal(body, &response); err != nil {
-		return nil, fmt.Errorf("failed to parse transactions response: %w", err)
+		return syncservice.TransactionsSnapshot{}, fmt.Errorf("failed to parse transactions response: %w", err)
 	}
 
 	var rawTransactions []syncservice.RawTransaction
@@ -553,7 +563,11 @@ func (a *ExampleAdapter) FetchTransactions(
 		return rawTransactions[i].ExecutedAt.Before(rawTransactions[j].ExecutedAt)
 	})
 
-	return rawTransactions, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   rawTransactions,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 // ============================================================================

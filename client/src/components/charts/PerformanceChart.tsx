@@ -1,7 +1,7 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import { Download, Maximize2, Minimize2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
+import EChart, { type EChartHandle } from "@/components/charts/EChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -54,7 +54,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 	loading = false,
 	error,
 }) => {
-	const chartRef = useRef<ReactECharts>(null);
+	const chartRef = useRef<EChartHandle>(null);
 	const [isFullscreen, setIsFullscreen] = React.useState(false);
 
 	// Optimize data for performance
@@ -265,7 +265,7 @@ const PerformanceChart: React.FC<PerformanceChartProps> = ({
 	}
 
 	const chartContent = (
-		<ReactECharts
+		<EChart
 			ref={chartRef}
 			option={chartOption}
 			style={{

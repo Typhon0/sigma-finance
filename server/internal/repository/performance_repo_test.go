@@ -144,6 +144,44 @@ func TestPerformanceRepository_DatabaseTransactionTests(t *testing.T) {
 			assert.True(t, comparison.Alpha.Equal(decimal.NewFromFloat(5.0)), "expected alpha 5, got %s", comparison.Alpha)
 		})
 
+		// Test CalculateAndSaveHistoricalSnapshots on empty portfolio (both single-day and multi-day)
+		t.Run("CalculateAndSaveHistoricalSnapshots_EmptyPortfolio", func(t *testing.T) {
+			emptyPortfolio := &model.Portfolio{
+				ID:          uuid.NewString(),
+				UserID:      user.ID,
+				Name:        "Empty Test Portfolio",
+				Description: "Empty Portfolio for Snapshot Testing",
+			}
+			_, err := tx.NewInsert().Model(emptyPortfolio).Exec(ctx)
+			require.NoError(t, err)
+
+			// 1. Single-day snapshot on empty portfolio must succeed with 0 total_value without violating not-null constraint
+			today := time.Now().Truncate(24 * time.Hour)
+			err = repo.CalculateAndSaveHistoricalSnapshots(ctx, emptyPortfolio.ID, today, today)
+			require.NoError(t, err)
+
+			snapshots, err := repo.GetPerformanceSnapshots(ctx, emptyPortfolio.ID, today, today)
+			require.NoError(t, err)
+			require.Len(t, snapshots, 1)
+			assert.Equal(t, model.Money(0), snapshots[0].TotalValue)
+			assert.Equal(t, model.Money(0), snapshots[0].TotalCostBasis)
+			assert.Equal(t, model.Money(0), snapshots[0].UnrealizedGainLoss)
+
+			// 2. Multi-day snapshot on empty portfolio must also succeed
+			startMulti := today.AddDate(0, 0, -3)
+			err = repo.CalculateAndSaveHistoricalSnapshots(ctx, emptyPortfolio.ID, startMulti, today)
+			require.NoError(t, err)
+
+			multiSnapshots, err := repo.GetPerformanceSnapshots(ctx, emptyPortfolio.ID, startMulti, today)
+			require.NoError(t, err)
+			assert.GreaterOrEqual(t, len(multiSnapshots), 4)
+			for _, snap := range multiSnapshots {
+				assert.Equal(t, model.Money(0), snap.TotalValue)
+				assert.Equal(t, model.Money(0), snap.TotalCostBasis)
+				assert.Equal(t, model.Money(0), snap.UnrealizedGainLoss)
+			}
+		})
+
 		return nil
 	})
 	require.NoError(t, err)

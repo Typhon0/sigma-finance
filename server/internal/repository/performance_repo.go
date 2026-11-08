@@ -1016,13 +1016,17 @@ priced_metrics AS (
 ),
 daily_metrics AS (
     SELECT
-        pm.snapshot_date,
-        SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100 AS total_value,
-        SUM(pm.cost_basis_at_date) AS total_cost_basis,
-        SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100
-            - SUM(pm.cost_basis_at_date) AS unrealized_gain_loss
-    FROM priced_metrics pm
-    GROUP BY pm.snapshot_date
+        ds.snapshot_date,
+        COALESCE(SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100, 0)::bigint AS total_value,
+        COALESCE(SUM(pm.cost_basis_at_date), 0)::bigint AS total_cost_basis,
+        COALESCE(
+            SUM(pm.quantity_at_date * pm.price_at_date * pm.ownership_pct / 100) * 100
+            - SUM(pm.cost_basis_at_date),
+            0
+        )::bigint AS unrealized_gain_loss
+    FROM date_series ds
+    LEFT JOIN priced_metrics pm ON pm.snapshot_date = ds.snapshot_date
+    GROUP BY ds.snapshot_date
 ),
 realized_gains AS (
     SELECT
@@ -1048,7 +1052,7 @@ SELECT
     rg.realized_gain_loss,
     CASE
         WHEN dm.total_cost_basis > 0 THEN
-            ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / dm.total_cost_basis::numeric) * 100
+            LEAST(999999.9999, GREATEST(-999999.9999, ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / dm.total_cost_basis::numeric) * 100))
         ELSE 0
     END AS return_percentage,
     NOW()
@@ -1145,8 +1149,8 @@ latest_prices AS (
 ),
 metrics AS (
     SELECT
-        SUM(pp.quantity_at_date * COALESCE(lp.price, 0) * COALESCE(pp.ownership_percentage, 100) / 100) * 100 AS total_value,
-        SUM(CASE WHEN pp.quantity_at_date > 0 THEN COALESCE(pp.total_cost_basis, 0) ELSE 0 END) AS total_cost_basis
+        COALESCE(SUM(pp.quantity_at_date * COALESCE(lp.price, 0) * COALESCE(pp.ownership_percentage, 100) / 100) * 100, 0)::bigint AS total_value,
+        COALESCE(SUM(CASE WHEN pp.quantity_at_date > 0 THEN COALESCE(pp.total_cost_basis, 0) ELSE 0 END), 0)::bigint AS total_cost_basis
     FROM portfolio_positions pp
     LEFT JOIN latest_prices lp USING (asset_id)
 ),
@@ -1172,7 +1176,7 @@ SELECT
     r.realized_gain_loss,
     CASE
         WHEN m.total_cost_basis > 0 THEN
-            ((m.total_value - m.total_cost_basis + r.realized_gain_loss) / m.total_cost_basis::numeric) * 100
+            LEAST(999999.9999, GREATEST(-999999.9999, ((m.total_value - m.total_cost_basis + r.realized_gain_loss) / m.total_cost_basis::numeric) * 100))
         ELSE 0
     END,
     NOW()

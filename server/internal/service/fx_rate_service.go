@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"sigma_finance/internal/domain/model"
@@ -159,6 +160,14 @@ func (s *fxRateService) GetLatestRate(ctx context.Context, base, quote model.Cur
 	inverseRate, inverseErr := rateRepo.GetLatestRate(ctx, quote, base)
 	if inverseErr != nil {
 		if errors.Is(inverseErr, sql.ErrNoRows) {
+			// On-demand live fetch via provider (Frankfurter / Twelve Data)
+			if s.provider != nil {
+				liveRate, err := s.fetchOnDemandLatestRate(ctx, base, quote)
+				if err == nil && liveRate != nil {
+					s.cache.Set(liveRate)
+					return liveRate, nil
+				}
+			}
 			log.Printf("[WARN] [FXRateService] GetLatestRate: NOT_FOUND base=%s quote=%s", base, quote)
 			return nil, ErrFXRateNotFound
 		}
@@ -312,25 +321,113 @@ func (s *fxRateService) backfillCalendarYear(ctx context.Context, base, quote mo
 	return s.uow.FXRate().SaveRates(ctx, rates)
 }
 
+// fetchOnDemandLatestRate attempts a real-time live fetch of the latest rate via provider (Frankfurter / Twelve Data).
+func (s *fxRateService) fetchOnDemandLatestRate(ctx context.Context, base, quote model.Currency) (*model.FXRate, error) {
+	if s.provider == nil {
+		return nil, ErrFXRateNotFound
+	}
+
+	pairSymbol := fmt.Sprintf("%s/%s", base, quote)
+	quoteResp, err := s.provider.GetQuote(ctx, providers.QuoteRequest{
+		Symbol:    pairSymbol,
+		AssetType: "FOREX",
+	})
+	if err == nil && quoteResp != nil && quoteResp.Last.IsPositive() {
+		asOf := quoteResp.Timestamp
+		if asOf.IsZero() {
+			asOf = time.Now().UTC()
+		}
+		newRate := &model.FXRate{
+			BaseCurrency:  base,
+			QuoteCurrency: quote,
+			Rate:          quoteResp.Last,
+			AsOf:          asOf,
+			Source:        quoteResp.Source,
+			Granularity:   model.FXRateGranularityMinute,
+			IsStale:       false,
+		}
+		_ = s.uow.FXRate().SaveRate(ctx, newRate)
+		return newRate, nil
+	}
+
+	// Try inverse on provider
+	invSymbol := fmt.Sprintf("%s/%s", quote, base)
+	invResp, err := s.provider.GetQuote(ctx, providers.QuoteRequest{
+		Symbol:    invSymbol,
+		AssetType: "FOREX",
+	})
+	if err == nil && invResp != nil && invResp.Last.IsPositive() {
+		asOf := invResp.Timestamp
+		if asOf.IsZero() {
+			asOf = time.Now().UTC()
+		}
+		invertedRate := decimal.NewFromInt(1).Div(invResp.Last)
+		newRate := &model.FXRate{
+			BaseCurrency:  base,
+			QuoteCurrency: quote,
+			Rate:          invertedRate,
+			AsOf:          asOf,
+			Source:        fmt.Sprintf("%s(inverse)", invResp.Source),
+			Granularity:   model.FXRateGranularityMinute,
+			IsStale:       false,
+		}
+		invModel := &model.FXRate{
+			BaseCurrency:  quote,
+			QuoteCurrency: base,
+			Rate:          invResp.Last,
+			AsOf:          asOf,
+			Source:        invResp.Source,
+			Granularity:   model.FXRateGranularityMinute,
+			IsStale:       false,
+		}
+		_ = s.uow.FXRate().SaveRate(ctx, invModel)
+		_ = s.uow.FXRate().SaveRate(ctx, newRate)
+		return newRate, nil
+	}
+
+	return nil, ErrFXRateNotFound
+}
+
 // ResolvePairs deduplicates required pairs for scheduler usage.
-// It resolves each unique position quote currency to USD.
-func (s *fxRateService) ResolvePairs(_ context.Context, positions []model.Position) []model.CurrencyPair {
+// It resolves each unique position quote currency and instrument currency to USD and EUR.
+func (s *fxRateService) ResolvePairs(ctx context.Context, positions []model.Position) []model.CurrencyPair {
 	seen := make(map[string]struct{})
 	pairs := make([]model.CurrencyPair, 0)
 
+	addPair := func(base, quote model.Currency) {
+		if !base.IsValid() || !quote.IsValid() || base == quote {
+			return
+		}
+		key := base.String() + "/" + quote.String()
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			pairs = append(pairs, model.CurrencyPair{BaseCurrency: base, QuoteCurrency: quote})
+		}
+	}
+
 	for _, pos := range positions {
-		if !pos.QuoteCurrency.IsValid() {
-			continue
+		// 1. Position quote currency (account denomination)
+		if pos.QuoteCurrency.IsValid() {
+			addPair(pos.QuoteCurrency, model.CurrencyUSD)
+			addPair(pos.QuoteCurrency, model.CurrencyEUR)
 		}
-		if pos.QuoteCurrency == model.CurrencyUSD {
-			continue
+
+		// 2. Instrument native trading currency (e.g. DKK for NOVO-B.CO, JPY, GBP, CHF)
+		if s.uow != nil && s.uow.Instrument() != nil {
+			var instID *string
+			if pos.Asset != nil {
+				instID = pos.Asset.InstrumentID
+			}
+			if instID != nil && *instID != "" {
+				if inst, err := s.uow.Instrument().GetByID(ctx, *instID); err == nil && inst != nil && inst.Currency != nil && *inst.Currency != "" {
+					instCurr := model.Currency(strings.ToUpper(strings.TrimSpace(*inst.Currency)))
+					if instCurr.IsValid() {
+						addPair(instCurr, model.CurrencyUSD)
+						addPair(instCurr, model.CurrencyEUR)
+					}
+				}
+			}
 		}
-		key := pos.QuoteCurrency.String() + "/USD"
-		if _, exists := seen[key]; exists {
-			continue
-		}
-		seen[key] = struct{}{}
-		pairs = append(pairs, model.CurrencyPair{BaseCurrency: pos.QuoteCurrency, QuoteCurrency: model.CurrencyUSD})
 	}
 
 	return pairs

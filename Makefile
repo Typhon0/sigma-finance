@@ -127,3 +127,19 @@ market-data-pack-smoke: market-data-pack-fixture market-data-pack-validate marke
 >else
 >  echo "skip install smoke (set MARKET_DATA_SMOKE_INSTALL=true and DB env to enable)"
 >fi
+
+.PHONY: front front-stop front-restart front-status front-logs
+front:
+>@./tools/front.sh start
+
+front-stop:
+>@./tools/front.sh stop
+
+front-restart:
+>@./tools/front.sh restart
+
+front-status:
+>@./tools/front.sh status
+
+front-logs:
+>@./tools/front.sh logs

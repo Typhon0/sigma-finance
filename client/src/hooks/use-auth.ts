@@ -62,7 +62,7 @@ export const useAuth = () => {
 	const { data, loading, error, refetch } = useQuery<{ me: AuthUser }>(ME_QUERY, {
 		skip: !authContext.isAuthenticated,
 		errorPolicy: "all",
-		fetchPolicy: "cache-first",
+		fetchPolicy: "cache-and-network",
 		onError: (error) => {
 			// If token is invalid, logout user
 			if (error.graphQLErrors.some((err) => err.extensions?.code === "UNAUTHENTICATED")) {
@@ -121,10 +121,14 @@ export const useAuth = () => {
 		} catch (_error) {}
 	}, [refetch]);
 
+	const currentUser = data?.me || authContext.user;
+	const isAdmin = currentUser?.role?.toUpperCase() === "ADMIN";
+
 	return {
 		...authContext,
 		// Override user with server data if available
-		user: data?.me || authContext.user,
+		user: currentUser,
+		isAdmin,
 		isLoading: authContext.isLoading || loading,
 		error,
 		refreshUserData,

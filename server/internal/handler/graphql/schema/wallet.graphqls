@@ -133,6 +133,16 @@ input AddMultiNetworkWalletInput {
     deviceType: WalletDeviceType
 }
 
+input AddMultiChainWalletInput {
+    portfolioId: ID!
+    name: String!
+    deviceType: WalletDeviceType!
+    evmAddress: String
+    evmNetworks: [BlockchainNetwork!]
+    solanaAddress: String
+    bitcoinAddressOrXpub: String
+}
+
 input AddCustomTokenInput {
     walletAccountId: ID!
     tokenAddress: String!
@@ -153,6 +163,7 @@ extend type Mutation {
     assignWalletDevice(walletAccountId: ID!, deviceId: ID): Boolean!
     addWalletAccount(input: AddWalletAccountInput!): WalletAccount!
     addMultiNetworkWallet(input: AddMultiNetworkWalletInput!): [WalletAccount!]!
+    addMultiChainWallet(input: AddMultiChainWalletInput!): WalletDevice!
     addCustomToken(input: AddCustomTokenInput!): WalletBalance!
     updateBlockchainNetworkConfig(input: UpdateBlockchainNetworkConfigInput!): BlockchainNetworkConfig!
     resetBlockchainNetworkConfig(network: BlockchainNetwork!): BlockchainNetworkConfig!

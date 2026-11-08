@@ -101,7 +101,7 @@ export function TransactionManagement({
 
 	const getCostBasisData = (position: Position) => {
 		const positionTransactions = transactions.filter(
-			(t) => t.asset.id === position.asset.id && t.portfolio.id === portfolio.id,
+			(t) => t.asset?.id === position.asset.id && t.portfolio.id === portfolio.id,
 		);
 
 		// Calculate cost basis (simplified - in real app this would be more complex)
@@ -242,7 +242,7 @@ export function TransactionManagement({
 										editingTransaction
 											? {
 													portfolioId: editingTransaction.portfolio.id,
-													assetId: editingTransaction.asset.id,
+													assetId: editingTransaction.asset?.id || "",
 													transactionType: editingTransaction.transactionType,
 													quantity: editingTransaction.quantity,
 													pricePerUnit: editingTransaction.unitPriceAmount ?? 0,

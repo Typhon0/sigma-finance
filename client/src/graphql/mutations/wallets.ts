@@ -130,6 +130,26 @@ export const ADD_MULTI_NETWORK_WALLET = gql`
   }
 `;
 
+export const ADD_MULTI_CHAIN_WALLET = gql`
+  mutation AddMultiChainWallet($input: AddMultiChainWalletInput!) {
+    addMultiChainWallet(input: $input) {
+      id
+      name
+      deviceType
+      accounts {
+        id
+        network
+        addressOrXpub
+        label
+        capabilityLevel
+        lastSyncAt
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
 export const ADD_CUSTOM_TOKEN = gql`
   mutation AddCustomToken($input: AddCustomTokenInput!) {
     addCustomToken(input: $input) {
@@ -167,4 +187,3 @@ export const RESET_BLOCKCHAIN_NETWORK_CONFIG = gql`
     }
   }
 `;
-

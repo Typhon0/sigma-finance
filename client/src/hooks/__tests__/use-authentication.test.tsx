@@ -18,6 +18,7 @@ vi.mock("../../lib/auth-context", () => ({
 		isAuthenticated: true,
 		isLoading: false,
 		error: null,
+		accounts: [],
 		login: vi.fn(),
 		register: vi.fn(),
 		logout: vi.fn(),
@@ -27,6 +28,10 @@ vi.mock("../../lib/auth-context", () => ({
 		resendVerification: vi.fn(),
 		refreshToken: vi.fn(),
 		refreshUserData: vi.fn(),
+		switchAccount: vi.fn(),
+		addAccount: vi.fn(),
+		removeAccountSession: vi.fn(),
+		logoutAllAccounts: vi.fn(),
 	}),
 }));
 
@@ -42,6 +47,7 @@ vi.mock("../use-auth", () => ({
 		isAuthenticated: true,
 		isLoading: false,
 		error: null,
+		accounts: [],
 		login: vi.fn(),
 		register: vi.fn(),
 		logout: vi.fn(),
@@ -51,6 +57,10 @@ vi.mock("../use-auth", () => ({
 		resendVerification: vi.fn(),
 		refreshToken: vi.fn(),
 		refreshUserData: vi.fn(),
+		switchAccount: vi.fn(),
+		addAccount: vi.fn(),
+		removeAccountSession: vi.fn(),
+		logoutAllAccounts: vi.fn(),
 	}),
 }));
 

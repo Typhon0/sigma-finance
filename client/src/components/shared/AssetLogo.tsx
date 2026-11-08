@@ -69,8 +69,35 @@ export const KRAKEN_CRYPTO_ALIASES: Record<string, string> = {
 	ZJPY: "JPY",
 };
 
+export const FIAT_CURRENCY_COLORS: Record<string, string> = {
+	EUR: "#003399",
+	USD: "#0A5C36",
+	GBP: "#C8102E",
+	CHF: "#D52B1E",
+	JPY: "#BC002D",
+	CAD: "#FF0000",
+	AUD: "#00843D",
+	DKK: "#C60C30",
+	SEK: "#006AA7",
+	NOK: "#BA0C2F",
+	CASH: "#2563EB",
+};
+
+export const FIAT_CURRENCY_SYMBOLS: Record<string, string> = {
+	EUR: "€",
+	USD: "$",
+	GBP: "£",
+	CHF: "₣",
+	JPY: "¥",
+	CAD: "$",
+	AUD: "$",
+	DKK: "kr",
+	SEK: "kr",
+	NOK: "kr",
+};
+
 export type AssetLogoSize = "xs" | "sm" | "md" | "lg";
-export type AssetType = "crypto" | "stock" | "fund";
+export type AssetType = "crypto" | "stock" | "fund" | "cash";
 
 const SIZE_CLASSES: Record<AssetLogoSize, { container: string; text: string }> = {
 	xs: { container: "h-5 w-5", text: "text-[10px]" },
@@ -94,20 +121,40 @@ export function cleanAssetSymbol(
 	}
 	if (!sym) return "";
 
+	// 0. Handle synthetic and standard cash/currency symbols (EUR_CASH_uuid -> EUR, CASH_USD -> USD, CASH -> CASH)
+	const cashMatch = sym.match(/^([A-Z]{3,4})_CASH(?:_[A-F0-9-]+)?$/i);
+	if (cashMatch) {
+		return cashMatch[1].toUpperCase();
+	}
+	if (sym.startsWith("CASH_") || sym === "CASH") {
+		const suffixMatch = sym.match(/^CASH_([A-Z]{3,4})/i);
+		return suffixMatch ? suffixMatch[1].toUpperCase() : "CASH";
+	}
+
 	// 1. Kraken alias mapping (e.g. XDG -> DOGE, XXLM -> XLM)
 	if (assetType === "crypto" && KRAKEN_CRYPTO_ALIASES[sym]) {
 		return KRAKEN_CRYPTO_ALIASES[sym];
 	}
 
-	// 2. Strip trading pair suffixes (e.g. BTC/USD, BTC-USD, AAPL.US)
-	let clean = sym.split(/[-/]/)[0].trim();
+	// 2. Strip trading pair suffixes for crypto (e.g. BTC/USD, BTC-USD)
+	let clean = sym;
+	if (assetType === "crypto") {
+		clean = sym.split(/[-/]/)[0].trim();
+	} else if (clean.includes("/")) {
+		// Only strip exchange currency pair if separated by slash (e.g. AAPL/USD), never dash (NOVO-B.CO, BRK-B)
+		clean = clean.split("/")[0].trim();
+	}
 
 	if (assetType === "crypto") {
 		const lowerName = (rawName || "").toLowerCase();
 		const lowerSym = sym.toLowerCase();
 
 		// Check name or symbol for wrapped/portal tokens
-		if (lowerName.includes("usd coin") || lowerName.includes("usd-coin") || lowerSym.includes("usdc")) {
+		if (
+			lowerName.includes("usd coin") ||
+			lowerName.includes("usd-coin") ||
+			lowerSym.includes("usdc")
+		) {
 			return "USDC";
 		}
 		if (lowerName.includes("tether") || lowerSym.includes("usdt")) {
@@ -150,6 +197,9 @@ export function getDeterministicColor(symbol: string, assetType: AssetType = "st
 	if (assetType === "crypto" && CRYPTO_BRAND_COLORS[clean]) {
 		return CRYPTO_BRAND_COLORS[clean];
 	}
+	if (FIAT_CURRENCY_COLORS[clean]) {
+		return FIAT_CURRENCY_COLORS[clean];
+	}
 	let hash = 0;
 	for (let i = 0; i < clean.length; i++) {
 		hash = (hash << 5) - hash + clean.charCodeAt(i);
@@ -162,6 +212,9 @@ export function getDeterministicColor(symbol: string, assetType: AssetType = "st
 export function getMonogramText(symbol: string, maxChars = 1): string {
 	const clean = cleanAssetSymbol(symbol);
 	if (!clean) return "?";
+	if (FIAT_CURRENCY_SYMBOLS[clean]) {
+		return FIAT_CURRENCY_SYMBOLS[clean];
+	}
 	return clean.slice(0, maxChars);
 }
 
@@ -229,9 +282,10 @@ export const AssetLogo = memo(function AssetLogo({
 		: (bundledLogos.stocks as Record<string, string>);
 
 	const bundledFileName = useMemo(() => {
-		if (!cleanSymbol) return null;
-		return bundledMap[cleanSymbol] || null;
-	}, [cleanSymbol, bundledMap]);
+		const raw = (symbol || "").toUpperCase().trim();
+		const clean = (cleanSymbol || "").toUpperCase().trim();
+		return bundledMap[clean] || bundledMap[raw] || null;
+	}, [cleanSymbol, symbol, bundledMap]);
 
 	const [stage, setStage] = useState<"bundled" | "proxy" | "fallback">(() =>
 		bundledFileName ? "bundled" : "proxy",
@@ -271,7 +325,9 @@ export const AssetLogo = memo(function AssetLogo({
 	};
 
 	const sizeCfg = SIZE_CLASSES[size] || SIZE_CLASSES.sm;
-	const accessibleLabel = name ? `${name} (${cleanSymbol || symbol}) logo` : `${cleanSymbol || symbol} logo`;
+	const accessibleLabel = name
+		? `${name} (${cleanSymbol || symbol}) logo`
+		: `${cleanSymbol || symbol} logo`;
 
 	return (
 		<div
@@ -304,7 +360,7 @@ export const AssetLogo = memo(function AssetLogo({
 					onError={handleError}
 					onLoad={handleLoad}
 					className={cn(
-						"absolute inset-0 w-full h-full object-contain rounded-full transition-opacity duration-150",
+						"absolute inset-0 w-full h-full object-contain rounded-full transition-opacity duration-150 p-0.5",
 						imageLoaded ? "opacity-100" : "opacity-0 pointer-events-none",
 					)}
 				/>

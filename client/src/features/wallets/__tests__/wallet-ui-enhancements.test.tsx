@@ -4,14 +4,14 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { AccountsList } from "@/components/AccountsList";
 import { CreateAccountDialog } from "@/components/account/CreateAccountDialog";
+import { CryptoList } from "@/components/assets/crypto/CryptoList";
 import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
 import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { GET_SYNC_CONNECTIONS } from "@/graphql/queries/sync";
 import { GET_PENDING_WALLET_REVIEWS, GET_WALLET_ACCOUNTS } from "@/graphql/queries/wallets";
-import { CryptoList } from "@/components/assets/crypto/CryptoList";
 
 // Mock resize-observer and echarts
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-mock" />,
 }));
 
@@ -131,11 +131,7 @@ describe("Wallet UI Enhancements Integration", () => {
 
 		render(
 			<MockedProvider mocks={createMocks()} addTypename={false}>
-				<CreateAccountDialog
-					open={true}
-					onOpenChange={onOpenChange}
-					portfolioId="port-1"
-				/>
+				<CreateAccountDialog open={true} onOpenChange={onOpenChange} portfolioId="port-1" />
 			</MockedProvider>,
 		);
 
@@ -148,11 +144,7 @@ describe("Wallet UI Enhancements Integration", () => {
 
 		render(
 			<MockedProvider mocks={createMocks()} addTypename={false}>
-				<ConnectInstitutionDialog
-					open={true}
-					onOpenChange={onOpenChange}
-					portfolioId="port-1"
-				/>
+				<ConnectInstitutionDialog open={true} onOpenChange={onOpenChange} portfolioId="port-1" />
 			</MockedProvider>,
 		);
 

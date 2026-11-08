@@ -1,22 +1,22 @@
 import "@testing-library/jest-dom";
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { ConnectedAccountsManager } from "../ConnectedAccountsManager";
-import { GET_SYNC_CONNECTIONS } from "@/graphql/queries/sync";
-import {
-	GET_WALLET_ACCOUNTS,
-	GET_WALLET_CU_USAGE,
-	GET_PENDING_WALLET_REVIEWS,
-} from "@/graphql/queries/wallets";
 import { TRIGGER_ACCOUNT_SYNC } from "@/graphql/mutations/sync";
 import { TRIGGER_WALLET_SYNC } from "@/graphql/mutations/wallets";
+import { GET_SYNC_CONNECTIONS } from "@/graphql/queries/sync";
+import {
+	GET_PENDING_WALLET_REVIEWS,
+	GET_WALLET_ACCOUNTS,
+	GET_WALLET_CU_USAGE,
+} from "@/graphql/queries/wallets";
+import { ConnectedAccountsManager } from "../ConnectedAccountsManager";
 
 // Mock usePortfolio
 vi.mock("@/components/PortfolioProvider", () => ({
 	usePortfolio: () => ({
-		currentPortfolio: { id: "port-123", name: "Crypto Portfolio" },
+		currentPortfolio: "port-123",
+		selectedPortfolio: { id: "port-123", name: "Crypto Portfolio" },
 		portfolios: [{ id: "port-123", name: "Crypto Portfolio" }],
 	}),
 }));
@@ -180,7 +180,7 @@ describe("ConnectedAccountsManager", () => {
 		render(
 			<MockedProvider mocks={mocks} addTypename={false}>
 				<ConnectedAccountsManager />
-			</MockedProvider>
+			</MockedProvider>,
 		);
 
 		// Page title
@@ -188,7 +188,9 @@ describe("ConnectedAccountsManager", () => {
 
 		// Total connections KPI (1 TradFi + 1 Wallet = 2)
 		expect(await screen.findByText("2")).toBeInTheDocument();
-		expect(screen.getByText(/1 institution\(s\) TradFi · 1 wallet\(s\) on-chain/i)).toBeInTheDocument();
+		expect(
+			screen.getByText(/1 institution\(s\) TradFi · 1 wallet\(s\) on-chain/i),
+		).toBeInTheDocument();
 
 		// Health status
 		expect(screen.getByText(/100% Opérationnel/i)).toBeInTheDocument();
@@ -204,7 +206,7 @@ describe("ConnectedAccountsManager", () => {
 		render(
 			<MockedProvider mocks={mocks} addTypename={false}>
 				<ConnectedAccountsManager />
-			</MockedProvider>
+			</MockedProvider>,
 		);
 
 		// Verify Phantom Main wallet is in the list
@@ -222,7 +224,7 @@ describe("ConnectedAccountsManager", () => {
 		render(
 			<MockedProvider mocks={mocks} addTypename={false}>
 				<ConnectedAccountsManager />
-			</MockedProvider>
+			</MockedProvider>,
 		);
 
 		// Find individual Sync Now button
@@ -262,7 +264,7 @@ describe("ConnectedAccountsManager", () => {
 		render(
 			<MockedProvider mocks={inProgressWalletMocks} addTypename={false}>
 				<ConnectedAccountsManager />
-			</MockedProvider>
+			</MockedProvider>,
 		);
 
 		expect(await screen.findByText("Phantom Main")).toBeInTheDocument();
@@ -285,7 +287,7 @@ describe("ConnectedAccountsManager", () => {
 		render(
 			<MockedProvider mocks={mocks} addTypename={false}>
 				<ConnectedAccountsManager />
-			</MockedProvider>
+			</MockedProvider>,
 		);
 
 		expect(await screen.findByText("Phantom Main")).toBeInTheDocument();
@@ -295,5 +297,25 @@ describe("ConnectedAccountsManager", () => {
 
 		fireEvent.click(copyBtn);
 		expect(writeTextMock).toHaveBeenCalledWith("6WoNTaashF9TXynLt8PMqo3MEV9ofEu1kApZvH31srx");
+	});
+
+	it("opens ConnectInstitutionDialog when clicking Connect Institution button", async () => {
+		render(
+			<MockedProvider mocks={mocks} addTypename={false}>
+				<ConnectedAccountsManager />
+			</MockedProvider>,
+		);
+
+		expect(await screen.findByText("Phantom Main")).toBeInTheDocument();
+
+		const connectBtns = screen.getAllByRole("button", { name: /Connect Institution/i });
+		expect(connectBtns.length).toBeGreaterThan(0);
+
+		fireEvent.click(connectBtns[0]);
+
+		expect(
+			await screen.findByRole("heading", { name: /Connect External Institution/i }),
+		).toBeInTheDocument();
+		expect(screen.getByRole("tab", { name: /Trade Republic/i })).toBeInTheDocument();
 	});
 });

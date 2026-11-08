@@ -4,5 +4,5 @@ export * from "./asset";
 export * from "./instruments";
 export * from "./portfolio";
 export * from "./sync";
-export * from "./watchlist";
 export * from "./wallets";
+export * from "./watchlist";

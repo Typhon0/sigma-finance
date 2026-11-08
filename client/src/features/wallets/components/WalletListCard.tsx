@@ -5,9 +5,9 @@ import {
 	ChevronDown,
 	ChevronUp,
 	Copy,
+	ExternalLink,
 	Eye,
 	EyeOff,
-	ExternalLink,
 	Loader2,
 	RefreshCw,
 	ShieldAlert,
@@ -18,18 +18,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
 	Table,
 	TableBody,
@@ -38,19 +28,14 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipProvider,
-	TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
 	REMOVE_WALLET_ACCOUNT,
 	TOGGLE_SPAM_TOKEN,
 	TRIGGER_WALLET_SYNC,
 } from "@/graphql/mutations/wallets";
-import { GET_WALLET_ACCOUNTS } from "@/graphql/queries/wallets";
 import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
+import { GET_WALLET_ACCOUNTS } from "@/graphql/queries/wallets";
 
 interface WalletBalanceItem {
 	id: string;
@@ -171,7 +156,8 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 						<Wallet className="h-4 w-4 text-primary" /> Connected On-Chain Wallets
 					</CardTitle>
 					<CardDescription>
-						Zero-cost Alchemy integration covering EVM, Solana, and Bitcoin addresses with Trust Wallet spam filtering.
+						Zero-cost Alchemy integration covering EVM, Solana, and Bitcoin addresses with Trust
+						Wallet spam filtering.
 					</CardDescription>
 				</div>
 				<div className="flex items-center gap-2">
@@ -207,7 +193,10 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 								{/* Header */}
 								<div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3">
 									<div className="flex items-center gap-2">
-										<Badge variant="outline" className="font-semibold text-xs uppercase tracking-wider">
+										<Badge
+											variant="outline"
+											className="font-semibold text-xs uppercase tracking-wider"
+										>
 											{acc.network}
 										</Badge>
 										<span className="font-medium text-sm text-foreground">
@@ -216,7 +205,10 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 										<TooltipProvider>
 											<Tooltip>
 												<TooltipTrigger asChild>
-													<div className="flex items-center gap-1 font-mono text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded cursor-pointer hover:bg-muted" onClick={() => copyToClipboard(acc.addressOrXpub, "address")}>
+													<div
+														className="flex items-center gap-1 font-mono text-xs text-muted-foreground bg-muted/60 px-2 py-0.5 rounded cursor-pointer hover:bg-muted"
+														onClick={() => copyToClipboard(acc.addressOrXpub, "address")}
+													>
 														<span>{truncate(acc.addressOrXpub)}</span>
 														<Copy className="h-3 w-3 inline text-muted-foreground" />
 													</div>
@@ -237,17 +229,26 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 									<div className="flex items-center gap-2">
 										{/* Status badge */}
 										{acc.historyStatus === "SYNCED" && (
-											<Badge variant="outline" className="border-green-500/40 text-green-600 bg-green-500/10 text-xs flex items-center gap-1">
+											<Badge
+												variant="outline"
+												className="border-green-500/40 text-green-600 bg-green-500/10 text-xs flex items-center gap-1"
+											>
 												<CheckCircle className="h-3 w-3" /> Synced
 											</Badge>
 										)}
 										{acc.historyStatus === "IN_PROGRESS" && (
-											<Badge variant="outline" className="border-blue-500/40 text-blue-600 bg-blue-500/10 text-xs flex items-center gap-1 animate-pulse">
+											<Badge
+												variant="outline"
+												className="border-blue-500/40 text-blue-600 bg-blue-500/10 text-xs flex items-center gap-1 animate-pulse"
+											>
 												<Loader2 className="h-3 w-3 animate-spin" /> Syncing...
 											</Badge>
 										)}
 										{acc.historyStatus === "PENDING" && (
-											<Badge variant="outline" className="border-amber-500/40 text-amber-600 bg-amber-500/10 text-xs">
+											<Badge
+												variant="outline"
+												className="border-amber-500/40 text-amber-600 bg-amber-500/10 text-xs"
+											>
 												Pending Initial Sync
 											</Badge>
 										)}
@@ -255,7 +256,10 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
-														<Badge variant="destructive" className="text-xs flex items-center gap-1 cursor-help">
+														<Badge
+															variant="destructive"
+															className="text-xs flex items-center gap-1 cursor-help"
+														>
 															<AlertCircle className="h-3 w-3" /> Sync Failed
 														</Badge>
 													</TooltipTrigger>
@@ -305,7 +309,11 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 														<TableCell className="font-medium">
 															<div className="flex items-center gap-1.5">
 																<span className="font-semibold text-foreground">{b.symbol}</span>
-																{b.name && <span className="text-muted-foreground truncate max-w-[140px]">({b.name})</span>}
+																{b.name && (
+																	<span className="text-muted-foreground truncate max-w-[140px]">
+																		({b.name})
+																	</span>
+																)}
 															</div>
 														</TableCell>
 														<TableCell className="text-right font-mono font-medium">
@@ -321,7 +329,9 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 																	</TooltipTrigger>
 																	<TooltipContent>
 																		<p className="font-mono text-xs">Raw: {b.rawBalance}</p>
-																		<p className="text-[10px] text-muted-foreground">Decimals: {b.decimals}</p>
+																		<p className="text-[10px] text-muted-foreground">
+																			Decimals: {b.decimals}
+																		</p>
 																	</TooltipContent>
 																</Tooltip>
 															</TooltipProvider>
@@ -333,7 +343,9 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 																		<TooltipTrigger asChild>
 																			<span
 																				className="cursor-pointer hover:underline"
-																				onClick={() => copyToClipboard(b.tokenAddress!, "contract address")}
+																				onClick={() =>
+																					copyToClipboard(b.tokenAddress!, "contract address")
+																				}
 																			>
 																				{truncate(b.tokenAddress)}
 																			</span>
@@ -360,7 +372,11 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 
 								{/* Spam / Unverified Collapsible Shelf */}
 								{spamBalances.length > 0 && (
-									<Collapsible open={isSpamOpen} onOpenChange={() => toggleSpamShelf(acc.id)} className="border-t pt-2">
+									<Collapsible
+										open={isSpamOpen}
+										onOpenChange={() => toggleSpamShelf(acc.id)}
+										className="border-t pt-2"
+									>
 										<div className="flex items-center justify-between text-xs text-muted-foreground">
 											<div className="flex items-center gap-1.5">
 												<ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
@@ -384,19 +400,34 @@ export function WalletListCard({ portfolioId, onAddWallet }: WalletListCardProps
 										<CollapsibleContent className="pt-2">
 											<div className="bg-muted/30 rounded border p-2 space-y-1.5 text-xs">
 												{spamBalances.map((sb) => (
-													<div key={sb.id} className="flex items-center justify-between text-muted-foreground hover:bg-muted/50 p-1.5 rounded">
+													<div
+														key={sb.id}
+														className="flex items-center justify-between text-muted-foreground hover:bg-muted/50 p-1.5 rounded"
+													>
 														<div className="flex items-center gap-2">
-															<span className="font-mono text-foreground font-medium">{sb.symbol}</span>
-															{sb.name && <span className="truncate max-w-[120px] text-[11px]">({sb.name})</span>}
+															<span className="font-mono text-foreground font-medium">
+																{sb.symbol}
+															</span>
+															{sb.name && (
+																<span className="truncate max-w-[120px] text-[11px]">
+																	({sb.name})
+																</span>
+															)}
 															<span className="font-mono text-[11px] text-muted-foreground">
-																{sb.formattedQuantity.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+																{sb.formattedQuantity.toLocaleString(undefined, {
+																	maximumFractionDigits: 4,
+																})}
 															</span>
 														</div>
 														<Button
 															variant="ghost"
 															size="sm"
 															className="h-6 text-[10px] gap-1"
-															onClick={() => toggleSpam({ variables: { balanceId: sb.id, isHidden: !sb.isHidden } })}
+															onClick={() =>
+																toggleSpam({
+																	variables: { balanceId: sb.id, isHidden: !sb.isHidden },
+																})
+															}
 														>
 															{sb.isHidden ? (
 																<>

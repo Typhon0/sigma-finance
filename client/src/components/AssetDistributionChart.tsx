@@ -1,5 +1,5 @@
-import ReactECharts from "echarts-for-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Button } from "@/components/ui/button";
 
 export interface AssetDistributionData {
@@ -156,7 +156,7 @@ export function AssetDistributionChart({
 	};
 
 	return (
-		<ReactECharts
+		<EChart
 			option={option}
 			style={{ height }}
 			opts={{ renderer: "svg" }}

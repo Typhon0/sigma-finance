@@ -1,13 +1,7 @@
 import { useQuery } from "@apollo/client";
 import { AlertTriangle, CheckCircle, Cpu, Info, ShieldCheck, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { GET_WALLET_CU_USAGE } from "@/graphql/queries/wallets";
 
@@ -54,7 +48,8 @@ export function AlchemySettingsCard() {
 						<Cpu className="h-4 w-4 text-primary" /> Alchemy API & Compute Unit Meter
 					</CardTitle>
 					<CardDescription>
-						Single-key infrastructure covering Ethereum, Base, Arbitrum, Optimism, Polygon, Solana, and Bitcoin.
+						Single-key infrastructure covering Ethereum, Base, Arbitrum, Optimism, Polygon, Solana,
+						and Bitcoin.
 					</CardDescription>
 				</div>
 				{usage?.billingMonth && (
@@ -76,7 +71,9 @@ export function AlchemySettingsCard() {
 					<Progress value={pct} className="h-2.5" />
 					<div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
 						<span>0 CUs</span>
-						<span className="text-[11px] text-amber-600/80">80% soft-throttle limit ({formatCU(max * 0.8)})</span>
+						<span className="text-[11px] text-amber-600/80">
+							80% soft-throttle limit ({formatCU(max * 0.8)})
+						</span>
 						<span>{formatCU(max)} (Free Quota)</span>
 					</div>
 				</div>
@@ -87,7 +84,9 @@ export function AlchemySettingsCard() {
 						<div>
 							<p className="font-medium">Quota Conservation Active</p>
 							<p className="text-destructive/80 mt-0.5">
-								Monthly usage has exceeded 80% (24M CUs). Automatic 12-hour background sync is temporarily throttled to guarantee zero subscription costs (€0/month). On-demand manual sync remains available.
+								Monthly usage has exceeded 80% (24M CUs). Automatic 12-hour background sync is
+								temporarily throttled to guarantee zero subscription costs (€0/month). On-demand
+								manual sync remains available.
 							</p>
 						</div>
 					</div>
@@ -97,7 +96,8 @@ export function AlchemySettingsCard() {
 						<div>
 							<p className="font-medium text-foreground">Healthy Quota Headroom</p>
 							<p className="mt-0.5">
-								Sigma Finance rate-limits blockchain calls to 25 rps and monitors Alchemy compute credits in real-time, preventing unexpected overages.
+								Sigma Finance rate-limits blockchain calls to 25 rps and monitors Alchemy compute
+								credits in real-time, preventing unexpected overages.
 							</p>
 						</div>
 					</div>

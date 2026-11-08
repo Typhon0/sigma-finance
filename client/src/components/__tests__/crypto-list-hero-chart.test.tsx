@@ -12,7 +12,7 @@ vi.mock("sonner", () => ({
 }));
 
 // Mock echarts-for-react
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-mock" />,
 }));
 
@@ -44,8 +44,8 @@ vi.mock("@apollo/client", async (importOriginal) => {
 });
 
 // Mock AssetHeroChart
-vi.mock("@/components/charts", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@/components/charts")>();
+vi.mock("@/components/charts/AssetHeroChart", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@/components/charts/AssetHeroChart")>();
 	return {
 		...actual,
 		AssetHeroChart: ({
@@ -56,7 +56,7 @@ vi.mock("@/components/charts", async (importOriginal) => {
 			data,
 			defaultBenchmark,
 			layoutId,
-		}: import("@/components/charts").AssetHeroChartProps) => (
+		}: import("@/components/charts/AssetHeroChart").AssetHeroChartProps) => (
 			<div data-testid="asset-hero-chart-mock">
 				<span data-testid="hero-title">{title}</span>
 				<span data-testid="hero-title-tooltip">{titleTooltip}</span>

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"sigma_finance/internal/domain/model"
@@ -183,6 +184,32 @@ func (b *BinanceProvider) GetCandles(ctx context.Context, req CandleRequest) (*C
 				Fallback:          true,
 				RetryAfterSeconds: int(cooldownDuration.Seconds()),
 			}
+		}
+
+		if resp.StatusCode == http.StatusBadRequest {
+			bodyBytes, _ := io.ReadAll(resp.Body)
+			resp.Body.Close()
+			var binanceErr struct {
+				Code int    `json:"code"`
+				Msg  string `json:"msg"`
+			}
+			_ = json.Unmarshal(bodyBytes, &binanceErr)
+			if binanceErr.Code == -1121 || strings.Contains(strings.ToLower(binanceErr.Msg), "invalid symbol") {
+				log.Printf("[INFO] [Binance.GetCandles] symbol %s not found on Binance: %s", symbol, binanceErr.Msg)
+				return nil, &ProviderError{
+					Provider:  b.ID(),
+					Code:      "TICKER_NOT_FOUND",
+					Message:   fmt.Sprintf("symbol %s not found on Binance: %s", symbol, binanceErr.Msg),
+					HTTPCode:  resp.StatusCode,
+					Retryable: false,
+					Fallback:  true,
+				}
+			}
+			log.Printf("[ERROR] [Binance.GetCandles] binance API error: %d, body: %s", resp.StatusCode, string(bodyBytes))
+			if len(candles) > 0 {
+				break
+			}
+			return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
 		}
 
 		if resp.StatusCode != http.StatusOK {
@@ -392,6 +419,28 @@ func (b *BinanceProvider) GetQuote(ctx context.Context, req QuoteRequest) (*Quot
 			Fallback:          true,
 			RetryAfterSeconds: int(cooldownDuration.Seconds()),
 		}
+	}
+
+	if resp.StatusCode == http.StatusBadRequest {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		var binanceErr struct {
+			Code int    `json:"code"`
+			Msg  string `json:"msg"`
+		}
+		_ = json.Unmarshal(bodyBytes, &binanceErr)
+		if binanceErr.Code == -1121 || strings.Contains(strings.ToLower(binanceErr.Msg), "invalid symbol") {
+			log.Printf("[INFO] [Binance.GetQuote] symbol %s not found on Binance: %s", symbol, binanceErr.Msg)
+			return nil, &ProviderError{
+				Provider:  b.ID(),
+				Code:      "TICKER_NOT_FOUND",
+				Message:   fmt.Sprintf("symbol %s not found on Binance: %s", symbol, binanceErr.Msg),
+				HTTPCode:  resp.StatusCode,
+				Retryable: false,
+				Fallback:  true,
+			}
+		}
+		log.Printf("[ERROR] [Binance.GetQuote] Binance API error: %d, body: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("binance API error: %d", resp.StatusCode)
 	}
 
 	if resp.StatusCode != http.StatusOK {

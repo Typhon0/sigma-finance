@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	BarChart3,
 	Calendar,
@@ -9,6 +8,7 @@ import {
 	Target,
 	TrendingUp,
 } from "lucide-react";
+import EChart from "@/components/charts/EChart";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCurrency } from "@/hooks/use-currency";
 
@@ -603,7 +603,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<CardDescription>Breakdown of remaining balance by loan type</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={debtByTypeOption}
 							style={{ height: "300px" }}
 							opts={{ renderer: "svg" }}
@@ -623,7 +623,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={healthScoreOption}
 							style={{ height: "300px" }}
 							opts={{ renderer: "svg" }}
@@ -649,7 +649,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<CardDescription>Amount paid vs remaining for each loan</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={debtProgressOption}
 							style={{ height: "400px" }}
 							opts={{ renderer: "svg" }}
@@ -667,7 +667,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<CardDescription>Monthly payment amount per loan</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={monthlyPaymentOption}
 							style={{ height: "400px" }}
 							opts={{ renderer: "svg" }}
@@ -685,7 +685,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<CardDescription>Interest rates across all loans (color-coded by rate)</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={interestRateOption}
 							style={{ height: "400px" }}
 							opts={{ renderer: "svg" }}
@@ -717,7 +717,7 @@ export function LoansAnalytics({ loans }: LoansAnalyticsProps) {
 						<CardDescription>Projected paydown timeline (next 60 months)</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={debtProjectionOption}
 							style={{ height: "400px" }}
 							opts={{ renderer: "svg" }}

@@ -1,13 +1,11 @@
-import { Check, Laptop, Layers, Moon, Palette, Sun, Type } from "lucide-react";
+import { Check, Laptop, Layers, Moon, Palette, Sparkles, Sun, TrendingUp, Type } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Theme } from "@/components/theme-provider";
 import { useTheme } from "@/components/theme-provider";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useUpdateUserThemePreferencesMutation } from "@/hooks/use-user-mutations";
-import { useAuth } from "@/lib/auth-context";
+import { useAuth } from "@/hooks/use-auth";
 import {
 	ACCENT_COLOR_OPTIONS,
 	type AccentColor,
@@ -41,15 +39,20 @@ const themes: {
 }[] = [
 	{
 		id: "light",
-		name: "Light",
-		description: "Clean and bright interface",
+		name: "Clair",
+		description: "Interface lumineuse et contrastée",
 		icon: Sun,
 	},
-	{ id: "dark", name: "Dark", description: "Easy on the eyes", icon: Moon },
+	{
+		id: "dark",
+		name: "Sombre",
+		description: "Noir d'encre reposant pour les yeux",
+		icon: Moon,
+	},
 	{
 		id: "system",
-		name: "System",
-		description: "Follows your system preference",
+		name: "Système",
+		description: "S'adapte automatiquement à votre OS",
 		icon: Laptop,
 	},
 ];
@@ -186,7 +189,7 @@ export function DisplaySettings() {
 						},
 					});
 				} catch {
-					// Silent retry - will sync on next change
+					// Silent retry
 				}
 			}, 500);
 		},
@@ -201,7 +204,7 @@ export function DisplaySettings() {
 		};
 	}, []);
 
-	// Load preferences: prefer backend user, fallback to localStorage
+	// Load preferences
 	useEffect(() => {
 		setSelectedTheme(theme);
 
@@ -236,7 +239,6 @@ export function DisplaySettings() {
 			setSelectedRtl(user.themeRTL);
 		}
 
-		// If no backend prefs, load from localStorage
 		const hasBackendThemePrefs =
 			user?.themePreference ||
 			user?.themeBaseColor ||
@@ -467,90 +469,6 @@ export function DisplaySettings() {
 		);
 	};
 
-	const handleMenuAccentChange = (value: MenuAccent) => {
-		setSelectedMenuAccent(value);
-		applyTheme(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			value,
-			selectedMenuColor,
-			selectedRtl,
-		);
-		syncToBackend(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			value,
-			selectedMenuColor,
-			selectedRtl,
-		);
-	};
-
-	const handleMenuColorChange = (value: MenuColor) => {
-		setSelectedMenuColor(value);
-		applyTheme(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			selectedMenuAccent,
-			value,
-			selectedRtl,
-		);
-		syncToBackend(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			selectedMenuAccent,
-			value,
-			selectedRtl,
-		);
-	};
-
-	const handleRtlChange = (value: boolean) => {
-		setSelectedRtl(value);
-		applyTheme(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			selectedMenuAccent,
-			selectedMenuColor,
-			value,
-		);
-		syncToBackend(
-			selectedTheme,
-			designStyle,
-			selectedBaseColor,
-			selectedAccent,
-			selectedFont,
-			selectedHeadingFont,
-			selectedRadius,
-			selectedMenuAccent,
-			selectedMenuColor,
-			value,
-		);
-	};
-
 	const resetToDefault = () => {
 		setSelectedTheme("system");
 		setDesignStyle(DEFAULT_SHADCN_THEME_PREFERENCES.style);
@@ -597,394 +515,354 @@ export function DisplaySettings() {
 			});
 		}
 
-		toast.success("Display preferences reset to default");
+		toast.success("Préférences d'affichage réinitialisées");
 	};
 
 	return (
 		<div className="space-y-6">
-			<div>
-				<h1 className="text-2xl font-semibold">Display & Theme</h1>
-				<p className="text-muted-foreground">Personalize your appearance</p>
+			{/* En-tête */}
+			<div className="flex flex-col gap-1">
+				<div className="flex items-center gap-2">
+					<Palette className="h-5 w-5 text-muted-foreground" />
+					<h1 className="text-xl font-semibold tracking-tight text-foreground">
+						Affichage & Thème
+					</h1>
+				</div>
+				<p className="text-xs text-muted-foreground">
+					Personnalisez le rendu visuel, les contrastes, la typographie et la devise d'évaluation.
+				</p>
 			</div>
 
+			{/* Sélecteur de Devise */}
 			<DisplayCurrencySelector
 				currentCurrency={displayCurrency}
 				onCurrencyChange={setDisplayCurrency}
 			/>
 
-			<Card>
-				<CardHeader>
-					<CardTitle>Appearance</CardTitle>
-					<CardDescription>Choose how the app looks</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<RadioGroup value={selectedTheme} onValueChange={handleThemeChange}>
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-							{themes.map((themeOption) => {
-								const Icon = themeOption.icon;
-								return (
-									<label
-										key={themeOption.id}
-										htmlFor={themeOption.id}
-										className={`
-											relative flex cursor-pointer rounded-lg border-2 p-4 transition-all
-											${selectedTheme === themeOption.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-										`}
-									>
-										<div className="flex flex-1 items-start gap-3">
-											<div
-												className={`
-													flex h-10 w-10 items-center justify-center rounded-lg
-													${selectedTheme === themeOption.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}
-												`}
-											>
-												<Icon className="h-5 w-5" />
-											</div>
-											<div className="flex-1">
-												<div className="flex items-center gap-2">
-													<RadioGroupItem
-														value={themeOption.id}
-														id={themeOption.id}
-														className="sr-only"
-													/>
-													<span className="font-medium">{themeOption.name}</span>
-													{selectedTheme === themeOption.id && (
-														<Check className="h-4 w-4 text-primary" />
-													)}
-												</div>
-												<p className="mt-1 text-sm text-muted-foreground">
-													{themeOption.description}
-												</p>
-											</div>
-										</div>
-									</label>
-								);
-							})}
-						</div>
-					</RadioGroup>
-				</CardContent>
-			</Card>
+			{/* Widget d'Aperçu en Direct Interactif */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4 shadow-xs">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<Sparkles className="h-4 w-4 text-primary" />
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Aperçu en Direct du Terminal
+						</h2>
+					</div>
+					<span className="text-[11px] font-mono text-muted-foreground bg-muted/30 border border-border/50 px-2 py-0.5 rounded">
+						Simulation temps réel
+					</span>
+				</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Layers className="h-5 w-5" />
-						Visual Style
-					</CardTitle>
-					<CardDescription>Choose a density and spacing preset for the interface</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-						{THEME_STYLE_OPTIONS.map((styleOption) => (
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+					{/* KPI Card Simulate */}
+					<div className="rounded-xl border border-border/60 bg-card/40 p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+								Patrimoine Net
+							</span>
+							<span className="h-2 w-2 rounded-full bg-emerald-500" />
+						</div>
+						<div className="mt-3">
+							<p className="text-2xl font-bold font-mono tracking-tight tabular-nums text-foreground">
+								{displayCurrency === "EUR"
+									? "142 850,00 €"
+									: displayCurrency === "GBP"
+										? "£142,850.00"
+										: "$142,850.00"}
+							</p>
+							<div className="mt-1 flex items-center gap-1.5 text-xs text-emerald-500 font-medium font-mono tabular-nums">
+								<TrendingUp className="h-3 w-3" />
+								<span>+2 340,00 € (+1,64%)</span>
+								<span className="text-muted-foreground text-[10px]">aujourd'hui</span>
+							</div>
+						</div>
+					</div>
+
+					{/* Sample Financial Row */}
+					<div className="md:col-span-2 rounded-xl border border-border/60 bg-card/40 divide-y divide-border/30 overflow-hidden text-xs">
+						<div className="p-2.5 px-3.5 flex items-center justify-between bg-muted/20 text-muted-foreground text-[11px] font-medium uppercase tracking-wider">
+							<span>Actif financier</span>
+							<span>Valorisation & Performance</span>
+						</div>
+						<div className="p-3 px-3.5 flex items-center justify-between hover:bg-muted/30 transition-colors">
+							<div className="flex items-center gap-2.5">
+								<div className="flex h-7 w-7 items-center justify-center rounded bg-muted/60 font-mono text-[10px] font-bold text-foreground">
+									NVDA
+								</div>
+								<div>
+									<p className="font-semibold text-foreground">NVIDIA Corporation</p>
+									<p className="text-[11px] text-muted-foreground font-mono">15.00 actions</p>
+								</div>
+							</div>
+							<div className="text-right">
+								<p className="font-mono font-medium tabular-nums text-foreground">
+									{displayCurrency === "EUR" ? "1 740,00 €" : "$1,740.00"}
+								</p>
+								<p className="text-[11px] font-mono tabular-nums text-emerald-500 font-medium">
+									+4,12%
+								</p>
+							</div>
+						</div>
+						<div className="p-3 px-3.5 flex items-center justify-between hover:bg-muted/30 transition-colors">
+							<div className="flex items-center gap-2.5">
+								<div className="flex h-7 w-7 items-center justify-center rounded bg-amber-500/10 text-amber-500 font-mono text-[10px] font-bold">
+									BTC
+								</div>
+								<div>
+									<p className="font-semibold text-foreground">Bitcoin (On-Chain)</p>
+									<p className="text-[11px] text-muted-foreground font-mono">0.45000000 BTC</p>
+								</div>
+							</div>
+							<div className="text-right">
+								<p className="font-mono font-medium tabular-nums text-foreground">
+									{displayCurrency === "EUR" ? "38 250,00 €" : "$38,250.00"}
+								</p>
+								<p className="text-[11px] font-mono tabular-nums text-emerald-500 font-medium">
+									+1,85%
+								</p>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			{/* Mode d'Apparence */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-6 space-y-4">
+				<div>
+					<h2 className="text-sm font-semibold text-foreground">Mode d'Apparence</h2>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Choisissez la tonalité globale de l'interface.
+					</p>
+				</div>
+
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+					{themes.map((themeOption) => {
+						const Icon = themeOption.icon;
+						const isSelected = selectedTheme === themeOption.id;
+						return (
+							<button
+								type="button"
+								key={themeOption.id}
+								onClick={() => handleThemeChange(themeOption.id)}
+								className={`flex items-center justify-between p-3.5 rounded-lg border text-left transition-all ${
+									isSelected
+										? "bg-secondary/70 border-primary/50 text-foreground shadow-2xs"
+										: "bg-card/20 hover:bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground"
+								}`}
+							>
+								<div className="flex items-center gap-3 min-w-0">
+									<div
+										className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-border/60 ${
+											isSelected ? "bg-primary text-primary-foreground" : "bg-muted/40 text-muted-foreground"
+										}`}
+									>
+										<Icon className="h-4 w-4" />
+									</div>
+									<div className="min-w-0">
+										<p className="text-xs font-semibold text-foreground truncate">{themeOption.name}</p>
+										<p className="text-[11px] text-muted-foreground truncate">{themeOption.description}</p>
+									</div>
+								</div>
+								{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-1.5" />}
+							</button>
+						);
+					})}
+				</div>
+			</div>
+
+			{/* Style Visuel (Presets Sigma) */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-6 space-y-4">
+				<div>
+					<div className="flex items-center gap-2">
+						<Layers className="h-4 w-4 text-muted-foreground" />
+						<h2 className="text-sm font-semibold text-foreground">Style Visuel & Densité</h2>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Préréglages d'espacement, d'élévation et d'arrondis inspirés des grands terminaux financiers.
+					</p>
+				</div>
+
+				<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+					{THEME_STYLE_OPTIONS.map((styleOption) => {
+						const isSelected = designStyle === styleOption.id;
+						return (
 							<button
 								type="button"
 								key={styleOption.id}
 								onClick={() => handleStyleChange(styleOption.id)}
-								className={`
-									flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-									${designStyle === styleOption.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-								`}
+								className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+									isSelected
+										? "bg-secondary/70 border-primary/50 text-foreground shadow-2xs"
+										: "bg-card/20 hover:bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground"
+								}`}
 							>
-								<div>
-									<p className="font-medium">{styleOption.name}</p>
-									<p className="text-sm text-muted-foreground">{styleOption.description}</p>
+								<div className="min-w-0">
+									<p className="text-xs font-semibold text-foreground">{styleOption.name}</p>
+									<p className="text-[11px] text-muted-foreground truncate">{styleOption.description}</p>
 								</div>
-								{designStyle === styleOption.id && <Check className="h-4 w-4 text-primary" />}
+								{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-2" />}
 							</button>
-						))}
-					</div>
-				</CardContent>
-			</Card>
+						);
+					})}
+				</div>
+			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Palette className="h-5 w-5" />
-						Base Color
-					</CardTitle>
-					<CardDescription>
-						The gray scale that forms the foundation of your interface
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-						{BASE_COLOR_OPTIONS.map((baseColor) => (
-							<button
-								type="button"
-								key={baseColor.id}
-								onClick={() => handleBaseColorChange(baseColor.id)}
-								className={`
-									flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-									${selectedBaseColor === baseColor.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-								`}
-							>
-								<div className="flex items-center gap-3">
+			{/* Nuancier de Base & Couleur d'Accent */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-6 space-y-5">
+				<div>
+					<h2 className="text-sm font-semibold text-foreground">Couleur de Base & Accent</h2>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Définissez la teinte neutre sous-jacente et les rehauts interactifs.
+					</p>
+				</div>
+
+				{/* Nuance de base */}
+				<div className="space-y-2">
+					<p className="text-xs font-medium text-foreground">Nuancier de fond (Gris)</p>
+					<div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+						{BASE_COLOR_OPTIONS.map((baseColor) => {
+							const isSelected = selectedBaseColor === baseColor.id;
+							return (
+								<button
+									type="button"
+									key={baseColor.id}
+									onClick={() => handleBaseColorChange(baseColor.id)}
+									className={`flex items-center gap-2 p-2 rounded-lg border text-left transition-all ${
+										isSelected
+											? "bg-secondary/70 border-primary/50 text-foreground shadow-2xs"
+											: "bg-card/20 hover:bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground"
+									}`}
+								>
 									<div
-										className="h-6 w-6 rounded-md border"
+										className="h-4 w-4 rounded-full border border-border/80 shrink-0"
 										style={{ backgroundColor: baseColor.preview }}
 									/>
-									<div>
-										<p className="font-medium">{baseColor.name}</p>
-									</div>
-								</div>
-								{selectedBaseColor === baseColor.id && <Check className="h-4 w-4 text-primary" />}
-							</button>
-						))}
+									<span className="text-xs font-medium truncate">{baseColor.name}</span>
+								</button>
+							);
+						})}
 					</div>
-				</CardContent>
-			</Card>
+				</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Palette className="h-5 w-5" />
-						Accent Color
-					</CardTitle>
-					<CardDescription>
-						Pick a dynamic shadcn color preset for buttons and highlights
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-8 gap-2 md:grid-cols-13">
-						{ACCENT_COLOR_OPTIONS.map((color) => (
+				{/* Couleur d'accent */}
+				<div className="space-y-2 pt-2">
+					<p className="text-xs font-medium text-foreground">Accent dynamique</p>
+					<div className="flex flex-wrap gap-2">
+						{ACCENT_COLOR_OPTIONS.map((color) => {
+							const isSelected = selectedAccent === color.id;
+							return (
+								<button
+									type="button"
+									key={color.id}
+									onClick={() => handleAccentChange(color.id)}
+									className={`relative h-7 w-7 rounded-full border transition-transform hover:scale-105 ${
+										isSelected
+											? "border-foreground ring-2 ring-ring ring-offset-2 ring-offset-background"
+											: "border-border/60"
+									}`}
+									style={{ backgroundColor: color.hex }}
+									title={color.name}
+								>
+									{isSelected && (
+										<Check className="absolute inset-0 m-auto h-3 w-3 text-white drop-shadow" />
+									)}
+								</button>
+							);
+						})}
+					</div>
+				</div>
+			</div>
+
+			{/* Typographie */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-6 space-y-4">
+				<div>
+					<div className="flex items-center gap-2">
+						<Type className="h-4 w-4 text-muted-foreground" />
+						<h2 className="text-sm font-semibold text-foreground">Typographie</h2>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Choisissez la famille de polices de corps et de titrage.
+					</p>
+				</div>
+
+				<div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+					{FONT_OPTIONS.map((font) => {
+						const isSelected = selectedFont === font.id;
+						return (
 							<button
 								type="button"
-								key={color.id}
-								onClick={() => handleAccentChange(color.id)}
-								className={`
-									relative h-9 w-9 rounded-md border-2 transition-transform hover:scale-105
-									${selectedAccent === color.id ? "border-foreground ring-2 ring-ring ring-offset-2 ring-offset-background" : "border-transparent"}
-								`}
-								style={{ backgroundColor: color.hex }}
-								title={color.name}
+								key={font.id}
+								onClick={() => handleFontChange(font.id)}
+								className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+									isSelected
+										? "bg-secondary/70 border-primary/50 text-foreground shadow-2xs"
+										: "bg-card/20 hover:bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground"
+								}`}
 							>
-								{selectedAccent === color.id && (
-									<Check className="absolute inset-0 m-auto h-4 w-4 text-white drop-shadow" />
-								)}
+								<div>
+									<div className="flex items-center gap-2">
+										<span className="text-xs font-medium text-foreground">{font.name}</span>
+										<span className="text-[10px] text-muted-foreground">({font.description})</span>
+									</div>
+									<p
+										className="mt-1 text-xs text-muted-foreground/80 font-normal"
+										style={{ fontFamily: font.fontFamily }}
+									>
+										Sigma Finance 123 456 €
+									</p>
+								</div>
+								{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-2" />}
 							</button>
-						))}
-					</div>
-				</CardContent>
-			</Card>
+						);
+					})}
+				</div>
+			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Type className="h-5 w-5" />
-						Font Family
-					</CardTitle>
-					<CardDescription>Choose the typeface for your interface</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<RadioGroup
-						value={selectedFont}
-						onValueChange={(value) => handleFontChange(value as FontPreference)}
-					>
-						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{FONT_OPTIONS.map((font) => (
-								<button
-									type="button"
-									key={font.id}
-									onClick={() => handleFontChange(font.id)}
-									className={`
-										relative flex cursor-pointer rounded-lg border-2 p-4 text-left transition-all
-										${selectedFont === font.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-									`}
-								>
-									<div className="flex flex-1 flex-col gap-2">
-										<div className="flex items-center gap-2">
-											<span className="font-medium">{font.name}</span>
-											{selectedFont === font.id && <Check className="h-4 w-4 text-primary" />}
-										</div>
-										<p className="text-xs text-muted-foreground">{font.description}</p>
-										<p className="mt-1 text-sm" style={{ fontFamily: font.fontFamily }}>
-											The quick brown fox
-										</p>
-									</div>
-								</button>
-							))}
-						</div>
-					</RadioGroup>
-				</CardContent>
-			</Card>
+			{/* Rayon des Angles (Corner Radius) */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-6 space-y-4">
+				<div>
+					<h2 className="text-sm font-semibold text-foreground">Arrondis des Éléments (Radius)</h2>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Ajuste la courbure des bordures de boutons, cartes et fenêtres.
+					</p>
+				</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Type className="h-5 w-5" />
-						Heading Font
-					</CardTitle>
-					<CardDescription>
-						Choose a separate typeface for headings, or inherit from body
-					</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<RadioGroup
-						value={selectedHeadingFont}
-						onValueChange={(value) => handleHeadingFontChange(value as HeadingFont)}
-					>
-						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{HEADING_FONT_OPTIONS.map((font) => (
-								<button
-									type="button"
-									key={font.id}
-									onClick={() => handleHeadingFontChange(font.id)}
-									className={`
-										relative flex cursor-pointer rounded-lg border-2 p-4 text-left transition-all
-										${selectedHeadingFont === font.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-									`}
-								>
-									<div className="flex flex-1 flex-col gap-2">
-										<div className="flex items-center gap-2">
-											<span className="font-medium">{font.name}</span>
-											{selectedHeadingFont === font.id && (
-												<Check className="h-4 w-4 text-primary" />
-											)}
-										</div>
-										<p className="text-xs text-muted-foreground">{font.description}</p>
-										{"fontFamily" in font && (
-											<p className="mt-1 text-sm" style={{ fontFamily: font.fontFamily }}>
-												The quick brown fox
-											</p>
-										)}
-									</div>
-								</button>
-							))}
-						</div>
-					</RadioGroup>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardHeader>
-					<CardTitle>Corner Radius</CardTitle>
-					<CardDescription>Match shadcn radius presets from compact to rounded</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-						{RADIUS_OPTIONS.map((radiusOption) => (
+				<div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+					{RADIUS_OPTIONS.map((radiusOption) => {
+						const isSelected = selectedRadius === radiusOption.value;
+						return (
 							<button
 								type="button"
 								key={radiusOption.id}
 								onClick={() => handleRadiusChange(radiusOption.value)}
-								className={`
-									flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-									${selectedRadius === radiusOption.value ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-								`}
+								className={`flex items-center justify-between p-3 rounded-lg border text-left transition-all ${
+									isSelected
+										? "bg-secondary/70 border-primary/50 text-foreground shadow-2xs"
+										: "bg-card/20 hover:bg-muted/30 border-border/40 text-muted-foreground hover:text-foreground"
+								}`}
 							>
-								<div>
-									<p className="font-medium">{radiusOption.label}</p>
-									<p className="text-sm text-muted-foreground">{radiusOption.description}</p>
+								<div className="min-w-0">
+									<p className="text-xs font-semibold text-foreground">{radiusOption.label}</p>
+									<p className="text-[10px] text-muted-foreground truncate">
+										{radiusOption.description}
+									</p>
 								</div>
-								{selectedRadius === radiusOption.value && (
-									<Check className="h-4 w-4 text-primary" />
-								)}
+								{isSelected && <Check className="h-3.5 w-3.5 text-primary shrink-0 ml-1.5" />}
 							</button>
-						))}
-					</div>
-				</CardContent>
-			</Card>
+						);
+					})}
+				</div>
+			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Layers className="h-5 w-5" />
-						Sidebar Menu
-					</CardTitle>
-					<CardDescription>Customize the look and feel of the sidebar navigation</CardDescription>
-				</CardHeader>
-				<CardContent className="space-y-6">
-					<div>
-						<p className="mb-3 text-sm font-medium">Menu Accent</p>
-						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{MENU_ACCENT_OPTIONS.map((option) => (
-								<button
-									type="button"
-									key={option.id}
-									onClick={() => handleMenuAccentChange(option.id)}
-									className={`
-										flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-										${selectedMenuAccent === option.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-									`}
-								>
-									<div>
-										<p className="font-medium">{option.name}</p>
-										<p className="text-sm text-muted-foreground">{option.description}</p>
-									</div>
-									{selectedMenuAccent === option.id && <Check className="h-4 w-4 text-primary" />}
-								</button>
-							))}
-						</div>
-					</div>
-					<div>
-						<p className="mb-3 text-sm font-medium">Menu Color</p>
-						<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-							{MENU_COLOR_OPTIONS.map((option) => (
-								<button
-									type="button"
-									key={option.id}
-									onClick={() => handleMenuColorChange(option.id)}
-									className={`
-										flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-										${selectedMenuColor === option.id ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-									`}
-								>
-									<div>
-										<p className="font-medium">{option.name}</p>
-										<p className="text-sm text-muted-foreground">{option.description}</p>
-									</div>
-									{selectedMenuColor === option.id && <Check className="h-4 w-4 text-primary" />}
-								</button>
-							))}
-						</div>
-					</div>
-				</CardContent>
-			</Card>
-
-			<Card>
-				<CardHeader>
-					<CardTitle>Layout Direction</CardTitle>
-					<CardDescription>Choose between left-to-right and right-to-left layout</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-						<button
-							type="button"
-							onClick={() => handleRtlChange(false)}
-							className={`
-								flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-								${!selectedRtl ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-							`}
-						>
-							<div>
-								<p className="font-medium">Left to Right</p>
-								<p className="text-sm text-muted-foreground">Default layout direction</p>
-							</div>
-							{!selectedRtl && <Check className="h-4 w-4 text-primary" />}
-						</button>
-						<button
-							type="button"
-							onClick={() => handleRtlChange(true)}
-							className={`
-								flex items-center justify-between rounded-lg border-2 p-4 text-left transition-all
-								${selectedRtl ? "border-primary bg-primary/5" : "border-border hover:bg-accent"}
-							`}
-						>
-							<div>
-								<p className="font-medium">Right to Left</p>
-								<p className="text-sm text-muted-foreground">
-									Arabic, Hebrew, and other RTL languages
-								</p>
-							</div>
-							{selectedRtl && <Check className="h-4 w-4 text-primary" />}
-						</button>
-					</div>
-				</CardContent>
-			</Card>
-
-			<div className="flex justify-end gap-3 border-t pt-4">
-				<Button variant="outline" onClick={resetToDefault}>
-					Reset to Default
+			{/* Pied de page: Réinitialisation */}
+			<div className="flex justify-end pt-2">
+				<Button
+					variant="ghost"
+					size="sm"
+					onClick={resetToDefault}
+					className="text-xs text-muted-foreground hover:text-foreground"
+				>
+					Rétablir les paramètres d'affichage par défaut
 				</Button>
 			</div>
 		</div>

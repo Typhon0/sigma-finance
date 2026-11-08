@@ -12,17 +12,18 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 
+	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
 )
 
 // ReconcileBalances reconciles cash balances under an account as AssetTypeBankAccount positions.
-func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *model.SyncConnection, account *model.Account, balances []RawBalance) (int, int, error) {
+func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *model.SyncConnection, account *model.Account, snapshot BalancesSnapshot) (int, int, error) {
 	imported := 0
 	updated := 0
 
 	activeCashCurrencies := make(map[model.Currency]bool)
 
-	for _, bal := range balances {
+	for _, bal := range snapshot.Balances {
 		if !bal.Currency.IsValid() {
 			continue
 		}
@@ -56,15 +57,18 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 			imported++
 		}
 
-		// Update latest asset price to reflect current balance
-		_ = uow.AssetPrice().UpsertPrices(ctx, []model.AssetPrice{
-			{
-				AssetID:   asset.ID,
-				Price:     bal.Amount,
-				Timestamp: time.Now(),
-				Source:    "sync",
-			},
-		})
+		// Update latest asset price to reflect current balance (only when balance is positive,
+		// respecting PostgreSQL constraint valid_price CHECK (price > 0))
+		if bal.Amount.IsPositive() {
+			_ = uow.AssetPrice().UpsertPrices(ctx, []model.AssetPrice{
+				{
+					AssetID:   asset.ID,
+					Price:     bal.Amount,
+					Timestamp: time.Now(),
+					Source:    "sync",
+				},
+			})
+		}
 
 		// Reconcile position
 		pos, posErr := uow.Position().GetByAccountAndAsset(ctx, account.ID, asset.ID)
@@ -87,6 +91,11 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 			totalCost = &cents
 		}
 
+		cashOwnership := account.OwnershipPercentage
+		if cashOwnership.IsZero() {
+			cashOwnership = decimal.NewFromInt(100)
+		}
+
 		if posErr != nil || pos == nil {
 			qty := decimal.NewFromInt(1)
 			if bal.Amount.IsZero() {
@@ -97,7 +106,7 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 				AccountID:           account.ID,
 				AssetID:             asset.ID,
 				Quantity:            qty,
-				OwnershipPercentage: decimal.NewFromInt(100),
+				OwnershipPercentage: cashOwnership,
 				QuoteCurrency:       bal.Currency,
 				AverageCostBasis:    avgCost,
 				TotalCostBasis:      totalCost,
@@ -123,34 +132,130 @@ func ReconcileBalances(ctx context.Context, uow repository.IUnitOfWork, conn *mo
 		}
 	}
 
-	// Multi-Currency Cash Liquidation: reconcile missing cash currency positions
-	existingPositions, err := uow.Position().GetPortfolioPositions(ctx, conn.PortfolioID)
-	if err == nil {
-		for _, pos := range existingPositions {
-			if pos.AccountID != account.ID {
-				continue
-			}
-
-			asset := pos.Asset
-			if asset == nil {
-				asset, _ = uow.Asset().GetByID(ctx, pos.AssetID)
-			}
-			if asset != nil && asset.Type == model.AssetTypeBankAccount {
-				curr := pos.QuoteCurrency
-				if curr == "" && asset.Symbol != nil {
-					parts := strings.Split(*asset.Symbol, "_")
-					if len(parts) > 0 {
-						curr = model.Currency(parts[0])
+	// Cross-Sync Auto-Healing: propagate updated cash balance to peer accounts sharing the same IBAN/account number
+	if account.AccountNumber != nil && strings.TrimSpace(*account.AccountNumber) != "" {
+		trimmedIBAN := strings.TrimSpace(*account.AccountNumber)
+		if len(trimmedIBAN) >= 5 {
+			peerAccounts, err := uow.Account().GetAccountsByAccountNumber(ctx, trimmedIBAN)
+			if err == nil {
+				for _, peer := range peerAccounts {
+					if peer.ID == account.ID {
+						continue
+					}
+					peerOwnership := peer.OwnershipPercentage
+					if peerOwnership.IsZero() {
+						peerOwnership = decimal.NewFromInt(100)
+					}
+					for _, bal := range snapshot.Balances {
+						if !bal.Currency.IsValid() {
+							continue
+						}
+						peerSymbol := fmt.Sprintf("%s_CASH_%s", bal.Currency, peer.ID)
+						var peerAsset *model.Asset
+						pAssets, pErr := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &peerSymbol})
+						if pErr == nil && len(pAssets) > 0 {
+							peerAsset = &pAssets[0]
+						}
+						if peerAsset == nil {
+							metaBytes, _ := json.Marshal(map[string]interface{}{
+								"account_id": peer.ID,
+								"currency":   string(bal.Currency),
+								"is_cash":    true,
+							})
+							newPeerAsset := &model.Asset{
+								Symbol:      &peerSymbol,
+								Name:        fmt.Sprintf("%s Cash (%s)", conn.InstitutionName, bal.Currency),
+								Type:        model.AssetTypeBankAccount,
+								IsTradeable: false,
+								Metadata:    metaBytes,
+							}
+							createdPeerAsset, createPErr := uow.Asset().Create(ctx, newPeerAsset)
+							if createPErr == nil {
+								peerAsset = createdPeerAsset
+							}
+						}
+						if peerAsset != nil {
+							if bal.Amount.IsPositive() {
+								_ = uow.AssetPrice().UpsertPrices(ctx, []model.AssetPrice{
+									{
+										AssetID:   peerAsset.ID,
+										Price:     bal.Amount,
+										Timestamp: time.Now(),
+										Source:    "sync_cross",
+									},
+								})
+							}
+							peerPos, peerPosErr := uow.Position().GetByAccountAndAsset(ctx, peer.ID, peerAsset.ID)
+							cents := model.Money(bal.Amount.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
+							var avgCost *decimal.Decimal
+							var totalCost *model.Money
+							if bal.Amount.IsPositive() {
+								avgCost = &bal.Amount
+								totalCost = &cents
+							}
+							if peerPosErr != nil || peerPos == nil {
+								qty := decimal.NewFromInt(1)
+								if bal.Amount.IsZero() {
+									qty = decimal.Zero
+								}
+								_, _ = uow.Position().Create(ctx, &model.Position{
+									PortfolioID:         peer.PortfolioID,
+									AccountID:           peer.ID,
+									AssetID:             peerAsset.ID,
+									Quantity:            qty,
+									OwnershipPercentage: peerOwnership,
+									QuoteCurrency:       bal.Currency,
+									AverageCostBasis:    avgCost,
+									TotalCostBasis:      totalCost,
+								})
+							} else {
+								if bal.Amount.IsZero() {
+									peerPos.Quantity = decimal.Zero
+								} else {
+									peerPos.Quantity = decimal.NewFromInt(1)
+								}
+								peerPos.AverageCostBasis = avgCost
+								peerPos.TotalCostBasis = totalCost
+								peerPos.QuoteCurrency = bal.Currency
+								_ = uow.Position().Update(ctx, peerPos)
+							}
+						}
 					}
 				}
-				if !activeCashCurrencies[curr] && !pos.Quantity.IsZero() {
-					pos.Quantity = decimal.Zero
-					pos.AverageCostBasis = nil
-					pos.TotalCostBasis = nil
-					if err := uow.Position().Update(ctx, &pos); err != nil {
-						return imported, updated, fmt.Errorf("failed to liquidate cash position: %w", err)
+			}
+		}
+	}
+
+	// Multi-Currency Cash Liquidation: reconcile missing cash currency positions strictly if snapshot is complete
+	if snapshot.IsComplete {
+		existingPositions, err := uow.Position().GetPortfolioPositions(ctx, conn.PortfolioID)
+		if err == nil {
+			for _, pos := range existingPositions {
+				if pos.AccountID != account.ID {
+					continue
+				}
+
+				asset := pos.Asset
+				if asset == nil {
+					asset, _ = uow.Asset().GetByID(ctx, pos.AssetID)
+				}
+				if asset != nil && asset.Type == model.AssetTypeBankAccount {
+					curr := pos.QuoteCurrency
+					if curr == "" && asset.Symbol != nil {
+						parts := strings.Split(*asset.Symbol, "_")
+						if len(parts) > 0 {
+							curr = model.Currency(parts[0])
+						}
 					}
-					updated++
+					if !activeCashCurrencies[curr] && !pos.Quantity.IsZero() {
+						pos.Quantity = decimal.Zero
+						pos.AverageCostBasis = nil
+						pos.TotalCostBasis = nil
+						if err := uow.Position().Update(ctx, &pos); err != nil {
+							return imported, updated, fmt.Errorf("failed to liquidate cash position: %w", err)
+						}
+						updated++
+					}
 				}
 			}
 		}
@@ -175,6 +280,22 @@ func ReconcileHoldings(
 	var holdingOrder []string
 	for _, h := range holdings {
 		sym := strings.ToUpper(strings.TrimSpace(h.Symbol))
+		if sym == "" {
+			sym = strings.ToUpper(strings.TrimSpace(h.ISIN))
+		}
+		if sym == "" {
+			sym = strings.ToUpper(strings.TrimSpace(h.ExternalID))
+		}
+		if sym == "" {
+			sym = strings.ToUpper(strings.TrimSpace(h.Name))
+		}
+		if sym == "" {
+			sym = uuid.New().String()
+		}
+		if h.Symbol == "" {
+			h.Symbol = sym
+		}
+
 		if existing, ok := aggregatedHoldings[sym]; ok {
 			existing.Quantity = existing.Quantity.Add(h.Quantity)
 			if h.TotalCostBasis != nil {
@@ -207,14 +328,32 @@ func ReconcileHoldings(
 			warnings = append(warnings, warn)
 		}
 
+		// Re-link and clean up existing UNMAPPED placeholder position if previously created
+		if !isUnmapped && h.ISIN != "" {
+			if unmappedAsset, err := uow.Asset().GetBySymbol(ctx, h.ISIN); err == nil && unmappedAsset != nil && unmappedAsset.ID != asset.ID {
+				if oldPos, err := uow.Position().GetByAccountAndAsset(ctx, account.ID, unmappedAsset.ID); err == nil && oldPos != nil {
+					oldPos.AssetID = asset.ID
+					_ = uow.Position().Update(ctx, oldPos)
+					if paRepo := uow.PortfolioAsset(); paRepo != nil {
+						_ = paRepo.DeleteByPortfolioAndAsset(ctx, conn.PortfolioID, unmappedAsset.ID)
+					}
+					_ = uow.Asset().Delete(ctx, unmappedAsset.ID)
+				}
+			}
+		}
+
 		pos, posErr := uow.Position().GetByAccountAndAsset(ctx, account.ID, asset.ID)
 		if posErr != nil || pos == nil {
+			holdingOwnership := account.OwnershipPercentage
+			if holdingOwnership.IsZero() {
+				holdingOwnership = decimal.NewFromInt(100)
+			}
 			newPos := &model.Position{
 				PortfolioID:         conn.PortfolioID,
 				AccountID:           account.ID,
 				AssetID:             asset.ID,
 				Quantity:            h.Quantity,
-				OwnershipPercentage: decimal.NewFromInt(100),
+				OwnershipPercentage: holdingOwnership,
 				QuoteCurrency:       h.Currency,
 				AverageCostBasis:    h.CostBasisPerUnit,
 				TotalCostBasis:      h.TotalCostBasis,
@@ -243,6 +382,18 @@ func ReconcileHoldings(
 
 		// Keep portfolio_asset synchronized with holding quantities
 		syncPortfolioAssetForHolding(ctx, uow, conn.PortfolioID, asset, h.Quantity, h.CostBasisPerUnit, h.Currency)
+
+		// Record live price from sync holding if provided and positive
+		if h.CurrentPrice != nil && h.CurrentPrice.IsPositive() {
+			_ = uow.AssetPrice().UpsertPrices(ctx, []model.AssetPrice{
+				{
+					AssetID:   asset.ID,
+					Price:     *h.CurrentPrice,
+					Timestamp: time.Now(),
+					Source:    "sync",
+				},
+			})
+		}
 
 		// Trigger historical backfill asynchronously if asset has an instrument
 		if instrumentService != nil && asset.InstrumentID != nil && *asset.InstrumentID != "" {
@@ -385,6 +536,12 @@ func ReconcileTransactions(ctx context.Context, uow repository.IUnitOfWork, conn
 	updated := 0
 
 	for _, rawTx := range txs {
+		if rawTx.Amount == 0 {
+			// Skip zero-amount transactions (e.g. card verification checks or pre-authorizations)
+			// to satisfy database check constraint valid_amount CHECK (amount != 0)
+			continue
+		}
+
 		if rawTx.ExternalID != "" && conn.AccountID != nil {
 			existing, err := uow.Transaction().FindByAccountAndExternalID(ctx, *conn.AccountID, rawTx.ExternalID)
 			if err == nil && existing != nil {
@@ -671,7 +828,7 @@ func resolveOrCreateAsset(
 
 	// 2. Try finding by ISIN via Instrument Catalog
 	if holding.ISIN != "" {
-		inst, err := uow.Instrument().GetByGlobalIdentifier(ctx, "isin", holding.ISIN)
+		inst, err := uow.Instrument().ResolveByGlobalIdentifier(ctx, "isin", holding.ISIN, holding.Currency)
 		if err == nil && inst != nil {
 			asset, err := uow.Asset().GetByInstrumentID(ctx, inst.ID)
 			if err == nil && asset != nil {
@@ -683,7 +840,14 @@ func resolveOrCreateAsset(
 	}
 
 	// 3. Try InstrumentSearchService (Local + Online Discovery) if available
-	if instrumentService != nil && holding.Symbol != "" {
+	searchTerm := holding.Symbol
+	if searchTerm == "" || searchTerm == holding.ISIN {
+		if holding.Name != "" && holding.Name != holding.ISIN {
+			searchTerm = holding.Name
+		}
+	}
+
+	if instrumentService != nil && searchTerm != "" {
 		var assetTypes []model.InstrumentAssetType
 		if holding.AssetType == model.AssetTypeCrypto {
 			assetTypes = []model.InstrumentAssetType{model.InstrumentAssetTypeCrypto}
@@ -701,7 +865,7 @@ func resolveOrCreateAsset(
 		}
 
 		// 3a. Search Local Catalog
-		searchRes, err := instrumentService.SearchLocal(ctx, holding.Symbol, filter, nil)
+		searchRes, err := instrumentService.SearchLocal(ctx, searchTerm, filter, nil)
 		if err == nil && searchRes != nil {
 			for _, res := range searchRes.LocalResults {
 				inst := res.Instrument
@@ -711,7 +875,24 @@ func resolveOrCreateAsset(
 				if holding.AssetType == model.AssetTypeCrypto && inst.AssetType != model.InstrumentAssetTypeCrypto {
 					continue
 				}
-				if strings.EqualFold(inst.NormalizedSymbol, holding.Symbol) || (res.MatchedAlias != nil && strings.EqualFold(*res.MatchedAlias, holding.Symbol)) {
+				normSym := strings.ToLower(inst.NormalizedSymbol)
+				targetSym := strings.ToLower(searchTerm)
+				isMatch := normSym == targetSym ||
+					strings.TrimSuffix(normSym, ".pa") == targetSym ||
+					strings.TrimSuffix(normSym, ".as") == targetSym ||
+					strings.TrimSuffix(normSym, ".br") == targetSym ||
+					strings.TrimSuffix(normSym, ".de") == targetSym ||
+					normSym == targetSym+".pa" ||
+					(res.MatchedAlias != nil && strings.EqualFold(*res.MatchedAlias, searchTerm)) ||
+					strings.EqualFold(inst.NormalizedName, strings.ToLower(searchTerm))
+
+				if isMatch {
+					// If instrument lacks an ISIN and holding has one, heal instrument in catalog
+					if (inst.ISIN == nil || *inst.ISIN == "") && holding.ISIN != "" {
+						inst.ISIN = &holding.ISIN
+						_ = uow.Instrument().Update(ctx, inst)
+					}
+
 					asset, err := uow.Asset().GetByInstrumentID(ctx, inst.ID)
 					if err == nil && asset != nil {
 						return asset, false, nil
@@ -722,13 +903,22 @@ func resolveOrCreateAsset(
 		}
 
 		// 3b. Search Online Discovery (e.g. CoinMarketCap API for Crypto)
-		onlineRes, err := instrumentService.SearchOnline(ctx, holding.Symbol, filter, nil)
+		onlineRes, err := instrumentService.SearchOnline(ctx, searchTerm, filter, nil)
 		if err == nil && onlineRes != nil {
 			for _, disc := range onlineRes.OnlineResults {
 				if holding.AssetType == model.AssetTypeCrypto && disc.AssetType != model.InstrumentAssetTypeCrypto {
 					continue
 				}
-				if strings.EqualFold(disc.Symbol, holding.Symbol) {
+				discSym := strings.ToLower(disc.Symbol)
+				targetSym := strings.ToLower(searchTerm)
+				isOnlineMatch := discSym == targetSym ||
+					strings.TrimSuffix(discSym, ".pa") == targetSym ||
+					strings.TrimSuffix(discSym, ".as") == targetSym ||
+					strings.TrimSuffix(discSym, ".br") == targetSym ||
+					strings.TrimSuffix(discSym, ".de") == targetSym ||
+					discSym == targetSym+".pa"
+
+				if isOnlineMatch {
 					details, persistErr := instrumentService.PersistDiscoveredInstrument(ctx, service.PersistDiscoveredInstrumentInput{
 						Instrument: disc,
 					}, nil)
@@ -791,9 +981,30 @@ func createAssetFromInstrument(ctx context.Context, uow repository.IUnitOfWork, 
 
 	instID := inst.ID
 	sym := inst.NormalizedSymbol
-	name := inst.NormalizedName
+	name := strings.TrimSpace(inst.Name)
+	if name == "" {
+		name = inst.NormalizedName
+	}
 	if name == "" {
 		name = sym
+	}
+
+	var metaBytes []byte
+	sec := ""
+	if inst.Sector != nil {
+		sec = *inst.Sector
+	}
+	ind := ""
+	if inst.Industry != nil {
+		ind = *inst.Industry
+	}
+	if sec != "" || inst.Exchange != "" || ind != "" {
+		meta := model.StockMetadata{
+			Sector:   sec,
+			Exchange: inst.Exchange,
+			Industry: ind,
+		}
+		metaBytes, _ = json.Marshal(meta)
 	}
 
 	newAsset := &model.Asset{
@@ -803,6 +1014,7 @@ func createAssetFromInstrument(ctx context.Context, uow repository.IUnitOfWork, 
 		Type:             assetType,
 		IsTradeable:      true,
 		MarketDataSource: &inst.ProviderSource,
+		Metadata:         metaBytes,
 	}
 
 	created, err := uow.Asset().UpsertTradeable(ctx, newAsset)

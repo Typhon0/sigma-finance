@@ -1,7 +1,7 @@
-import ReactECharts from "echarts-for-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { BarChart3, ChevronDown, Layers, LayoutGrid, PieChart, Sparkles, X } from "lucide-react";
 import { memo, useCallback, useId, useMemo, useRef, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { useTheme } from "@/components/theme-provider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -469,7 +469,7 @@ export const AllocationWidget = memo(function AllocationWidget({
 							<div className="flex items-center gap-3 h-[200px] my-auto">
 								{/* Donut Chart with Dynamic Interactive Center */}
 								<div className="relative w-[140px] h-[140px] shrink-0 mx-auto sm:mx-0">
-									<ReactECharts
+									<EChart
 										ref={(e) => {
 											// biome-ignore lint/suspicious/noExplicitAny: ECharts instance
 											echartsInstanceRef.current = (e as any)?.getEchartsInstance?.() ?? null;
@@ -599,7 +599,7 @@ export const AllocationWidget = memo(function AllocationWidget({
 						{/* ── View: Treemap Grid ── */}
 						{chartType === "treemap" && (
 							<div className="h-[200px] w-full relative my-auto overflow-hidden rounded-md">
-								<ReactECharts
+								<EChart
 									key={`treemap-${activeMode}`}
 									option={treemapOption}
 									notMerge={true}

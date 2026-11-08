@@ -5,7 +5,8 @@ type Transaction {
     portfolio: Portfolio!
     accountId: ID
     account: Account
-    asset: Asset!
+    asset: Asset
+    amount: Float
     transactionType: TransactionType!
     quantity: Float!
     unitPriceAmount: Float
@@ -33,6 +34,7 @@ enum TransactionType {
 input TransactionFilter {
     userID: ID
     portfolioID: ID
+    accountID: ID
     assetID: ID
     transactionType: TransactionType
     dateFrom: Time

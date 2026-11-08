@@ -46,6 +46,13 @@ export interface GroupByOption<T> {
 	isClickableAccount?: boolean;
 }
 
+export interface KnownAccountGroup {
+	id?: string;
+	name: string;
+	syncStatus?: string;
+	totalValue?: number;
+}
+
 export type TableRowModel<T> =
 	| {
 			kind: "group";
@@ -61,6 +68,13 @@ export type TableRowModel<T> =
 			collapsed: boolean;
 			items: T[];
 			isClickableAccount?: boolean;
+			syncStatus?: string;
+	  }
+	| {
+			kind: "empty-group";
+			key: string;
+			groupName: string;
+			syncStatus?: string;
 	  }
 	| {
 			kind: "position";
@@ -107,12 +121,16 @@ export interface PositionsDataTableProps<T extends BasePositionItem> {
 	formatQuantity?: (qty: number) => string;
 	onSelectAsset?: (symbol: string, item: T) => void;
 	onSelectAccount?: (accountName: string) => void;
+	knownAccountGroups?: KnownAccountGroup[];
+	onAddPositionToAccount?: (accountName: string) => void;
 	onDeletePosition?: (item: T) => void;
 	onRefreshPrice?: (item: T) => void;
 	csvFilename?: string;
 	csvHeaders?: string[];
 	csvRowMapper?: (item: T) => (string | number | null | undefined)[];
 	emptyMessage?: string;
+	emptyGroupMessage?: string;
+	hideEmptyAccounts?: boolean;
 	className?: string;
 	focusedSymbol?: string | null;
 }

@@ -4,10 +4,9 @@ import { ProtectedRoute } from "@/components/auth/protected-route";
 
 export const Route = createLazyFileRoute("/_app/assets/savings")({
 	component: () => {
-		const navigate = useNavigate();
 		return (
 			<ProtectedRoute>
-				<SavingsList onBack={() => navigate({ to: "/portfolios" })} detailMode="panel" />
+				<SavingsList detailMode="panel" />
 			</ProtectedRoute>
 		);
 	},

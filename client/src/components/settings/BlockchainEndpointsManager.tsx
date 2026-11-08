@@ -1,16 +1,10 @@
-import { useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import { CheckCircle2, Edit, Globe, RefreshCw, RotateCcw, Server } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
 	Dialog,
 	DialogContent,
@@ -29,12 +23,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+import type { BlockchainNetwork } from "@/gql/graphql";
 import {
 	RESET_BLOCKCHAIN_NETWORK_CONFIG,
 	UPDATE_BLOCKCHAIN_NETWORK_CONFIG,
 } from "@/graphql/mutations/wallets";
 import { GET_BLOCKCHAIN_NETWORK_CONFIGS } from "@/graphql/queries/wallets";
-import { BlockchainNetwork } from "@/gql/graphql";
 
 export function BlockchainEndpointsManager() {
 	const { data, loading, refetch } = useQuery(GET_BLOCKCHAIN_NETWORK_CONFIGS, {
@@ -101,87 +95,120 @@ export function BlockchainEndpointsManager() {
 
 	return (
 		<div className="space-y-4">
-			<Card>
-				<CardHeader className="flex flex-row items-center justify-between pb-3">
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<div className="p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/40">
 					<div>
-						<CardTitle className="text-base font-semibold flex items-center gap-2">
+						<h3 className="text-base font-semibold flex items-center gap-2 text-foreground">
 							<Server className="h-4 w-4 text-primary" />
 							Blockchain RPC & Explorer Endpoints
-						</CardTitle>
-						<CardDescription className="text-xs">
-							Configurez des nœuds RPC privés ou des endpoints Esplora/Blockscout personnalisés pour un suivi 100% autonome et privé.
-						</CardDescription>
+						</h3>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Configurez des nœuds RPC privés ou des endpoints Esplora/Blockscout personnalisés pour
+							un suivi 100% autonome et privé.
+						</p>
 					</div>
-					<Button variant="outline" size="sm" onClick={() => refetch()} className="h-8 gap-1.5 text-xs">
-						<RefreshCw className="h-3.5 w-3.5" />
-						Refresh
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => refetch()}
+						className="h-8 gap-1.5 text-xs border-border/60 bg-card/30"
+					>
+						<RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+						Actualiser
 					</Button>
-				</CardHeader>
-				<CardContent>
-					{loading && configs.length === 0 ? (
-						<p className="text-xs text-muted-foreground py-4 text-center">Chargement des endpoints...</p>
-					) : (
-						<div className="rounded-md border overflow-hidden">
-							<Table>
-								<TableHeader>
-									<TableRow className="bg-muted/30">
-										<TableHead className="w-[140px] text-xs font-semibold">Réseau</TableHead>
-										<TableHead className="text-xs font-semibold">RPC Endpoint URL</TableHead>
-										<TableHead className="text-xs font-semibold">Explorer API</TableHead>
-										<TableHead className="w-[120px] text-xs font-semibold">Source</TableHead>
-										<TableHead className="w-[80px] text-right text-xs font-semibold">Action</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{configs.map((c) => (
-										<TableRow key={c.network} className="text-xs font-mono">
-											<TableCell className="font-semibold font-sans">{c.network}</TableCell>
-											<TableCell className="truncate max-w-[260px] text-muted-foreground" title={c.rpcUrl}>
-												{c.rpcUrl}
-											</TableCell>
-											<TableCell className="truncate max-w-[180px] text-muted-foreground" title={c.explorerApiUrl || "N/A"}>
-												{c.explorerApiUrl || "—"}
-											</TableCell>
-											<TableCell className="font-sans">
-												{c.source === "DATABASE" ? (
-													<Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600 border-purple-500/20">
-														Database
-													</Badge>
-												) : c.source === "CONFIGURED_ENV" || c.source === "ENV" ? (
-													<Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/20">
-														Configured Env
-													</Badge>
-												) : (
-													<Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground">
-														Default Public
-													</Badge>
-												)}
-											</TableCell>
-											<TableCell className="text-right font-sans">
-												<Button
-													variant="ghost"
-													size="sm"
-													className="h-7 px-2 text-xs gap-1"
-													onClick={() =>
-														setEditingConfig({
-															network: c.network as BlockchainNetwork,
-															rpcUrl: c.rpcUrl,
-															explorerApiUrl: c.explorerApiUrl || "",
-														})
-													}
-												>
-													<Edit className="h-3 w-3" />
-													Modifier
-												</Button>
-											</TableCell>
-										</TableRow>
-									))}
-								</TableBody>
-							</Table>
-						</div>
-					)}
-				</CardContent>
-			</Card>
+				</div>
+
+				{loading && configs.length === 0 ? (
+					<p className="text-xs text-muted-foreground py-8 text-center">
+						Chargement des endpoints...
+					</p>
+				) : (
+					<Table>
+						<TableHeader>
+							<TableRow className="border-b border-border/40 bg-muted/20 hover:bg-muted/20">
+								<TableHead className="w-[140px] text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Réseau
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									RPC Endpoint URL
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Explorer API
+								</TableHead>
+								<TableHead className="w-[130px] text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Source
+								</TableHead>
+								<TableHead className="w-[80px] text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Action
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{configs.map((c) => (
+								<TableRow key={c.network} className="text-xs font-mono">
+									<TableCell className="font-semibold font-sans">{c.network}</TableCell>
+									<TableCell
+										className="truncate max-w-[260px] text-muted-foreground"
+										title={c.rpcUrl}
+									>
+										{c.rpcUrl}
+									</TableCell>
+									<TableCell
+										className="truncate max-w-[180px] text-muted-foreground"
+										title={c.explorerApiUrl || "N/A"}
+									>
+										{c.explorerApiUrl || "—"}
+									</TableCell>
+									<TableCell className="font-sans">
+										{c.source === "DATABASE" ? (
+											<Badge
+												variant="outline"
+												className="text-[10px] font-mono gap-1 border-purple-500/20 bg-purple-500/10 text-purple-600 dark:text-purple-400"
+											>
+												<span className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+												Database
+											</Badge>
+										) : c.source === "CONFIGURED_ENV" || c.source === "ENV" ? (
+											<Badge
+												variant="outline"
+												className="text-[10px] font-mono gap-1 border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400"
+											>
+												<span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+												Configured Env
+											</Badge>
+										) : (
+											<Badge
+												variant="outline"
+												className="text-[10px] font-mono gap-1 border-border/60 bg-muted/20 text-muted-foreground"
+											>
+												<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+												Default Public
+											</Badge>
+										)}
+									</TableCell>
+									<TableCell className="text-right font-sans">
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-7 px-2 text-xs gap-1"
+											onClick={() =>
+												setEditingConfig({
+													network: c.network as BlockchainNetwork,
+													rpcUrl: c.rpcUrl,
+													explorerApiUrl: c.explorerApiUrl || "",
+												})
+											}
+										>
+											<Edit className="h-3 w-3" />
+											Modifier
+										</Button>
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+					</Table>
+				)}
+			</div>
 
 			{/* Modal d'édition de l'endpoint */}
 			{editingConfig && (
@@ -194,7 +221,8 @@ export function BlockchainEndpointsManager() {
 									Modifier Endpoint {editingConfig.network}
 								</DialogTitle>
 								<DialogDescription>
-									Spécifiez une URL JSON-RPC personnalisée (par exemple votre propre nœud local, Infura, Ankr ou PublicNode).
+									Spécifiez une URL JSON-RPC personnalisée (par exemple votre propre nœud local,
+									Infura, Ankr ou PublicNode).
 								</DialogDescription>
 							</DialogHeader>
 
@@ -215,7 +243,9 @@ export function BlockchainEndpointsManager() {
 									<Input
 										id="explorer-url"
 										value={editingConfig.explorerApiUrl}
-										onChange={(e) => setEditingConfig({ ...editingConfig, explorerApiUrl: e.target.value })}
+										onChange={(e) =>
+											setEditingConfig({ ...editingConfig, explorerApiUrl: e.target.value })
+										}
 										placeholder="https://..."
 										className="font-mono text-xs"
 									/>
@@ -238,7 +268,12 @@ export function BlockchainEndpointsManager() {
 									Reset Default
 								</Button>
 								<div className="flex items-center gap-2">
-									<Button type="button" variant="ghost" size="sm" onClick={() => setEditingConfig(null)}>
+									<Button
+										type="button"
+										variant="ghost"
+										size="sm"
+										onClick={() => setEditingConfig(null)}
+									>
 										Annuler
 									</Button>
 									<Button type="submit" size="sm" disabled={updating} className="gap-1.5">
@@ -254,4 +289,3 @@ export function BlockchainEndpointsManager() {
 		</div>
 	);
 }
-

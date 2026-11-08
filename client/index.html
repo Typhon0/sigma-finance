@@ -4,15 +4,31 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
     <title>ΣFinance</title>
     <script>
+      // Apply theme + design style before first paint. React used to add these
+      // classes in an effect, so a dark-theme user saw a white flash on every
+      // full load. Keep the keys in sync with lib/theme/shadcn-theme.ts and
+      // providers/design-system-provider.tsx.
       (() => {
-        var style, valid;
+        var root = document.documentElement;
         try {
-          style = localStorage.getItem("sigma-finance-design-system");
-          valid = ["vega","nova","maia","lyra","mira","luma","sera"];
+          var theme = localStorage.getItem("theme_preference") || "system";
+          var dark =
+            theme === "dark" ||
+            (theme !== "light" &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches);
+          root.classList.toggle("dark", dark);
+          root.classList.toggle("light", !dark);
+          root.style.colorScheme = dark ? "dark" : "light";
+
+          var style = localStorage.getItem("sigma-finance-design-system");
+          var valid = ["vega","nova","maia","lyra","mira","luma","sera"];
           if (style && valid.indexOf(style) !== -1) {
-            document.documentElement.dataset.style = style;
+            root.dataset.style = style;
           }
         } catch (_e) {}
       })();

@@ -15,7 +15,6 @@ export {
 	DashboardTransition,
 } from "./dashboard-transitions";
 export { InlineAssetDetail } from "./inline-asset-detail";
-export { InlinePortfolioDetail } from "./inline-portfolio-detail";
 export type {
 	AlertFormData,
 	PerformanceAlert,

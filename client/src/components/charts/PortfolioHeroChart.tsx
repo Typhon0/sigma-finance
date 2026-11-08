@@ -1,7 +1,7 @@
-import ReactECharts from "echarts-for-react";
 import { Activity, AlertTriangle, Loader2 } from "lucide-react";
 import { useMemo } from "react";
 import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
+import EChart from "@/components/charts/EChart";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrency } from "@/hooks/use-currency";
@@ -190,20 +190,15 @@ export function PortfolioHeroChart({
 	const displayData = useMemo(() => downsampleLTTB(filteredData, 350), [filteredData]);
 	const axisDateFormat = useMemo(() => {
 		if (timeRange === "1D") return "hour";
-		if (timeRange === "7D" || timeRange === "1M" || timeRange === "3M") return "day";
-		if (timeRange === "YTD" || timeRange === "1Y") return "month";
-		if (timeRange === "ALL") {
-			if (filteredData.length < 2) return "month";
-			const firstTime = new Date(filteredData[0].date).getTime();
-			const lastTime = new Date(filteredData[filteredData.length - 1].date).getTime();
-			const spanDays = Math.max(1, (lastTime - firstTime) / (1000 * 60 * 60 * 24));
-			if (spanDays <= 90) return "day";
-			if (spanDays <= 730) return "month";
-			return "year";
-		}
-		if (filteredData.length > 365) return "year";
-		if (filteredData.length > 90) return "month";
-		return "day";
+		if (filteredData.length < 2) return "day";
+		const firstTime = new Date(filteredData[0].date).getTime();
+		const lastTime = new Date(filteredData[filteredData.length - 1].date).getTime();
+		const spanDays = Math.max(0, (lastTime - firstTime) / (1000 * 60 * 60 * 24));
+
+		if (spanDays <= 1.5) return "hour";
+		if (spanDays <= 35) return "day";
+		if (spanDays <= 730) return "month";
+		return "year";
 	}, [filteredData, timeRange]);
 	const benchmarkName =
 		benchmarkMode === "sp500"
@@ -326,8 +321,7 @@ export function PortfolioHeroChart({
 
 		if (firstRealClose <= 0) return [];
 
-		const latestPortfolioValue =
-			displayData[displayData.length - 1]?.portfolioValue ?? totalEquity;
+		const latestPortfolioValue = displayData[displayData.length - 1]?.portfolioValue ?? totalEquity;
 
 		const startsNearZero =
 			firstPortfolioValue <= 0 ||
@@ -495,7 +489,14 @@ export function PortfolioHeroChart({
 				axisLine: { show: false },
 				axisTick: { show: false },
 				splitLine: { show: false },
-				minInterval: axisDateFormat === "year" ? 365 * 24 * 3600 * 1000 : undefined,
+				minInterval:
+					axisDateFormat === "year"
+						? 365 * 24 * 3600 * 1000
+						: axisDateFormat === "month"
+							? 28 * 24 * 3600 * 1000
+							: axisDateFormat === "day"
+								? 24 * 3600 * 1000
+								: undefined,
 				axisLabel: {
 					color: themeColors.mutedForeground,
 					fontSize: 11,
@@ -519,7 +520,7 @@ export function PortfolioHeroChart({
 							});
 						}
 						return date.toLocaleDateString("en-US", {
-							month: "numeric",
+							month: "short",
 							day: "numeric",
 						});
 					},
@@ -644,7 +645,7 @@ export function PortfolioHeroChart({
 		);
 	}
 
-	if (loading) {
+	if (loading && displayData.length === 0) {
 		return (
 			<Card className="relative overflow-hidden border-border/60 bg-transparent shadow-none h-full w-full min-h-[300px]">
 				<PortfolioHeroChartSkeleton />
@@ -671,7 +672,7 @@ export function PortfolioHeroChart({
 	return (
 		<div className="w-full h-full flex flex-col">
 			<div className="relative flex-1 min-h-0">
-				<ReactECharts
+				<EChart
 					option={chartOption}
 					notMerge={true}
 					lazyUpdate={true}

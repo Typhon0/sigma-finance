@@ -81,8 +81,8 @@ export function TransactionHistory({
 			const query = searchQuery.toLowerCase();
 			filtered = filtered.filter(
 				(transaction) =>
-					transaction.asset.name.toLowerCase().includes(query) ||
-					transaction.asset.symbol?.toLowerCase().includes(query) ||
+					(transaction.asset?.name || "").toLowerCase().includes(query) ||
+					(transaction.asset?.symbol || "").toLowerCase().includes(query) ||
 					transaction.portfolio.name.toLowerCase().includes(query) ||
 					transaction.notes?.toLowerCase().includes(query) ||
 					transaction.transactionType.toLowerCase().includes(query),
@@ -121,8 +121,8 @@ export function TransactionHistory({
 					bValue = b.transactionType;
 					break;
 				case "asset":
-					aValue = a.asset.name;
-					bValue = b.asset.name;
+					aValue = a.asset?.name || "";
+					bValue = b.asset?.name || "";
 					break;
 				case "amount":
 					aValue = a.quantity * (a.unitPriceAmount ?? 0);
@@ -435,8 +435,10 @@ function TransactionRow({
 			{showAssetColumn && (
 				<TableCell>
 					<div>
-						<div className="font-medium">{transaction.asset.name}</div>
-						{transaction.asset.symbol && (
+						<div className="font-medium">
+							{transaction.asset?.name || transaction.notes || "Transaction"}
+						</div>
+						{transaction.asset?.symbol && (
 							<div className="text-sm text-muted-foreground font-mono">
 								{transaction.asset.symbol}
 							</div>
@@ -526,8 +528,10 @@ function CompactTransactionList({
 								<Badge variant="outline" className={typeColor}>
 									{transactionValidationHelpers.formatTransactionType(transaction.transactionType)}
 								</Badge>
-								<span className="font-medium">{transaction.asset.name}</span>
-								{transaction.asset.symbol && (
+								<span className="font-medium">
+									{transaction.asset?.name || transaction.notes || "Transaction"}
+								</span>
+								{transaction.asset?.symbol && (
 									<span className="text-sm text-muted-foreground font-mono">
 										({transaction.asset.symbol})
 									</span>

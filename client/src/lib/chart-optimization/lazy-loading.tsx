@@ -18,7 +18,7 @@ export const LazyLightweightCharts = lazy(() =>
 ) as unknown as React.LazyExoticComponent<React.ComponentType<Record<string, unknown>>>;
 
 export const LazyECharts = lazy(() =>
-	import("echarts-for-react")
+	import("@/components/charts/EChart")
 		.then((module) => ({
 			default: module.default,
 		}))
@@ -195,11 +195,11 @@ class ChartLibraryLoader {
 		}
 
 		const loadPromise = Promise.all([
-			import("echarts").catch(() => ({})),
-			import("echarts-for-react"),
+			import("@/lib/charts/echarts-core"),
+			import("@/components/charts/EChart"),
 		])
-			.then(([echarts, echartsForReact]) => {
-				const module = { echarts, ReactECharts: echartsForReact.default };
+			.then(([echartsCore, echartsForReact]) => {
+				const module = { echarts: echartsCore.echarts, ReactECharts: echartsForReact.default };
 				this.loadedLibraries.set(key, module);
 				return module;
 			})

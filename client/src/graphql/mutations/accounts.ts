@@ -12,6 +12,14 @@ export const CREATE_ACCOUNT = gql`
       accountNumber
       currency
       syncProvider
+      ownershipPercentage
+      coOwnerName
+      coOwnerUserId
+      coOwnerUser {
+        id
+        username
+        email
+      }
       externalId
       syncConnection {
         id
@@ -40,6 +48,14 @@ export const UPDATE_ACCOUNT = gql`
       accountNumber
       currency
       syncProvider
+      ownershipPercentage
+      coOwnerName
+      coOwnerUserId
+      coOwnerUser {
+        id
+        username
+        email
+      }
       externalId
       syncConnection {
         id

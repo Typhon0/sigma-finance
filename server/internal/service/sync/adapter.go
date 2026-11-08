@@ -34,13 +34,14 @@ var (
 
 // RawAccount represents an external institution account discovered via an adapter.
 type RawAccount struct {
-	ExternalID    string
-	Name          string
-	Type          model.AccountType
-	TaxWrapper    model.TaxWrapperType
-	Institution   string
-	AccountNumber string
-	Currency      model.Currency
+	ExternalID        string
+	Name              string
+	Type              model.AccountType
+	TaxWrapper        model.TaxWrapperType
+	Institution       string
+	AccountNumber     string
+	CashAccountNumber string
+	Currency          model.Currency
 }
 
 // RawBalance represents cash balance in an external account.
@@ -48,6 +49,14 @@ type RawBalance struct {
 	Currency  model.Currency
 	Amount    decimal.Decimal
 	Available *decimal.Decimal
+}
+
+// BalancesSnapshot represents an authoritative or partial snapshot of cash balances.
+type BalancesSnapshot struct {
+	Balances   []RawBalance
+	IsComplete bool
+	AsOf       time.Time
+	Warnings   []string
 }
 
 // RawHolding represents a security or crypto asset position held in an external account.
@@ -64,9 +73,21 @@ type RawHolding struct {
 	Currency         model.Currency
 }
 
+// HoldingsSnapshot represents an authoritative or partial snapshot of portfolio holdings.
+type HoldingsSnapshot struct {
+	Holdings       []RawHolding
+	IsComplete     bool
+	AsOf           time.Time
+	Warnings       []string
+	PaginationDone bool
+}
+
 // RawTransaction represents an external trade, cash flow, dividend, or fee record.
 type RawTransaction struct {
 	ExternalID        string
+	SourceStream      string
+	OriginalID        string
+	Status            string
 	Type              model.TransactionType
 	Symbol            string
 	Name              string
@@ -80,6 +101,20 @@ type RawTransaction struct {
 	FeesCurrency      model.Currency
 	ExecutedAt        time.Time
 	Notes             string
+	RawPayload        []byte
+}
+
+// StreamCursors maps stream identifiers (e.g. timeline topic names) to pagination cursors.
+type StreamCursors map[string]string
+
+// TransactionsSnapshot represents an authoritative or partial batch of transactions.
+type TransactionsSnapshot struct {
+	Transactions       []RawTransaction
+	UnrecognizedEvents []*model.SyncRawEvent
+	NextCursor         *string
+	StreamCursors      StreamCursors
+	IsComplete         bool
+	PaginationDone     bool
 }
 
 // SyncAdapter defines the provider contract for external account synchronization.
@@ -87,7 +122,7 @@ type SyncAdapter interface {
 	Provider() string
 	TestConnection(ctx context.Context, cred *model.SyncCredential) error
 	FetchAccounts(ctx context.Context, cred *model.SyncCredential) ([]RawAccount, error)
-	FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]RawBalance, error)
-	FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]RawHolding, error)
-	FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time) ([]RawTransaction, error)
+	FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (BalancesSnapshot, error)
+	FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (HoldingsSnapshot, error)
+	FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time, cursors StreamCursors) (TransactionsSnapshot, error)
 }

@@ -1,9 +1,8 @@
-import { useMutation } from "@apollo/client";
+import { useMutation, useQuery } from "@apollo/client";
 import { RefreshCw, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
-import { AddWalletDialog } from "@/features/wallets";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -22,8 +21,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { AddWalletDialog } from "@/features/wallets";
 import { CREATE_ACCOUNT } from "@/graphql/mutations/accounts";
-import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
+import { GET_ACCOUNTS, GET_CO_OWNER_CANDIDATES } from "@/graphql/queries/accounts";
+import { invalidateDashboardData, invalidatePortfolioQueries } from "@/hooks/use-asset-management";
 
 interface CreateAccountDialogProps {
 	open: boolean;
@@ -39,18 +40,30 @@ export function CreateAccountDialog({
 	onSuccess,
 }: CreateAccountDialogProps) {
 	const [name, setName] = useState("");
-	const [type, setType] = useState<"BROKER" | "BANK" | "CRYPTO_EXCHANGE" | "CRYPTO_WALLET" | "OTHER">("BROKER");
+	const [type, setType] = useState<
+		"BROKER" | "BANK" | "CRYPTO_EXCHANGE" | "CRYPTO_WALLET" | "OTHER"
+	>("BROKER");
 	const [taxWrapper, setTaxWrapper] = useState<
 		"STANDARD_TAXABLE" | "PEA" | "RETIREMENT_SHELTERED" | "CRYPTO_VAULT"
 	>("STANDARD_TAXABLE");
 	const [institution, setInstitution] = useState("");
 	const [accountNumber, setAccountNumber] = useState("");
 	const [currency, setCurrency] = useState("EUR");
+	const [ownershipPercentage, setOwnershipPercentage] = useState<number>(100);
+	const [coOwnerName, setCoOwnerName] = useState("");
+	const [coOwnerUserId, setCoOwnerUserId] = useState<string | null>(null);
 	const [showConnectDialog, setShowConnectDialog] = useState(false);
 	const [showWalletDialog, setShowWalletDialog] = useState(false);
 
+	const { data: candidatesData } = useQuery(GET_CO_OWNER_CANDIDATES);
+	const candidates = candidatesData?.coOwnerCandidates || [];
+
 	const [createAccount, { loading }] = useMutation(CREATE_ACCOUNT, {
 		refetchQueries: [{ query: GET_ACCOUNTS, variables: { portfolioId } }],
+		update: (cache) => {
+			invalidatePortfolioQueries(cache);
+			invalidateDashboardData(cache);
+		},
 	});
 
 	const handleSubmit = async (e: React.FormEvent) => {
@@ -71,6 +84,9 @@ export function CreateAccountDialog({
 						institution: institution.trim() || undefined,
 						accountNumber: accountNumber.trim() || undefined,
 						currency,
+						ownershipPercentage: ownershipPercentage > 0 ? ownershipPercentage : 100,
+						coOwnerName: ownershipPercentage < 100 ? coOwnerName.trim() || undefined : undefined,
+						coOwnerUserId: ownershipPercentage < 100 ? coOwnerUserId || undefined : undefined,
 					},
 				},
 			});
@@ -80,6 +96,8 @@ export function CreateAccountDialog({
 			setName("");
 			setInstitution("");
 			setAccountNumber("");
+			setCoOwnerName("");
+			setCoOwnerUserId(null);
 			if (res.data?.createAccount?.id) {
 				onSuccess?.(res.data.createAccount.id);
 			}
@@ -145,7 +163,9 @@ export function CreateAccountDialog({
 											<SelectItem value="BROKER">Brokerage / Trading</SelectItem>
 											<SelectItem value="BANK">Bank / Savings</SelectItem>
 											<SelectItem value="CRYPTO_EXCHANGE">Crypto Exchange</SelectItem>
-											<SelectItem value="CRYPTO_WALLET">On-Chain Crypto Wallet (EVM, Solana, Bitcoin)</SelectItem>
+											<SelectItem value="CRYPTO_WALLET">
+												On-Chain Crypto Wallet (EVM, Solana, Bitcoin)
+											</SelectItem>
 											<SelectItem value="OTHER">Other</SelectItem>
 										</SelectContent>
 									</Select>
@@ -229,6 +249,112 @@ export function CreateAccountDialog({
 									</SelectContent>
 								</Select>
 							</div>
+						</div>
+
+						{/* Ownership percentage */}
+						<div className="space-y-2 pt-1 border-t border-border/40">
+							<div className="flex items-center justify-between">
+								<Label htmlFor="create-account-ownership" className="text-xs font-medium">
+									Quote-part personnelle (%)
+								</Label>
+								<div className="flex items-center gap-1.5">
+									<Button
+										type="button"
+										variant={ownershipPercentage === 100 ? "default" : "outline"}
+										className="h-6 text-micro px-2 py-0"
+										onClick={() => setOwnershipPercentage(100)}
+									>
+										100% Plein
+									</Button>
+									<Button
+										type="button"
+										variant={ownershipPercentage === 50 ? "default" : "outline"}
+										className="h-6 text-micro px-2 py-0"
+										onClick={() => setOwnershipPercentage(50)}
+									>
+										50% Compte joint
+									</Button>
+								</div>
+							</div>
+							<div className="relative">
+								<Input
+									id="create-account-ownership"
+									type="number"
+									min="0.01"
+									max="100"
+									step="0.01"
+									value={ownershipPercentage}
+									onChange={(e) => {
+										const val = Number.parseFloat(e.target.value);
+										setOwnershipPercentage(Number.isNaN(val) ? 0 : val);
+									}}
+									className="pr-8 font-mono text-sm"
+								/>
+								<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
+									%
+								</span>
+							</div>
+
+							{/* Co-owner details if ownership < 100% */}
+							{ownershipPercentage < 100 && (
+								<div className="space-y-3 p-3 rounded-lg bg-muted/40 border border-border/60 mt-3">
+									<div className="flex items-center justify-between">
+										<Label htmlFor="create-account-co-owner-name" className="text-xs font-semibold">
+											Co-titulaire ({((100 - ownershipPercentage)).toFixed(2).replace(/\.?0+$/, "")}%)
+										</Label>
+										<span className="text-micro text-muted-foreground">
+											Part restante
+										</span>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="create-account-co-owner-name" className="text-micro text-muted-foreground">
+											Prénom / Nom libre (ex: Emma, Conjoint...)
+										</Label>
+										<Input
+											id="create-account-co-owner-name"
+											value={coOwnerName}
+											onChange={(e) => setCoOwnerName(e.target.value)}
+											placeholder="ex: Emma, Conjoint..."
+											className="h-8 text-xs"
+										/>
+									</div>
+
+									{candidates.length > 0 && (
+										<div className="space-y-1.5 pt-1">
+											<Label htmlFor="create-account-co-owner-user" className="text-micro text-muted-foreground">
+												Lier à un compte utilisateur Sigma Finance (optionnel)
+											</Label>
+											<Select
+												value={coOwnerUserId || "none"}
+												onValueChange={(val) => {
+													if (val === "none") {
+														setCoOwnerUserId(null);
+													} else {
+														setCoOwnerUserId(val);
+														const matched = candidates.find((c) => c.id === val);
+														if (matched && !coOwnerName) {
+															setCoOwnerName(matched.name);
+														}
+													}
+												}}
+											>
+												<SelectTrigger id="create-account-co-owner-user" className="h-8 text-xs">
+													<SelectValue placeholder="Aucun compte lié" />
+												</SelectTrigger>
+												<SelectContent>
+													<SelectItem value="none">Aucun compte lié (nom libre seul)</SelectItem>
+													{candidates.map((c) => (
+														<SelectItem key={c.id} value={c.id}>
+															{c.name} ({c.email})
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+									)}
+								</div>
+							)}
 						</div>
 
 						<DialogFooter>

@@ -132,4 +132,3 @@ export const GET_BLOCKCHAIN_NETWORK_CONFIGS = gql`
     }
   }
 `;
-

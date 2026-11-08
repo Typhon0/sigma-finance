@@ -251,6 +251,23 @@ describe("AddStockForm", () => {
 			expect(screen.getByRole("button", { name: /Broker Sync/i })).toBeInTheDocument();
 			expect(screen.getByRole("button", { name: /Manual Entry/i })).toBeInTheDocument();
 		});
+
+		it("shows Trade Republic badge in Broker Sync option", () => {
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
+
+			const brokerSyncBtn = screen.getByRole("button", { name: /Broker Sync/i });
+			expect(brokerSyncBtn).toHaveTextContent("Trade Republic");
+		});
+
+		it("opens ConnectInstitutionDialog when clicking Broker Sync", async () => {
+			render(<AddStockForm open={true} onClose={mockOnClose} onSubmit={mockOnSubmit} />);
+
+			const brokerSyncBtn = screen.getByRole("button", { name: /Broker Sync/i });
+			fireEvent.click(brokerSyncBtn);
+
+			expect(await screen.findByText("Connect External Institution")).toBeInTheDocument();
+			expect(screen.getByRole("tab", { name: /Trade Republic/i })).toBeInTheDocument();
+		});
 	});
 
 	describe("Manual Entry Flow", () => {

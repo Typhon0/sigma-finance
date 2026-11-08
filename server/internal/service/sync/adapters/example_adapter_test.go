@@ -229,8 +229,10 @@ func TestExampleAdapter_FetchBalances(t *testing.T) {
 	adapter := NewExampleAdapter(WithBaseURL(server.URL), WithHTTPClient(server.Client()))
 	cred := makeTestExampleCredential("key", "secret", "")
 
-	balances, err := adapter.FetchBalances(context.Background(), cred, "acc-101")
+	balancesSnapshot, err := adapter.FetchBalances(context.Background(), cred, "acc-101")
 	require.NoError(t, err)
+	assert.True(t, balancesSnapshot.IsComplete)
+	balances := balancesSnapshot.Balances
 	require.Len(t, balances, 2)
 
 	assert.Equal(t, model.Currency("JPY"), balances[0].Currency)
@@ -282,8 +284,11 @@ func TestExampleAdapter_FetchHoldings(t *testing.T) {
 	adapter := NewExampleAdapter(WithBaseURL(server.URL), WithHTTPClient(server.Client()))
 	cred := makeTestExampleCredential("key", "secret", "")
 
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, "acc-101")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, "acc-101")
 	require.NoError(t, err)
+	assert.True(t, holdingsSnapshot.IsComplete)
+	assert.True(t, holdingsSnapshot.PaginationDone)
+	holdings := holdingsSnapshot.Holdings
 	require.Len(t, holdings, 2)
 
 	// Toyota position
@@ -354,8 +359,11 @@ func TestExampleAdapter_FetchTransactions(t *testing.T) {
 	adapter := NewExampleAdapter(WithBaseURL(server.URL), WithHTTPClient(server.Client()))
 	cred := makeTestExampleCredential("key", "secret", "")
 
-	txs, err := adapter.FetchTransactions(context.Background(), cred, "acc-101", &sinceTime)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "acc-101", &sinceTime, nil)
 	require.NoError(t, err)
+	assert.True(t, txsSnapshot.IsComplete)
+	assert.True(t, txsSnapshot.PaginationDone)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 2)
 
 	// Chronological sorting check: tx-201 (Oct 5) must precede tx-202 (Oct 15)

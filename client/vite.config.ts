@@ -13,6 +13,8 @@ if (
 	delete process.env.VITE_GRAPHQL_ENDPOINT;
 }
 
+const backendUrl = process.env.VITE_BACKEND_URL || "http://localhost:8080";
+
 export default defineConfig({
 	plugins: [
 		tanstackRouter({
@@ -52,31 +54,30 @@ export default defineConfig({
 	},
 	server: {
 		host: true,
+		allowedHosts: ["sigmafinance.typhon0.com", ".typhon0.com"],
+		watch: {
+			usePolling: process.env.VITE_USE_POLLING === "true",
+		},
 		proxy: {
 			"/graphql": {
-				target: "http://localhost:8080",
-				changeOrigin: true,
-				ws: true,
-			},
-			"/ws": {
-				target: "http://localhost:8080",
+				target: backendUrl,
 				changeOrigin: true,
 				ws: true,
 			},
 			"/playground": {
-				target: "http://localhost:8080",
+				target: backendUrl,
 				changeOrigin: true,
 			},
 			"/market-data": {
-				target: "http://localhost:8080",
+				target: backendUrl,
 				changeOrigin: true,
 			},
 			"/api": {
-				target: "http://localhost:8080",
+				target: backendUrl,
 				changeOrigin: true,
 			},
 			"/admin": {
-				target: "http://localhost:8080",
+				target: backendUrl,
 				changeOrigin: true,
 			},
 		},

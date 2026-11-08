@@ -10,6 +10,9 @@ import (
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/service"
+	"strings"
+
+	"github.com/shopspring/decimal"
 )
 
 // CreateAccount is the resolver for the createAccount field.
@@ -20,15 +23,24 @@ func (r *mutationResolver) CreateAccount(ctx context.Context, input gqlModel.Cre
 		return nil, err
 	}
 
+	var ownership *decimal.Decimal
+	if input.OwnershipPercentage != nil {
+		d := decimal.NewFromFloat(*input.OwnershipPercentage)
+		ownership = &d
+	}
+
 	acc, err := r.AccountService.CreateAccount(ctx, userID, service.CreateAccountInput{
-		PortfolioID:   input.PortfolioID,
-		Name:          input.Name,
-		Type:          model.AccountType(input.Type),
-		TaxWrapper:    model.TaxWrapperType(input.TaxWrapper),
-		Institution:   input.Institution,
-		AccountNumber: input.AccountNumber,
-		Currency:      input.Currency,
-		SyncProvider:  input.SyncProvider,
+		PortfolioID:         input.PortfolioID,
+		Name:                input.Name,
+		Type:                model.AccountType(input.Type),
+		TaxWrapper:          model.TaxWrapperType(input.TaxWrapper),
+		Institution:         input.Institution,
+		AccountNumber:       input.AccountNumber,
+		Currency:            input.Currency,
+		SyncProvider:        input.SyncProvider,
+		OwnershipPercentage: ownership,
+		CoOwnerName:         input.CoOwnerName,
+		CoOwnerUserID:       input.CoOwnerUserID,
 	})
 	if err != nil {
 		log.Printf("[ERROR] [graphql] CreateAccount: failed: %v", err)
@@ -58,13 +70,22 @@ func (r *mutationResolver) UpdateAccount(ctx context.Context, id string, input g
 		taxWrap = &w
 	}
 
+	var ownership *decimal.Decimal
+	if input.OwnershipPercentage != nil {
+		d := decimal.NewFromFloat(*input.OwnershipPercentage)
+		ownership = &d
+	}
+
 	acc, err := r.AccountService.UpdateAccount(ctx, userID, id, service.UpdateAccountInput{
-		Name:          input.Name,
-		Type:          accType,
-		TaxWrapper:    taxWrap,
-		Institution:   input.Institution,
-		AccountNumber: input.AccountNumber,
-		Currency:      input.Currency,
+		Name:                input.Name,
+		Type:                accType,
+		TaxWrapper:          taxWrap,
+		Institution:         input.Institution,
+		AccountNumber:       input.AccountNumber,
+		Currency:            input.Currency,
+		OwnershipPercentage: ownership,
+		CoOwnerName:         input.CoOwnerName,
+		CoOwnerUserID:       input.CoOwnerUserID,
 	})
 	if err != nil {
 		log.Printf("[ERROR] [graphql] UpdateAccount: failed: %v", err)
@@ -109,9 +130,34 @@ func (r *queryResolver) Accounts(ctx context.Context, portfolioID *string) ([]*g
 		return nil, err
 	}
 
+	// Collect all distinct asset IDs across all accounts' positions
+	var assetIDs []string
+	seenAssetIDs := make(map[string]bool)
+	for _, a := range accounts {
+		for _, p := range a.Positions {
+			if p != nil && p.AssetID != "" && !seenAssetIDs[p.AssetID] {
+				seenAssetIDs[p.AssetID] = true
+				assetIDs = append(assetIDs, p.AssetID)
+			}
+		}
+	}
+
+	priceMap := make(map[string]float64)
+	if len(assetIDs) > 0 && r.UOW != nil {
+		latestPrices, priceErr := r.UOW.AssetPrice().GetLatestPrices(ctx, assetIDs)
+		if priceErr != nil {
+			log.Printf("[WARN] [graphql] Accounts: GetLatestPrices failed: %v", priceErr)
+		} else {
+			for _, lp := range latestPrices {
+				p, _ := lp.Price.Float64()
+				priceMap[lp.AssetID] = p
+			}
+		}
+	}
+
 	res := make([]*gqlModel.Account, len(accounts))
 	for i, a := range accounts {
-		res[i] = mapAccountToGQL(a)
+		res[i] = mapAccountToGQLWithPrices(a, priceMap)
 	}
 	return res, nil
 }
@@ -130,5 +176,67 @@ func (r *queryResolver) Account(ctx context.Context, id string) (*gqlModel.Accou
 		return nil, err
 	}
 
-	return mapAccountToGQL(*acc), nil
+	priceMap := make(map[string]float64)
+	var assetIDs []string
+	for _, p := range acc.Positions {
+		if p != nil && p.AssetID != "" {
+			assetIDs = append(assetIDs, p.AssetID)
+		}
+	}
+	if len(assetIDs) > 0 && r.UOW != nil {
+		latestPrices, priceErr := r.UOW.AssetPrice().GetLatestPrices(ctx, assetIDs)
+		if priceErr == nil {
+			for _, lp := range latestPrices {
+				p, _ := lp.Price.Float64()
+				priceMap[lp.AssetID] = p
+			}
+		}
+	}
+
+	return mapAccountToGQLWithPrices(*acc, priceMap), nil
+}
+
+// CoOwnerCandidates is the resolver for the coOwnerCandidates field.
+func (r *queryResolver) CoOwnerCandidates(ctx context.Context, search *string) ([]*gqlModel.CoOwnerCandidate, error) {
+	log.Printf("[INFO] [graphql] CoOwnerCandidates: listing potential co-owners")
+	currentUserID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.UOW == nil {
+		return []*gqlModel.CoOwnerCandidate{}, nil
+	}
+
+	users, err := r.UOW.User().FindAllBy(ctx)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] CoOwnerCandidates: failed to query users: %v", err)
+		return nil, err
+	}
+
+	var candidates []*gqlModel.CoOwnerCandidate
+	queryLower := ""
+	if search != nil {
+		queryLower = strings.ToLower(strings.TrimSpace(*search))
+	}
+
+	for _, u := range users {
+		if u.ID == currentUserID {
+			continue
+		}
+		if queryLower != "" {
+			nameMatch := strings.Contains(strings.ToLower(u.Name), queryLower)
+			emailMatch := strings.Contains(strings.ToLower(u.Email), queryLower)
+			if !nameMatch && !emailMatch {
+				continue
+			}
+		}
+		candidates = append(candidates, &gqlModel.CoOwnerCandidate{
+			ID:    u.ID,
+			Name:  u.Name,
+			Email: u.Email,
+		})
+	}
+
+	return candidates, nil
 }

@@ -39,6 +39,7 @@ import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { refreshAuthToken } from "@/lib/apollo/auth-link";
 import { cn } from "@/lib/utils";
 
 // ---- Types ----
@@ -64,13 +65,24 @@ function generateUniqueKeys(rawLogs: Omit<LogEntry, "id">[]): LogEntry[] {
 	});
 }
 
-type LogService = "go" | "yfinance";
+export type LogService = string;
+
+export interface LogServiceInfo {
+	id: string;
+	name: string;
+	type: "core" | "sidecar";
+	description?: string;
+	available?: boolean;
+}
+
 type LogLevelFilter = "ALL" | "DEBUG" | "INFO" | "WARN" | "ERROR";
 
 // ---- Config ----
 
 const API_BASE = "/admin/logs";
 const MAX_LOG_ENTRIES = 50_000;
+const STREAM_RETRY_BASE_MS = 1_000;
+const STREAM_RETRY_MAX_MS = 15_000;
 
 // ---- Helpers ----
 
@@ -143,17 +155,258 @@ function formatTimestamp(ts: string): string {
 
 function cleanMessage(message: string, service: string): string {
 	let msg = message;
-	if (service === "yfinance" || service === "yfinance-service") {
+	if (service !== "go") {
 		// Clean up common python log structures
-		// Match: "2026-05-28 17:53:44,112 - __main__ - INFO - "
-		const regex = /^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}\s-\s[^-]+\s-\s[A-Z]+\s-\s/;
-		msg = msg.replace(regex, "");
+		// Match: "2026-05-28 17:53:44,112 - __main__ - INFO - " or "2026-11-04 10:54:49,218 [INFO] "
+		const pyRegex =
+			/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}(?:,\d{3})?\s*(?:-\s*[^-]+\s*-\s*[A-Z]+\s*-\s*|\[[A-Z]+\]\s*)/;
+		msg = msg.replace(pyRegex, "");
 	}
 	// Clean up Go standard log prefix: "2026/05/29 20:25:32 "
-	const goRegex = /^\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}:\d{2}\s/;
+	const goRegex = /^\d{4}\/\d{2}\/\d{2}\s\d{2}:\d{2}:\d{2}\s*/;
 	msg = msg.replace(goRegex, "");
 
 	return msg;
+}
+
+/**
+ * Reads a Server-Sent Events response body and invokes `onEvent` for each
+ * `data:` payload. Keepalive comments and empty events are skipped.
+ */
+async function readEventStream(
+	body: ReadableStream<Uint8Array>,
+	onEvent: (data: string) => void,
+	signal: AbortSignal,
+): Promise<void> {
+	const reader = body.getReader();
+	const decoder = new TextDecoder();
+	let buffer = "";
+
+	try {
+		while (!signal.aborted) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			buffer += decoder.decode(value, { stream: true });
+
+			let boundary = buffer.indexOf("\n\n");
+			while (boundary !== -1) {
+				const rawEvent = buffer.slice(0, boundary);
+				buffer = buffer.slice(boundary + 2);
+				const data = rawEvent
+					.split("\n")
+					.filter((line) => line.startsWith("data:"))
+					.map((line) => line.slice(5).replace(/^ /, ""))
+					.join("\n");
+				if (data) onEvent(data);
+				boundary = buffer.indexOf("\n\n");
+			}
+		}
+	} finally {
+		reader.releaseLock();
+	}
+}
+
+function appendLogEntry(prev: LogEntry[], entry: Omit<LogEntry, "id">): LogEntry[] {
+	const baseKey = `${entry.timestamp}_${entry.level}_${entry.service}_${entry.message}`;
+	let count = 0;
+	for (let i = prev.length - 1; i >= 0; i--) {
+		if (prev[i].id.startsWith(baseKey)) {
+			const parts = prev[i].id.split("_");
+			const lastPart = Number(parts[parts.length - 1]);
+			if (Number.isInteger(lastPart)) {
+				count = lastPart + 1;
+				break;
+			}
+		}
+	}
+	const next = [...prev, { ...entry, id: `${baseKey}_${count}` }];
+	return next.length > MAX_LOG_ENTRIES ? next.slice(-MAX_LOG_ENTRIES) : next;
+}
+
+interface LogStream {
+	entries: LogEntry[];
+	connected: boolean;
+	reconnecting: boolean;
+	error: string | null;
+	clear: () => void;
+}
+
+/**
+ * Streams one log service over SSE with auth-aware reconnects. The connection
+ * only runs while `enabled`, so parking on the other tab disconnects cleanly.
+ */
+function useLogStream(
+	service: LogService,
+	enabled: boolean,
+	levelFilter: LogLevelFilter,
+	isPausedRef: { current: boolean },
+): LogStream {
+	const [entries, setEntries] = useState<LogEntry[]>([]);
+	const [connected, setConnected] = useState(false);
+	const [reconnecting, setReconnecting] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!enabled) return;
+
+		const abortController = new AbortController();
+		let disposed = false;
+		let retryDelay = STREAM_RETRY_BASE_MS;
+		let retryTimer: ReturnType<typeof setTimeout> | null = null;
+		let refreshedForStream = false;
+
+		const endpoint = `${API_BASE}/${service}`;
+		const getToken = () => localStorage.getItem("auth_token");
+
+		// Load the backlog once; the stream only carries entries logged after connect.
+		const fetchInitial = async (allowRefresh = true): Promise<LogEntry[]> => {
+			const params = new URLSearchParams();
+			params.set("limit", "200");
+			// Text search is applied client-side; keeping it out of the request
+			// avoids refetching (and reconnecting) on every keystroke.
+			if (levelFilter !== "ALL") params.set("level", levelFilter);
+
+			const authToken = getToken();
+			const resp = await fetch(`${endpoint}?${params}`, {
+				headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+				signal: abortController.signal,
+			});
+			if (resp.status === 401 && allowRefresh) {
+				// Only rotate tokens if no other request already did while we waited.
+				if (getToken() === authToken) {
+					await refreshAuthToken();
+				}
+				if (disposed) return [];
+				return fetchInitial(false);
+			}
+			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+			const data = await resp.json();
+			const logs: Omit<LogEntry, "id">[] = data.logs ?? [];
+			return generateUniqueKeys(logs);
+		};
+
+		fetchInitial()
+			.then((initial) => {
+				if (disposed) return;
+				const capped = initial.length > MAX_LOG_ENTRIES ? initial.slice(-MAX_LOG_ENTRIES) : initial;
+				setEntries(capped);
+				setError(null);
+			})
+			.catch((err) => {
+				if (disposed || abortController.signal.aborted) return;
+				setError(`Failed to fetch ${service} logs: ${err.message}`);
+			});
+
+		const handleStreamData = (payload: string) => {
+			if (isPausedRef.current) return;
+			try {
+				const entry: Omit<LogEntry, "id"> = JSON.parse(payload);
+				setEntries((prev) => appendLogEntry(prev, entry));
+			} catch {
+				// Ignore malformed events
+			}
+		};
+
+		const scheduleReconnect = () => {
+			if (disposed) return;
+			setConnected(false);
+			setReconnecting(true);
+			retryTimer = setTimeout(() => {
+				void connect();
+			}, retryDelay);
+			retryDelay = Math.min(retryDelay * 2, STREAM_RETRY_MAX_MS);
+		};
+
+		// Live stream over fetch (not EventSource) so an expired access token can
+		// be refreshed and the request retried instead of replaying a stale URL.
+		const connect = async () => {
+			if (disposed) return;
+
+			const params = new URLSearchParams({ stream: "true" });
+			if (levelFilter !== "ALL") params.set("level", levelFilter);
+
+			const authToken = getToken();
+			let resp: Response;
+			try {
+				resp = await fetch(`${endpoint}?${params}`, {
+					headers: {
+						Accept: "text/event-stream",
+						...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+					},
+					signal: abortController.signal,
+				});
+			} catch {
+				if (disposed || abortController.signal.aborted) return;
+				scheduleReconnect();
+				return;
+			}
+
+			if (resp.status === 401) {
+				if (getToken() !== authToken) {
+					// Another request already refreshed the token; retry with it.
+					void connect();
+					return;
+				}
+				if (refreshedForStream) {
+					setConnected(false);
+					setReconnecting(false);
+					setError("Your session has expired. Please log in again.");
+					return;
+				}
+				refreshedForStream = true;
+				try {
+					await refreshAuthToken();
+				} catch {
+					if (disposed) return;
+					setConnected(false);
+					setReconnecting(false);
+					setError("Your session has expired. Please log in again.");
+					return;
+				}
+				if (disposed) return;
+				void connect();
+				return;
+			}
+
+			if (!resp.ok || !resp.body) {
+				scheduleReconnect();
+				return;
+			}
+
+			setConnected(true);
+			setReconnecting(false);
+			setError(null);
+			retryDelay = STREAM_RETRY_BASE_MS;
+
+			try {
+				await readEventStream(resp.body, handleStreamData, abortController.signal);
+			} catch {
+				// Stream aborted or the connection dropped; retry below.
+			}
+			refreshedForStream = false;
+
+			if (disposed || abortController.signal.aborted) return;
+			scheduleReconnect();
+		};
+
+		void connect();
+
+		return () => {
+			disposed = true;
+			if (retryTimer) clearTimeout(retryTimer);
+			abortController.abort();
+			setConnected(false);
+			setReconnecting(false);
+		};
+	}, [service, enabled, levelFilter, isPausedRef]);
+
+	return {
+		entries,
+		connected,
+		reconnecting,
+		error,
+		clear: () => setEntries([]),
+	};
 }
 
 // ---- Component ----
@@ -163,14 +416,15 @@ function getEntryKey(entry: LogEntry): string {
 }
 
 export function LogViewer() {
+	const [services, setServices] = useState<LogServiceInfo[]>([
+		{ id: "go", name: "Go Server", type: "core", available: true },
+		{ id: "yfinance", name: "yfinance", type: "sidecar", available: true },
+		{ id: "woob", name: "Woob", type: "sidecar", available: true },
+	]);
 	const [activeService, setActiveService] = useState<LogService>("go");
 	const [filterText, setFilterText] = useState("");
 	const [levelFilter, setLevelFilter] = useState<LogLevelFilter>("ALL");
 	const [isPaused, setIsPaused] = useState(false);
-	const [entries, setEntries] = useState<LogEntry[]>([]);
-	const [yfEntries, setYfEntries] = useState<LogEntry[]>([]);
-	const [connected, setConnected] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const [wrapLines, setWrapLines] = useState(true);
 	const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
 	const [timeFrom, setTimeFrom] = useState<Date | undefined>(undefined);
@@ -180,13 +434,50 @@ export function LogViewer() {
 
 	const scrollContainerRef = useRef<HTMLDivElement>(null);
 	const sessionStartRef = useRef(Date.now());
-	const esRef = useRef<EventSource | null>(null);
-	const yfPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 	const isAtTopRef = useRef(true);
 	const isPausedRef = useRef(false);
 
 	// Keep ref in sync
 	isPausedRef.current = isPaused;
+
+	// Load registered log services dynamically
+	useEffect(() => {
+		let isCancelled = false;
+		const loadServices = async () => {
+			try {
+				const authToken = localStorage.getItem("auth_token");
+				const resp = await fetch("/admin/logs/services", {
+					headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+				});
+				if (resp.ok) {
+					const data = await resp.json();
+					if (!isCancelled && Array.isArray(data.services) && data.services.length > 0) {
+						setServices(data.services);
+						setActiveService((current) => {
+							const exists = data.services.some((s: LogServiceInfo) => s.id === current);
+							return exists ? current : data.services[0].id;
+						});
+					}
+				}
+			} catch {
+				// Keep defaults on fetch error
+			}
+		};
+		void loadServices();
+		return () => {
+			isCancelled = true;
+		};
+	}, []);
+
+	// Active service streams over SSE; switching tabs automatically disconnects and reconnects.
+	const activeStream = useLogStream(
+		activeService,
+		Boolean(activeService),
+		levelFilter,
+		isPausedRef,
+	);
+	const entries = activeStream.entries;
+	const { connected, reconnecting, error } = activeStream;
 
 	// Uptime ticker (every second)
 	useEffect(() => {
@@ -199,7 +490,7 @@ export function LogViewer() {
 
 	// ---- Derived data ----
 	const displayEntries = useMemo(() => {
-		const raw = activeService === "go" ? entries : yfEntries;
+		const raw = entries;
 
 		let filtered = raw;
 		if (filterText) {
@@ -220,11 +511,11 @@ export function LogViewer() {
 
 		// Return in reverse chronological order (newest/recent first)
 		return [...filtered].reverse();
-	}, [entries, yfEntries, filterText, levelFilter, timeFrom, timeTo, activeService]);
+	}, [entries, filterText, levelFilter, timeFrom, timeTo, activeService]);
 
 	// Memory estimate: average ~300 bytes per log entry (timestamp + level + message + overhead)
 	const memoryEstimate = useMemo(() => {
-		const source = activeService === "go" ? entries : yfEntries;
+		const source = entries;
 		const bytes = source.reduce(
 			(sum, e) => sum + e.timestamp.length + e.level.length + e.message.length + 64,
 			0,
@@ -232,10 +523,10 @@ export function LogViewer() {
 		if (bytes < 1024) return "< 1 KB";
 		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-	}, [entries, yfEntries, activeService]);
+	}, [entries, activeService]);
 
 	const levelCounts = useMemo(() => {
-		const source = activeService === "go" ? entries : yfEntries;
+		const source = entries;
 		return {
 			all: source.length,
 			error: source.filter((e) => e.level.toUpperCase() === "ERROR").length,
@@ -245,7 +536,7 @@ export function LogViewer() {
 			info: source.filter((e) => e.level.toUpperCase() === "INFO").length,
 			debug: source.filter((e) => e.level.toUpperCase() === "DEBUG").length,
 		};
-	}, [entries, yfEntries, activeService]);
+	}, [entries, activeService]);
 
 	// ---- Virtual scrolling ----
 	const getScrollElement = useCallback(() => scrollContainerRef.current, []);
@@ -300,150 +591,14 @@ export function LogViewer() {
 		prevCountRef.current = displayEntries.length;
 	}, [displayEntries.length, virtualizer]);
 
-	// ---- Go SSE connection ----
 	// Reset expanded keys when service or filters change
 	useEffect(() => {
 		setExpandedKeys(new Set());
 	}, [activeService, filterText, levelFilter, timeFrom, timeTo]);
 
-	useEffect(() => {
-		if (activeService !== "go") return;
-
-		// Fetch initial recent logs
-		const fetchInitial = async (): Promise<LogEntry[]> => {
-			const params = new URLSearchParams();
-			params.set("limit", "200");
-			if (filterText) params.set("filter", filterText);
-			if (levelFilter !== "ALL") params.set("level", levelFilter);
-
-			const token = localStorage.getItem("auth_token");
-			const resp = await fetch(`${API_BASE}/go?${params}`, {
-				headers: token ? { Authorization: `Bearer ${token}` } : {},
-			});
-			if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-			const data = await resp.json();
-			const logs: Omit<LogEntry, "id">[] = data.logs ?? [];
-			return generateUniqueKeys(logs);
-		};
-
-		fetchInitial()
-			.then((initial) => {
-				const capped = initial.length > MAX_LOG_ENTRIES ? initial.slice(-MAX_LOG_ENTRIES) : initial;
-				setEntries(capped);
-				setError(null);
-			})
-			.catch((err) => {
-				setError(`Failed to fetch Go logs: ${err.message}`);
-			});
-
-		// SSE connection for live streaming (EventSource doesn't support headers, pass token via query param)
-		const params = new URLSearchParams({ stream: "true" });
-		if (filterText) params.set("filter", filterText);
-		if (levelFilter !== "ALL") params.set("level", levelFilter);
-		const token = localStorage.getItem("auth_token");
-		if (token) params.set("token", token);
-
-		const es = new EventSource(`${API_BASE}/go?${params}`);
-		esRef.current = es;
-
-		es.onopen = () => {
-			setConnected(true);
-			setError(null);
-		};
-
-		es.onmessage = (event) => {
-			if (isPausedRef.current) return;
-			try {
-				const entry: Omit<LogEntry, "id"> = JSON.parse(event.data);
-				setEntries((prev) => {
-					const baseKey = `${entry.timestamp}_${entry.level}_${entry.service}_${entry.message}`;
-					let count = 0;
-					for (let i = prev.length - 1; i >= 0; i--) {
-						if (prev[i].id.startsWith(baseKey)) {
-							const parts = prev[i].id.split("_");
-							const lastPart = Number(parts[parts.length - 1]);
-							if (Number.isInteger(lastPart)) {
-								count = lastPart + 1;
-								break;
-							}
-						}
-					}
-					const newEntry: LogEntry = {
-						...entry,
-						id: `${baseKey}_${count}`,
-					};
-					const next = [...prev, newEntry];
-					if (next.length > MAX_LOG_ENTRIES) {
-						setExpandedKeys(new Set());
-						return next.slice(-MAX_LOG_ENTRIES);
-					}
-					return next;
-				});
-			} catch {
-				// Ignore parse errors for keepalive comments
-			}
-		};
-
-		es.onerror = () => {
-			setConnected(false);
-			setError("SSE connection lost. Retrying...");
-		};
-
-		return () => {
-			es.close();
-			esRef.current = null;
-			setConnected(false);
-		};
-	}, [activeService, filterText, levelFilter]);
-
-	// ---- yfinance polling ----
-	useEffect(() => {
-		if (activeService !== "yfinance") return;
-
-		const fetchYFLogs = async () => {
-			try {
-				const params = new URLSearchParams();
-				params.set("limit", "200");
-				if (filterText) params.set("filter", filterText);
-				if (levelFilter !== "ALL") params.set("level", levelFilter);
-
-				const token = localStorage.getItem("auth_token");
-				const resp = await fetch(`${API_BASE}/yfinance?${params}`, {
-					headers: token ? { Authorization: `Bearer ${token}` } : {},
-				});
-				if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-				const data = await resp.json();
-				const logs: Omit<LogEntry, "id">[] = data.logs ?? [];
-				const identified = generateUniqueKeys(logs);
-				setExpandedKeys(new Set());
-				setYfEntries(
-					identified.length > MAX_LOG_ENTRIES ? identified.slice(-MAX_LOG_ENTRIES) : identified,
-				);
-				setError(null);
-			} catch (err) {
-				setError(
-					`Failed to fetch yfinance logs: ${err instanceof Error ? err.message : "Unknown"}`,
-				);
-			}
-		};
-
-		fetchYFLogs();
-		if (!isPaused) {
-			yfPollRef.current = setInterval(fetchYFLogs, 3000);
-		}
-
-		return () => {
-			if (yfPollRef.current) {
-				clearInterval(yfPollRef.current);
-				yfPollRef.current = null;
-			}
-		};
-	}, [activeService, filterText, levelFilter, isPaused]);
-
 	const clearLogs = () => {
 		setExpandedKeys(new Set());
-		if (activeService === "go") setEntries([]);
-		else setYfEntries([]);
+		activeStream.clear();
 	};
 
 	const exportFormattedLogs = () => {
@@ -482,14 +637,19 @@ export function LogViewer() {
 	};
 
 	return (
-		<Card className="flex flex-col h-[calc(100vh-8rem)] w-full border-border/60 bg-card">
-			<CardHeader className="pb-3 border-b border-border/30">
+		<div className="flex flex-col h-[calc(100vh-8rem)] w-full rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+			<div className="p-4 border-b border-border/30 bg-muted/10">
 				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 					<div className="space-y-0.5">
-						<CardTitle className="text-lg font-semibold">System Logs</CardTitle>
-						<CardDescription>
-							Real-time server logs and diagnostics for system monitoring
-						</CardDescription>
+						<div className="flex items-center gap-2">
+							<ScrollText className="h-4 w-4 text-muted-foreground" />
+							<h1 className="text-base font-semibold tracking-tight text-foreground">
+								Journaux Système & Diagnostics
+							</h1>
+						</div>
+						<p className="text-xs text-muted-foreground">
+							Flux de journalisation serveur en temps réel et métriques de santé des processus.
+						</p>
 					</div>
 					<div className="flex items-center gap-2">
 						<Badge
@@ -498,16 +658,22 @@ export function LogViewer() {
 								"gap-1.5 text-xs",
 								connected
 									? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-									: "border-red-500/30 text-red-600 dark:text-red-400",
+									: reconnecting
+										? "border-amber-500/30 text-amber-600 dark:text-amber-400"
+										: "border-red-500/30 text-red-600 dark:text-red-400",
 							)}
 						>
 							<span
 								className={cn(
 									"h-1.5 w-1.5 rounded-full",
-									connected ? "bg-emerald-500" : "bg-red-500",
+									connected
+										? "bg-emerald-500"
+										: reconnecting
+											? "bg-amber-500 animate-pulse"
+											: "bg-red-500",
 								)}
 							/>
-							{connected ? "Connected" : "Disconnected"}
+							{connected ? "Connected" : reconnecting ? "Reconnecting" : "Disconnected"}
 						</Badge>
 						<Separator orientation="vertical" className="h-5" />
 						<Button
@@ -573,7 +739,7 @@ export function LogViewer() {
 						</DropdownMenu>
 					</div>
 				</div>
-			</CardHeader>
+			</div>
 
 			{/* Toolbar: service tabs + level filters + search */}
 			<div className="px-6 py-3 border-b border-border/30 bg-muted/20">
@@ -583,13 +749,27 @@ export function LogViewer() {
 						onValueChange={(v) => setActiveService(v as LogService)}
 						className="w-auto"
 					>
-						<TabsList>
-							<TabsTrigger value="go" className="text-xs px-3">
-								Go Server
-							</TabsTrigger>
-							<TabsTrigger value="yfinance" className="text-xs px-3">
-								yfinance
-							</TabsTrigger>
+						<TabsList className="h-8 bg-muted/20 border border-border/50 rounded-lg p-0.5 gap-1">
+							{services.map((svc) => (
+								<TabsTrigger
+									key={svc.id}
+									value={svc.id}
+									className="text-xs px-2.5 py-1 rounded-md data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center gap-1.5"
+								>
+									<span>{svc.name}</span>
+									{svc.type === "sidecar" && (
+										<span className="text-[10px] text-muted-foreground font-mono bg-muted/50 border border-border/40 px-1 py-0.2 rounded leading-none">
+											sidecar
+										</span>
+									)}
+									{svc.available === false && (
+										<span
+											className="h-1.5 w-1.5 rounded-full bg-amber-500"
+											title="Sidecar non joignable ou arrêté"
+										/>
+									)}
+								</TabsTrigger>
+							))}
 						</TabsList>
 					</Tabs>
 
@@ -741,13 +921,17 @@ export function LogViewer() {
 			)}
 
 			{/* Log output: virtualized scroll container */}
-			<CardContent className="flex-1 p-0 min-h-0 bg-muted/10">
+			<div className="flex-1 p-0 min-h-0 bg-muted/10">
 				{displayEntries.length === 0 ? (
 					<div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center gap-2">
 						<ScrollText className="h-8 w-8 opacity-25" />
 						<p className="text-sm font-medium">No log entries</p>
 						<p className="text-xs">
-							{connected ? "Waiting for incoming log stream..." : "Log stream is disconnected"}
+							{connected
+								? "Waiting for incoming log stream..."
+								: reconnecting
+									? "Reconnecting to log stream..."
+									: "Log stream is disconnected"}
 						</p>
 					</div>
 				) : (
@@ -877,7 +1061,7 @@ export function LogViewer() {
 							</div>
 						)}
 				</div>
-			</CardContent>
-		</Card>
+			</div>
+		</div>
 	);
 }

@@ -1,6 +1,6 @@
-import ReactECharts from "echarts-for-react";
 import { Activity, BarChart3, Bitcoin, DollarSign, Filter, TrendingUp, Zap } from "lucide-react";
 import { useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
@@ -583,7 +583,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 								</div>
 
 								{/* Treemap */}
-								<ReactECharts
+								<EChart
 									option={stockTreemapOption}
 									style={{ height: "600px" }}
 									opts={{ renderer: "svg" }}
@@ -737,7 +737,7 @@ export function MarketHeatmaps({ onFilterStock, onFilterCrypto }: MarketHeatmaps
 								</div>
 
 								{/* Treemap */}
-								<ReactECharts
+								<EChart
 									option={cryptoTreemapOption}
 									style={{ height: "600px" }}
 									opts={{ renderer: "svg" }}

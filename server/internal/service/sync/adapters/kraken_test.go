@@ -145,8 +145,10 @@ func TestKrakenAdapter_FetchBalancesAndHoldings(t *testing.T) {
 	cred := newTestCredential()
 
 	// 1. FetchBalances: should only return fiat cash balances (EUR, USD)
-	balances, err := adapter.FetchBalances(context.Background(), cred, "kraken-spot")
+	balancesSnapshot, err := adapter.FetchBalances(context.Background(), cred, "kraken-spot")
 	require.NoError(t, err)
+	assert.True(t, balancesSnapshot.IsComplete)
+	balances := balancesSnapshot.Balances
 	require.Len(t, balances, 2)
 
 	balMap := make(map[model.Currency]decimal.Decimal)
@@ -159,8 +161,10 @@ func TestKrakenAdapter_FetchBalancesAndHoldings(t *testing.T) {
 	assert.True(t, decimal.RequireFromString("250.00").Equal(balMap[model.CurrencyUSD]))
 
 	// 2. FetchHoldings: should return non-fiat crypto assets (BTC, ETH, SOL)
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, "kraken-spot")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, "kraken-spot")
 	require.NoError(t, err)
+	assert.True(t, holdingsSnapshot.IsComplete)
+	holdings := holdingsSnapshot.Holdings
 	require.Len(t, holdings, 3)
 
 	holdingMap := make(map[string]syncservice.RawHolding)
@@ -365,8 +369,10 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 
 	cred := newTestCredential()
 	since := time.Unix(1600000000, 0)
-	txs, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", &since)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", &since, nil)
 	require.NoError(t, err)
+	assert.True(t, txsSnapshot.IsComplete)
+	txs := txsSnapshot.Transactions
 	// Emits exactly 4 transactions: deposit, withdrawal, staking, and paired trade BUY BTC.
 	// L-TRADE-1-FIAT must NOT produce a phantom SELL EUR transaction!
 	require.Len(t, txs, 4)
@@ -415,9 +421,9 @@ func TestKrakenAdapter_FetchTransactions_Ledgers(t *testing.T) {
 	assert.False(t, fiatTradeExists, "fiat leg must not produce a phantom trade transaction")
 
 	// Also test with since == nil
-	txsNoSince, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil)
+	txsNoSinceSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil, nil)
 	require.NoError(t, err)
-	assert.Len(t, txsNoSince, 4)
+	assert.Len(t, txsNoSinceSnapshot.Transactions, 4)
 }
 
 func TestKrakenAdapter_Ledgers_PagesThroughCursor(t *testing.T) {
@@ -503,10 +509,11 @@ func TestKrakenAdapter_Ledgers_PagesThroughCursor(t *testing.T) {
 		adapters.WithHTTPClient(server.Client()),
 	)
 
-	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil, nil)
 	require.NoError(t, err)
 	assert.Equal(t, []string{"", "CURSOR-PAGE-2"}, requestedCursors, "older pages must be fetched until Kraken stops handing out a cursor")
 
+	txs := txsSnapshot.Transactions
 	byID := make(map[string]syncservice.RawTransaction, len(txs))
 	for _, tx := range txs {
 		byID[tx.ExternalID] = tx
@@ -593,8 +600,9 @@ func TestKrakenAdapter_TradeLedgerPairing_BuySellAndOrphan(t *testing.T) {
 	)
 
 	cred := newTestCredential()
-	txs, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 
 	// Expected: Exactly 2 valid paired trades (BUY BTC, SELL ETH).
 	// L-BUY-FIAT and L-SELL-FIAT are paired and not emitted as fiat trades.
@@ -675,7 +683,7 @@ func TestKrakenAdapter_RateLimiting_AllEndpoints(t *testing.T) {
 	_, err = adapter.FetchHoldings(context.Background(), cred, "kraken-spot")
 	assert.ErrorIs(t, err, syncservice.ErrRateLimited)
 
-	_, err = adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil)
+	_, err = adapter.FetchTransactions(context.Background(), cred, "kraken-spot", nil, nil)
 	assert.ErrorIs(t, err, syncservice.ErrRateLimited)
 }
 
@@ -806,8 +814,9 @@ func TestKrakenAdapter_FetchHoldings_AggregatesStakedAndSpotBalances(t *testing.
 	adapter := adapters.NewKrakenAdapter(adapters.WithKrakenBaseURL(server.URL))
 	cred := newTestCredential()
 
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, "ext-1")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, "ext-1")
 	require.NoError(t, err)
+	holdings := holdingsSnapshot.Holdings
 
 	// Should have 3 aggregated holdings: BTC, ETH, SOL
 	require.Len(t, holdings, 3)
@@ -870,8 +879,9 @@ func TestKrakenAdapter_StablecoinQuotedTradePricesInDollars(t *testing.T) {
 		adapters.WithHTTPClient(server.Client()),
 	)
 
-	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 1, "the stablecoin leg must not produce a phantom transaction")
 
 	buy := txs[0]
@@ -930,14 +940,15 @@ func TestKrakenAdapter_ExoticFiatQuoteKeepsItsOwnCurrency(t *testing.T) {
 		adapters.WithHTTPClient(server.Client()),
 	)
 
-	txs, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), newTestCredential(), "kraken-spot", nil, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 1)
 
 	buy := txs[0]
 	assert.Equal(t, model.Currency("JPY"), buy.UnitPriceCurrency)
 	assert.Equal(t, model.Money(75000000), buy.Amount)
-	assert.False(t, buy.UnitPriceCurrency.IsValid())
+	assert.True(t, buy.UnitPriceCurrency.IsValid())
 }
 
 func TestKrakenAdapter_AssetDictionaryResolvesRenamedAssets(t *testing.T) {
@@ -978,8 +989,9 @@ func TestKrakenAdapter_AssetDictionaryResolvesRenamedAssets(t *testing.T) {
 		adapters.WithHTTPClient(server.Client()),
 	)
 
-	holdings, err := adapter.FetchHoldings(context.Background(), newTestCredential(), "kraken-spot")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), newTestCredential(), "kraken-spot")
 	require.NoError(t, err)
+	holdings := holdingsSnapshot.Holdings
 	require.Len(t, holdings, 2)
 
 	bySymbol := make(map[string]syncservice.RawHolding, len(holdings))

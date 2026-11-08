@@ -33,6 +33,9 @@ type PortfolioAsset {
     dayChange: Float
     dayChangePercent: Float
     quoteCurrency: String
+    accountName: String
+    accountID: ID
+    positionID: ID
 }
 
 type PortfolioAnalytics {

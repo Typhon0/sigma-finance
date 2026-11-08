@@ -10,7 +10,7 @@ import { StocksDistributionWidget } from "../assets/stocks-funds/StocksDistribut
  * in flight, which reads as a real, permanent result and then snaps to content.
  */
 
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-distribution">ECharts Distribution</div>,
 }));
 

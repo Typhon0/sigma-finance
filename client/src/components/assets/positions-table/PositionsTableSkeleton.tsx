@@ -128,4 +128,3 @@ export function PositionsTableSkeleton({ hasTrendColumn = false }: PositionsTabl
 		</div>
 	);
 }
-

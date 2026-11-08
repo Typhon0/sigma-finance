@@ -55,6 +55,8 @@ type IPositionRepository interface {
 	GetPortfolioPositionsWithAssets(ctx context.Context, portfolioID string) ([]model.Position, error)
 	GetPortfolioAggregation(ctx context.Context, portfolioID string) (*PortfolioAggregation, error)
 	GetAssetAllocation(ctx context.Context, portfolioID string) ([]AssetAllocation, error)
+	GetPositionsByAccount(ctx context.Context, accountID string) ([]model.Position, error)
+	UpdateOwnershipByAccount(ctx context.Context, accountID string, ownership decimal.Decimal) error
 
 	// Position value calculations
 	GetPositionsRequiringPriceUpdate(ctx context.Context, assetIDs []string) ([]model.Position, error)
@@ -395,5 +397,26 @@ func (r *PositionRepository) DeleteEmptyPositions(ctx context.Context, portfolio
 		Where("portfolio_id = ? AND quantity = 0", portfolioID).
 		Exec(ctx)
 
+	return err
+}
+
+// GetPositionsByAccount retrieves all positions linked to an account
+func (r *PositionRepository) GetPositionsByAccount(ctx context.Context, accountID string) ([]model.Position, error) {
+	var positions []model.Position
+	err := r.db.NewSelect().
+		Model(&positions).
+		Where("position.account_id = ?", accountID).
+		Scan(ctx)
+	return positions, err
+}
+
+// UpdateOwnershipByAccount updates the ownership percentage for all positions of an account
+func (r *PositionRepository) UpdateOwnershipByAccount(ctx context.Context, accountID string, ownership decimal.Decimal) error {
+	_, err := r.db.NewUpdate().
+		Model((*model.Position)(nil)).
+		Set("ownership_percentage = ?", ownership).
+		Set("updated_at = NOW()").
+		Where("account_id = ?", accountID).
+		Exec(ctx)
 	return err
 }

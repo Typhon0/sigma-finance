@@ -1,6 +1,7 @@
 import { format } from "date-fns";
 import {
 	Building2,
+	Calculator,
 	Calendar as CalendarIcon,
 	ChevronLeft,
 	ChevronRight,
@@ -8,11 +9,12 @@ import {
 	FileText,
 	Info,
 	Layers,
+	Sparkles,
 	TrendingUp,
 	Users,
 	X,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -27,6 +29,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { computeLoanAmortization, POPULAR_FRENCH_BANKS } from "@/lib/loan-calculator";
 
 interface AddLoanFormProps {
 	open: boolean;
@@ -157,6 +160,38 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
+	// Deterministic loan amortization & balance calculation
+	const computedAmortization = useMemo(() => {
+		const amount = parseFloat(formData.loanAmount) || 0;
+		const rate = parseFloat(formData.interestRate) || 0;
+		const duration = parseInt(formData.duration, 10) || 0;
+		const insurance = parseFloat(formData.insuranceFee) || 0;
+		return computeLoanAmortization({
+			loanAmount: amount,
+			interestRate: rate,
+			durationMonths: duration,
+			startDate: formData.startDate,
+			insuranceFeeMonthly: insurance,
+		});
+	}, [
+		formData.loanAmount,
+		formData.interestRate,
+		formData.duration,
+		formData.startDate,
+		formData.insuranceFee,
+	]);
+
+	const applyAutoCalculation = () => {
+		if (computedAmortization.monthlyPayment > 0) {
+			setFormData((prev) => ({
+				...prev,
+				monthlyPayment: computedAmortization.monthlyPayment.toFixed(2),
+				remainingBalance: computedAmortization.remainingBalance.toFixed(2),
+				endDate: prev.endDate || computedAmortization.endDate,
+			}));
+		}
+	};
+
 	const handleNext = async () => {
 		if (currentStepIndex < steps.length - 1) {
 			setCurrentStep(steps[currentStepIndex + 1].id);
@@ -164,7 +199,26 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 			// Submit form — await so dialog stays open on error
 			setIsSubmitting(true);
 			try {
-				await onSubmit(formData);
+				const resolvedMonthly =
+					formData.monthlyPayment ||
+					(computedAmortization.monthlyPayment > 0
+						? computedAmortization.monthlyPayment.toFixed(2)
+						: "");
+				const resolvedRemaining =
+					formData.remainingBalance ||
+					(computedAmortization.remainingBalance >= 0
+						? computedAmortization.remainingBalance.toFixed(2)
+						: formData.loanAmount);
+				const resolvedEndDate = formData.endDate || computedAmortization.endDate;
+
+				const payload = {
+					...formData,
+					monthlyPayment: resolvedMonthly,
+					remainingBalance: resolvedRemaining,
+					endDate: resolvedEndDate,
+				};
+
+				await onSubmit(payload);
 				onClose();
 			} catch {
 				// Error is handled by the caller; keep dialog open
@@ -445,7 +499,11 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										value={formData.monthlyPayment}
 										onChange={(e) => handleInputChange("monthlyPayment", e.target.value)}
 										className="bg-background border-border pr-16"
-										placeholder="Auto-calculated"
+										placeholder={
+											computedAmortization.monthlyPayment > 0
+												? `~${computedAmortization.monthlyPayment.toFixed(2)}`
+												: "Auto-calculated"
+										}
 									/>
 									<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
 										{formData.currency}
@@ -467,7 +525,11 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 										value={formData.remainingBalance}
 										onChange={(e) => handleInputChange("remainingBalance", e.target.value)}
 										className="bg-background border-border pr-16"
-										placeholder="Current balance"
+										placeholder={
+											computedAmortization.remainingBalance >= 0
+												? `~${computedAmortization.remainingBalance.toFixed(2)}`
+												: "Current balance"
+										}
 									/>
 									<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
 										{formData.currency}
@@ -475,6 +537,44 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 								</div>
 							</div>
 						</div>
+
+						{/* Live Amortization Helper */}
+						{computedAmortization.monthlyPayment > 0 && (
+							<div className="rounded-lg border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+								<div className="space-y-1">
+									<div className="flex items-center gap-1.5 font-medium text-foreground">
+										<Calculator className="h-4 w-4 text-primary" />
+										<span>Calcul standard d'amortissement</span>
+									</div>
+									<p className="text-muted-foreground">
+										Mensualité estimée :{" "}
+										<strong className="text-foreground">
+											{computedAmortization.monthlyPayment.toFixed(2)} {formData.currency}
+										</strong>
+										{computedAmortization.monthsElapsed > 0 && (
+											<>
+												{" "}
+												&bull; Restant dû :{" "}
+												<strong className="text-foreground">
+													{computedAmortization.remainingBalance.toFixed(2)} {formData.currency}
+												</strong>{" "}
+												({computedAmortization.monthsElapsed} mois amortis)
+											</>
+										)}
+									</p>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={applyAutoCalculation}
+									className="h-7 text-xs border-primary/30 hover:bg-primary/10 text-primary gap-1 shrink-0"
+								>
+									<Sparkles className="h-3 w-3" />
+									Appliquer
+								</Button>
+							</div>
+						)}
 
 						{/* Bank & Loan Number */}
 						<div className="grid grid-cols-2 gap-4">
@@ -485,11 +585,36 @@ export function AddLoanForm({ open, onClose, onSubmit }: AddLoanFormProps) {
 								<Input
 									id="bank"
 									type="text"
+									list="popular-banks-list"
 									value={formData.bank}
 									onChange={(e) => handleInputChange("bank", e.target.value)}
 									className="bg-background border-border"
-									placeholder="e.g., BNP Paribas"
+									placeholder="e.g., Caisse d'Épargne, Fortuneo..."
 								/>
+								<datalist id="popular-banks-list">
+									{POPULAR_FRENCH_BANKS.map((b) => (
+										<option key={b} value={b} />
+									))}
+								</datalist>
+								{/* Quick suggestions */}
+								<div className="flex flex-wrap gap-1.5 pt-1">
+									{[
+										"Caisse d'Épargne",
+										"Fortuneo",
+										"Crédit Agricole",
+										"BNP Paribas",
+										"BoursoBank",
+									].map((b) => (
+										<button
+											key={b}
+											type="button"
+											onClick={() => handleInputChange("bank", b)}
+											className="text-[11px] px-2 py-0.5 rounded border border-border/60 bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+										>
+											{b}
+										</button>
+									))}
+								</div>
 							</div>
 
 							<div className="space-y-2">

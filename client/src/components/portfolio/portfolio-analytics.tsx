@@ -1,5 +1,4 @@
 import type * as echarts from "echarts";
-import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	AlertTriangle,
@@ -10,6 +9,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -629,7 +629,7 @@ export function PortfolioAnalytics({
 						<TabsContent value="overview" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Asset Allocation</h3>
-								<ReactECharts option={assetAllocationOption} style={{ height: "400px" }} />
+								<EChart option={assetAllocationOption} style={{ height: "400px" }} />
 
 								{/* Asset allocation breakdown */}
 								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-4 border-t">
@@ -675,14 +675,14 @@ export function PortfolioAnalytics({
 						<TabsContent value="performance" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Performance History</h3>
-								<ReactECharts option={performanceHistoryOption} style={{ height: "400px" }} />
+								<EChart option={performanceHistoryOption} style={{ height: "400px" }} />
 							</div>
 						</TabsContent>
 
 						<TabsContent value="risk" className="mt-6">
 							<div className="space-y-4">
 								<h3 className="text-lg font-semibold">Risk Analysis</h3>
-								<ReactECharts option={riskMetricsOption} style={{ height: "400px" }} />
+								<EChart option={riskMetricsOption} style={{ height: "400px" }} />
 
 								{/* Risk metrics explanation */}
 								<div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t">

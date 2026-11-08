@@ -1,9 +1,12 @@
-import ReactECharts from "echarts-for-react";
+import { useQuery } from "@apollo/client";
 import { AlertCircle, BookmarkPlus, Download, FileText, Filter, Plus, Tag, X } from "lucide-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { SearchInput } from "@/components/ui/search-input";
+import { GET_ALL_TRANSACTIONS } from "@/graphql/queries/transactions";
 import { useCurrency } from "@/hooks/use-currency";
+import { cleanMerchantName, inferBudgetCategory } from "@/lib/transaction-cleaner";
 import { TransactionsList } from "./TransactionsList";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/button";
@@ -66,12 +69,53 @@ export function TransactionManagement() {
 
 	const { currencySymbol } = useCurrency();
 
-	// Use only real transactions from context
-	const allTransactions = transactions.map((t) => ({
-		...t,
-		status: "completed" as const,
-		currency: "USD",
-	}));
+	const { data: allTxData, loading: allTxLoading } = useQuery(GET_ALL_TRANSACTIONS, {
+		variables: {
+			pagination: { limit: 100, offset: 0 },
+		},
+		fetchPolicy: "cache-and-network",
+	});
+
+	// Use transactions from server query with fallback to context
+	const allTransactions = useMemo(() => {
+		const raw =
+			allTxData?.transactions && allTxData.transactions.length > 0
+				? allTxData.transactions
+				: transactions;
+
+		return (raw as any[]).map((t: any) => {
+			const type = (t.transactionType || t.type || "buy").toLowerCase();
+			const amountVal =
+				typeof t.amount === "number" && t.amount !== 0
+					? Math.abs(t.amount)
+					: typeof t.total === "number"
+						? t.total
+						: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0);
+			const merchant = cleanMerchantName(t.notes);
+			const categoryObj = inferBudgetCategory(t.notes, type, amountVal);
+
+			return {
+				id: t.id,
+				type,
+				assetId: t.asset?.id || t.assetId || "",
+				assetName: t.asset?.name || t.assetName || merchant,
+				assetSymbol: t.asset?.symbol || t.assetSymbol || "",
+				accountId: t.accountId || t.account?.id || undefined,
+				accountName: t.account?.name || t.accountName || undefined,
+				merchantName: merchant,
+				amount: amountVal,
+				quantity: t.quantity ?? 0,
+				price: t.unitPriceAmount ?? t.pricePerUnit ?? 0,
+				currency: t.unitPriceCurrency || "EUR",
+				date: t.executedAt || t.date || new Date().toISOString(),
+				status: (t.status || "completed") as "completed" | "pending" | "failed" | "refunded",
+				category: categoryObj.label,
+				notes: t.notes || "",
+				reference: (t as any).reference || "",
+				fees: t.feesAmount ?? t.fees ?? 0,
+			};
+		});
+	}, [allTxData?.transactions, transactions]);
 
 	// Extract unique values for filters
 	const availableAccounts = useMemo<string[]>(() => {
@@ -743,7 +787,7 @@ export function TransactionManagement() {
 						<CardDescription>Distribution across transaction types</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts option={getTransactionsByTypeChart()} style={{ height: "300px" }} />
+						<EChart option={getTransactionsByTypeChart()} style={{ height: "300px" }} />
 					</CardContent>
 				</Card>
 
@@ -753,7 +797,7 @@ export function TransactionManagement() {
 						<CardDescription>Daily transaction amounts</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts option={getVolumeChart()} style={{ height: "300px" }} />
+						<EChart option={getVolumeChart()} style={{ height: "300px" }} />
 					</CardContent>
 				</Card>
 			</div>

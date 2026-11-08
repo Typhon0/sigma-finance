@@ -185,8 +185,8 @@ const ADD_ASSET_TO_PORTFOLIO = graphql(/* GraphQL */ `
 `);
 
 const REMOVE_ASSET_FROM_PORTFOLIO = graphql(/* GraphQL */ `
-  mutation RemoveAssetFromPortfolio($portfolioID: ID!, $assetID: ID!) {
-    removeAssetFromPortfolio(portfolioID: $portfolioID, assetID: $assetID)
+  mutation RemoveAssetFromPortfolio($portfolioID: ID!, $assetID: ID!, $accountID: ID) {
+    removeAssetFromPortfolio(portfolioID: $portfolioID, assetID: $assetID, accountID: $accountID)
   }
 `);
 
@@ -271,9 +271,13 @@ export function useAssetManagement(apolloClient?: ApolloClient<any>) {
 		return result;
 	};
 
-	const removeAssetFromPortfolio = async (portfolioId: string, assetId: string) => {
+	const removeAssetFromPortfolio = async (
+		portfolioId: string,
+		assetId: string,
+		accountId?: string,
+	) => {
 		const result = await removeAssetFromPortfolioMutation({
-			variables: { portfolioID: portfolioId, assetID: assetId },
+			variables: { portfolioID: portfolioId, assetID: assetId, accountID: accountId },
 		});
 		return result;
 	};

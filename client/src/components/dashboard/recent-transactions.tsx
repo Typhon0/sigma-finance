@@ -131,8 +131,10 @@ export function RecentTransactions({
 										<Badge variant="secondary" className="text-xs">
 											{typeInfo.label}
 										</Badge>
-										<span className="font-medium text-sm">{transaction.asset.name}</span>
-										{transaction.asset.symbol && (
+										<span className="font-medium text-sm">
+											{transaction.asset?.name || transaction.notes || "Transaction"}
+										</span>
+										{transaction.asset?.symbol && (
 											<span className="text-xs text-muted-foreground">
 												({transaction.asset.symbol})
 											</span>
@@ -307,7 +309,9 @@ export function CompactRecentTransactions({
 									<Badge variant="outline" className="text-xs px-1 py-0">
 										{typeInfo.label}
 									</Badge>
-									<span className="truncate max-w-24">{transaction.asset.name}</span>
+									<span className="truncate max-w-24">
+										{transaction.asset?.name || transaction.notes || "Transaction"}
+									</span>
 								</div>
 								<span className={`font-medium ${amountInfo.colorClass}`}>
 									{amountInfo.displayAmount >= 0 ? "+" : ""}

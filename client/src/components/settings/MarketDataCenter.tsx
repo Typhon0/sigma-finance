@@ -2,12 +2,15 @@ import { useMutation, useQuery } from "@apollo/client";
 import {
 	AlertTriangle,
 	CheckCircle2,
+	Clock,
 	Database,
 	Download,
 	Eye,
 	EyeOff,
 	Key,
+	Layers,
 	Loader2,
+	Package,
 	Play,
 	RefreshCw,
 	Search,
@@ -46,6 +49,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlchemySettingsCard } from "@/features/wallets";
+import { cn } from "@/lib/utils";
 import {
 	CANCEL_PACK_BUILD_JOB,
 	INSTALL_MARKET_DATA_PACK,
@@ -539,270 +543,382 @@ export function MarketDataCenter() {
 
 	return (
 		<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-			<div className="flex items-start justify-between gap-4">
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 				<div>
-					<h1 className="flex items-center gap-2 text-2xl font-semibold">
-						<Database className="h-6 w-6" />
-						Market Data
-					</h1>
-					<p className="mt-1 text-sm text-muted-foreground">
-						Install local daily candle packs and manage provider fallback.
+					<div className="flex items-center gap-2">
+						<Database className="h-5 w-5 text-muted-foreground" />
+						<h1 className="text-xl font-semibold tracking-tight text-foreground">
+							Données de Marché & Packs Locaux
+						</h1>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Installez des packs de bougies quotidiennes et configurez les fournisseurs de secours.
 					</p>
 				</div>
-				<TabsList>
-					<TabsTrigger value="packs">Packs</TabsTrigger>
-					<TabsTrigger value="local-build">Local Build</TabsTrigger>
-					<TabsTrigger value="providers">
-						<Settings className="mr-2 h-4 w-4" />
-						Providers
+				<TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full md:w-auto h-auto p-1 bg-muted/20 border border-border/50 rounded-xl gap-1">
+					<TabsTrigger
+						value="packs"
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-1.5"
+					>
+						Packs
 					</TabsTrigger>
-					<TabsTrigger value="sync">
-						<RefreshCw className="mr-2 h-4 w-4" />
-						Sync Credentials
+					<TabsTrigger
+						value="local-build"
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-1.5"
+					>
+						Construction Locale
+					</TabsTrigger>
+					<TabsTrigger
+						value="providers"
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-1.5"
+					>
+						<Settings className="h-3.5 w-3.5 text-muted-foreground" />
+						Fournisseurs
+					</TabsTrigger>
+					<TabsTrigger
+						value="sync"
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-1.5"
+					>
+						<RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
+						Identifiants Sync
 					</TabsTrigger>
 				</TabsList>
 			</div>
 
 			<TabsContent value="packs" className="space-y-6">
 				{error && (
-					<Card className="border-destructive/40">
-						<CardContent className="flex items-center gap-2 py-4 text-sm text-destructive">
-							<XCircle className="h-4 w-4" />
-							{error.message}
-						</CardContent>
-					</Card>
+					<div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 flex items-center gap-2 text-xs text-destructive">
+						<XCircle className="h-4 w-4 shrink-0" />
+						<span>{error.message}</span>
+					</div>
 				)}
 
-				<div className="grid gap-4 md:grid-cols-4">
-					<StatusCard
-						label="Installed packs"
-						value={String(data?.installedMarketDataPacks.length ?? 0)}
-					/>
-					<StatusCard
-						label="Assets"
-						value={formatCount(
-							(data?.installedMarketDataPacks ?? []).reduce(
-								(sum, pack) => sum + pack.assetsCount,
-								0,
-							),
-						)}
-					/>
-					<StatusCard
-						label="Rows"
-						value={formatCount(
-							(data?.installedMarketDataPacks ?? []).reduce((sum, pack) => sum + pack.rowsCount, 0),
-						)}
-					/>
-					<StatusCard
-						label="Latest install"
-						value={data?.installedMarketDataPacks[0]?.installedAt?.slice(0, 10) ?? "-"}
-					/>
+				{/* Ruban KPI unifié */}
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+						<div className="p-4 flex flex-col justify-between">
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+									<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+									Packs Installés
+								</span>
+								<Package className="h-3.5 w-3.5 text-muted-foreground/60" />
+							</div>
+							<div className="mt-2">
+								<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+									{String(data?.installedMarketDataPacks.length ?? 0)}
+								</span>
+								<p className="text-[11px] text-muted-foreground mt-0.5">
+									Packs disponibles en local
+								</p>
+							</div>
+						</div>
+
+						<div className="p-4 flex flex-col justify-between">
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+									<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+									Actifs Couverts
+								</span>
+								<Layers className="h-3.5 w-3.5 text-sky-500/80" />
+							</div>
+							<div className="mt-2">
+								<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+									{formatCount(
+										(data?.installedMarketDataPacks ?? []).reduce(
+											(sum, pack) => sum + pack.assetsCount,
+											0,
+										),
+									)}
+								</span>
+								<p className="text-[11px] text-muted-foreground mt-0.5">
+									Actions & fonds indiciels
+								</p>
+							</div>
+						</div>
+
+						<div className="p-4 flex flex-col justify-between">
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+									<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+									Lignes Historiques
+								</span>
+								<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/80" />
+							</div>
+							<div className="mt-2">
+								<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+									{formatCount(
+										(data?.installedMarketDataPacks ?? []).reduce(
+											(sum, pack) => sum + pack.rowsCount,
+											0,
+										),
+									)}
+								</span>
+								<p className="text-[11px] text-muted-foreground mt-0.5">
+									Cotations journalières
+								</p>
+							</div>
+						</div>
+
+						<div className="p-4 flex flex-col justify-between">
+							<div className="flex items-center justify-between gap-2">
+								<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+									<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+									Dernière Installation
+								</span>
+								<Clock className="h-3.5 w-3.5 text-muted-foreground/60" />
+							</div>
+							<div className="mt-2">
+								<span className="text-lg font-semibold tracking-tight text-foreground font-mono">
+									{data?.installedMarketDataPacks[0]?.installedAt?.slice(0, 10) ?? "—"}
+								</span>
+								<p className="text-[11px] text-muted-foreground mt-0.5">
+									Horodatage du registre
+								</p>
+							</div>
+						</div>
+					</div>
 				</div>
 
 				{recommendedPack && (
-					<Card>
-						<CardHeader className="pb-3">
-							<div className="flex items-start justify-between gap-4">
-								<div>
-									<CardTitle className="text-base">{recommendedPack.name}</CardTitle>
-									<CardDescription>{recommendedPack.description}</CardDescription>
-								</div>
-								<Badge>Recommended</Badge>
+					<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+						<div className="flex items-start justify-between gap-4">
+							<div>
+								<div className="text-base font-semibold text-foreground">{recommendedPack.name}</div>
+								<p className="text-xs text-muted-foreground mt-0.5">{recommendedPack.description}</p>
 							</div>
-						</CardHeader>
-						<CardContent className="flex flex-wrap items-center justify-between gap-4">
-							<div className="grid gap-3 text-sm sm:grid-cols-4">
+							<Badge className="bg-primary/10 text-primary border-primary/20 text-xs">Recommandé</Badge>
+						</div>
+						<div className="flex flex-wrap items-center justify-between gap-4 pt-2 border-t border-border/40">
+							<div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono text-muted-foreground">
 								<span>{formatBytes(recommendedPack.compressedSizeBytes)}</span>
-								<span>{formatCount(recommendedPack.assetsCount)} assets</span>
-								<span>{formatCount(recommendedPack.rowsCount)} rows</span>
+								<span>{formatCount(recommendedPack.assetsCount)} actifs</span>
+								<span>{formatCount(recommendedPack.rowsCount)} lignes</span>
 								<span>{recommendedPack.assetTypes.join(", ")}</span>
 							</div>
 							<Button
+								size="sm"
 								onClick={() => startMutation("install", recommendedPack.packId)}
 								disabled={busy || installedById.has(recommendedPack.packId)}
+								className="h-8 gap-1.5 text-xs"
 							>
-								<Download className="mr-2 h-4 w-4" />
-								{installedById.has(recommendedPack.packId) ? "Installed" : "Install"}
+								<Download className="h-3.5 w-3.5" />
+								{installedById.has(recommendedPack.packId) ? "Installé" : "Installer le pack"}
 							</Button>
-						</CardContent>
-					</Card>
+						</div>
+					</div>
 				)}
 
 				{activeJob && (
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-base">Job progress</CardTitle>
-							<CardDescription>
-								{activeJob.jobType} {activeJob.packId} · {activeJob.status}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-3">
-							<Progress value={activeJob.progressPercent} />
-							<div className="flex items-center justify-between text-sm text-muted-foreground">
-								<span>{activeJob.progressPercent.toFixed(0)}%</span>
-								<span>
-									{formatBytes(activeJob.downloadedBytes)} / {formatBytes(activeJob.totalBytes)}
-								</span>
-							</div>
-							{activeJob.errorMessage && (
-								<p className="text-sm text-destructive">{activeJob.errorMessage}</p>
-							)}
-						</CardContent>
-					</Card>
+					<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-3">
+						<div className="flex items-center justify-between">
+							<span className="text-sm font-semibold">Progression de l'installation</span>
+							<Badge variant="outline" className="text-xs font-mono">
+								{activeJob.jobType} · {activeJob.status}
+							</Badge>
+						</div>
+						<p className="text-xs text-muted-foreground font-mono">{activeJob.packId}</p>
+						<Progress value={activeJob.progressPercent} className="h-2" />
+						<div className="flex items-center justify-between text-xs text-muted-foreground font-mono tabular-nums">
+							<span>{activeJob.progressPercent.toFixed(0)}%</span>
+							<span>
+								{formatBytes(activeJob.downloadedBytes)} / {formatBytes(activeJob.totalBytes)}
+							</span>
+						</div>
+						{activeJob.errorMessage && (
+							<p className="text-xs text-destructive">{activeJob.errorMessage}</p>
+						)}
+					</div>
 				)}
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Available packs</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Version</TableHead>
-									<TableHead>Size</TableHead>
-									<TableHead>Assets</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead className="text-right">Action</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{(data?.availableMarketDataPacks ?? []).map((pack) => {
-									const installed = installedById.get(pack.packId);
-									return (
-										<TableRow key={pack.packId}>
-											<TableCell>
-												<div className="font-medium">{pack.name}</div>
-												<div className="text-xs text-muted-foreground">
-													{pack.assetTypes.join(", ")}
-												</div>
-											</TableCell>
-											<TableCell>{pack.version}</TableCell>
-											<TableCell>{formatBytes(pack.compressedSizeBytes)}</TableCell>
-											<TableCell>{formatCount(pack.assetsCount)}</TableCell>
-											<TableCell>
-												<Badge variant={installed ? "default" : "secondary"}>
-													{installed?.status ?? "available"}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-right">
-												<div className="flex justify-end gap-2">
-													<Button
-														size="icon"
-														variant="outline"
-														onClick={() => startMutation("install", pack.packId)}
-														disabled={busy}
-													>
-														<Download className="h-4 w-4" />
-													</Button>
-													{installed && (
-														<>
-															<Button
-																size="icon"
-																variant="outline"
-																onClick={() => startMutation("update", pack.packId)}
-																disabled={busy}
-															>
-																<RefreshCw className="h-4 w-4" />
-															</Button>
-															<Button
-																size="icon"
-																variant="outline"
-																onClick={() => startMutation("repair", pack.packId)}
-																disabled={busy}
-															>
-																<Wrench className="h-4 w-4" />
-															</Button>
-															<Button
-																size="icon"
-																variant="outline"
-																onClick={() => startMutation("remove", pack.packId)}
-																disabled={busy}
-															>
-																<Trash2 className="h-4 w-4" />
-															</Button>
-														</>
-													)}
-												</div>
-											</TableCell>
-										</TableRow>
-									);
-								})}
-								{!loading && (data?.availableMarketDataPacks ?? []).length === 0 && (
-									<TableRow>
-										<TableCell
-											colSpan={6}
-											className="py-8 text-center text-sm text-muted-foreground"
-										>
-											No registry packs available.
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+					<div className="px-5 py-4 border-b border-border/40">
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Packs Disponibles dans le Registre
+						</h2>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Sélectionnez et gérez les packages de données de marché locaux pour ce serveur.
+						</p>
+					</div>
+					<Table>
+						<TableHeader>
+							<TableRow className="border-b border-border/40 bg-muted/20 hover:bg-muted/20">
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Nom
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Version
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Taille
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Actifs
+								</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Statut
+								</TableHead>
+								<TableHead className="text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+									Actions
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody className="divide-y divide-border/20">
+							{(data?.availableMarketDataPacks ?? []).map((pack) => {
+								const installed = installedById.get(pack.packId);
+								return (
+									<TableRow key={pack.packId} className="hover:bg-muted/30 transition-colors">
+										<TableCell>
+											<div className="font-medium text-xs text-foreground">{pack.name}</div>
+											<div className="text-[11px] text-muted-foreground font-mono">
+												{pack.assetTypes.join(", ")}
+											</div>
+										</TableCell>
+										<TableCell className="font-mono text-xs">{pack.version}</TableCell>
+										<TableCell className="font-mono text-xs tabular-nums">
+											{formatBytes(pack.compressedSizeBytes)}
+										</TableCell>
+										<TableCell className="font-mono text-xs tabular-nums">
+											{formatCount(pack.assetsCount)}
+										</TableCell>
+										<TableCell>
+											<Badge
+												variant="outline"
+												className={cn(
+													"text-[11px] font-mono",
+													installed
+														? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+														: "border-border/60 bg-muted/30 text-muted-foreground",
+												)}
+											>
+												{installed?.status ?? "disponible"}
+											</Badge>
+										</TableCell>
+										<TableCell className="text-right">
+											<div className="flex justify-end gap-1.5">
+												<Button
+													size="icon"
+													variant="outline"
+													className="h-7 w-7 border-border/60"
+													onClick={() => startMutation("install", pack.packId)}
+													disabled={busy}
+												>
+													<Download className="h-3.5 w-3.5" />
+												</Button>
+												{installed && (
+													<>
+														<Button
+															size="icon"
+															variant="outline"
+															className="h-7 w-7 border-border/60"
+															onClick={() => startMutation("update", pack.packId)}
+															disabled={busy}
+														>
+															<RefreshCw className="h-3.5 w-3.5" />
+														</Button>
+														<Button
+															size="icon"
+															variant="outline"
+															className="h-7 w-7 border-border/60"
+															onClick={() => startMutation("repair", pack.packId)}
+															disabled={busy}
+														>
+															<Wrench className="h-3.5 w-3.5" />
+														</Button>
+														<Button
+															size="icon"
+															variant="outline"
+															className="h-7 w-7 border-border/60 text-rose-500 hover:text-rose-600"
+															onClick={() => startMutation("remove", pack.packId)}
+															disabled={busy}
+														>
+															<Trash2 className="h-3.5 w-3.5" />
+														</Button>
+													</>
+												)}
+											</div>
 										</TableCell>
 									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
+								);
+							})}
+							{!loading && (data?.availableMarketDataPacks ?? []).length === 0 && (
+								<TableRow>
+									<TableCell
+										colSpan={6}
+										className="py-8 text-center text-xs text-muted-foreground"
+									>
+										Aucun pack disponible dans le registre.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Coverage check</CardTitle>
-						<CardDescription>Enter instrument UUID to inspect local pack coverage.</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
-						<div className="flex gap-2">
-							<Input
-								value={coverageInstrumentId}
-								onChange={(event) => setCoverageInstrumentId(event.target.value)}
-								placeholder="instrument id"
-							/>
-							<Button variant="outline" onClick={() => refetch()}>
-								<Search className="mr-2 h-4 w-4" />
-								Check
-							</Button>
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+					<div>
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Vérification de Couverture
+						</h2>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Saisissez l'UUID ou identifiant d'un instrument pour inspecter sa disponibilité locale.
+						</p>
+					</div>
+					<div className="flex gap-2">
+						<Input
+							value={coverageInstrumentId}
+							onChange={(event) => setCoverageInstrumentId(event.target.value)}
+							placeholder="ex: 123e4567-e89b-12d3-a456-426614174000"
+							className="h-9 text-xs font-mono"
+						/>
+						<Button variant="outline" size="sm" onClick={() => refetch()} className="h-9 gap-1.5 text-xs">
+							<Search className="h-3.5 w-3.5" />
+							Vérifier
+						</Button>
+					</div>
+					<Separator className="border-border/30" />
+					{(data?.marketDataCoverage ?? []).map((coverage) => (
+						<div
+							key={`${coverage.packId}-${coverage.instrumentId}-${coverage.quoteCurrency}`}
+							className="flex items-center justify-between text-xs"
+						>
+							<span className="font-mono">
+								{coverage.symbol} · {coverage.quoteCurrency} · {coverage.firstDate.slice(0, 10)}{" "}
+								à {coverage.lastDate.slice(0, 10)}
+							</span>
+							<Badge variant="secondary" className="font-mono text-[11px]">{coverage.packId}</Badge>
 						</div>
-						<Separator />
-						{(data?.marketDataCoverage ?? []).map((coverage) => (
-							<div
-								key={`${coverage.packId}-${coverage.instrumentId}-${coverage.quoteCurrency}`}
-								className="flex items-center justify-between text-sm"
-							>
-								<span>
-									{coverage.symbol} · {coverage.quoteCurrency} · {coverage.firstDate.slice(0, 10)}{" "}
-									to {coverage.lastDate.slice(0, 10)}
-								</span>
-								<Badge variant="secondary">{coverage.packId}</Badge>
-							</div>
-						))}
-						{coverageInstrumentId.trim() && (data?.marketDataCoverage ?? []).length === 0 && (
-							<p className="text-sm text-muted-foreground">
-								No local pack coverage for this instrument.
-							</p>
-						)}
-					</CardContent>
-				</Card>
+					))}
+					{coverageInstrumentId.trim() && (data?.marketDataCoverage ?? []).length === 0 && (
+						<p className="text-xs text-muted-foreground">
+							Aucune couverture locale trouvée pour cet instrument.
+						</p>
+					)}
+				</div>
 			</TabsContent>
 
 			<TabsContent value="local-build" className="space-y-6">
-				<Card className="border-amber-300/60">
-					<CardHeader className="pb-3">
-						<CardTitle className="flex items-center gap-2 text-base">
-							<AlertTriangle className="h-4 w-4 text-amber-500" />
-							Local stock/fund history pack
-						</CardTitle>
-						<CardDescription>
-							Build a private local daily-candle pack from your own data access. MarketParquet is
-							recommended for self-hosted stock/ETF history. The pack stays on this instance and
-							must not be uploaded or redistributed.
-						</CardDescription>
-					</CardHeader>
-				</Card>
+				<div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col gap-1">
+					<div className="flex items-center gap-2 text-sm font-semibold text-amber-500">
+						<AlertTriangle className="h-4 w-4" />
+						Pack d'historique local actions / ETF
+					</div>
+					<p className="text-xs text-muted-foreground leading-relaxed">
+						Générez un pack local de bougies quotidiennes à partir de vos accès API. MarketParquet est
+						recommandé pour l'auto-hébergement. Les données restent strictement confinées sur cette
+						instance et ne sont jamais téléversées.
+					</p>
+				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Build from your provider key</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-4">
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+					<div>
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Construire depuis votre clé de fournisseur
+						</h2>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Configurez les paramètres d'extraction et les classes d'actifs à indexer.
+						</p>
+					</div>
 						<div className="rounded-md border border-amber-300/60 bg-amber-50/40 p-3 text-sm text-amber-900">
 							Provider market data is licensed to you. SigmaFinance stores this pack locally for
 							your private use and will not upload it.
@@ -997,23 +1113,22 @@ export function MarketDataCenter() {
 							>
 								Remove local pack
 							</Button>
-							<Button variant="outline" onClick={handleRepairLocalPacks}>
+							<Button variant="outline" size="sm" className="h-8 text-xs border-border/60" onClick={handleRepairLocalPacks}>
 								Repair local packs
 							</Button>
 						</div>
-					</CardContent>
-				</Card>
+				</div>
 
 				{activeLocalBuildJob && (
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-base">Current local build</CardTitle>
-							<CardDescription>
+					<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-3">
+						<div>
+							<div className="text-base font-semibold">Current local build</div>
+							<div className="text-xs text-muted-foreground font-mono mt-0.5">
 								{activeLocalBuildJob.packId} · {activeLocalBuildJob.sourceProvider} ·{" "}
 								{activeLocalBuildJob.status}
-							</CardDescription>
-						</CardHeader>
-						<CardContent className="space-y-3">
+							</div>
+						</div>
+						<div className="space-y-3">
 							<Progress value={activeLocalBuildJob.progressPercent} />
 							<div className="text-sm text-muted-foreground">
 								{activeLocalBuildJob.completedSymbols}/{activeLocalBuildJob.totalSymbols} completed
@@ -1073,51 +1188,57 @@ export function MarketDataCenter() {
 									</TableBody>
 								</Table>
 							)}
-						</CardContent>
-					</Card>
+						</div>
+					</div>
 				)}
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Recent local build jobs</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Pack</TableHead>
-									<TableHead>Provider</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Progress</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{localBuildJobs.map((job) => (
-									<TableRow key={job.id}>
-										<TableCell className="font-medium">{job.packId}</TableCell>
-										<TableCell>{job.sourceProvider}</TableCell>
-										<TableCell>
-											<Badge variant={job.status === "succeeded" ? "default" : "secondary"}>
-												{job.status}
-											</Badge>
-										</TableCell>
-										<TableCell>{job.progressPercent.toFixed(0)}%</TableCell>
-									</TableRow>
-								))}
-								{localBuildJobs.length === 0 && (
-									<TableRow>
-										<TableCell
-											colSpan={4}
-											className="py-8 text-center text-sm text-muted-foreground"
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+					<div className="p-5 border-b border-border/40">
+						<div className="text-base font-semibold">Recent local build jobs</div>
+					</div>
+					<Table>
+						<TableHeader>
+							<TableRow className="border-b border-border/40 bg-muted/20 hover:bg-muted/20">
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Pack</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Provider</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Progress</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody className="divide-y divide-border/20">
+							{localBuildJobs.map((job) => (
+								<TableRow key={job.id} className="hover:bg-muted/30 transition-colors">
+									<TableCell className="font-medium text-xs font-mono">{job.packId}</TableCell>
+									<TableCell className="text-xs">{job.sourceProvider}</TableCell>
+									<TableCell>
+										<Badge
+											variant="outline"
+											className={cn(
+												"text-[11px] font-mono gap-1",
+												job.status === "succeeded"
+													? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+													: "border-border/60 bg-muted/20 text-muted-foreground",
+											)}
 										>
-											No local build jobs yet.
-										</TableCell>
-									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
+											{job.status}
+										</Badge>
+									</TableCell>
+									<TableCell className="text-xs font-mono tabular-nums">{job.progressPercent.toFixed(0)}%</TableCell>
+								</TableRow>
+							))}
+							{localBuildJobs.length === 0 && (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="py-8 text-center text-xs text-muted-foreground"
+									>
+										No local build jobs yet.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
 			</TabsContent>
 
 			<TabsContent value="providers">
@@ -1127,145 +1248,147 @@ export function MarketDataCenter() {
 			<TabsContent value="sync" className="space-y-6">
 				<AlchemySettingsCard />
 
-				<Card>
-					<CardHeader className="flex flex-row items-start justify-between pb-3">
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 border-b border-border/40">
 						<div>
-							<CardTitle className="text-base">Configured Institution Sync Credentials</CardTitle>
-							<CardDescription>
+							<div className="text-base font-semibold">Configured Institution Sync Credentials</div>
+							<div className="text-xs text-muted-foreground mt-0.5">
 								Active API keys and authentication tokens for automated account synchronization.
-							</CardDescription>
+							</div>
 						</div>
 						{currentPortfolio && (
-							<Button size="sm" onClick={() => setShowConnectDialog(true)}>
-								<RefreshCw className="mr-2 h-4 w-4" />
+							<Button size="sm" variant="outline" className="h-8 text-xs border-border/60 gap-1.5" onClick={() => setShowConnectDialog(true)}>
+								<RefreshCw className="h-3.5 w-3.5" />
 								Institution Wizard
 							</Button>
 						)}
-					</CardHeader>
-					<CardContent>
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Provider</TableHead>
-									<TableHead>Status</TableHead>
-									<TableHead>Created</TableHead>
-									<TableHead>Last Updated</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{(syncCredsData?.syncCredentials ?? []).map((cred) => (
-									<TableRow key={cred.id}>
-										<TableCell className="font-medium uppercase">{cred.provider}</TableCell>
-										<TableCell>
-											<Badge
-												variant={
-													cred.status === "ACTIVE" || cred.status === "SUCCESS"
-														? "default"
-														: "secondary"
-												}
-											>
-												{cred.status}
-											</Badge>
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground">
-											{new Date(cred.createdAt).toLocaleDateString()}
-										</TableCell>
-										<TableCell className="text-xs text-muted-foreground">
-											{new Date(cred.updatedAt).toLocaleDateString()}
-										</TableCell>
-									</TableRow>
-								))}
-								{!loadingSyncCreds && (syncCredsData?.syncCredentials ?? []).length === 0 && (
-									<TableRow>
-										<TableCell
-											colSpan={4}
-											className="py-8 text-center text-sm text-muted-foreground"
+					</div>
+					<Table>
+						<TableHeader>
+							<TableRow className="border-b border-border/40 bg-muted/20 hover:bg-muted/20">
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Provider</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Created</TableHead>
+								<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Last Updated</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody className="divide-y divide-border/20">
+							{(syncCredsData?.syncCredentials ?? []).map((cred) => (
+								<TableRow key={cred.id} className="hover:bg-muted/30 transition-colors">
+									<TableCell className="font-mono text-xs font-medium uppercase text-foreground">{cred.provider}</TableCell>
+									<TableCell>
+										<Badge
+											variant="outline"
+											className={cn(
+												"text-[11px] font-mono gap-1",
+												cred.status === "ACTIVE" || cred.status === "SUCCESS"
+													? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+													: "border-border/60 bg-muted/20 text-muted-foreground",
+											)}
 										>
-											No sync credentials configured yet. Register a new API key below or use the
-											wizard.
-										</TableCell>
-									</TableRow>
-								)}
-							</TableBody>
-						</Table>
-					</CardContent>
-				</Card>
+											{cred.status}
+										</Badge>
+									</TableCell>
+									<TableCell className="text-xs text-muted-foreground font-mono">
+										{new Date(cred.createdAt).toLocaleDateString()}
+									</TableCell>
+									<TableCell className="text-xs text-muted-foreground font-mono">
+										{new Date(cred.updatedAt).toLocaleDateString()}
+									</TableCell>
+								</TableRow>
+							))}
+							{!loadingSyncCreds && (syncCredsData?.syncCredentials ?? []).length === 0 && (
+								<TableRow>
+									<TableCell
+										colSpan={4}
+										className="py-8 text-center text-xs text-muted-foreground"
+									>
+										No sync credentials configured yet. Register a new API key below or use the
+										wizard.
+									</TableCell>
+								</TableRow>
+							)}
+						</TableBody>
+					</Table>
+				</div>
 
-				<Card>
-					<CardHeader>
-						<CardTitle className="text-base">Register Direct API Key</CardTitle>
-						<CardDescription>
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+					<div>
+						<div className="text-base font-semibold">Register Direct API Key</div>
+						<div className="text-xs text-muted-foreground mt-0.5">
 							Add credentials directly for supported providers (e.g. Kraken, Binance).
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<form onSubmit={handleRegisterSyncCredential} className="space-y-4 max-w-lg">
-							<div className="space-y-2">
-								<Label htmlFor="sync-provider-select">Provider</Label>
-								<Select value={newSyncProvider} onValueChange={setNewSyncProvider}>
-									<SelectTrigger id="sync-provider-select">
-										<SelectValue />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="KRAKEN">Kraken (Crypto Exchange)</SelectItem>
-										<SelectItem value="SNAPTRADE">SnapTrade (Stock Brokerages)</SelectItem>
-										<SelectItem value="GOCARDLESS">GoCardless (Open Banking)</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
+						</div>
+					</div>
+					<form onSubmit={handleRegisterSyncCredential} className="space-y-4 max-w-lg">
+						<div className="space-y-1.5">
+							<Label htmlFor="sync-provider-select" className="text-xs text-muted-foreground">Provider</Label>
+							<Select value={newSyncProvider} onValueChange={setNewSyncProvider}>
+								<SelectTrigger id="sync-provider-select" className="h-9 text-xs">
+									<SelectValue />
+								</SelectTrigger>
+								<SelectContent>
+									<SelectItem value="KRAKEN">Kraken (Crypto Exchange)</SelectItem>
+									<SelectItem value="SNAPTRADE">SnapTrade (Stock Brokerages)</SelectItem>
+									<SelectItem value="GOCARDLESS">GoCardless (Open Banking)</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
 
-							<div className="space-y-2">
-								<Label htmlFor="sync-api-key">API Key *</Label>
+						<div className="space-y-1.5">
+							<Label htmlFor="sync-api-key" className="text-xs text-muted-foreground">API Key *</Label>
+							<Input
+								id="sync-api-key"
+								placeholder="Enter provider API key"
+								value={newSyncApiKey}
+								onChange={(e) => setNewSyncApiKey(e.target.value)}
+								className="h-9 text-xs font-mono border-border/60 bg-background/50 focus-visible:ring-primary/20"
+								required
+							/>
+						</div>
+
+						<div className="space-y-1.5">
+							<Label htmlFor="sync-api-secret" className="text-xs text-muted-foreground">API Secret / Private Key *</Label>
+							<div className="relative">
 								<Input
-									id="sync-api-key"
-									placeholder="Enter provider API key"
-									value={newSyncApiKey}
-									onChange={(e) => setNewSyncApiKey(e.target.value)}
+									id="sync-api-secret"
+									type={showSyncSecret ? "text" : "password"}
+									placeholder="Enter provider secret"
+									value={newSyncApiSecret}
+									onChange={(e) => setNewSyncApiSecret(e.target.value)}
+									className="h-9 pr-10 text-xs font-mono border-border/60 bg-background/50 focus-visible:ring-primary/20"
 									required
 								/>
+								<button
+									type="button"
+									onClick={() => setShowSyncSecret((v) => !v)}
+									className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
+									aria-label={showSyncSecret ? "Hide secret" : "Show secret"}
+								>
+									{showSyncSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+								</button>
 							</div>
+						</div>
 
-							<div className="space-y-2">
-								<Label htmlFor="sync-api-secret">API Secret / Private Key *</Label>
-								<div className="relative">
-									<Input
-										id="sync-api-secret"
-										type={showSyncSecret ? "text" : "password"}
-										placeholder="Enter provider secret"
-										value={newSyncApiSecret}
-										onChange={(e) => setNewSyncApiSecret(e.target.value)}
-										required
-									/>
-									<button
-										type="button"
-										onClick={() => setShowSyncSecret((v) => !v)}
-										className="absolute right-3 top-2.5 text-muted-foreground hover:text-foreground"
-										aria-label={showSyncSecret ? "Hide secret" : "Show secret"}
-									>
-										{showSyncSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-									</button>
-								</div>
-							</div>
-
-							<Button
-								type="submit"
-								disabled={registeringSyncCred || !newSyncApiKey || !newSyncApiSecret}
-							>
-								{registeringSyncCred ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-										Saving...
-									</>
-								) : (
-									<>
-										<Key className="mr-2 h-4 w-4" />
-										Register Credential
-									</>
-								)}
-							</Button>
-						</form>
-					</CardContent>
-				</Card>
+						<Button
+							type="submit"
+							size="sm"
+							className="h-8 text-xs font-medium"
+							disabled={registeringSyncCred || !newSyncApiKey || !newSyncApiSecret}
+						>
+							{registeringSyncCred ? (
+								<>
+									<Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+									Saving...
+								</>
+							) : (
+								<>
+									<Key className="mr-1.5 h-3.5 w-3.5" />
+									Register Credential
+								</>
+							)}
+						</Button>
+					</form>
+				</div>
 
 				{currentPortfolio && (
 					<ConnectInstitutionDialog
@@ -1284,14 +1407,12 @@ export function MarketDataCenter() {
 
 function StatusCard({ label, value }: { label: string; value: string }) {
 	return (
-		<Card>
-			<CardContent className="flex items-center justify-between p-4">
-				<div>
-					<p className="text-xs text-muted-foreground">{label}</p>
-					<p className="text-xl font-semibold">{value}</p>
-				</div>
-				<CheckCircle2 className="h-5 w-5 text-muted-foreground" />
-			</CardContent>
-		</Card>
+		<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-4 flex items-center justify-between">
+			<div>
+				<p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
+				<p className="text-xl font-semibold tabular-nums text-foreground mt-1">{value}</p>
+			</div>
+			<CheckCircle2 className="h-4 w-4 text-emerald-500/70" />
+		</div>
 	);
 }

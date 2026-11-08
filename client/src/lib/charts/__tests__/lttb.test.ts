@@ -32,12 +32,8 @@ describe("downsampleLTTB", () => {
 		expect(result[0].portfolioValue).toBe(points[0].portfolioValue);
 
 		// Check end point matches
-		expect(result[result.length - 1].date.getTime()).toBe(
-			points[points.length - 1].date.getTime(),
-		);
-		expect(result[result.length - 1].portfolioValue).toBe(
-			points[points.length - 1].portfolioValue,
-		);
+		expect(result[result.length - 1].date.getTime()).toBe(points[points.length - 1].date.getTime());
+		expect(result[result.length - 1].portfolioValue).toBe(points[points.length - 1].portfolioValue);
 
 		// Check that the spike at index 500 (value 600) was captured by LTTB
 		const hasPeak = result.some((p) => p.portfolioValue > 400);
@@ -69,4 +65,3 @@ describe("downsampleLTTB", () => {
 		expect(duration).toBeLessThan(15); // Fast test margin
 	});
 });
-

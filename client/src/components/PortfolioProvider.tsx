@@ -65,6 +65,7 @@ export interface PortfolioAssetItem {
 	accountType?: string;
 	institution?: string;
 	account?: string;
+	accountId?: string;
 	accountNumber?: string;
 	currency?: string;
 	interestRate?: number | null;
@@ -276,8 +277,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					fx: resolveAssetFx(p.id, a.asset?.id),
 					positionId: resolvePositionId(p.id, a.asset?.id),
 					...bankFields,
-					institution: bankFields.institution || a.asset?.exchange || undefined,
-					account: a.asset?.exchange || bankFields.institution || undefined,
+					institution: bankFields.institution || a.accountName || undefined,
+					account: a.accountName || bankFields.institution || undefined,
+					accountId: a.accountID || undefined,
 					// Ensure type is set correctly after spread (bankFields may override)
 					type: bankFields.type || assetType,
 				};
@@ -341,8 +343,9 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				fx: resolveAssetFx(selectedPortfolio.id, a.asset?.id),
 				positionId: resolvePositionId(selectedPortfolio.id, a.asset?.id),
 				...bankFields,
-				institution: bankFields.institution || a.asset?.exchange || undefined,
-				account: a.asset?.exchange || bankFields.institution || undefined,
+				institution: bankFields.institution || a.accountName || undefined,
+				account: a.accountName || bankFields.institution || undefined,
+				accountId: a.accountID || undefined,
 				// Ensure type is set correctly after spread (bankFields may override)
 				type: bankFields.type || assetType,
 			};
@@ -365,9 +368,15 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			assetId: t.asset?.id ?? "",
 			assetSymbol: t.asset?.symbol ?? "",
 			assetName: t.asset?.name ?? "",
+			accountId: t.accountId ?? t.account?.id ?? undefined,
+			accountName: t.account?.name ?? undefined,
 			type: t.transactionType?.toLowerCase() ?? "buy",
 			date: t.executedAt,
-			total: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0),
+			total:
+				typeof t.amount === "number" && t.amount !== 0
+					? Math.abs(t.amount)
+					: (t.quantity ?? 0) * (t.unitPriceAmount ?? 0),
+			amount: t.amount ?? null,
 			quantity: t.quantity ?? 0,
 			pricePerUnit: t.unitPriceAmount ?? 0,
 			fees: t.feesAmount ?? 0,
@@ -562,12 +571,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 		[currentPortfolio, assets, updateAssetInPortfolio],
 	);
 	const deleteAsset = useCallback(
-		async (assetId: string, portfolioId?: string) => {
+		async (assetId: string, portfolioId?: string, accountId?: string) => {
 			const pid = portfolioId || currentPortfolio;
 			if (!pid) {
 				throw new Error("No portfolio selected");
 			}
-			await removeAssetFromPortfolio(pid, assetId);
+			await removeAssetFromPortfolio(pid, assetId, accountId);
 			// No refetch(): REMOVE_ASSET_FROM_PORTFOLIO evicts the portfolio/dashboard
 			// cache fields in its `update`, so the active observers refetch on their
 			// own. This call used to fire a second, identical request every time.

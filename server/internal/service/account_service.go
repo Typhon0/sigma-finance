@@ -8,6 +8,8 @@ import (
 	"sigma_finance/internal/repository"
 	"strings"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 var (
@@ -23,24 +25,30 @@ var (
 
 // CreateAccountInput holds the input parameters for creating a new Account
 type CreateAccountInput struct {
-	PortfolioID   string
-	Name          string
-	Type          model.AccountType
-	TaxWrapper    model.TaxWrapperType
-	Institution   *string
-	AccountNumber *string
-	Currency      *string
-	SyncProvider  *string
+	PortfolioID         string
+	Name                string
+	Type                model.AccountType
+	TaxWrapper          model.TaxWrapperType
+	Institution         *string
+	AccountNumber       *string
+	Currency            *string
+	SyncProvider        *string
+	OwnershipPercentage *decimal.Decimal
+	CoOwnerName         *string
+	CoOwnerUserID       *string
 }
 
 // UpdateAccountInput holds the input parameters for updating an existing Account
 type UpdateAccountInput struct {
-	Name          *string
-	Type          *model.AccountType
-	TaxWrapper    *model.TaxWrapperType
-	Institution   *string
-	AccountNumber *string
-	Currency      *string
+	Name                *string
+	Type                *model.AccountType
+	TaxWrapper          *model.TaxWrapperType
+	Institution         *string
+	AccountNumber       *string
+	Currency            *string
+	OwnershipPercentage *decimal.Decimal
+	CoOwnerName         *string
+	CoOwnerUserID       *string
 }
 
 // IAccountService defines business operations on custodial/legal Accounts
@@ -116,19 +124,44 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID string, input
 		syncProvider = strings.ToUpper(strings.TrimSpace(*input.SyncProvider))
 	}
 
+	ownershipPercentage := decimal.NewFromInt(100)
+	if input.OwnershipPercentage != nil && !input.OwnershipPercentage.IsZero() {
+		ownershipPercentage = *input.OwnershipPercentage
+	}
+
+	var coOwnerName *string
+	if input.CoOwnerName != nil && strings.TrimSpace(*input.CoOwnerName) != "" {
+		trimmed := strings.TrimSpace(*input.CoOwnerName)
+		coOwnerName = &trimmed
+	}
+
+	var coOwnerUserID *string
+	if input.CoOwnerUserID != nil && strings.TrimSpace(*input.CoOwnerUserID) != "" {
+		trimmed := strings.TrimSpace(*input.CoOwnerUserID)
+		coOwnerUserID = &trimmed
+	}
+
+	if ownershipPercentage.Equal(decimal.NewFromInt(100)) {
+		coOwnerName = nil
+		coOwnerUserID = nil
+	}
+
 	now := time.Now()
 	account := &model.Account{
-		UserID:        userID,
-		PortfolioID:   input.PortfolioID,
-		Name:          strings.TrimSpace(input.Name),
-		Type:          accountType,
-		TaxWrapper:    taxWrapper,
-		Institution:   input.Institution,
-		AccountNumber: input.AccountNumber,
-		Currency:      currency,
-		SyncProvider:  syncProvider,
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		UserID:              userID,
+		PortfolioID:         input.PortfolioID,
+		Name:                strings.TrimSpace(input.Name),
+		Type:                accountType,
+		TaxWrapper:          taxWrapper,
+		Institution:         input.Institution,
+		AccountNumber:       input.AccountNumber,
+		Currency:            currency,
+		SyncProvider:        syncProvider,
+		OwnershipPercentage: ownershipPercentage,
+		CoOwnerName:         coOwnerName,
+		CoOwnerUserID:       coOwnerUserID,
+		CreatedAt:           now,
+		UpdatedAt:           now,
 	}
 
 	if err := account.Validate(); err != nil {
@@ -214,14 +247,56 @@ func (s *AccountService) UpdateAccount(ctx context.Context, userID, accountID st
 		acc.Currency = model.Currency(strings.ToUpper(strings.TrimSpace(*input.Currency)))
 	}
 
+	var ownershipChanged bool
+	var newOwnership decimal.Decimal
+	if input.OwnershipPercentage != nil {
+		acc.OwnershipPercentage = *input.OwnershipPercentage
+		ownershipChanged = true
+		newOwnership = *input.OwnershipPercentage
+	}
+
+	if input.CoOwnerName != nil {
+		if strings.TrimSpace(*input.CoOwnerName) == "" {
+			acc.CoOwnerName = nil
+		} else {
+			trimmed := strings.TrimSpace(*input.CoOwnerName)
+			acc.CoOwnerName = &trimmed
+		}
+	}
+
+	if input.CoOwnerUserID != nil {
+		if strings.TrimSpace(*input.CoOwnerUserID) == "" {
+			acc.CoOwnerUserID = nil
+		} else {
+			trimmed := strings.TrimSpace(*input.CoOwnerUserID)
+			acc.CoOwnerUserID = &trimmed
+		}
+	}
+
+	if acc.OwnershipPercentage.Equal(decimal.NewFromInt(100)) {
+		acc.CoOwnerName = nil
+		acc.CoOwnerUserID = nil
+	}
+
 	acc.UpdatedAt = time.Now()
 
 	if err := acc.Validate(); err != nil {
 		return nil, err
 	}
 
-	if err := s.uow.Account().Update(ctx, acc); err != nil {
-		return nil, fmt.Errorf("failed to update account: %w", err)
+	err = s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
+		if err := uow.Account().Update(ctx, acc); err != nil {
+			return fmt.Errorf("failed to update account: %w", err)
+		}
+		if ownershipChanged {
+			if err := uow.Position().UpdateOwnershipByAccount(ctx, acc.ID, newOwnership); err != nil {
+				return fmt.Errorf("failed to cascade ownership to positions: %w", err)
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return acc, nil

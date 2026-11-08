@@ -290,8 +290,8 @@ func (r *mutationResolver) UpdateAssetInPortfolio(ctx context.Context, input gql
 }
 
 // RemoveAssetFromPortfolio is the resolver for the removeAssetFromPortfolio field.
-func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string) (string, error) {
-	log.Printf("[INFO] [graphql] RemoveAssetFromPortfolio: started")
+func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfolioID string, assetID string, accountID *string) (string, error) {
+	log.Printf("[INFO] [graphql] RemoveAssetFromPortfolio: started portfolio=%s asset=%s accountID=%v", portfolioID, assetID, accountID)
 	authUser, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return "", err
@@ -300,7 +300,7 @@ func (r *mutationResolver) RemoveAssetFromPortfolio(ctx context.Context, portfol
 		return "", err
 	}
 
-	err = r.PortfolioService.RemoveAssetFromPortfolio(ctx, portfolioID, assetID)
+	err = r.PortfolioService.RemoveAssetFromPortfolio(ctx, portfolioID, assetID, accountID)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] RemoveAssetFromPortfolio: failed: %v", err)
 		return "", err
@@ -648,7 +648,21 @@ func (r *mutationResolver) CreateBankAccountAsset(ctx context.Context, input gql
 			IsTradeable: false,
 			Metadata:    metadataBytes,
 		})
-		return err
+		if err != nil {
+			return err
+		}
+
+		if input.CurrentValue != nil && *input.CurrentValue > 0 {
+			_ = uow.AssetPrice().UpsertPrices(ctx, []model.AssetPrice{
+				{
+					AssetID:   asset.ID,
+					Price:     decimal.NewFromFloat(*input.CurrentValue),
+					Timestamp: time.Now(),
+					Source:    "manual",
+				},
+			})
+		}
+		return nil
 	})
 
 	if err != nil {
@@ -1345,6 +1359,7 @@ func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.Trans
 	if filter != nil {
 		serviceFilter.UserID = filter.UserID
 		serviceFilter.PortfolioID = filter.PortfolioID
+		serviceFilter.AccountID = filter.AccountID
 		serviceFilter.AssetID = filter.AssetID
 		if filter.TransactionType != nil {
 			tt := model.TransactionType(*filter.TransactionType)

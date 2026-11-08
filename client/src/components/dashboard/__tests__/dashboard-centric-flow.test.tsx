@@ -5,7 +5,6 @@ import type { Asset } from "@/hooks/use-dashboard-state";
 import { useDashboardState } from "@/hooks/use-dashboard-state";
 import { DashboardBreadcrumb } from "../dashboard-breadcrumb";
 import { InlineAssetDetail } from "../inline-asset-detail";
-import { InlinePortfolioDetail } from "../inline-portfolio-detail";
 
 // Mock portfolio data
 const mockPortfolio: Portfolio = {
@@ -210,46 +209,6 @@ describe("Dashboard-Centric Portfolio View", () => {
 		});
 	});
 
-	describe("InlinePortfolioDetail Component", () => {
-		it("should render portfolio details with back navigation", () => {
-			const mockOnBack = vi.fn();
-			const mockOnAssetSelect = vi.fn();
-
-			render(
-				<InlinePortfolioDetail
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-					onAssetSelect={mockOnAssetSelect}
-				/>,
-			);
-
-			expect(screen.getByText("Test Portfolio")).toBeInTheDocument();
-			expect(screen.getByText("A test portfolio for dashboard functionality")).toBeInTheDocument();
-			expect(screen.getByText("Back to Dashboard")).toBeInTheDocument();
-
-			fireEvent.click(screen.getByText("Back to Dashboard"));
-			expect(mockOnBack).toHaveBeenCalled();
-		});
-
-		it("should display portfolio assets with click handlers", () => {
-			const mockOnBack = vi.fn();
-			const mockOnAssetSelect = vi.fn();
-
-			render(
-				<InlinePortfolioDetail
-					portfolio={mockPortfolio}
-					onBack={mockOnBack}
-					onAssetSelect={mockOnAssetSelect}
-				/>,
-			);
-
-			expect(screen.getByText("Apple Inc.")).toBeInTheDocument();
-			expect(screen.getByText("AAPL")).toBeInTheDocument();
-			expect(screen.getByText("Bitcoin")).toBeInTheDocument();
-			expect(screen.getByText("BTC")).toBeInTheDocument();
-		});
-	});
-
 	describe("InlineAssetDetail Component", () => {
 		it("should render asset details with back navigation", () => {
 			const mockOnBack = vi.fn();
@@ -284,17 +243,6 @@ describe("Dashboard Navigation Flow Integration", () => {
 		const mockOnBack = vi.fn();
 
 		const { rerender } = render(<div data-testid="sidebar">Sidebar</div>);
-
-		// Render portfolio detail view
-		rerender(
-			<div>
-				<div data-testid="sidebar">Sidebar</div>
-				<InlinePortfolioDetail portfolio={mockPortfolio} onBack={mockOnBack} />
-			</div>,
-		);
-
-		expect(screen.getByTestId("sidebar")).toBeInTheDocument();
-		expect(screen.getByText("Test Portfolio")).toBeInTheDocument();
 
 		// Render asset detail view
 		rerender(

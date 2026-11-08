@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	AlertTriangle,
 	Award,
@@ -10,6 +9,7 @@ import {
 	Target,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -748,7 +748,7 @@ export function RealEstateAnalytics({ onSelectProperty }: RealEstateAnalyticsPro
 							</div>
 						</CardHeader>
 						<CardContent>
-							<ReactECharts
+							<EChart
 								option={getValueOverTimeOption()}
 								style={{ height: "400px", width: "100%" }}
 								notMerge={true}
@@ -834,7 +834,7 @@ export function RealEstateAnalytics({ onSelectProperty }: RealEstateAnalyticsPro
 							<CardDescription>Performance comparison across properties</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<ReactECharts
+							<EChart
 								option={getPerformanceDistributionOption()}
 								style={{ height: "300px", width: "100%" }}
 								notMerge={true}
@@ -894,7 +894,7 @@ export function RealEstateAnalytics({ onSelectProperty }: RealEstateAnalyticsPro
 							</div>
 						</CardHeader>
 						<CardContent>
-							<ReactECharts
+							<EChart
 								option={allocationView === "pie" ? getPieChartOption() : getTreemapOption()}
 								style={{ height: "400px", width: "100%" }}
 								notMerge={true}
@@ -944,7 +944,7 @@ export function RealEstateAnalytics({ onSelectProperty }: RealEstateAnalyticsPro
 							<CardDescription>Value distribution by location</CardDescription>
 						</CardHeader>
 						<CardContent>
-							<ReactECharts
+							<EChart
 								option={getGeographicDistributionOption()}
 								style={{ height: "300px", width: "100%" }}
 								notMerge={true}

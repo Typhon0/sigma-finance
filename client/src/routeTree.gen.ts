@@ -15,6 +15,7 @@ import { Route as MarketDataTestRouteImport } from './routes/market-data-test'
 import { Route as ChartsRouteImport } from './routes/charts'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SyncCallbackRouteImport } from './routes/sync.callback'
 import { Route as AuthVerifyEmailRouteImport } from './routes/auth.verify-email'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthRegisterRouteImport } from './routes/auth.register'
@@ -24,6 +25,7 @@ import { Route as AppPortfoliosRouteImport } from './routes/_app.portfolios'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppAssetsRouteImport } from './routes/_app.assets'
 import { Route as AuthResetPasswordConfirmRouteImport } from './routes/auth.reset-password.confirm'
+import { Route as AppSettingsUsersRouteImport } from './routes/_app.settings.users'
 import { Route as AppSettingsMarketDataRouteImport } from './routes/_app.settings.market-data'
 import { Route as AppSettingsManualInstrumentsRouteImport } from './routes/_app.settings.manual-instruments'
 import { Route as AppSettingsLogsRouteImport } from './routes/_app.settings.logs'
@@ -80,6 +82,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SyncCallbackRoute = SyncCallbackRouteImport.update({
+  id: '/sync/callback',
+  path: '/sync/callback',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/sync.callback.lazy').then((d) => d.Route))
 const AuthVerifyEmailRoute = AuthVerifyEmailRouteImport.update({
   id: '/auth/verify-email',
   path: '/auth/verify-email',
@@ -139,6 +146,13 @@ const AuthResetPasswordConfirmRoute =
   } as any).lazy(() =>
     import('./routes/auth.reset-password.confirm.lazy').then((d) => d.Route),
   )
+const AppSettingsUsersRoute = AppSettingsUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AppSettingsRoute,
+} as any).lazy(() =>
+  import('./routes/_app.settings.users.lazy').then((d) => d.Route),
+)
 const AppSettingsMarketDataRoute = AppSettingsMarketDataRouteImport.update({
   id: '/market-data',
   path: '/market-data',
@@ -381,6 +395,7 @@ export interface FileRoutesByFullPath {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/sync/callback': typeof SyncCallbackRoute
   '/assets/accounts': typeof AppAssetsAccountsRoute
   '/assets/collectibles': typeof AppAssetsCollectiblesRoute
   '/assets/crypto': typeof AppAssetsCryptoRoute
@@ -409,6 +424,7 @@ export interface FileRoutesByFullPath {
   '/settings/logs': typeof AppSettingsLogsRoute
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
   '/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
@@ -426,6 +442,7 @@ export interface FileRoutesByTo {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/sync/callback': typeof SyncCallbackRoute
   '/assets/accounts': typeof AppAssetsAccountsRoute
   '/assets/collectibles': typeof AppAssetsCollectiblesRoute
   '/assets/crypto': typeof AppAssetsCryptoRoute
@@ -454,6 +471,7 @@ export interface FileRoutesByTo {
   '/settings/logs': typeof AppSettingsLogsRoute
   '/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/settings/market-data': typeof AppSettingsMarketDataRoute
+  '/settings/users': typeof AppSettingsUsersRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
   '/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
@@ -473,6 +491,7 @@ export interface FileRoutesById {
   '/auth/register': typeof AuthRegisterRoute
   '/auth/reset-password': typeof AuthResetPasswordRouteWithChildren
   '/auth/verify-email': typeof AuthVerifyEmailRoute
+  '/sync/callback': typeof SyncCallbackRoute
   '/_app/assets/accounts': typeof AppAssetsAccountsRoute
   '/_app/assets/collectibles': typeof AppAssetsCollectiblesRoute
   '/_app/assets/crypto': typeof AppAssetsCryptoRoute
@@ -501,6 +520,7 @@ export interface FileRoutesById {
   '/_app/settings/logs': typeof AppSettingsLogsRoute
   '/_app/settings/manual-instruments': typeof AppSettingsManualInstrumentsRoute
   '/_app/settings/market-data': typeof AppSettingsMarketDataRoute
+  '/_app/settings/users': typeof AppSettingsUsersRoute
   '/auth/reset-password/confirm': typeof AuthResetPasswordConfirmRoute
   '/_app/settings/metrics': typeof AppSettingsMetricsLazyRoute
   '/_app/assets/savings/$savingId': typeof AppAssetsSavingsSavingIdRoute
@@ -520,6 +540,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/sync/callback'
     | '/assets/accounts'
     | '/assets/collectibles'
     | '/assets/crypto'
@@ -548,6 +569,7 @@ export interface FileRouteTypes {
     | '/settings/logs'
     | '/settings/manual-instruments'
     | '/settings/market-data'
+    | '/settings/users'
     | '/auth/reset-password/confirm'
     | '/settings/metrics'
     | '/assets/savings/$savingId'
@@ -565,6 +587,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/sync/callback'
     | '/assets/accounts'
     | '/assets/collectibles'
     | '/assets/crypto'
@@ -593,6 +616,7 @@ export interface FileRouteTypes {
     | '/settings/logs'
     | '/settings/manual-instruments'
     | '/settings/market-data'
+    | '/settings/users'
     | '/auth/reset-password/confirm'
     | '/settings/metrics'
     | '/assets/savings/$savingId'
@@ -611,6 +635,7 @@ export interface FileRouteTypes {
     | '/auth/register'
     | '/auth/reset-password'
     | '/auth/verify-email'
+    | '/sync/callback'
     | '/_app/assets/accounts'
     | '/_app/assets/collectibles'
     | '/_app/assets/crypto'
@@ -639,6 +664,7 @@ export interface FileRouteTypes {
     | '/_app/settings/logs'
     | '/_app/settings/manual-instruments'
     | '/_app/settings/market-data'
+    | '/_app/settings/users'
     | '/auth/reset-password/confirm'
     | '/_app/settings/metrics'
     | '/_app/assets/savings/$savingId'
@@ -654,6 +680,7 @@ export interface RootRouteChildren {
   AuthRegisterRoute: typeof AuthRegisterRoute
   AuthResetPasswordRoute: typeof AuthResetPasswordRouteWithChildren
   AuthVerifyEmailRoute: typeof AuthVerifyEmailRoute
+  SyncCallbackRoute: typeof SyncCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -684,6 +711,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync/callback': {
+      id: '/sync/callback'
+      path: '/sync/callback'
+      fullPath: '/sync/callback'
+      preLoaderRoute: typeof SyncCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth/verify-email': {
@@ -755,6 +789,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/reset-password/confirm'
       preLoaderRoute: typeof AuthResetPasswordConfirmRouteImport
       parentRoute: typeof AuthResetPasswordRoute
+    }
+    '/_app/settings/users': {
+      id: '/_app/settings/users'
+      path: '/users'
+      fullPath: '/settings/users'
+      preLoaderRoute: typeof AppSettingsUsersRouteImport
+      parentRoute: typeof AppSettingsRoute
     }
     '/_app/settings/market-data': {
       id: '/_app/settings/market-data'
@@ -1071,6 +1112,7 @@ interface AppSettingsRouteChildren {
   AppSettingsLogsRoute: typeof AppSettingsLogsRoute
   AppSettingsManualInstrumentsRoute: typeof AppSettingsManualInstrumentsRoute
   AppSettingsMarketDataRoute: typeof AppSettingsMarketDataRoute
+  AppSettingsUsersRoute: typeof AppSettingsUsersRoute
   AppSettingsMetricsLazyRoute: typeof AppSettingsMetricsLazyRoute
 }
 
@@ -1085,6 +1127,7 @@ const AppSettingsRouteChildren: AppSettingsRouteChildren = {
   AppSettingsLogsRoute: AppSettingsLogsRoute,
   AppSettingsManualInstrumentsRoute: AppSettingsManualInstrumentsRoute,
   AppSettingsMarketDataRoute: AppSettingsMarketDataRoute,
+  AppSettingsUsersRoute: AppSettingsUsersRoute,
   AppSettingsMetricsLazyRoute: AppSettingsMetricsLazyRoute,
 }
 
@@ -1128,6 +1171,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRegisterRoute: AuthRegisterRoute,
   AuthResetPasswordRoute: AuthResetPasswordRouteWithChildren,
   AuthVerifyEmailRoute: AuthVerifyEmailRoute,
+  SyncCallbackRoute: SyncCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

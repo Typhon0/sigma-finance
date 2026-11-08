@@ -1,4 +1,4 @@
-import { jsPDF } from "jspdf";
+import type { jsPDF } from "jspdf";
 import type { PortfolioExportData, TaxReportData } from "./types";
 
 /**
@@ -81,8 +81,12 @@ export class PDFGenerator {
 		return [60, 60, 60];
 	}
 
-	private static document(title: string): jsPDF {
-		const doc = new jsPDF({ unit: "mm", format: "a4" });
+	private static async document(title: string): Promise<jsPDF> {
+		// jsPDF plus its html2canvas dependency is roughly 380 kB and used to be
+		// pulled into the Data settings route for every visitor. Reports are an
+		// explicit action, so the library is loaded only when one is generated.
+		const { jsPDF: JsPDF } = await import("jspdf");
+		const doc = new JsPDF({ unit: "mm", format: "a4" });
 		doc.setFont("helvetica", "bold");
 		doc.setFontSize(16);
 		doc.text(title, PAGE_MARGIN, 20);
@@ -152,7 +156,7 @@ export class PDFGenerator {
 	}
 
 	static async generatePortfolioReport(data: PortfolioExportData): Promise<Blob> {
-		const doc = PDFGenerator.document(`Portfolio Report - ${data.portfolio.name}`);
+		const doc = await PDFGenerator.document(`Portfolio Report - ${data.portfolio.name}`);
 		if (data.portfolio.currency) {
 			// A page that gets separated from its portfolio and handed to
 			// someone else has to still say which currency it is in.
@@ -291,7 +295,7 @@ export class PDFGenerator {
 	}
 
 	static async generateTaxReport(data: TaxReportData): Promise<Blob> {
-		const doc = PDFGenerator.document(`Tax Report ${data.taxYear}`);
+		const doc = await PDFGenerator.document(`Tax Report ${data.taxYear}`);
 		let y = PDFGenerator.heading(doc, "Summary", 36);
 		y = PDFGenerator.keyValue(
 			doc,

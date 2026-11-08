@@ -32,11 +32,42 @@ const (
 	marketCloseMinute = 0
 )
 
-// Supported FX pairs for the scheduler
+// Supported FX pairs for the scheduler (all 27 major world currencies against USD and EUR)
 var supportedPairs = []model.CurrencyPair{
+	// Core G10
 	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyUSD},
 	{BaseCurrency: model.CurrencyGBP, QuoteCurrency: model.CurrencyUSD},
 	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyGBP},
+	{BaseCurrency: model.CurrencyCHF, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyCHF},
+	{BaseCurrency: model.CurrencyCAD, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyAUD, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyNZD, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyJPY, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyJPY},
+
+	// Nordics & Europe
+	{BaseCurrency: model.CurrencyDKK, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyDKK},
+	{BaseCurrency: model.CurrencySEK, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencySEK},
+	{BaseCurrency: model.CurrencyNOK, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyNOK},
+	{BaseCurrency: model.CurrencyPLN, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyEUR, QuoteCurrency: model.CurrencyPLN},
+	{BaseCurrency: model.CurrencyCZK, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyHUF, QuoteCurrency: model.CurrencyUSD},
+
+	// Asia, Americas & Emerging
+	{BaseCurrency: model.CurrencySGD, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyHKD, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyCNY, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyKRW, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyINR, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyBRL, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyMXN, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyZAR, QuoteCurrency: model.CurrencyUSD},
+	{BaseCurrency: model.CurrencyILS, QuoteCurrency: model.CurrencyUSD},
 }
 
 // fxScheduler handles automatic FX rate refreshing

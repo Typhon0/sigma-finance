@@ -57,6 +57,8 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
         dayChange
         dayChangePercent
         quoteCurrency
+        accountName
+        accountID
         asset {
           id
           name
@@ -77,6 +79,14 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
           ... on Fund {
             expenseRatio
             dividendYield
+          }
+          ... on BankAccount {
+            accountType
+            institution
+            accountNumber
+            currency
+            interestRate
+            balance
           }
           assetType {
             id
@@ -100,6 +110,12 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
   query GetDashboardSecondary($userID: ID!) {
     transactions(filter: { userID: $userID }, pagination: { limit: 10 }) {
       id
+      accountId
+      account {
+        id
+        name
+        institution
+      }
       asset {
         id
         symbol
@@ -108,6 +124,7 @@ export const GET_DASHBOARD_SECONDARY = graphql(/* GraphQL */ `
       portfolio {
         id
       }
+      amount
       notes
       quantity
       unitPriceAmount
@@ -124,6 +141,12 @@ export const GET_RECENT_TRANSACTIONS_MINIMAL = graphql(/* GraphQL */ `
   query GetRecentTransactionsMinimal($userID: ID!, $limit: Int) {
     transactions(filter: { userID: $userID }, pagination: { limit: $limit }) {
       id
+      accountId
+      account {
+        id
+        name
+        institution
+      }
       asset {
         id
         symbol
@@ -132,6 +155,7 @@ export const GET_RECENT_TRANSACTIONS_MINIMAL = graphql(/* GraphQL */ `
       portfolio {
         id
       }
+      amount
       notes
       quantity
       unitPriceAmount

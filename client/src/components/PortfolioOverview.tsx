@@ -1,6 +1,6 @@
-import ReactECharts from "echarts-for-react";
 import { BarChart3, PieChart } from "lucide-react";
 import { useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { useCurrency } from "@/hooks/use-currency";
 import { PieChartWithCenter } from "./PieChartWithCenter";
@@ -353,11 +353,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 							</Button>
 						))}
 					</div>
-					<ReactECharts
-						option={lineChartOption}
-						style={{ height: "380px" }}
-						opts={{ renderer: "svg" }}
-					/>
+					<EChart option={lineChartOption} style={{ height: "380px" }} opts={{ renderer: "svg" }} />
 				</CardContent>
 			</Card>
 
@@ -489,7 +485,7 @@ export function PortfolioOverview({ assetTypeFilter = "all" }) {
 						</TabsContent>
 
 						<TabsContent value="performance" className="mt-4">
-							<ReactECharts
+							<EChart
 								option={performanceChartOption}
 								style={{ height: "280px" }}
 								opts={{ renderer: "svg" }}

@@ -6,7 +6,9 @@ import (
 	"time"
 
 	"sigma_finance/internal/domain/model"
+	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
+	"sigma_finance/internal/infrastructure/enablebanking"
 	syncservice "sigma_finance/internal/service/sync"
 
 	"github.com/stretchr/testify/assert"
@@ -26,6 +28,11 @@ type mockSyncService struct {
 	generateAggregatorLinkFn       func(ctx context.Context, userID string, provider string, redirectURL string) (*syncservice.AggregatorAuthSession, error)
 	completeAggregatorAuthFn       func(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
 	discoverAndCreateConnectionsFn func(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
+	initiateTradeRepublicAuthFn    func(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error)
+	pollTradeRepublicAuthFn        func(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error)
+	listEnableBankingInstitutionsFn func(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error)
+	initiateEnableBankingAuthFn    func(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*syncservice.EnableBankingAuthSession, error)
+	completeEnableBankingAuthFn    func(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error)
 }
 
 func (m *mockSyncService) RegisterAdapter(adapter syncservice.SyncAdapter) {
@@ -181,6 +188,45 @@ func (m *mockSyncService) CompleteAggregatorAuth(ctx context.Context, userID str
 	}, nil
 }
 
+func (m *mockSyncService) InitiateTradeRepublicAuth(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error) {
+	if m.initiateTradeRepublicAuthFn != nil {
+		return m.initiateTradeRepublicAuthFn(ctx, userID, portfolioID, phoneNumber, pin)
+	}
+	return &model.SyncAuthSession{
+		ID:          "sas-1",
+		UserID:      userID,
+		PortfolioID: portfolioID,
+		Provider:    model.SyncProviderTradeRepublic,
+		Status:      model.SyncAuthSessionStatusWaitingForConfirmation,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
+	}, nil
+}
+
+func (m *mockSyncService) PollTradeRepublicAuth(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
+	if m.pollTradeRepublicAuthFn != nil {
+		return m.pollTradeRepublicAuthFn(ctx, userID, authSessionID)
+	}
+	return &model.SyncAuthSession{
+		ID:          authSessionID,
+		UserID:      userID,
+		PortfolioID: "p-1",
+		Provider:    model.SyncProviderTradeRepublic,
+		Status:      model.SyncAuthSessionStatusCompleted,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
+	}, []*model.SyncConnection{
+		{
+			ID:                    "conn-tr-1",
+			UserID:                userID,
+			PortfolioID:           "p-1",
+			Provider:              model.SyncProviderTradeRepublic,
+			ExternalInstitutionID: "TR",
+			ExternalAccountID:     "acc-tr-1",
+			InstitutionName:       "Trade Republic",
+			SyncStatus:            model.SyncConnectionStatusIdle,
+		},
+	}, nil
+}
+
 func (m *mockSyncService) DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error) {
 	if m.discoverAndCreateConnectionsFn != nil {
 		return m.discoverAndCreateConnectionsFn(ctx, userID, portfolioID, provider)
@@ -194,6 +240,82 @@ func (m *mockSyncService) DiscoverAndCreateConnections(ctx context.Context, user
 			ExternalInstitutionID: "inst-1",
 			ExternalAccountID:     "acc-ext-1",
 			InstitutionName:       "Mock Inst",
+			SyncStatus:            model.SyncConnectionStatusIdle,
+			CreatedAt:             time.Now(),
+			UpdatedAt:             time.Now(),
+		},
+	}, nil
+}
+
+func (m *mockSyncService) ListEnableBankingInstitutions(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error) {
+	if m.listEnableBankingInstitutionsFn != nil {
+		return m.listEnableBankingInstitutionsFn(ctx, userID, country)
+	}
+	return []enablebanking.ASPSP{
+		{Name: "Spuerkeess", Title: "Spuerkeess Luxembourg", Country: "LU"},
+	}, nil
+}
+
+func (m *mockSyncService) InitiateEnableBankingAuth(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*syncservice.EnableBankingAuthSession, error) {
+	if m.initiateEnableBankingAuthFn != nil {
+		return m.initiateEnableBankingAuthFn(ctx, userID, portfolioID, aspspName, aspspCountry, redirectURL)
+	}
+	return &syncservice.EnableBankingAuthSession{
+		AuthSessionID: "eb-auth-123",
+		AuthURL:       "https://auth.enablebanking.com/redirect/test",
+		State:         "eb-state-123",
+		ExpiresAt:     time.Now().Add(5 * time.Minute),
+	}, nil
+}
+
+func (m *mockSyncService) CompleteEnableBankingAuth(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error) {
+	if m.completeEnableBankingAuthFn != nil {
+		return m.completeEnableBankingAuthFn(ctx, userID, portfolioID, code, state)
+	}
+	return []*model.SyncConnection{
+		{
+			ID:                    "conn-eb-1",
+			UserID:                userID,
+			PortfolioID:           portfolioID,
+			Provider:              model.SyncProviderEnableBanking,
+			ExternalInstitutionID: "spuerkeess_lu",
+			ExternalAccountID:     "acc-eb-1",
+			InstitutionName:       "Spuerkeess",
+			SyncStatus:            model.SyncConnectionStatusSuccess,
+			CreatedAt:             time.Now(),
+			UpdatedAt:             time.Now(),
+		},
+	}, nil
+}
+
+func (m *mockSyncService) InitiateWoobAuth(ctx context.Context, userID, portfolioID, institution, login, password, region string) (*model.SyncAuthSession, error) {
+	return &model.SyncAuthSession{
+		ID:          "sas-woob-1",
+		UserID:      userID,
+		PortfolioID: portfolioID,
+		Provider:    model.SyncProviderWoob,
+		Status:      model.SyncAuthSessionStatusWaitingForConfirmation,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
+	}, nil
+}
+
+func (m *mockSyncService) PollWoobAuth(ctx context.Context, userID, authSessionID, otpCode string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
+	return &model.SyncAuthSession{
+		ID:          authSessionID,
+		UserID:      userID,
+		PortfolioID: "p-1",
+		Provider:    model.SyncProviderWoob,
+		Status:      model.SyncAuthSessionStatusCompleted,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
+	}, []*model.SyncConnection{
+		{
+			ID:                    "conn-woob-1",
+			UserID:                userID,
+			PortfolioID:           "p-1",
+			Provider:              model.SyncProviderWoob,
+			ExternalInstitutionID: "fortuneo",
+			ExternalAccountID:     "acc-woob-1",
+			InstitutionName:       "Fortuneo",
 			SyncStatus:            model.SyncConnectionStatusIdle,
 			CreatedAt:             time.Now(),
 			UpdatedAt:             time.Now(),
@@ -621,5 +743,189 @@ func TestGraphQL_SyncCredentialsQuery(t *testing.T) {
 		creds, err := r.Query().SyncCredentials(ctx)
 		assert.Error(t, err)
 		assert.Nil(t, creds)
+	})
+}
+
+func TestGraphQL_TradeRepublicAuthResolvers(t *testing.T) {
+	t.Run("initiate trade republic auth success", func(t *testing.T) {
+		mockService := &mockSyncService{
+			initiateTradeRepublicAuthFn: func(ctx context.Context, userID, portfolioID, phoneNumber, pin string) (*model.SyncAuthSession, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, "port-456", portfolioID)
+				assert.Equal(t, "+33612345678", phoneNumber)
+				assert.Equal(t, "1234", pin)
+
+				return &model.SyncAuthSession{
+					ID:          "sas-test-1",
+					UserID:      userID,
+					PortfolioID: portfolioID,
+					Provider:    model.SyncProviderTradeRepublic,
+					Status:      model.SyncAuthSessionStatusWaitingForConfirmation,
+					ExpiresAt:   time.Now().Add(90 * time.Second),
+				}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		session, err := r.Mutation().InitiateTradeRepublicAuth(ctx, "+33612345678", "1234", "port-456")
+		require.NoError(t, err)
+		assert.Equal(t, "sas-test-1", session.AuthSessionID)
+		assert.Equal(t, gqlModel.TradeRepublicAuthStatusWaitingForConfirmation, session.Status)
+		assert.True(t, session.CountdownSeconds > 0)
+	})
+
+	t.Run("poll trade republic auth completed", func(t *testing.T) {
+		mockService := &mockSyncService{
+			pollTradeRepublicAuthFn: func(ctx context.Context, userID, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, "sas-test-1", authSessionID)
+
+				return &model.SyncAuthSession{
+					ID:          authSessionID,
+					UserID:      userID,
+					PortfolioID: "port-456",
+					Provider:    model.SyncProviderTradeRepublic,
+					Status:      model.SyncAuthSessionStatusCompleted,
+					ExpiresAt:   time.Now().Add(60 * time.Second),
+				}, []*model.SyncConnection{
+					{
+						ID:                    "conn-tr-1",
+						UserID:                userID,
+						PortfolioID:           "port-456",
+						Provider:              model.SyncProviderTradeRepublic,
+						ExternalInstitutionID: "TR",
+						ExternalAccountID:     "SEC-CTO-1",
+						InstitutionName:       "Trade Republic",
+						SyncStatus:            model.SyncConnectionStatusIdle,
+					},
+				}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		result, err := r.Mutation().PollTradeRepublicAuth(ctx, "sas-test-1")
+		require.NoError(t, err)
+		assert.Equal(t, gqlModel.TradeRepublicAuthStatusCompleted, result.Status)
+		require.Len(t, result.Connections, 1)
+		assert.Equal(t, "conn-tr-1", result.Connections[0].ID)
+	})
+}
+
+func TestGraphQL_WoobAuthResolvers(t *testing.T) {
+	t.Run("initiate woob auth success", func(t *testing.T) {
+		r := &Resolver{SyncService: &mockSyncService{}}
+		ctx := createAuthContext("user-123")
+
+		session, err := r.Mutation().InitiateWoobAuth(ctx, "fortuneo", "user123", "pass123", nil, "port-456")
+		require.NoError(t, err)
+		assert.Equal(t, "sas-woob-1", session.AuthSessionID)
+		assert.Equal(t, gqlModel.WoobAuthStatusWaitingForConfirmation, session.Status)
+	})
+
+	t.Run("poll woob auth completed", func(t *testing.T) {
+		r := &Resolver{SyncService: &mockSyncService{}}
+		ctx := createAuthContext("user-123")
+
+		result, err := r.Mutation().PollWoobAuth(ctx, "sas-woob-1", nil)
+		require.NoError(t, err)
+		assert.Equal(t, gqlModel.WoobAuthStatusCompleted, result.Status)
+		require.Len(t, result.Connections, 1)
+		assert.Equal(t, "conn-woob-1", result.Connections[0].ID)
+	})
+}
+
+func TestGraphQL_EnableBankingResolvers(t *testing.T) {
+	t.Run("query enable banking institutions", func(t *testing.T) {
+		mockService := &mockSyncService{
+			listEnableBankingInstitutionsFn: func(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, "LU", country)
+				return []enablebanking.ASPSP{
+					{
+						Name:     "BGL BNP Paribas",
+						Title:    "BGL BNP Paribas",
+						Country:  "LU",
+						Logo:     "https://logo.example/bgl.png",
+						PsuTypes: []string{"personal"},
+					},
+				}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		institutions, err := r.Query().EnableBankingInstitutions(ctx, "LU")
+		require.NoError(t, err)
+		require.Len(t, institutions, 1)
+		assert.Equal(t, "BGL BNP Paribas", institutions[0].Name)
+		assert.Equal(t, "LU", institutions[0].Country)
+		assert.Equal(t, "https://logo.example/bgl.png", *institutions[0].Logo)
+	})
+
+	t.Run("initiate enable banking authorization", func(t *testing.T) {
+		mockService := &mockSyncService{
+			initiateEnableBankingAuthFn: func(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*syncservice.EnableBankingAuthSession, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, "port-456", portfolioID)
+				assert.Equal(t, "Spuerkeess", aspspName)
+				assert.Equal(t, "LU", aspspCountry)
+				assert.Equal(t, "https://sigma.example.com/sync/callback", redirectURL)
+
+				return &syncservice.EnableBankingAuthSession{
+					AuthSessionID: "sas-eb-1",
+					AuthURL:       "https://auth.enablebanking.com/redirect/mock-url",
+					State:         "mock-state-abc",
+					ExpiresAt:     time.Now().Add(5 * time.Minute),
+				}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		session, err := r.Mutation().InitiateEnableBankingAuth(ctx, "Spuerkeess", "LU", "https://sigma.example.com/sync/callback", "port-456")
+		require.NoError(t, err)
+		assert.Equal(t, "sas-eb-1", session.AuthSessionID)
+		assert.Equal(t, "https://auth.enablebanking.com/redirect/mock-url", session.AuthURL)
+		assert.Equal(t, "mock-state-abc", session.State)
+	})
+
+	t.Run("complete enable banking authorization", func(t *testing.T) {
+		mockService := &mockSyncService{
+			completeEnableBankingAuthFn: func(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error) {
+				assert.Equal(t, "user-123", userID)
+				assert.Equal(t, "port-456", portfolioID)
+				assert.Equal(t, "code-xyz", code)
+				assert.Equal(t, "state-abc", state)
+
+				return []*model.SyncConnection{
+					{
+						ID:                    "conn-eb-100",
+						UserID:                userID,
+						PortfolioID:           portfolioID,
+						Provider:              model.SyncProviderEnableBanking,
+						ExternalInstitutionID: "spuerkeess_lu",
+						ExternalAccountID:     "acc-eb-100",
+						InstitutionName:       "Spuerkeess",
+						SyncStatus:            model.SyncConnectionStatusSuccess,
+					},
+				}, nil
+			},
+		}
+
+		r := &Resolver{SyncService: mockService}
+		ctx := createAuthContext("user-123")
+
+		conns, err := r.Mutation().CompleteEnableBankingAuth(ctx, "code-xyz", "state-abc", "port-456")
+		require.NoError(t, err)
+		require.Len(t, conns, 1)
+		assert.Equal(t, "conn-eb-100", conns[0].ID)
+		assert.Equal(t, model.SyncProviderEnableBanking, conns[0].Provider)
+		assert.Equal(t, "Spuerkeess", conns[0].InstitutionName)
 	})
 }

@@ -422,6 +422,7 @@ func (a *authenticationService) createUserSession(ctx context.Context, user *mod
 		User: &UserInfo{
 			ID:                  user.ID,
 			Email:               user.Email,
+			Role:                string(user.Role),
 			Name:                user.Name,
 			EmailVerified:       user.EmailVerified,
 			DisplayCurrency:     string(user.DisplayCurrency),
@@ -713,6 +714,7 @@ func (a *authenticationService) RefreshToken(ctx context.Context, refreshToken s
 		User: &UserInfo{
 			ID:                  user.ID,
 			Email:               user.Email,
+			Role:                string(user.Role),
 			Name:                user.Name,
 			EmailVerified:       user.EmailVerified,
 			DisplayCurrency:     string(user.DisplayCurrency),

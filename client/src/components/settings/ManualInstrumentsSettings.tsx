@@ -57,6 +57,7 @@ import {
 } from "@/graphql/mutations/instruments";
 import { MANUAL_INSTRUMENTS } from "@/graphql/queries/instruments";
 import { useDebounce } from "@/hooks/use-debounce";
+import { cn } from "@/lib/utils";
 
 type ManualInstrumentItem = ManualInstrumentsQuery["manualInstruments"]["items"][number];
 
@@ -280,31 +281,36 @@ export function ManualInstrumentsSettings() {
 	};
 
 	return (
-		<div className="space-y-6">
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+		<div className="flex flex-col gap-6 w-full">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-2xl font-semibold">Manual Instruments</h1>
-					<p className="text-sm text-muted-foreground">
-						Edit and archive manually added stocks, funds, ETFs, and crypto entries.
+					<div className="flex items-center gap-2">
+						<Tag className="h-5 w-5 text-muted-foreground" />
+						<h1 className="text-xl font-semibold tracking-tight text-foreground">
+							Instruments Manuels
+						</h1>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Gérez et archivez les actions, fonds, ETF et cryptomonnaies créés manuellement.
 					</p>
 				</div>
 				<div className="flex flex-wrap items-center gap-2">
 					<SearchInput
-						placeholder="Search instruments..."
+						placeholder="Rechercher symbole, nom..."
 						value={query}
 						onChange={(e) => setQuery(e.target.value)}
 						onClear={() => setQuery("")}
-						containerClassName="flex-1"
+						containerClassName="w-48 sm:w-64"
 					/>
 					<Select
 						value={assetTypeFilter}
 						onValueChange={(value) => setAssetTypeFilter(value as "all" | InstrumentAssetType)}
 					>
-						<SelectTrigger className="w-[10rem]">
-							<SelectValue placeholder="Asset type" />
+						<SelectTrigger className="w-[8.5rem] h-9 text-xs">
+							<SelectValue placeholder="Classe d'actif" />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="all">All types</SelectItem>
+							<SelectItem value="all">Tous les types</SelectItem>
 							{ASSET_TYPE_OPTIONS.map((option) => (
 								<SelectItem key={option.value} value={option.value}>
 									{option.label}
@@ -313,64 +319,105 @@ export function ManualInstrumentsSettings() {
 						</SelectContent>
 					</Select>
 					<Button
-						variant={showArchived ? "default" : "outline"}
+						variant={showArchived ? "secondary" : "outline"}
+						size="sm"
 						onClick={() => setShowArchived((value) => !value)}
-						className="gap-2"
+						className="h-9 gap-1.5 text-xs border-border/60"
 					>
-						<SlidersHorizontal className="h-4 w-4" />
-						{showArchived ? "Showing archived" : "Show archived"}
+						<SlidersHorizontal className="h-3.5 w-3.5 text-muted-foreground" />
+						{showArchived ? "Archivés inclus" : "Masquer archivés"}
 					</Button>
 				</div>
 			</div>
 
 			{error && (
-				<div className="rounded-md border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+				<div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-xs text-destructive">
 					{error.message}
 				</div>
 			)}
 
-			<div className="rounded-md border">
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
 				<Table>
 					<TableHeader>
-						<TableRow>
-							<TableHead>Symbol</TableHead>
-							<TableHead>Name</TableHead>
-							<TableHead>Type</TableHead>
-							<TableHead>Exchange</TableHead>
-							<TableHead>Status</TableHead>
-							<TableHead>Updated</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
+						<TableRow className="border-b border-border/40 bg-muted/20 hover:bg-muted/20">
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Symbole
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Nom
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Type
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Place / Exchange
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Statut
+							</TableHead>
+							<TableHead className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Mis à jour
+							</TableHead>
+							<TableHead className="text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+								Actions
+							</TableHead>
 						</TableRow>
 					</TableHeader>
-					<TableBody>
+					<TableBody className="divide-y divide-border/20">
 						{loading && items.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-									Loading manual instruments...
+								<TableCell colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
+									Chargement des instruments manuels...
 								</TableCell>
 							</TableRow>
 						) : items.length === 0 ? (
 							<TableRow>
-								<TableCell colSpan={7} className="py-10 text-center text-sm text-muted-foreground">
-									No manual instruments found.
+								<TableCell colSpan={7} className="py-12 text-center text-xs text-muted-foreground">
+									Aucun instrument manuel trouvé.
 								</TableCell>
 							</TableRow>
 						) : (
 							items.map((item) => (
-								<TableRow key={item.id}>
-									<TableCell className="font-medium">{item.symbol}</TableCell>
-									<TableCell>{item.name}</TableCell>
-									<TableCell>
-										<Badge variant="secondary">{item.assetType}</Badge>
+								<TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
+									<TableCell className="font-mono font-medium text-xs text-foreground">
+										{item.symbol}
 									</TableCell>
-									<TableCell>{item.exchange}</TableCell>
+									<TableCell className="text-xs font-medium">{item.name}</TableCell>
 									<TableCell>
-										<div className="flex items-center gap-2">
-											<Badge variant={statusTone(item.status)}>{verificationLabel(item)}</Badge>
-											{item.syncState?.stale ? <Badge variant="outline">Stale</Badge> : null}
+										<Badge variant="secondary" className="font-mono text-[11px]">
+											{item.assetType}
+										</Badge>
+									</TableCell>
+									<TableCell className="font-mono text-xs text-muted-foreground">
+										{item.exchange}
+									</TableCell>
+									<TableCell>
+										<div className="flex items-center gap-1.5">
+											<Badge
+												variant="outline"
+												className={cn(
+													"text-[11px] font-mono gap-1",
+													item.status === "ACTIVE"
+														? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+														: "border-border/60 bg-muted/30 text-muted-foreground",
+												)}
+											>
+												<span
+													className={cn(
+														"h-1.5 w-1.5 rounded-full",
+														item.status === "ACTIVE" ? "bg-emerald-500" : "bg-muted-foreground",
+													)}
+												/>
+												{verificationLabel(item)}
+											</Badge>
+											{item.syncState?.stale ? (
+												<Badge variant="outline" className="border-amber-500/20 bg-amber-500/10 text-amber-600 text-[10px]">
+													Obsolète
+												</Badge>
+											) : null}
 										</div>
 									</TableCell>
-									<TableCell className="text-muted-foreground">
+									<TableCell className="text-xs text-muted-foreground font-mono">
 										{formatTimestamp(item.updatedAt)}
 									</TableCell>
 									<TableCell className="text-right">
@@ -379,6 +426,7 @@ export function ManualInstrumentsSettings() {
 												<Button
 													variant="ghost"
 													size="icon"
+													className="h-7 w-7"
 													disabled={saving || archiving || restoring}
 												>
 													<EllipsisVertical className="h-4 w-4" />
@@ -387,18 +435,18 @@ export function ManualInstrumentsSettings() {
 											<DropdownMenuContent align="end">
 												<DropdownMenuItem onSelect={() => openEditDialog(item)}>
 													<Tag className="mr-2 h-4 w-4" />
-													Edit
+													Modifier
 												</DropdownMenuItem>
 												<DropdownMenuItem onSelect={() => handleArchiveToggle(item)}>
 													{item.status === "ARCHIVED" ? (
 														<>
 															<RotateCcw className="mr-2 h-4 w-4" />
-															Restore
+															Restaurer
 														</>
 													) : (
 														<>
 															<Archive className="mr-2 h-4 w-4" />
-															Archive
+															Archiver
 														</>
 													)}
 												</DropdownMenuItem>
@@ -412,24 +460,28 @@ export function ManualInstrumentsSettings() {
 				</Table>
 			</div>
 
-			<div className="flex items-center justify-between gap-3">
-				<p className="text-sm text-muted-foreground">
-					{items.length} item{items.length === 1 ? "" : "s"} on this page
+			<div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+				<p>
+					<span className="font-mono tabular-nums text-foreground">{items.length}</span> instrument{items.length === 1 ? "" : "s"} sur cette page
 				</p>
 				<div className="flex items-center gap-2">
 					<Button
 						variant="outline"
+						size="sm"
+						className="h-8 text-xs border-border/60"
 						onClick={() => setPage((value) => Math.max(0, value - 1))}
 						disabled={page === 0 || loading}
 					>
-						Previous
+						Précédent
 					</Button>
 					<Button
 						variant="outline"
+						size="sm"
+						className="h-8 text-xs border-border/60"
 						onClick={() => setPage((value) => value + 1)}
 						disabled={!hasMore || loading}
 					>
-						Next
+						Suivant
 					</Button>
 				</div>
 			</div>

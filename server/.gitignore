@@ -32,6 +32,9 @@ go.work.sum
 /build/
 /bin/
 /dist/
+app
+/app
+
 
 # IDE/Editor specific files
 .idea/

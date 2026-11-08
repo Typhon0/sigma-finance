@@ -83,12 +83,7 @@ describe("PositionsDataTable", () => {
 	});
 
 	it("renders table headers and position rows", () => {
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="none"
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="none" />);
 
 		expect(screen.getByText("Instrument")).toBeInTheDocument();
 		expect(screen.getByText("Price")).toBeInTheDocument();
@@ -99,12 +94,7 @@ describe("PositionsDataTable", () => {
 	});
 
 	it("renders group headers and allows collapsing/expanding", () => {
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="account"
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="account" />);
 
 		expect(screen.getByText("Cold Storage")).toBeInTheDocument();
 		expect(screen.getByText("Binance")).toBeInTheDocument();
@@ -124,13 +114,7 @@ describe("PositionsDataTable", () => {
 
 	it("sorts rows when clicking a sortable column header", () => {
 		const onSort = vi.fn();
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="none"
-				onSort={onSort}
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="none" onSort={onSort} />);
 
 		const priceSortBtn = screen.getByRole("button", { name: /^Price/i });
 		fireEvent.click(priceSortBtn);
@@ -139,12 +123,7 @@ describe("PositionsDataTable", () => {
 	});
 
 	it("filters positions when typing in the search box", () => {
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="none"
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="none" />);
 
 		const searchInput = screen.getByPlaceholderText(/search holdings/i);
 		fireEvent.change(searchInput, { target: { value: "Bitcoin" } });
@@ -172,7 +151,9 @@ describe("PositionsDataTable", () => {
 			<PositionsDataTable
 				positions={mockPositions}
 				groupBy="none"
-				renderInstrumentIcon={(item) => <div data-testid={`icon-${item.symbol}`}>{item.symbol[0]}</div>}
+				renderInstrumentIcon={(item) => (
+					<div data-testid={`icon-${item.symbol}`}>{item.symbol[0]}</div>
+				)}
 				renderBadges={(item) => <span data-testid={`badge-${item.symbol}`}>Badge</span>}
 			/>,
 		);
@@ -184,11 +165,7 @@ describe("PositionsDataTable", () => {
 	it("calls onSelectAsset when row instrument button is clicked", () => {
 		const onSelectAsset = vi.fn();
 		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="none"
-				onSelectAsset={onSelectAsset}
-			/>,
+			<PositionsDataTable positions={mockPositions} groupBy="none" onSelectAsset={onSelectAsset} />,
 		);
 
 		const btcBtn = screen.getByRole("button", { name: "BTC" });
@@ -198,12 +175,7 @@ describe("PositionsDataTable", () => {
 	});
 
 	it("renders empty state message when no positions match", () => {
-		render(
-			<PositionsDataTable
-				positions={[]}
-				emptyMessage="No crypto found."
-			/>,
-		);
+		render(<PositionsDataTable positions={[]} emptyMessage="No crypto found." />);
 
 		expect(screen.getByText("No crypto found.")).toBeInTheDocument();
 	});
@@ -226,24 +198,13 @@ describe("PositionsDataTable", () => {
 	});
 
 	it("respects controlled density prop", () => {
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="none"
-				density="normal"
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="none" density="normal" />);
 
 		expect(screen.getByRole("button", { name: /switch to compact density/i })).toBeInTheDocument();
 	});
 
 	it("renders group header with aligned value, two-line P&L and wallet weight", () => {
-		render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="account"
-			/>,
-		);
+		render(<PositionsDataTable positions={mockPositions} groupBy="account" />);
 
 		// Cold Storage group: BTC only (value: 90000, pl: 45000, plPercent: 100%, weight: 75%)
 		expect(screen.getAllByText("$90,000.00").length).toBeGreaterThan(0);
@@ -286,12 +247,7 @@ describe("PositionsDataTable", () => {
 			},
 		];
 
-		render(
-			<PositionsDataTable
-				positions={mixedPositions}
-				groupBy="account"
-			/>,
-		);
+		render(<PositionsDataTable positions={mixedPositions} groupBy="account" />);
 
 		// Mixed Wallet has 2 items: 1 with P&L (+$100), 1 without.
 		// Value = $1,000.00 (appears in group header and table summary)
@@ -323,12 +279,7 @@ describe("PositionsDataTable", () => {
 			},
 		];
 
-		render(
-			<PositionsDataTable
-				positions={unpricedPositions}
-				groupBy="account"
-			/>,
-		);
+		render(<PositionsDataTable positions={unpricedPositions} groupBy="account" />);
 
 		expect(screen.getAllByText("$100.00").length).toBeGreaterThan(0);
 		// Total P&L shows dash
@@ -338,12 +289,7 @@ describe("PositionsDataTable", () => {
 
 	it("renders and triggers onSelectAccount only when onSelectAccount callback is provided", () => {
 		const onSelectAccountMock = vi.fn();
-		const { rerender } = render(
-			<PositionsDataTable
-				positions={mockPositions}
-				groupBy="account"
-			/>,
-		);
+		const { rerender } = render(<PositionsDataTable positions={mockPositions} groupBy="account" />);
 
 		// Without callback, Open button is not rendered
 		expect(screen.queryByTitle("Open Cold Storage")).not.toBeInTheDocument();
@@ -362,5 +308,67 @@ describe("PositionsDataTable", () => {
 		fireEvent.click(openBtn);
 		expect(onSelectAccountMock).toHaveBeenCalledWith("Cold Storage");
 	});
-});
 
+	it("hides empty account groups by default unless actively syncing", () => {
+		const knownAccountGroups = [
+			{ name: "Cold Storage", syncStatus: "SYNCED" },
+			{ name: "Empty Account", syncStatus: "SYNCED" },
+			{ name: "Syncing Wallet", syncStatus: "SYNCING" },
+		];
+
+		const { rerender } = render(
+			<PositionsDataTable
+				positions={mockPositions}
+				groupBy="account"
+				knownAccountGroups={knownAccountGroups}
+				hideEmptyAccounts={true}
+			/>,
+		);
+
+		// Account with positions is rendered
+		expect(screen.getByText("Cold Storage")).toBeInTheDocument();
+		// Empty synced account is hidden
+		expect(screen.queryByText("Empty Account")).not.toBeInTheDocument();
+		// Empty syncing account is rendered with sync indicator
+		expect(screen.getByText("Syncing Wallet")).toBeInTheDocument();
+		expect(screen.getByText(/Synchronizing holdings for Syncing Wallet/i)).toBeInTheDocument();
+
+		// When hideEmptyAccounts is false, the empty account group shows
+		rerender(
+			<PositionsDataTable
+				positions={mockPositions}
+				groupBy="account"
+				knownAccountGroups={knownAccountGroups}
+				hideEmptyAccounts={false}
+			/>,
+		);
+		expect(screen.getByText("Empty Account")).toBeInTheDocument();
+	});
+
+	it("toggles collapse all / expand all with toolbar button and Alt+C shortcut", () => {
+		render(
+			<PositionsDataTable
+				positions={mockPositions}
+				groupBy="account"
+			/>,
+		);
+
+		// Initially not collapsed, Bitcoin position is visible
+		expect(screen.getByText("Bitcoin")).toBeInTheDocument();
+
+		// Find collapse all button
+		const collapseBtn = screen.getByRole("button", { name: /collapse all groups/i });
+		expect(collapseBtn).toBeInTheDocument();
+
+		// Click to collapse all
+		fireEvent.click(collapseBtn);
+		expect(screen.queryByText("Bitcoin")).not.toBeInTheDocument();
+
+		// Button label updates to expand all
+		expect(screen.getByRole("button", { name: /expand all groups/i })).toBeInTheDocument();
+
+		// Trigger Alt+C shortcut to expand all
+		fireEvent.keyDown(window, { key: "c", altKey: true });
+		expect(screen.getByText("Bitcoin")).toBeInTheDocument();
+	});
+});

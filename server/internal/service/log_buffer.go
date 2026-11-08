@@ -36,6 +36,7 @@ type LogBuffer struct {
 	pos      int
 	count    int
 	seq      uint64 // monotonic sequence number for SSE clients to track position
+	subSeq   uint64 // monotonic subscriber ID generator (must never collide)
 	watchers map[uint64]chan []LogEntry
 }
 
@@ -107,7 +108,12 @@ func (lb *LogBuffer) Subscribe() (<-chan []LogEntry, func()) {
 	lb.mu.Lock()
 	defer lb.mu.Unlock()
 
-	id := lb.seq // Use sequence as subscriber ID
+	// Subscriber IDs must be unique per subscription. Using lb.seq (which only
+	// advances when a log entry is appended) made two subscriptions taken while
+	// the server was idle share one ID, so unsubscribing the stale one closed the
+	// live stream's channel and EventSource looped through reconnect/disconnect.
+	lb.subSeq++
+	id := lb.subSeq
 	ch := make(chan []LogEntry, 64)
 	lb.watchers[id] = ch
 

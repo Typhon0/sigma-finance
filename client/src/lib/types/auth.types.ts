@@ -3,6 +3,7 @@
 export interface AuthUser {
 	id: string;
 	email: string;
+	role?: string;
 	name: string;
 	emailVerified: boolean;
 	displayCurrency?: string;
@@ -90,11 +91,22 @@ export interface RefreshTokenInput {
 	refreshToken: string;
 }
 
+export interface StoredAccountSession {
+	user: AuthUser;
+	token: string;
+	refreshToken: string;
+	expiresAt: string;
+	lastActiveAt: number;
+	isExpired?: boolean;
+}
+
 // Authentication context types
 export interface AuthContextType {
 	user: AuthUser | null;
 	isLoading: boolean;
 	isAuthenticated: boolean;
+	isAdmin?: boolean;
+	accounts: StoredAccountSession[];
 	login: (email: string, password: string) => Promise<void>;
 	register: (email: string, password: string, name: string) => Promise<void>;
 	logout: () => Promise<void>;
@@ -104,6 +116,10 @@ export interface AuthContextType {
 	resendVerification: (email: string) => Promise<void>;
 	refreshToken: () => Promise<void>;
 	updateUser: (updates: Partial<AuthUser>) => void;
+	switchAccount: (userId: string) => Promise<void>;
+	addAccount: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+	removeAccountSession: (userId: string) => Promise<void>;
+	logoutAllAccounts: () => Promise<void>;
 }
 
 // Error codes from backend

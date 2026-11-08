@@ -31,11 +31,7 @@ export function SortableHead<T extends string>({
 
 	return (
 		<TableHead
-			className={cn(
-				"font-semibold",
-				isCompact ? "h-8 px-2" : "h-10 px-2",
-				className,
-			)}
+			className={cn("font-semibold", isCompact ? "h-8 px-2" : "h-10 px-2", className)}
 			aria-sort={ariaSort}
 		>
 			<button
@@ -64,4 +60,3 @@ export function SortableHead<T extends string>({
 		</TableHead>
 	);
 }
-

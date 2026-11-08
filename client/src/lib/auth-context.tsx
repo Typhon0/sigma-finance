@@ -11,8 +11,9 @@ import {
 	useResetPasswordMutation,
 	useVerifyEmailMutation,
 } from "../hooks/use-auth-mutations";
+import { clearCache } from "./apollo/apollo-client";
 import { AuthErrorHandler } from "./auth-error-handler";
-import type { AuthContextType, AuthError, AuthUser } from "./types/auth.types";
+import type { AuthContextType, AuthError, AuthUser, StoredAccountSession } from "./types/auth.types";
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -21,6 +22,7 @@ const TOKEN_KEY = "auth_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
 const USER_KEY = "auth_user";
 const TOKEN_EXPIRY_KEY = "token_expiry";
+const MULTI_ACCOUNTS_KEY = "auth_multi_accounts";
 
 const getStoredToken = () => localStorage.getItem(TOKEN_KEY);
 const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
@@ -38,11 +40,64 @@ const getStoredUser = (): AuthUser | null => {
 	return stored ? JSON.parse(stored) : null;
 };
 
+const isTokenExpired = (expiresAt: string): boolean => {
+	return new Date(expiresAt) <= new Date();
+};
+
+const getStoredAccounts = (): StoredAccountSession[] => {
+	try {
+		const stored = localStorage.getItem(MULTI_ACCOUNTS_KEY);
+		if (!stored) return [];
+		const parsed: StoredAccountSession[] = JSON.parse(stored);
+		if (!Array.isArray(parsed)) return [];
+		return parsed.map((acc) => ({
+			...acc,
+			isExpired: isTokenExpired(acc.expiresAt),
+		}));
+	} catch {
+		return [];
+	}
+};
+
+const setStoredAccounts = (accounts: StoredAccountSession[]) => {
+	try {
+		localStorage.setItem(MULTI_ACCOUNTS_KEY, JSON.stringify(accounts));
+	} catch {}
+};
+
+const upsertStoredAccount = (
+	token: string,
+	refreshToken: string,
+	user: AuthUser,
+	expiresAt: string,
+): StoredAccountSession[] => {
+	const currentAccounts = getStoredAccounts();
+	const existingIndex = currentAccounts.findIndex((acc) => acc.user.id === user.id);
+	const session: StoredAccountSession = {
+		user,
+		token,
+		refreshToken,
+		expiresAt,
+		lastActiveAt: Date.now(),
+		isExpired: isTokenExpired(expiresAt),
+	};
+	let updated: StoredAccountSession[];
+	if (existingIndex >= 0) {
+		updated = [...currentAccounts];
+		updated[existingIndex] = session;
+	} else {
+		updated = [...currentAccounts, session];
+	}
+	setStoredAccounts(updated);
+	return updated;
+};
+
 const setStoredAuth = (token: string, refreshToken: string, user: AuthUser, expiresAt: string) => {
 	localStorage.setItem(TOKEN_KEY, token);
 	localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
 	localStorage.setItem(USER_KEY, JSON.stringify(user));
 	localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt);
+	upsertStoredAccount(token, refreshToken, user, expiresAt);
 };
 
 const clearStoredAuth = () => {
@@ -50,10 +105,6 @@ const clearStoredAuth = () => {
 	localStorage.removeItem(REFRESH_TOKEN_KEY);
 	localStorage.removeItem(USER_KEY);
 	localStorage.removeItem(TOKEN_EXPIRY_KEY);
-};
-
-const isTokenExpired = (expiresAt: string): boolean => {
-	return new Date(expiresAt) <= new Date();
 };
 
 const _shouldRefreshToken = (expiresAt: string): boolean => {
@@ -81,6 +132,7 @@ const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
 	const [user, setUser] = useState<AuthUser | null>(null);
+	const [accounts, setAccounts] = useState<StoredAccountSession[]>(() => getStoredAccounts());
 	const [isLoading, setIsLoading] = useState(true);
 	const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const refreshTokenActionRef = useRef<(() => Promise<void>) | null>(null);
@@ -143,8 +195,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 			const storedUser = getStoredUser();
 			const storedToken = getStoredToken();
 			const storedExpiry = getStoredTokenExpiry();
+			const storedRefreshToken = getStoredRefreshToken();
 
 			if (storedUser && storedToken && storedExpiry) {
+				const syncedAccounts = upsertStoredAccount(
+					storedToken,
+					storedRefreshToken || "",
+					storedUser,
+					storedExpiry,
+				);
+				setAccounts(syncedAccounts);
+
 				if (isTokenExpired(storedExpiry)) {
 					// Token is expired, try to refresh
 					try {
@@ -158,6 +219,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					setUser(storedUser);
 					setupTokenRefresh(storedExpiry);
 				}
+			} else {
+				setAccounts(getStoredAccounts());
 			}
 
 			setIsLoading(false);
@@ -191,6 +254,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				if (data?.login.success && data.login.data) {
 					const { token, refreshToken, user: authUser, expiresAt } = data.login.data;
 					setStoredAuth(token, refreshToken, authUser, expiresAt);
+					const updated = upsertStoredAccount(token, refreshToken, authUser, expiresAt);
+					setAccounts(updated);
 					setUser(authUser);
 					setupTokenRefresh(expiresAt);
 					toast.success("Successfully logged in!");
@@ -234,6 +299,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				if (data?.register.success && data.register.data) {
 					const { token, refreshToken, user: authUser, expiresAt } = data.register.data;
 					setStoredAuth(token, refreshToken, authUser, expiresAt);
+					const updated = upsertStoredAccount(token, refreshToken, authUser, expiresAt);
+					setAccounts(updated);
 					setUser(authUser);
 					setupTokenRefresh(expiresAt);
 					toast.success("Account created successfully!");
@@ -277,13 +344,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 				}
 			}
 
+			const currentUserId = user?.id;
 			clearStoredAuth();
+
+			if (currentUserId) {
+				const allAccounts = getStoredAccounts();
+				const remaining = allAccounts.filter((acc) => acc.user.id !== currentUserId);
+				setStoredAccounts(remaining);
+				setAccounts(remaining);
+
+				if (remaining.length > 0) {
+					const next = [...remaining].sort((a, b) => (b.lastActiveAt || 0) - (a.lastActiveAt || 0))[0];
+					localStorage.setItem(TOKEN_KEY, next.token);
+					localStorage.setItem(REFRESH_TOKEN_KEY, next.refreshToken);
+					localStorage.setItem(USER_KEY, JSON.stringify(next.user));
+					localStorage.setItem(TOKEN_EXPIRY_KEY, next.expiresAt);
+					setUser(next.user);
+					clearCache();
+					setupTokenRefresh(next.expiresAt);
+					toast.success(`Déconnecté. Basculé sur ${next.user.name}`);
+					if (window.location.pathname !== "/") {
+						window.location.href = "/";
+					}
+					return;
+				}
+			}
+
+			clearCache();
+			setAccounts([]);
 			setUser(null);
 			toast.success("Successfully logged out");
+			if (window.location.pathname !== "/login") {
+				window.location.href = "/login";
+			}
 		} finally {
 			isLoggingOutRef.current = false;
 		}
-	}, [logoutMutation]);
+	}, [logoutMutation, user, setupTokenRefresh]);
 
 	const resetPassword = useCallback(
 		async (email: string) => {
@@ -404,6 +501,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 					expiresAt,
 				} = data.refreshToken.data;
 				setStoredAuth(token, newRefreshToken, authUser, expiresAt);
+				const updated = upsertStoredAccount(token, newRefreshToken, authUser, expiresAt);
+				setAccounts(updated);
 				setUser(authUser);
 				setupTokenRefresh(expiresAt);
 			} else {
@@ -437,10 +536,142 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		});
 	}, []);
 
+	const switchAccount = useCallback(
+		async (targetUserId: string) => {
+			const allAccounts = getStoredAccounts();
+			const target = allAccounts.find((acc) => acc.user.id === targetUserId);
+			if (!target) {
+				toast.error("Compte introuvable.");
+				return;
+			}
+
+			if (isTokenExpired(target.expiresAt)) {
+				toast.error("Session expirée pour ce compte. Veuillez vous reconnecter.");
+				return;
+			}
+
+			const updatedAccounts = allAccounts.map((acc) =>
+				acc.user.id === target.user.id
+					? { ...acc, lastActiveAt: Date.now(), isExpired: isTokenExpired(acc.expiresAt) }
+					: acc,
+			);
+			setStoredAccounts(updatedAccounts);
+			setAccounts(updatedAccounts);
+
+			localStorage.setItem(TOKEN_KEY, target.token);
+			localStorage.setItem(REFRESH_TOKEN_KEY, target.refreshToken);
+			localStorage.setItem(USER_KEY, JSON.stringify(target.user));
+			localStorage.setItem(TOKEN_EXPIRY_KEY, target.expiresAt);
+
+			setUser(target.user);
+			clearCache();
+			setupTokenRefresh(target.expiresAt);
+
+			toast.success(`Connecté en tant que ${target.user.name}`);
+
+			if (window.location.pathname !== "/") {
+				window.location.href = "/";
+			}
+		},
+		[setupTokenRefresh],
+	);
+
+	const addAccount = useCallback(
+		async (email: string, password: string): Promise<{ success: boolean; error?: string }> => {
+			try {
+				const { data } = await withTimeout(
+					loginMutation({
+						variables: {
+							input: { email, password },
+						},
+					}),
+					30000,
+				);
+
+				if (data?.login.success && data.login.data) {
+					const { token, refreshToken: newRefreshToken, user: authUser, expiresAt } = data.login.data;
+					const updated = upsertStoredAccount(token, newRefreshToken, authUser, expiresAt);
+					setAccounts(updated);
+
+					localStorage.setItem(TOKEN_KEY, token);
+					localStorage.setItem(REFRESH_TOKEN_KEY, newRefreshToken);
+					localStorage.setItem(USER_KEY, JSON.stringify(authUser));
+					localStorage.setItem(TOKEN_EXPIRY_KEY, expiresAt);
+
+					setUser(authUser);
+					clearCache();
+					setupTokenRefresh(expiresAt);
+
+					toast.success(`Compte ${authUser.name} connecté !`);
+					if (window.location.pathname !== "/") {
+						window.location.href = "/";
+					}
+					return { success: true };
+				}
+
+				const errMessage = data?.login.errors?.[0]?.message || "Échec de la connexion";
+				return { success: false, error: errMessage };
+			} catch (err) {
+				const message = err instanceof Error ? err.message : "Erreur lors de l'ajout du compte";
+				return { success: false, error: message };
+			}
+		},
+		[loginMutation, setupTokenRefresh],
+	);
+
+	const removeAccountSession = useCallback(
+		async (targetUserId: string) => {
+			const allAccounts = getStoredAccounts();
+			const remaining = allAccounts.filter((acc) => acc.user.id !== targetUserId);
+			setStoredAccounts(remaining);
+			setAccounts(remaining);
+
+			if (user?.id === targetUserId) {
+				if (remaining.length > 0) {
+					const next = [...remaining].sort((a, b) => (b.lastActiveAt || 0) - (a.lastActiveAt || 0))[0];
+					await switchAccount(next.user.id);
+				} else {
+					await logout();
+				}
+			} else {
+				toast.success("Compte détaché");
+			}
+		},
+		[user, switchAccount, logout],
+	);
+
+	const logoutAllAccounts = useCallback(async () => {
+		if (refreshTimeoutRef.current) {
+			clearTimeout(refreshTimeoutRef.current);
+			refreshTimeoutRef.current = null;
+		}
+
+		const token = getStoredToken();
+		if (token) {
+			try {
+				await logoutMutation({
+					variables: { input: { token } },
+				});
+			} catch {}
+		}
+
+		clearStoredAuth();
+		localStorage.removeItem(MULTI_ACCOUNTS_KEY);
+		clearCache();
+		setAccounts([]);
+		setUser(null);
+		toast.success("Tous les comptes ont été déconnectés");
+		if (window.location.pathname !== "/login") {
+			window.location.href = "/login";
+		}
+	}, [logoutMutation]);
+
 	const value: AuthContextType = {
 		user,
 		isLoading,
 		isAuthenticated: !!user,
+		isAdmin: user?.role === "ADMIN",
+		accounts,
 		login,
 		register,
 		logout,
@@ -450,6 +681,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 		resendVerification,
 		refreshToken,
 		updateUser,
+		switchAccount,
+		addAccount,
+		removeAccountSession,
+		logoutAllAccounts,
 	};
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

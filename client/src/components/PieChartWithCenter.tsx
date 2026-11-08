@@ -1,4 +1,4 @@
-import ReactECharts from "echarts-for-react";
+import EChart from "@/components/charts/EChart";
 
 interface PieChartData {
 	name: string;
@@ -113,5 +113,5 @@ export function PieChartWithCenter({
 		],
 	};
 
-	return <ReactECharts option={option} style={{ height }} notMerge={true} lazyUpdate={true} />;
+	return <EChart option={option} style={{ height }} notMerge={true} lazyUpdate={true} />;
 }

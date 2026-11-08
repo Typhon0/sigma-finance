@@ -1,7 +1,7 @@
-import ReactECharts from "echarts-for-react";
 import { ArrowLeft, DollarSign, FileText, Palette, Trash2, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import type { EChartsTooltipParam } from "@/components/types/echarts";
@@ -283,7 +283,7 @@ export function ArtDetail({ artId, onBack }: ArtDetailProps) {
 					<CardDescription>Historical value trend since purchase</CardDescription>
 				</CardHeader>
 				<CardContent>
-					<ReactECharts option={valueChartOption} style={{ height: "300px" }} />
+					<EChart option={valueChartOption} style={{ height: "300px" }} />
 				</CardContent>
 			</Card>
 

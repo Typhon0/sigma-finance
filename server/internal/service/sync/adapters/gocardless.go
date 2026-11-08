@@ -541,25 +541,25 @@ func (g *GoCardlessAdapter) FetchBalances(
 	ctx context.Context,
 	cred *model.SyncCredential,
 	externalAccountID string,
-) ([]syncservice.RawBalance, error) {
+) (syncservice.BalancesSnapshot, error) {
 	creds, err := g.parseCredentials(cred)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	if externalAccountID == "" {
-		return nil, errors.New("external account ID is required")
+		return syncservice.BalancesSnapshot{}, errors.New("external account ID is required")
 	}
 
 	path := fmt.Sprintf("/api/v2/accounts/%s/balances/", url.PathEscape(externalAccountID))
 	respBytes, err := g.executeRequest(ctx, creds, http.MethodGet, path, nil, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	var balResp gcBalancesResponse
 	if err := json.Unmarshal(respBytes, &balResp); err != nil {
-		return nil, fmt.Errorf("failed to parse balances response: %w", err)
+		return syncservice.BalancesSnapshot{}, fmt.Errorf("failed to parse balances response: %w", err)
 	}
 
 	type currencyBalances struct {
@@ -632,7 +632,11 @@ func (g *GoCardlessAdapter) FetchBalances(
 		return rawBalances[i].Currency < rawBalances[j].Currency
 	})
 
-	return rawBalances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   rawBalances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
 // FetchHoldings returns an empty slice for retail bank accounts as they hold cash rather than securities.
@@ -640,11 +644,16 @@ func (g *GoCardlessAdapter) FetchHoldings(
 	ctx context.Context,
 	cred *model.SyncCredential,
 	externalAccountID string,
-) ([]syncservice.RawHolding, error) {
+) (syncservice.HoldingsSnapshot, error) {
 	if _, err := g.parseCredentials(cred); err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
-	return []syncservice.RawHolding{}, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       []syncservice.RawHolding{},
+		IsComplete:     true,
+		AsOf:           time.Now(),
+		PaginationDone: true,
+	}, nil
 }
 
 type gcTransactionItem struct {
@@ -678,14 +687,15 @@ func (g *GoCardlessAdapter) FetchTransactions(
 	cred *model.SyncCredential,
 	externalAccountID string,
 	since *time.Time,
-) ([]syncservice.RawTransaction, error) {
+	cursors syncservice.StreamCursors,
+) (syncservice.TransactionsSnapshot, error) {
 	creds, err := g.parseCredentials(cred)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	if externalAccountID == "" {
-		return nil, errors.New("external account ID is required")
+		return syncservice.TransactionsSnapshot{}, errors.New("external account ID is required")
 	}
 
 	queryParams := url.Values{}
@@ -696,12 +706,12 @@ func (g *GoCardlessAdapter) FetchTransactions(
 	path := fmt.Sprintf("/api/v2/accounts/%s/transactions/", url.PathEscape(externalAccountID))
 	respBytes, err := g.executeRequest(ctx, creds, http.MethodGet, path, queryParams, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	var txResp gcTransactionsResponse
 	if err := json.Unmarshal(respBytes, &txResp); err != nil {
-		return nil, fmt.Errorf("failed to parse transactions response: %w", err)
+		return syncservice.TransactionsSnapshot{}, fmt.Errorf("failed to parse transactions response: %w", err)
 	}
 
 	var rawTxs []syncservice.RawTransaction
@@ -785,7 +795,11 @@ func (g *GoCardlessAdapter) FetchTransactions(
 		return rawTxs[i].ExecutedAt.Before(rawTxs[j].ExecutedAt)
 	})
 
-	return rawTxs, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   rawTxs,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 func parseGCTime(timeStr string) time.Time {

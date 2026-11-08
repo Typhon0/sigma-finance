@@ -29,7 +29,7 @@ vi.mock("@/hooks/use-asset-management", () => ({
 }));
 
 // Mock chart components
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	default: function MockReactECharts({ style }: { style: any }) {
 		return <div data-testid="mock-chart" style={style} />;

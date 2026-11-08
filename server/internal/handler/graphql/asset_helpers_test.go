@@ -51,7 +51,7 @@ func (s *stubPortfolioService) AddAssetToPortfolio(_ context.Context, _, _ strin
 func (s *stubPortfolioService) UpdateAssetInPortfolio(_ context.Context, _, _ string, _, _ float64) (*model.PortfolioAsset, error) {
 	panic("not implemented")
 }
-func (s *stubPortfolioService) RemoveAssetFromPortfolio(_ context.Context, _, _ string) error {
+func (s *stubPortfolioService) RemoveAssetFromPortfolio(_ context.Context, _, _ string, _ *string) error {
 	panic("not implemented")
 }
 func (s *stubPortfolioService) TagPortfolio(_ context.Context, _, _ string) error {
@@ -467,11 +467,12 @@ func (s *stubAssetRepo) GetAssetsByTag(ctx context.Context, tagID string) ([]mod
 // Only the methods needed by getAssetWithDetails are functional;
 // all others panic so that unexpected calls are caught immediately.
 type stubUOW struct {
-	priceRepo  repository.IPriceRepository
-	stockRepo  repository.IStockRepository
-	cryptoRepo repository.ICryptoRepository
-	fundRepo   repository.IFundRepository
-	assetRepo  repository.IAssetRepository
+	priceRepo    repository.IPriceRepository
+	stockRepo    repository.IStockRepository
+	cryptoRepo   repository.ICryptoRepository
+	fundRepo     repository.IFundRepository
+	assetRepo    repository.IAssetRepository
+	positionRepo repository.IPositionRepository
 }
 
 func (u *stubUOW) AssetPrice() repository.IPriceRepository {
@@ -510,7 +511,21 @@ func (u *stubUOW) Asset() repository.IAssetRepository {
 	}
 	return &stubAssetRepo{}
 }
-func (u *stubUOW) Position() repository.IPositionRepository { panic("not implemented") }
+func (u *stubUOW) Position() repository.IPositionRepository {
+	if u.positionRepo != nil {
+		return u.positionRepo
+	}
+	panic("not implemented")
+}
+
+type stubPositionRepo struct {
+	repository.IPositionRepository
+	positions []model.Position
+}
+
+func (s *stubPositionRepo) FindAllBy(ctx context.Context, options ...repository.QueryOption) ([]model.Position, error) {
+	return s.positions, nil
+}
 func (u *stubUOW) TaxLot() repository.ITaxLotRepository     { panic("not implemented") }
 func (u *stubUOW) TaxLotDisposition() repository.ITaxLotDispositionRepository {
 	panic("not implemented")
@@ -968,4 +983,100 @@ func TestBuildPortfolioAssets_StockAsset_ResolvedSuccessfully(t *testing.T) {
 	assert.Equal(t, 10.0, pa.Quantity)
 	assert.Equal(t, 150.0, *pa.AveragePurchasePrice)
 	assert.Equal(t, 1750.0, *pa.CurrentValue, "CurrentValue = 10 * 175 = 1750")
+}
+
+func TestBuildPortfolioAssets_MultiAccountSeparation(t *testing.T) {
+	// When an asset is held across multiple accounts (e.g., Compte Principal has 6, Trade Republic has 13),
+	// buildPortfolioAssets should return separate PortfolioAsset entries for each account holding rather
+	// than collapsing them into a single account.
+	symbol := "GOOGL"
+	stockMetadata := model.StockMetadata{Exchange: "NASDAQ"}
+	metadataBytes, _ := json.Marshal(stockMetadata)
+
+	costBasis1 := decimal.NewFromFloat(163.11)
+	costBasis2 := decimal.NewFromFloat(146.54)
+
+	r := newTestResolver(
+		&stubPortfolioService{
+			assets: []model.PortfolioAsset{
+				{
+					AssetID:              "asset-googl",
+					Quantity:             19,
+					AveragePurchasePrice: 151.78,
+					QuoteCurrency:        model.CurrencyUSD,
+				},
+			},
+		},
+		&stubAssetService{
+			asset: &model.Asset{
+				ID:          "asset-googl",
+				Name:        "Alphabet Inc.",
+				Symbol:      &symbol,
+				Type:        model.AssetTypeStock,
+				Metadata:    metadataBytes,
+				IsTradeable: true,
+			},
+		},
+		&stubTagService{tags: nil, err: nil},
+		&stubUOW{
+			priceRepo: &stubPriceRepo{
+				latestPrice: &model.AssetPrice{
+					Price: decimal.NewFromFloat(200.0),
+				},
+				priceErr: nil,
+				statistics: &repository.PriceStatistics{
+					Change:        decimal.NewFromFloat(1.5),
+					ChangePercent: decimal.NewFromFloat(0.75),
+				},
+				statsErr: nil,
+			},
+			stockRepo: &stubStockRepo{
+				stock: &model.Stock{AssetID: "asset-googl"},
+				err:   nil,
+			},
+			positionRepo: &stubPositionRepo{
+				positions: []model.Position{
+					{
+						ID:               "pos-compte-principal",
+						PortfolioID:      "portfolio-1",
+						AccountID:        "acc-1",
+						AssetID:          "asset-googl",
+						Quantity:         decimal.NewFromInt(6),
+						AverageCostBasis: &costBasis1,
+						QuoteCurrency:    model.CurrencyUSD,
+						Account: &model.Account{
+							ID:   "acc-1",
+							Name: "Compte Principal",
+						},
+					},
+					{
+						ID:               "pos-trade-republic",
+						PortfolioID:      "portfolio-1",
+						AccountID:        "acc-2",
+						AssetID:          "asset-googl",
+						Quantity:         decimal.NewFromInt(13),
+						AverageCostBasis: &costBasis2,
+						QuoteCurrency:    model.CurrencyEUR,
+						Account: &model.Account{
+							ID:   "acc-2",
+							Name: "Trade Republic CTO",
+						},
+					},
+				},
+			},
+		},
+	)
+
+	result := r.buildPortfolioAssets(context.Background(), "portfolio-1")
+	assert.Len(t, result, 2, "must emit two separate PortfolioAsset items, one per account")
+
+	assert.Equal(t, "Compte Principal", *result[0].AccountName)
+	assert.Equal(t, "acc-1", *result[0].AccountID)
+	assert.Equal(t, 6.0, result[0].Quantity)
+	assert.InDelta(t, 163.11, *result[0].AveragePurchasePrice, 0.01)
+
+	assert.Equal(t, "Trade Republic CTO", *result[1].AccountName)
+	assert.Equal(t, "acc-2", *result[1].AccountID)
+	assert.Equal(t, 13.0, result[1].Quantity)
+	assert.InDelta(t, 146.54, *result[1].AveragePurchasePrice, 0.01)
 }

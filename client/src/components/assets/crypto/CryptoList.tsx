@@ -35,11 +35,13 @@ import {
 import {
 	type BasePositionItem,
 	type GroupByOption,
+	type KnownAccountGroup,
 	PositionsDataTable,
 } from "@/components/assets/positions-table";
-import { AssetLogo } from "@/components/shared/AssetLogo";
-import { AssetHeroChart, buildPerformanceSeries, type TimeRange } from "@/components/charts";
+import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts/AssetHeroChart";
+import type { TimeRange } from "@/components/charts/PortfolioHeroChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { AssetLogo } from "@/components/shared/AssetLogo";
 import { computeDayChangeAmount } from "@/components/stocks-funds/day-change";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
@@ -73,24 +75,24 @@ import {
 } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Switch } from "@/components/ui/switch";
+import { AddWalletDialog } from "@/features/wallets";
 import { UPDATE_TRANSACTION } from "@/graphql/mutations/transaction";
+import {
+	ASSIGN_WALLET_DEVICE,
+	REFRESH_WALLET_BALANCE_PRICE,
+	RESET_WALLET_BALANCE_COST_BASIS,
+	SET_WALLET_BALANCE_COST_BASIS,
+	TOGGLE_SPAM_TOKEN,
+	TRIGGER_WALLET_SYNC,
+} from "@/graphql/mutations/wallets";
 import { GET_SCOPED_PERFORMANCE_HISTORY } from "@/graphql/queries/portfolios";
+import { GET_WALLET_ACCOUNTS, GET_WALLET_DEVICES } from "@/graphql/queries/wallets";
 import { useCurrency } from "@/hooks/use-currency";
 import { computePortfolioPnl, computePositionPnl } from "@/lib/money/pnl";
 import { allocatePercentages } from "@/lib/money/rounding";
 import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
 import { AddCryptoForm } from "./AddCryptoForm";
-import { AddWalletDialog } from "@/features/wallets";
-import {
-	TRIGGER_WALLET_SYNC,
-	TOGGLE_SPAM_TOKEN,
-	SET_WALLET_BALANCE_COST_BASIS,
-	RESET_WALLET_BALANCE_COST_BASIS,
-	ASSIGN_WALLET_DEVICE,
-	REFRESH_WALLET_BALANCE_PRICE,
-} from "@/graphql/mutations/wallets";
-import { GET_WALLET_ACCOUNTS, GET_WALLET_DEVICES } from "@/graphql/queries/wallets";
 
 function getBlockExplorerUrl(
 	network?: string,
@@ -311,7 +313,13 @@ function SetCostBasisDialog({
 
 	useEffect(() => {
 		if (target) {
-			setPrice(target.averageBuyPrice > 0 ? String(target.averageBuyPrice) : target.currentPrice > 0 ? String(target.currentPrice) : "");
+			setPrice(
+				target.averageBuyPrice > 0
+					? String(target.averageBuyPrice)
+					: target.currentPrice > 0
+						? String(target.currentPrice)
+						: "",
+			);
 			setDate(new Date().toISOString().split("T")[0]);
 		}
 	}, [target]);
@@ -320,7 +328,8 @@ function SetCostBasisDialog({
 
 	const numPrice = parseFloat(price) || 0;
 	const totalCost = numPrice * target.quantity;
-	const hasAutoEstimated = typeof target.autoEstimatedBasis === "number" && target.autoEstimatedBasis > 0;
+	const hasAutoEstimated =
+		typeof target.autoEstimatedBasis === "number" && target.autoEstimatedBasis > 0;
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -362,7 +371,8 @@ function SetCostBasisDialog({
 				<DialogHeader>
 					<DialogTitle>Set Cost Basis for {target.symbol}</DialogTitle>
 					<DialogDescription>
-						Record the purchase price for your on-chain {target.cryptoName} ({target.accountName}) to calculate accurate Profit &amp; Loss.
+						Record the purchase price for your on-chain {target.cryptoName} ({target.accountName})
+						to calculate accurate Profit &amp; Loss.
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className="space-y-4 pt-2">
@@ -430,9 +440,16 @@ function SetCostBasisDialog({
 							>
 								{isResetting ? "Resetting..." : "Reset to Auto-Estimated"}
 							</Button>
-						) : <div />}
+						) : (
+							<div />
+						)}
 						<div className="flex gap-2">
-							<Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting || isResetting}>
+							<Button
+								type="button"
+								variant="outline"
+								onClick={onClose}
+								disabled={isSubmitting || isResetting}
+							>
 								Cancel
 							</Button>
 							<Button type="submit" disabled={isSubmitting || isResetting || numPrice <= 0}>
@@ -489,7 +506,8 @@ function AssignDeviceDialog({
 				<DialogHeader>
 					<DialogTitle>Associer à un Appareil / Hardware</DialogTitle>
 					<DialogDescription>
-						Associez l'adresse {target.symbol} ({target.accountName}) à un portefeuille physique (ex: Cypherock, Ledger) pour le regrouper en Cold Storage.
+						Associez l'adresse {target.symbol} ({target.accountName}) à un portefeuille physique
+						(ex: Cypherock, Ledger) pour le regrouper en Cold Storage.
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSave} className="space-y-4 pt-2">
@@ -531,6 +549,11 @@ function AssignDeviceDialog({
 			</DialogContent>
 		</Dialog>
 	);
+}
+
+function truncateAddress(addr: string): string {
+	if (!addr || addr.length <= 14) return addr || "";
+	return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
 export function CryptoList({
@@ -580,21 +603,41 @@ export function CryptoList({
 	const [showAddWalletDialog, setShowAddWalletDialog] = useState(false);
 	const [isSyncingWallets, setIsSyncingWallets] = useState(false);
 
-	const { data: walletAccountsData, refetch: refetchWalletAccounts } = useQuery(GET_WALLET_ACCOUNTS, {
+	const {
+		data: walletAccountsData,
+		refetch: refetchWalletAccounts,
+		startPolling: startWalletPolling,
+		stopPolling: stopWalletPolling,
+	} = useQuery(GET_WALLET_ACCOUNTS, {
 		variables: { portfolioId: currentPortfolio },
 		skip: !currentPortfolio,
 		fetchPolicy: "cache-and-network",
 	});
+
+	const isAnyWalletSyncing = useMemo(
+		() =>
+			(walletAccountsData?.walletAccounts ?? []).some(
+				(w: any) => w.historyStatus === "IN_PROGRESS" || w.historyStatus === "PENDING",
+			),
+		[walletAccountsData],
+	);
+
+	useEffect(() => {
+		if (isAnyWalletSyncing) {
+			startWalletPolling?.(2500);
+			return () => stopWalletPolling?.();
+		} else {
+			stopWalletPolling?.();
+		}
+	}, [isAnyWalletSyncing, startWalletPolling, stopWalletPolling]);
+
 	const walletAccounts = useMemo(
 		() => walletAccountsData?.walletAccounts ?? [],
 		[walletAccountsData],
 	);
 
 	const { data: walletDevicesData } = useQuery(GET_WALLET_DEVICES);
-	const walletDevices = useMemo(
-		() => walletDevicesData?.walletDevices ?? [],
-		[walletDevicesData],
-	);
+	const walletDevices = useMemo(() => walletDevicesData?.walletDevices ?? [], [walletDevicesData]);
 
 	const [assignWalletDeviceMutation] = useMutation(ASSIGN_WALLET_DEVICE, {
 		onCompleted: () => {
@@ -714,7 +757,10 @@ export function CryptoList({
 			});
 
 		// Build price & market data lookup from existing assets
-		const priceLookup = new Map<string, { currentPrice: number; change24h: number; sparklineData?: number[] }>();
+		const priceLookup = new Map<
+			string,
+			{ currentPrice: number; change24h: number; sparklineData?: number[] }
+		>();
 		const sourceAssets = Array.isArray(allAssets) && allAssets.length > 0 ? allAssets : assets;
 		for (const a of sourceAssets) {
 			if (a.symbol && Number.isFinite(a.currentPrice) && (a.currentPrice ?? 0) > 0) {
@@ -738,11 +784,6 @@ export function CryptoList({
 				});
 			}
 		}
-
-		const truncateAddress = (addr: string) => {
-			if (!addr || addr.length <= 14) return addr || "";
-			return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-		};
 
 		// Map on-chain wallet account balances into CryptoHolding items
 		const walletHoldings: CryptoHolding[] = [];
@@ -813,14 +854,14 @@ export function CryptoList({
 					typeof b.currentPrice === "number" && b.currentPrice > 0 ? b.currentPrice : null;
 				const marketData =
 					priceLookup.get(symbol) ??
-					(CRYPTO_TICKER_ALIASES[symbol] ? priceLookup.get(CRYPTO_TICKER_ALIASES[symbol]) : undefined) ??
+					(CRYPTO_TICKER_ALIASES[symbol]
+						? priceLookup.get(CRYPTO_TICKER_ALIASES[symbol])
+						: undefined) ??
 					(symbol === "WSOL" ? priceLookup.get("SOL") : undefined) ??
 					(symbol === "WETH" ? priceLookup.get("ETH") : undefined) ??
 					(symbol === "WBTC" ? priceLookup.get("BTC") : undefined);
 				const currentPrice =
-					serverPrice ??
-					marketData?.currentPrice ??
-					(STABLE_SYMBOLS.has(symbol) ? 1.0 : 0);
+					serverPrice ?? marketData?.currentPrice ?? (STABLE_SYMBOLS.has(symbol) ? 1.0 : 0);
 				const change24h =
 					serverPrice !== null && typeof b.dayChange24h === "number"
 						? b.dayChange24h
@@ -832,8 +873,7 @@ export function CryptoList({
 							? quantity * currentPrice
 							: 0;
 
-				const isPriceResolved =
-					b.isPriceResolved ?? (currentPrice > 0);
+				const isPriceResolved = b.isPriceResolved ?? currentPrice > 0;
 
 				const costBasisPerUnit =
 					typeof b.costBasisPerUnit === "number" && b.costBasisPerUnit > 0
@@ -914,7 +954,7 @@ export function CryptoList({
 				dayChange: holding.change24h,
 				dayChangeAmount,
 				weight: apportionedWeights[index] ?? 0,
-				isPriceResolved: holding.isPriceResolved ?? (holding.currentPrice > 0),
+				isPriceResolved: holding.isPriceResolved ?? holding.currentPrice > 0,
 				sparklineData: holding.sparklineData,
 				icon: holding.icon,
 				color: holding.color,
@@ -936,6 +976,47 @@ export function CryptoList({
 			return true;
 		});
 	}, [cryptoPositions, hideSmallBalances, filterExchange, allocationFilter]);
+
+	const knownAccountGroups = useMemo<KnownAccountGroup[]>(() => {
+		const groups: KnownAccountGroup[] = [];
+
+		for (const w of walletAccounts) {
+			if (!w.isActive) continue;
+			const shortAddr = truncateAddress(w.addressOrXpub);
+			const formattedNet = w.network
+				? w.network.charAt(0).toUpperCase() + w.network.slice(1).toLowerCase()
+				: "Crypto";
+			const groupName =
+				w.device?.deviceType === "HARDWARE" && w.device?.name
+					? `${w.device.name} (Hardware)`
+					: w.label?.trim() || `${formattedNet} Wallet (${shortAddr})`;
+
+			const syncStatus =
+				w.historyStatus === "IN_PROGRESS" || w.historyStatus === "PENDING"
+					? "SYNCING"
+					: w.historyStatus === "ERROR"
+						? "ERROR"
+						: "SYNCED";
+
+			if (!groups.some((g) => g.name === groupName)) {
+				groups.push({
+					name: groupName,
+					syncStatus,
+				});
+			}
+		}
+
+		for (const holding of cryptoHoldings) {
+			if (!groups.some((g) => g.name === holding.accountName)) {
+				groups.push({
+					name: holding.accountName,
+					syncStatus: "SYNCED",
+				});
+			}
+		}
+
+		return groups;
+	}, [walletAccounts, cryptoHoldings]);
 
 	const uniqueExchanges = useMemo(
 		() => [...new Set(cryptoHoldings.map((holding) => holding.accountName))],
@@ -986,14 +1067,7 @@ export function CryptoList({
 	);
 
 	const renderCryptoIcon = useCallback((item: CryptoPositionItem) => {
-		return (
-			<AssetLogo
-				symbol={item.symbol}
-				name={item.name}
-				assetType="crypto"
-				size="sm"
-			/>
-		);
+		return <AssetLogo symbol={item.symbol} name={item.name} assetType="crypto" size="sm" />;
 	}, []);
 
 	const renderCryptoBadges = useCallback(
@@ -1009,7 +1083,11 @@ export function CryptoList({
 				<Badge
 					variant="outline"
 					className="h-4 px-1.5 py-0 text-micro font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 flex-shrink-0"
-					title={item.rawHolding.deviceName ? `${item.rawHolding.deviceName} (Hardware / Cold Storage)` : "Hardware Wallet (Cold Storage)"}
+					title={
+						item.rawHolding.deviceName
+							? `${item.rawHolding.deviceName} (Hardware / Cold Storage)`
+							: "Hardware Wallet (Cold Storage)"
+					}
 				>
 					🛡️ Hardware
 				</Badge>
@@ -1160,8 +1238,7 @@ export function CryptoList({
 						item.rawHolding.walletAddress,
 					)
 				: null;
-			const addressToCopy =
-				item.rawHolding.tokenAddress || item.rawHolding.walletAddress || "";
+			const addressToCopy = item.rawHolding.tokenAddress || item.rawHolding.walletAddress || "";
 
 			return (
 				<DropdownMenu>
@@ -1483,6 +1560,8 @@ export function CryptoList({
 			assetTypes: ["CRYPTO"],
 		},
 		skip: !selectedPortfolio?.id,
+		fetchPolicy: "cache-and-network",
+		nextFetchPolicy: "cache-first",
 	});
 	const performanceData = useMemo(
 		() => buildPerformanceSeries(scopedHistoryData?.scopedPerformanceHistory ?? [], totalValue),
@@ -2136,7 +2215,7 @@ export function CryptoList({
 		);
 	}
 
-	if (cryptoHoldings.length === 0) {
+	if (cryptoHoldings.length === 0 && walletAccounts.length === 0) {
 		return (
 			<div className="space-y-6">
 				<div className="flex flex-col justify-between gap-4 border-b border-border/60 pb-5 sm:flex-row sm:items-center">
@@ -2182,27 +2261,46 @@ export function CryptoList({
 					<Coins className="mx-auto mb-4 h-14 w-14 text-muted-foreground" />
 					<h2 className="mb-2 text-2xl font-bold">No crypto positions</h2>
 					<p className="mx-auto mb-6 text-muted-foreground text-sm">
-						Connect your on-chain crypto wallets for automatic balance and trade synchronization, or add positions manually.
+						Connect your on-chain crypto wallets for automatic balance and trade synchronization, or
+						add positions manually.
 					</p>
 					<div className="flex flex-col sm:flex-row items-center justify-center gap-3">
 						<Button onClick={() => setShowAddWalletDialog(true)} className="w-full sm:w-auto">
 							<Wallet className="mr-2 h-4 w-4" />
 							Connect On-Chain Wallet
 						</Button>
-						<Button variant="outline" onClick={() => setShowAddForm(true)} className="w-full sm:w-auto">
+						<Button
+							variant="outline"
+							onClick={() => setShowAddForm(true)}
+							className="w-full sm:w-auto"
+						>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Position Manually
 						</Button>
 					</div>
 					<div className="mt-6 flex flex-wrap justify-center items-center gap-1.5 text-xs text-muted-foreground">
 						<span className="font-medium text-foreground">Supported Networks:</span>
-						<Badge variant="secondary" className="text-[11px] font-mono">Ethereum</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Base</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Arbitrum</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Optimism</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Polygon</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Solana</Badge>
-						<Badge variant="secondary" className="text-[11px] font-mono">Bitcoin</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Ethereum
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Base
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Arbitrum
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Optimism
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Polygon
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Solana
+						</Badge>
+						<Badge variant="secondary" className="text-[11px] font-mono">
+							Bitcoin
+						</Badge>
 					</div>
 				</div>
 
@@ -2303,12 +2401,19 @@ export function CryptoList({
 					<div className="flex items-center gap-2.5 flex-wrap">
 						<span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
 						<span className="font-semibold text-foreground">
-							{walletAccounts.length} On-Chain Wallet{walletAccounts.length > 1 ? "s" : ""} Connected
+							{walletAccounts.length} On-Chain Wallet{walletAccounts.length > 1 ? "s" : ""}{" "}
+							Connected
 						</span>
 						<span className="text-muted-foreground">•</span>
 						<div className="flex items-center gap-1.5 flex-wrap">
-							{Array.from(new Set<string>(walletAccounts.map((w: { network: string }) => w.network))).map((net) => (
-								<Badge key={net} variant="outline" className="text-[10px] uppercase font-mono px-1.5 py-0 h-4">
+							{Array.from(
+								new Set<string>(walletAccounts.map((w: { network: string }) => w.network)),
+							).map((net) => (
+								<Badge
+									key={net}
+									variant="outline"
+									className="text-[10px] uppercase font-mono px-1.5 py-0 h-4"
+								>
 									{net}
 								</Badge>
 							))}
@@ -2367,7 +2472,7 @@ export function CryptoList({
 							timeRange={timeRange}
 							onTimeRangeChange={setTimeRange}
 							portfolioID={selectedPortfolio?.id}
-							loading={loading}
+							loading={loading && cryptoHoldings.length === 0}
 							defaultBenchmark="sp500"
 							layoutId="cryptoHeroRangePillActive"
 						/>
@@ -2571,6 +2676,8 @@ export function CryptoList({
 				groupBy={cryptoGroupBy}
 				onGroupByChange={setCryptoGroupBy}
 				groupByOptions={cryptoGroupByOptions}
+				knownAccountGroups={knownAccountGroups}
+				emptyGroupMessage="No crypto holdings in this wallet yet."
 				toolbarExtra={
 					<div className="flex items-center gap-2">
 						<Select value={filterExchange} onValueChange={setFilterExchange}>
@@ -2722,7 +2829,7 @@ export function CryptoList({
 									},
 								});
 								await refetchWalletAccounts();
-						  }
+							}
 						: undefined
 				}
 				formatCurrency={formatCurrency}

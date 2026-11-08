@@ -1,7 +1,7 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import { Download, Eye, EyeOff, Maximize2, Minimize2 } from "lucide-react";
 import React, { useEffect, useMemo, useRef } from "react";
+import EChart, { type EChartHandle } from "@/components/charts/EChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -65,7 +65,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 	loading = false,
 	error,
 }) => {
-	const chartRef = useRef<ReactECharts>(null);
+	const chartRef = useRef<EChartHandle>(null);
 	const [isFullscreen, setIsFullscreen] = React.useState(false);
 	const [visiblePortfolios, setVisiblePortfolios] = React.useState<Set<string>>(
 		new Set(portfolios.map((p) => p.id)),
@@ -341,7 +341,7 @@ const PortfolioComparisonChart: React.FC<PortfolioComparisonChartProps> = ({
 	}
 
 	const chartContent = (
-		<ReactECharts
+		<EChart
 			ref={chartRef}
 			option={chartOption}
 			style={{

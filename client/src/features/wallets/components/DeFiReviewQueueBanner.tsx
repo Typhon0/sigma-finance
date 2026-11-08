@@ -55,7 +55,10 @@ export function DeFiReviewQueueBanner({ portfolioId }: DeFiReviewQueueBannerProp
 						<span className="font-semibold text-sm text-foreground">
 							DeFi Activity Review Queue
 						</span>
-						<Badge variant="outline" className="text-xs border-amber-500/40 text-amber-600 bg-amber-500/10">
+						<Badge
+							variant="outline"
+							className="text-xs border-amber-500/40 text-amber-600 bg-amber-500/10"
+						>
 							{reviews.length} Pending
 						</Badge>
 					</div>
@@ -65,40 +68,49 @@ export function DeFiReviewQueueBanner({ portfolioId }: DeFiReviewQueueBannerProp
 				</div>
 
 				<div className="space-y-2">
-					{reviews.map((rev: { id: string; walletActivityId: string; suggestedType: string; notes?: string | null }) => (
-						<div
-							key={rev.id}
-							className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded bg-background/80 border text-xs"
-						>
-							<div className="flex items-center gap-2 max-w-xl">
-								<Badge variant="secondary" className="font-mono text-[10px]">
-									{rev.suggestedType}
-								</Badge>
-								<span className="text-muted-foreground truncate">{rev.notes || "Multi-asset interaction"}</span>
-							</div>
+					{reviews.map(
+						(rev: {
+							id: string;
+							walletActivityId: string;
+							suggestedType: string;
+							notes?: string | null;
+						}) => (
+							<div
+								key={rev.id}
+								className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded bg-background/80 border text-xs"
+							>
+								<div className="flex items-center gap-2 max-w-xl">
+									<Badge variant="secondary" className="font-mono text-[10px]">
+										{rev.suggestedType}
+									</Badge>
+									<span className="text-muted-foreground truncate">
+										{rev.notes || "Multi-asset interaction"}
+									</span>
+								</div>
 
-							<div className="flex items-center gap-1.5 ml-auto">
-								<Button
-									variant="outline"
-									size="sm"
-									className="h-7 text-xs border-green-500/40 text-green-600 hover:bg-green-500/10"
-									onClick={() => handleResolve(rev.id, "APPROVE")}
-									disabled={resolving}
-								>
-									<Check className="h-3 w-3 mr-1" /> Approve
-								</Button>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-7 text-xs text-muted-foreground hover:text-destructive"
-									onClick={() => handleResolve(rev.id, "DISMISS")}
-									disabled={resolving}
-								>
-									<X className="h-3 w-3 mr-1" /> Dismiss
-								</Button>
+								<div className="flex items-center gap-1.5 ml-auto">
+									<Button
+										variant="outline"
+										size="sm"
+										className="h-7 text-xs border-green-500/40 text-green-600 hover:bg-green-500/10"
+										onClick={() => handleResolve(rev.id, "APPROVE")}
+										disabled={resolving}
+									>
+										<Check className="h-3 w-3 mr-1" /> Approve
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="h-7 text-xs text-muted-foreground hover:text-destructive"
+										onClick={() => handleResolve(rev.id, "DISMISS")}
+										disabled={resolving}
+									>
+										<X className="h-3 w-3 mr-1" /> Dismiss
+									</Button>
+								</div>
 							</div>
-						</div>
-					))}
+						),
+					)}
 				</div>
 			</CardContent>
 		</Card>

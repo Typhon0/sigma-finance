@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { PerformerPanel } from "@/components/assets/stocks-funds/PerformerPanel";
 import type { InsightFilter as DistributionInsightFilter } from "@/components/assets/stocks-funds/StocksDistributionWidget";
 import { StocksDistributionWidget } from "@/components/assets/stocks-funds/StocksDistributionWidget";
-import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts";
+import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts/AssetHeroChart";
 import { BenchmarkComparisonCard } from "@/components/insights/BenchmarkComparisonCard";
 import { CurrencyExposureCard } from "@/components/insights/CurrencyExposureCard";
 import { FeesTerCard } from "@/components/insights/FeesTerCard";
@@ -58,11 +58,13 @@ import { GET_SCOPED_PERFORMANCE_HISTORY } from "@/graphql/queries/portfolios";
 import { useCurrency } from "@/hooks/use-currency";
 import { usePortfolioRiskMetrics } from "@/hooks/use-portfolio-risk-metrics";
 import { useBenchmarkInstrumentId } from "@/hooks/useBenchmarkInstrumentId";
+import { formatAssetDisplayName } from "@/lib/format-asset-name";
 import { computePortfolioPnl, computePositionPnl } from "@/lib/money/pnl";
 import { allocatePercentages, fromMinorUnits, sumMoney, toMinorUnits } from "@/lib/money/rounding";
 import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
 import { AddStockForm } from "./AddStockForm";
+import { ImportFortuneoDialog } from "./ImportFortuneoDialog";
 import { MarketStatusBadge } from "./MarketStatusBadge";
 import { StockDetail } from "./StockDetail";
 import { PositionsTableSkeleton, StocksFundsPositions } from "./StocksFundsPositions";
@@ -321,8 +323,12 @@ export function normalizeStockAssets(
 		// Two independent gates must both allow a figure: the server decides
 		// whether a percentage is meaningful at all, the helper decides whether
 		// there is a cost basis to measure against.
-		const totalReturn = canShowPercentage ? positionPnl.pnl : null;
-		const totalReturnPercentage = (canShowPercentage ? positionPnl.pnlPercent : null) ?? 0;
+		const totalReturn =
+			canShowPercentage || (costBasis > 0 && totalPositionValue > 0) ? positionPnl.pnl : null;
+		const totalReturnPercentage =
+			(canShowPercentage || (costBasis > 0 && totalPositionValue > 0)
+				? positionPnl.pnlPercent
+				: null) ?? 0;
 		// Presence and value are resolved separately: a missing day-change
 		// figure is not a flat session, so the detail panel hides the delta
 		// instead of printing $0.00. Same resolution as the holdings table.
@@ -352,7 +358,7 @@ export function normalizeStockAssets(
 			positionId: asset.positionId,
 			portfolioId: asset.portfolioId || fallbackPortfolioId,
 			symbol: (asset.symbol || asset.name || "ASSET").toUpperCase(),
-			name: asset.name || "Unnamed Asset",
+			name: formatAssetDisplayName(asset.name, asset.symbol),
 			type: asset.type || "stock",
 			quantity,
 			avgCost,
@@ -392,6 +398,10 @@ export function StocksFundsModule({
 		typeof window !== "undefined" && localStorage.getItem("sf_show_insights_strip") === "true";
 	const [activeTab, setActiveTab] = useState<ActiveTab>("positions");
 	const [isAddOpen, setIsAddOpen] = useState(false);
+	const [isImportFortuneoOpen, setIsImportFortuneoOpen] = useState(false);
+	const [addPositionAccountName, setAddPositionAccountName] = useState<string | undefined>(
+		undefined,
+	);
 	const [timeRange, setTimeRange] = useState<TimeRange>("1M");
 	const [insightFilter, setInsightFilter] = useState<InsightFilter | null>(null);
 	// Defer the insight filter to prevent expensive positions table re-renders
@@ -792,6 +802,8 @@ export function StocksFundsModule({
 			assetTypes: ["STOCK", "FUND"],
 		},
 		skip: !selectedPortfolio?.id,
+		fetchPolicy: "cache-and-network",
+		nextFetchPolicy: "cache-first",
 	});
 	const performanceData = useMemo(
 		() => buildPerformanceSeries(scopedHistoryData?.scopedPerformanceHistory ?? [], totalValue),
@@ -1272,6 +1284,16 @@ export function StocksFundsModule({
 						<MarketStatusBadge holdings={normalizedAssets} assetType="stock" />
 
 						<Button
+							variant="outline"
+							size="sm"
+							className="h-8 text-xs border-border/50 text-foreground hover:text-primary gap-1.5 shadow-xs touch-target"
+							onClick={() => setIsImportFortuneoOpen(true)}
+						>
+							<FileSpreadsheet className="h-3.5 w-3.5" />
+							<span>Importer PEA Fortuneo</span>
+						</Button>
+
+						<Button
 							size="sm"
 							className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs touch-target"
 							onClick={() => {
@@ -1287,9 +1309,18 @@ export function StocksFundsModule({
 				}
 			/>
 
+			<ImportFortuneoDialog
+				open={isImportFortuneoOpen}
+				onClose={() => setIsImportFortuneoOpen(false)}
+			/>
+
 			<AddStockForm
 				open={isAddOpen}
-				onClose={() => setIsAddOpen(false)}
+				defaultAccountName={addPositionAccountName}
+				onClose={() => {
+					setIsAddOpen(false);
+					setAddPositionAccountName(undefined);
+				}}
 				onSubmit={handleAddPosition}
 				onCloseAutoFocus={restoreOverlayFocus}
 			/>
@@ -1344,7 +1375,7 @@ export function StocksFundsModule({
 							timeRange={timeRange}
 							onTimeRangeChange={setTimeRange}
 							portfolioID={selectedPortfolio?.id}
-							loading={portfolioLoading || forceSkeleton}
+							loading={(portfolioLoading && normalizedAssets.length === 0) || forceSkeleton}
 							defaultBenchmark="sp500"
 							layoutId="stocksHeroRangePillActive"
 						/>
@@ -1362,7 +1393,7 @@ export function StocksFundsModule({
 							activeFilter={insightFilter}
 							onSetFilter={handleSetInsightFilter}
 							onSelectAsset={handleSelectAsset}
-							loading={portfolioLoading || forceSkeleton}
+							loading={(portfolioLoading && normalizedAssets.length === 0) || forceSkeleton}
 						/>
 					</ErrorBoundary>
 				</div>
@@ -1564,6 +1595,11 @@ export function StocksFundsModule({
 										loading={portfolioLoading}
 										onSelectAccount={onSelectAccount}
 										onSelectAsset={handleSelectAsset}
+										onAddPositionToAccount={(accName) => {
+											rememberOverlayOpener();
+											setAddPositionAccountName(accName);
+											setIsAddOpen(true);
+										}}
 										externalFilter={deferredInsightFilter}
 										onClearExternalFilter={clearInsightFilter}
 									/>

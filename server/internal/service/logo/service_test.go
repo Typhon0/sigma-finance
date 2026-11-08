@@ -129,17 +129,18 @@ func TestLogoService_CandidateURLsAndAliases(t *testing.T) {
 	require.NotEmpty(t, cryptoURLs)
 	assert.Contains(t, cryptoURLs[0], "coincap.io/assets/icons/doge@2x.png")
 
-	// Stock with exchange suffix: MC.PA should include MC and MC.PA
+	// Stock with exchange suffix: MC.PA should include exact symbol MC.PA and lvmh.com domain
 	stockURLs := s.resolveCandidateURLs(context.Background(), "stocks", "MC.PA")
 	require.NotEmpty(t, stockURLs)
-	var hasBase bool
+	assert.Contains(t, stockURLs[0], "lvmh.com")
+	var hasDomain bool
 	for _, u := range stockURLs {
-		if strings.Contains(u, "MC.png") || strings.Contains(u, "mc.svg") {
-			hasBase = true
+		if strings.Contains(u, "lvmh.com") {
+			hasDomain = true
 			break
 		}
 	}
-	assert.True(t, hasBase, "Should include base ticker MC without .PA suffix")
+	assert.True(t, hasDomain, "Should include verified company domain lvmh.com")
 
 	// Alias check in GetCachedPath
 	// If DOGE is cached, querying XDG should hit the DOGE cache

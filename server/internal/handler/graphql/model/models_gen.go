@@ -29,23 +29,27 @@ type Asset interface {
 }
 
 type Account struct {
-	ID             string          `json:"id"`
-	PortfolioID    string          `json:"portfolioId"`
-	Portfolio      *Portfolio      `json:"portfolio"`
-	Name           string          `json:"name"`
-	Type           AccountType     `json:"type"`
-	TaxWrapper     TaxWrapperType  `json:"taxWrapper"`
-	Institution    *string         `json:"institution,omitempty"`
-	AccountNumber  *string         `json:"accountNumber,omitempty"`
-	Currency       string          `json:"currency"`
-	SyncProvider   string          `json:"syncProvider"`
-	ExternalID     *string         `json:"externalId,omitempty"`
-	SyncConnection *SyncConnection `json:"syncConnection,omitempty"`
-	Positions      []*Position     `json:"positions"`
-	PositionsCount int32           `json:"positionsCount"`
-	TotalValue     *float64        `json:"totalValue,omitempty"`
-	CreatedAt      time.Time       `json:"createdAt"`
-	UpdatedAt      time.Time       `json:"updatedAt"`
+	ID                  string          `json:"id"`
+	PortfolioID         string          `json:"portfolioId"`
+	Portfolio           *Portfolio      `json:"portfolio"`
+	Name                string          `json:"name"`
+	Type                AccountType     `json:"type"`
+	TaxWrapper          TaxWrapperType  `json:"taxWrapper"`
+	Institution         *string         `json:"institution,omitempty"`
+	AccountNumber       *string         `json:"accountNumber,omitempty"`
+	Currency            string          `json:"currency"`
+	SyncProvider        string          `json:"syncProvider"`
+	OwnershipPercentage float64         `json:"ownershipPercentage"`
+	CoOwnerName         *string         `json:"coOwnerName,omitempty"`
+	CoOwnerUserID       *string         `json:"coOwnerUserId,omitempty"`
+	CoOwnerUser         *User           `json:"coOwnerUser,omitempty"`
+	ExternalID          *string         `json:"externalId,omitempty"`
+	SyncConnection      *SyncConnection `json:"syncConnection,omitempty"`
+	Positions           []*Position     `json:"positions"`
+	PositionsCount      int32           `json:"positionsCount"`
+	TotalValue          *float64        `json:"totalValue,omitempty"`
+	CreatedAt           time.Time       `json:"createdAt"`
+	UpdatedAt           time.Time       `json:"updatedAt"`
 }
 
 type AddCustomTokenInput struct {
@@ -60,6 +64,16 @@ type AddInstrumentHoldingInput struct {
 	AveragePurchasePrice float64    `json:"averagePurchasePrice"`
 	UnitPriceCurrency    *string    `json:"unitPriceCurrency,omitempty"`
 	PurchaseDate         *time.Time `json:"purchaseDate,omitempty"`
+}
+
+type AddMultiChainWalletInput struct {
+	PortfolioID          string              `json:"portfolioId"`
+	Name                 string              `json:"name"`
+	DeviceType           WalletDeviceType    `json:"deviceType"`
+	EvmAddress           *string             `json:"evmAddress,omitempty"`
+	EvmNetworks          []BlockchainNetwork `json:"evmNetworks,omitempty"`
+	SolanaAddress        *string             `json:"solanaAddress,omitempty"`
+	BitcoinAddressOrXpub *string             `json:"bitcoinAddressOrXpub,omitempty"`
 }
 
 type AddMultiNetworkWalletInput struct {
@@ -78,6 +92,42 @@ type AddWalletAccountInput struct {
 	IsXpub        *bool             `json:"isXpub,omitempty"`
 	Label         *string           `json:"label,omitempty"`
 	DeviceID      *string           `json:"deviceId,omitempty"`
+}
+
+type AdminCreateUserInput struct {
+	Name          string  `json:"name"`
+	Email         string  `json:"email"`
+	Password      string  `json:"password"`
+	Role          *string `json:"role,omitempty"`
+	EmailVerified *bool   `json:"emailVerified,omitempty"`
+}
+
+type AdminUpdateUserInput struct {
+	Name            *string `json:"name,omitempty"`
+	Email           *string `json:"email,omitempty"`
+	Role            *string `json:"role,omitempty"`
+	TaxJurisdiction *string `json:"taxJurisdiction,omitempty"`
+	DisplayCurrency *string `json:"displayCurrency,omitempty"`
+}
+
+type AdminUserFilter struct {
+	Search        *string `json:"search,omitempty"`
+	Role          *string `json:"role,omitempty"`
+	IsLocked      *bool   `json:"isLocked,omitempty"`
+	EmailVerified *bool   `json:"emailVerified,omitempty"`
+}
+
+type AdminUserStats struct {
+	TotalUsers      int32 `json:"totalUsers"`
+	ActiveUsers     int32 `json:"activeUsers"`
+	LockedUsers     int32 `json:"lockedUsers"`
+	AdminUsers      int32 `json:"adminUsers"`
+	UnverifiedUsers int32 `json:"unverifiedUsers"`
+}
+
+type AdminUsersResponse struct {
+	Users      []*User `json:"users"`
+	TotalCount int32   `json:"totalCount"`
 }
 
 type AggregatorAuthSession struct {
@@ -282,6 +332,7 @@ type AuthResponse struct {
 type AuthUser struct {
 	ID                  string  `json:"id"`
 	Email               string  `json:"email"`
+	Role                string  `json:"role"`
 	Name                string  `json:"name"`
 	EmailVerified       bool    `json:"emailVerified"`
 	DisplayCurrency     string  `json:"displayCurrency"`
@@ -467,15 +518,24 @@ type ChartMetadata struct {
 	AdditionalData []*KeyValuePair `json:"additionalData,omitempty"`
 }
 
+type CoOwnerCandidate struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
 type CreateAccountInput struct {
-	PortfolioID   string         `json:"portfolioId"`
-	Name          string         `json:"name"`
-	Type          AccountType    `json:"type"`
-	TaxWrapper    TaxWrapperType `json:"taxWrapper"`
-	Institution   *string        `json:"institution,omitempty"`
-	AccountNumber *string        `json:"accountNumber,omitempty"`
-	Currency      *string        `json:"currency,omitempty"`
-	SyncProvider  *string        `json:"syncProvider,omitempty"`
+	PortfolioID         string         `json:"portfolioId"`
+	Name                string         `json:"name"`
+	Type                AccountType    `json:"type"`
+	TaxWrapper          TaxWrapperType `json:"taxWrapper"`
+	Institution         *string        `json:"institution,omitempty"`
+	AccountNumber       *string        `json:"accountNumber,omitempty"`
+	Currency            *string        `json:"currency,omitempty"`
+	SyncProvider        *string        `json:"syncProvider,omitempty"`
+	OwnershipPercentage *float64       `json:"ownershipPercentage,omitempty"`
+	CoOwnerName         *string        `json:"coOwnerName,omitempty"`
+	CoOwnerUserID       *string        `json:"coOwnerUserId,omitempty"`
 }
 
 type CreateAlertInput struct {
@@ -733,6 +793,21 @@ type EmailVerificationInput struct {
 type EmailVerificationResponse struct {
 	Success bool         `json:"success"`
 	Errors  []*AuthError `json:"errors,omitempty"`
+}
+
+type EnableBankingAuthSession struct {
+	AuthSessionID string    `json:"authSessionId"`
+	AuthURL       string    `json:"authUrl"`
+	State         string    `json:"state"`
+	ExpiresAt     time.Time `json:"expiresAt"`
+}
+
+type EnableBankingInstitution struct {
+	Name     string   `json:"name"`
+	Title    string   `json:"title"`
+	Country  string   `json:"country"`
+	Logo     *string  `json:"logo,omitempty"`
+	PsuTypes []string `json:"psuTypes,omitempty"`
 }
 
 type ExportData struct {
@@ -1505,6 +1580,9 @@ type PortfolioAsset struct {
 	DayChange            *float64 `json:"dayChange,omitempty"`
 	DayChangePercent     *float64 `json:"dayChangePercent,omitempty"`
 	QuoteCurrency        *string  `json:"quoteCurrency,omitempty"`
+	AccountName          *string  `json:"accountName,omitempty"`
+	AccountID            *string  `json:"accountID,omitempty"`
+	PositionID           *string  `json:"positionID,omitempty"`
 }
 
 type PortfolioAssetInput struct {
@@ -1959,12 +2037,26 @@ type TimeSeriesData struct {
 	Aggregation TimeAggregation   `json:"aggregation"`
 }
 
+type TradeRepublicAuthPollResult struct {
+	Status       TradeRepublicAuthStatus `json:"status"`
+	Connections  []*SyncConnection       `json:"connections,omitempty"`
+	ErrorMessage *string                 `json:"errorMessage,omitempty"`
+}
+
+type TradeRepublicAuthSession struct {
+	AuthSessionID    string                  `json:"authSessionId"`
+	Status           TradeRepublicAuthStatus `json:"status"`
+	CountdownSeconds int32                   `json:"countdownSeconds"`
+	ExpiresAt        time.Time               `json:"expiresAt"`
+}
+
 type Transaction struct {
 	ID                string          `json:"id"`
 	Portfolio         *Portfolio      `json:"portfolio"`
 	AccountID         *string         `json:"accountId,omitempty"`
 	Account           *Account        `json:"account,omitempty"`
-	Asset             Asset           `json:"asset"`
+	Asset             Asset           `json:"asset,omitempty"`
+	Amount            *float64        `json:"amount,omitempty"`
 	TransactionType   TransactionType `json:"transactionType"`
 	Quantity          float64         `json:"quantity"`
 	UnitPriceAmount   *float64        `json:"unitPriceAmount,omitempty"`
@@ -1978,6 +2070,7 @@ type Transaction struct {
 type TransactionFilter struct {
 	UserID          *string          `json:"userID,omitempty"`
 	PortfolioID     *string          `json:"portfolioID,omitempty"`
+	AccountID       *string          `json:"accountID,omitempty"`
 	AssetID         *string          `json:"assetID,omitempty"`
 	TransactionType *TransactionType `json:"transactionType,omitempty"`
 	DateFrom        *time.Time       `json:"dateFrom,omitempty"`
@@ -2001,12 +2094,15 @@ type TriggerFinanceDatabaseSyncPayload struct {
 }
 
 type UpdateAccountInput struct {
-	Name          *string         `json:"name,omitempty"`
-	Type          *AccountType    `json:"type,omitempty"`
-	TaxWrapper    *TaxWrapperType `json:"taxWrapper,omitempty"`
-	Institution   *string         `json:"institution,omitempty"`
-	AccountNumber *string         `json:"accountNumber,omitempty"`
-	Currency      *string         `json:"currency,omitempty"`
+	Name                *string         `json:"name,omitempty"`
+	Type                *AccountType    `json:"type,omitempty"`
+	TaxWrapper          *TaxWrapperType `json:"taxWrapper,omitempty"`
+	Institution         *string         `json:"institution,omitempty"`
+	AccountNumber       *string         `json:"accountNumber,omitempty"`
+	Currency            *string         `json:"currency,omitempty"`
+	OwnershipPercentage *float64        `json:"ownershipPercentage,omitempty"`
+	CoOwnerName         *string         `json:"coOwnerName,omitempty"`
+	CoOwnerUserID       *string         `json:"coOwnerUserId,omitempty"`
 }
 
 type UpdateAlertInput struct {
@@ -2096,6 +2192,12 @@ type User struct {
 	ID                  string       `json:"id"`
 	Username            string       `json:"username"`
 	Email               string       `json:"email"`
+	Role                string       `json:"role"`
+	EmailVerified       bool         `json:"emailVerified"`
+	LastLoginAt         *time.Time   `json:"lastLoginAt,omitempty"`
+	FailedLoginCount    int32        `json:"failedLoginCount"`
+	LockedUntil         *time.Time   `json:"lockedUntil,omitempty"`
+	IsLocked            bool         `json:"isLocked"`
 	CreatedAt           time.Time    `json:"createdAt"`
 	UpdatedAt           time.Time    `json:"updatedAt"`
 	Portfolios          []*Portfolio `json:"portfolios"`
@@ -2284,6 +2386,20 @@ type Watchlist struct {
 
 type WatchlistFilter struct {
 	UserID string `json:"userID"`
+}
+
+type WoobAuthPollResult struct {
+	Status       WoobAuthStatus    `json:"status"`
+	Connections  []*SyncConnection `json:"connections,omitempty"`
+	ErrorMessage *string           `json:"errorMessage,omitempty"`
+}
+
+type WoobAuthSession struct {
+	AuthSessionID    string         `json:"authSessionId"`
+	Status           WoobAuthStatus `json:"status"`
+	CountdownSeconds int32          `json:"countdownSeconds"`
+	ChallengeMessage *string        `json:"challengeMessage,omitempty"`
+	ExpiresAt        time.Time      `json:"expiresAt"`
 }
 
 type AccountType string
@@ -3430,22 +3546,28 @@ func (e SyncConnectionStatus) MarshalJSON() ([]byte, error) {
 type SyncProvider string
 
 const (
-	SyncProviderKraken     SyncProvider = "KRAKEN"
-	SyncProviderSnaptrade  SyncProvider = "SNAPTRADE"
-	SyncProviderGocardless SyncProvider = "GOCARDLESS"
-	SyncProviderManual     SyncProvider = "MANUAL"
+	SyncProviderKraken        SyncProvider = "KRAKEN"
+	SyncProviderSnaptrade     SyncProvider = "SNAPTRADE"
+	SyncProviderGocardless    SyncProvider = "GOCARDLESS"
+	SyncProviderTraderepublic SyncProvider = "TRADEREPUBLIC"
+	SyncProviderEnablebanking SyncProvider = "ENABLEBANKING"
+	SyncProviderWoob          SyncProvider = "WOOB"
+	SyncProviderManual        SyncProvider = "MANUAL"
 )
 
 var AllSyncProvider = []SyncProvider{
 	SyncProviderKraken,
 	SyncProviderSnaptrade,
 	SyncProviderGocardless,
+	SyncProviderTraderepublic,
+	SyncProviderEnablebanking,
+	SyncProviderWoob,
 	SyncProviderManual,
 }
 
 func (e SyncProvider) IsValid() bool {
 	switch e {
-	case SyncProviderKraken, SyncProviderSnaptrade, SyncProviderGocardless, SyncProviderManual:
+	case SyncProviderKraken, SyncProviderSnaptrade, SyncProviderGocardless, SyncProviderTraderepublic, SyncProviderEnablebanking, SyncProviderWoob, SyncProviderManual:
 		return true
 	}
 	return false
@@ -3787,6 +3909,65 @@ func (e TimeAggregation) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type TradeRepublicAuthStatus string
+
+const (
+	TradeRepublicAuthStatusWaitingForConfirmation TradeRepublicAuthStatus = "WAITING_FOR_CONFIRMATION"
+	TradeRepublicAuthStatusCompleted              TradeRepublicAuthStatus = "COMPLETED"
+	TradeRepublicAuthStatusRejected               TradeRepublicAuthStatus = "REJECTED"
+	TradeRepublicAuthStatusExpired                TradeRepublicAuthStatus = "EXPIRED"
+)
+
+var AllTradeRepublicAuthStatus = []TradeRepublicAuthStatus{
+	TradeRepublicAuthStatusWaitingForConfirmation,
+	TradeRepublicAuthStatusCompleted,
+	TradeRepublicAuthStatusRejected,
+	TradeRepublicAuthStatusExpired,
+}
+
+func (e TradeRepublicAuthStatus) IsValid() bool {
+	switch e {
+	case TradeRepublicAuthStatusWaitingForConfirmation, TradeRepublicAuthStatusCompleted, TradeRepublicAuthStatusRejected, TradeRepublicAuthStatusExpired:
+		return true
+	}
+	return false
+}
+
+func (e TradeRepublicAuthStatus) String() string {
+	return string(e)
+}
+
+func (e *TradeRepublicAuthStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TradeRepublicAuthStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TradeRepublicAuthStatus", str)
+	}
+	return nil
+}
+
+func (e TradeRepublicAuthStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TradeRepublicAuthStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TradeRepublicAuthStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type TransactionOrderField string
 
 const (
@@ -4024,6 +4205,67 @@ func (e *WalletDeviceType) UnmarshalJSON(b []byte) error {
 }
 
 func (e WalletDeviceType) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type WoobAuthStatus string
+
+const (
+	WoobAuthStatusWaitingForConfirmation WoobAuthStatus = "WAITING_FOR_CONFIRMATION"
+	WoobAuthStatusWaitingForCode         WoobAuthStatus = "WAITING_FOR_CODE"
+	WoobAuthStatusCompleted              WoobAuthStatus = "COMPLETED"
+	WoobAuthStatusRejected               WoobAuthStatus = "REJECTED"
+	WoobAuthStatusExpired                WoobAuthStatus = "EXPIRED"
+)
+
+var AllWoobAuthStatus = []WoobAuthStatus{
+	WoobAuthStatusWaitingForConfirmation,
+	WoobAuthStatusWaitingForCode,
+	WoobAuthStatusCompleted,
+	WoobAuthStatusRejected,
+	WoobAuthStatusExpired,
+}
+
+func (e WoobAuthStatus) IsValid() bool {
+	switch e {
+	case WoobAuthStatusWaitingForConfirmation, WoobAuthStatusWaitingForCode, WoobAuthStatusCompleted, WoobAuthStatusRejected, WoobAuthStatusExpired:
+		return true
+	}
+	return false
+}
+
+func (e WoobAuthStatus) String() string {
+	return string(e)
+}
+
+func (e *WoobAuthStatus) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = WoobAuthStatus(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid WoobAuthStatus", str)
+	}
+	return nil
+}
+
+func (e WoobAuthStatus) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *WoobAuthStatus) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e WoobAuthStatus) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

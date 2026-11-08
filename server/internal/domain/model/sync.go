@@ -5,6 +5,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -16,10 +17,13 @@ import (
 
 // Sync Provider Constants
 const (
-	SyncProviderKraken     = "KRAKEN"
-	SyncProviderSnapTrade  = "SNAPTRADE"
-	SyncProviderGoCardless = "GOCARDLESS"
-	SyncProviderManual     = "MANUAL"
+	SyncProviderKraken        = "KRAKEN"
+	SyncProviderSnapTrade     = "SNAPTRADE"
+	SyncProviderGoCardless    = "GOCARDLESS"
+	SyncProviderTradeRepublic = "TRADEREPUBLIC"
+	SyncProviderEnableBanking = "ENABLEBANKING"
+	SyncProviderWoob          = "WOOB"
+	SyncProviderManual        = "MANUAL"
 )
 
 // SyncCredentialStatus represents the operational status of an external sync credential.
@@ -211,10 +215,13 @@ type SyncConnection struct {
 	Provider              string               `bun:"provider,notnull"`
 	ExternalInstitutionID string               `bun:"external_institution_id,notnull"`
 	ExternalAccountID     string               `bun:"external_account_id,notnull"`
+	CashAccountID         *string              `bun:"cash_account_id"`
 	InstitutionName       string               `bun:"institution_name,notnull"`
 	SyncStatus            SyncConnectionStatus `bun:"sync_status,notnull,default:'IDLE'"`
 	LastSyncAt            *time.Time           `bun:"last_sync_at"`
 	LastError             *string              `bun:"last_error"`
+	Metadata              json.RawMessage      `bun:"metadata,type:jsonb"`
+	ProviderMetadata      json.RawMessage      `bun:"provider_metadata,type:jsonb"`
 	CreatedAt             time.Time            `bun:"created_at,nullzero,notnull,default:current_timestamp"`
 	UpdatedAt             time.Time            `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
 
@@ -296,3 +303,204 @@ func (r *SyncRun) Validate() error {
 	}
 	return nil
 }
+
+// SyncAuthSessionStatus represents the state of a multi-step login session.
+type SyncAuthSessionStatus string
+
+const (
+	SyncAuthSessionStatusWaitingForConfirmation SyncAuthSessionStatus = "WAITING_FOR_CONFIRMATION"
+	SyncAuthSessionStatusApproved               SyncAuthSessionStatus = "APPROVED"
+	SyncAuthSessionStatusRejected               SyncAuthSessionStatus = "REJECTED"
+	SyncAuthSessionStatusExpired                SyncAuthSessionStatus = "EXPIRED"
+	SyncAuthSessionStatusCompleted              SyncAuthSessionStatus = "COMPLETED"
+)
+
+func (s SyncAuthSessionStatus) IsValid() bool {
+	switch s {
+	case SyncAuthSessionStatusWaitingForConfirmation, SyncAuthSessionStatusApproved,
+		SyncAuthSessionStatusRejected, SyncAuthSessionStatusExpired, SyncAuthSessionStatusCompleted:
+		return true
+	}
+	return false
+}
+
+// SyncAuthSession stores encrypted, temporary authorization state during multi-step logins.
+type SyncAuthSession struct {
+	bun.BaseModel `bun:"table:sigma_finance.sync_auth_sessions,alias:sas"`
+
+	ID                   string                `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	UserID               string                `bun:"user_id,notnull,type:uuid"`
+	PortfolioID          string                `bun:"portfolio_id,notnull,type:uuid"`
+	Provider             string                `bun:"provider,notnull"`
+	Status               SyncAuthSessionStatus `bun:"status,notnull,default:'WAITING_FOR_CONFIRMATION'"`
+	EncryptedProcessInfo string                `bun:"encrypted_process_info,notnull"`
+	ExpiresAt            time.Time             `bun:"expires_at,notnull"`
+	CreatedAt            time.Time             `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+	UpdatedAt            time.Time             `bun:"updated_at,nullzero,notnull,default:current_timestamp"`
+
+	RawProcessInfo string `bun:"-"` // Transient plaintext process ID for Encrypt/Decrypt
+}
+
+// Implement Entity interface
+func (s SyncAuthSession) GetID() string             { return s.ID }
+func (s *SyncAuthSession) SetID(id string)          { s.ID = id }
+func (s SyncAuthSession) GetCreatedAt() time.Time   { return s.CreatedAt }
+func (s *SyncAuthSession) SetCreatedAt(t time.Time) { s.CreatedAt = t }
+func (s SyncAuthSession) GetUpdatedAt() time.Time   { return s.UpdatedAt }
+func (s *SyncAuthSession) SetUpdatedAt(t time.Time) { s.UpdatedAt = t }
+
+// Encrypt encrypts the RawProcessInfo using AES-256-GCM.
+func (s *SyncAuthSession) Encrypt() error {
+	if s.RawProcessInfo == "" {
+		if s.EncryptedProcessInfo != "" {
+			return nil
+		}
+		return errors.New("raw process info is empty")
+	}
+
+	key, err := getEncryptionKey()
+	if err != nil {
+		return err
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return fmt.Errorf("failed to create cipher block: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return fmt.Errorf("failed to generate nonce: %w", err)
+	}
+
+	ciphertext := gcm.Seal(nonce, nonce, []byte(s.RawProcessInfo), nil)
+	s.EncryptedProcessInfo = base64.StdEncoding.EncodeToString(ciphertext)
+	return nil
+}
+
+// Decrypt decrypts EncryptedProcessInfo using AES-256-GCM.
+func (s *SyncAuthSession) Decrypt() (string, error) {
+	if s.EncryptedProcessInfo == "" {
+		if s.RawProcessInfo != "" {
+			return s.RawProcessInfo, nil
+		}
+		return "", errors.New("encrypted process info is empty")
+	}
+
+	key, err := getEncryptionKey()
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext, err := base64.StdEncoding.DecodeString(s.EncryptedProcessInfo)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode base64 ciphertext: %w", err)
+	}
+
+	block, err := aes.NewCipher(key)
+	if err != nil {
+		return "", fmt.Errorf("failed to create cipher block: %w", err)
+	}
+
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", fmt.Errorf("failed to create GCM: %w", err)
+	}
+
+	nonceSize := gcm.NonceSize()
+	if len(ciphertext) < nonceSize {
+		return "", errors.New("ciphertext too short")
+	}
+
+	nonce, actualCiphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	plaintext, err := gcm.Open(nil, nonce, actualCiphertext, nil)
+	if err != nil {
+		return "", fmt.Errorf("decryption failed: %w", err)
+	}
+
+	s.RawProcessInfo = string(plaintext)
+	return s.RawProcessInfo, nil
+}
+
+// ProviderMetadata represents versioned non-sensitive metadata for external providers.
+// Stored strictly in sync_connections.provider_metadata.
+// Invariant: NEVER store credentials, session cookies, PINs or WAF tokens here.
+type ProviderMetadata struct {
+	Version                   int               `json:"version"`
+	CashAccountID             string            `json:"cash_account_id,omitempty"`
+	TimelineTransactionCursor string            `json:"timeline_transaction_cursor,omitempty"`
+	TimelineActivityCursor    string            `json:"timeline_activity_cursor,omitempty"`
+	ProductType               string            `json:"product_type,omitempty"`
+	Jurisdiction              string            `json:"jurisdiction,omitempty"`
+	AccountAccessType         string            `json:"account_access_type,omitempty"`
+	CustomProperties          map[string]string `json:"custom_properties,omitempty"`
+}
+
+// GetProviderMetadata parses and returns typed ProviderMetadata from SyncConnection.
+func (s *SyncConnection) GetProviderMetadata() ProviderMetadata {
+	if len(s.ProviderMetadata) == 0 {
+		meta := ProviderMetadata{Version: 1}
+		if s.CashAccountID != nil {
+			meta.CashAccountID = *s.CashAccountID
+		}
+		return meta
+	}
+	var meta ProviderMetadata
+	if err := json.Unmarshal(s.ProviderMetadata, &meta); err != nil {
+		meta = ProviderMetadata{Version: 1}
+	}
+	if meta.Version == 0 {
+		meta.Version = 1
+	}
+	if meta.CashAccountID == "" && s.CashAccountID != nil {
+		meta.CashAccountID = *s.CashAccountID
+	}
+	return meta
+}
+
+// SetProviderMetadata serializes ProviderMetadata into SyncConnection.
+func (s *SyncConnection) SetProviderMetadata(meta ProviderMetadata) error {
+	if meta.Version == 0 {
+		meta.Version = 1
+	}
+	if meta.CashAccountID != "" {
+		s.CashAccountID = &meta.CashAccountID
+	}
+	b, err := json.Marshal(meta)
+	if err != nil {
+		return err
+	}
+	s.ProviderMetadata = b
+	return nil
+}
+
+// SyncRawEvent stores raw unknown or unmapped provider events for audit, review, and replay.
+type SyncRawEvent struct {
+	bun.BaseModel `bun:"table:sigma_finance.sync_raw_events,alias:sre"`
+
+	ID              string          `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
+	ConnectionID    string          `bun:"connection_id,notnull,type:uuid"`
+	Provider        string          `bun:"provider,notnull"`
+	SourceStream    string          `bun:"source_stream,notnull"`
+	ExternalEventID string          `bun:"external_event_id,notnull"`
+	EventType       string          `bun:"event_type,notnull"`
+	Status          string          `bun:"status"`
+	RawPayload      json.RawMessage `bun:"raw_payload,notnull,type:jsonb"`
+	OccurredAt      *time.Time      `bun:"occurred_at"`
+	CreatedAt       time.Time       `bun:"created_at,nullzero,notnull,default:current_timestamp"`
+
+	// Relations
+	Connection *SyncConnection `bun:"rel:belongs-to,join:connection_id=id"`
+}
+
+func (s SyncRawEvent) GetID() string             { return s.ID }
+func (s *SyncRawEvent) SetID(id string)          { s.ID = id }
+func (s SyncRawEvent) GetCreatedAt() time.Time   { return s.CreatedAt }
+func (s *SyncRawEvent) SetCreatedAt(t time.Time) { s.CreatedAt = t }
+
+

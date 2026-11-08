@@ -1,8 +1,8 @@
-import ReactECharts from "echarts-for-react";
 import { ArrowLeft, Calendar, Clock, Edit, Package, Shield, Trash2, Watch } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AddWatchForm } from "@/components/AddWatchForm";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import {
@@ -254,7 +254,7 @@ export function WatchDetail({ watchId, onBack }: WatchDetailProps) {
 						<CardDescription>Historical value over time</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts option={valueChartOption} style={{ height: "250px" }} />
+						<EChart option={valueChartOption} style={{ height: "250px" }} />
 					</CardContent>
 				</Card>
 

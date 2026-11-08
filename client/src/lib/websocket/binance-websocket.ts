@@ -58,6 +58,8 @@ export class BinanceWebSocketManager {
 
 	connect(streams: string[]): Promise<void> {
 		return new Promise((resolve, reject) => {
+			// Re-arm reconnection after a manual disconnect.
+			this.shouldReconnect = true;
 			if (this.ws?.readyState === WebSocket.OPEN) {
 				this.updateSubscriptions(streams);
 				resolve();

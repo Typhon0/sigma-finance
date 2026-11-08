@@ -316,12 +316,12 @@ func (k *KrakenAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCrede
 }
 
 // FetchBalances queries /0/private/Balance and extracts all fiat cash balances.
-func (k *KrakenAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
+func (k *KrakenAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.BalancesSnapshot, error) {
 	// Kraken reports balances as decimal strings; they stay strings until
 	// shopspring/decimal parses them so no precision is lost on the way in.
 	balancesByAsset, err := krakenCall[map[string]string](k, ctx, cred, "/0/private/Balance", nil)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	var balances []syncservice.RawBalance
@@ -349,7 +349,11 @@ func (k *KrakenAdapter) FetchBalances(ctx context.Context, cred *model.SyncCrede
 		return balances[i].Currency < balances[j].Currency
 	})
 
-	return balances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   balances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
 type krakenOpenPositionRecord struct {
@@ -366,10 +370,10 @@ type krakenOpenPositionRecord struct {
 }
 
 // FetchHoldings queries /0/private/Balance and /0/private/OpenPositions to extract non-fiat crypto positions.
-func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
+func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.HoldingsSnapshot, error) {
 	balancesByAsset, err := krakenCall[map[string]string](k, ctx, cred, "/0/private/Balance", nil)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	// Try querying /0/private/OpenPositions to enrich cost basis for margin/spot positions
@@ -427,7 +431,12 @@ func (k *KrakenAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCrede
 		return holdings[i].Symbol < holdings[j].Symbol
 	})
 
-	return holdings, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       holdings,
+		IsComplete:     true,
+		AsOf:           time.Now(),
+		PaginationDone: true,
+	}, nil
 }
 
 // ExtractBaseAssetFromPair strips known quote suffixes (ordered from longest to shortest)
@@ -601,7 +610,7 @@ func krakenLedgerPageWait(counter float64) time.Duration {
 // FetchTransactions queries /0/private/Ledgers and converts records into syncservice.RawTransaction items.
 // It pages through the whole ledger (or everything after `since`), because the
 // oldest entries are the ones that carry the buy dates.
-func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time) ([]syncservice.RawTransaction, error) {
+func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time, cursors syncservice.StreamCursors) (syncservice.TransactionsSnapshot, error) {
 	ledger := make(map[string]krakenLedgerRecord)
 	lastLedgerCount := 0
 	cursor := ""
@@ -611,7 +620,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 		if wait := krakenLedgerPageWait(counter); wait > 0 {
 			select {
 			case <-ctx.Done():
-				return nil, ctx.Err()
+				return syncservice.TransactionsSnapshot{}, ctx.Err()
 			case <-time.After(wait):
 			}
 			counter = krakenPrivateCounterLimit - krakenLedgersCallCost
@@ -631,7 +640,7 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 
 		result, err := krakenCall[krakenLedgersResult](k, ctx, cred, "/0/private/Ledgers", params)
 		if err != nil {
-			return nil, err
+			return syncservice.TransactionsSnapshot{}, err
 		}
 
 		for id, record := range result.Ledger {
@@ -957,7 +966,11 @@ func (k *KrakenAdapter) FetchTransactions(ctx context.Context, cred *model.SyncC
 		return txs[i].ExecutedAt.Before(txs[j].ExecutedAt)
 	})
 
-	return txs, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   txs,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 // krakenStatusError maps the HTTP statuses Kraken uses for throttling and

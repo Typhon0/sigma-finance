@@ -4,7 +4,52 @@ enum SyncProvider {
     KRAKEN
     SNAPTRADE
     GOCARDLESS
+    TRADEREPUBLIC
+    ENABLEBANKING
+    WOOB
     MANUAL
+}
+
+enum WoobAuthStatus {
+    WAITING_FOR_CONFIRMATION
+    WAITING_FOR_CODE
+    COMPLETED
+    REJECTED
+    EXPIRED
+}
+
+type WoobAuthSession {
+    authSessionId: ID!
+    status: WoobAuthStatus!
+    countdownSeconds: Int!
+    challengeMessage: String
+    expiresAt: Time!
+}
+
+type WoobAuthPollResult {
+    status: WoobAuthStatus!
+    connections: [SyncConnection!]
+    errorMessage: String
+}
+
+enum TradeRepublicAuthStatus {
+    WAITING_FOR_CONFIRMATION
+    COMPLETED
+    REJECTED
+    EXPIRED
+}
+
+type TradeRepublicAuthSession {
+    authSessionId: ID!
+    status: TradeRepublicAuthStatus!
+    countdownSeconds: Int!
+    expiresAt: Time!
+}
+
+type TradeRepublicAuthPollResult {
+    status: TradeRepublicAuthStatus!
+    connections: [SyncConnection!]
+    errorMessage: String
 }
 
 enum SyncConnectionStatus {
@@ -62,9 +107,25 @@ type AggregatorAuthSession {
     provider: String!
 }
 
+type EnableBankingInstitution {
+    name: String!
+    title: String!
+    country: String!
+    logo: String
+    psuTypes: [String!]
+}
+
+type EnableBankingAuthSession {
+    authSessionId: ID!
+    authUrl: String!
+    state: String!
+    expiresAt: Time!
+}
+
 extend type Query {
     syncConnections(portfolioId: ID!): [SyncConnection!]! @auth
     syncCredentials: [SyncCredential!]! @auth
+    enableBankingInstitutions(country: String!): [EnableBankingInstitution!]! @auth
 }
 
 extend type Mutation {
@@ -73,4 +134,10 @@ extend type Mutation {
     completeAggregatorAuth(connectionId: ID!, sessionToken: String!): [SyncConnection!]! @auth
     linkSyncAccount(connectionId: ID!, accountId: ID, autoCreate: Boolean): SyncConnection! @auth
     triggerAccountSync(accountId: ID!): SyncRun! @auth
+    initiateTradeRepublicAuth(phoneNumber: String!, pin: String!, portfolioId: ID!): TradeRepublicAuthSession! @auth
+    pollTradeRepublicAuth(authSessionId: ID!): TradeRepublicAuthPollResult! @auth
+    initiateEnableBankingAuth(aspspName: String!, aspspCountry: String!, redirectUrl: String!, portfolioId: ID!): EnableBankingAuthSession! @auth
+    completeEnableBankingAuth(code: String!, state: String!, portfolioId: ID!): [SyncConnection!]! @auth
+    initiateWoobAuth(institution: String!, login: String!, password: String!, region: String, portfolioId: ID!): WoobAuthSession! @auth
+    pollWoobAuth(authSessionId: ID!, otpCode: String): WoobAuthPollResult! @auth
 }

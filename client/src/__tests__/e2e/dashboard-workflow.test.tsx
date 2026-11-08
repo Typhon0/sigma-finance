@@ -8,7 +8,7 @@ import { AuthProvider } from "@/lib/auth-context";
 import DashboardHomePage from "@/pages/dashboard-home";
 
 // Mock external dependencies
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
 	default: function MockReactECharts({ style }: { style: any }) {
 		return <div data-testid="mock-chart" style={style} />;

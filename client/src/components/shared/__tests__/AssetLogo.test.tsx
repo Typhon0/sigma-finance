@@ -4,8 +4,8 @@ import { describe, expect, it } from "vitest";
 import {
 	AssetLogo,
 	AssetMonogram,
-	cleanAssetSymbol,
 	CRYPTO_BRAND_COLORS,
+	cleanAssetSymbol,
 	getDeterministicColor,
 	getMonogramText,
 } from "../AssetLogo";
@@ -38,6 +38,16 @@ describe("AssetLogo Symbol Cleaning & Normalization", () => {
 		expect(getDeterministicColor("SOL", "crypto")).toBe(CRYPTO_BRAND_COLORS.SOL);
 		expect(getDeterministicColor("SUI", "crypto")).toBe(CRYPTO_BRAND_COLORS.SUI);
 	});
+
+	it("normalizes synthetic cash symbols and maps them to authentic currency monograms & colors", () => {
+		expect(cleanAssetSymbol("EUR_CASH_1e8fda4e-f1ae-4105-9c87-86ea962ca620")).toBe("EUR");
+		expect(getMonogramText("EUR_CASH_1e8fda4e-f1ae-4105-9c87-86ea962ca620")).toBe("€");
+		expect(getDeterministicColor("EUR_CASH_1e8fda4e-f1ae-4105-9c87-86ea962ca620")).toBe("#003399");
+
+		expect(cleanAssetSymbol("USD_CASH_abcdef")).toBe("USD");
+		expect(getMonogramText("USD_CASH_abcdef")).toBe("$");
+		expect(getDeterministicColor("USD_CASH_abcdef")).toBe("#0A5C36");
+	});
 });
 
 describe("AssetLogo Component", () => {
@@ -52,6 +62,13 @@ describe("AssetLogo Component", () => {
 		render(<AssetLogo symbol="SUI" name="sui" assetType="crypto" size="sm" />);
 		const img = screen.getByRole("img");
 		expect(img).toHaveAttribute("src", "/logos/crypto/SUI.png");
+	});
+
+	it("renders authentic bundled PNG for stocks like TSLA and MC.PA", () => {
+		render(<AssetLogo symbol="TSLA" name="Tesla, Inc." assetType="stock" size="sm" />);
+		const img = screen.getByRole("img");
+		expect(img).toHaveAttribute("src", "/logos/stocks/TSLA.png");
+		expect(img).toHaveAttribute("alt", "Tesla, Inc. (TSLA) logo");
 	});
 
 	it("normalizes wrapped tokens and renders native bundled logo", () => {

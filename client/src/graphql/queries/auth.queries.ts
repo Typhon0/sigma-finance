@@ -5,6 +5,7 @@ export const ME_QUERY = gql`
     me {
       id
       email
+      role
       name
       emailVerified
       displayCurrency

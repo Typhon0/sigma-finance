@@ -1,7 +1,24 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
-	beforeLoad: () => {
+	validateSearch: (search: Record<string, unknown>) => ({
+		code: typeof search.code === "string" ? search.code : undefined,
+		state: typeof search.state === "string" ? search.state : undefined,
+	}),
+	beforeLoad: ({ search }) => {
+		// If returning from Enable Banking or OAuth callback at root URL, preserve credentials and route to callback
+		if (search?.code && search?.state) {
+			throw redirect({
+				to: "/sync/callback",
+				search: {
+					code: search.code,
+					state: search.state,
+					error: undefined,
+					error_description: undefined,
+				},
+			});
+		}
+
 		// Check if user is authenticated
 		const token = localStorage.getItem("auth_token");
 

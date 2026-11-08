@@ -1,4 +1,3 @@
-import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@apollo/client";
 import {
 	Activity,
@@ -30,19 +29,14 @@ import {
 	Trash2,
 	Wallet,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-	Card,
-	CardContent,
-	CardDescription,
-	CardHeader,
-	CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
 	Dialog,
 	DialogContent,
@@ -54,12 +48,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-	AddWalletDialog,
-	AlchemySettingsCard,
-	DeFiReviewQueueBanner,
-} from "@/features/wallets";
-import { BlockchainEndpointsManager } from "./BlockchainEndpointsManager";
+import { AddWalletDialog, AlchemySettingsCard, DeFiReviewQueueBanner } from "@/features/wallets";
 import { TRIGGER_ACCOUNT_SYNC } from "@/graphql/mutations/sync";
 import {
 	ADD_CUSTOM_TOKEN,
@@ -80,6 +69,7 @@ import {
 	GET_WALLET_DEVICES,
 } from "@/graphql/queries/wallets";
 import { cn } from "@/lib/utils";
+import { BlockchainEndpointsManager } from "./BlockchainEndpointsManager";
 
 const NETWORK_COLORS: Record<string, { bg: string; text: string; border: string }> = {
 	ETHEREUM: { bg: "bg-blue-500/10", text: "text-blue-500", border: "border-blue-500/20" },
@@ -100,7 +90,12 @@ function formatNetworkBadge(network: string) {
 	return (
 		<Badge
 			variant="outline"
-			className={cn("text-xs font-mono font-medium px-2 py-0.5", styling.bg, styling.text, styling.border)}
+			className={cn(
+				"text-xs font-mono font-medium px-2 py-0.5",
+				styling.bg,
+				styling.text,
+				styling.border,
+			)}
 		>
 			{network}
 		</Badge>
@@ -149,27 +144,68 @@ function formatAddress(addr: string) {
 }
 
 export function ConnectedAccountsManager() {
-	const { currentPortfolio } = usePortfolio();
-	const portfolioId = currentPortfolio?.id;
+	const { currentPortfolio, selectedPortfolio } = usePortfolio();
+	const portfolioId =
+		(typeof currentPortfolio === "string" ? currentPortfolio : currentPortfolio?.id) ||
+		selectedPortfolio?.id ||
+		"";
 
 	const [isConnectInstitutionOpen, setIsConnectInstitutionOpen] = useState(false);
 	const [isAddWalletOpen, setIsAddWalletOpen] = useState(false);
 	const [activeTab, setActiveTab] = useState("all");
-	const [walletToRemove, setWalletToRemove] = useState<{ id: string; label?: string | null; address: string } | null>(null);
+	const [walletToRemove, setWalletToRemove] = useState<{
+		id: string;
+		label?: string | null;
+		address: string;
+	} | null>(null);
 	const [isSyncingAll, setIsSyncingAll] = useState(false);
 	const [expandedWallets, setExpandedWallets] = useState<Record<string, boolean>>({});
 
 	// Queries
-	const { data: syncData, loading: syncLoading, refetch: refetchSync } = useQuery(GET_SYNC_CONNECTIONS, {
+	const {
+		data: syncData,
+		loading: syncLoading,
+		refetch: refetchSync,
+		startPolling: startSyncPolling,
+		stopPolling: stopSyncPolling,
+	} = useQuery(GET_SYNC_CONNECTIONS, {
 		variables: { portfolioId: portfolioId || "" },
 		skip: !portfolioId,
 		fetchPolicy: "cache-and-network",
 	});
 
-	const { data: walletData, loading: walletLoading, refetch: refetchWallets } = useQuery(GET_WALLET_ACCOUNTS, {
+	const {
+		data: walletData,
+		loading: walletLoading,
+		refetch: refetchWallets,
+		startPolling: startWalletPolling,
+		stopPolling: stopWalletPolling,
+	} = useQuery(GET_WALLET_ACCOUNTS, {
 		variables: portfolioId ? { portfolioId } : {},
 		fetchPolicy: "cache-and-network",
 	});
+
+	const isAnySyncing = useMemo(() => {
+		const connSyncing = (syncData?.syncConnections || []).some((c: any) => c.syncStatus === "SYNCING");
+		const walletSyncing = (walletData?.walletAccounts || []).some(
+			(w: any) => w.historyStatus === "IN_PROGRESS" || w.historyStatus === "PENDING",
+		);
+		return connSyncing || walletSyncing;
+	}, [syncData, walletData]);
+
+	useEffect(() => {
+		if (isAnySyncing) {
+			startSyncPolling?.(2500);
+			startWalletPolling?.(2500);
+			return () => {
+				stopSyncPolling?.();
+				stopWalletPolling?.();
+			};
+		} else {
+			stopSyncPolling?.();
+			stopWalletPolling?.();
+		}
+	}, [isAnySyncing, startSyncPolling, stopSyncPolling, startWalletPolling, stopWalletPolling]);
 
 	const { data: cuData, refetch: refetchCU } = useQuery(GET_WALLET_CU_USAGE, {
 		fetchPolicy: "cache-and-network",
@@ -333,16 +369,18 @@ export function ConnectedAccountsManager() {
 	};
 
 	return (
-		<div className="flex flex-col gap-6 p-6 max-w-7xl mx-auto w-full">
+		<div className="flex flex-col gap-6 w-full">
 			{/* En-tête principal */}
 			<div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-						<Link2 className="h-6 w-6 text-primary" />
-						Connected Accounts & Wallets
-					</h1>
-					<p className="text-sm text-muted-foreground mt-1">
-						Supervisez et gérez tous vos flux financiers automatisés (banques, courtiers, exchanges et wallets Web3).
+					<div className="flex items-center gap-2">
+						<Link2 className="h-5 w-5 text-muted-foreground" />
+						<h1 className="text-xl font-semibold tracking-tight text-foreground">
+							Connected Accounts & Wallets
+						</h1>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Supervisez et gérez tous vos flux financiers automatisés (banques PSD2, courtiers TradFi et portefeuilles Web3).
 					</p>
 				</div>
 				<div className="flex items-center gap-2 flex-wrap">
@@ -351,26 +389,26 @@ export function ConnectedAccountsManager() {
 						size="sm"
 						onClick={handleSyncAll}
 						disabled={isSyncingAll || totalConnected === 0}
-						className="gap-2"
+						className="h-8 gap-1.5 text-xs border-border/60 bg-card/30"
 					>
-						<RefreshCw className={cn("h-4 w-4", isSyncingAll && "animate-spin")} />
+						<RefreshCw className={cn("h-3.5 w-3.5", isSyncingAll && "animate-spin")} />
 						{isSyncingAll ? "Sync in progress..." : "Sync All Active"}
 					</Button>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => setIsConnectInstitutionOpen(true)}
-						className="gap-2"
+						className="h-8 gap-1.5 text-xs border-border/60 bg-card/30"
 					>
-						<Building2 className="h-4 w-4 text-blue-500" />
+						<Building2 className="h-3.5 w-3.5 text-muted-foreground" />
 						Connect Institution
 					</Button>
 					<Button
 						size="sm"
 						onClick={() => setIsAddWalletOpen(true)}
-						className="gap-2 bg-primary text-primary-foreground"
+						className="h-8 gap-1.5 text-xs font-medium"
 					>
-						<Wallet className="h-4 w-4" />
+						<Wallet className="h-3.5 w-3.5" />
 						Add On-Chain Wallet
 					</Button>
 				</div>
@@ -379,97 +417,145 @@ export function ConnectedAccountsManager() {
 			{/* File d'attente DeFi si des revues sont en attente */}
 			{portfolioId && <DeFiReviewQueueBanner portfolioId={portfolioId} />}
 
-			{/* KPI & Jauges de santé */}
-			<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-sm font-medium">Flux Connectés</CardTitle>
-						<Layers className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">{totalConnected}</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							{syncConnections.length} institution(s) TradFi · {walletAccounts.length} wallet(s) on-chain
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-sm font-medium">Santé des Synchronisations</CardTitle>
-						{totalErrors === 0 ? (
-							<CheckCircle2 className="h-4 w-4 text-emerald-500" />
-						) : (
-							<AlertCircle className="h-4 w-4 text-rose-500" />
-						)}
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{totalErrors === 0 ? "100% Opérationnel" : `${totalErrors} Requiert Attention`}
+			{/* Ruban KPI & Jauges de santé unifié */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+					{/* Segment 1: Flux Connectés */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+								Flux Connectés
+							</span>
+							<Layers className="h-3.5 w-3.5 text-muted-foreground/60" />
 						</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							{totalErrors === 0
-								? "Tous les flux sont synchronisés sans erreur"
-								: `${totalErrors} connexion(s) ont signalé une anomalie`}
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-sm font-medium">Staging DeFi</CardTitle>
-						<Activity className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">{pendingReviewsCount}</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							{pendingReviewsCount === 0
-								? "Toutes les activités sont classifiées"
-								: "Transactions complexes à valider"}
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-sm font-medium">Quota Alchemy API</CardTitle>
-						<Cpu className="h-4 w-4 text-muted-foreground" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">
-							{cuUsage ? `${((cuUsage.consumedUnits / cuUsage.maxQuota) * 100).toFixed(1)}%` : "0.0%"}
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+								{totalConnected}
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								{syncConnections.length} institution(s) TradFi · {walletAccounts.length} wallet(s) on-chain
+							</p>
 						</div>
-						<Progress
-							value={cuUsage ? (cuUsage.consumedUnits / cuUsage.maxQuota) * 100 : 0}
-							className="h-1.5 mt-2"
-						/>
-						<p className="text-xs text-muted-foreground mt-1.5 flex justify-between">
-							<span>{cuUsage?.consumedUnits?.toLocaleString() || "0"} CUs</span>
-							<span>/ 30M CUs</span>
-						</p>
-					</CardContent>
-				</Card>
+					</div>
+
+					{/* Segment 2: Santé Synchronisation */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span
+									className={cn(
+										"h-1.5 w-1.5 rounded-full",
+										totalErrors === 0 ? "bg-emerald-500" : "bg-rose-500",
+									)}
+								/>
+								Santé des Synchronisations
+							</span>
+							{totalErrors === 0 ? (
+								<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/80" />
+							) : (
+								<AlertCircle className="h-3.5 w-3.5 text-rose-500/80" />
+							)}
+						</div>
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+								{totalErrors === 0 ? "100% Opérationnel" : `${totalErrors} Requiert Attention`}
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								{totalErrors === 0
+									? "Tous les flux sont synchronisés sans erreur"
+									: `${totalErrors} anomalie(s) signalée(s)`}
+							</p>
+						</div>
+					</div>
+
+					{/* Segment 3: Staging DeFi */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+								Staging DeFi
+							</span>
+							<Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+						</div>
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+								{pendingReviewsCount}
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								{pendingReviewsCount === 0
+									? "Toutes les activités sont classifiées"
+									: "Transactions à classifier"}
+							</p>
+						</div>
+					</div>
+
+					{/* Segment 4: Quota Alchemy API */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+								Quota Alchemy API
+							</span>
+							<Cpu className="h-3.5 w-3.5 text-muted-foreground/60" />
+						</div>
+						<div className="mt-2">
+							<div className="flex items-baseline justify-between">
+								<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+									{cuUsage
+										? `${((cuUsage.consumedUnits / cuUsage.maxQuota) * 100).toFixed(1)}%`
+										: "0.0%"}
+								</span>
+								<span className="text-[10px] font-mono text-muted-foreground">
+									{cuUsage?.consumedUnits?.toLocaleString() || "0"} / 30M
+								</span>
+							</div>
+							<Progress
+								value={cuUsage ? (cuUsage.consumedUnits / cuUsage.maxQuota) * 100 : 0}
+								className="h-1 mt-1.5"
+							/>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			{/* Onglets de segmentation */}
 			<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-				<TabsList className="grid grid-cols-2 md:grid-cols-6 w-full md:w-auto h-auto p-1">
-					<TabsTrigger value="all" className="py-2">
+				<TabsList className="grid grid-cols-2 md:grid-cols-6 w-full md:w-auto h-auto p-1 bg-muted/20 border border-border/50 rounded-xl gap-1">
+					<TabsTrigger
+						value="all"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						All Connections ({totalConnected})
 					</TabsTrigger>
-					<TabsTrigger value="wallets" className="py-2">
+					<TabsTrigger
+						value="wallets"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						On-Chain Wallets ({walletAccounts.length})
 					</TabsTrigger>
-					<TabsTrigger value="institutions" className="py-2">
+					<TabsTrigger
+						value="institutions"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						Institutions TradFi ({syncConnections.length})
 					</TabsTrigger>
-					<TabsTrigger value="reviews" className="py-2">
+					<TabsTrigger
+						value="reviews"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						DeFi Reviews ({pendingReviewsCount})
 					</TabsTrigger>
-					<TabsTrigger value="endpoints" className="py-2">
+					<TabsTrigger
+						value="endpoints"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						Endpoints & Providers
 					</TabsTrigger>
-					<TabsTrigger value="quotas" className="py-2">
+					<TabsTrigger
+						value="quotas"
+						className="py-1.5 text-xs font-medium rounded-lg data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+					>
 						API Credentials & Quotas
 					</TabsTrigger>
 				</TabsList>
@@ -491,7 +577,9 @@ export function ConnectedAccountsManager() {
 									isExpanded={!!expandedWallets[w.id]}
 									onToggleExpand={() => toggleWalletExpanded(w.id)}
 									onSync={() => handleSyncSingleWallet(w.id, w.label || w.network)}
-									onRemove={() => setWalletToRemove({ id: w.id, label: w.label, address: w.addressOrXpub })}
+									onRemove={() =>
+										setWalletToRemove({ id: w.id, label: w.label, address: w.addressOrXpub })
+									}
 									onToggleTokenSpam={handleToggleTokenSpam}
 									onAssignDevice={() => setAssignDeviceTarget(w)}
 									onAddCustomToken={() => setCustomTokenTarget(w)}
@@ -503,7 +591,12 @@ export function ConnectedAccountsManager() {
 								<InstitutionRow
 									key={conn.id}
 									connection={conn}
-									onSync={() => handleSyncSingleInstitution(conn.accountId, conn.institutionName || conn.provider)}
+									onSync={() =>
+										handleSyncSingleInstitution(
+											conn.accountId,
+											conn.institutionName || conn.provider,
+										)
+									}
 								/>
 							))}
 						</div>
@@ -516,7 +609,8 @@ export function ConnectedAccountsManager() {
 						<div>
 							<h3 className="text-base font-semibold">Web3 & Hardware Wallets</h3>
 							<p className="text-xs text-muted-foreground">
-								Adresses de chaînes individuelles et dispositifs multi-chaînes synchronisés sans frais via Alchemy & RPC.
+								Adresses de chaînes individuelles et dispositifs multi-chaînes synchronisés sans
+								frais via Alchemy & RPC.
 							</p>
 						</div>
 						<Button size="sm" onClick={() => setIsAddWalletOpen(true)} className="gap-2">
@@ -526,23 +620,24 @@ export function ConnectedAccountsManager() {
 					</div>
 
 					{walletAccounts.length === 0 ? (
-						<Card className="p-8 text-center border-dashed">
-							<Wallet className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-							<h4 className="font-semibold text-base">Aucun wallet on-chain connecté</h4>
-							<p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-								Connectez vos adresses Ethereum, Solana, Bitcoin, Base ou vos clés xpub pour synchroniser automatiquement vos soldes.
+						<div className="rounded-xl border border-dashed border-border/60 bg-card/20 p-8 text-center backdrop-blur-xs">
+							<Wallet className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+							<h4 className="font-medium text-sm text-foreground">Aucun wallet on-chain connecté</h4>
+							<p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+								Connectez vos adresses Ethereum, Solana, Bitcoin, Base ou vos clés xpub pour
+								synchroniser automatiquement vos soldes.
 							</p>
 							<Button size="sm" onClick={() => setIsAddWalletOpen(true)} className="mt-4 gap-2">
 								<Plus className="h-4 w-4" />
 								Connect On-Chain Wallet
 							</Button>
-						</Card>
+						</div>
 					) : (
 						<div className="space-y-6">
 							{/* Appareils physiques & logiciels regroupés */}
 							{deviceGroups.devices.map((group) => (
-								<Card key={group.device.id} className="border-border/70 overflow-hidden shadow-xs">
-									<div className="p-4 bg-muted/30 border-b border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+								<Card key={group.device.id} className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden shadow-xs">
+									<div className="p-4 bg-muted/20 border-b border-border/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
 										<div className="flex items-center gap-3">
 											<div
 												className={cn(
@@ -570,7 +665,9 @@ export function ConnectedAccountsManager() {
 																: "bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30",
 														)}
 													>
-														{group.device.deviceType === "HARDWARE" ? "🛡️ Cold Storage (Hardware)" : "📱 Software App"}
+														{group.device.deviceType === "HARDWARE"
+															? "🛡️ Cold Storage (Hardware)"
+															: "📱 Software App"}
 													</Badge>
 												</div>
 												<div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-2">
@@ -681,7 +778,8 @@ export function ConnectedAccountsManager() {
 						<div>
 							<h3 className="text-base font-semibold">Banques, Courtiers & Exchanges</h3>
 							<p className="text-xs text-muted-foreground">
-								Connexions agrégées via GoCardless (Open Banking), SnapTrade (courtiers boursiers) et Kraken.
+								Connexions agrégées via GoCardless (Open Banking), SnapTrade (courtiers boursiers)
+								et Kraken.
 							</p>
 						</div>
 						<Button size="sm" onClick={() => setIsConnectInstitutionOpen(true)} className="gap-2">
@@ -691,24 +789,34 @@ export function ConnectedAccountsManager() {
 					</div>
 
 					{syncConnections.length === 0 ? (
-						<Card className="p-8 text-center border-dashed">
-							<Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-50" />
-							<h4 className="font-semibold text-base">Aucune institution connectée</h4>
-							<p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-								Synchronisez automatiquement vos comptes bancaires européens, vos courtiers boursiers ou votre compte Kraken.
+						<div className="rounded-xl border border-dashed border-border/60 bg-card/20 p-8 text-center backdrop-blur-xs">
+							<Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3 opacity-40" />
+							<h4 className="font-medium text-sm text-foreground">Aucune institution connectée</h4>
+							<p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+								Synchronisez automatiquement vos comptes bancaires européens, vos courtiers
+								boursiers ou votre compte Kraken.
 							</p>
-							<Button size="sm" onClick={() => setIsConnectInstitutionOpen(true)} className="mt-4 gap-2">
+							<Button
+								size="sm"
+								onClick={() => setIsConnectInstitutionOpen(true)}
+								className="mt-4 gap-2"
+							>
 								<Building2 className="h-4 w-4" />
 								Connect Institution
 							</Button>
-						</Card>
+						</div>
 					) : (
 						<div className="space-y-3">
 							{syncConnections.map((conn: any) => (
 								<InstitutionRow
 									key={conn.id}
 									connection={conn}
-									onSync={() => handleSyncSingleInstitution(conn.accountId, conn.institutionName || conn.provider)}
+									onSync={() =>
+										handleSyncSingleInstitution(
+											conn.accountId,
+											conn.institutionName || conn.provider,
+										)
+									}
 								/>
 							))}
 						</div>
@@ -721,19 +829,21 @@ export function ConnectedAccountsManager() {
 						<div>
 							<h3 className="text-base font-semibold">File de Révision Staging DeFi</h3>
 							<p className="text-xs text-muted-foreground">
-								Transactions on-chain complexes (swaps multi-tokens, mints, staking, LPs) en attente de qualification comptable.
+								Transactions on-chain complexes (swaps multi-tokens, mints, staking, LPs) en attente
+								de qualification comptable.
 							</p>
 						</div>
 					</div>
 
 					{pendingReviewsCount === 0 ? (
-						<Card className="p-8 text-center border-dashed">
+						<div className="rounded-xl border border-dashed border-border/60 bg-card/20 p-8 text-center backdrop-blur-xs">
 							<CheckCircle2 className="h-10 w-10 text-emerald-500/60 mx-auto mb-3" />
-							<h4 className="font-semibold text-base">Toutes les activités sont classifiées</h4>
-							<p className="text-sm text-muted-foreground mt-1 max-w-sm mx-auto">
-								Aucune transaction on-chain n'attend de revue manuelle. Vos positions et plus-values sont à jour.
+							<h4 className="font-medium text-sm text-foreground">Toutes les activités sont classifiées</h4>
+							<p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+								Aucune transaction on-chain n'attend de revue manuelle. Vos positions et plus-values
+								sont à jour.
 							</p>
-						</Card>
+						</div>
 					) : (
 						portfolioId && <DeFiReviewQueueBanner portfolioId={portfolioId} />
 					)}
@@ -746,14 +856,15 @@ export function ConnectedAccountsManager() {
 
 				{/* TAB 6: API QUOTAS & KEYS */}
 				<TabsContent value="quotas" className="space-y-4">
-					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-muted/30 border rounded-lg">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-card/20 border border-border/50 rounded-xl backdrop-blur-xs">
 						<div>
 							<h4 className="font-semibold text-sm flex items-center gap-2">
 								<KeyRound className="h-4 w-4 text-primary" />
 								Centre de Gestion des Clés d'API & Fournisseurs
 							</h4>
 							<p className="text-xs text-muted-foreground mt-0.5">
-								Configurez, testez et mettez à jour l'ensemble de vos clés (Tiingo, Finnhub, Alpha Vantage, CoinGecko, Kraken, Alchemy) dans l'interface unifiée.
+								Configurez, testez et mettez à jour l'ensemble de vos clés (Tiingo, Finnhub, Alpha
+								Vantage, CoinGecko, Kraken, Alchemy) dans l'interface unifiée.
 							</p>
 						</div>
 						<Button
@@ -770,43 +881,62 @@ export function ConnectedAccountsManager() {
 
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 						<AlchemySettingsCard />
-						<Card>
-							<CardHeader>
-								<CardTitle className="text-base flex items-center gap-2">
+						<div className="rounded-xl border border-border/60 bg-card/30 p-5 backdrop-blur-xs flex flex-col justify-between">
+							<div>
+								<div className="flex items-center gap-2 mb-1">
 									<Building2 className="h-4 w-4 text-primary" />
-									Architecture Multi-Fournisseurs
-								</CardTitle>
-								<CardDescription>
+									<h4 className="text-sm font-semibold">Architecture Multi-Fournisseurs</h4>
+								</div>
+								<p className="text-xs text-muted-foreground mb-4">
 									Stratégie de synchronisation à coût zéro (€0/mois)
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-3 text-sm text-muted-foreground">
-								<div className="flex items-start gap-2">
-									<Badge variant="outline" className="mt-0.5 text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-										Free-First
-									</Badge>
-									<p>
-										Une seule clé Alchemy couvre EVM (Ethereum, Base, Arbitrum, Optimism, Polygon), Solana et Bitcoin avec un quota gratuit de 30 millions de CU/mois.
-									</p>
+								</p>
+								<div className="space-y-3 text-xs text-muted-foreground">
+									<div className="flex items-start gap-2">
+										<Badge
+											variant="outline"
+											className="mt-0.5 text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+										>
+											Free-First
+										</Badge>
+										<p>
+											Une seule clé Alchemy couvre EVM (Ethereum, Base, Arbitrum, Optimism, Polygon),
+											Solana et Bitcoin avec un quota gratuit de 30 millions de CU/mois.
+										</p>
+									</div>
+									<div className="flex items-start gap-2">
+										<Badge
+											variant="outline"
+											className="mt-0.5 text-[10px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+										>
+											Open Banking
+										</Badge>
+										<p>
+											Les banques utilisent l'API GoCardless / Nordigen conforme PSD2 pour une
+											actualisation périodique sécurisée sans stocker vos identifiants bancaires.
+										</p>
+									</div>
+									<div className="flex items-start gap-2">
+										<Badge
+											variant="outline"
+											className="mt-0.5 text-[10px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+										>
+											Protection Spam
+										</Badge>
+										<p>
+											Les faux airdrops et tokens malveillants sans liquidité sont automatiquement
+											filtrés et isolés dans le volet masqué.
+										</p>
+									</div>
 								</div>
-								<div className="flex items-start gap-2">
-									<Badge variant="outline" className="mt-0.5 text-xs bg-blue-500/10 text-blue-600 border-blue-500/20">
-										Open Banking
-									</Badge>
-									<p>
-										Les banques utilisent l'API GoCardless / Nordigen conforme PSD2 pour une actualisation périodique sécurisée sans stocker vos identifiants bancaires.
-									</p>
-								</div>
-								<div className="flex items-start gap-2">
-									<Badge variant="outline" className="mt-0.5 text-xs bg-purple-500/10 text-purple-600 border-purple-500/20">
-										Protection Spam
-									</Badge>
-									<p>
-										Les faux airdrops et tokens malveillants sans liquidité sont automatiquement filtrés et isolés dans le volet masqué.
-									</p>
-								</div>
-							</CardContent>
-						</Card>
+							</div>
+							<div className="mt-4 pt-3 border-t border-border/30 flex items-center justify-between text-xs text-muted-foreground">
+								<span>Coût mensuel estimé : <strong className="text-foreground font-mono">0,00 €</strong></span>
+								<span className="inline-flex items-center gap-1.5 text-emerald-500 text-[11px] font-medium">
+									<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+									Optimal
+								</span>
+							</div>
+						</div>
 					</div>
 				</TabsContent>
 			</Tabs>
@@ -888,12 +1018,16 @@ export function ConnectedAccountsManager() {
 			</Dialog>
 
 			{/* Modal ajout de jeton custom */}
-			<Dialog open={!!customTokenTarget} onOpenChange={(open) => !open && setCustomTokenTarget(null)}>
+			<Dialog
+				open={!!customTokenTarget}
+				onOpenChange={(open) => !open && setCustomTokenTarget(null)}
+			>
 				<DialogContent className="sm:max-w-md">
 					<DialogHeader>
 						<DialogTitle>Ajouter un Jeton Personnalisé</DialogTitle>
 						<DialogDescription>
-							Importez et suivez le solde d'un contrat de jeton (ERC-20 / SPL) non indexé par défaut pour l'adresse{" "}
+							Importez et suivez le solde d'un contrat de jeton (ERC-20 / SPL) non indexé par défaut
+							pour l'adresse{" "}
 							<span className="font-mono text-foreground font-medium">
 								{customTokenTarget && formatAddress(customTokenTarget.addressOrXpub)}
 							</span>
@@ -983,17 +1117,15 @@ function WalletAccountRow({
 	};
 
 	return (
-		<Card className="overflow-hidden border transition-shadow hover:shadow-xs">
-			<div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card">
+		<Card className="overflow-hidden rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs transition-colors hover:border-border/80">
+			<div className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
 				<div className="flex items-start md:items-center gap-3">
 					<div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0 mt-0.5 md:mt-0">
 						<Wallet className="h-5 w-5" />
 					</div>
 					<div>
 						<div className="flex items-center gap-2 flex-wrap">
-							<span className="font-semibold text-sm">
-								{wallet.label || "Wallet On-Chain"}
-							</span>
+							<span className="font-semibold text-sm">{wallet.label || "Wallet On-Chain"}</span>
 							{formatNetworkBadge(wallet.network)}
 							{formatCapabilityBadge(wallet.capabilityLevel)}
 							{wallet.device ? (
@@ -1011,20 +1143,35 @@ function WalletAccountRow({
 								</Badge>
 							) : null}
 							{wallet.historyStatus === "SYNCED" ? (
-								<Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+								<Badge
+									variant="outline"
+									className="text-[11px] font-mono gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5"
+								>
+									<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
 									Synced
 								</Badge>
 							) : wallet.historyStatus === "IN_PROGRESS" || wallet.historyStatus === "PENDING" ? (
-								<Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20 flex items-center gap-1">
-									<Loader2 className="h-3 w-3 animate-spin" />
+								<Badge
+									variant="outline"
+									className="text-[11px] font-mono gap-1 border-blue-500/20 bg-blue-500/10 text-blue-600 dark:text-blue-400 px-2 py-0.5"
+								>
+									<span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
 									Syncing
 								</Badge>
 							) : wallet.historyStatus === "ERROR" ? (
-								<Badge variant="outline" className="text-xs bg-rose-500/10 text-rose-600 border-rose-500/20">
+								<Badge
+									variant="outline"
+									className="text-[11px] font-mono gap-1 border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5"
+								>
+									<span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
 									Error
 								</Badge>
 							) : (
-								<Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
+								<Badge
+									variant="outline"
+									className="text-[11px] font-mono gap-1 border-border/60 bg-muted/20 text-muted-foreground px-2 py-0.5"
+								>
+									<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
 									Not Synced
 								</Badge>
 							)}
@@ -1078,7 +1225,12 @@ function WalletAccountRow({
 						disabled={wallet.historyStatus === "IN_PROGRESS"}
 						className="h-8 gap-1.5 text-xs"
 					>
-						<RefreshCw className={cn("h-3.5 w-3.5", wallet.historyStatus === "IN_PROGRESS" && "animate-spin")} />
+						<RefreshCw
+							className={cn(
+								"h-3.5 w-3.5",
+								wallet.historyStatus === "IN_PROGRESS" && "animate-spin",
+							)}
+						/>
 						{wallet.historyStatus === "IN_PROGRESS" ? "Syncing..." : "Sync Now"}
 					</Button>
 					{onAssignDevice && (
@@ -1125,7 +1277,9 @@ function WalletAccountRow({
 						)}
 					</div>
 					{visibleBalances.length === 0 ? (
-						<p className="text-xs text-muted-foreground italic">Aucun jeton actif avec solde non nul.</p>
+						<p className="text-xs text-muted-foreground italic">
+							Aucun jeton actif avec solde non nul.
+						</p>
 					) : (
 						<div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
 							{visibleBalances.map((b: any) => (
@@ -1168,7 +1322,9 @@ function WalletAccountRow({
 										className="flex items-center justify-between p-2 rounded-md bg-muted/40 border border-dashed text-xs"
 									>
 										<div>
-											<span className="font-medium line-through text-muted-foreground">{b.symbol}</span>
+											<span className="font-medium line-through text-muted-foreground">
+												{b.symbol}
+											</span>
 											<div className="font-mono text-xs text-muted-foreground">
 												{b.formattedQuantity}
 											</div>
@@ -1196,18 +1352,12 @@ function WalletAccountRow({
 // -------------------------------------------------------------
 // Composant : Ligne d'une Institution TradFi
 // -------------------------------------------------------------
-function InstitutionRow({
-	connection,
-	onSync,
-}: {
-	connection: any;
-	onSync: () => void;
-}) {
+function InstitutionRow({ connection, onSync }: { connection: any; onSync: () => void }) {
 	const isFailed = connection.syncStatus === "FAILED";
 	const isSyncing = connection.syncStatus === "SYNCING";
 
 	return (
-		<Card className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border transition-shadow hover:shadow-xs">
+		<Card className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs transition-colors hover:border-border/80">
 			<div className="flex items-start md:items-center gap-3">
 				<div className="p-2.5 rounded-lg bg-blue-500/10 text-blue-600 shrink-0 mt-0.5 md:mt-0">
 					<Building2 className="h-5 w-5" />
@@ -1221,15 +1371,27 @@ function InstitutionRow({
 							{connection.provider}
 						</Badge>
 						{isSyncing ? (
-							<Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 border-amber-500/20">
+							<Badge
+								variant="outline"
+								className="text-[11px] font-mono gap-1 border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5"
+							>
+								<span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
 								Syncing
 							</Badge>
 						) : isFailed ? (
-							<Badge variant="outline" className="text-xs bg-rose-500/10 text-rose-600 border-rose-500/20">
+							<Badge
+								variant="outline"
+								className="text-[11px] font-mono gap-1 border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2 py-0.5"
+							>
+								<span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
 								Failed
 							</Badge>
 						) : (
-							<Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+							<Badge
+								variant="outline"
+								className="text-[11px] font-mono gap-1 border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5"
+							>
+								<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
 								Active
 							</Badge>
 						)}
@@ -1247,9 +1409,7 @@ function InstitutionRow({
 								: "En attente du premier cycle"}
 						</span>
 						{connection.lastError && (
-							<span className="text-rose-500 truncate max-w-xs">
-								· {connection.lastError}
-							</span>
+							<span className="text-rose-500 truncate max-w-xs">· {connection.lastError}</span>
 						)}
 					</div>
 				</div>
@@ -1316,7 +1476,8 @@ function AssignDeviceModal({
 				<DialogHeader>
 					<DialogTitle>Associer à un Appareil / Hardware</DialogTitle>
 					<DialogDescription>
-						Associez le wallet {wallet.label || wallet.network} ({formatAddress(wallet.addressOrXpub)}) à un appareil physique ou logiciel.
+						Associez le wallet {wallet.label || wallet.network} (
+						{formatAddress(wallet.addressOrXpub)}) à un appareil physique ou logiciel.
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSave} className="space-y-4 pt-2">
@@ -1360,22 +1521,23 @@ function EmptySyncState({
 	onAddWallet: () => void;
 }) {
 	return (
-		<Card className="p-12 text-center border-dashed">
+		<div className="rounded-xl border border-dashed border-border/60 bg-card/20 p-12 text-center backdrop-blur-xs">
 			<Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-40" />
-			<h3 className="font-semibold text-lg">Aucun compte ou wallet synchronisé</h3>
-			<p className="text-sm text-muted-foreground mt-1.5 max-w-md mx-auto">
-				Automatisez le suivi de votre patrimoine en connectant vos comptes bancaires, courtiers ou portefeuilles on-chain.
+			<h3 className="font-medium text-base text-foreground">Aucun compte ou wallet synchronisé</h3>
+			<p className="text-xs text-muted-foreground mt-1.5 max-w-md mx-auto">
+				Automatisez le suivi de votre patrimoine en connectant vos comptes bancaires, courtiers ou
+				portefeuilles on-chain.
 			</p>
 			<div className="flex items-center justify-center gap-3 mt-6">
-				<Button variant="outline" onClick={onConnectInstitution} className="gap-2">
+				<Button variant="outline" size="sm" onClick={onConnectInstitution} className="gap-2">
 					<Building2 className="h-4 w-4 text-blue-500" />
 					Connect Institution
 				</Button>
-				<Button onClick={onAddWallet} className="gap-2 bg-primary text-primary-foreground">
+				<Button size="sm" onClick={onAddWallet} className="gap-2">
 					<Wallet className="h-4 w-4" />
 					Add On-Chain Wallet
 				</Button>
 			</div>
-		</Card>
+		</div>
 	);
 }

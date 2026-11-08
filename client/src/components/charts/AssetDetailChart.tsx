@@ -1,6 +1,6 @@
-import ReactECharts from "echarts-for-react";
 import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -316,7 +316,7 @@ export function AssetDetailChart({
 				)}
 			</div>
 			<CardContent className="p-0" style={{ height }}>
-				<ReactECharts
+				<EChart
 					option={chartOption}
 					style={{ height: "100%", width: "100%" }}
 					opts={{ renderer: "svg" }}

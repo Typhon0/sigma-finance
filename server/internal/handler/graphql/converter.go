@@ -63,6 +63,12 @@ func mapUserToGQL(domainUser model.User) *gqlModel.User {
 		ID:                  domainUser.ID,
 		Username:            domainUser.Name,
 		Email:               domainUser.Email,
+		Role:                string(domainUser.Role),
+		EmailVerified:       domainUser.EmailVerified,
+		LastLoginAt:         domainUser.LastLoginAt,
+		FailedLoginCount:    int32(domainUser.FailedLoginCount),
+		LockedUntil:         domainUser.LockedUntil,
+		IsLocked:            domainUser.IsAccountLocked(),
 		CreatedAt:           domainUser.CreatedAt,
 		UpdatedAt:           domainUser.UpdatedAt,
 		DisplayCurrency:     displayCurrency,
@@ -231,14 +237,24 @@ func mapStockToGQL(domainAsset model.Asset, stockDetails *model.Stock, tags []mo
 
 	reference := resolveReferenceMetrics(domainAsset, instrument)
 
+	sector := metadata.Sector
+	if sector == "" && instrument != nil && instrument.Sector != nil {
+		sector = *instrument.Sector
+	}
+
+	exchange := metadata.Exchange
+	if exchange == "" && instrument != nil && instrument.Exchange != "" {
+		exchange = instrument.Exchange
+	}
+
 	stock := &gqlModel.Stock{
 		ID:               domainAsset.ID,
 		Name:             domainAsset.Name,
 		Symbol:           domainAsset.Symbol,
 		Ticker:           ticker,
 		Tags:             mapTagsToGQL(tags),
-		Sector:           &metadata.Sector,
-		Exchange:         &metadata.Exchange,
+		Sector:           &sector,
+		Exchange:         &exchange,
 		DayChange:        dayChange,
 		DayChangePercent: dayChangePercent,
 		CurrentValue:     currentValue,
@@ -273,14 +289,24 @@ func mapFundToGQL(domainAsset model.Asset, fundDetails *model.Fund, tags []model
 
 	reference := resolveReferenceMetrics(domainAsset, instrument)
 
+	sector := metadata.Sector
+	if sector == "" && instrument != nil && instrument.Sector != nil {
+		sector = *instrument.Sector
+	}
+
+	exchange := metadata.Exchange
+	if exchange == "" && instrument != nil && instrument.Exchange != "" {
+		exchange = instrument.Exchange
+	}
+
 	fund := &gqlModel.Fund{
 		ID:               domainAsset.ID,
 		Name:             domainAsset.Name,
 		Symbol:           domainAsset.Symbol,
 		Ticker:           ticker,
 		Tags:             mapTagsToGQL(tags),
-		Sector:           &metadata.Sector,
-		Exchange:         &metadata.Exchange,
+		Sector:           &sector,
+		Exchange:         &exchange,
 		FundType:         &metadata.FundType,
 		DayChange:        dayChange,
 		DayChangePercent: dayChangePercent,
@@ -707,10 +733,13 @@ func mapTransactionToGQL(t model.Transaction) *gqlModel.Transaction {
 		acc = mapAccountToGQL(*t.Account)
 	}
 
+	amountVal := float64(t.Amount) / 100.0
+
 	return &gqlModel.Transaction{
 		ID:                t.ID,
 		AccountID:         t.AccountID,
 		Account:           acc,
+		Amount:            &amountVal,
 		TransactionType:   gqlModel.TransactionType(t.Type),
 		Quantity:          quantity,
 		UnitPriceAmount:   unitPriceAmount,
@@ -788,6 +817,7 @@ func mapAuthResponseToGQL(resp *service.AuthResponse) *gqlModel.AuthResponse {
 			User: &gqlModel.AuthUser{
 				ID:                  resp.User.ID,
 				Email:               resp.User.Email,
+				Role:                string(resp.User.Role),
 				Name:                resp.User.Name,
 				EmailVerified:       resp.User.EmailVerified,
 				DisplayCurrency:     displayCurrency,
@@ -847,22 +877,36 @@ func mapAccountToGQL(acc model.Account) *gqlModel.Account {
 		}
 	}
 
+	ownershipF, _ := acc.OwnershipPercentage.Float64()
+	if acc.OwnershipPercentage.IsZero() {
+		ownershipF = 100.0
+	}
+
+	var coOwnerUser *gqlModel.User
+	if acc.CoOwnerUser != nil {
+		coOwnerUser = mapUserToGQL(*acc.CoOwnerUser)
+	}
+
 	return &gqlModel.Account{
-		ID:             acc.ID,
-		PortfolioID:    acc.PortfolioID,
-		Name:           acc.Name,
-		Type:           gqlModel.AccountType(acc.Type),
-		TaxWrapper:     gqlModel.TaxWrapperType(acc.TaxWrapper),
-		Institution:    acc.Institution,
-		AccountNumber:  acc.AccountNumber,
-		Currency:       string(acc.Currency),
-		SyncProvider:   acc.SyncProvider,
-		ExternalID:     acc.ExternalID,
-		SyncConnection: syncConn,
-		PositionsCount: int32(len(acc.Positions)),
-		TotalValue:     &totalVal,
-		CreatedAt:      acc.CreatedAt,
-		UpdatedAt:      acc.UpdatedAt,
+		ID:                  acc.ID,
+		PortfolioID:         acc.PortfolioID,
+		Name:                acc.Name,
+		Type:                gqlModel.AccountType(acc.Type),
+		TaxWrapper:          gqlModel.TaxWrapperType(acc.TaxWrapper),
+		Institution:         acc.Institution,
+		AccountNumber:       acc.AccountNumber,
+		Currency:            string(acc.Currency),
+		SyncProvider:        acc.SyncProvider,
+		OwnershipPercentage: ownershipF,
+		CoOwnerName:         acc.CoOwnerName,
+		CoOwnerUserID:       acc.CoOwnerUserID,
+		CoOwnerUser:         coOwnerUser,
+		ExternalID:          acc.ExternalID,
+		SyncConnection:      syncConn,
+		PositionsCount:      int32(len(acc.Positions)),
+		TotalValue:          &totalVal,
+		CreatedAt:           acc.CreatedAt,
+		UpdatedAt:           acc.UpdatedAt,
 	}
 }
 

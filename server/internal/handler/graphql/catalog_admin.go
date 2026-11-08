@@ -10,7 +10,7 @@ import (
 	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
-func requireCatalogAdmin(ctx context.Context, resolver *Resolver) (*middleware.AuthenticatedUser, error) {
+func requireAdmin(ctx context.Context, resolver *Resolver) (*middleware.AuthenticatedUser, error) {
 	user, err := middleware.RequireAuth(ctx)
 	if err != nil {
 		return nil, &gqlerror.Error{
@@ -41,4 +41,8 @@ func requireCatalogAdmin(ctx context.Context, resolver *Resolver) (*middleware.A
 			"code": "FORBIDDEN",
 		},
 	}
+}
+
+func requireCatalogAdmin(ctx context.Context, resolver *Resolver) (*middleware.AuthenticatedUser, error) {
+	return requireAdmin(ctx, resolver)
 }

@@ -1,5 +1,5 @@
 import { useQuery } from "@apollo/client";
-import { ArrowRight, BarChart3, RefreshCw, Search, X } from "lucide-react";
+import { ArrowRight, BarChart3, Building2, RefreshCw, Search, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -10,6 +10,7 @@ import {
 } from "@/components/assets/tradeable-instrument-search";
 import { Logo } from "@/components/Logo";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { ConnectInstitutionDialog } from "@/components/sync/ConnectInstitutionDialog";
 import { TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { cn } from "@/lib/utils";
 
 interface AddStockFormProps {
 	open: boolean;
+	defaultAccountName?: string;
 	onClose: () => void;
 	onSubmit: (data: AddStockFormSubmitData) => Promise<void> | void;
 	/**
@@ -120,16 +122,27 @@ const manualPositionSchema = z.object({
 
 type ManualPositionField = keyof z.infer<typeof manualPositionSchema>;
 
-export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddStockFormProps) {
-	const { user, currentPortfolio } = usePortfolio();
+export function AddStockForm({
+	open,
+	defaultAccountName,
+	onClose,
+	onSubmit,
+	onCloseAutoFocus,
+}: AddStockFormProps) {
+	const { user, currentPortfolio, selectedPortfolio, refetch } = usePortfolio();
+	const portfolioId =
+		(typeof currentPortfolio === "string" ? currentPortfolio : (currentPortfolio as any)?.id) ||
+		selectedPortfolio?.id ||
+		"";
 	const [addType, setAddType] = useState<AddType>(null);
 	const [selectedStock, setSelectedStock] = useState<StockItem | null>(null);
 	const [showCreateAccount, setShowCreateAccount] = useState(false);
+	const [showConnectInstitution, setShowConnectInstitution] = useState(false);
 	const detailsRef = useRef<HTMLDivElement>(null);
 
 	const { data: accountsData } = useQuery(GET_ACCOUNTS, {
-		variables: { portfolioId: currentPortfolio },
-		skip: !currentPortfolio,
+		variables: { portfolioId: portfolioId || "" },
+		skip: !portfolioId,
 	});
 	const accounts = accountsData?.accounts || [];
 
@@ -147,6 +160,16 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 		quoteCurrency: userDisplayCurrency,
 		unitPriceCurrency: userDisplayCurrency,
 	});
+
+	// Pre-select account when defaultAccountName is provided or open changes
+	useEffect(() => {
+		if (open && defaultAccountName && accounts.length > 0) {
+			const matching = accounts.find((a: any) => a.name === defaultAccountName);
+			if (matching) {
+				setFormData((prev) => ({ ...prev, accountId: matching.id }));
+			}
+		}
+	}, [open, defaultAccountName, accounts]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	// Touched-field tracking so inline errors appear after the user has
@@ -366,9 +389,9 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 						role="button"
 						tabIndex={0}
 						aria-disabled={isSubmitting}
-						onClick={() => setAddType("sync")}
+						onClick={() => setShowConnectInstitution(true)}
 						onKeyDown={(e) => {
-							if (e.key === "Enter" || e.key === " ") setAddType("sync");
+							if (e.key === "Enter" || e.key === " ") setShowConnectInstitution(true);
 						}}
 						className={cn(
 							"group relative overflow-hidden rounded-lg border-2 border-border hover:border-primary transition-all p-6 text-left bg-card hover:bg-muted/50 cursor-pointer w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
@@ -385,6 +408,9 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 									Connect your brokerage account to automatically sync your positions
 								</p>
 								<div className="flex flex-wrap gap-2">
+									<Badge variant="secondary" className="font-normal text-xs">
+										Trade Republic
+									</Badge>
 									<Badge variant="secondary" className="font-normal text-xs">
 										Interactive Brokers
 									</Badge>
@@ -444,7 +470,7 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 
 	return (
 		<>
-			<Dialog open={open} onOpenChange={handleClose}>
+			<Dialog open={open && !showConnectInstitution} onOpenChange={handleClose}>
 				<DialogContent
 					showCloseButton={false}
 					className="max-w-6xl max-h-[90vh] overflow-hidden !flex !flex-col p-0 gap-0 duration-100"
@@ -928,17 +954,31 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 								</div>
 							</div>
 							<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-4">
-								<div className="h-16 w-16 rounded-full bg-muted flex items-center justify-center">
-									<RefreshCw className="h-8 w-8 text-muted-foreground animate-pulse" />
+								<div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+									<RefreshCw className="h-8 w-8" />
 								</div>
-								<h3 className="text-lg font-medium">Coming Soon</h3>
-								<p className="text-muted-foreground max-w-xs">
-									Direct broker integration is coming in the next update. Please use Manual Entry
-									for now.
+								<h3 className="text-lg font-medium">Automatic Broker Synchronization</h3>
+								<p className="text-muted-foreground max-w-sm text-sm">
+									Connect your Trade Republic or partner brokerage account to automatically import
+									and synchronize positions, cash balances, and transactions.
 								</p>
-								<Button onClick={() => setAddType("manual")} disabled={isSubmitting}>
-									Switch to Manual Entry
-								</Button>
+								<div className="flex flex-wrap justify-center gap-3 pt-2">
+									<Button
+										onClick={() => setShowConnectInstitution(true)}
+										className="gap-2"
+										disabled={isSubmitting}
+									>
+										<Building2 className="h-4 w-4" />
+										Connect Trade Republic / Broker
+									</Button>
+									<Button
+										variant="outline"
+										onClick={() => setAddType("manual")}
+										disabled={isSubmitting}
+									>
+										Manual Entry
+									</Button>
+								</div>
 							</div>
 						</div>
 					)}
@@ -948,7 +988,23 @@ export function AddStockForm({ open, onClose, onSubmit, onCloseAutoFocus }: AddS
 			<CreateAccountDialog
 				open={showCreateAccount}
 				onOpenChange={setShowCreateAccount}
-				portfolioId={currentPortfolio || ""}
+				portfolioId={portfolioId}
+			/>
+
+			<ConnectInstitutionDialog
+				open={showConnectInstitution}
+				onOpenChange={(isOpen) => {
+					setShowConnectInstitution(isOpen);
+					if (!isOpen && addType === "sync") {
+						setAddType(null);
+					}
+				}}
+				portfolioId={portfolioId}
+				onSuccess={async () => {
+					setShowConnectInstitution(false);
+					await refetch?.();
+					onClose();
+				}}
 			/>
 		</>
 	);

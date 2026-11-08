@@ -12,6 +12,14 @@ export const GET_ACCOUNTS = gql`
       accountNumber
       currency
       syncProvider
+      ownershipPercentage
+      coOwnerName
+      coOwnerUserId
+      coOwnerUser {
+        id
+        username
+        email
+      }
       externalId
       syncConnection {
         id
@@ -40,6 +48,14 @@ export const GET_ACCOUNT = gql`
       accountNumber
       currency
       syncProvider
+      ownershipPercentage
+      coOwnerName
+      coOwnerUserId
+      coOwnerUser {
+        id
+        username
+        email
+      }
       externalId
       syncConnection {
         id
@@ -55,3 +71,14 @@ export const GET_ACCOUNT = gql`
     }
   }
 `;
+
+export const GET_CO_OWNER_CANDIDATES = gql`
+  query GetCoOwnerCandidates($search: String) {
+    coOwnerCandidates(search: $search) {
+      id
+      name
+      email
+    }
+  }
+`;
+

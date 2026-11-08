@@ -6,6 +6,7 @@ import (
 	"sigma_finance/internal/repository"
 	"testing"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -17,6 +18,31 @@ type accountTestUOW struct {
 	accounts    map[string]*model.Account
 	connections map[string]*model.SyncConnection
 	credentials map[string]*model.SyncCredential
+	positions   map[string]*model.Position
+}
+
+type accountTestPositionRepo struct {
+	repository.IPositionRepository
+	uow *accountTestUOW
+}
+
+func (r *accountTestPositionRepo) UpdateOwnershipByAccount(ctx context.Context, accountID string, ownership decimal.Decimal) error {
+	for _, p := range r.uow.positions {
+		if p.AccountID == accountID {
+			p.OwnershipPercentage = ownership
+		}
+	}
+	return nil
+}
+
+func (r *accountTestPositionRepo) GetPositionsByAccount(ctx context.Context, accountID string) ([]model.Position, error) {
+	var res []model.Position
+	for _, p := range r.uow.positions {
+		if p.AccountID == accountID {
+			res = append(res, *p)
+		}
+	}
+	return res, nil
 }
 
 type accountTestSyncRepo struct {
@@ -147,6 +173,10 @@ func (u *accountTestUOW) Account() repository.IAccountRepository {
 	return &accountTestAccountRepo{uow: u}
 }
 
+func (u *accountTestUOW) Position() repository.IPositionRepository {
+	return &accountTestPositionRepo{uow: u}
+}
+
 func (u *accountTestUOW) Sync() repository.ISyncRepository {
 	return &accountTestSyncRepo{uow: u}
 }
@@ -161,6 +191,7 @@ func setupAccountTestService() (*AccountService, *accountTestUOW) {
 		accounts:    make(map[string]*model.Account),
 		connections: make(map[string]*model.SyncConnection),
 		credentials: make(map[string]*model.SyncCredential),
+		positions:   make(map[string]*model.Position),
 	}
 
 	uow.portfolios["pf-1"] = &model.Portfolio{
@@ -303,5 +334,56 @@ func TestAccountService_GetAndUpdateAccount(t *testing.T) {
 		// Connection and orphaned credential should be deleted
 		assert.NotContains(t, uow.connections, conn.ID)
 		assert.NotContains(t, uow.credentials, cred.ID)
+	})
+
+	t.Run("ownership percentage creation and cascading update to positions", func(t *testing.T) {
+		pct50 := decimal.NewFromFloat(50.0)
+		coName := "Emma"
+		jointAcc, err := svc.CreateAccount(ctx, "user-1", CreateAccountInput{
+			PortfolioID:         "pf-1",
+			Name:                "Compte Joint Bourso",
+			Type:                model.AccountTypeBank,
+			OwnershipPercentage: &pct50,
+			CoOwnerName:         &coName,
+		})
+		require.NoError(t, err)
+		assert.True(t, jointAcc.OwnershipPercentage.Equal(decimal.NewFromFloat(50.0)))
+		assert.NotNil(t, jointAcc.CoOwnerName)
+		assert.Equal(t, "Emma", *jointAcc.CoOwnerName)
+
+		// Create a position under this account
+		pos := &model.Position{
+			ID:                  "pos-1",
+			PortfolioID:         "pf-1",
+			AccountID:           jointAcc.ID,
+			AssetID:             "asset-cash",
+			OwnershipPercentage: decimal.NewFromFloat(50.0),
+		}
+		uow.positions[pos.ID] = pos
+
+		// Update account ownership to 70% and update co-owner name
+		pct70 := decimal.NewFromFloat(70.0)
+		newCoName := "Emma Jussiant"
+		updated, err := svc.UpdateAccount(ctx, "user-1", jointAcc.ID, UpdateAccountInput{
+			OwnershipPercentage: &pct70,
+			CoOwnerName:         &newCoName,
+		})
+		require.NoError(t, err)
+		assert.True(t, updated.OwnershipPercentage.Equal(decimal.NewFromFloat(70.0)))
+		assert.NotNil(t, updated.CoOwnerName)
+		assert.Equal(t, "Emma Jussiant", *updated.CoOwnerName)
+
+		// Check that the position's ownership was cascaded
+		assert.True(t, uow.positions[pos.ID].OwnershipPercentage.Equal(decimal.NewFromFloat(70.0)))
+
+		// When ownership is reset to 100%, co-owner fields are cleared
+		pct100 := decimal.NewFromFloat(100.0)
+		resetAcc, err := svc.UpdateAccount(ctx, "user-1", jointAcc.ID, UpdateAccountInput{
+			OwnershipPercentage: &pct100,
+		})
+		require.NoError(t, err)
+		assert.True(t, resetAcc.OwnershipPercentage.Equal(decimal.NewFromFloat(100.0)))
+		assert.Nil(t, resetAcc.CoOwnerName)
+		assert.Nil(t, resetAcc.CoOwnerUserID)
 	})
 }

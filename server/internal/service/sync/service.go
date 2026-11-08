@@ -1,15 +1,25 @@
 package sync
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"log"
+	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	stdsync "sync"
 	"time"
 
 	"sigma_finance/internal/domain/model"
+	"sigma_finance/internal/infrastructure/enablebanking"
+	"sigma_finance/internal/infrastructure/traderepublic"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 )
@@ -19,6 +29,20 @@ type AggregatorAuthSession struct {
 	Link         string
 	SessionToken string
 	Provider     string
+}
+
+// EnableBankingAuthSession holds temporary authorization session details for Enable Banking.
+type EnableBankingAuthSession struct {
+	AuthSessionID string
+	AuthURL       string
+	State         string
+	ExpiresAt     time.Time
+}
+
+// EnableBankingKeyPair holds a generated RSA private key and self-signed certificate.
+type EnableBankingKeyPair struct {
+	PrivateKey string
+	PublicKey  string
 }
 
 // ISyncService defines the central coordination and execution interface for account sync.
@@ -35,6 +59,13 @@ type ISyncService interface {
 	GenerateAggregatorLink(ctx context.Context, userID string, provider string, redirectURL string) (*AggregatorAuthSession, error)
 	CompleteAggregatorAuth(ctx context.Context, userID string, connectionID string, sessionToken string) ([]*model.SyncConnection, error)
 	DiscoverAndCreateConnections(ctx context.Context, userID string, portfolioID string, provider string) ([]*model.SyncConnection, error)
+	InitiateTradeRepublicAuth(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error)
+	PollTradeRepublicAuth(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error)
+	InitiateWoobAuth(ctx context.Context, userID string, portfolioID string, institution string, login string, password string, region string) (*model.SyncAuthSession, error)
+	PollWoobAuth(ctx context.Context, userID string, authSessionID string, otpCode string) (*model.SyncAuthSession, []*model.SyncConnection, error)
+	ListEnableBankingInstitutions(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error)
+	InitiateEnableBankingAuth(ctx context.Context, userID string, portfolioID string, aspspName string, aspspCountry string, redirectURL string) (*EnableBankingAuthSession, error)
+	CompleteEnableBankingAuth(ctx context.Context, userID string, portfolioID string, code string, state string) ([]*model.SyncConnection, error)
 }
 
 // SyncService implements ISyncService
@@ -132,7 +163,7 @@ func (s *SyncService) LinkAccount(ctx context.Context, connectionID string, acco
 			accountType := model.AccountTypeBroker
 			if conn.Provider == model.SyncProviderKraken {
 				accountType = model.AccountTypeCryptoExchange
-			} else if conn.Provider == model.SyncProviderGoCardless {
+			} else if conn.Provider == model.SyncProviderGoCardless || conn.Provider == model.SyncProviderEnableBanking {
 				accountType = model.AccountTypeBank
 			}
 
@@ -179,6 +210,17 @@ func (s *SyncService) LinkAccount(ctx context.Context, connectionID string, acco
 
 	if err != nil {
 		return nil, err
+	}
+
+	// Trigger immediate initial synchronization in background for the newly linked account
+	if conn.AccountID != nil && *conn.AccountID != "" {
+		go func(connID string) {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			if _, err := s.TriggerSync(bgCtx, connID); err != nil {
+				log.Printf("[ERROR] [SyncService] LinkAccount: initial sync failed for conn %s: %v", connID, err)
+			}
+		}(conn.ID)
 	}
 
 	return conn, nil
@@ -258,6 +300,9 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		return run, testErr
 	}
 
+	// Persist refreshed credential tokens (e.g. newly refreshed Trade Republic JWT session)
+	_ = s.uow.Sync().UpdateCredential(ctx, cred)
+
 	// 3. Network calls outside DB transaction
 	if conn.AccountID == nil {
 		now := time.Now()
@@ -274,7 +319,12 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		return run, ErrAccountNotFound
 	}
 
-	balances, err := adapter.FetchBalances(ctx, cred, conn.ExternalAccountID)
+	balanceAccountID := conn.ExternalAccountID
+	if conn.CashAccountID != nil && *conn.CashAccountID != "" && conn.Provider == model.SyncProviderTradeRepublic {
+		balanceAccountID = *conn.CashAccountID
+	}
+
+	balancesSnapshot, err := adapter.FetchBalances(ctx, cred, balanceAccountID)
 	if err != nil {
 		now := time.Now()
 		errMsg := fmt.Sprintf("failed to fetch balances: %v", err)
@@ -290,7 +340,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		return run, err
 	}
 
-	holdings, err := adapter.FetchHoldings(ctx, cred, conn.ExternalAccountID)
+	holdingsSnapshot, err := adapter.FetchHoldings(ctx, cred, conn.ExternalAccountID)
 	if err != nil {
 		now := time.Now()
 		errMsg := fmt.Sprintf("failed to fetch holdings: %v", err)
@@ -306,7 +356,21 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		return run, err
 	}
 
-	txs, err := adapter.FetchTransactions(ctx, cred, conn.ExternalAccountID, conn.LastSyncAt)
+	var streamCursors StreamCursors
+	providerMeta := conn.GetProviderMetadata()
+	if providerMeta.TimelineTransactionCursor != "" || providerMeta.TimelineActivityCursor != "" {
+		streamCursors = StreamCursors{
+			"timeline_transactions_cursor": providerMeta.TimelineTransactionCursor,
+			"timeline_activity_log_cursor": providerMeta.TimelineActivityCursor,
+		}
+	} else if len(conn.Metadata) > 0 {
+		var metaMap map[string]string
+		if err := json.Unmarshal(conn.Metadata, &metaMap); err == nil {
+			streamCursors = metaMap
+		}
+	}
+
+	txsSnapshot, err := adapter.FetchTransactions(ctx, cred, conn.ExternalAccountID, conn.LastSyncAt, streamCursors)
 	if err != nil {
 		now := time.Now()
 		errMsg := fmt.Sprintf("failed to fetch transactions: %v", err)
@@ -334,7 +398,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		}
 
 		// Reconcile cash balances
-		balImported, balUpdated, err := ReconcileBalances(ctx, uow, conn, account, balances)
+		balImported, balUpdated, err := ReconcileBalances(ctx, uow, conn, account, balancesSnapshot)
 		if err != nil {
 			return err
 		}
@@ -342,7 +406,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		totalUpdated += balUpdated
 
 		// Reconcile holdings
-		hImported, hUpdated, warnings, activeAssetIDs, err := ReconcileHoldings(ctx, uow, s.instrumentService, conn, account, holdings)
+		hImported, hUpdated, warnings, activeAssetIDs, err := ReconcileHoldings(ctx, uow, s.instrumentService, conn, account, holdingsSnapshot.Holdings)
 		if err != nil {
 			return err
 		}
@@ -351,7 +415,7 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		allWarnings = append(allWarnings, warnings...)
 
 		// Reconcile transactions
-		txImported, txUpdated, err := ReconcileTransactions(ctx, uow, conn, txs)
+		txImported, txUpdated, err := ReconcileTransactions(ctx, uow, conn, txsSnapshot.Transactions)
 		if err != nil {
 			return err
 		}
@@ -359,16 +423,43 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 		totalUpdated += txUpdated
 
 		// Reconcile residual tax lots (unallocated holding quantities)
-		if err := ReconcileResidualTaxLots(ctx, uow, conn, holdings); err != nil {
+		if err := ReconcileResidualTaxLots(ctx, uow, conn, holdingsSnapshot.Holdings); err != nil {
 			return err
 		}
 
-		// Reconcile liquidated positions (absent from holdings snapshot)
-		liquidated, err := ReconcileLiquidatedPositions(ctx, uow, conn, activeAssetIDs)
-		if err != nil {
-			return err
+		// Reconcile liquidated positions strictly when snapshot is complete AND pagination is finished
+		if holdingsSnapshot.IsComplete && holdingsSnapshot.PaginationDone {
+			liquidated, err := ReconcileLiquidatedPositions(ctx, uow, conn, activeAssetIDs)
+			if err != nil {
+				return err
+			}
+			totalUpdated += liquidated
 		}
-		totalUpdated += liquidated
+
+		// Persist unrecognized/raw events for review and audit
+		for _, rawEv := range txsSnapshot.UnrecognizedEvents {
+			if rawEv != nil {
+				rawEv.ConnectionID = conn.ID
+				if rawEv.Provider == "" {
+					rawEv.Provider = conn.Provider
+				}
+				_ = uow.Sync().CreateRawEvent(ctx, rawEv)
+			}
+		}
+
+		// Transactionally update stream cursors in connection provider_metadata
+		if len(txsSnapshot.StreamCursors) > 0 {
+			meta := conn.GetProviderMetadata()
+			if txCur, ok := txsSnapshot.StreamCursors["timeline_transactions_cursor"]; ok && txCur != "" {
+				meta.TimelineTransactionCursor = txCur
+			}
+			if actCur, ok := txsSnapshot.StreamCursors["timeline_activity_log_cursor"]; ok && actCur != "" {
+				meta.TimelineActivityCursor = actCur
+			}
+			if err := conn.SetProviderMetadata(meta); err == nil {
+				_ = uow.Sync().UpdateConnection(ctx, conn)
+			}
+		}
 
 		return nil
 	})
@@ -668,6 +759,10 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 				if institutionName == "" {
 					institutionName = normProvider
 				}
+				var cashAccID *string
+				if rawAcc.CashAccountNumber != "" {
+					cashAccID = &rawAcc.CashAccountNumber
+				}
 				conn = &model.SyncConnection{
 					UserID:                userID,
 					PortfolioID:           portfolioID,
@@ -675,9 +770,15 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 					Provider:              normProvider,
 					ExternalInstitutionID: institutionName,
 					ExternalAccountID:     rawAcc.ExternalID,
+					CashAccountID:         cashAccID,
 					InstitutionName:       institutionName,
 					SyncStatus:            model.SyncConnectionStatusIdle,
 				}
+				meta := model.ProviderMetadata{
+					Version:       1,
+					CashAccountID: rawAcc.CashAccountNumber,
+				}
+				_ = conn.SetProviderMetadata(meta)
 				if err := uow.Sync().CreateConnection(ctx, conn); err != nil {
 					return fmt.Errorf("failed to create connection for account %s: %w", rawAcc.ExternalID, err)
 				}
@@ -752,5 +853,869 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 		return nil, err
 	}
 
+	// Trigger initial background sync for all newly discovered/provisioned connections
+	for _, c := range resultConnections {
+		if c.AccountID != nil && *c.AccountID != "" {
+			go func(connID string) {
+				bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				defer cancel()
+				if _, err := s.TriggerSync(bgCtx, connID); err != nil {
+					log.Printf("[ERROR] [SyncService] DiscoverAndCreateConnections: initial sync failed for conn %s: %v", connID, err)
+				}
+			}(c.ID)
+		}
+	}
+
 	return resultConnections, nil
+}
+
+// InitiateTradeRepublicAuth starts the v2 push-notification login process and returns an internal authorization session.
+func (s *SyncService) InitiateTradeRepublicAuth(ctx context.Context, userID string, portfolioID string, phoneNumber string, pin string) (*model.SyncAuthSession, error) {
+	log.Printf("[INFO] [SyncService] InitiateTradeRepublicAuth: starting for user=%s, portfolio=%s", userID, portfolioID)
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if strings.TrimSpace(portfolioID) == "" {
+		return nil, errors.New("portfolio ID is required")
+	}
+	if strings.TrimSpace(phoneNumber) == "" {
+		return nil, errors.New("phone number is required")
+	}
+	if strings.TrimSpace(pin) == "" {
+		return nil, errors.New("pin is required")
+	}
+
+	// Verify portfolio ownership
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: portfolio verification failed for %s: %v", portfolioID, err)
+		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
+	}
+	if portfolio.UserID != userID {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: portfolio %s belongs to user %s, not %s", portfolioID, portfolio.UserID, userID)
+		return nil, errors.New("unauthorized: portfolio belongs to another user")
+	}
+
+	// Call Trade Republic v2 login endpoint with stable device ID
+	authClient := traderepublic.NewAuthClient("", nil, nil)
+	loginResp, authCtx, err := authClient.InitiateLoginWithDevice(ctx, phoneNumber, pin, "")
+	if err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: upstream login failed: %v", err)
+		return nil, fmt.Errorf("failed to initiate Trade Republic login: %w", err)
+	}
+
+	// Create and persist authorization session with encrypted provider context
+	countdown := loginResp.Countdown
+	if countdown <= 0 {
+		countdown = 90
+	}
+
+	authCtxJSON, err := json.Marshal(authCtx)
+	if err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: serialize auth context failed: %v", err)
+		return nil, fmt.Errorf("failed to serialize auth context: %w", err)
+	}
+
+	session := &model.SyncAuthSession{
+		UserID:         userID,
+		PortfolioID:    portfolioID,
+		Provider:       model.SyncProviderTradeRepublic,
+		Status:         model.SyncAuthSessionStatusWaitingForConfirmation,
+		RawProcessInfo: string(authCtxJSON),
+		ExpiresAt:      time.Now().Add(time.Duration(countdown) * time.Second),
+	}
+
+	if err := session.Encrypt(); err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: encrypt session failed: %v", err)
+		return nil, fmt.Errorf("failed to encrypt session process info: %w", err)
+	}
+
+	if err := s.uow.Sync().CreateAuthSession(ctx, session); err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: persist session failed: %v", err)
+		return nil, fmt.Errorf("failed to persist authorization session: %w", err)
+	}
+
+	log.Printf("[INFO] [SyncService] InitiateTradeRepublicAuth: session created id=%s processID=%s countdown=%d expiresAt=%s",
+		session.ID, loginResp.ProcessID, countdown, session.ExpiresAt.Format(time.RFC3339))
+	return session, nil
+}
+
+// PollTradeRepublicAuth checks the mobile app confirmation status and completes account discovery upon approval.
+func (s *SyncService) PollTradeRepublicAuth(ctx context.Context, userID string, authSessionID string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
+	log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: sessionID=%s user=%s", authSessionID, userID)
+	session, err := s.uow.Sync().GetAuthSessionByID(ctx, authSessionID)
+	if err != nil {
+		log.Printf("[WARN] [SyncService] PollTradeRepublicAuth: session not found id=%s: %v", authSessionID, err)
+		return nil, nil, fmt.Errorf("authorization session not found: %w", err)
+	}
+
+	if session.UserID != userID {
+		log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: unauthorized access to session %s by user %s", authSessionID, userID)
+		return nil, nil, errors.New("unauthorized: session belongs to another user")
+	}
+
+	// If already completed or rejected, return current state
+	if session.Status == model.SyncAuthSessionStatusCompleted || session.Status == model.SyncAuthSessionStatusRejected {
+		return session, nil, nil
+	}
+
+	// Check expiration
+	if time.Now().After(session.ExpiresAt) {
+		log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: session expired id=%s", authSessionID)
+		session.Status = model.SyncAuthSessionStatusExpired
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+		return session, nil, nil
+	}
+
+	rawInfo, err := session.Decrypt()
+	if err != nil {
+		log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: failed to decrypt session %s: %v", authSessionID, err)
+		return nil, nil, fmt.Errorf("failed to decrypt authorization process ID: %w", err)
+	}
+
+	var authCtx traderepublic.AuthSessionContext
+	if err := json.Unmarshal([]byte(rawInfo), &authCtx); err != nil || authCtx.ProcessID == "" {
+		authCtx = traderepublic.AuthSessionContext{
+			ProcessID: rawInfo,
+			DeviceID:  traderepublic.GenerateDeviceID(),
+		}
+	}
+
+	authClient := traderepublic.NewAuthClient("", nil, nil)
+	pollResp, cookies, err := authClient.PollProcessWithContext(ctx, &authCtx)
+	if err != nil {
+		if errors.Is(err, traderepublic.ErrAuthenticationExpired) {
+			log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: mobile confirmation expired for session=%s", authSessionID)
+			session.Status = model.SyncAuthSessionStatusExpired
+			_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+			return session, nil, nil
+		}
+		if errors.Is(err, traderepublic.ErrAuthenticationRejected) {
+			log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: login rejected for session=%s", authSessionID)
+			session.Status = model.SyncAuthSessionStatusRejected
+			_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+			return session, nil, nil
+		}
+		log.Printf("[WARN] [SyncService] PollTradeRepublicAuth: poll error for session=%s: %v", authSessionID, err)
+		return nil, nil, err
+	}
+
+	isApproved := pollResp.Status == traderepublic.ProcessStatusApproved ||
+		pollResp.Status == traderepublic.ProcessStatusCompleted ||
+		strings.EqualFold(string(pollResp.Status), "COMPLETED") ||
+		strings.EqualFold(string(pollResp.Status), "APPROVED") ||
+		strings.EqualFold(string(pollResp.Status), "CONFIRMED") ||
+		strings.EqualFold(string(pollResp.Status), "SUCCESS")
+
+	if isApproved {
+		log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: login approved (status=%s) for session=%s, registering credential and discovering accounts", pollResp.Status, authSessionID)
+		// Session approved! Convert cookies to encrypted SyncCredential preserving full cookie attributes
+		if !traderepublic.ValidateSessionCookies(cookies) {
+			log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: incomplete cookies returned for session=%s", authSessionID)
+			return nil, nil, errors.New("Trade Republic approval returned incomplete session cookies")
+		}
+
+		savedCookies := traderepublic.CookiesToSaved(cookies)
+		cookiesJSON, err := json.Marshal(savedCookies)
+		if err != nil {
+			log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: cookie encoding failed: %v", err)
+			return nil, nil, fmt.Errorf("failed to encode session cookies: %w", err)
+		}
+
+		// Register credentials
+		_, err = s.RegisterCredential(ctx, userID, model.SyncProviderTradeRepublic, string(cookiesJSON))
+		if err != nil {
+			log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: RegisterCredential failed: %v", err)
+			return nil, nil, fmt.Errorf("failed to register Trade Republic credential: %w", err)
+		}
+
+		// Discover and provision accounts under the target portfolio
+		conns, err := s.DiscoverAndCreateConnections(ctx, userID, session.PortfolioID, model.SyncProviderTradeRepublic)
+		if err != nil {
+			log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: DiscoverAndCreateConnections failed: %v", err)
+			return nil, nil, fmt.Errorf("failed to discover Trade Republic accounts: %w", err)
+		}
+
+		session.Status = model.SyncAuthSessionStatusCompleted
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+		log.Printf("[INFO] [SyncService] PollTradeRepublicAuth: completed successfully for session=%s conns=%d", authSessionID, len(conns))
+
+		// Automatically trigger initial background synchronization for newly discovered accounts
+		for _, c := range conns {
+			if c.AccountID != nil {
+				go func(connID string) {
+					bgCtx := context.Background()
+					if _, err := s.TriggerSync(bgCtx, connID); err != nil {
+						log.Printf("[ERROR] [SyncService] PollTradeRepublicAuth: initial sync failed for conn %s: %v", connID, err)
+					}
+				}(c.ID)
+			}
+		}
+
+		return session, conns, nil
+	}
+
+	// Still waiting for confirmation
+	return session, nil, nil
+}
+
+// getEnableBankingClient extracts configured credentials (or env vars) and initializes an enablebanking.Client.
+func (s *SyncService) getEnableBankingClient(ctx context.Context, userID string) (*enablebanking.Client, *model.SyncCredential, error) {
+	var appID, privKey string
+	var cred *model.SyncCredential
+
+	if userID != "" {
+		existingCred, err := s.uow.Sync().GetCredentialByProvider(ctx, userID, model.SyncProviderEnableBanking)
+		if err == nil && existingCred != nil {
+			cred = existingCred
+			rawJSON, err := existingCred.Decrypt()
+			if err == nil {
+				var credMap map[string]string
+				if json.Unmarshal([]byte(rawJSON), &credMap) == nil {
+					appID = credMap["application_id"]
+					if appID == "" {
+						appID = credMap["applicationId"]
+					}
+					privKey = credMap["private_key"]
+					if privKey == "" {
+						privKey = credMap["privateKey"]
+					}
+				}
+			}
+		}
+	}
+
+	if appID == "" {
+		appID = strings.TrimSpace(os.Getenv("ENABLEBANKING_APPLICATION_ID"))
+		if appID == "" {
+			appID = strings.TrimSpace(os.Getenv("ENABLE_BANKING_APPLICATION_ID"))
+		}
+	}
+	if privKey == "" {
+		privKey = strings.TrimSpace(os.Getenv("ENABLEBANKING_PRIVATE_KEY"))
+		if privKey == "" {
+			privKey = strings.TrimSpace(os.Getenv("ENABLE_BANKING_PRIVATE_KEY"))
+		}
+		if privKey == "" {
+			path := strings.TrimSpace(os.Getenv("ENABLEBANKING_PRIVATE_KEY_PATH"))
+			if path == "" {
+				path = strings.TrimSpace(os.Getenv("ENABLE_BANKING_PRIVATE_KEY_PATH"))
+			}
+			if path != "" {
+				if b, err := os.ReadFile(path); err == nil {
+					privKey = string(b)
+				}
+			}
+		}
+	}
+
+	if appID == "" || privKey == "" {
+		return nil, nil, errors.New("Enable Banking credentials not configured (application ID and RSA private key required)")
+	}
+
+	return enablebanking.NewClient(appID, privKey), cred, nil
+}
+
+// ListEnableBankingInstitutions returns available institutions for a country.
+func (s *SyncService) ListEnableBankingInstitutions(ctx context.Context, userID string, country string) ([]enablebanking.ASPSP, error) {
+	client, _, err := s.getEnableBankingClient(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return client.GetASPSPs(ctx, country)
+}
+
+// InitiateEnableBankingAuth initiates authorization and returns the bank redirect URL.
+func (s *SyncService) InitiateEnableBankingAuth(
+	ctx context.Context,
+	userID string,
+	portfolioID string,
+	aspspName string,
+	aspspCountry string,
+	redirectURL string,
+) (*EnableBankingAuthSession, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if strings.TrimSpace(portfolioID) == "" {
+		return nil, errors.New("portfolio ID is required")
+	}
+	if strings.TrimSpace(aspspName) == "" {
+		return nil, errors.New("ASPSP name is required")
+	}
+	if strings.TrimSpace(aspspCountry) == "" {
+		return nil, errors.New("ASPSP country is required")
+	}
+	if strings.TrimSpace(redirectURL) == "" {
+		return nil, errors.New("redirect URL is required")
+	}
+
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
+	}
+	if portfolio.UserID != userID {
+		return nil, errors.New("unauthorized: portfolio belongs to another user")
+	}
+
+	client, _, err := s.getEnableBankingClient(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	stateBytes := make([]byte, 16)
+	if _, err := rand.Read(stateBytes); err != nil {
+		return nil, fmt.Errorf("failed to generate secure state: %w", err)
+	}
+	state := hex.EncodeToString(stateBytes)
+
+	// Validate/adjust redirect URL against registered application redirect URLs
+	if appInfo, appErr := client.GetApplication(ctx); appErr == nil && appInfo != nil {
+		allowed := appInfo.RedirectURLs
+		if len(allowed) == 0 {
+			allowed = appInfo.RedirectURIs
+		}
+		if len(allowed) > 0 {
+			matched := false
+			for _, u := range allowed {
+				if strings.TrimRight(u, "/") == strings.TrimRight(redirectURL, "/") {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				log.Printf("[WARN] [SyncService] requested redirect URL %q is not in Enable Banking allowed redirect URLs %v. Auto-selecting registered redirect URL: %q", redirectURL, allowed, allowed[0])
+				redirectURL = allowed[0]
+			}
+		}
+	}
+
+	validUntil := time.Now().AddDate(0, 3, 0) // 90 days validity
+	authReq := enablebanking.StartAuthRequest{
+		Access: enablebanking.StartAuthAccess{
+			ValidUntil: &validUntil,
+		},
+		ASPSP: enablebanking.ASPSPTarget{
+			Name:    aspspName,
+			Country: aspspCountry,
+		},
+		State:       state,
+		RedirectURL: redirectURL,
+		PsuType:     "personal",
+	}
+
+	startRes, err := client.StartAuthorization(ctx, authReq)
+	if err != nil {
+		log.Printf("[ERROR] [SyncService] InitiateEnableBankingAuth failed: aspsp=%s country=%s redirectURL=%s err=%v", aspspName, aspspCountry, redirectURL, err)
+		return nil, fmt.Errorf("failed to initiate Enable Banking authorization: %w", err)
+	}
+
+	sessionID := startRes.ID
+	if sessionID == "" && startRes.AuthorizationID != "" {
+		sessionID = startRes.AuthorizationID
+	}
+	if sessionID == "" && startRes.URL != "" {
+		if u, parseErr := url.Parse(startRes.URL); parseErr == nil {
+			if sid := u.Query().Get("sessionid"); sid != "" {
+				sessionID = sid
+			}
+		}
+	}
+
+	type authProcessInfo struct {
+		State        string `json:"state"`
+		ASPSPName    string `json:"aspsp_name"`
+		ASPSPCountry string `json:"aspsp_country"`
+		RedirectURL  string `json:"redirect_url"`
+		AuthID       string `json:"auth_id,omitempty"`
+		SessionID    string `json:"session_id,omitempty"`
+	}
+
+	infoJSON, _ := json.Marshal(authProcessInfo{
+		State:        state,
+		ASPSPName:    aspspName,
+		ASPSPCountry: aspspCountry,
+		RedirectURL:  redirectURL,
+		AuthID:       startRes.ID,
+		SessionID:    sessionID,
+	})
+
+	session := &model.SyncAuthSession{
+		UserID:         userID,
+		PortfolioID:    portfolioID,
+		Provider:       model.SyncProviderEnableBanking,
+		Status:         model.SyncAuthSessionStatusWaitingForConfirmation,
+		RawProcessInfo: string(infoJSON),
+		ExpiresAt:      time.Now().Add(30 * time.Minute),
+	}
+
+	if err := session.Encrypt(); err != nil {
+		return nil, fmt.Errorf("failed to encrypt auth session: %w", err)
+	}
+
+	if err := s.uow.Sync().CreateAuthSession(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to persist auth session: %w", err)
+	}
+
+	return &EnableBankingAuthSession{
+		AuthSessionID: session.ID,
+		AuthURL:       startRes.URL,
+		State:         state,
+		ExpiresAt:     session.ExpiresAt,
+	}, nil
+}
+
+// CompleteEnableBankingAuth completes code exchange, persists credentials, discovers accounts, and triggers initial sync.
+func (s *SyncService) CompleteEnableBankingAuth(
+	ctx context.Context,
+	userID string,
+	portfolioID string,
+	code string,
+	state string,
+) ([]*model.SyncConnection, error) {
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if strings.TrimSpace(portfolioID) == "" {
+		return nil, errors.New("portfolio ID is required")
+	}
+	if strings.TrimSpace(code) == "" {
+		return nil, errors.New("authorization code is required")
+	}
+	if strings.TrimSpace(state) == "" {
+		return nil, errors.New("state parameter is required")
+	}
+
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
+	}
+	if portfolio.UserID != userID {
+		return nil, errors.New("unauthorized: portfolio belongs to another user")
+	}
+
+	// Verify state against active pending auth sessions
+	sessions, err := s.uow.Sync().ListActiveAuthSessionsByProvider(ctx, userID, model.SyncProviderEnableBanking)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check auth sessions: %w", err)
+	}
+
+	var matchedSession *model.SyncAuthSession
+	type authProcessInfo struct {
+		State        string `json:"state"`
+		ASPSPName    string `json:"aspsp_name"`
+		ASPSPCountry string `json:"aspsp_country"`
+		RedirectURL  string `json:"redirect_url"`
+		AuthID       string `json:"auth_id,omitempty"`
+		SessionID    string `json:"session_id,omitempty"`
+	}
+	var matchedProcessInfo authProcessInfo
+
+	for _, sess := range sessions {
+		rawInfo, decErr := sess.Decrypt()
+		if decErr != nil {
+			continue
+		}
+		var info authProcessInfo
+		if json.Unmarshal([]byte(rawInfo), &info) == nil && info.State == state {
+			matchedSession = sess
+			matchedProcessInfo = info
+			break
+		}
+	}
+
+	if matchedSession == nil {
+		return nil, errors.New("invalid or expired OAuth state parameter (CSRF validation failed)")
+	}
+
+	client, existingCred, err := s.getEnableBankingClient(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Exchange code for session
+	sessResp, err := client.AuthorizeSession(ctx, code)
+	if err != nil {
+		log.Printf("[WARN] [SyncService] AuthorizeSession returned err=%v. Checking if ALREADY_AUTHORIZED with sessionID=%s", err, matchedProcessInfo.SessionID)
+		if strings.Contains(err.Error(), "ALREADY_AUTHORIZED") && matchedProcessInfo.SessionID != "" {
+			sessResp, err = client.GetSession(ctx, matchedProcessInfo.SessionID)
+		}
+		if err != nil {
+			log.Printf("[ERROR] [SyncService] CompleteEnableBankingAuth failed to authorize session: %v", err)
+			return nil, fmt.Errorf("failed to authorize session with Enable Banking: %w", err)
+		}
+	}
+
+	// Persist session ID in user's Enable Banking SyncCredential immediately so subsequent calls or refreshes work
+	credData := map[string]string{
+		"session_id": sessResp.SessionID,
+	}
+
+	if existingCred != nil {
+		rawJSON, decErr := existingCred.Decrypt()
+		if decErr == nil {
+			_ = json.Unmarshal([]byte(rawJSON), &credData)
+		}
+		credData["session_id"] = sessResp.SessionID
+		updatedJSON, _ := json.Marshal(credData)
+		existingCred.RawData = string(updatedJSON)
+		if err := existingCred.Encrypt(); err != nil {
+			return nil, fmt.Errorf("failed to encrypt updated credential: %w", err)
+		}
+		existingCred.Status = model.SyncCredentialStatusActive
+		existingCred.UpdatedAt = time.Now()
+		if err := s.uow.Sync().UpdateCredential(ctx, existingCred); err != nil {
+			return nil, fmt.Errorf("failed to persist updated credential: %w", err)
+		}
+	} else {
+		appID := strings.TrimSpace(os.Getenv("ENABLEBANKING_APPLICATION_ID"))
+		privKey := strings.TrimSpace(os.Getenv("ENABLEBANKING_PRIVATE_KEY"))
+		if privKey == "" {
+			if path := strings.TrimSpace(os.Getenv("ENABLEBANKING_PRIVATE_KEY_PATH")); path != "" {
+				if b, readErr := os.ReadFile(path); readErr == nil {
+					privKey = string(b)
+				}
+			}
+		}
+		credData["application_id"] = appID
+		credData["private_key"] = privKey
+		credJSON, _ := json.Marshal(credData)
+
+		newCred := &model.SyncCredential{
+			UserID:   userID,
+			Provider: model.SyncProviderEnableBanking,
+			RawData:  string(credJSON),
+			Status:   model.SyncCredentialStatusActive,
+		}
+		if err := newCred.Encrypt(); err != nil {
+			return nil, fmt.Errorf("failed to encrypt new credential: %w", err)
+		}
+		if err := s.uow.Sync().CreateCredential(ctx, newCred); err != nil {
+			return nil, fmt.Errorf("failed to persist credential: %w", err)
+		}
+	}
+
+	// Mark auth session as completed
+	matchedSession.Status = model.SyncAuthSessionStatusCompleted
+	_ = s.uow.Sync().UpdateAuthSession(ctx, matchedSession)
+
+	accountIDs := sessResp.AccountIDs()
+	if len(accountIDs) == 0 {
+		// Bounded polling for delayed account availability
+		polled, pollErr := client.PollSessionUntilReady(ctx, sessResp.SessionID, 3, 1500*time.Millisecond)
+		if pollErr == nil && len(polled.AccountIDs()) > 0 {
+			sessResp = polled
+			accountIDs = polled.AccountIDs()
+		} else {
+			log.Printf("[WARN] [SyncService] CompleteEnableBankingAuth: session %s returned 0 accounts (Restricted Production whitelisting required)", sessResp.SessionID)
+			return nil, errors.New("Enable Banking connected successfully, but returned 0 accounts. In Restricted Production mode, please ensure your Revolut account is whitelisted in Enable Banking Control Panel ('Activate by linking accounts').")
+		}
+	}
+
+	// Discover and auto-provision connections & accounts in the target portfolio
+	conns, err := s.DiscoverAndCreateConnections(ctx, userID, portfolioID, model.SyncProviderEnableBanking)
+	if err != nil {
+		return nil, fmt.Errorf("failed to discover Enable Banking accounts: %w", err)
+	}
+
+	// Trigger initial background sync for each newly discovered connection
+	for _, c := range conns {
+		if c.AccountID != nil {
+			go func(connID string) {
+				bgCtx := context.Background()
+				if _, err := s.TriggerSync(bgCtx, connID); err != nil {
+					log.Printf("[ERROR] [SyncService] CompleteEnableBankingAuth: initial sync failed for conn %s: %v", connID, err)
+				}
+			}(c.ID)
+		}
+	}
+
+	return conns, nil
+}
+
+// InitiateWoobAuth starts an authentication session with the woob-service sidecar for Fortuneo or Caisse d'Épargne.
+func (s *SyncService) InitiateWoobAuth(ctx context.Context, userID, portfolioID, institution, login, password, region string) (*model.SyncAuthSession, error) {
+	log.Printf("[INFO] [SyncService] InitiateWoobAuth: starting for user=%s, portfolio=%s, institution=%s", userID, portfolioID, institution)
+	if strings.TrimSpace(userID) == "" {
+		return nil, errors.New("user ID is required")
+	}
+	if strings.TrimSpace(portfolioID) == "" {
+		return nil, errors.New("portfolio ID is required")
+	}
+	if strings.TrimSpace(institution) == "" {
+		return nil, errors.New("institution is required")
+	}
+	if strings.TrimSpace(login) == "" {
+		return nil, errors.New("login is required")
+	}
+	if strings.TrimSpace(password) == "" {
+		return nil, errors.New("password is required")
+	}
+
+	// Verify portfolio ownership
+	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
+	}
+	if portfolio.UserID != userID {
+		return nil, errors.New("unauthorized: portfolio belongs to another user")
+	}
+
+	baseURL := strings.TrimSpace(os.Getenv("WOOB_SERVICE_URL"))
+	if baseURL == "" {
+		baseURL = "http://localhost:50055"
+	}
+
+	loginPayload := map[string]interface{}{
+		"institution": institution,
+		"login":       login,
+		"password":    password,
+		"region":      region,
+	}
+	reqBody, _ := json.Marshal(loginPayload)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/api/v1/auth/login", bytes.NewReader(reqBody))
+	if err != nil {
+		return nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("failed to reach woob-service at %s: %w", baseURL, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBytes, _ := io.ReadAll(resp.Body)
+		var errObj struct {
+			Detail string `json:"detail"`
+		}
+		if jsonErr := json.Unmarshal(respBytes, &errObj); jsonErr == nil && strings.TrimSpace(errObj.Detail) != "" {
+			return nil, errors.New(errObj.Detail)
+		}
+		return nil, fmt.Errorf("woob login failed (%d): %s", resp.StatusCode, string(respBytes))
+	}
+
+	var loginResp struct {
+		SessionID        string  `json:"session_id"`
+		Status           string  `json:"status"`
+		CountdownSeconds int     `json:"countdown_seconds"`
+		ChallengeMessage *string `json:"challenge_message"`
+		ExpiresAt        int64   `json:"expires_at"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&loginResp); err != nil {
+		return nil, fmt.Errorf("failed to decode woob login response: %w", err)
+	}
+
+	status := model.SyncAuthSessionStatusWaitingForConfirmation
+	if loginResp.Status == "SUCCESS" {
+		status = model.SyncAuthSessionStatusCompleted
+	} else if loginResp.Status == "WAITING_FOR_CODE" {
+		status = "WAITING_FOR_CODE"
+	}
+
+	processInfo := map[string]interface{}{
+		"session_id":        loginResp.SessionID,
+		"institution":       institution,
+		"login":             login,
+		"password":          password,
+		"region":            region,
+		"challenge_message": loginResp.ChallengeMessage,
+	}
+	processInfoBytes, _ := json.Marshal(processInfo)
+
+	countdown := loginResp.CountdownSeconds
+	if countdown <= 0 {
+		countdown = 120
+	}
+
+	session := &model.SyncAuthSession{
+		UserID:         userID,
+		PortfolioID:    portfolioID,
+		Provider:       model.SyncProviderWoob,
+		Status:         status,
+		RawProcessInfo: string(processInfoBytes),
+		ExpiresAt:      time.Now().Add(time.Duration(countdown) * time.Second),
+	}
+
+	if err := session.Encrypt(); err != nil {
+		return nil, fmt.Errorf("failed to encrypt session: %w", err)
+	}
+
+	if err := s.uow.Sync().CreateAuthSession(ctx, session); err != nil {
+		return nil, fmt.Errorf("failed to persist auth session: %w", err)
+	}
+
+	// If already completed (e.g. mock mode or no 2FA challenge), register credential right away
+	if status == model.SyncAuthSessionStatusCompleted {
+		credPayload := map[string]string{
+			"institution": institution,
+			"login":       login,
+			"password":    password,
+			"region":      region,
+			"session_id":  loginResp.SessionID,
+		}
+		credBytes, _ := json.Marshal(credPayload)
+		if _, err := s.RegisterCredential(ctx, userID, model.SyncProviderWoob, string(credBytes)); err != nil {
+			return nil, fmt.Errorf("failed to register woob credential: %w", err)
+		}
+		if _, err := s.DiscoverAndCreateConnections(ctx, userID, portfolioID, model.SyncProviderWoob); err != nil {
+			log.Printf("[ERROR] [SyncService] InitiateWoobAuth: DiscoverAndCreateConnections failed: %v", err)
+			return nil, fmt.Errorf("authentication succeeded but failed to discover accounts: %w", err)
+		}
+	}
+
+	return session, nil
+}
+
+// PollWoobAuth checks confirmation or submits 2FA OTP code.
+func (s *SyncService) PollWoobAuth(ctx context.Context, userID, authSessionID, otpCode string) (*model.SyncAuthSession, []*model.SyncConnection, error) {
+	session, err := s.uow.Sync().GetAuthSessionByID(ctx, authSessionID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("session not found: %w", err)
+	}
+	if session.UserID != userID {
+		return nil, nil, errors.New("unauthorized: session belongs to another user")
+	}
+
+	if session.Status == model.SyncAuthSessionStatusCompleted {
+		allConns, err := s.uow.Sync().ListConnectionsByPortfolio(ctx, session.PortfolioID)
+		if err != nil {
+			return session, nil, err
+		}
+		rawInfo, _ := session.Decrypt()
+		var processInfo struct {
+			Institution string `json:"institution"`
+		}
+		_ = json.Unmarshal([]byte(rawInfo), &processInfo)
+
+		var woobConns []*model.SyncConnection
+		for _, c := range allConns {
+			if c.Provider == model.SyncProviderWoob {
+				if processInfo.Institution != "" {
+					instClean := strings.ToLower(strings.ReplaceAll(processInfo.Institution, "_", ""))
+					connClean := strings.ToLower(strings.ReplaceAll(c.InstitutionName, " ", ""))
+					if !strings.Contains(connClean, instClean) && !strings.Contains(instClean, connClean) {
+						continue
+					}
+				}
+				woobConns = append(woobConns, c)
+			}
+		}
+		return session, woobConns, nil
+	}
+
+	if time.Now().After(session.ExpiresAt) {
+		session.Status = model.SyncAuthSessionStatusExpired
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+		return session, nil, nil
+	}
+
+	rawInfo, err := session.Decrypt()
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to decrypt session: %w", err)
+	}
+
+	var processInfo struct {
+		SessionID   string `json:"session_id"`
+		Institution string `json:"institution"`
+		Login       string `json:"login"`
+		Password    string `json:"password"`
+		Region      string `json:"region"`
+	}
+	if err := json.Unmarshal([]byte(rawInfo), &processInfo); err != nil {
+		return nil, nil, fmt.Errorf("corrupt session process info: %w", err)
+	}
+
+	baseURL := strings.TrimSpace(os.Getenv("WOOB_SERVICE_URL"))
+	if baseURL == "" {
+		baseURL = "http://localhost:50055"
+	}
+
+	pollPayload := map[string]string{
+		"session_id": processInfo.SessionID,
+		"otp_code":   otpCode,
+	}
+	body, _ := json.Marshal(pollPayload)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, strings.TrimRight(baseURL, "/")+"/api/v1/auth/poll", bytes.NewReader(body))
+	if err != nil {
+		return nil, nil, err
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, nil, fmt.Errorf("woob poll failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var pollResp struct {
+		Status  string  `json:"status"`
+		Message *string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&pollResp); err != nil {
+		return nil, nil, err
+	}
+
+	if pollResp.Status == "SUCCESS" {
+		credPayload := map[string]string{
+			"institution": processInfo.Institution,
+			"login":       processInfo.Login,
+			"password":    processInfo.Password,
+			"region":      processInfo.Region,
+			"session_id":  processInfo.SessionID,
+		}
+		credBytes, _ := json.Marshal(credPayload)
+		if _, err := s.RegisterCredential(ctx, userID, model.SyncProviderWoob, string(credBytes)); err != nil {
+			return nil, nil, fmt.Errorf("failed to register woob credential: %w", err)
+		}
+
+		conns, err := s.DiscoverAndCreateConnections(ctx, userID, session.PortfolioID, model.SyncProviderWoob)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to discover woob accounts: %w", err)
+		}
+
+		session.Status = model.SyncAuthSessionStatusCompleted
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+
+		var matchedConns []*model.SyncConnection
+		for _, c := range conns {
+			if c.Provider == model.SyncProviderWoob {
+				if processInfo.Institution != "" {
+					instClean := strings.ToLower(strings.ReplaceAll(processInfo.Institution, "_", ""))
+					connClean := strings.ToLower(strings.ReplaceAll(c.InstitutionName, " ", ""))
+					if !strings.Contains(connClean, instClean) && !strings.Contains(instClean, connClean) {
+						continue
+					}
+				}
+				matchedConns = append(matchedConns, c)
+			}
+		}
+
+		for _, c := range matchedConns {
+			if c.AccountID != nil {
+				go func(connID string) {
+					bgCtx := context.Background()
+					_, _ = s.TriggerSync(bgCtx, connID)
+				}(c.ID)
+			}
+		}
+
+		return session, matchedConns, nil
+	} else if pollResp.Status == "EXPIRED" {
+		session.Status = model.SyncAuthSessionStatusExpired
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+		return session, nil, nil
+	} else if pollResp.Status == "REJECTED" {
+		session.Status = model.SyncAuthSessionStatusRejected
+		_ = s.uow.Sync().UpdateAuthSession(ctx, session)
+		return session, nil, nil
+	}
+
+	// Still waiting
+	return session, nil, nil
 }

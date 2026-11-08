@@ -1,5 +1,4 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import {
 	AlertTriangle,
 	Award,
@@ -10,6 +9,7 @@ import {
 	TrendingUp,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { usePortfolioRiskMetrics } from "@/hooks/use-portfolio-risk-metrics";
 import { RiskMetricRows } from "./insights/RiskMetricRows";
@@ -385,7 +385,7 @@ export function Analytics() {
 							</CardHeader>
 							<CardContent>
 								<div className="h-80">
-									<ReactECharts
+									<EChart
 										option={performanceTrendOption}
 										notMerge={true}
 										lazyUpdate={true}
@@ -403,7 +403,7 @@ export function Analytics() {
 							</CardHeader>
 							<CardContent>
 								<div className="h-80">
-									<ReactECharts
+									<EChart
 										option={allocationOption}
 										notMerge={true}
 										lazyUpdate={true}
@@ -491,7 +491,7 @@ export function Analytics() {
 						</CardHeader>
 						<CardContent>
 							<div className="h-80">
-								<ReactECharts
+								<EChart
 									option={assetPerformanceOption}
 									notMerge={true}
 									lazyUpdate={true}

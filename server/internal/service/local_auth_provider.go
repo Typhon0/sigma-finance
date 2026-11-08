@@ -100,6 +100,7 @@ func (p *LocalAuthProvider) ValidateCredentials(ctx context.Context, credentials
 	return &UserInfo{
 		ID:                  user.ID,
 		Email:               user.Email,
+		Role:                string(user.Role),
 		Name:                user.Name,
 		EmailVerified:       user.EmailVerified,
 		DisplayCurrency:     string(user.DisplayCurrency),
@@ -188,6 +189,7 @@ func (p *LocalAuthProvider) Register(ctx context.Context, req RegisterRequest) (
 	return &UserInfo{
 		ID:                  user.ID,
 		Email:               user.Email,
+		Role:                string(user.Role),
 		Name:                user.Name,
 		EmailVerified:       user.EmailVerified,
 		DisplayCurrency:     string(model.CurrencyUSD),

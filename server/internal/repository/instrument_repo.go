@@ -45,6 +45,7 @@ type IInstrumentRepository interface {
 	FindByIDs(ctx context.Context, ids []string) (map[string]model.Instrument, error)
 	FindByExternalKey(ctx context.Context, externalSource, externalID string) (*model.Instrument, error)
 	GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error)
+	ResolveByGlobalIdentifier(ctx context.Context, field, value string, preferredCurrency model.Currency) (*model.Instrument, error)
 	SearchLocalInstruments(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error)
 	Search(ctx context.Context, query string, filter InstrumentSearchFilter) ([]InstrumentSearchRow, error)
 	ListManual(ctx context.Context, filter ManualInstrumentFilter) ([]model.Instrument, error)
@@ -160,11 +161,27 @@ func (r *InstrumentRepository) FindByExternalKey(ctx context.Context, externalSo
 }
 
 func (r *InstrumentRepository) GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error) {
+	return r.ResolveByGlobalIdentifier(ctx, field, value, "")
+}
+
+func (r *InstrumentRepository) ResolveByGlobalIdentifier(ctx context.Context, field, value string, preferredCurrency model.Currency) (*model.Instrument, error) {
+	cleanField := strings.ToLower(strings.TrimSpace(field))
+	switch cleanField {
+	case "isin", "cusip", "figi", "sedol":
+	default:
+		return nil, fmt.Errorf("unsupported global identifier field: %s", field)
+	}
+
+	cleanVal := strings.TrimSpace(value)
+	if cleanVal == "" {
+		return nil, ErrNotFound
+	}
+
 	var instruments []model.Instrument
 	err := r.db.NewSelect().
 		Model(&instruments).
-		Where(fmt.Sprintf("%s = ?", field), value).
-		Limit(2).
+		Where(fmt.Sprintf("%s = ?", cleanField), cleanVal).
+		Limit(50).
 		Scan(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -172,10 +189,83 @@ func (r *InstrumentRepository) GetByGlobalIdentifier(ctx context.Context, field,
 		}
 		return nil, err
 	}
-	if len(instruments) != 1 {
+	if len(instruments) == 0 {
 		return nil, ErrNotFound
 	}
-	return &instruments[0], nil
+	if len(instruments) == 1 {
+		return &instruments[0], nil
+	}
+
+	bestIdx := 0
+	bestScore := rankCandidateInstrument(&instruments[0], preferredCurrency)
+	for i := 1; i < len(instruments); i++ {
+		score := rankCandidateInstrument(&instruments[i], preferredCurrency)
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i
+		}
+	}
+
+	return &instruments[bestIdx], nil
+}
+
+func rankCandidateInstrument(inst *model.Instrument, preferredCurrency model.Currency) int {
+	score := 0
+
+	// 1. Clean base ticker without dot or colon suffix (e.g. "MSFT" > "MSF.DE" > "MSFTC.BA")
+	if !strings.Contains(inst.Symbol, ".") && !strings.Contains(inst.Symbol, ":") {
+		score += 100
+	}
+
+	// 2. Primary / major exchanges
+	exchUpper := strings.ToUpper(inst.Exchange)
+	symUpper := strings.ToUpper(inst.Symbol)
+
+	// Affinity for domestic exchange matching ISIN prefix
+	if inst.ISIN != nil {
+		isinUpper := strings.ToUpper(*inst.ISIN)
+		if strings.HasPrefix(isinUpper, "FR") && (strings.Contains(exchUpper, "EURONEXT") || strings.Contains(exchUpper, "PARIS") || strings.HasSuffix(symUpper, ".PA")) {
+			score += 150
+		} else if strings.HasPrefix(isinUpper, "DE") && (strings.Contains(exchUpper, "XETRA") || strings.Contains(exchUpper, "FRANKFURT") || strings.HasSuffix(symUpper, ".DE")) {
+			score += 150
+		} else if strings.HasPrefix(isinUpper, "US") && (strings.Contains(exchUpper, "NASDAQ") || strings.Contains(exchUpper, "NYSE")) {
+			score += 150
+		}
+	}
+
+	switch {
+	case strings.Contains(exchUpper, "NASDAQ"):
+		score += 60
+	case strings.Contains(exchUpper, "NEW YORK") || strings.Contains(exchUpper, "NYSE"):
+		score += 60
+	case strings.Contains(exchUpper, "EURONEXT") || strings.HasSuffix(symUpper, ".PA"):
+		score += 60
+	case strings.Contains(exchUpper, "XETRA"):
+		score += 55
+	case strings.Contains(exchUpper, "FRANKFURT"):
+		score += 50
+	case strings.Contains(exchUpper, "LONDON") || strings.Contains(exchUpper, "LSE"):
+		score += 50
+	case strings.Contains(exchUpper, "OTC") || strings.Contains(exchUpper, "TOKENIZED") || strings.Contains(exchUpper, "TRUST WALLET"):
+		score -= 50
+	}
+
+	// 3. Preferred currency affinity
+	if preferredCurrency != "" && inst.Currency != nil && strings.EqualFold(*inst.Currency, string(preferredCurrency)) {
+		score += 30
+	}
+
+	// 4. Valid descriptive name (not equal to raw ticker symbol)
+	if inst.Name != "" && !strings.EqualFold(inst.Name, inst.Symbol) {
+		score += 10
+	}
+
+	// 5. Active instrument status
+	if inst.Status == model.InstrumentStatusActive {
+		score += 20
+	}
+
+	return score
 }
 
 // Search performs instrument search across four strategies in order:

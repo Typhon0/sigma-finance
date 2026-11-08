@@ -13,10 +13,12 @@ import {
 	RefreshCw,
 	ShieldCheck,
 	Trash2,
+	Upload,
 	Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -165,27 +167,24 @@ export function ApiKeysManager() {
 	const [activeTab, setActiveTab] = useState("all");
 
 	// Market Data credentials query
-	const {
-		data: mdData,
-		refetch: refetchMd,
-	} = useQuery<MarketDataSettingsData>(GET_MARKET_DATA_SETTINGS, {
-		variables: { assetType: null },
-		fetchPolicy: "cache-and-network",
-	});
+	const { data: mdData, refetch: refetchMd } = useQuery<MarketDataSettingsData>(
+		GET_MARKET_DATA_SETTINGS,
+		{
+			variables: { assetType: null },
+			fetchPolicy: "cache-and-network",
+		},
+	);
 
 	// Sync credentials query (Kraken, etc.)
-	const {
-		data: syncData,
-		refetch: refetchSync,
-	} = useQuery<SyncCredentialsData>(GET_SYNC_CREDENTIALS, {
-		fetchPolicy: "cache-and-network",
-	});
+	const { data: syncData, refetch: refetchSync } = useQuery<SyncCredentialsData>(
+		GET_SYNC_CREDENTIALS,
+		{
+			fetchPolicy: "cache-and-network",
+		},
+	);
 
 	// Alchemy CU quota query
-	const {
-		data: cuData,
-		refetch: refetchCU,
-	} = useQuery<CUUsageData>(GET_WALLET_CU_USAGE, {
+	const { data: cuData, refetch: refetchCU } = useQuery<CUUsageData>(GET_WALLET_CU_USAGE, {
 		fetchPolicy: "cache-and-network",
 	});
 
@@ -212,14 +211,11 @@ export function ApiKeysManager() {
 	});
 
 	// Sync mutation (Kraken)
-	const [registerSyncCredential, { loading: savingSync }] = useMutation(
-		REGISTER_SYNC_CREDENTIAL,
-		{
-			onCompleted: () => {
-				void refetchSync();
-			},
+	const [registerSyncCredential, { loading: savingSync }] = useMutation(REGISTER_SYNC_CREDENTIAL, {
+		onCompleted: () => {
+			void refetchSync();
 		},
-	);
+	});
 
 	// Form states
 	const [revealedKeys, setRevealedKeys] = useState<Record<string, boolean>>({});
@@ -233,6 +229,26 @@ export function ApiKeysManager() {
 	const [krakenKey, setKrakenKey] = useState("");
 	const [krakenSecret, setKrakenSecret] = useState("");
 	const [showKrakenSecret, setShowKrakenSecret] = useState(false);
+
+	// Enable Banking sync form state
+	const [enableBankingAppId, setEnableBankingAppId] = useState("");
+	const [enableBankingPrivateKey, setEnableBankingPrivateKey] = useState("");
+	const [showEnableBankingPrivateKey, setShowEnableBankingPrivateKey] = useState(false);
+	const ebFileInputRef = useRef<HTMLInputElement>(null);
+
+	const handleEbKeyFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const file = e.target.files?.[0];
+		if (!file) return;
+		const reader = new FileReader();
+		reader.onload = (event) => {
+			const text = event.target?.result as string;
+			if (text) {
+				setEnableBankingPrivateKey(text.trim());
+				toast.success(`Clé privée chargée depuis "${file.name}"`);
+			}
+		};
+		reader.readAsText(file);
+	};
 
 	// Alchemy key form state
 	const [alchemyKeyInput, setAlchemyKeyInput] = useState("");
@@ -368,6 +384,36 @@ export function ApiKeysManager() {
 		}
 	};
 
+	const handleRegisterEnableBanking = async () => {
+		const appId = enableBankingAppId.trim();
+		const privKey = enableBankingPrivateKey.trim();
+		if (!appId || !privKey) {
+			toast.error("Please provide both Enable Banking Application ID and RSA Private Key");
+			return;
+		}
+
+		try {
+			await registerSyncCredential({
+				variables: {
+					provider: "ENABLEBANKING",
+					credentials: {
+						application_id: appId,
+						applicationId: appId,
+						private_key: privKey,
+						privateKey: privKey,
+					},
+				},
+			});
+			toast.success("Enable Banking credentials securely registered!");
+			setEnableBankingAppId("");
+			setEnableBankingPrivateKey("");
+		} catch (err: unknown) {
+			const msg =
+				err instanceof Error ? err.message : "Failed to register Enable Banking credentials";
+			toast.error(msg);
+		}
+	};
+
 	// Metrics calculations
 	const configuredMdCount = useMemo(() => {
 		return mdData?.marketDataCredentials?.length ?? 0;
@@ -378,6 +424,12 @@ export function ApiKeysManager() {
 	}, [syncData?.syncCredentials]);
 
 	const isKrakenConfigured = Boolean(krakenCred);
+
+	const enableBankingCred = useMemo(() => {
+		return syncData?.syncCredentials?.find((c) => c.provider.toUpperCase() === "ENABLEBANKING");
+	}, [syncData?.syncCredentials]);
+
+	const isEnableBankingConfigured = Boolean(enableBankingCred);
 
 	const cuUsage = cuData?.walletCUUsage;
 	const cuConsumed = cuUsage?.consumedUnits ?? 0;
@@ -403,7 +455,11 @@ export function ApiKeysManager() {
 	}, [mdData?.supportedProviders]);
 
 	const isAlchemyConfigured = cuUsage?.hasKey ?? false;
-	const totalConfigured = configuredMdCount + (isKrakenConfigured ? 1 : 0) + (isAlchemyConfigured ? 1 : 0);
+	const totalConfigured =
+		configuredMdCount +
+		(isKrakenConfigured ? 1 : 0) +
+		(isAlchemyConfigured ? 1 : 0) +
+		(isEnableBankingConfigured ? 1 : 0);
 
 	// Render Category 1: Market Data Feeds
 	const renderMarketDataSection = () => (
@@ -436,35 +492,45 @@ export function ApiKeysManager() {
 					const isRevealed = revealedKeys[provider.id] ?? false;
 
 					return (
-						<Card key={provider.id} className="flex flex-col justify-between">
-							<CardHeader className="pb-3">
+						<Card
+							key={provider.id}
+							className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs transition-colors hover:border-border/80 flex flex-col justify-between overflow-hidden"
+						>
+							<CardHeader className="pb-3 pt-5 px-5">
 								<div className="flex items-start justify-between gap-2">
 									<div>
 										<div className="flex items-center gap-2">
-											<CardTitle className="text-base font-semibold">{meta.name}</CardTitle>
+											<CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+												{meta.name}
+											</CardTitle>
 											{isConfigured ? (
 												isEnv ? (
 													<Badge
 														variant="outline"
-														className="border-teal-500/50 bg-teal-500/10 text-teal-400 text-xs flex items-center gap-1"
+														className="border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono text-[11px] gap-1.5"
 													>
-														<Cpu className="h-3 w-3" /> Configured (Env)
+														<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+														Configured (Env)
 													</Badge>
 												) : (
 													<Badge
-														variant="default"
-														className="bg-green-600 hover:bg-green-600 text-xs flex items-center gap-1"
+														variant="outline"
+														className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] gap-1.5"
 													>
-														<CheckCircle2 className="h-3 w-3 mr-1" /> Configured (Database)
+														<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+														Configured (Database)
 													</Badge>
 												)
 											) : (
-												<Badge variant="secondary" className="text-xs">
+												<Badge
+													variant="outline"
+													className="border-border/60 bg-muted/20 text-muted-foreground font-mono text-[11px]"
+												>
 													Not Configured
 												</Badge>
 											)}
 										</div>
-										<CardDescription className="text-xs mt-1">
+										<CardDescription className="text-xs text-muted-foreground mt-1">
 											{meta.description}
 										</CardDescription>
 									</div>
@@ -472,22 +538,22 @@ export function ApiKeysManager() {
 										href={meta.signupUrl}
 										target="_blank"
 										rel="noopener noreferrer"
-										className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0"
+										className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
 									>
-										Get Key <ExternalLink className="h-3 w-3" />
+										Obtenir <ExternalLink className="h-3 w-3" />
 									</a>
 								</div>
 							</CardHeader>
 
-							<CardContent className="space-y-3 pb-3">
-								<div className="flex items-center justify-between text-xs text-muted-foreground bg-muted/40 px-2.5 py-1.5 rounded-md">
-									<span>Free Tier Allowance:</span>
-									<span className="font-mono font-medium text-foreground">{meta.freeTier}</span>
+							<CardContent className="space-y-3.5 pb-4 px-5">
+								<div className="flex items-center justify-between text-[11px] text-muted-foreground bg-muted/15 px-3 py-1.5 rounded-lg border border-border/30 font-mono">
+									<span>Quota gratuit :</span>
+									<span className="font-semibold text-foreground">{meta.freeTier}</span>
 								</div>
 
 								<div className="space-y-1.5">
-									<Label htmlFor={`key-${provider.id}`} className="text-xs">
-										API Key
+									<Label htmlFor={`key-${provider.id}`} className="text-xs text-muted-foreground">
+										Clé API
 									</Label>
 									<div className="relative">
 										<Input
@@ -496,7 +562,7 @@ export function ApiKeysManager() {
 											placeholder={
 												isConfigured
 													? isEnv
-														? "•••••••••••••••• (Loaded from .env)"
+														? "•••••••••••••••• (Chargée depuis .env)"
 														: "••••••••••••••••••••••••"
 													: `Enter ${meta.name} API Key`
 											}
@@ -507,7 +573,7 @@ export function ApiKeysManager() {
 													[provider.id]: e.target.value,
 												}))
 											}
-											className="pr-10 font-mono text-xs"
+											className="h-9 pr-10 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
 										/>
 										<Button
 											type="button"
@@ -519,9 +585,9 @@ export function ApiKeysManager() {
 											onClick={() => toggleReveal(provider.id)}
 										>
 											{isRevealed ? (
-												<EyeOff className="h-4 w-4 text-muted-foreground" />
+												<EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
 											) : (
-												<Eye className="h-4 w-4 text-muted-foreground" />
+												<Eye className="h-3.5 w-3.5 text-muted-foreground" />
 											)}
 										</Button>
 									</div>
@@ -531,15 +597,20 @@ export function ApiKeysManager() {
 								{valState?.valid !== undefined && (
 									<Alert
 										variant={valState.valid ? "default" : "destructive"}
-										className={`py-2 text-xs ${valState.valid ? "border-green-500 bg-green-50 dark:bg-green-950/20" : ""}`}
+										className={cn(
+											"py-2 text-xs rounded-lg",
+											valState.valid
+												? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+												: "border-rose-500/20 bg-rose-500/10 text-rose-600 dark:text-rose-400",
+										)}
 									>
 										<div className="flex items-center gap-1.5">
 											{valState.valid ? (
-												<CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+												<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
 											) : (
-												<AlertCircle className="h-3.5 w-3.5" />
+												<AlertCircle className="h-3.5 w-3.5 text-rose-500" />
 											)}
-											<AlertDescription>
+											<AlertDescription className="text-xs">
 												{valState.valid
 													? "Valid API key: Connection successfully established."
 													: valState.message || "Invalid API key."}
@@ -549,11 +620,12 @@ export function ApiKeysManager() {
 								)}
 							</CardContent>
 
-							<CardFooter className="pt-2 flex items-center justify-between border-t bg-muted/20">
+							<CardFooter className="pt-3 pb-3 px-5 flex items-center justify-between border-t border-border/30 bg-muted/10">
 								<div className="flex items-center gap-2">
 									<Button
 										variant="outline"
 										size="sm"
+										className="h-8 text-xs border-border/60"
 										onClick={() => handleValidateMarketDataKey(provider.id)}
 										disabled={
 											valState?.testing ||
@@ -568,13 +640,12 @@ export function ApiKeysManager() {
 									</Button>
 									<Button
 										size="sm"
-										onClick={() =>
-											handleSaveMarketDataKey(provider.id, priority, isEnabled)
-										}
+										className="h-8 text-xs font-medium"
+										onClick={() => handleSaveMarketDataKey(provider.id, priority, isEnabled)}
 										disabled={savingMd || !keyInputs[provider.id]?.trim()}
 									>
 										{savingMd ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
-										Save
+										Enregistrer
 									</Button>
 								</div>
 
@@ -585,27 +656,29 @@ export function ApiKeysManager() {
 												<Button
 													variant="destructive"
 													size="sm"
+													className="h-8 text-xs"
 													onClick={() => handleDeleteMarketDataKey(provider.id)}
 													disabled={deletingMd}
 												>
-													Confirm
+													Confirmer
 												</Button>
 												<Button
 													variant="ghost"
 													size="sm"
+													className="h-8 text-xs"
 													onClick={() => setDeleteConfirm(null)}
 												>
-													Cancel
+													Annuler
 												</Button>
 											</div>
 										) : (
 											<Button
 												variant="ghost"
 												size="sm"
-												className="text-destructive hover:bg-destructive/10"
+												className="h-8 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
 												onClick={() => setDeleteConfirm(provider.id)}
 											>
-												<Trash2 className="h-3.5 w-3.5 mr-1" /> Remove
+												<Trash2 className="h-3.5 w-3.5 mr-1" /> Supprimer
 											</Button>
 										)}
 									</div>
@@ -624,74 +697,82 @@ export function ApiKeysManager() {
 			<div>
 				<h2 className="text-lg font-semibold tracking-tight">Web3 & Blockchain Infrastructure</h2>
 				<p className="text-xs text-muted-foreground">
-					Single-key architecture connecting 7 networks (Ethereum, Solana, Bitcoin, Arbitrum, Base, Optimism, Polygon).
+					Single-key architecture connecting 7 networks (Ethereum, Solana, Bitcoin, Arbitrum, Base,
+					Optimism, Polygon).
 				</p>
 			</div>
 
-			<Card>
-				<CardHeader>
+			<Card className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<CardHeader className="pt-5 px-5 pb-3">
 					<div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
 						<div>
 							<div className="flex items-center gap-2">
-								<CardTitle className="text-base flex items-center gap-2">
+								<CardTitle className="text-sm font-semibold tracking-tight text-foreground flex items-center gap-2">
 									<Cpu className="h-4 w-4 text-primary" /> Alchemy API & Compute Unit Meter
 								</CardTitle>
 								{cuUsage?.keySource === "ENV" ? (
 									<Badge
 										variant="outline"
-										className="border-teal-500/50 bg-teal-500/10 text-teal-400 text-xs flex items-center gap-1"
+										className="border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono text-[11px] gap-1.5"
 									>
-										<Cpu className="h-3 w-3" /> Configured (Env)
+										<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+										Configured (Env)
 									</Badge>
 								) : cuUsage?.keySource === "DATABASE" ? (
 									<Badge
-										variant="default"
-										className="bg-green-600 hover:bg-green-600 text-xs flex items-center gap-1"
+										variant="outline"
+										className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] gap-1.5"
 									>
-										<CheckCircle2 className="h-3 w-3 mr-1" /> Configured (Database)
+										<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+										Configured (Database)
 									</Badge>
 								) : (
-									<Badge variant="secondary" className="text-xs">
+									<Badge
+										variant="outline"
+										className="border-border/60 bg-muted/20 text-muted-foreground font-mono text-[11px]"
+									>
 										Not Configured
 									</Badge>
 								)}
 							</div>
-							<CardDescription className="text-xs mt-1">
-								Powers on-chain token discovery, native balance scans, and UTXO transactions at zero subscription fees.
+							<CardDescription className="text-xs text-muted-foreground mt-1">
+								Alimente la découverte des jetons on-chain, les soldes natifs et les flux RPC multi-chaînes sans frais d'abonnement.
 							</CardDescription>
 						</div>
 						<a
 							href="https://dashboard.alchemy.com/"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0"
+							className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
 						>
-							Alchemy Console <ExternalLink className="h-3 w-3" />
+							Console Alchemy <ExternalLink className="h-3 w-3" />
 						</a>
 					</div>
 				</CardHeader>
-				<CardContent className="space-y-5">
-					<div className="space-y-2 bg-muted/30 p-4 rounded-lg border">
-						<div className="flex items-center justify-between text-sm">
-							<span className="font-medium flex items-center gap-1.5">
-								<Zap className="h-4 w-4 text-amber-500" /> Monthly Quota Consumption
+				<CardContent className="space-y-5 px-5 pb-5">
+					<div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-2.5">
+						<div className="flex items-center justify-between text-xs">
+							<span className="font-medium flex items-center gap-1.5 text-foreground">
+								<Zap className="h-3.5 w-3.5 text-amber-500" /> Quota Mensuel (Compute Units)
 							</span>
-							<span className="font-mono font-semibold">
+							<span className="font-mono font-semibold text-foreground tabular-nums">
 								{formatCU(cuConsumed)} / {formatCU(cuMax)} CUs ({cuPct}%)
 							</span>
 						</div>
-						<Progress value={cuPct} className="h-2.5" />
-						<div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+						<Progress value={cuPct} className="h-2 bg-muted/40" />
+						<div className="flex items-center justify-between text-[11px] text-muted-foreground font-mono">
 							<span>0 CUs</span>
-							<span className="text-amber-600/90 font-medium">80% soft-throttle limit ({formatCU(cuMax * 0.8)})</span>
-							<span>{formatCU(cuMax)} (Free Limit)</span>
+							<span className="text-amber-500/90 font-medium">
+								Seuil souple 80% ({formatCU(cuMax * 0.8)})
+							</span>
+							<span>{formatCU(cuMax)} (Plafond gratuit)</span>
 						</div>
 					</div>
 
 					<div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
 						<div className="md:col-span-2 space-y-1.5">
-							<Label htmlFor="alchemy-key-input" className="text-xs">
-								Update Alchemy API Key
+							<Label htmlFor="alchemy-key-input" className="text-xs text-muted-foreground">
+								Mettre à jour la clé API Alchemy
 							</Label>
 							<div className="relative">
 								<Input
@@ -702,11 +783,11 @@ export function ApiKeysManager() {
 											? cuUsage.maskedKey
 											: cuUsage?.hasKey
 												? "••••••••••••••••••••••••••••••••"
-												: "Enter Alchemy API Key (e.g. alch_...)"
+												: "Saisir la clé API Alchemy (ex: alch_...)"
 									}
 									value={alchemyKeyInput}
 									onChange={(e) => setAlchemyKeyInput(e.target.value)}
-									className="pr-10 font-mono text-xs"
+									className="h-9 pr-10 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
 								/>
 								<Button
 									type="button"
@@ -718,30 +799,31 @@ export function ApiKeysManager() {
 									onClick={() => setShowAlchemyKey(!showAlchemyKey)}
 								>
 									{showAlchemyKey ? (
-										<EyeOff className="h-4 w-4 text-muted-foreground" />
+										<EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
 									) : (
-										<Eye className="h-4 w-4 text-muted-foreground" />
+										<Eye className="h-3.5 w-3.5 text-muted-foreground" />
 									)}
 								</Button>
 							</div>
 							{cuUsage?.keySource === "ENV" && (
 								<p className="text-[11px] text-muted-foreground mt-1">
-									Currently active via environment variable. You can enter a custom key above to save it to the database and override the environment default.
+									Active via variable d'environnement (.env). Vous pouvez enregistrer une clé personnalisée pour surcharger le défaut.
 								</p>
 							)}
 							{cuUsage?.keySource === "DATABASE" && (
 								<p className="text-[11px] text-muted-foreground mt-1">
-									Currently active via secure database credentials.
+									Active et chiffrée de manière sécurisée en base de données.
 								</p>
 							)}
 						</div>
 						<Button
+							size="sm"
 							onClick={handleSaveAlchemyKey}
 							disabled={savingAlchemy || !alchemyKeyInput.trim()}
-							className="w-full md:w-auto"
+							className="h-9 text-xs font-medium w-full md:w-auto"
 						>
-							{savingAlchemy ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-							Save Alchemy Key
+							{savingAlchemy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+							Enregistrer la clé Alchemy
 						</Button>
 					</div>
 				</CardContent>
@@ -759,52 +841,59 @@ export function ApiKeysManager() {
 				</p>
 			</div>
 
-			<Card>
-				<CardHeader>
+			<Card className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<CardHeader className="pt-5 px-5 pb-3">
 					<div className="flex items-start justify-between gap-2">
 						<div>
 							<div className="flex items-center gap-2">
-								<CardTitle className="text-base">Kraken Direct API Key</CardTitle>
+								<CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+									Kraken Direct API Key
+								</CardTitle>
 								{isKrakenConfigured ? (
 									krakenCred?.source === "ENV" ? (
 										<Badge
 											variant="outline"
-											className="border-teal-500/50 bg-teal-500/10 text-teal-400 text-xs flex items-center gap-1"
+											className="border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono text-[11px] gap-1.5"
 										>
-											<Cpu className="h-3 w-3" /> Configured (Env)
+											<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+											Configured (Env)
 										</Badge>
 									) : (
 										<Badge
-											variant="default"
-											className="bg-green-600 hover:bg-green-600 text-xs flex items-center gap-1"
+											variant="outline"
+											className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] gap-1.5"
 										>
-											<CheckCircle2 className="h-3 w-3 mr-1" /> Active
+											<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+											Active
 										</Badge>
 									)
 								) : (
-									<Badge variant="secondary" className="text-xs">
+									<Badge
+										variant="outline"
+										className="border-border/60 bg-muted/20 text-muted-foreground font-mono text-[11px]"
+									>
 										Not Configured
 									</Badge>
 								)}
 							</div>
-							<CardDescription className="text-xs mt-1">
-								Syncs spot balances, trading positions, and staking ledgers directly without aggregators.
+							<CardDescription className="text-xs text-muted-foreground mt-1">
+								Synchronise les soldes spot, ordres et positions de staking sans intermédiaire.
 							</CardDescription>
 						</div>
 						<a
 							href="https://www.kraken.com/u/security/api"
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0"
+							className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
 						>
-							Kraken Security <ExternalLink className="h-3 w-3" />
+							Sécurité Kraken <ExternalLink className="h-3 w-3" />
 						</a>
 					</div>
 				</CardHeader>
-				<CardContent className="space-y-4">
+				<CardContent className="space-y-4 px-5 pb-5">
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="space-y-1.5">
-							<Label htmlFor="kraken-key" className="text-xs">
+							<Label htmlFor="kraken-key" className="text-xs text-muted-foreground">
 								Kraken API Key *
 							</Label>
 							<Input
@@ -812,17 +901,17 @@ export function ApiKeysManager() {
 								placeholder={
 									isKrakenConfigured
 										? krakenCred?.source === "ENV"
-											? "•••••••••••••••• (Loaded from .env)"
+											? "•••••••••••••••• (Chargée depuis .env)"
 											: "••••••••••••••••••••••••"
 										: "Enter API Key"
 								}
 								value={krakenKey}
 								onChange={(e) => setKrakenKey(e.target.value)}
-								className="font-mono text-xs"
+								className="h-9 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
 							/>
 						</div>
 						<div className="space-y-1.5">
-							<Label htmlFor="kraken-secret" className="text-xs">
+							<Label htmlFor="kraken-secret" className="text-xs text-muted-foreground">
 								Kraken API Secret *
 							</Label>
 							<div className="relative">
@@ -832,13 +921,13 @@ export function ApiKeysManager() {
 									placeholder={
 										isKrakenConfigured
 											? krakenCred?.source === "ENV"
-												? "•••••••••••••••• (Loaded from .env)"
+												? "•••••••••••••••• (Chargée depuis .env)"
 												: "••••••••••••••••••••••••"
 											: "Enter Private Key / Secret"
 									}
 									value={krakenSecret}
 									onChange={(e) => setKrakenSecret(e.target.value)}
-									className="pr-10 font-mono text-xs"
+									className="h-9 pr-10 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
 								/>
 								<Button
 									type="button"
@@ -850,21 +939,182 @@ export function ApiKeysManager() {
 									onClick={() => setShowKrakenSecret(!showKrakenSecret)}
 								>
 									{showKrakenSecret ? (
-										<EyeOff className="h-4 w-4 text-muted-foreground" />
+										<EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
 									) : (
-										<Eye className="h-4 w-4 text-muted-foreground" />
+										<Eye className="h-3.5 w-3.5 text-muted-foreground" />
 									)}
 								</Button>
 							</div>
 						</div>
 					</div>
-					<div className="flex justify-end">
+					<div className="flex justify-end pt-1">
 						<Button
+							size="sm"
+							className="h-8 text-xs font-medium"
 							onClick={handleRegisterKraken}
 							disabled={savingSync || !krakenKey.trim() || !krakenSecret.trim()}
 						>
-							{savingSync ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
+							{savingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
 							Save Kraken Credentials
+						</Button>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* Enable Banking PSD2 Open Banking */}
+			<Card className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<CardHeader className="pt-5 px-5 pb-3">
+					<div className="flex items-start justify-between gap-2">
+						<div>
+							<div className="flex items-center gap-2">
+								<CardTitle className="text-sm font-semibold tracking-tight text-foreground">
+									Enable Banking (European Open Banking)
+								</CardTitle>
+								{isEnableBankingConfigured ? (
+									enableBankingCred?.source === "ENV" ? (
+										<Badge
+											variant="outline"
+											className="border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-mono text-[11px] gap-1.5"
+										>
+											<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+											Configured (Env)
+										</Badge>
+									) : (
+										<Badge
+											variant="outline"
+											className="border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono text-[11px] gap-1.5"
+										>
+											<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+											Active
+										</Badge>
+									)
+								) : (
+									<Badge
+										variant="outline"
+										className="border-border/60 bg-muted/20 text-muted-foreground font-mono text-[11px]"
+									>
+										Not Configured
+									</Badge>
+								)}
+							</div>
+							<CardDescription className="text-xs text-muted-foreground mt-1">
+								Connecte les comptes bancaires (France, Luxembourg, Allemagne, Belgique...) via PSD2 AIS (gratuit pour usage personnel).
+							</CardDescription>
+						</div>
+						<a
+							href="https://enablebanking.com/cp/"
+							target="_blank"
+							rel="noopener noreferrer"
+							className="text-xs text-primary hover:underline flex items-center gap-1 shrink-0 font-medium"
+						>
+							Panneau Enable Banking <ExternalLink className="h-3 w-3" />
+						</a>
+					</div>
+				</CardHeader>
+				<CardContent className="space-y-4 px-5 pb-5">
+					<div className="rounded-xl border border-border/40 bg-muted/10 p-4 space-y-2 text-xs leading-relaxed text-muted-foreground">
+						<p className="font-semibold text-foreground">Configuration en 2 étapes simples :</p>
+						<ol className="list-decimal list-inside space-y-1">
+							<li>
+								Sur le{" "}
+								<a
+									href="https://enablebanking.com/cp/"
+									target="_blank"
+									rel="noopener noreferrer"
+									className="text-primary underline font-medium"
+								>
+									Control Panel Enable Banking
+								</a>
+								, créez votre application avec l&apos;option par défaut <em>&quot;Generate in the browser&quot;</em>. Enable Banking télécharge automatiquement votre clé privée.
+							</li>
+							<li>
+								Copiez l&apos;<strong>Application ID</strong> et chargez le fichier de clé privée téléchargé (ou collez son contenu) ci-dessous.
+							</li>
+						</ol>
+					</div>
+
+					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+						<div className="space-y-1.5">
+							<Label htmlFor="eb-app-id" className="text-xs text-muted-foreground">
+								Enable Banking Application ID (UUID) *
+							</Label>
+							<Input
+								id="eb-app-id"
+								placeholder={
+									isEnableBankingConfigured
+										? enableBankingCred?.source === "ENV"
+											? "•••••••••••••••• (Chargée depuis .env)"
+											: "••••••••-••••-••••-••••-••••••••••••"
+										: "e.g. b82877a5-4e78-43f1-b847-bb703b44b9b9"
+								}
+								value={enableBankingAppId}
+								onChange={(e) => setEnableBankingAppId(e.target.value)}
+								className="h-9 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
+							/>
+						</div>
+						<div className="space-y-1.5">
+							<div className="flex items-center justify-between">
+								<Label htmlFor="eb-private-key" className="text-xs text-muted-foreground">
+									RSA Private Key (PEM) *
+								</Label>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									className="h-6 px-2 text-[11px] gap-1 text-primary hover:text-primary"
+									onClick={() => ebFileInputRef.current?.click()}
+								>
+									<Upload className="h-3 w-3" /> Importer fichier (.key / .pem)
+								</Button>
+								<input
+									type="file"
+									ref={ebFileInputRef}
+									onChange={handleEbKeyFileUpload}
+									accept=".key,.pem,.txt"
+									className="hidden"
+								/>
+							</div>
+							<div className="relative">
+								<Input
+									id="eb-private-key"
+									type={showEnableBankingPrivateKey ? "text" : "password"}
+									placeholder={
+										isEnableBankingConfigured
+											? enableBankingCred?.source === "ENV"
+												? "•••••••••••••••• (Chargée depuis .env)"
+												: "-----BEGIN PRIVATE KEY----- ••••••••"
+											: "-----BEGIN PRIVATE KEY----- ... ou importer le fichier ci-dessus"
+									}
+									value={enableBankingPrivateKey}
+									onChange={(e) => setEnableBankingPrivateKey(e.target.value)}
+									className="h-9 pr-10 font-mono text-xs border-border/60 bg-background/50 focus-visible:ring-primary/20"
+								/>
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									aria-label="Toggle Enable Banking private key visibility"
+									className="absolute right-0 top-0 h-full px-3 py-1 hover:bg-transparent"
+									onClick={() => setShowEnableBankingPrivateKey(!showEnableBankingPrivateKey)}
+								>
+									{showEnableBankingPrivateKey ? (
+										<EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+									) : (
+										<Eye className="h-3.5 w-3.5 text-muted-foreground" />
+									)}
+								</Button>
+							</div>
+						</div>
+					</div>
+					<div className="flex justify-end pt-1">
+						<Button
+							size="sm"
+							className="h-8 text-xs font-medium"
+							onClick={handleRegisterEnableBanking}
+							disabled={savingSync || !enableBankingAppId.trim() || !enableBankingPrivateKey.trim()}
+						>
+							{savingSync ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+							Save Enable Banking Credentials
 						</Button>
 					</div>
 				</CardContent>
@@ -881,7 +1131,8 @@ export function ApiKeysManager() {
 						<KeyRound className="h-7 w-7 text-primary" /> API Keys & Integrations
 					</h1>
 					<p className="text-muted-foreground mt-1 text-sm">
-						Centrally configure, validate, and monitor third-party API credentials, rate limits, and Web3 quotas.
+						Centrally configure, validate, and monitor third-party API credentials, rate limits, and
+						Web3 quotas.
 					</p>
 				</div>
 				<div className="flex items-center gap-2">
@@ -902,82 +1153,110 @@ export function ApiKeysManager() {
 			</div>
 
 			{/* KPI Summary Ribbon */}
-			<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-							Configured Providers
-						</CardTitle>
-						<ShieldCheck className="h-4 w-4 text-primary" />
-					</CardHeader>
-					<CardContent>
-						<div className="text-2xl font-bold">{totalConfigured} / 6</div>
-						<p className="text-xs text-muted-foreground mt-1">
-							Encrypted at rest using AES-256-GCM
-						</p>
-					</CardContent>
-				</Card>
-
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-							Alchemy Web3 CU Quota
-						</CardTitle>
-						<Zap className="h-4 w-4 text-amber-500" />
-					</CardHeader>
-					<CardContent className="space-y-2">
-						<div className="flex items-center justify-between text-sm font-semibold">
-							<span>
-								{formatCU(cuConsumed)} / {formatCU(cuMax)}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<div className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-border/40">
+					{/* Segment 1: Providers */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+								<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+								Configured Providers
 							</span>
-							<Badge variant={isCUThrottled ? "destructive" : "secondary"}>
-								{cuPct}% used
-							</Badge>
+							<ShieldCheck className="h-4 w-4 text-primary" />
 						</div>
-						<Progress value={cuPct} className="h-2" />
-						<p className="text-[11px] text-muted-foreground">
-							{cuUsage?.billingMonth ? `Billing cycle: ${cuUsage.billingMonth}` : "Free tier: 30M CUs/month"}
-						</p>
-					</CardContent>
-				</Card>
+						<div className="mt-2">
+							<span className="text-2xl font-bold tracking-tight text-foreground tabular-nums">
+								{totalConfigured} / 6
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								Encrypted at rest using AES-256-GCM
+							</p>
+						</div>
+					</div>
 
-				<Card>
-					<CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-						<CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-							System Integration Health
-						</CardTitle>
-						<Activity className="h-4 w-4 text-green-500" />
-					</CardHeader>
-					<CardContent>
-						<div className="flex items-center gap-2">
-							<span className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-							<span className="text-sm font-semibold text-foreground">Operational</span>
+					{/* Segment 2: Web3 Quota */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+								<span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+								Alchemy Web3 CU Quota
+							</span>
+							<Zap className="h-4 w-4 text-amber-500" />
 						</div>
-						<p className="text-xs text-muted-foreground mt-2">
-							Live market fallback: Yahoo Finance (free, zero-key)
-						</p>
-					</CardContent>
-				</Card>
+						<div className="mt-2 space-y-1.5">
+							<div className="flex items-center justify-between text-xs font-semibold tabular-nums">
+								<span>
+									{formatCU(cuConsumed)} / {formatCU(cuMax)}
+								</span>
+								<Badge variant={isCUThrottled ? "destructive" : "secondary"} className="text-[10px] py-0 px-1.5">
+									{cuPct}% used
+								</Badge>
+							</div>
+							<Progress value={cuPct} className="h-1.5" />
+							<p className="text-[11px] text-muted-foreground">
+								{cuUsage?.billingMonth
+									? `Billing cycle: ${cuUsage.billingMonth}`
+									: "Free tier: 30M CUs/month"}
+							</p>
+						</div>
+					</div>
+
+					{/* Segment 3: System Health */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+								<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+								System Integration Health
+							</span>
+							<Activity className="h-4 w-4 text-emerald-500" />
+						</div>
+						<div className="mt-2">
+							<div className="flex items-center gap-2">
+								<span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+								<span className="text-sm font-semibold text-foreground">Operational</span>
+							</div>
+							<p className="text-[11px] text-muted-foreground mt-1">
+								Live market fallback: Yahoo Finance (free, zero-key)
+							</p>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			{/* Main Tabs */}
-			<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-				<TabsList>
-					<TabsTrigger value="all" onClick={() => setActiveTab("all")}>
-						<KeyRound className="h-4 w-4 mr-2" />
+			<Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+				<TabsList className="grid grid-cols-2 lg:grid-cols-4 w-full h-auto p-1 bg-muted/20 border border-border/50 rounded-xl gap-1">
+					<TabsTrigger
+						value="all"
+						onClick={() => setActiveTab("all")}
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-2"
+					>
+						<KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
 						All Providers
 					</TabsTrigger>
-					<TabsTrigger value="market-data" onClick={() => setActiveTab("market-data")}>
-						<Activity className="h-4 w-4 mr-2" />
+					<TabsTrigger
+						value="market-data"
+						onClick={() => setActiveTab("market-data")}
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-2"
+					>
+						<Activity className="h-3.5 w-3.5 text-muted-foreground" />
 						Market Data Feeds
 					</TabsTrigger>
-					<TabsTrigger value="web3" onClick={() => setActiveTab("web3")}>
-						<Cpu className="h-4 w-4 mr-2" />
+					<TabsTrigger
+						value="web3"
+						onClick={() => setActiveTab("web3")}
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-2"
+					>
+						<Cpu className="h-3.5 w-3.5 text-muted-foreground" />
 						Blockchain Node (Alchemy)
 					</TabsTrigger>
-					<TabsTrigger value="sync" onClick={() => setActiveTab("sync")}>
-						<Link2 className="h-4 w-4 mr-2" />
-						Exchange Sync (Kraken)
+					<TabsTrigger
+						value="sync"
+						onClick={() => setActiveTab("sync")}
+						className="h-9 text-xs font-medium data-[state=active]:bg-background/80 data-[state=active]:text-foreground data-[state=active]:shadow-xs rounded-lg gap-2"
+					>
+						<Link2 className="h-3.5 w-3.5 text-muted-foreground" />
+						Exchange & Bank Sync
 					</TabsTrigger>
 				</TabsList>
 

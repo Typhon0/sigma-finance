@@ -12,4 +12,3 @@ export const Route = createLazyFileRoute("/_app/settings/api-keys")({
 		</ProtectedRoute>
 	),
 });
-

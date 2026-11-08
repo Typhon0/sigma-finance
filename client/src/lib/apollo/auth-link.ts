@@ -54,9 +54,13 @@ let isRefreshing = false;
 let refreshPromise: Promise<string> | null = null;
 
 /**
- * Refresh the authentication token
+ * Refresh the authentication token.
+ *
+ * Exported so non-Apollo transports (e.g. the log SSE stream) can recover from
+ * an expired access token instead of replaying a request with a dead token.
+ * Concurrent callers share the same in-flight refresh.
  */
-const refreshAuthToken = async (): Promise<string> => {
+export const refreshAuthToken = async (): Promise<string> => {
 	if (isRefreshing && refreshPromise) {
 		return refreshPromise;
 	}

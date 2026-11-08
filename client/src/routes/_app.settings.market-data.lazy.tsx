@@ -6,7 +6,7 @@ import { SettingsLayout } from "@/components/settings/SettingsLayout";
 export const Route = createLazyFileRoute("/_app/settings/market-data")({
 	component: () => (
 		<ProtectedRoute>
-			<SettingsLayout activeSection="market-data">
+			<SettingsLayout activeSection="market-data" fullWidth={true}>
 				<MarketDataCenter />
 			</SettingsLayout>
 		</ProtectedRoute>

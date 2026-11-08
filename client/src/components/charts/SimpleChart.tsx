@@ -1,7 +1,7 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import type React from "react";
 import { useMemo } from "react";
+import EChart from "@/components/charts/EChart";
 import { useMarketData } from "@/hooks/useMarketData";
 
 interface SimpleChartProps {
@@ -138,7 +138,7 @@ const SimpleChart: React.FC<SimpleChartProps> = ({
 				</div>
 			)}
 
-			<ReactECharts
+			<EChart
 				option={option}
 				notMerge={true}
 				lazyUpdate={true}

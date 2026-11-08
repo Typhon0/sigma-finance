@@ -1,5 +1,4 @@
 import type { EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	AlertTriangle,
@@ -17,6 +16,7 @@ import {
 	Zap,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -367,7 +367,7 @@ export function PerformanceDashboard({ className }: PerformanceDashboardProps) {
 										</span>
 									</div>
 								</div>
-								<ReactECharts
+								<EChart
 									option={stateTransitionsOption}
 									notMerge={true}
 									lazyUpdate={true}
@@ -402,7 +402,7 @@ export function PerformanceDashboard({ className }: PerformanceDashboardProps) {
 										<span className="font-medium">{metrics?.dataLoadTimes?.total || "--"}</span>
 									</div>
 								</div>
-								<ReactECharts
+								<EChart
 									option={dataLoadsOption}
 									notMerge={true}
 									lazyUpdate={true}
@@ -480,7 +480,7 @@ export function PerformanceDashboard({ className }: PerformanceDashboardProps) {
 							</CardHeader>
 							<CardContent>
 								<div className="flex items-center justify-center mb-4">
-									<ReactECharts
+									<EChart
 										option={deviceBreakdownOption}
 										notMerge={true}
 										lazyUpdate={true}
@@ -550,7 +550,7 @@ export function PerformanceDashboard({ className }: PerformanceDashboardProps) {
 								<CardDescription>Error occurrence patterns over time</CardDescription>
 							</CardHeader>
 							<CardContent>
-								<ReactECharts
+								<EChart
 									option={errorsOption}
 									notMerge={true}
 									lazyUpdate={true}

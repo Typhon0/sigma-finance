@@ -180,7 +180,7 @@ export function TransactionIntegrationExample() {
 			"Date,Type,Asset,Quantity,Price,Amount,Notes",
 			...transactions.map(
 				(t) =>
-					`${t.executedAt},${t.transactionType},${t.asset.name},${t.quantity},${t.unitPriceAmount},${t.quantity * (t.unitPriceAmount ?? 0)},"${t.notes || ""}"`,
+					`${t.executedAt},${t.transactionType},${t.asset?.name || "Transaction"},${t.quantity},${t.unitPriceAmount},${t.quantity * (t.unitPriceAmount ?? 0)},"${t.notes || ""}"`,
 			),
 		].join("\n");
 

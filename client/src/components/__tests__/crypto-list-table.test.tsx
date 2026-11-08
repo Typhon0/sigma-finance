@@ -13,7 +13,7 @@ vi.mock("sonner", () => ({
 }));
 
 // Mock echarts-for-react
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-mock" />,
 }));
 
@@ -86,8 +86,8 @@ vi.mock("@apollo/client", async (importOriginal) => {
 });
 
 // Mock AssetHeroChart
-vi.mock("@/components/charts", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("@/components/charts")>();
+vi.mock("@/components/charts/AssetHeroChart", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("@/components/charts/AssetHeroChart")>();
 	return {
 		...actual,
 		AssetHeroChart: () => <div data-testid="asset-hero-chart-mock" />,
@@ -213,12 +213,8 @@ describe("CryptoList Table Integration", () => {
 		fireEvent.click(assetGroupBtn);
 
 		// Expandable group headers for tokens exist (with aria-expanded="true")
-		expect(
-			screen.getByRole("button", { name: /^BTC/, expanded: true }),
-		).toBeInTheDocument();
-		expect(
-			screen.getByRole("button", { name: /^ETH/, expanded: true }),
-		).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^BTC/, expanded: true })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /^ETH/, expanded: true })).toBeInTheDocument();
 	});
 
 	it("switches to Custody grouping mode when Custody button is clicked", () => {
@@ -230,7 +226,9 @@ describe("CryptoList Table Integration", () => {
 		expect(
 			screen.getByRole("button", { name: /^Self-Custody \(Hot Wallet\)/ }),
 		).toBeInTheDocument();
-		expect(screen.getByRole("button", { name: /^Centralized Exchange \(CEX\)/ })).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /^Centralized Exchange \(CEX\)/ }),
+		).toBeInTheDocument();
 	});
 
 	it("switches to flat None grouping mode when None button is clicked", () => {
@@ -275,9 +273,9 @@ describe("CryptoList Table Integration", () => {
 		expect(screen.getByRole("button", { name: "SOL" })).toBeInTheDocument();
 
 		// Set Cost Basis button is displayed for unrecorded wallet token
-		expect(
-			screen.getAllByRole("button", { name: "Set Cost Basis" }).length,
-		).toBeGreaterThanOrEqual(1);
+		expect(screen.getAllByRole("button", { name: "Set Cost Basis" }).length).toBeGreaterThanOrEqual(
+			1,
+		);
 	});
 
 	it("renders wallet row actions including View on Explorer and Copy Address", () => {

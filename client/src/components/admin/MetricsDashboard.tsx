@@ -166,138 +166,195 @@ export function MetricsDashboard() {
 		metricsPayload !== null && (delta.calc > DROP_THRESHOLD || delta.refresh > DROP_THRESHOLD);
 
 	return (
-		<Card className="border-border/60 bg-card">
-			<CardHeader className="pb-3 border-b border-border/30">
-				<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-					<div className="space-y-0.5">
-						<CardTitle className="text-lg font-semibold">Background Processor Metrics</CardTitle>
-						<CardDescription>
-							Live snapshot of <code className="font-mono text-[10px]">/admin/metrics</code> —
-							refreshed every {POLL_INTERVAL_MS / 1000}s
-						</CardDescription>
-					</div>
+		<div className="flex flex-col gap-6 w-full">
+			{/* En-tête de section */}
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+				<div>
 					<div className="flex items-center gap-2">
-						<Badge
-							variant="outline"
+						<Activity className="h-5 w-5 text-muted-foreground" />
+						<h1 className="text-xl font-semibold tracking-tight text-foreground">
+							Métriques du Processeur d'Arrière-Plan
+						</h1>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Supervision en temps réel des files de calcul, des jobs et de la charge interne.
+					</p>
+				</div>
+				<div className="flex items-center gap-2">
+					<Badge
+						variant="outline"
+						className={cn(
+							"gap-1.5 text-xs font-mono",
+							isLive
+								? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
+								: "border-red-500/30 text-red-600 dark:text-red-400",
+						)}
+					>
+						<span
 							className={cn(
-								"gap-1.5 text-xs",
-								isLive
-									? "border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
-									: "border-red-500/30 text-red-600 dark:text-red-400",
+								"h-1.5 w-1.5 rounded-full transition-colors",
+								isLive ? "bg-emerald-500 animate-pulse" : "bg-red-500",
 							)}
-						>
-							<span
-								className={cn(
-									"h-1.5 w-1.5 rounded-full transition-colors",
-									isLive ? "bg-emerald-500 animate-pulse" : "bg-red-500",
-								)}
-							/>
-							{isPaused ? "Paused" : isLive ? "Live" : "Disconnected"}
-						</Badge>
-						<Separator orientation="vertical" className="h-5" />
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-8 text-xs gap-1.5"
-							onClick={() => setIsPaused((prev) => !prev)}
-						>
-							{isPaused ? (
-								<Play className="h-3.5 w-3.5 text-emerald-500" />
-							) : (
-								<Pause className="h-3.5 w-3.5" />
-							)}
-							{isPaused ? "Resume" : "Pause"}
-						</Button>
-						<Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5" onClick={doFetch}>
-							<RefreshCw className="h-3.5 w-3.5" />
-							Refresh
-						</Button>
+						/>
+						{isPaused ? "En pause" : isLive ? "En direct" : "Déconnecté"}
+					</Badge>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 text-xs gap-1.5 border-border/60"
+						onClick={() => setIsPaused((prev) => !prev)}
+					>
+						{isPaused ? (
+							<Play className="h-3.5 w-3.5 text-emerald-500" />
+						) : (
+							<Pause className="h-3.5 w-3.5" />
+						)}
+						{isPaused ? "Reprendre" : "Pause"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						className="h-8 text-xs gap-1.5 border-border/60"
+						onClick={doFetch}
+					>
+						<RefreshCw className="h-3.5 w-3.5" />
+						Actualiser
+					</Button>
+				</div>
+			</div>
+
+			{error && (
+				<div className="flex items-center gap-2 rounded-xl bg-destructive/10 border border-destructive/20 p-4 text-xs text-destructive">
+					<AlertTriangle className="h-4 w-4 shrink-0" />
+					<span>
+						Échec de récupération des métriques : {error}. Les dernières données connues restent affichées.
+					</span>
+				</div>
+			)}
+
+			{response && (
+				<div className="flex items-center justify-between text-[11px] font-mono uppercase tracking-wider text-muted-foreground px-1">
+					<span>
+						Snapshot {formatSnapshotAt(response.snapshot_at)} · {formatSecondsAgo(lastFetchedSec)}
+					</span>
+					{metricsPayload?.is_running === false && response.running && (
+						<span className="flex items-center gap-1 text-amber-500">
+							<AlertTriangle className="h-3 w-3" /> processeur suspendu
+						</span>
+					)}
+				</div>
+			)}
+
+			{metricsPayload ? (
+				<div className="space-y-6">
+					{/* Ruban KPI unifié pour les compteurs BackgroundProcessor */}
+					<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+						<div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+							<div className="p-4 flex flex-col justify-between">
+								<div className="flex items-center justify-between gap-2">
+									<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+										<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+										Tâches Traitées
+									</span>
+									<Activity className="h-3.5 w-3.5 text-muted-foreground/60" />
+								</div>
+								<div className="mt-2">
+									<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+										{formatNumber(metricsPayload.processed_jobs)}
+									</span>
+									<p className="text-[11px] text-muted-foreground mt-0.5">
+										Total cumulé depuis démarrage
+									</p>
+								</div>
+							</div>
+
+							<div className="p-4 flex flex-col justify-between">
+								<div className="flex items-center justify-between gap-2">
+									<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+										<span
+											className={cn(
+												"h-1.5 w-1.5 rounded-full",
+												metricsPayload.failed_jobs > 0 ? "bg-rose-500" : "bg-emerald-500",
+											)}
+										/>
+										Tâches Échouées
+									</span>
+									<TrendingDown
+										className={cn(
+											"h-3.5 w-3.5",
+											metricsPayload.failed_jobs > 0 ? "text-rose-500" : "text-emerald-500/80",
+										)}
+									/>
+								</div>
+								<div className="mt-2">
+									<span
+										className={cn(
+											"text-2xl font-semibold tracking-tight tabular-nums",
+											metricsPayload.failed_jobs > 0 ? "text-rose-500" : "text-foreground",
+										)}
+									>
+										{formatNumber(metricsPayload.failed_jobs)}
+									</span>
+									<p className="text-[11px] text-muted-foreground mt-0.5">
+										{metricsPayload.failed_jobs === 0 ? "Aucun échec" : "Erreurs d'exécution"}
+									</p>
+								</div>
+							</div>
+
+							<div className="p-4 flex flex-col justify-between">
+								<div className="flex items-center justify-between gap-2">
+									<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+										<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+										Temps Moyen de Traitement
+									</span>
+									<Hourglass className="h-3.5 w-3.5 text-sky-500/80" />
+								</div>
+								<div className="mt-2">
+									<span className="text-2xl font-semibold tracking-tight text-foreground font-mono">
+										{formatAvgProcessingTime(metricsPayload.avg_processing_time)}
+									</span>
+									<p className="text-[11px] text-muted-foreground mt-0.5">
+										Latence par unité de calcul
+									</p>
+								</div>
+							</div>
+						</div>
+					</div>
+
+					{/* Pools de traitement */}
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						<PoolCard
+							title="File de Calcul (Calculations)"
+							queueSize={metricsPayload.calculation_queue_size}
+							dropped={metricsPayload.calculation_dropped_jobs}
+							droppedDelta={delta.calc}
+						/>
+						<PoolCard
+							title="File de Rafraîchissement (Refresh)"
+							queueSize={metricsPayload.refresh_queue_size}
+							dropped={metricsPayload.refresh_dropped_jobs}
+							droppedDelta={delta.refresh}
+						/>
 					</div>
 				</div>
-			</CardHeader>
+			) : (
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs flex flex-col items-center justify-center py-16 text-muted-foreground text-center gap-2 text-sm">
+					<Activity className="h-8 w-8 opacity-25" />
+					<p className="font-medium">En attente des métriques...</p>
+					<p className="text-xs">
+						{error ? "Nouvelle tentative au prochain cycle…" : "Interrogation du serveur en cours…"}
+					</p>
+				</div>
+			)}
 
-			<CardContent className="space-y-4 pt-4">
-				{error && (
-					<div className="flex items-center gap-2 rounded-md bg-destructive/10 border border-destructive/20 px-3 py-2 text-xs text-destructive">
-						<AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-						<span>
-							Metric poll failed: {error}. Showing last known data; the next poll will retry.
-						</span>
-					</div>
-				)}
-
-				{response && (
-					<div className="flex items-center justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-						<span>
-							Snapshot {formatSnapshotAt(response.snapshot_at)} · {formatSecondsAgo(lastFetchedSec)}
-						</span>
-						{metricsPayload?.is_running === false && response.running && (
-							<span className="flex items-center gap-1 text-amber-500">
-								<AlertTriangle className="h-3 w-3" /> processor paused
-							</span>
-						)}
-					</div>
-				)}
-
-				{metricsPayload ? (
-					<>
-						{/* BackgroundProcessor-wide counters */}
-						<div className="grid grid-cols-1 gap-3 sm:grid-cols-3 rounded-md border border-border/30 bg-card/40 p-4">
-							<WideMetric
-								icon={<Activity className="h-3.5 w-3.5 text-muted-foreground" />}
-								label="Processed (cumulative)"
-								value={formatNumber(metricsPayload.processed_jobs)}
-							/>
-							<WideMetric
-								icon={<TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />}
-								label="Failed (cumulative)"
-								value={formatNumber(metricsPayload.failed_jobs)}
-								emphasize={metricsPayload.failed_jobs > 0}
-								emphasizeClass="text-red-500"
-							/>
-							<WideMetric
-								icon={<Hourglass className="h-3.5 w-3.5 text-muted-foreground" />}
-								label="Avg processing time"
-								value={formatAvgProcessingTime(metricsPayload.avg_processing_time)}
-							/>
-						</div>
-
-						{/* Per-pool cards */}
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-							<PoolCard
-								title="Calculation Pool"
-								queueSize={metricsPayload.calculation_queue_size}
-								dropped={metricsPayload.calculation_dropped_jobs}
-								droppedDelta={delta.calc}
-							/>
-							<PoolCard
-								title="Refresh Pool"
-								queueSize={metricsPayload.refresh_queue_size}
-								dropped={metricsPayload.refresh_dropped_jobs}
-								droppedDelta={delta.refresh}
-							/>
-						</div>
-					</>
-				) : (
-					<div className="flex flex-col items-center justify-center py-16 text-muted-foreground text-center gap-2 text-sm">
-						<Activity className="h-8 w-8 opacity-25" />
-						<p className="font-medium">No metrics yet</p>
-						<p className="text-xs">
-							{error ? "Retrying on next tick…" : "Waiting for first poll…"}
-						</p>
-					</div>
-				)}
-
-				{hasDropAlert && !isPaused && (
-					<div className="flex items-center gap-2 rounded-md border border-red-500/20 bg-red-500/5 px-3 py-2 text-xs text-red-500">
-						<AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-						Worker-pool queue depth exceeded capacity. The BackgroundProcessor dropped{" "}
-						{delta.calc + delta.refresh} job(s) in the last {POLL_INTERVAL_MS / 1000}s window —
-						check DB pool size, calc worker count, or recent portfolio count spikes.
-					</div>
-				)}
-			</CardContent>
-		</Card>
+			{hasDropAlert && !isPaused && (
+				<div className="flex items-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 p-4 text-xs text-rose-500">
+					<AlertTriangle className="h-4 w-4 shrink-0" />
+					Avertissement : La capacité du pool de workers a été dépassée. Le processeur a abandonné{" "}
+					{delta.calc + delta.refresh} tâche(s) au cours des dernières {POLL_INTERVAL_MS / 1000}s.
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -311,30 +368,6 @@ function isMetricsPayload(value: unknown): value is MetricsPayload {
 		typeof v.failed_jobs === "number" &&
 		typeof v.calculation_queue_size === "number" &&
 		typeof v.calculation_dropped_jobs === "number"
-	);
-}
-
-function WideMetric({
-	icon,
-	label,
-	value,
-	emphasize = false,
-	emphasizeClass,
-}: {
-	icon: React.ReactNode;
-	label: string;
-	value: string;
-	emphasize?: boolean;
-	emphasizeClass?: string;
-}) {
-	return (
-		<div className="flex flex-col gap-1.5">
-			<div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-				{icon}
-				{label}
-			</div>
-			<div className={cn("font-mono text-2xl font-bold", emphasize && emphasizeClass)}>{value}</div>
-		</div>
 	);
 }
 
@@ -354,8 +387,8 @@ function PoolCard({
 	return (
 		<div
 			className={cn(
-				"space-y-3 rounded-md border p-4 transition-colors",
-				isAlerting ? "border-red-500/30 bg-red-500/5" : "border-border/30 bg-card/30",
+				"rounded-xl border p-5 transition-colors backdrop-blur-xs space-y-4",
+				isAlerting ? "border-rose-500/30 bg-rose-500/5" : "border-border/60 bg-card/30",
 			)}
 		>
 			<div className="flex items-center justify-between">
@@ -364,24 +397,24 @@ function PoolCard({
 				</span>
 				{isAlerting && (
 					<Badge variant="destructive" className="gap-1 text-[10px] px-2 py-0 h-5 font-mono">
-						<TrendingDown className="h-3 w-3" />+{droppedDelta} in last {POLL_INTERVAL_MS / 1000}s
+						<TrendingDown className="h-3 w-3" />+{droppedDelta} / {POLL_INTERVAL_MS / 1000}s
 					</Badge>
 				)}
 			</div>
 			<div className="grid grid-cols-2 gap-4">
-				<div className="space-y-1.5">
+				<div className="space-y-1">
 					<div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
 						<Database className="h-3 w-3" />
-						Queue size
+						Taille de la file
 					</div>
-					<div className="font-mono text-2xl font-bold">{formatNumber(queueSize)}</div>
+					<div className="font-mono text-2xl font-bold tabular-nums">{formatNumber(queueSize)}</div>
 				</div>
-				<div className="space-y-1.5">
+				<div className="space-y-1">
 					<div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
 						<TrendingDown className="h-3 w-3" />
-						Dropped (cumulative)
+						Abandonnés (cumulé)
 					</div>
-					<div className={cn("font-mono text-2xl font-bold", dropped > 0 && "text-red-500")}>
+					<div className={cn("font-mono text-2xl font-bold tabular-nums", dropped > 0 && "text-rose-500")}>
 						{formatNumber(dropped)}
 					</div>
 				</div>

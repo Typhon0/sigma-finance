@@ -426,21 +426,21 @@ type snapTradeBalance struct {
 }
 
 // FetchBalances queries /api/v1/accounts/{accountId}/balances and extracts cash balances.
-func (s *SnapTradeAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
+func (s *SnapTradeAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.BalancesSnapshot, error) {
 	creds, err := parseSnapTradeCredentials(cred, true)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	path := fmt.Sprintf("/api/v1/accounts/%s/balances", url.PathEscape(externalAccountID))
 	respBytes, err := s.executeRequest(ctx, creds, http.MethodGet, path, nil, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.BalancesSnapshot{}, err
 	}
 
 	var balances []snapTradeBalance
 	if err := json.Unmarshal(respBytes, &balances); err != nil {
-		return nil, fmt.Errorf("failed to parse balances response: %w", err)
+		return syncservice.BalancesSnapshot{}, fmt.Errorf("failed to parse balances response: %w", err)
 	}
 
 	var rawBalances []syncservice.RawBalance
@@ -469,7 +469,11 @@ func (s *SnapTradeAdapter) FetchBalances(ctx context.Context, cred *model.SyncCr
 		return rawBalances[i].Currency < rawBalances[j].Currency
 	})
 
-	return rawBalances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   rawBalances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
 type snapTradePositionSymbol struct {
@@ -504,21 +508,21 @@ type snapTradePosition struct {
 }
 
 // FetchHoldings queries /api/v1/accounts/{accountId}/holdings and returns normalized security positions.
-func (s *SnapTradeAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
+func (s *SnapTradeAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.HoldingsSnapshot, error) {
 	creds, err := parseSnapTradeCredentials(cred, true)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	path := fmt.Sprintf("/api/v1/accounts/%s/holdings", url.PathEscape(externalAccountID))
 	respBytes, err := s.executeRequest(ctx, creds, http.MethodGet, path, nil, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	positions, err := parseHoldingsPositions(respBytes)
 	if err != nil {
-		return nil, err
+		return syncservice.HoldingsSnapshot{}, err
 	}
 
 	var holdings []syncservice.RawHolding
@@ -595,7 +599,12 @@ func (s *SnapTradeAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCr
 		return holdings[i].Symbol < holdings[j].Symbol
 	})
 
-	return holdings, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       holdings,
+		IsComplete:     true,
+		AsOf:           time.Now(),
+		PaginationDone: true,
+	}, nil
 }
 
 func parseHoldingsPositions(respBytes []byte) ([]snapTradePosition, error) {
@@ -685,10 +694,11 @@ func (s *SnapTradeAdapter) FetchTransactions(
 	cred *model.SyncCredential,
 	externalAccountID string,
 	since *time.Time,
-) ([]syncservice.RawTransaction, error) {
+	cursors syncservice.StreamCursors,
+) (syncservice.TransactionsSnapshot, error) {
 	creds, err := parseSnapTradeCredentials(cred, true)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	params := url.Values{}
@@ -699,12 +709,12 @@ func (s *SnapTradeAdapter) FetchTransactions(
 	path := fmt.Sprintf("/api/v1/accounts/%s/activities", url.PathEscape(externalAccountID))
 	respBytes, err := s.executeRequest(ctx, creds, http.MethodGet, path, params, nil)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	activities, err := parseActivities(respBytes)
 	if err != nil {
-		return nil, err
+		return syncservice.TransactionsSnapshot{}, err
 	}
 
 	var txs []syncservice.RawTransaction
@@ -907,7 +917,11 @@ func (s *SnapTradeAdapter) FetchTransactions(
 		return txs[i].ExecutedAt.Before(txs[j].ExecutedAt)
 	})
 
-	return txs, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   txs,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 func parseActivities(respBytes []byte) ([]snapTradeActivity, error) {

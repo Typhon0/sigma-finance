@@ -57,6 +57,13 @@ func TestWalletResolvers_AuthRequired(t *testing.T) {
 	})
 	assert.Error(t, err)
 
+	_, err = mResolver.AddMultiChainWallet(emptyCtx, gqlModel.AddMultiChainWalletInput{
+		PortfolioID: "p1",
+		Name:        "Phantom Multi-Chain",
+		DeviceType:  gqlModel.WalletDeviceTypeSoftware,
+	})
+	assert.Error(t, err)
+
 	_, err = mResolver.AddCustomToken(emptyCtx, gqlModel.AddCustomTokenInput{
 		WalletAccountID: "wacc-1",
 		TokenAddress:    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",

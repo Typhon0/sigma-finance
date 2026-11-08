@@ -1,13 +1,17 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import {
 	ChevronDown,
+	ChevronsDownUp,
+	ChevronsUpDown,
 	Download,
 	ExternalLink,
 	Eye,
 	FoldVertical,
+	Landmark,
 	Layers,
 	MoreHorizontal,
 	PieChart,
+	Plus,
 	RefreshCw,
 	SlidersHorizontal,
 	Trash2,
@@ -36,6 +40,7 @@ import {
 	TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatAssetDisplayName } from "@/lib/format-asset-name";
 import { cn } from "@/lib/utils";
 import { exportPositionsToCSV } from "./export-csv";
 import { PositionsTableSkeleton } from "./PositionsTableSkeleton";
@@ -43,6 +48,7 @@ import { SortableHead } from "./SortableHead";
 import type {
 	BasePositionItem,
 	GroupByOption,
+	KnownAccountGroup,
 	PositionsDataTableProps,
 	SortDirection,
 	SortField,
@@ -58,6 +64,7 @@ const POSITION_ROW_ESTIMATE_NORMAL = 60;
 
 const DEFAULT_GROUP_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
 	account: Wallet,
+	exchange: Landmark,
 	asset: Layers,
 	sector: PieChart,
 	custody: Wallet,
@@ -124,7 +131,9 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 			)}
 		>
 			{/* Status color indicator bar */}
-			<TableCell className={cn(isCompact ? "py-1.5 pl-2.5 sm:pl-3 w-[20px]" : "py-3 pl-3 w-[24px]")}>
+			<TableCell
+				className={cn(isCompact ? "py-1.5 pl-2.5 sm:pl-3 w-[20px]" : "py-3 pl-3 w-[24px]")}
+			>
 				<div
 					aria-hidden
 					className={cn(
@@ -142,7 +151,11 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 			</TableCell>
 
 			{/* Instrument cell */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 w-[140px] sm:w-[210px]" : "py-3 px-3 w-[140px] sm:w-[210px]")}>
+			<TableCell
+				className={cn(
+					isCompact ? "py-1.5 px-2 w-[140px] sm:w-[210px]" : "py-3 px-3 w-[140px] sm:w-[210px]",
+				)}
+			>
 				<div className={cn("flex items-center", isCompact ? "gap-2" : "gap-3")}>
 					{renderInstrumentIcon && (
 						<div className="flex-shrink-0">{renderInstrumentIcon(item)}</div>
@@ -154,7 +167,14 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 								className="flex items-center gap-1.5 cursor-pointer hover:underline text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary rounded-sm min-w-0"
 								onClick={() => onSelectAsset?.(item.symbol, item)}
 							>
-								<span className={cn("font-bold tracking-tight truncate", isCompact ? "text-xs sm:text-sm leading-tight" : "text-sm")}>{item.symbol}</span>
+								<span
+									className={cn(
+										"font-bold tracking-tight truncate",
+										isCompact ? "text-xs sm:text-sm leading-tight" : "text-sm",
+									)}
+								>
+									{item.symbol}
+								</span>
 							</button>
 							{!isPriceResolved && (
 								<span
@@ -165,22 +185,25 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 								</span>
 							)}
 							{renderBadges && (
-								<div className="flex items-center gap-1 flex-shrink-0">
-									{renderBadges(item)}
-								</div>
+								<div className="flex items-center gap-1 flex-shrink-0">{renderBadges(item)}</div>
 							)}
 						</div>
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span
-									className={cn("truncate text-micro text-muted-foreground leading-tight", isCompact ? "max-w-[130px] sm:max-w-[160px]" : "max-w-[160px]")}
+									className={cn(
+										"truncate text-micro text-muted-foreground leading-tight",
+										isCompact ? "max-w-[130px] sm:max-w-[160px]" : "max-w-[160px]",
+									)}
 									tabIndex={-1}
 								>
-									{item.name}
+									{formatAssetDisplayName(item.name, item.symbol)}
 								</span>
 							</TooltipTrigger>
 							<TooltipContent className="max-w-64">
-								<span className="text-xs break-words">{item.name}</span>
+								<span className="text-xs break-words">
+									{formatAssetDisplayName(item.name, item.symbol)}
+								</span>
 							</TooltipContent>
 						</Tooltip>
 					</div>
@@ -188,7 +211,13 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 			</TableCell>
 
 			{/* Price */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm font-medium tabular-nums" : "py-3 px-3 text-right font-mono text-sm tabular-nums")}>
+			<TableCell
+				className={cn(
+					isCompact
+						? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm font-medium tabular-nums"
+						: "py-3 px-3 text-right font-mono text-sm tabular-nums",
+				)}
+			>
 				{isPriceResolved ? formatCurrency(item.currentPrice) : "—"}
 			</TableCell>
 
@@ -222,22 +251,47 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 
 			{/* Optional Trend Column (adjacent to Day Change) */}
 			{renderTrend && (
-				<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right hidden lg:table-cell" : "py-3 px-3 text-right hidden lg:table-cell")}>
-					<div className={cn("ml-auto flex justify-end", isCompact ? "w-[80px]" : "w-[90px]")}>{renderTrend(item)}</div>
+				<TableCell
+					className={cn(
+						isCompact
+							? "py-1.5 px-2 text-right hidden lg:table-cell"
+							: "py-3 px-3 text-right hidden lg:table-cell",
+					)}
+				>
+					<div className={cn("ml-auto flex justify-end", isCompact ? "w-[80px]" : "w-[90px]")}>
+						{renderTrend(item)}
+					</div>
 				</TableCell>
 			)}
 
 			{/* Quantity */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm text-muted-foreground tabular-nums hidden sm:table-cell" : "py-3 px-3 text-right font-mono text-sm text-muted-foreground tabular-nums hidden sm:table-cell")}>
+			<TableCell
+				className={cn(
+					isCompact
+						? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm text-muted-foreground tabular-nums hidden sm:table-cell"
+						: "py-3 px-3 text-right font-mono text-sm text-muted-foreground tabular-nums hidden sm:table-cell",
+				)}
+			>
 				{formatQuantity
 					? formatQuantity(item.quantity)
 					: formatNumber(item.quantity, item.quantity % 1 === 0 ? 0 : 4)}
 			</TableCell>
 
 			{/* Avg Cost & Basis */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right hidden sm:table-cell" : "py-3 px-3 text-right hidden sm:table-cell")}>
+			<TableCell
+				className={cn(
+					isCompact
+						? "py-1.5 px-2 text-right hidden sm:table-cell"
+						: "py-3 px-3 text-right hidden sm:table-cell",
+				)}
+			>
 				<div className="flex flex-col items-end leading-tight">
-					<span className={cn("font-mono text-foreground font-medium tabular-nums", isCompact ? "text-xs sm:text-sm" : "text-sm")}>
+					<span
+						className={cn(
+							"font-mono text-foreground font-medium tabular-nums",
+							isCompact ? "text-xs sm:text-sm" : "text-sm",
+						)}
+					>
 						{item.avgPrice > 0 ? formatCurrency(item.avgPrice) : "—"}
 					</span>
 					{renderCostBasisExtra ? (
@@ -255,7 +309,13 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 			</TableCell>
 
 			{/* Total Value */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm font-medium tabular-nums" : "py-3 px-3 text-right font-mono text-sm font-medium tabular-nums")}>
+			<TableCell
+				className={cn(
+					isCompact
+						? "py-1.5 px-2 text-right font-mono text-xs sm:text-sm font-medium tabular-nums"
+						: "py-3 px-3 text-right font-mono text-sm font-medium tabular-nums",
+				)}
+			>
 				{isPriceResolved ? formatCurrency(item.value) : "—"}
 			</TableCell>
 
@@ -291,12 +351,23 @@ const GenericPositionRow = memo(function GenericPositionRow<T extends BasePositi
 			</TableCell>
 
 			{/* Weight */}
-			<TableCell className={cn(isCompact ? "py-1.5 px-2 text-right hidden md:table-cell" : "py-3 px-3 text-right hidden md:table-cell")}>
+			<TableCell
+				className={cn(
+					isCompact
+						? "py-1.5 px-2 text-right hidden md:table-cell"
+						: "py-3 px-3 text-right hidden md:table-cell",
+				)}
+			>
 				<div className="flex items-center justify-end gap-1.5">
 					<span className="font-mono text-xs font-medium text-foreground tabular-nums">
 						{weight.toFixed(1)}%
 					</span>
-					<div className={cn("bg-secondary/50 rounded-full overflow-hidden flex-shrink-0", isCompact ? "w-8 h-1" : "w-10 h-1.5")}>
+					<div
+						className={cn(
+							"bg-secondary/50 rounded-full overflow-hidden flex-shrink-0",
+							isCompact ? "w-8 h-1" : "w-10 h-1.5",
+						)}
+					>
 						<div
 							className="h-full w-full bg-primary/70 rounded-full origin-right transition-transform duration-300"
 							style={{ transform: `scaleX(${Math.min(100, Math.max(3, weight)) / 100})` }}
@@ -434,10 +505,7 @@ const GenericGroupHeaderRow = memo(function GenericGroupHeaderRow<T extends Base
 								)}
 							>
 								<GroupIcon
-									className={cn(
-										"text-muted-foreground",
-										isCompact ? "h-3 w-3" : "h-3.5 w-3.5",
-									)}
+									className={cn("text-muted-foreground", isCompact ? "h-3 w-3" : "h-3.5 w-3.5")}
 								/>
 							</span>
 							<span
@@ -456,6 +524,17 @@ const GenericGroupHeaderRow = memo(function GenericGroupHeaderRow<T extends Base
 							>
 								{row.count}
 							</span>
+							{row.syncStatus === "SYNCING" && (
+								<span
+									className={cn(
+										"inline-flex items-center gap-1 px-1.5 py-0 text-micro font-medium text-primary bg-primary/10 border border-primary/30 rounded flex-shrink-0",
+										isCompact ? "h-4" : "h-5",
+									)}
+								>
+									<RefreshCw className="h-2.5 w-2.5 animate-spin" />
+									Syncing
+								</span>
+							)}
 						</button>
 						{isClickableAccount && (
 							<button
@@ -519,9 +598,17 @@ const GenericGroupHeaderRow = memo(function GenericGroupHeaderRow<T extends Base
 											row.pl >= 0 ? "text-gain" : "text-loss",
 										)}
 									>
-										<span>{row.pl >= 0 ? "+" : ""}{formatCurrency(row.pl)}</span>
+										<span>
+											{row.pl >= 0 ? "+" : ""}
+											{formatCurrency(row.pl)}
+										</span>
 										{row.isPartialPl && (
-											<span className="text-[10px] text-muted-foreground font-mono select-none" title="Partial">*</span>
+											<span
+												className="text-[10px] text-muted-foreground font-mono select-none"
+												title="Partial"
+											>
+												*
+											</span>
 										)}
 									</span>
 									{row.plPercent !== null && row.plPercent !== undefined && (
@@ -531,9 +618,17 @@ const GenericGroupHeaderRow = memo(function GenericGroupHeaderRow<T extends Base
 												row.plPercent >= 0 ? "text-gain-muted" : "text-loss-muted",
 											)}
 										>
-											<span>{row.plPercent >= 0 ? "+" : ""}{row.plPercent.toFixed(2)}%</span>
+											<span>
+												{row.plPercent >= 0 ? "+" : ""}
+												{row.plPercent.toFixed(2)}%
+											</span>
 											{row.isPartialPl && (
-												<span className="text-[9px] text-muted-foreground font-mono select-none" title="Partial">*</span>
+												<span
+													className="text-[9px] text-muted-foreground font-mono select-none"
+													title="Partial"
+												>
+													*
+												</span>
 											)}
 										</span>
 									)}
@@ -568,10 +663,7 @@ const GenericGroupHeaderRow = memo(function GenericGroupHeaderRow<T extends Base
 
 						{/* Actions column spacer (matches w-[36px] pr-2.5 pl-1 or w-[44px] pr-3) */}
 						<div
-							className={cn(
-								"shrink-0",
-								isCompact ? "w-[36px] pr-2.5 pl-1" : "w-[44px] pr-3",
-							)}
+							className={cn("shrink-0", isCompact ? "w-[36px] pr-2.5 pl-1" : "w-[44px] pr-3")}
 							aria-hidden="true"
 						/>
 					</div>
@@ -619,12 +711,16 @@ export function PositionsDataTable<T extends BasePositionItem>({
 	formatQuantity,
 	onSelectAsset,
 	onSelectAccount,
+	knownAccountGroups,
+	onAddPositionToAccount,
 	onDeletePosition,
 	onRefreshPrice,
 	csvFilename,
 	csvHeaders,
 	csvRowMapper,
 	emptyMessage = "No holdings found matching the criteria.",
+	emptyGroupMessage,
+	hideEmptyAccounts = true,
 	focusedSymbol: propFocusedSymbol,
 }: PositionsDataTableProps<T>) {
 	// Density state (defaults to compact, persists in localStorage)
@@ -680,7 +776,9 @@ export function PositionsDataTable<T extends BasePositionItem>({
 		controlledSortDirection ?? defaultSortDirection ?? "desc",
 	);
 	const sortField = isControlledSort ? controlledSortField : internalSortField;
-	const sortDirection = isControlledSort ? (controlledSortDirection ?? "desc") : internalSortDirection;
+	const sortDirection = isControlledSort
+		? (controlledSortDirection ?? "desc")
+		: internalSortDirection;
 
 	const handleSort = useCallback(
 		(field: SortField) => {
@@ -704,9 +802,7 @@ export function PositionsDataTable<T extends BasePositionItem>({
 	const [rawSearchQuery, setRawSearchQuery] = useState(
 		controlledSearchQuery ?? defaultSearchQuery ?? "",
 	);
-	const [searchQuery, setSearchQuery] = useState(
-		controlledSearchQuery ?? defaultSearchQuery ?? "",
-	);
+	const [searchQuery, setSearchQuery] = useState(controlledSearchQuery ?? defaultSearchQuery ?? "");
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -779,7 +875,10 @@ export function PositionsDataTable<T extends BasePositionItem>({
 				if (externalFilter.mode === "sector") {
 					const record = p as Record<string, unknown>;
 					const sector = typeof record.sector === "string" ? record.sector : "";
-					if (externalFilter.value === "Needs metadata" || externalFilter.value === "Unclassified") {
+					if (
+						externalFilter.value === "Needs metadata" ||
+						externalFilter.value === "Unclassified"
+					) {
 						return (
 							sector === "Needs metadata" ||
 							sector === "Other" ||
@@ -847,6 +946,13 @@ export function PositionsDataTable<T extends BasePositionItem>({
 
 		const groups: Record<string, T[]> = {};
 
+		// Pre-populate known account groups when grouping by account
+		if (groupBy === "account" && knownAccountGroups && knownAccountGroups.length > 0) {
+			for (const acc of knownAccountGroups) {
+				groups[acc.name] = [];
+			}
+		}
+
 		filteredPositions.forEach((pos) => {
 			let key = "Other";
 			if (activeGroupOption) {
@@ -866,13 +972,40 @@ export function PositionsDataTable<T extends BasePositionItem>({
 			groups[key].push(pos);
 		});
 
+		// If a search query is active, remove empty groups whose name does not match
+		if (searchQuery) {
+			const q = searchQuery.toLowerCase();
+			for (const key of Object.keys(groups)) {
+				if (groups[key].length === 0 && !key.toLowerCase().includes(q)) {
+					delete groups[key];
+				}
+			}
+		}
+
 		return groups;
-	}, [filteredPositions, groupBy, activeGroupOption]);
+	}, [filteredPositions, groupBy, activeGroupOption, knownAccountGroups, searchQuery]);
 
 	// Collapsed state
 	const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(
 		() => new Set<string>(),
 	);
+
+	const visibleGroupNames = useMemo(() => {
+		if (groupBy === "none" || !groupedData) return [];
+		return Object.keys(groupedData).filter((name) => {
+			if (groupBy === "account" && hideEmptyAccounts) {
+				const items = groupedData[name] || [];
+				const syncStatus = knownAccountGroups?.find((a) => a.name === name)?.syncStatus;
+				return items.length > 0 || syncStatus === "SYNCING";
+			}
+			return true;
+		});
+	}, [groupBy, groupedData, hideEmptyAccounts, knownAccountGroups]);
+
+	const isAllCollapsed = useMemo(() => {
+		if (visibleGroupNames.length === 0) return false;
+		return visibleGroupNames.every((name) => collapsedGroups.has(name));
+	}, [visibleGroupNames, collapsedGroups]);
 
 	const toggleGroupCollapsed = useCallback((groupName: string) => {
 		setCollapsedGroups((previous) => {
@@ -883,6 +1016,37 @@ export function PositionsDataTable<T extends BasePositionItem>({
 		});
 	}, []);
 
+	const toggleCollapseAll = useCallback(() => {
+		if (visibleGroupNames.length === 0) return;
+		if (isAllCollapsed) {
+			setCollapsedGroups(new Set());
+		} else {
+			setCollapsedGroups(new Set(visibleGroupNames));
+		}
+	}, [visibleGroupNames, isAllCollapsed]);
+
+	// Keyboard shortcut: Alt+C to toggle collapse all when grouped
+	useEffect(() => {
+		if (groupBy === "none") return;
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.altKey && e.key.toLowerCase() === "c") {
+				const target = e.target as HTMLElement | null;
+				if (
+					target &&
+					(target.tagName === "INPUT" ||
+						target.tagName === "TEXTAREA" ||
+						target.isContentEditable)
+				) {
+					return;
+				}
+				e.preventDefault();
+				toggleCollapseAll();
+			}
+		};
+		window.addEventListener("keydown", handleKeyDown);
+		return () => window.removeEventListener("keydown", handleKeyDown);
+	}, [groupBy, toggleCollapseAll]);
+
 	// Flattened stream for virtualizer
 	const tableRows = useMemo<TableRowModel<T>[]>(() => {
 		if (groupBy === "none" || !groupedData) {
@@ -891,10 +1055,25 @@ export function PositionsDataTable<T extends BasePositionItem>({
 
 		const rows: TableRowModel<T>[] = [];
 		for (const [groupName, groupItems] of Object.entries(groupedData)) {
+			const syncStatus =
+				groupBy === "account"
+					? knownAccountGroups?.find((a) => a.name === groupName)?.syncStatus
+					: undefined;
+
+			// Skip empty accounts if hideEmptyAccounts is active and not syncing
+			if (
+				groupBy === "account" &&
+				hideEmptyAccounts &&
+				groupItems.length === 0 &&
+				syncStatus !== "SYNCING"
+			) {
+				continue;
+			}
 			const collapsed = collapsedGroups.has(groupName);
 			const itemsWithPl = groupItems.filter((p) => p.pl !== null);
 			const totalCost = itemsWithPl.reduce((sum, p) => sum + (p.cost > 0 ? p.cost : 0), 0);
-			const totalPl = itemsWithPl.length > 0 ? itemsWithPl.reduce((sum, p) => sum + (p.pl ?? 0), 0) : null;
+			const totalPl =
+				itemsWithPl.length > 0 ? itemsWithPl.reduce((sum, p) => sum + (p.pl ?? 0), 0) : null;
 			const plPercent = totalPl !== null && totalCost > 0 ? (totalPl / totalCost) * 100 : null;
 			const groupWeight = groupItems.reduce((sum, p) => sum + (p.weight ?? 0), 0);
 			const isPartialPl = itemsWithPl.length > 0 && itemsWithPl.length < groupItems.length;
@@ -913,24 +1092,48 @@ export function PositionsDataTable<T extends BasePositionItem>({
 				collapsed,
 				items: groupItems,
 				isClickableAccount: activeGroupOption?.isClickableAccount ?? groupBy === "account",
+				syncStatus,
 			});
 			if (collapsed) continue;
-			for (const pos of groupItems) {
-				rows.push({ kind: "position", key: pos.id, item: pos });
+			if (groupItems.length === 0) {
+				rows.push({
+					kind: "empty-group",
+					key: `empty-group:${groupName}`,
+					groupName,
+					syncStatus,
+				});
+			} else {
+				for (const pos of groupItems) {
+					rows.push({ kind: "position", key: pos.id, item: pos });
+				}
 			}
 		}
 		return rows;
-	}, [groupBy, groupedData, filteredPositions, collapsedGroups, activeGroupOption]);
+	}, [
+		groupBy,
+		groupedData,
+		filteredPositions,
+		collapsedGroups,
+		activeGroupOption,
+		knownAccountGroups,
+		hideEmptyAccounts,
+	]);
 
 	// Virtualizer setup
 	const tableContainerRef = useRef<HTMLDivElement>(null);
 	const groupRowEstimate = isCompact ? GROUP_ROW_ESTIMATE_COMPACT : GROUP_ROW_ESTIMATE_NORMAL;
-	const positionRowEstimate = isCompact ? POSITION_ROW_ESTIMATE_COMPACT : POSITION_ROW_ESTIMATE_NORMAL;
+	const positionRowEstimate = isCompact
+		? POSITION_ROW_ESTIMATE_COMPACT
+		: POSITION_ROW_ESTIMATE_NORMAL;
 	const rowVirtualizer = useVirtualizer({
 		count: tableRows.length,
 		getScrollElement: () => tableContainerRef.current,
-		estimateSize: (index) =>
-			tableRows[index]?.kind === "group" ? groupRowEstimate : positionRowEstimate,
+		estimateSize: (index) => {
+			const row = tableRows[index];
+			if (row?.kind === "group") return groupRowEstimate;
+			if (row?.kind === "empty-group") return isCompact ? 48 : 56;
+			return positionRowEstimate;
+		},
 		overscan: 8,
 	});
 
@@ -1022,7 +1225,13 @@ export function PositionsDataTable<T extends BasePositionItem>({
 
 	// Available grouping modes
 	const defaultOptions: GroupByOption<T>[] = [
-		{ id: "account", label: "Account", icon: Wallet, getGroupKey: (p) => p.account, isClickableAccount: true },
+		{
+			id: "account",
+			label: "Account",
+			icon: Wallet,
+			getGroupKey: (p) => p.account,
+			isClickableAccount: true,
+		},
 		{ id: "asset", label: "Asset", icon: Layers, getGroupKey: (p) => p.symbol },
 		{ id: "none", label: "None", icon: PieChart, getGroupKey: () => "All" },
 	];
@@ -1103,7 +1312,9 @@ export function PositionsDataTable<T extends BasePositionItem>({
 								<Button
 									variant="outline"
 									size="sm"
-									aria-label={density === "compact" ? "Switch to normal density" : "Switch to compact density"}
+									aria-label={
+										density === "compact" ? "Switch to normal density" : "Switch to compact density"
+									}
 									onClick={() => handleDensityChange(density === "compact" ? "normal" : "compact")}
 									className="min-h-[44px] min-w-[44px] md:min-h-0 md:h-8 md:w-8 p-0 border-border/50 touch-target cursor-pointer"
 								>
@@ -1116,10 +1327,44 @@ export function PositionsDataTable<T extends BasePositionItem>({
 							</TooltipTrigger>
 							<TooltipContent side="top">
 								<span className="text-xs">
-									{density === "compact" ? "Density: Compact (click for normal)" : "Density: Normal (click for compact)"}
+									{density === "compact"
+										? "Density: Compact (click for normal)"
+										: "Density: Normal (click for compact)"}
 								</span>
 							</TooltipContent>
 						</Tooltip>
+
+						{/* Collapse All / Expand All Button (when grouped) */}
+						{groupBy !== "none" && (
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="outline"
+										size="sm"
+										aria-label={
+											isAllCollapsed
+												? "Expand all groups (Alt+C)"
+												: "Collapse all groups (Alt+C)"
+										}
+										onClick={toggleCollapseAll}
+										className="min-h-[44px] min-w-[44px] md:min-h-0 md:h-8 md:w-8 p-0 border-border/50 touch-target cursor-pointer"
+									>
+										{isAllCollapsed ? (
+											<ChevronsUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+										) : (
+											<ChevronsDownUp className="h-3.5 w-3.5 text-muted-foreground" />
+										)}
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent side="top">
+									<span className="text-xs">
+										{isAllCollapsed
+											? "Expand all groups (Alt+C)"
+											: "Collapse all groups (Alt+C)"}
+									</span>
+								</TooltipContent>
+							</Tooltip>
+						)}
 
 						{/* Export CSV button */}
 						<Button
@@ -1201,15 +1446,15 @@ export function PositionsDataTable<T extends BasePositionItem>({
 				{/* Table Container */}
 				<div className="min-h-[400px] bg-background">
 					{tableRows.length === 0 ? (
-						<div className="py-12 text-center text-xs text-muted-foreground">
-							{emptyMessage}
-						</div>
+						<div className="py-12 text-center text-xs text-muted-foreground">{emptyMessage}</div>
 					) : (
 						<div ref={tableContainerRef} className="overflow-auto max-h-[640px]">
 							<Table>
 								<TableHeader className="sticky top-0 z-10 bg-muted/95">
 									<TableRow className="hover:bg-transparent border-border/50">
-										<TableHead className={cn(isCompact ? "w-[20px] h-8 p-0" : "w-[30px] h-10 p-0")} />
+										<TableHead
+											className={cn(isCompact ? "w-[20px] h-8 p-0" : "w-[30px] h-10 p-0")}
+										/>
 										<SortableHead
 											label="Instrument"
 											field="symbol"
@@ -1299,7 +1544,9 @@ export function PositionsDataTable<T extends BasePositionItem>({
 											onSort={handleSort}
 											density={density}
 										/>
-										<TableHead className={cn(isCompact ? "w-[36px] h-8 p-0" : "w-[44px] h-10 p-0")} />
+										<TableHead
+											className={cn(isCompact ? "w-[36px] h-8 p-0" : "w-[44px] h-10 p-0")}
+										/>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -1329,6 +1576,46 @@ export function PositionsDataTable<T extends BasePositionItem>({
 												/>
 											);
 										}
+										if (row.kind === "empty-group") {
+											const isSyncing = row.syncStatus === "SYNCING";
+											return (
+												<TableRow
+													key={row.key}
+													data-index={virtualRow.index}
+													ref={rowVirtualizer.measureElement}
+													className="border-border/40 hover:bg-transparent bg-muted/5"
+												>
+													<TableCell
+														colSpan={columnCount}
+														className="py-5 text-center text-xs text-muted-foreground"
+													>
+														<div className="flex flex-col items-center justify-center gap-2">
+															{isSyncing ? (
+																<div className="flex items-center gap-2 text-primary font-medium">
+																	<RefreshCw className="h-3.5 w-3.5 animate-spin" />
+																	<span>Synchronizing holdings for {row.groupName}...</span>
+																</div>
+															) : (
+																<>
+																	<span>{emptyGroupMessage || "No holdings in this account yet."}</span>
+																	{onAddPositionToAccount && (
+																		<Button
+																			variant="outline"
+																			size="sm"
+																			className="h-6.5 px-2.5 text-micro gap-1 cursor-pointer hover:bg-muted/60"
+																			onClick={() => onAddPositionToAccount(row.groupName)}
+																		>
+																			<Plus className="h-3 w-3" />
+																			Add Position
+																		</Button>
+																	)}
+																</>
+															)}
+														</div>
+													</TableCell>
+												</TableRow>
+											);
+										}
 										return (
 											<GenericPositionRow
 												key={row.key}
@@ -1353,10 +1640,7 @@ export function PositionsDataTable<T extends BasePositionItem>({
 									})}
 									{padBottom > 0 && (
 										<tr>
-											<td
-												colSpan={columnCount}
-												style={{ padding: 0, height: `${padBottom}px` }}
-											/>
+											<td colSpan={columnCount} style={{ padding: 0, height: `${padBottom}px` }} />
 										</tr>
 									)}
 								</TableBody>

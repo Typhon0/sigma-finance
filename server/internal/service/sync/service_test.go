@@ -2,6 +2,7 @@ package sync_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -42,25 +43,38 @@ func (m *MockSyncAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCre
 	return m.rawAccounts, nil
 }
 
-func (m *MockSyncAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawBalance, error) {
+func (m *MockSyncAdapter) FetchBalances(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.BalancesSnapshot, error) {
 	if m.fetchBalancesErr != nil {
-		return nil, m.fetchBalancesErr
+		return syncservice.BalancesSnapshot{}, m.fetchBalancesErr
 	}
-	return m.rawBalances, nil
+	return syncservice.BalancesSnapshot{
+		Balances:   m.rawBalances,
+		IsComplete: true,
+		AsOf:       time.Now(),
+	}, nil
 }
 
-func (m *MockSyncAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) ([]syncservice.RawHolding, error) {
+func (m *MockSyncAdapter) FetchHoldings(ctx context.Context, cred *model.SyncCredential, externalAccountID string) (syncservice.HoldingsSnapshot, error) {
 	if m.fetchHoldingsErr != nil {
-		return nil, m.fetchHoldingsErr
+		return syncservice.HoldingsSnapshot{}, m.fetchHoldingsErr
 	}
-	return m.rawHoldings, nil
+	return syncservice.HoldingsSnapshot{
+		Holdings:       m.rawHoldings,
+		IsComplete:     true,
+		PaginationDone: true,
+		AsOf:           time.Now(),
+	}, nil
 }
 
-func (m *MockSyncAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time) ([]syncservice.RawTransaction, error) {
+func (m *MockSyncAdapter) FetchTransactions(ctx context.Context, cred *model.SyncCredential, externalAccountID string, since *time.Time, cursors syncservice.StreamCursors) (syncservice.TransactionsSnapshot, error) {
 	if m.fetchTxErr != nil {
-		return nil, m.fetchTxErr
+		return syncservice.TransactionsSnapshot{}, m.fetchTxErr
 	}
-	return m.rawTransactions, nil
+	return syncservice.TransactionsSnapshot{
+		Transactions:   m.rawTransactions,
+		IsComplete:     true,
+		PaginationDone: true,
+	}, nil
 }
 
 func TestSyncService_ReconciliationSnapshotWithResidualTaxLot(t *testing.T) {
@@ -974,6 +988,59 @@ func TestSyncService_NegativeCashBalanceOverdraft(t *testing.T) {
 	require.NoError(t, pos.Validate(), "Position.Validate() must pass for clamped overdraft")
 }
 
+func TestSyncService_ReconcileBalances_ZeroAndNegative(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	service := syncservice.NewSyncService(uow, nil)
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawBalances: []syncservice.RawBalance{
+			{Currency: model.CurrencyEUR, Amount: decimal.NewFromInt(100)}, // Positive balance -> price upserted
+			{Currency: model.CurrencyUSD, Amount: decimal.Zero},            // Zero balance -> no price upsert
+			{Currency: model.CurrencyGBP, Amount: decimal.NewFromInt(-25)}, // Negative balance -> no price upsert
+		},
+	}
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	// Check EUR (positive balance): price upserted
+	eurAssetSymbol := "EUR_CASH_acc-1"
+	eurAssets, err := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &eurAssetSymbol})
+	require.NoError(t, err)
+	require.Len(t, eurAssets, 1)
+	assert.NotNil(t, uow.assetPrices[eurAssets[0].ID])
+	assert.True(t, uow.assetPrices[eurAssets[0].ID].Price.Equal(decimal.NewFromInt(100)))
+
+	// Check USD (zero balance): position created with qty=0, but NO price upsert
+	usdAssetSymbol := "USD_CASH_acc-1"
+	usdAssets, err := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &usdAssetSymbol})
+	require.NoError(t, err)
+	require.Len(t, usdAssets, 1)
+	assert.Nil(t, uow.assetPrices[usdAssets[0].ID], "Zero balance cash asset must not have price in asset_prices")
+	usdPos, err := uow.Position().GetByAccountAndAsset(ctx, "acc-1", usdAssets[0].ID)
+	require.NoError(t, err)
+	require.NotNil(t, usdPos)
+	assert.True(t, usdPos.Quantity.IsZero())
+
+	// Check GBP (negative balance): position created with clamped cost basis, but NO price upsert
+	gbpAssetSymbol := "GBP_CASH_acc-1"
+	gbpAssets, err := uow.Asset().FindWithFilters(ctx, repository.AssetFilter{Symbol: &gbpAssetSymbol})
+	require.NoError(t, err)
+	require.Len(t, gbpAssets, 1)
+	assert.Nil(t, uow.assetPrices[gbpAssets[0].ID], "Negative balance cash asset must not have price in asset_prices")
+	gbpPos, err := uow.Position().GetByAccountAndAsset(ctx, "acc-1", gbpAssets[0].ID)
+	require.NoError(t, err)
+	require.NotNil(t, gbpPos)
+	assert.True(t, gbpPos.Quantity.Equal(decimal.NewFromInt(1)))
+	assert.True(t, gbpPos.AverageCostBasis.IsZero())
+}
+
 func TestSyncService_ReconcileTransactions_ISINFallback(t *testing.T) {
 	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	ctx := context.Background()
@@ -1035,6 +1102,48 @@ func TestSyncService_ReconcileTransactions_ISINFallback(t *testing.T) {
 	require.NotNil(t, tx)
 	require.NotNil(t, tx.PositionID)
 	assert.Equal(t, pos.ID, *tx.PositionID)
+}
+
+func TestSyncService_ReconcileTransactions_ZeroAmountSkipped(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.seedBaseEntities("user-1", "portfolio-1", "acc-1", "cred-1", "conn-1", "TEST_PROVIDER")
+
+	service := syncservice.NewSyncService(uow, nil)
+	adapter := &MockSyncAdapter{
+		provider: "TEST_PROVIDER",
+		rawTransactions: []syncservice.RawTransaction{
+			{
+				ExternalID: "tx-zero-1",
+				Type:       model.TransactionTypeDeposit,
+				Amount:     model.Money(0), // Zero-amount pre-authorization!
+				ExecutedAt: time.Now(),
+			},
+			{
+				ExternalID: "tx-valid-1",
+				Type:       model.TransactionTypeDeposit,
+				Amount:     model.Money(5000), // €50.00
+				ExecutedAt: time.Now(),
+			},
+		},
+	}
+	service.RegisterAdapter(adapter)
+
+	run, err := service.TriggerSync(ctx, "conn-1")
+	require.NoError(t, err)
+	assert.Equal(t, model.SyncRunStatusCompleted, run.Status)
+
+	// tx-zero-1 must be skipped and not inserted into transactions repository
+	zeroTx, err := uow.Transaction().FindByAccountAndExternalID(ctx, "acc-1", "tx-zero-1")
+	assert.ErrorIs(t, err, repository.ErrNotFound)
+	assert.Nil(t, zeroTx)
+
+	// tx-valid-1 must be inserted
+	validTx, err := uow.Transaction().FindByAccountAndExternalID(ctx, "acc-1", "tx-valid-1")
+	require.NoError(t, err)
+	require.NotNil(t, validTx)
+	assert.Equal(t, model.Money(5000), validTx.Amount)
 }
 
 func TestSyncService_DiscoverAndCreateConnections_DuplicateNameSuffixing(t *testing.T) {
@@ -1394,6 +1503,10 @@ func (r *syncTestInstrumentRepo) GetByGlobalIdentifier(ctx context.Context, fiel
 	return nil, repository.ErrNotFound
 }
 
+func (r *syncTestInstrumentRepo) ResolveByGlobalIdentifier(ctx context.Context, field, value string, preferredCurrency model.Currency) (*model.Instrument, error) {
+	return r.GetByGlobalIdentifier(ctx, field, value)
+}
+
 type syncTestSyncRepo struct {
 	repository.ISyncRepository
 	u *syncTestUOW
@@ -1536,6 +1649,16 @@ func (r *syncTestAccountRepo) GetAccountsByPortfolioID(ctx context.Context, port
 	var res []model.Account
 	for _, a := range r.u.accounts {
 		if a.PortfolioID == portfolioID {
+			res = append(res, *a)
+		}
+	}
+	return res, nil
+}
+
+func (r *syncTestAccountRepo) GetAccountsByAccountNumber(ctx context.Context, accountNumber string) ([]model.Account, error) {
+	var res []model.Account
+	for _, a := range r.u.accounts {
+		if a.AccountNumber != nil && *a.AccountNumber == accountNumber {
 			res = append(res, *a)
 		}
 	}
@@ -1729,6 +1852,9 @@ type syncTestTxRepo struct {
 }
 
 func (r *syncTestTxRepo) Create(ctx context.Context, tx *model.Transaction) (*model.Transaction, error) {
+	if tx.Amount == 0 {
+		return nil, errors.New("pq: new row for relation \"transactions\" violates check constraint \"valid_amount\"")
+	}
 	if tx.ID == "" {
 		tx.ID = "tx-" + time.Now().Format("150405.000000")
 	}
@@ -1762,6 +1888,9 @@ type syncTestPriceRepo struct {
 
 func (r *syncTestPriceRepo) UpsertPrices(ctx context.Context, prices []model.AssetPrice) error {
 	for i := range prices {
+		if !prices[i].Price.IsPositive() {
+			return errors.New("pq: new row for relation \"asset_prices\" violates check constraint \"valid_price\"")
+		}
 		r.u.assetPrices[prices[i].AssetID] = &prices[i]
 	}
 	return nil

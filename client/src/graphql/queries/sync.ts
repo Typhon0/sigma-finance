@@ -96,3 +96,15 @@ export const GET_SYNC_CREDENTIALS = gql`
     }
   }
 `;
+
+export const GET_ENABLE_BANKING_INSTITUTIONS = gql`
+  query GetEnableBankingInstitutions($country: String!) {
+    enableBankingInstitutions(country: $country) {
+      name
+      title
+      country
+      logo
+      psuTypes
+    }
+  }
+`;

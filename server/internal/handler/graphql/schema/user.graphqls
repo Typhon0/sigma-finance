@@ -4,6 +4,12 @@ type User {
     id: ID!
     username: String!
     email: String!
+    role: String!
+    emailVerified: Boolean!
+    lastLoginAt: Time
+    failedLoginCount: Int!
+    lockedUntil: Time
+    isLocked: Boolean!
     createdAt: Time!
     updatedAt: Time!
     portfolios: [Portfolio!]!
@@ -73,4 +79,55 @@ enum UserOrderField {
     USERNAME
     EMAIL
     CREATED_AT
+}
+
+type AdminUserStats {
+    totalUsers: Int!
+    activeUsers: Int!
+    lockedUsers: Int!
+    adminUsers: Int!
+    unverifiedUsers: Int!
+}
+
+type AdminUsersResponse {
+    users: [User!]!
+    totalCount: Int!
+}
+
+input AdminUserFilter {
+    search: String
+    role: String
+    isLocked: Boolean
+    emailVerified: Boolean
+}
+
+input AdminCreateUserInput {
+    name: String!
+    email: String!
+    password: String!
+    role: String
+    emailVerified: Boolean
+}
+
+input AdminUpdateUserInput {
+    name: String
+    email: String
+    role: String
+    taxJurisdiction: String
+    displayCurrency: String
+}
+
+extend type Query {
+    adminUsers(filter: AdminUserFilter, pagination: PaginationInput, orderBy: UserOrder): AdminUsersResponse! @auth
+    adminUserStats: AdminUserStats! @auth
+}
+
+extend type Mutation {
+    adminCreateUser(input: AdminCreateUserInput!): User! @auth
+    adminUpdateUser(id: ID!, input: AdminUpdateUserInput!): User! @auth
+    adminSetUserRole(id: ID!, role: String!): User! @auth
+    adminSetUserLock(id: ID!, locked: Boolean!, lockUntil: Time): User! @auth
+    adminSetUserPassword(id: ID!, password: String!): Boolean! @auth
+    adminSetUserEmailVerified(id: ID!, verified: Boolean!): User! @auth
+    adminDeleteUser(id: ID!, hardDelete: Boolean! = false): Boolean! @auth
 }

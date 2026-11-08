@@ -275,20 +275,15 @@ func seedFromLocalPack(ctx context.Context, db bun.IDB, packStoragePath string) 
 }
 
 func seedFromFrankfurterBatch(ctx context.Context, db bun.IDB, from, to time.Time) (int, error) {
-	bases := []struct {
-		from string
-		to   string
-	}{
-		{from: "EUR", to: "USD,GBP,CHF,JPY"},
-		{from: "USD", to: "EUR,GBP,CHF,JPY"},
-	}
+	bases := []string{"EUR", "USD"}
 
 	totalInserted := 0
 	client := &http.Client{Timeout: 60 * time.Second}
 
-	for _, b := range bases {
-		url := fmt.Sprintf("https://api.frankfurter.dev/v1/%s..%s?from=%s&to=%s",
-			from.Format("2006-01-02"), to.Format("2006-01-02"), b.from, b.to)
+	for _, base := range bases {
+		// Omitting 'to' parameter requests all 30 official ECB currencies in a single query
+		url := fmt.Sprintf("https://api.frankfurter.dev/v1/%s..%s?from=%s",
+			from.Format("2006-01-02"), to.Format("2006-01-02"), base)
 
 		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 		if err != nil {
@@ -302,7 +297,7 @@ func seedFromFrankfurterBatch(ctx context.Context, db bun.IDB, from, to time.Tim
 
 		if resp.StatusCode != http.StatusOK {
 			resp.Body.Close()
-			return totalInserted, fmt.Errorf("frankfurter returned HTTP %d for base %s", resp.StatusCode, b.from)
+			return totalInserted, fmt.Errorf("frankfurter returned HTTP %d for base %s", resp.StatusCode, base)
 		}
 
 		var data struct {

@@ -5,7 +5,7 @@ import type { Asset as StockAsset } from "@/components/stocks-funds/types";
 import { StocksDistributionWidget } from "../assets/stocks-funds/StocksDistributionWidget";
 
 // Mock echarts-for-react
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-distribution">ECharts Distribution</div>,
 }));
 

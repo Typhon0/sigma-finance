@@ -28,6 +28,13 @@ type ISyncRepository interface {
 	CreateSyncRun(ctx context.Context, run *model.SyncRun) error
 	UpdateSyncRun(ctx context.Context, run *model.SyncRun) error
 	GetSyncRunByID(ctx context.Context, id string) (*model.SyncRun, error)
+	CreateAuthSession(ctx context.Context, session *model.SyncAuthSession) error
+	GetAuthSessionByID(ctx context.Context, id string) (*model.SyncAuthSession, error)
+	ListActiveAuthSessionsByProvider(ctx context.Context, userID string, provider string) ([]*model.SyncAuthSession, error)
+	UpdateAuthSession(ctx context.Context, session *model.SyncAuthSession) error
+	DeleteAuthSession(ctx context.Context, id string) error
+	CreateRawEvent(ctx context.Context, event *model.SyncRawEvent) error
+	ListRawEventsByConnection(ctx context.Context, connectionID string) ([]*model.SyncRawEvent, error)
 }
 
 // SyncRepository implements ISyncRepository using Bun ORM.
@@ -297,3 +304,94 @@ func (r *SyncRepository) GetSyncRunByID(ctx context.Context, id string) (*model.
 	}
 	return &run, nil
 }
+
+// CreateAuthSession persists a new temporary multi-step authentication session.
+func (r *SyncRepository) CreateAuthSession(ctx context.Context, session *model.SyncAuthSession) error {
+	now := time.Now()
+	if session.CreatedAt.IsZero() {
+		session.CreatedAt = now
+	}
+	if session.UpdatedAt.IsZero() {
+		session.UpdatedAt = now
+	}
+
+	var err error
+	if session.ID == "" {
+		err = r.db.NewInsert().Model(session).ExcludeColumn("id").Returning("*").Scan(ctx)
+	} else {
+		err = r.db.NewInsert().Model(session).Returning("*").Scan(ctx)
+	}
+	return err
+}
+
+// GetAuthSessionByID retrieves an authentication session by primary key.
+func (r *SyncRepository) GetAuthSessionByID(ctx context.Context, id string) (*model.SyncAuthSession, error) {
+	var session model.SyncAuthSession
+	err := r.db.NewSelect().Model(&session).Where("sas.id = ?", id).Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &session, nil
+}
+
+// ListActiveAuthSessionsByProvider returns non-expired pending auth sessions for a user and provider.
+func (r *SyncRepository) ListActiveAuthSessionsByProvider(ctx context.Context, userID string, provider string) ([]*model.SyncAuthSession, error) {
+	var sessions []*model.SyncAuthSession
+	err := r.db.NewSelect().Model(&sessions).
+		Where("sas.user_id = ? AND sas.provider = ? AND sas.status = ? AND sas.expires_at > ?",
+			userID, provider, model.SyncAuthSessionStatusWaitingForConfirmation, time.Now()).
+		Order("sas.created_at DESC").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return sessions, nil
+}
+
+// UpdateAuthSession updates status and timestamps on an authorization session.
+func (r *SyncRepository) UpdateAuthSession(ctx context.Context, session *model.SyncAuthSession) error {
+	session.UpdatedAt = time.Now()
+	res, err := r.db.NewUpdate().Model(session).WherePK().Exec(ctx)
+	if err != nil {
+		return err
+	}
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// DeleteAuthSession removes an expired or completed authorization session.
+func (r *SyncRepository) DeleteAuthSession(ctx context.Context, id string) error {
+	_, err := r.db.NewDelete().Model((*model.SyncAuthSession)(nil)).Where("id = ?", id).Exec(ctx)
+	return err
+}
+
+// CreateRawEvent persists a raw provider event idempotently using (connection_id, source_stream, external_event_id).
+func (r *SyncRepository) CreateRawEvent(ctx context.Context, event *model.SyncRawEvent) error {
+	now := time.Now()
+	if event.CreatedAt.IsZero() {
+		event.CreatedAt = now
+	}
+	_, err := r.db.NewInsert().Model(event).
+		On("CONFLICT (connection_id, source_stream, external_event_id) DO UPDATE").
+		Set("status = EXCLUDED.status").
+		Set("raw_payload = EXCLUDED.raw_payload").
+		Exec(ctx)
+	return err
+}
+
+// ListRawEventsByConnection retrieves recorded raw provider events for a connection.
+func (r *SyncRepository) ListRawEventsByConnection(ctx context.Context, connectionID string) ([]*model.SyncRawEvent, error) {
+	var events []*model.SyncRawEvent
+	err := r.db.NewSelect().Model(&events).
+		Where("sre.connection_id = ?", connectionID).
+		OrderExpr("sre.occurred_at DESC NULLS LAST, sre.created_at DESC").
+		Scan(ctx)
+	return events, err
+}
+

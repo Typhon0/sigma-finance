@@ -15,6 +15,7 @@ import (
 type TransactionFilter struct {
 	UserID          *string                `json:"user_id,omitempty"`
 	PositionID      *string                `json:"position_id,omitempty"`
+	AccountID       *string                `json:"account_id,omitempty"`
 	PortfolioID     *string                `json:"portfolio_id,omitempty"`
 	AssetID         *string                `json:"asset_id,omitempty"`
 	TransactionType *model.TransactionType `json:"transaction_type,omitempty"`
@@ -131,41 +132,49 @@ func (r *TransactionRepository) CountWithFilters(ctx context.Context, filter Tra
 // applyTransactionFilters applies filter criteria to a query
 func (r *TransactionRepository) applyTransactionFilters(query *bun.SelectQuery, filter TransactionFilter) *bun.SelectQuery {
 	if filter.UserID != nil {
-		query = query.Where("user_id = ?", *filter.UserID)
+		query = query.Where("transactions.user_id = ?", *filter.UserID)
 	}
 
 	if filter.PositionID != nil {
-		query = query.Where("position_id = ?", *filter.PositionID)
+		query = query.Where("transactions.position_id = ?", *filter.PositionID)
+	}
+
+	if filter.AccountID != nil {
+		query = query.Where("transactions.account_id = ?", *filter.AccountID)
 	}
 
 	if filter.PortfolioID != nil {
-		query = query.Join("JOIN sigma_finance.positions p ON p.id = transactions.position_id").
-			Where("p.portfolio_id = ?", *filter.PortfolioID)
+		query = query.
+			Join("LEFT JOIN sigma_finance.positions p ON p.id = transactions.position_id").
+			Join("LEFT JOIN sigma_finance.accounts acc ON acc.id = transactions.account_id").
+			Where("(p.portfolio_id = ? OR acc.portfolio_id = ?)", *filter.PortfolioID, *filter.PortfolioID)
 	}
 
 	if filter.AssetID != nil {
-		query = query.Join("JOIN sigma_finance.positions p ON p.id = transactions.position_id").
-			Where("p.asset_id = ?", *filter.AssetID)
+		if filter.PortfolioID == nil {
+			query = query.Join("JOIN sigma_finance.positions p ON p.id = transactions.position_id")
+		}
+		query = query.Where("p.asset_id = ?", *filter.AssetID)
 	}
 
 	if filter.TransactionType != nil {
-		query = query.Where("type = ?", *filter.TransactionType)
+		query = query.Where("transactions.type = ?", *filter.TransactionType)
 	}
 
 	if filter.DateFrom != nil {
-		query = query.Where("executed_at >= ?", *filter.DateFrom)
+		query = query.Where("transactions.executed_at >= ?", *filter.DateFrom)
 	}
 
 	if filter.DateTo != nil {
-		query = query.Where("executed_at <= ?", *filter.DateTo)
+		query = query.Where("transactions.executed_at <= ?", *filter.DateTo)
 	}
 
 	if filter.MinAmount != nil {
-		query = query.Where("ABS(amount) >= ?", int64(*filter.MinAmount))
+		query = query.Where("ABS(transactions.amount) >= ?", int64(*filter.MinAmount))
 	}
 
 	if filter.MaxAmount != nil {
-		query = query.Where("ABS(amount) <= ?", int64(*filter.MaxAmount))
+		query = query.Where("ABS(transactions.amount) <= ?", int64(*filter.MaxAmount))
 	}
 
 	return query

@@ -1,6 +1,6 @@
 "use client";
 
-import { CloudDownload, Eye, RefreshCw } from "lucide-react";
+import { AlertCircle, CheckCircle2, CloudDownload, Database, Eye, Layers, RefreshCw } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DataPreviewTable } from "@/components/sync/data-preview-table";
@@ -18,6 +18,7 @@ import {
 	useTriggerFinanceDatabaseSync,
 	useUpdateFinanceDatabaseSyncEnabled,
 } from "@/hooks/use-sync-management";
+import { cn } from "@/lib/utils";
 
 const assetTypeToSyncAssetType = (assetType: AssetType): AssetSyncType => {
 	switch (assetType) {
@@ -129,6 +130,13 @@ export function FinanceDatabaseSettings() {
 		[history],
 	);
 
+	const stats = useMemo(() => {
+		const total = assetStates.length;
+		const enabled = assetStates.filter((s) => s.isEnabled).length;
+		const totalRecords = assetStates.reduce((acc, s) => acc + s.recordCount, 0);
+		return { total, enabled, totalRecords };
+	}, [assetStates]);
+
 	const syncingAssets = assetStates.filter((state) => (state.syncStatus as string) === "syncing");
 	const isAnySyncing = syncingAssets.length > 0 || isSyncSequenceRunning;
 
@@ -221,48 +229,141 @@ export function FinanceDatabaseSettings() {
 	);
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-start justify-between gap-4">
+		<div className="flex flex-col gap-6 w-full">
+			{/* En-tête de section */}
+			<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
 				<div>
-					<h1 className="text-2xl font-semibold flex items-center gap-2">
-						<CloudDownload className="h-6 w-6" />
-						Catalog Source
-					</h1>
-					<p className="text-muted-foreground mt-1">
-						Inspect CoinGecko-backed catalog status and import behavior
+					<div className="flex items-center gap-2">
+						<CloudDownload className="h-5 w-5 text-muted-foreground" />
+						<h1 className="text-xl font-semibold tracking-tight text-foreground">
+							Sources du Catalogue Financier
+						</h1>
+					</div>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Supervisez l'état du référentiel global multi-actifs et lancez des synchronisations administratives.
 					</p>
 				</div>
 				<Button
+					size="sm"
 					onClick={handleSyncAll}
-					className="flex items-center gap-2"
+					className="h-8 gap-1.5 text-xs font-medium"
 					disabled={triggerLoading || toggleLoading || statusLoading || isAnySyncing}
 				>
-					<RefreshCw className="h-4 w-4" />
-					{isAnySyncing ? "Sync Running" : "Run Admin Sync"}
+					<RefreshCw className={cn("h-3.5 w-3.5", isAnySyncing && "animate-spin")} />
+					{isAnySyncing ? "Synchronisation en cours..." : "Lancer Sync Admin"}
 				</Button>
 			</div>
 
-			<Separator />
+			{/* Ruban KPI unifié */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs overflow-hidden">
+				<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-border/40">
+					{/* Catalogues Actifs */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-primary" />
+								Catalogues Actifs
+							</span>
+							<Layers className="h-3.5 w-3.5 text-muted-foreground/60" />
+						</div>
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+								{stats.enabled} <span className="text-sm font-normal text-muted-foreground">/ {stats.total}</span>
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								Types d'actifs activés
+							</p>
+						</div>
+					</div>
+
+					{/* Total Enregistrements */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+								Enregistrements
+							</span>
+							<Database className="h-3.5 w-3.5 text-sky-500/80" />
+						</div>
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground tabular-nums">
+								{stats.totalRecords.toLocaleString()}
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								Instruments indexés
+							</p>
+						</div>
+					</div>
+
+					{/* Santé Synchronisation */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span
+									className={cn(
+										"h-1.5 w-1.5 rounded-full",
+										isAnySyncing ? "bg-sky-500 animate-pulse" : "bg-emerald-500",
+									)}
+								/>
+								Santé Globale
+							</span>
+							{isAnySyncing ? (
+								<RefreshCw className="h-3.5 w-3.5 text-sky-500 animate-spin" />
+							) : (
+								<CheckCircle2 className="h-3.5 w-3.5 text-emerald-500/80" />
+							)}
+						</div>
+						<div className="mt-2">
+							<span className="text-2xl font-semibold tracking-tight text-foreground">
+								{isAnySyncing ? "En synchronisation" : "À Jour"}
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								{isAnySyncing ? "Mise à jour en arrière-plan" : "Tous les catalogues synchronisés"}
+							</p>
+						</div>
+					</div>
+
+					{/* Fournisseur */}
+					<div className="p-4 flex flex-col justify-between">
+						<div className="flex items-center justify-between gap-2">
+							<span className="flex items-center gap-1.5 text-[11px] font-medium tracking-wide uppercase text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/60" />
+								Source de Référence
+							</span>
+							<CloudDownload className="h-3.5 w-3.5 text-muted-foreground/60" />
+						</div>
+						<div className="mt-2">
+							<span className="text-base font-semibold tracking-tight text-foreground font-mono">
+								CoinGecko / Yahoo
+							</span>
+							<p className="text-[11px] text-muted-foreground mt-0.5">
+								Fallback multi-fournisseur
+							</p>
+						</div>
+					</div>
+				</div>
+			</div>
 
 			{(statusError || historyError) && (
-				<Card className="border-destructive/40">
-					<CardContent className="py-4 text-sm text-destructive">
-						{statusError?.message ?? historyError?.message}
-					</CardContent>
-				</Card>
+				<div className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-xs text-destructive flex items-center gap-2">
+					<AlertCircle className="h-4 w-4 shrink-0" />
+					<span>{statusError?.message ?? historyError?.message}</span>
+				</div>
 			)}
 
 			{(syncingAssets.length > 0 || isSyncSequenceRunning) && (
-				<Card>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-base">Sync Progress</CardTitle>
-						<CardDescription>
+				<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+					<div>
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Progression de la Synchronisation
+						</h2>
+						<p className="text-xs text-muted-foreground mt-0.5">
 							{syncingAssets.length > 0
-								? `Currently syncing ${syncingAssets.length} asset type${syncingAssets.length > 1 ? "s" : ""}`
-								: "Sync is starting..."}
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-4">
+								? `Synchronisation active de ${syncingAssets.length} catégorie(s)`
+								: "Initialisation du flux..."}
+						</p>
+					</div>
+					<div className="space-y-3">
 						{syncingAssets.length > 0 ? (
 							syncingAssets.map((state) => (
 								<SyncProgress
@@ -275,30 +376,37 @@ export function FinanceDatabaseSettings() {
 								/>
 							))
 						) : (
-							<div className="flex items-center gap-2 text-sm text-muted-foreground">
-								<RefreshCw className="h-4 w-4 animate-spin" />
-								Waiting for sync status...
+							<div className="flex items-center gap-2 text-xs text-muted-foreground">
+								<RefreshCw className="h-3.5 w-3.5 animate-spin" />
+								Attente du statut du serveur...
 							</div>
 						)}
-					</CardContent>
-				</Card>
+					</div>
+				</div>
 			)}
 
-			<div>
-				<div className="flex items-center justify-between mb-4 gap-4">
-					<h2 className="text-lg font-medium">Asset Types</h2>
+			<div className="space-y-4">
+				<div className="flex items-center justify-between gap-4">
+					<div>
+						<h2 className="text-sm font-semibold tracking-tight text-foreground">
+							Types d'Actifs du Catalogue
+						</h2>
+						<p className="text-xs text-muted-foreground mt-0.5">
+							Activez ou désactivez les synchronisations périodiques par classe d'actifs.
+						</p>
+					</div>
 					<Button
 						variant="outline"
 						size="sm"
 						onClick={() => setPreviewAssetType("equities")}
-						className="flex items-center gap-2"
+						className="h-8 gap-1.5 text-xs border-border/60"
 						disabled={statusLoading || assetStates.length === 0}
 					>
-						<Eye className="h-4 w-4" />
-						Preview Available Data
+						<Eye className="h-3.5 w-3.5 text-muted-foreground" />
+						Aperçu des données
 					</Button>
 				</div>
-				<div className="grid gap-4 md:grid-cols-2">
+				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 					{assetStates.map((state) => (
 						<SyncToggleCard
 							key={state.assetType}
@@ -315,21 +423,22 @@ export function FinanceDatabaseSettings() {
 				</div>
 			</div>
 
-			<Separator />
-
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-base">Sync History</CardTitle>
-					<CardDescription>View past sync operations and their status</CardDescription>
-				</CardHeader>
-				<CardContent>
-					{historyLoading ? (
-						<p className="text-sm text-muted-foreground">Loading history...</p>
-					) : (
-						<SyncHistory entries={syncHistory} />
-					)}
-				</CardContent>
-			</Card>
+			{/* Historique des synchronisations */}
+			<div className="rounded-xl border border-border/60 bg-card/30 backdrop-blur-xs p-5 space-y-4">
+				<div>
+					<h2 className="text-sm font-semibold tracking-tight text-foreground">
+						Historique des Synchronisations
+					</h2>
+					<p className="text-xs text-muted-foreground mt-0.5">
+						Consultez les dernières opérations administratives de catalogage.
+					</p>
+				</div>
+				{historyLoading ? (
+					<p className="text-xs text-muted-foreground">Chargement de l'historique...</p>
+				) : (
+					<SyncHistory entries={syncHistory} />
+				)}
+			</div>
 
 			<DataPreviewTable
 				assetType={previewAssetType || "equities"}
@@ -339,7 +448,7 @@ export function FinanceDatabaseSettings() {
 			/>
 
 			{importLoading && (
-				<p className="text-xs text-muted-foreground">Importing selected instruments...</p>
+				<p className="text-xs text-muted-foreground">Importation des instruments sélectionnés...</p>
 			)}
 		</div>
 	);

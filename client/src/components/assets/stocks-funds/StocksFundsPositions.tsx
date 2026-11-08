@@ -1,15 +1,33 @@
-import { Eye, Layers, MoreHorizontal, PieChart, RefreshCw, Trash2, Wallet } from "lucide-react";
+import {
+	ApolloClient,
+	ApolloLink,
+	getApolloContext,
+	InMemoryCache,
+	useQuery,
+} from "@apollo/client";
+import {
+	Eye,
+	Landmark,
+	Layers,
+	Lock,
+	MoreHorizontal,
+	PieChart,
+	RefreshCw,
+	Trash2,
+	Wallet,
+} from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
+	type BasePositionItem,
+	type GroupByOption,
 	exportPositionsToCSV as genericExportCSV,
 	PositionsDataTable,
 	PositionsTableSkeleton,
-	type BasePositionItem,
-	type GroupByOption,
 } from "@/components/assets/positions-table";
 import { usePortfolio } from "@/components/PortfolioProvider";
+import { AssetLogo } from "@/components/shared/AssetLogo";
 import { Explained } from "@/components/shared/info-hint";
 import { computeDayChangeAmount } from "@/components/stocks-funds/day-change";
 import { type FxResolution, resolveFxBasis } from "@/components/stocks-funds/fx-valuation";
@@ -33,13 +51,14 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
 import { useCurrency } from "@/hooks/use-currency";
-import { AssetLogo } from "@/components/shared/AssetLogo";
 import { formatDate } from "@/lib/format";
+import { formatAssetDisplayName } from "@/lib/format-asset-name";
 import { allocatePercentages } from "@/lib/money/rounding";
 import { cn } from "@/lib/utils";
 
-export type GroupByMode = "account" | "asset" | "sector" | "none";
+export type GroupByMode = "account" | "exchange" | "asset" | "sector" | "none";
 
 export type SortField =
 	| "symbol"
@@ -55,10 +74,14 @@ export type SortDirection = "asc" | "desc";
 
 export interface PositionItem extends BasePositionItem {
 	sector: string;
+	exchange: string;
 	assetClass: "ETFs/Funds" | "Stocks";
 	isPriceResolved: boolean;
 	hasDayChange: boolean;
 	fx: FxResolution;
+	accountId?: string;
+	positionId?: string;
+	isSynced?: boolean;
 }
 
 export interface StocksFundsPositionsProps {
@@ -70,6 +93,7 @@ export interface StocksFundsPositionsProps {
 	} | null;
 	onClearExternalFilter?: () => void;
 	loading?: boolean;
+	onAddPositionToAccount?: (accountName: string) => void;
 }
 
 export function exportPositionsToCSV(positions: PositionItem[], filename?: string) {
@@ -84,18 +108,47 @@ export function StocksFundsPositions({
 	externalFilter = null,
 	onClearExternalFilter,
 	loading = false,
+	onAddPositionToAccount,
 }: StocksFundsPositionsProps) {
-	const { assets, deleteAsset, currentPortfolio, refreshAssetPrice } = usePortfolio();
+	const {
+		assets,
+		deleteAsset,
+		currentPortfolio,
+		refreshAssetPrice,
+		refetch: refetchPortfolio,
+	} = usePortfolio();
+
+	const portfolioIdStr =
+		typeof currentPortfolio === "string" ? currentPortfolio : ((currentPortfolio as any)?.id ?? "");
+
+	// Safe Apollo context handling when rendered in tests without ApolloProvider
+	const apolloContext = useContext(getApolloContext());
+	const fallbackClient = useMemo(() => {
+		if (apolloContext?.client) return undefined;
+		return new ApolloClient({ cache: new InMemoryCache(), link: ApolloLink.empty() });
+	}, [apolloContext?.client]);
+	const apolloClient = apolloContext?.client || fallbackClient;
+
+	const { data: accountsData } = useQuery(GET_ACCOUNTS, {
+		client: apolloClient,
+		variables: { portfolioId: portfolioIdStr },
+		skip: !portfolioIdStr,
+		fetchPolicy: "cache-and-network",
+		pollInterval: 5000,
+	});
 
 	const [deleteTarget, setDeleteTarget] = useState<{
 		id: string;
 		assetId?: string;
 		portfolioId: string;
+		accountId?: string;
+		accountName: string;
 		symbol: string;
 		name: string;
+		isSynced?: boolean;
 	} | null>(null);
 
-	const { formatCurrency } = useCurrency();
+	const { formatCurrency, currency: displayCurrency } = useCurrency();
 
 	const formatNumber = useCallback((num: number, decimals = 2) => {
 		return num.toLocaleString("en-US", {
@@ -131,12 +184,17 @@ export function StocksFundsPositions({
 				typeof asset.purchasePrice === "number" && Number.isFinite(asset.purchasePrice)
 					? asset.purchasePrice
 					: 0;
-			const currentPrice = rawCurrentPrice > 0 ? rawCurrentPrice : 0;
 			const resolvedValue = resolvePositionValue(
 				asset.currentValue,
 				rawCurrentPrice,
 				quantity,
 			).value;
+			const currentPrice =
+				resolvedValue > 0 && quantity > 0
+					? resolvedValue / quantity
+					: rawCurrentPrice > 0
+						? rawCurrentPrice
+						: 0;
 			const cost = purchasePrice * quantity;
 
 			let pl: number | null = resolvedValue - cost;
@@ -157,6 +215,9 @@ export function StocksFundsPositions({
 				} else if (cost > 0) {
 					plPercent = (pl / cost) * 100;
 				}
+			} else if (cost > 0 && resolvedValue > 0) {
+				pl = resolvedValue - cost;
+				plPercent = (pl / cost) * 100;
 			} else {
 				pl = null;
 			}
@@ -183,22 +244,45 @@ export function StocksFundsPositions({
 					? (rawAssetRecord.sector as string)
 					: "Unclassified";
 
+			const exchange =
+				typeof rawAssetRecord.exchange === "string" && rawAssetRecord.exchange.trim().length > 0
+					? (rawAssetRecord.exchange as string)
+					: typeof asset.exchange === "string" && asset.exchange.trim().length > 0
+						? asset.exchange
+						: "Other Exchanges";
+
 			const accountName =
+				asset.account ||
 				(typeof rawAssetRecord.account === "object" && rawAssetRecord.account !== null
 					? (rawAssetRecord.account as { name?: string }).name
 					: typeof rawAssetRecord.account === "string"
 						? rawAssetRecord.account
 						: null) ||
-				(typeof asset.account === "string" ? asset.account : null) ||
-				(typeof asset.institution === "string" ? asset.institution : null) ||
-				"Main Account";
+				asset.institution ||
+				"Compte Principal";
+
+			const accountId = asset.accountId || (rawAssetRecord.accountID as string | undefined);
+			const isSynced =
+				(
+					accountsData?.accounts as
+						| Array<{ id: string; syncProvider?: string; name: string }>
+						| undefined
+				)?.some(
+					(acc) =>
+						(acc.id === accountId || acc.name === accountName) &&
+						acc.syncProvider &&
+						acc.syncProvider !== "MANUAL",
+				) || /trade republic/i.test(accountName);
 
 			return {
-				id: asset.id ? `${asset.id}-${accountName}` : `pos-${index}`,
+				id: asset.id ? `${asset.id}-${accountName}-${index}` : `pos-${index}`,
 				assetId: asset.id,
 				portfolioId: asset.portfolioId || currentPortfolio,
+				accountId,
+				positionId: asset.positionId || (rawAssetRecord.positionID as string | undefined),
+				isSynced: !!isSynced,
 				symbol: asset.symbol || asset.name.substring(0, 4).toUpperCase(),
-				name: asset.name,
+				name: formatAssetDisplayName(asset.name, asset.symbol),
 				quantity,
 				avgPrice: purchasePrice,
 				currentPrice,
@@ -208,6 +292,7 @@ export function StocksFundsPositions({
 				plPercent,
 				currency: asset.currency || fx.quoteCurrency || fx.costBasisCurrency || "USD",
 				account: accountName,
+				exchange,
 				sector,
 				dayChange: rawDayChange,
 				dayChangeAmount,
@@ -220,15 +305,70 @@ export function StocksFundsPositions({
 		});
 	}, [stocksAndFundsAssets, currentPortfolio]);
 
-	const handleDeletePosition = useCallback((pos: PositionItem) => {
-		setDeleteTarget({
-			id: pos.id,
-			assetId: pos.assetId,
-			portfolioId: pos.portfolioId || currentPortfolio,
-			symbol: pos.symbol,
-			name: pos.name,
+	const knownAccountGroups = useMemo(() => {
+		const rawAccounts = (accountsData?.accounts || []) as Array<{
+			id: string;
+			name: string;
+			type?: string;
+			syncConnection?: { syncStatus?: string };
+			totalValue?: number;
+		}>;
+
+		const accountsWithHoldings = new Set<string>(
+			stocksAndFundsAssets.map((a) => String(a.account || a.institution || "Compte Principal")),
+		);
+
+		const relevantAccounts = rawAccounts.filter((acc) => {
+			// Always include accounts with active stock/fund positions
+			if (accountsWithHoldings.has(acc.name)) return true;
+			// Only include broker accounts if they are actively syncing
+			if (acc.type === "BROKER" && acc.syncConnection?.syncStatus === "SYNCING") return true;
+			return false;
 		});
-	}, [currentPortfolio]);
+
+		if (relevantAccounts.length === 0) {
+			return Array.from(accountsWithHoldings).map((name) => ({ name }));
+		}
+
+		return relevantAccounts.map((acc) => ({
+			id: acc.id,
+			name: acc.name,
+			syncStatus: acc.syncConnection?.syncStatus,
+			totalValue: acc.totalValue,
+		}));
+	}, [accountsData?.accounts, stocksAndFundsAssets]);
+
+	const hasSyncingAccount = useMemo(
+		() =>
+			(
+				accountsData?.accounts as Array<{ syncConnection?: { syncStatus?: string } }> | undefined
+			)?.some((acc) => acc.syncConnection?.syncStatus === "SYNCING"),
+		[accountsData?.accounts],
+	);
+
+	const prevSyncingRef = useRef(hasSyncingAccount);
+	useEffect(() => {
+		if (prevSyncingRef.current && !hasSyncingAccount) {
+			refetchPortfolio?.();
+		}
+		prevSyncingRef.current = hasSyncingAccount;
+	}, [hasSyncingAccount, refetchPortfolio]);
+
+	const handleDeletePosition = useCallback(
+		(pos: PositionItem) => {
+			setDeleteTarget({
+				id: pos.id,
+				assetId: pos.assetId,
+				portfolioId: pos.portfolioId || currentPortfolio,
+				accountId: pos.accountId,
+				accountName: pos.account,
+				symbol: pos.symbol,
+				name: pos.name,
+				isSynced: pos.isSynced,
+			});
+		},
+		[currentPortfolio],
+	);
 
 	const handleRefreshPrice = useCallback(
 		async (pos: PositionItem) => {
@@ -247,6 +387,12 @@ export function StocksFundsPositions({
 				icon: Wallet,
 				getGroupKey: (p) => p.account,
 				isClickableAccount: true,
+			},
+			{
+				id: "exchange",
+				label: "Exchange",
+				icon: Landmark,
+				getGroupKey: (p) => p.exchange,
 			},
 			{
 				id: "asset",
@@ -287,7 +433,7 @@ export function StocksFundsPositions({
 					</Badge>
 				)}
 				{pos.currency &&
-					pos.currency !== "USD" &&
+					pos.currency !== displayCurrency &&
 					(!pos.fx.canShowPercentage ? (
 						<Explained description={pos.fx.reason}>
 							<Badge
@@ -351,13 +497,24 @@ export function StocksFundsPositions({
 							</DropdownMenuItem>
 						)}
 						<DropdownMenuSeparator />
-						<DropdownMenuItem
-							className="text-destructive focus:text-destructive focus:bg-destructive/10"
-							onClick={() => handleDeletePosition(pos)}
-						>
-							<Trash2 className="h-4 w-4 mr-2" />
-							Remove from Portfolio
-						</DropdownMenuItem>
+						{pos.isSynced ? (
+							<DropdownMenuItem
+								disabled
+								className="text-muted-foreground opacity-60 cursor-not-allowed"
+								title={`Géré par la synchronisation ${pos.account}`}
+							>
+								<Lock className="h-4 w-4 mr-2" />
+								Synchronized ({pos.account})
+							</DropdownMenuItem>
+						) : (
+							<DropdownMenuItem
+								className="text-destructive focus:text-destructive focus:bg-destructive/10"
+								onClick={() => handleDeletePosition(pos)}
+							>
+								<Trash2 className="h-4 w-4 mr-2" />
+								Remove from {pos.account}
+							</DropdownMenuItem>
+						)}
 					</DropdownMenuContent>
 				</DropdownMenu>
 			);
@@ -391,6 +548,8 @@ export function StocksFundsPositions({
 				renderActions={renderActions}
 				onSelectAsset={(symbol) => onSelectAsset?.(symbol)}
 				onSelectAccount={onSelectAccount}
+				knownAccountGroups={knownAccountGroups}
+				onAddPositionToAccount={onAddPositionToAccount}
 				onDeletePosition={handleDeletePosition}
 				onRefreshPrice={handleRefreshPrice}
 				formatCurrency={formatCurrency}
@@ -401,10 +560,13 @@ export function StocksFundsPositions({
 			<AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Remove from Portfolio</AlertDialogTitle>
+						<AlertDialogTitle>
+							Remove from {deleteTarget?.accountName || "Account"}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
 							Are you sure you want to remove <strong>{deleteTarget?.symbol}</strong> (
-							{deleteTarget?.name}) from your portfolio? This action cannot be undone.
+							{deleteTarget?.name}) from <strong>{deleteTarget?.accountName}</strong>? Other
+							accounts holding this asset will not be affected.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -418,10 +580,13 @@ export function StocksFundsPositions({
 										await deleteAsset(
 											deleteTarget.assetId || deleteTarget.id,
 											deleteTarget.portfolioId,
+											deleteTarget.accountId,
 										);
-										toast.success(`${deleteTarget.symbol} removed from portfolio`);
+										toast.success(
+											`${deleteTarget.symbol} removed from ${deleteTarget.accountName}`,
+										);
 									} catch {
-										toast.error("Failed to remove asset from portfolio");
+										toast.error(`Failed to remove asset from ${deleteTarget.accountName}`);
 									}
 								}
 								setDeleteTarget(null);

@@ -86,7 +86,7 @@ export class ChartLibraryManager {
 	 */
 	private static async loadECharts(): Promise<void> {
 		if (ChartLibraryManager.echartsLoaded) return;
-		await import("echarts-for-react");
+		await import("@/lib/charts/echarts-core");
 		ChartLibraryManager.echartsLoaded = true;
 	}
 
@@ -315,9 +315,4 @@ export class ChartAccessibility {
 				return baseInstructions;
 		}
 	}
-}
-
-// Initialize chart libraries on module load
-if (typeof window !== "undefined") {
-	ChartLibraryManager.initialize().catch((_err: unknown) => {});
 }

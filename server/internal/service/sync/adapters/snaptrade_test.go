@@ -146,8 +146,9 @@ func TestSnapTradeAdapter_FetchTradeRepublicHoldings(t *testing.T) {
 	adapter := adapters.NewSnapTradeAdapter(adapters.WithBaseURL(server.URL))
 	cred := newTestSnapTradeCredential()
 
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, "tr-account-1")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, "tr-account-1")
 	require.NoError(t, err)
+	holdings := holdingsSnapshot.Holdings
 	require.Len(t, holdings, 2)
 
 	holdingMap := make(map[string]syncservice.RawHolding)
@@ -279,8 +280,9 @@ func TestSnapTradeAdapter_FetchBalances(t *testing.T) {
 	adapter := adapters.NewSnapTradeAdapter(adapters.WithBaseURL(server.URL))
 	cred := newTestSnapTradeCredential()
 
-	balances, err := adapter.FetchBalances(context.Background(), cred, "tr-account-1")
+	balancesSnapshot, err := adapter.FetchBalances(context.Background(), cred, "tr-account-1")
 	require.NoError(t, err)
+	balances := balancesSnapshot.Balances
 	require.Len(t, balances, 2)
 
 	assert.Equal(t, model.CurrencyEUR, balances[0].Currency)
@@ -367,8 +369,9 @@ func TestSnapTradeAdapter_FetchTransactions_Activities(t *testing.T) {
 	cred := newTestSnapTradeCredential()
 	since := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	txs, err := adapter.FetchTransactions(context.Background(), cred, "tr-account-1", &since)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "tr-account-1", &since, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 5)
 
 	// Verify chronological ordering
@@ -688,8 +691,9 @@ func TestSnapTradeAdapter_FetchHoldings_FiltersZeroAndNegativeQuantities(t *test
 	adapter := adapters.NewSnapTradeAdapter(adapters.WithBaseURL(server.URL))
 	cred := newTestSnapTradeCredential()
 
-	holdings, err := adapter.FetchHoldings(context.Background(), cred, "tr-acc-zero-test")
+	holdingsSnapshot, err := adapter.FetchHoldings(context.Background(), cred, "tr-acc-zero-test")
 	require.NoError(t, err)
+	holdings := holdingsSnapshot.Holdings
 	require.Len(t, holdings, 1, "only positive quantity positions should be retained")
 	assert.Equal(t, "VALID", holdings[0].Symbol)
 	assert.True(t, holdings[0].Quantity.Equal(decimal.NewFromFloat(15.0)))
@@ -733,8 +737,9 @@ func TestSnapTradeAdapter_FetchTransactions_DateFallbackAndSorting(t *testing.T)
 	)
 	cred := newTestSnapTradeCredential()
 
-	txs, err := adapter.FetchTransactions(context.Background(), cred, "acc-1", nil)
+	txsSnapshot, err := adapter.FetchTransactions(context.Background(), cred, "acc-1", nil, nil)
 	require.NoError(t, err)
+	txs := txsSnapshot.Transactions
 	require.Len(t, txs, 3)
 
 	// Verify chronological ascending sorting: Feb 2024, Mar 2024, fallback Now (Oct 2026)

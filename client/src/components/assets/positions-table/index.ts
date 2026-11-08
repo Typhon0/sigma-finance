@@ -1,15 +1,15 @@
+export { type CSVExportOptions, exportPositionsToCSV } from "./export-csv";
 export { PositionsDataTable } from "./PositionsDataTable";
-export { SortableHead } from "./SortableHead";
 export { PositionsTableSkeleton } from "./PositionsTableSkeleton";
-export { exportPositionsToCSV, type CSVExportOptions } from "./export-csv";
+export { SortableHead } from "./SortableHead";
 export type {
 	BasePositionItem,
+	GroupByOption,
+	KnownAccountGroup,
+	PositionsDataTableProps,
 	SortDirection,
 	SortField,
 	StandardSortField,
 	TableDensity,
-	GroupByOption,
 	TableRowModel,
-	PositionsDataTableProps,
 } from "./types";
-

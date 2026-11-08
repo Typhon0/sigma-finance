@@ -100,7 +100,7 @@ vi.mock("@/components/charts/PortfolioHeroChart", async (importOriginal) => {
 	};
 });
 
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts">ECharts</div>,
 }));
 

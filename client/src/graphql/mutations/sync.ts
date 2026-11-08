@@ -107,3 +107,102 @@ export const TRIGGER_ACCOUNT_SYNC = gql`
     }
   }
 `;
+
+export const INITIATE_WOOB_AUTH = gql`
+  mutation InitiateWoobAuth($institution: String!, $login: String!, $password: String!, $region: String, $portfolioId: ID!) {
+    initiateWoobAuth(institution: $institution, login: $login, password: $password, region: $region, portfolioId: $portfolioId) {
+      authSessionId
+      status
+      countdownSeconds
+      challengeMessage
+      expiresAt
+    }
+  }
+`;
+
+export const POLL_WOOB_AUTH = gql`
+  mutation PollWoobAuth($authSessionId: ID!, $otpCode: String) {
+    pollWoobAuth(authSessionId: $authSessionId, otpCode: $otpCode) {
+      status
+      connections {
+        id
+        portfolioId
+        accountId
+        provider
+        externalInstitutionId
+        externalAccountId
+        institutionName
+        syncStatus
+        lastSyncAt
+        lastError
+        createdAt
+        updatedAt
+      }
+      errorMessage
+    }
+  }
+`;
+
+export const INITIATE_TRADE_REPUBLIC_AUTH = gql`
+  mutation InitiateTradeRepublicAuth($phoneNumber: String!, $pin: String!, $portfolioId: ID!) {
+    initiateTradeRepublicAuth(phoneNumber: $phoneNumber, pin: $pin, portfolioId: $portfolioId) {
+      authSessionId
+      status
+      countdownSeconds
+      expiresAt
+    }
+  }
+`;
+
+export const POLL_TRADE_REPUBLIC_AUTH = gql`
+  mutation PollTradeRepublicAuth($authSessionId: ID!) {
+    pollTradeRepublicAuth(authSessionId: $authSessionId) {
+      status
+      connections {
+        id
+        portfolioId
+        accountId
+        provider
+        externalInstitutionId
+        externalAccountId
+        institutionName
+        syncStatus
+        lastSyncAt
+        lastError
+        createdAt
+        updatedAt
+      }
+      errorMessage
+    }
+  }
+`;
+
+export const INITIATE_ENABLE_BANKING_AUTH = gql`
+  mutation InitiateEnableBankingAuth($aspspName: String!, $aspspCountry: String!, $redirectUrl: String!, $portfolioId: ID!) {
+    initiateEnableBankingAuth(aspspName: $aspspName, aspspCountry: $aspspCountry, redirectUrl: $redirectUrl, portfolioId: $portfolioId) {
+      authSessionId
+      authUrl
+      state
+      expiresAt
+    }
+  }
+`;
+
+export const COMPLETE_ENABLE_BANKING_AUTH = gql`
+  mutation CompleteEnableBankingAuth($code: String!, $state: String!, $portfolioId: ID!) {
+    completeEnableBankingAuth(code: $code, state: $state, portfolioId: $portfolioId) {
+      id
+      portfolioId
+      accountId
+      provider
+      externalInstitutionId
+      externalAccountId
+      institutionName
+      syncStatus
+      lastSyncAt
+      lastError
+      createdAt
+      updatedAt
+    }
+  }
+`;

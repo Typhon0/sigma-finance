@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	AlertCircle,
 	ArrowLeft,
@@ -17,6 +16,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -532,7 +532,7 @@ export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps)
 									<CardDescription>Remaining balance over time</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<ReactECharts
+									<EChart
 										option={balanceEvolutionOption}
 										style={{ height: "300px" }}
 										opts={{ renderer: "svg" }}
@@ -550,7 +550,7 @@ export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps)
 									<CardDescription>Principal vs Interest (24 months)</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<ReactECharts
+									<EChart
 										option={paymentBreakdownOption}
 										style={{ height: "300px" }}
 										opts={{ renderer: "svg" }}
@@ -706,7 +706,7 @@ export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps)
 									<CardDescription>Distribution of payments</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<ReactECharts
+									<EChart
 										option={interestPrincipalOption}
 										style={{ height: "350px" }}
 										opts={{ renderer: "svg" }}

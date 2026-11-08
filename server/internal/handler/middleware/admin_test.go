@@ -84,6 +84,7 @@ func (m *mockSessionService) ExtendSession(ctx context.Context, sessionID string
 
 type mockUserService struct {
 	mock.Mock
+	service.IUserService
 }
 
 func (m *mockUserService) GetByID(ctx context.Context, id string) (*model.User, error) {

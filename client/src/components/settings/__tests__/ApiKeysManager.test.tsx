@@ -1,17 +1,16 @@
 import "@testing-library/jest-dom";
 import { MockedProvider } from "@apollo/client/testing";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-
-import { ApiKeysManager } from "../ApiKeysManager";
+import {
+	UPSERT_MARKET_DATA_CREDENTIAL,
+	VALIDATE_PROVIDER_CREDENTIALS,
+} from "@/graphql/mutations/market-data";
+import { CONFIGURE_ALCHEMY_KEY } from "@/graphql/mutations/wallets";
 import { GET_MARKET_DATA_SETTINGS } from "@/graphql/queries/market-data";
 import { GET_SYNC_CREDENTIALS } from "@/graphql/queries/sync";
 import { GET_WALLET_CU_USAGE } from "@/graphql/queries/wallets";
-import {
-	VALIDATE_PROVIDER_CREDENTIALS,
-	UPSERT_MARKET_DATA_CREDENTIAL,
-} from "@/graphql/mutations/market-data";
-import { CONFIGURE_ALCHEMY_KEY } from "@/graphql/mutations/wallets";
+import { ApiKeysManager } from "../ApiKeysManager";
 
 const mockMarketDataSettings = {
 	marketDataCredentials: [
@@ -250,11 +249,12 @@ describe("ApiKeysManager", () => {
 		expect(screen.getByText("Alchemy API & Compute Unit Meter")).toBeInTheDocument();
 		expect(screen.queryByText("Tiingo")).not.toBeInTheDocument();
 
-		// Switch to Exchange Sync tab
-		const syncTab = screen.getByRole("tab", { name: /Exchange Sync \(Kraken\)/i });
+		// Switch to Exchange & Bank Sync tab
+		const syncTab = screen.getByRole("tab", { name: /Exchange.*Sync/i });
 		fireEvent.click(syncTab);
 
 		expect(screen.getByText("Kraken Direct API Key")).toBeInTheDocument();
+		expect(screen.getByText("Enable Banking (European Open Banking)")).toBeInTheDocument();
 		expect(screen.queryByText("Alchemy API & Compute Unit Meter")).not.toBeInTheDocument();
 	});
 });

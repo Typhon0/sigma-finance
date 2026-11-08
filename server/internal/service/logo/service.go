@@ -39,6 +39,44 @@ var (
 		"XREP": "REP",
 		"XZEC": "ZEC",
 	}
+	stockSymbolAliases = map[string]string{
+		"FP.PA":   "TTE",
+		"FP":      "TTE",
+		"TOT":     "TTE",
+		"TOTF.PA": "TTE",
+	}
+	internationalStockDomains = map[string]string{
+		"MC.PA":     "lvmh.com",
+		"FP.PA":     "totalenergies.com",
+		"TTE.PA":    "totalenergies.com",
+		"AI.PA":     "airliquide.com",
+		"DG.PA":     "vinci.com",
+		"CS.PA":     "axa.com",
+		"NOVO-B.CO": "novonordisk.com",
+		"RMS.PA":    "hermes.com",
+		"OR.PA":     "loreal.com",
+		"SAN.PA":    "sanofi.com",
+		"SU.PA":     "se.com",
+		"BNP.PA":    "mabanque.bnpparibas",
+		"GLE.PA":    "societegenerale.com",
+		"ACA.PA":    "credit-agricole.com",
+		"ENGI.PA":   "engie.com",
+		"CAP.PA":    "capgemini.com",
+		"KER.PA":    "kering.com",
+		"RI.PA":     "pernod-ricard.com",
+		"ORA.PA":    "orange.com",
+		"BN.PA":     "danone.com",
+		"SAF.PA":    "safran-group.com",
+		"DSY.PA":    "3ds.com",
+		"STLAP.PA":  "stellantis.com",
+		"SAP.DE":    "sap.com",
+		"SIE.DE":    "siemens.com",
+		"ALV.DE":    "allianz.com",
+		"BMW.DE":    "bmw.com",
+		"MBG.DE":    "mercedes-benz.com",
+		"VOW3.DE":   "volkswagen.com",
+		"ASML.AS":   "asml.com",
+	}
 )
 
 type Service interface {
@@ -269,55 +307,73 @@ func (s *service) resolveCandidateURLs(ctx context.Context, assetType, symbol st
 		urls = append(urls, fmt.Sprintf("https://cdn.jsdelivr.net/gh/spothq/cryptocurrency-icons@master/128/color/%s.png", lowerSym))
 	} else {
 		// Stocks / ETFs / Funds
+		effectiveSym := symbol
+		if alias, ok := stockSymbolAliases[symbol]; ok {
+			effectiveSym = alias
+		}
+
 		baseSym := strings.Split(symbol, ".")[0]
+		hasExchangeSuffix := strings.Contains(symbol, ".")
 
-		// Priority 1: NVSTly ticker icons repository (covers thousands of NYSE, NASDAQ, and world tickers)
-		urls = append(urls, fmt.Sprintf("https://raw.githubusercontent.com/nvstly/icons/main/ticker_icons/%s.png", symbol))
-		if baseSym != symbol {
-			urls = append(urls, fmt.Sprintf("https://raw.githubusercontent.com/nvstly/icons/main/ticker_icons/%s.png", baseSym))
+		// Priority 1: Direct domain check via internationalStockDomains or Database Instrument Website
+		var targetDomain string
+		if d, ok := internationalStockDomains[symbol]; ok {
+			targetDomain = d
+		} else if d, ok := internationalStockDomains[effectiveSym]; ok {
+			targetDomain = d
 		}
 
-		// Priority 2: FinancialModelingPrep stock image API
-		urls = append(urls, fmt.Sprintf("https://financialmodelingprep.com/image-stock/%s.png", symbol))
-		if baseSym != symbol {
-			urls = append(urls, fmt.Sprintf("https://financialmodelingprep.com/image-stock/%s.png", baseSym))
-		}
-
-		// Priority 3: TradingView SVG CDN
-		urls = append(urls, fmt.Sprintf("https://s3-symbol-logo.tradingview.com/%s.svg", strings.ToLower(symbol)))
-		if baseSym != symbol {
-			urls = append(urls, fmt.Sprintf("https://s3-symbol-logo.tradingview.com/%s.svg", strings.ToLower(baseSym)))
-		}
-
-		// Priority 4: In-database instrument website domain
-		if s.instrumentRepo != nil {
+		if targetDomain == "" && s.instrumentRepo != nil {
 			results, err := s.instrumentRepo.SearchLocalInstruments(ctx, symbol, repository.InstrumentSearchFilter{Limit: 5})
 			if err == nil {
 				for _, row := range results {
-					if strings.EqualFold(row.Instrument.Symbol, symbol) || strings.EqualFold(row.Instrument.Symbol, baseSym) {
+					if strings.EqualFold(row.Instrument.Symbol, symbol) || (!hasExchangeSuffix && strings.EqualFold(row.Instrument.Symbol, baseSym)) {
 						if row.Instrument.ImageURL != nil && *row.Instrument.ImageURL != "" {
 							urls = append(urls, *row.Instrument.ImageURL)
 						}
 						if row.Instrument.Website != nil && *row.Instrument.Website != "" {
-							domain := extractDomain(*row.Instrument.Website)
-							if domain != "" {
-								urls = append(urls,
-									fmt.Sprintf("https://logo.clearbit.com/%s", domain),
-									fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=128", domain),
-								)
+							d := extractDomain(*row.Instrument.Website)
+							if d != "" {
+								targetDomain = d
+								break
 							}
 						}
-						break
 					}
 				}
 			}
 		}
 
-		// Priority 5: Fallback domain guess for major symbols
-		urls = append(urls,
-			fmt.Sprintf("https://logo.clearbit.com/%s.com", strings.ToLower(baseSym)),
-			fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s.com&sz=128", strings.ToLower(baseSym)),
-		)
+		if targetDomain != "" {
+			urls = append(urls,
+				fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s&sz=128", targetDomain),
+			)
+		}
+
+		// Priority 2: TradingView SVG CDN with exact symbol
+		urls = append(urls, fmt.Sprintf("https://s3-symbol-logo.tradingview.com/%s.svg", strings.ToLower(symbol)))
+		if effectiveSym != symbol {
+			urls = append(urls, fmt.Sprintf("https://s3-symbol-logo.tradingview.com/%s.svg", strings.ToLower(effectiveSym)))
+		}
+
+		// Priority 3: FinancialModelingPrep with exact symbol (only when safe or no dot)
+		if !hasExchangeSuffix {
+			urls = append(urls, fmt.Sprintf("https://financialmodelingprep.com/image-stock/%s.png", symbol))
+			if effectiveSym != symbol {
+				urls = append(urls, fmt.Sprintf("https://financialmodelingprep.com/image-stock/%s.png", effectiveSym))
+			}
+		}
+
+		// Priority 5: Fallback to US base ticker ONLY if there is NO international exchange suffix
+		// (e.g. AAPL, MSFT, GOOGL - do NOT fallback for DG.PA, CS.PA, AI.PA which collide with US Dollar General, Credit Suisse, C3.ai)
+		if !hasExchangeSuffix {
+			urls = append(urls,
+				fmt.Sprintf("https://raw.githubusercontent.com/nvstly/icons/main/ticker_icons/%s.png", baseSym),
+				fmt.Sprintf("https://financialmodelingprep.com/image-stock/%s.png", baseSym),
+				fmt.Sprintf("https://s3-symbol-logo.tradingview.com/%s.svg", strings.ToLower(baseSym)),
+				fmt.Sprintf("https://logo.clearbit.com/%s.com", strings.ToLower(baseSym)),
+				fmt.Sprintf("https://www.google.com/s2/favicons?domain=%s.com&sz=128", strings.ToLower(baseSym)),
+			)
+		}
 	}
 
 	return urls

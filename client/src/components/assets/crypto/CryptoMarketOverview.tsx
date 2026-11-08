@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	ArrowRight,
@@ -17,6 +16,7 @@ import {
 	Zap,
 } from "lucide-react";
 import React, { useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -669,7 +669,7 @@ export function CryptoMarketOverview({
 						<CardDescription className="text-xs">Fear & Greed Index</CardDescription>
 					</CardHeader>
 					<CardContent className="pb-2 pt-0">
-						<ReactECharts
+						<EChart
 							option={fearGreedGaugeOption}
 							style={{ height: "110px" }}
 							opts={{ renderer: "svg" }}
@@ -694,7 +694,7 @@ export function CryptoMarketOverview({
 						<CardDescription>Total crypto market capitalization breakdown</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={marketCapDistribution}
 							style={{ height: "300px" }}
 							opts={{ renderer: "svg" }}
@@ -708,7 +708,7 @@ export function CryptoMarketOverview({
 						<CardDescription>Trading volume evolution over 24 hours</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={volumeTrendData}
 							style={{ height: "300px" }}
 							opts={{ renderer: "svg" }}

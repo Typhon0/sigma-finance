@@ -87,6 +87,8 @@ export class RealTimePriceManager {
 	private candlestickListeners = new Map<string, Set<(update: CandlestickUpdate) => void>>();
 	private connectionState: ConnectionState = "disconnected";
 	private reconnectAttempts = 0;
+	private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+	private shouldReconnect = true;
 	private heartbeatTimer: NodeJS.Timeout | null = null;
 	private updateQueue: PriceUpdate[] = [];
 	private batchTimer: NodeJS.Timeout | null = null;
@@ -106,6 +108,12 @@ export class RealTimePriceManager {
 				return;
 			}
 
+			// A manual connect supersedes any pending reconnect attempt.
+			this.clearReconnectTimer();
+
+			// A manual disconnect disables reconnection; an explicit connect
+			// must re-arm it for the next drop.
+			this.shouldReconnect = true;
 			this.connectionState = "connecting";
 			this.ws = new WebSocket(this.config.wsUrl);
 
@@ -146,6 +154,8 @@ export class RealTimePriceManager {
 	 * Disconnect from WebSocket
 	 */
 	disconnect(): void {
+		this.shouldReconnect = false;
+		this.clearReconnectTimer();
 		if (this.ws) {
 			this.ws.close();
 			this.ws = null;
@@ -361,15 +371,26 @@ export class RealTimePriceManager {
 	 * Handle reconnection
 	 */
 	private handleReconnect(): void {
-		if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
+		if (!this.shouldReconnect || this.reconnectAttempts >= this.config.maxReconnectAttempts) {
 			return;
 		}
 
 		this.reconnectAttempts++;
+		this.clearReconnectTimer();
 
-		setTimeout(() => {
-			this.connect().catch((_error) => {});
+		this.reconnectTimer = setTimeout(() => {
+			this.reconnectTimer = null;
+			if (this.shouldReconnect) {
+				this.connect().catch((_error) => {});
+			}
 		}, this.config.reconnectInterval);
+	}
+
+	private clearReconnectTimer(): void {
+		if (this.reconnectTimer) {
+			clearTimeout(this.reconnectTimer);
+			this.reconnectTimer = null;
+		}
 	}
 
 	/**

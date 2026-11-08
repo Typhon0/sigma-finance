@@ -9,9 +9,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
+
+	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 )
 
@@ -197,4 +200,270 @@ func (r *queryResolver) SyncCredentials(ctx context.Context) ([]*gqlModel.SyncCr
 	}
 
 	return res, nil
+}
+
+func maskPhone(p string) string {
+	if len(p) <= 6 {
+		return "***"
+	}
+	return p[:3] + "..." + p[len(p)-3:]
+}
+
+// InitiateTradeRepublicAuth is the resolver for the initiateTradeRepublicAuth field.
+func (r *mutationResolver) InitiateTradeRepublicAuth(ctx context.Context, phoneNumber string, pin string, portfolioID string) (*gqlModel.TradeRepublicAuthSession, error) {
+	log.Printf("[INFO] [graphql] InitiateTradeRepublicAuth request: portfolioID=%s, phone=%s", portfolioID, maskPhone(phoneNumber))
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] InitiateTradeRepublicAuth: getUserIDFromContext failed: %v", err)
+		return nil, err
+	}
+
+	session, err := r.SyncService.InitiateTradeRepublicAuth(ctx, userID, portfolioID, phoneNumber, pin)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] InitiateTradeRepublicAuth failed for user=%s, portfolio=%s: %v", userID, portfolioID, err)
+		return nil, err
+	}
+
+	var status gqlModel.TradeRepublicAuthStatus
+	switch session.Status {
+	case model.SyncAuthSessionStatusWaitingForConfirmation:
+		status = gqlModel.TradeRepublicAuthStatusWaitingForConfirmation
+	case model.SyncAuthSessionStatusCompleted:
+		status = gqlModel.TradeRepublicAuthStatusCompleted
+	case model.SyncAuthSessionStatusRejected:
+		status = gqlModel.TradeRepublicAuthStatusRejected
+	default:
+		status = gqlModel.TradeRepublicAuthStatusExpired
+	}
+
+	countdown := int32(time.Until(session.ExpiresAt).Seconds())
+	if countdown < 0 {
+		countdown = 0
+	}
+
+	log.Printf("[INFO] [graphql] InitiateTradeRepublicAuth success: sessionID=%s status=%s countdown=%d", session.ID, status, countdown)
+	return &gqlModel.TradeRepublicAuthSession{
+		AuthSessionID:    session.ID,
+		Status:           status,
+		CountdownSeconds: countdown,
+		ExpiresAt:        session.ExpiresAt,
+	}, nil
+}
+
+// PollTradeRepublicAuth is the resolver for the pollTradeRepublicAuth field.
+func (r *mutationResolver) PollTradeRepublicAuth(ctx context.Context, authSessionID string) (*gqlModel.TradeRepublicAuthPollResult, error) {
+	log.Printf("[INFO] [graphql] PollTradeRepublicAuth request: sessionID=%s", authSessionID)
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] PollTradeRepublicAuth: getUserIDFromContext failed: %v", err)
+		return nil, err
+	}
+
+	session, conns, err := r.SyncService.PollTradeRepublicAuth(ctx, userID, authSessionID)
+	if err != nil {
+		log.Printf("[WARN] [graphql] PollTradeRepublicAuth poll error session=%s: %v", authSessionID, err)
+		errMsg := err.Error()
+		return &gqlModel.TradeRepublicAuthPollResult{
+			Status:       gqlModel.TradeRepublicAuthStatusRejected,
+			ErrorMessage: &errMsg,
+		}, nil
+	}
+
+	var status gqlModel.TradeRepublicAuthStatus
+	switch session.Status {
+	case model.SyncAuthSessionStatusWaitingForConfirmation:
+		status = gqlModel.TradeRepublicAuthStatusWaitingForConfirmation
+	case model.SyncAuthSessionStatusCompleted:
+		status = gqlModel.TradeRepublicAuthStatusCompleted
+	case model.SyncAuthSessionStatusRejected:
+		status = gqlModel.TradeRepublicAuthStatusRejected
+	default:
+		status = gqlModel.TradeRepublicAuthStatusExpired
+	}
+
+	var gqlConns []*gqlModel.SyncConnection
+	for _, c := range conns {
+		gqlConns = append(gqlConns, mapSyncConnectionToGQL(c))
+	}
+
+	log.Printf("[INFO] [graphql] PollTradeRepublicAuth: sessionID=%s status=%s conns=%d", authSessionID, status, len(gqlConns))
+	return &gqlModel.TradeRepublicAuthPollResult{
+		Status:      status,
+		Connections: gqlConns,
+	}, nil
+}
+
+// InitiateWoobAuth is the resolver for the initiateWoobAuth field.
+func (r *mutationResolver) InitiateWoobAuth(ctx context.Context, institution string, login string, password string, region *string, portfolioID string) (*gqlModel.WoobAuthSession, error) {
+	log.Printf("[INFO] [graphql] InitiateWoobAuth request: portfolioID=%s, institution=%s", portfolioID, institution)
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	reg := ""
+	if region != nil {
+		reg = *region
+	}
+
+	session, err := r.SyncService.InitiateWoobAuth(ctx, userID, portfolioID, institution, login, password, reg)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] InitiateWoobAuth failed for user=%s, portfolio=%s: %v", userID, portfolioID, err)
+		return nil, err
+	}
+
+	var status gqlModel.WoobAuthStatus
+	switch session.Status {
+	case model.SyncAuthSessionStatusWaitingForConfirmation:
+		status = gqlModel.WoobAuthStatusWaitingForConfirmation
+	case "WAITING_FOR_CODE":
+		status = gqlModel.WoobAuthStatusWaitingForCode
+	case model.SyncAuthSessionStatusCompleted:
+		status = gqlModel.WoobAuthStatusCompleted
+	case model.SyncAuthSessionStatusRejected:
+		status = gqlModel.WoobAuthStatusRejected
+	default:
+		status = gqlModel.WoobAuthStatusExpired
+	}
+
+	countdown := int32(time.Until(session.ExpiresAt).Seconds())
+	if countdown < 0 {
+		countdown = 0
+	}
+
+	var challengeMsg *string
+	raw, decErr := session.Decrypt()
+	if decErr == nil {
+		var pInfo struct {
+			ChallengeMessage *string `json:"challenge_message"`
+		}
+		if json.Unmarshal([]byte(raw), &pInfo) == nil && pInfo.ChallengeMessage != nil {
+			challengeMsg = pInfo.ChallengeMessage
+		}
+	}
+
+	return &gqlModel.WoobAuthSession{
+		AuthSessionID:    session.ID,
+		Status:           status,
+		CountdownSeconds: countdown,
+		ChallengeMessage: challengeMsg,
+		ExpiresAt:        session.ExpiresAt,
+	}, nil
+}
+
+// PollWoobAuth is the resolver for the pollWoobAuth field.
+func (r *mutationResolver) PollWoobAuth(ctx context.Context, authSessionID string, otpCode *string) (*gqlModel.WoobAuthPollResult, error) {
+	log.Printf("[INFO] [graphql] PollWoobAuth request: sessionID=%s", authSessionID)
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	code := ""
+	if otpCode != nil {
+		code = *otpCode
+	}
+
+	session, conns, err := r.SyncService.PollWoobAuth(ctx, userID, authSessionID, code)
+	if err != nil {
+		errMsg := err.Error()
+		return &gqlModel.WoobAuthPollResult{
+			Status:       gqlModel.WoobAuthStatusRejected,
+			ErrorMessage: &errMsg,
+		}, nil
+	}
+
+	var status gqlModel.WoobAuthStatus
+	switch session.Status {
+	case model.SyncAuthSessionStatusWaitingForConfirmation:
+		status = gqlModel.WoobAuthStatusWaitingForConfirmation
+	case "WAITING_FOR_CODE":
+		status = gqlModel.WoobAuthStatusWaitingForCode
+	case model.SyncAuthSessionStatusCompleted:
+		status = gqlModel.WoobAuthStatusCompleted
+	case model.SyncAuthSessionStatusRejected:
+		status = gqlModel.WoobAuthStatusRejected
+	default:
+		status = gqlModel.WoobAuthStatusExpired
+	}
+
+	var gqlConns []*gqlModel.SyncConnection
+	for _, c := range conns {
+		gqlConns = append(gqlConns, mapSyncConnectionToGQL(c))
+	}
+
+	return &gqlModel.WoobAuthPollResult{
+		Status:      status,
+		Connections: gqlConns,
+	}, nil
+}
+
+// EnableBankingInstitutions is the resolver for the enableBankingInstitutions field.
+func (r *queryResolver) EnableBankingInstitutions(ctx context.Context, country string) ([]*gqlModel.EnableBankingInstitution, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	aspsps, err := r.SyncService.ListEnableBankingInstitutions(ctx, userID, country)
+	if err != nil {
+		return nil, err
+	}
+
+	var results []*gqlModel.EnableBankingInstitution
+	for _, a := range aspsps {
+		var logo *string
+		if a.Logo != "" {
+			l := a.Logo
+			logo = &l
+		}
+		psuTypes := a.PsuTypes
+		results = append(results, &gqlModel.EnableBankingInstitution{
+			Name:     a.Name,
+			Title:    a.Title,
+			Country:  a.Country,
+			Logo:     logo,
+			PsuTypes: psuTypes,
+		})
+	}
+	return results, nil
+}
+
+// InitiateEnableBankingAuth is the resolver for the initiateEnableBankingAuth field.
+func (r *mutationResolver) InitiateEnableBankingAuth(ctx context.Context, aspspName string, aspspCountry string, redirectURL string, portfolioID string) (*gqlModel.EnableBankingAuthSession, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := r.SyncService.InitiateEnableBankingAuth(ctx, userID, portfolioID, aspspName, aspspCountry, redirectURL)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlModel.EnableBankingAuthSession{
+		AuthSessionID: session.AuthSessionID,
+		AuthURL:       session.AuthURL,
+		State:         session.State,
+		ExpiresAt:     session.ExpiresAt,
+	}, nil
+}
+
+// CompleteEnableBankingAuth is the resolver for the completeEnableBankingAuth field.
+func (r *mutationResolver) CompleteEnableBankingAuth(ctx context.Context, code string, state string, portfolioID string) ([]*gqlModel.SyncConnection, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	conns, err := r.SyncService.CompleteEnableBankingAuth(ctx, userID, portfolioID, code, state)
+	if err != nil {
+		return nil, err
+	}
+
+	var gqlConns []*gqlModel.SyncConnection
+	for _, c := range conns {
+		gqlConns = append(gqlConns, mapSyncConnectionToGQL(c))
+	}
+	return gqlConns, nil
 }

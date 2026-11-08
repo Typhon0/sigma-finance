@@ -19,6 +19,10 @@ type Account {
     accountNumber: String
     currency: String!
     syncProvider: String!
+    ownershipPercentage: Float!
+    coOwnerName: String
+    coOwnerUserId: ID
+    coOwnerUser: User
     externalId: String
     syncConnection: SyncConnection
     positions: [Position!]!
@@ -26,6 +30,12 @@ type Account {
     totalValue: Float
     createdAt: Time!
     updatedAt: Time!
+}
+
+type CoOwnerCandidate {
+    id: ID!
+    name: String!
+    email: String!
 }
 
 input CreateAccountInput {
@@ -37,6 +47,9 @@ input CreateAccountInput {
     accountNumber: String
     currency: String
     syncProvider: String
+    ownershipPercentage: Float
+    coOwnerName: String
+    coOwnerUserId: ID
 }
 
 input UpdateAccountInput {
@@ -46,11 +59,15 @@ input UpdateAccountInput {
     institution: String
     accountNumber: String
     currency: String
+    ownershipPercentage: Float
+    coOwnerName: String
+    coOwnerUserId: ID
 }
 
 extend type Query {
     accounts(portfolioId: ID): [Account!]! @auth
     account(id: ID!): Account @auth
+    coOwnerCandidates(search: String): [CoOwnerCandidate!]! @auth
 }
 
 extend type Mutation {

@@ -108,3 +108,49 @@ func TestSearch_TickerExactReturnsApple(t *testing.T) {
 		t.Fatalf("expected top result name 'Apple Inc.', got %q", top.Instrument.Name)
 	}
 }
+
+func TestRankCandidateInstrument_PrefersBaseTickerAndPrimaryExchange(t *testing.T) {
+	currencyUSD := "USD"
+	currencyEUR := "EUR"
+
+	nasdaq := &model.Instrument{
+		Symbol:    "MSFT",
+		Name:      "Microsoft Corporation",
+		Exchange:  "NASDAQ Global Select",
+		Currency:  &currencyUSD,
+		Status:    model.InstrumentStatusActive,
+	}
+
+	xetra := &model.Instrument{
+		Symbol:    "MSF.DE",
+		Name:      "Microsoft Corporation",
+		Exchange:  "XETRA",
+		Currency:  &currencyEUR,
+		Status:    model.InstrumentStatusActive,
+	}
+
+	otc := &model.Instrument{
+		Symbol:    "MSFT.BA",
+		Name:      "Microsoft Corporation",
+		Exchange:  "OTC Buenos Aires",
+		Currency:  &currencyUSD,
+		Status:    model.InstrumentStatusActive,
+	}
+
+	scoreNasdaq := rankCandidateInstrument(nasdaq, "")
+	scoreXetra := rankCandidateInstrument(xetra, "")
+	scoreOTC := rankCandidateInstrument(otc, "")
+
+	if scoreNasdaq <= scoreXetra {
+		t.Fatalf("expected NASDAQ base ticker (%d) to outrank XETRA suffixed ticker (%d)", scoreNasdaq, scoreXetra)
+	}
+	if scoreXetra <= scoreOTC {
+		t.Fatalf("expected XETRA (%d) to outrank OTC (%d)", scoreXetra, scoreOTC)
+	}
+
+	// With EUR preference, XETRA gains affinity but clean base ticker still stays strong
+	scoreXetraEUR := rankCandidateInstrument(xetra, model.CurrencyEUR)
+	if scoreXetraEUR <= scoreXetra {
+		t.Fatalf("expected currency preference to increase score: %d vs %d", scoreXetraEUR, scoreXetra)
+	}
+}

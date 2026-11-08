@@ -1,6 +1,6 @@
 import type { ECElementEvent, EChartsCoreOption } from "echarts";
-import ReactECharts from "echarts-for-react";
 import { useMemo } from "react";
+import EChart from "@/components/charts/EChart";
 import {
 	InlineChartSkeleton,
 	useComponentErrorHandler,
@@ -195,7 +195,7 @@ function AssetAllocationChartComponent({
 			</CardHeader>
 			<CardContent>
 				<div className="h-80 w-full">
-					<ReactECharts
+					<EChart
 						option={chartOption}
 						onEvents={chartEvents}
 						notMerge={true}

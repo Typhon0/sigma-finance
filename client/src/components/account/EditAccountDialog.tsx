@@ -4,6 +4,7 @@ import {
 	getApolloContext,
 	InMemoryCache,
 	useMutation,
+	useQuery,
 } from "@apollo/client";
 import { Loader2 } from "lucide-react";
 import { useContext, useEffect, useMemo, useState } from "react";
@@ -27,7 +28,8 @@ import {
 	SelectValue,
 } from "@/components/ui/select";
 import { UPDATE_ACCOUNT } from "@/graphql/mutations/accounts";
-import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
+import { GET_ACCOUNTS, GET_CO_OWNER_CANDIDATES } from "@/graphql/queries/accounts";
+import { classifyAccount } from "@/lib/account-classifier";
 
 export interface AccountEditData {
 	id: string;
@@ -37,6 +39,9 @@ export interface AccountEditData {
 	institution?: string | null;
 	accountNumber?: string | null;
 	currency?: string | null;
+	ownershipPercentage?: number | null;
+	coOwnerName?: string | null;
+	coOwnerUserId?: string | null;
 }
 
 export interface EditAccountDialogProps {
@@ -82,12 +87,20 @@ export function EditAccountDialog({
 	const [institution, setInstitution] = useState("");
 	const [accountNumber, setAccountNumber] = useState("");
 	const [currency, setCurrency] = useState("EUR");
+	const [ownershipPercentage, setOwnershipPercentage] = useState<number>(100);
+	const [coOwnerName, setCoOwnerName] = useState("");
+	const [coOwnerUserId, setCoOwnerUserId] = useState<string | null>(null);
 
 	const apolloContext = useContext(getApolloContext());
 	const fallbackClient = useMemo(() => {
 		if (apolloContext?.client) return undefined;
 		return new ApolloClient({ cache: new InMemoryCache(), link: ApolloLink.empty() });
 	}, [apolloContext?.client]);
+
+	const { data: candidatesData } = useQuery(GET_CO_OWNER_CANDIDATES, {
+		client: fallbackClient,
+	});
+	const candidates = candidatesData?.coOwnerCandidates || [];
 
 	useEffect(() => {
 		if (account) {
@@ -97,8 +110,24 @@ export function EditAccountDialog({
 			setInstitution(account.institution || "");
 			setAccountNumber(account.accountNumber || "");
 			setCurrency(account.currency || "EUR");
+			setOwnershipPercentage(
+				typeof account.ownershipPercentage === "number" && account.ownershipPercentage > 0
+					? account.ownershipPercentage
+					: 100,
+			);
+			setCoOwnerName(account.coOwnerName || "");
+			setCoOwnerUserId(account.coOwnerUserId || null);
 		}
 	}, [account]);
+
+	const isJointDetected = useMemo(() => {
+		const classified = classifyAccount({
+			name,
+			institution,
+			accountNumber,
+		});
+		return classified.isJoint;
+	}, [name, institution, accountNumber]);
 
 	const [updateAccount, { loading }] = useMutation(UPDATE_ACCOUNT, {
 		client: fallbackClient,
@@ -127,6 +156,9 @@ export function EditAccountDialog({
 						institution: institution.trim() || null,
 						accountNumber: accountNumber.trim() || null,
 						currency: currency.trim() || "EUR",
+						ownershipPercentage: ownershipPercentage > 0 ? ownershipPercentage : 100,
+						coOwnerName: ownershipPercentage < 100 ? coOwnerName.trim() || null : null,
+						coOwnerUserId: ownershipPercentage < 100 ? coOwnerUserId || null : null,
 					},
 				},
 			});
@@ -246,6 +278,137 @@ export function EditAccountDialog({
 								placeholder="e.g. U1234567, DE89..."
 							/>
 						</div>
+					</div>
+
+					{/* Joint Account Detection Banner */}
+					{isJointDetected && ownershipPercentage === 100 && (
+						<div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs">
+							<div className="space-y-0.5">
+								<p className="font-semibold text-primary">Compte joint détecté</p>
+								<p className="text-muted-foreground text-micro">
+									Souhaitez-vous appliquer une quote-part de 50% sur ce compte ?
+								</p>
+							</div>
+							<Button
+								type="button"
+								size="sm"
+								variant="secondary"
+								className="h-7 text-xs ml-2 shrink-0"
+								onClick={() => setOwnershipPercentage(50)}
+							>
+								Appliquer 50%
+							</Button>
+						</div>
+					)}
+
+					{/* Ownership Percentage Control */}
+					<div className="space-y-2 pt-1 border-t border-border/40">
+						<div className="flex items-center justify-between">
+							<Label htmlFor="edit-account-ownership" className="text-xs font-medium">
+								Quote-part personnelle (%)
+							</Label>
+							<div className="flex items-center gap-1.5">
+								<Button
+									type="button"
+									variant={ownershipPercentage === 100 ? "default" : "outline"}
+									className="h-6 text-micro px-2 py-0"
+									onClick={() => setOwnershipPercentage(100)}
+								>
+									100% Plein
+								</Button>
+								<Button
+									type="button"
+									variant={ownershipPercentage === 50 ? "default" : "outline"}
+									className="h-6 text-micro px-2 py-0"
+									onClick={() => setOwnershipPercentage(50)}
+								>
+									50% Compte joint
+								</Button>
+							</div>
+						</div>
+						<div className="relative">
+							<Input
+								id="edit-account-ownership"
+								type="number"
+								min="0.01"
+								max="100"
+								step="0.01"
+								value={ownershipPercentage}
+								onChange={(e) => {
+									const val = Number.parseFloat(e.target.value);
+									setOwnershipPercentage(Number.isNaN(val) ? 0 : val);
+								}}
+								className="pr-8 font-mono text-sm"
+							/>
+							<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">
+								%
+							</span>
+						</div>
+						<p className="text-micro text-muted-foreground">
+							Définit votre part dans le patrimoine net. Les positions de ce compte seront
+							automatiquement mises à jour.
+						</p>
+
+						{/* Co-owner details if ownership < 100% */}
+						{ownershipPercentage < 100 && (
+							<div className="space-y-3 p-3 rounded-lg bg-muted/40 border border-border/60 mt-3">
+								<div className="flex items-center justify-between">
+									<Label htmlFor="edit-account-co-owner-name" className="text-xs font-semibold">
+										Co-titulaire ({((100 - ownershipPercentage)).toFixed(2).replace(/\.?0+$/, "")}%)
+									</Label>
+									<span className="text-micro text-muted-foreground">
+										Part restante
+									</span>
+								</div>
+
+								<div className="space-y-1.5">
+									<Label htmlFor="edit-account-co-owner-name" className="text-micro text-muted-foreground">
+										Prénom / Nom libre (ex: Emma, Conjoint, Associé...)
+									</Label>
+									<Input
+										id="edit-account-co-owner-name"
+										value={coOwnerName}
+										onChange={(e) => setCoOwnerName(e.target.value)}
+										placeholder="ex: Emma, Conjoint..."
+										className="h-8 text-xs"
+									/>
+								</div>
+
+								{candidates.length > 0 && (
+									<div className="space-y-1.5 pt-1">
+										<Label htmlFor="edit-account-co-owner-user" className="text-micro text-muted-foreground">
+											Lier à un compte utilisateur Sigma Finance (optionnel)
+										</Label>
+										<Select
+											value={coOwnerUserId || "none"}
+											onValueChange={(val) => {
+												if (val === "none") {
+													setCoOwnerUserId(null);
+												} else {
+													setCoOwnerUserId(val);
+													const matched = candidates.find((c) => c.id === val);
+													if (matched && !coOwnerName) {
+														setCoOwnerName(matched.name);
+													}
+												}
+											}}
+										>
+											<SelectTrigger id="edit-account-co-owner-user" className="h-8 text-xs">
+												<SelectValue placeholder="Aucun compte lié" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="none">Aucun compte lié (nom libre seul)</SelectItem>
+												{candidates.map((c) => (
+													<SelectItem key={c.id} value={c.id}>
+														{c.name} ({c.email})
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+								)}
+							</div>
+						)}
 					</div>
 
 					<DialogFooter className="pt-2">

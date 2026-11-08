@@ -1,7 +1,7 @@
-import ReactECharts from "echarts-for-react";
 import { ArrowLeft, Calendar, Clock, Edit, Percent, Shield, Trash2, User } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import {
@@ -263,7 +263,7 @@ export function InsuranceDetail({ insuranceId, onBack, isPanel = false }: Insura
 						<CardDescription>Historical value over time</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts option={valueChartOption} style={{ height: "250px" }} />
+						<EChart option={valueChartOption} style={{ height: "250px" }} />
 					</CardContent>
 				</Card>
 

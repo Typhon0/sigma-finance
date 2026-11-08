@@ -220,7 +220,9 @@ export function Dashboard({ user: initialUser, onLogout }: DashboardProps) {
 						onSelectAccount={(accountName) => {
 							const accountAsset = assets.find(
 								(a) =>
-									(a.name === accountName || a.accountName === accountName || a.institution === accountName) &&
+									(a.name === accountName ||
+										a.accountName === accountName ||
+										a.institution === accountName) &&
 									["bank", "savings", "securities", "wallet"].includes(a.type),
 							);
 							if (accountAsset) {

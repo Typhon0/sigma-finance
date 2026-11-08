@@ -1,4 +1,3 @@
-import ReactECharts from "echarts-for-react";
 import {
 	Activity,
 	ArrowRight,
@@ -11,6 +10,7 @@ import {
 	Percent,
 } from "lucide-react";
 import { useState } from "react";
+import EChart from "@/components/charts/EChart";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -560,7 +560,7 @@ export function StockMarketOverview({
 						<CardDescription>Today's sector changes</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={sectorChartOption}
 							style={{ height: "350px" }}
 							opts={{ renderer: "svg" }}
@@ -584,7 +584,7 @@ export function StockMarketOverview({
 						</div>
 					</CardHeader>
 					<CardContent>
-						<ReactECharts
+						<EChart
 							option={sectorHeatmapOption}
 							style={{ height: "350px" }}
 							opts={{ renderer: "svg" }}
