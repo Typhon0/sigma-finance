@@ -16,32 +16,6 @@ export type { BenchmarkMetricsBarProps } from "./BenchmarkMetricsBar";
 export { BenchmarkMetricsBar } from "./BenchmarkMetricsBar";
 // Existing chart components
 export { default as ChartContainer } from "./ChartContainer";
-// Example/demo components
-export { default as ChartExamples } from "./ChartExamples";
-// Chart interaction utilities
-export * from "./ChartInteractions";
-export type {
-	ChartCardProps,
-	CompactAllocationChartProps,
-	CompactPerformanceChartProps,
-	CompactPortfolioComparisonChartProps,
-	DashboardChartGridProps,
-	MiniAllocationDonutProps,
-	MiniPerformanceSparklineProps,
-	ResponsiveChartContainerProps,
-} from "./CompactCharts";
-// Compact chart variants for dashboard integration
-export {
-	ChartCard,
-	CompactAllocationChart,
-	CompactPerformanceChart,
-	CompactPortfolioComparisonChart,
-	DashboardChartGrid,
-	MiniAllocationDonut,
-	MiniPerformanceSparkline,
-	ResponsiveChartContainer,
-} from "./CompactCharts";
-export { default as DashboardIntegrationExample } from "./DashboardIntegrationExample";
 export { default as LightweightChart } from "./LightweightChart";
 // Types
 export type {

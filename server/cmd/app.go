@@ -31,6 +31,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/99designs/gqlgen/graphql/handler"
@@ -955,44 +956,125 @@ type sidecarLogsResponse struct {
 
 type yfinanceLogsResponse = sidecarLogsResponse
 
-// handleSidecarLogSSE streams sidecar log entries over SSE. The upstream
-// service exposes a snapshot endpoint, so new entries are tailed by
-// timestamp and pushed to the dashboard instead of it polling.
+type sidecarHub struct {
+	upstreamURL string
+	serviceName string
+
+	mu          sync.Mutex
+	subscribers map[chan []sidecarLogEntry]struct{}
+	stopChan    chan struct{}
+}
+
+type sidecarHubManager struct {
+	mu   sync.Mutex
+	hubs map[string]*sidecarHub
+}
+
+var globalSidecarHubManager = &sidecarHubManager{
+	hubs: make(map[string]*sidecarHub),
+}
+
+func (m *sidecarHubManager) subscribe(upstreamURL, serviceName string) (chan []sidecarLogEntry, func()) {
+	m.mu.Lock()
+	hub, exists := m.hubs[upstreamURL]
+	if !exists {
+		hub = &sidecarHub{
+			upstreamURL: upstreamURL,
+			serviceName: serviceName,
+			subscribers: make(map[chan []sidecarLogEntry]struct{}),
+		}
+		m.hubs[upstreamURL] = hub
+	}
+	m.mu.Unlock()
+
+	hub.mu.Lock()
+	ch := make(chan []sidecarLogEntry, 32)
+	hub.subscribers[ch] = struct{}{}
+
+	if len(hub.subscribers) == 1 {
+		hub.stopChan = make(chan struct{})
+		go hub.runPoller()
+	}
+	hub.mu.Unlock()
+
+	unsubscribe := func() {
+		hub.mu.Lock()
+		delete(hub.subscribers, ch)
+		close(ch)
+		if len(hub.subscribers) == 0 && hub.stopChan != nil {
+			close(hub.stopChan)
+			hub.stopChan = nil
+		}
+		hub.mu.Unlock()
+	}
+
+	return ch, unsubscribe
+}
+
+func (h *sidecarHub) runPoller() {
+	client := &http.Client{Timeout: 5 * time.Second}
+	var cursor sidecarLogCursor
+
+	fetch := func() ([]sidecarLogEntry, error) {
+		resp, err := client.Get(h.upstreamURL)
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("%s logs: unexpected status %d", h.serviceName, resp.StatusCode)
+		}
+		var payload sidecarLogsResponse
+		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+			return nil, err
+		}
+		for i := range payload.Logs {
+			if payload.Logs[i].Service == "" {
+				payload.Logs[i].Service = h.serviceName
+			}
+		}
+		return payload.Logs, nil
+	}
+
+	if entries, err := fetch(); err == nil {
+		cursor.Seed(entries)
+	}
+
+	poll := time.NewTicker(1 * time.Second)
+	defer poll.Stop()
+
+	for {
+		select {
+		case <-h.stopChan:
+			return
+		case <-poll.C:
+			entries, err := fetch()
+			if err != nil {
+				continue
+			}
+			newEntries := cursor.Advance(entries)
+			if len(newEntries) > 0 {
+				h.mu.Lock()
+				for ch := range h.subscribers {
+					select {
+					case ch <- newEntries:
+					default:
+					}
+				}
+				h.mu.Unlock()
+			}
+		}
+	}
+}
+
+// handleSidecarLogSSE streams sidecar log entries over SSE via the centralized sidecar hub.
 func handleSidecarLogSSE(c *fiber.Ctx, upstreamURL string, defaultServiceName string) error {
 	c.Set("Content-Type", "text/event-stream")
 	c.Set("Cache-Control", "no-cache")
 	c.Set("Connection", "keep-alive")
 	c.Set("X-Accel-Buffering", "no")
 
-	client := &http.Client{Timeout: 5 * time.Second}
-
 	c.Context().SetBodyStreamWriter(func(w *bufio.Writer) {
-		fetch := func() ([]sidecarLogEntry, error) {
-			resp, err := client.Get(upstreamURL)
-			if err != nil {
-				return nil, err
-			}
-			defer resp.Body.Close()
-			if resp.StatusCode != http.StatusOK {
-				return nil, fmt.Errorf("%s logs: unexpected status %d", defaultServiceName, resp.StatusCode)
-			}
-			var payload sidecarLogsResponse
-			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-				return nil, err
-			}
-			for i := range payload.Logs {
-				if payload.Logs[i].Service == "" {
-					payload.Logs[i].Service = defaultServiceName
-				}
-			}
-			return payload.Logs, nil
-		}
-
-		var cursor sidecarLogCursor
-		if entries, err := fetch(); err == nil {
-			cursor.Seed(entries)
-		}
-
 		// Start the chunked response immediately so the client can mark the
 		// stream connected without waiting for the first log entry.
 		if _, err := fmt.Fprint(w, ": connected\n\n"); err != nil {
@@ -1002,19 +1084,19 @@ func handleSidecarLogSSE(c *fiber.Ctx, upstreamURL string, defaultServiceName st
 			return
 		}
 
-		poll := time.NewTicker(1 * time.Second)
-		defer poll.Stop()
+		ch, unsubscribe := globalSidecarHubManager.subscribe(upstreamURL, defaultServiceName)
+		defer unsubscribe()
+
 		keepalive := time.NewTicker(15 * time.Second)
 		defer keepalive.Stop()
 
 		for {
 			select {
-			case <-poll.C:
-				entries, err := fetch()
-				if err != nil {
-					continue
+			case newEntries, ok := <-ch:
+				if !ok {
+					return
 				}
-				for _, entry := range cursor.Advance(entries) {
+				for _, entry := range newEntries {
 					data, err := json.Marshal(entry)
 					if err != nil {
 						continue

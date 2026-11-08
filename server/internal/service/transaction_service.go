@@ -848,17 +848,7 @@ func (s *TransactionService) enqueuePortfolioRecalculation(ctx context.Context, 
 	if portfolioID == "" || dirtyFrom.IsZero() {
 		return
 	}
-	unit, ok := s.uow.(*repository.UnitOfWork)
-	if !ok || unit.GetDB() == nil {
-		return
-	}
-	_, err := unit.GetDB().ExecContext(ctx, `
-		INSERT INTO sigma_finance.portfolio_recalculation_jobs (portfolio_id, dirty_from_date, status)
-		VALUES (?, ?, 'queued')
-	`, portfolioID, dirtyFrom.Format(time.DateOnly))
-	if err != nil {
-		log.Printf("[ERROR] [portfolio-materialization] dirty enqueue failed portfolio=%s dirty_from=%s err=%v", portfolioID, dirtyFrom.Format(time.DateOnly), err)
-	}
+	log.Printf("[DEBUG] [portfolio-materialization] recalculation enqueue skipped (worker not active) portfolio=%s dirty_from=%s", portfolioID, dirtyFrom.Format(time.DateOnly))
 }
 
 // ProcessCashTransaction handles cash-only transactions (deposits, withdrawals, etc.)

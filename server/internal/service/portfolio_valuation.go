@@ -11,6 +11,7 @@ import (
 	"sigma_finance/internal/repository"
 
 	"github.com/shopspring/decimal"
+	"github.com/uptrace/bun"
 )
 
 type positionCostLot struct {
@@ -89,8 +90,112 @@ func NewPortfolioValuationService(uow repository.IUnitOfWork, fxRateService IFXR
 	return &portfolioValuationService{uow: uow, fxRateService: fxRateService}
 }
 
+// valuationPreFetchCache holds batch pre-fetched data to eliminate N+1 DB queries during portfolio valuation.
+type valuationPreFetchCache struct {
+	prices       map[string]*model.AssetPrice
+	assets       map[string]*model.Asset
+	instruments  map[string]*model.Instrument
+	transactions map[string][]model.Transaction // positionID -> transactions
+}
+
+func (s *portfolioValuationService) preFetchValuationData(ctx context.Context, positions []model.Position) *valuationPreFetchCache {
+	cache := &valuationPreFetchCache{
+		prices:       make(map[string]*model.AssetPrice),
+		assets:       make(map[string]*model.Asset),
+		instruments:  make(map[string]*model.Instrument),
+		transactions: make(map[string][]model.Transaction),
+	}
+	if len(positions) == 0 || s.uow == nil {
+		return cache
+	}
+
+	assetIDs := make([]string, 0, len(positions))
+	positionIDs := make([]string, 0, len(positions))
+	seenAssets := make(map[string]bool)
+
+	for _, pos := range positions {
+		if pos.AssetID != "" && !seenAssets[pos.AssetID] {
+			seenAssets[pos.AssetID] = true
+			assetIDs = append(assetIDs, pos.AssetID)
+		}
+		if pos.ID != "" {
+			positionIDs = append(positionIDs, pos.ID)
+		}
+	}
+
+	// 1. Batch fetch prices
+	func() {
+		defer func() { _ = recover() }()
+		if priceRepo := s.uow.AssetPrice(); priceRepo != nil && len(assetIDs) > 0 {
+			if prices, err := priceRepo.GetLatestPrices(ctx, assetIDs); err == nil {
+				for i := range prices {
+					cache.prices[prices[i].AssetID] = &prices[i]
+				}
+			}
+		}
+	}()
+
+	// 2. Batch fetch assets
+	instrumentIDs := make([]string, 0)
+	seenInstruments := make(map[string]bool)
+	func() {
+		defer func() { _ = recover() }()
+		if assetRepo := s.uow.Asset(); assetRepo != nil && len(assetIDs) > 0 {
+			if assets, err := assetRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+				return q.Where("id IN (?)", bun.In(assetIDs))
+			}); err == nil {
+				for i := range assets {
+					cache.assets[assets[i].ID] = &assets[i]
+					if assets[i].InstrumentID != nil && *assets[i].InstrumentID != "" && !seenInstruments[*assets[i].InstrumentID] {
+						seenInstruments[*assets[i].InstrumentID] = true
+						instrumentIDs = append(instrumentIDs, *assets[i].InstrumentID)
+					}
+				}
+			}
+		}
+	}()
+
+	// 3. Batch fetch instruments
+	func() {
+		defer func() { _ = recover() }()
+		if instRepo := s.uow.Instrument(); instRepo != nil && len(instrumentIDs) > 0 {
+			if instMap, err := instRepo.FindByIDs(ctx, instrumentIDs); err == nil {
+				for id, inst := range instMap {
+					instCopy := inst
+					cache.instruments[id] = &instCopy
+				}
+			}
+		}
+	}()
+
+	// 4. Batch fetch transactions
+	func() {
+		defer func() { _ = recover() }()
+		if txRepo := s.uow.Transaction(); txRepo != nil && len(positionIDs) > 0 {
+			if txs, err := txRepo.FindAllBy(ctx, func(q *bun.SelectQuery) *bun.SelectQuery {
+				return q.Where("position_id IN (?)", bun.In(positionIDs))
+			}); err == nil {
+				for _, posID := range positionIDs {
+					cache.transactions[posID] = []model.Transaction{}
+				}
+				for _, tx := range txs {
+					if tx.PositionID != nil {
+						cache.transactions[*tx.PositionID] = append(cache.transactions[*tx.PositionID], tx)
+					}
+				}
+			}
+		}
+	}()
+
+	return cache
+}
+
 // CalculatePositionValue computes native and display currency values for a single position.
 func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, position model.Position, displayCurrency model.Currency) (*PositionValuation, error) {
+	return s.calculatePositionValueWithCache(ctx, position, displayCurrency, nil)
+}
+
+func (s *portfolioValuationService) calculatePositionValueWithCache(ctx context.Context, position model.Position, displayCurrency model.Currency, cache *valuationPreFetchCache) (*PositionValuation, error) {
 	valuation := &PositionValuation{
 		PositionID:      position.ID,
 		AssetID:         position.AssetID,
@@ -106,19 +211,62 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 		return valuation, nil
 	}
 
-	latestPrice, err := s.uow.AssetPrice().GetLatestPrice(ctx, position.AssetID)
-	if err != nil {
+	var latestPrice *model.AssetPrice
+	if cache != nil {
+		if p, ok := cache.prices[position.AssetID]; ok {
+			latestPrice = p
+		}
+	}
+	if latestPrice == nil && s.uow != nil && s.uow.AssetPrice() != nil {
+		var err error
+		latestPrice, err = s.uow.AssetPrice().GetLatestPrice(ctx, position.AssetID)
+		if err != nil {
+			valuation.IsExcluded = true
+			valuation.ExclusionReason = "missing_market_price"
+			log.Printf("[WARN] [PortfolioValuation] CalculatePositionValue: SKIPPED position=%s asset=%s reason=missing_market_price: %v", position.ID, position.AssetID, err)
+			return valuation, nil
+		}
+	}
+	if latestPrice == nil {
 		valuation.IsExcluded = true
 		valuation.ExclusionReason = "missing_market_price"
-		log.Printf("[WARN] [PortfolioValuation] CalculatePositionValue: SKIPPED position=%s asset=%s reason=missing_market_price: %v", position.ID, position.AssetID, err)
 		return valuation, nil
 	}
+
+	// Determine the price's native currency (from Instrument if linked, fallback to position.QuoteCurrency)
+	priceCurrency := position.QuoteCurrency
+	func() {
+		defer func() { _ = recover() }()
+		var asset *model.Asset
+		if cache != nil {
+			asset = cache.assets[position.AssetID]
+		}
+		if asset == nil && s.uow != nil && s.uow.Asset() != nil {
+			asset, _ = s.uow.Asset().GetByID(ctx, position.AssetID)
+		}
+		if asset != nil && asset.InstrumentID != nil {
+			var inst *model.Instrument
+			if cache != nil {
+				inst = cache.instruments[*asset.InstrumentID]
+			}
+			if inst == nil && s.uow != nil && s.uow.Instrument() != nil {
+				inst, _ = s.uow.Instrument().GetByID(ctx, *asset.InstrumentID)
+			}
+			if inst != nil && inst.Currency != nil && *inst.Currency != "" {
+				c := model.Currency(*inst.Currency)
+				if c.IsValid() {
+					priceCurrency = c
+				}
+			}
+		}
+	}()
 
 	nativeValueDecimal := position.Quantity.Mul(latestPrice.Price).Mul(decimal.NewFromInt(100))
 	valuation.NativeValue = model.Money(nativeValueDecimal.Round(0).IntPart())
 	valuation.HasNativeValue = true
+	valuation.QuoteCurrency = priceCurrency
 
-	basis := s.resolveCostBasis(ctx, position, displayCurrency)
+	basis := s.resolveCostBasisWithCache(ctx, position, displayCurrency, cache)
 	if basis != nil {
 		valuation.CostBasisNative = basis.NativeTotal
 		valuation.CostBasisDisplay = basis.DisplayTotal
@@ -126,15 +274,15 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 		// on the Converted flag instead of being inferred from labels.
 		valuation.CostBasisCurrency = basis.Currency
 		valuation.CostBasisConverted = basis.Converted
-	} else if position.TotalCostBasis != nil {
-		// Legacy fallback, only when the transactions could not reconstruct
-		// any remaining lots at all (missing history, fully sold, or a read
-		// failure). The legacy amount carries no lot dates, so under the
-		// strict policy it is only "converted" when it was never foreign to
-		// begin with with respect to the label we publish; it is never
-		// converted with today's rate, which would fabricate historical cost
-		// in display currency.
-		valuation.CostBasisNative = *position.TotalCostBasis
+	} else if position.TotalCostBasis != nil || (position.AverageCostBasis != nil && !position.AverageCostBasis.IsZero()) {
+		var totalCostBasis model.Money
+		if position.TotalCostBasis != nil {
+			totalCostBasis = *position.TotalCostBasis
+		} else {
+			computed := position.Quantity.Mul(*position.AverageCostBasis).Mul(decimal.NewFromInt(100))
+			totalCostBasis = model.Money(computed.Round(0).IntPart())
+		}
+		valuation.CostBasisNative = totalCostBasis
 		valuation.CostBasisCurrency = position.QuoteCurrency
 		if valuation.CostBasisCurrency == displayCurrency {
 			valuation.CostBasisDisplay = valuation.CostBasisNative
@@ -145,11 +293,11 @@ func (s *portfolioValuationService) CalculatePositionValue(ctx context.Context, 
 		}
 	}
 
-	conversion, err := s.fxRateService.Convert(ctx, valuation.NativeValue, position.QuoteCurrency, displayCurrency)
+	conversion, err := s.fxRateService.Convert(ctx, valuation.NativeValue, priceCurrency, displayCurrency)
 	if err != nil {
 		valuation.IsExcluded = true
 		valuation.ExclusionReason = "missing_fx_rate"
-		log.Printf("[ERROR] [PortfolioValuation] CalculatePositionValue: ERROR FX conversion failed position=%s from=%s to=%s: %v", position.ID, position.QuoteCurrency, displayCurrency, err)
+		log.Printf("[ERROR] [PortfolioValuation] CalculatePositionValue: ERROR FX conversion failed position=%s from=%s to=%s: %v", position.ID, priceCurrency, displayCurrency, err)
 		return valuation, fmt.Errorf("FX conversion failed for position %s: %w", position.ID, err)
 	}
 
@@ -179,6 +327,8 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 		}, nil
 	}
 
+	cache := s.preFetchValuationData(ctx, positions)
+
 	positionValuations := make([]PositionValuation, 0, len(positions))
 	currencyCount := make(map[model.Currency]int)
 	fxSources := make(map[string]struct{})
@@ -195,7 +345,7 @@ func (s *portfolioValuationService) CalculatePortfolioValue(ctx context.Context,
 	anyStale := false
 
 	for _, pos := range positions {
-		valuation, err := s.CalculatePositionValue(ctx, pos, displayCurrency)
+		valuation, err := s.calculatePositionValueWithCache(ctx, pos, displayCurrency, cache)
 		if err != nil {
 			// Keep partial valuation behavior: include metadata, continue with other positions.
 		}
@@ -361,11 +511,15 @@ type positionCostBasis struct {
 // read or left no remaining lots, so the caller can fall back to the legacy
 // position amount.
 func (s *portfolioValuationService) resolveCostBasis(ctx context.Context, position model.Position, displayCurrency model.Currency) *positionCostBasis {
+	return s.resolveCostBasisWithCache(ctx, position, displayCurrency, nil)
+}
+
+func (s *portfolioValuationService) resolveCostBasisWithCache(ctx context.Context, position model.Position, displayCurrency model.Currency, cache *valuationPreFetchCache) *positionCostBasis {
 	if position.ID == "" {
 		return nil
 	}
 
-	lots, err := s.remainingCostLots(ctx, position)
+	lots, err := s.remainingCostLotsWithCache(ctx, position, cache)
 	if err != nil {
 		log.Printf("[WARN] [PortfolioValuation] resolveCostBasis: failed to read transactions position=%s: %v", position.ID, err)
 		return nil
@@ -459,13 +613,31 @@ func convertLotCents(cents model.Money, rate decimal.Decimal) model.Money {
 // FIFO-applied to sells and transfers out, carrying each lot's execution date
 // so a later pass can price the basis at the rate of its own day.
 func (s *portfolioValuationService) remainingCostLots(ctx context.Context, position model.Position) ([]positionCostLot, error) {
+	return s.remainingCostLotsWithCache(ctx, position, nil)
+}
+
+// remainingCostLotsWithCache reconstructs the lots still owned by the position,
+// FIFO-applied to sells and transfers out, carrying each lot's execution date
+// so a later pass can price the basis at the rate of its own day.
+// If sells exceed current lots, oversoldDeficit tracks the unbacked quantity
+// so subsequent buys absorb the deficit first before creating new cost lots.
+func (s *portfolioValuationService) remainingCostLotsWithCache(ctx context.Context, position model.Position, cache *valuationPreFetchCache) ([]positionCostLot, error) {
 	if position.ID == "" {
 		return nil, nil
 	}
 
-	transactions, err := s.uow.Transaction().FindByPositionID(ctx, position.ID)
-	if err != nil {
-		return nil, err
+	var transactions []model.Transaction
+	if cache != nil {
+		if txs, ok := cache.transactions[position.ID]; ok {
+			transactions = txs
+		}
+	}
+	if transactions == nil && s.uow != nil && s.uow.Transaction() != nil {
+		var err error
+		transactions, err = s.uow.Transaction().FindByPositionID(ctx, position.ID)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	sort.SliceStable(transactions, func(i, j int) bool {
@@ -479,14 +651,26 @@ func (s *portfolioValuationService) remainingCostLots(ctx context.Context, posit
 	})
 
 	lots := make([]positionCostLot, 0, len(transactions))
+	oversoldDeficit := decimal.Zero
+
 	for _, tx := range transactions {
 		switch tx.Type {
 		case model.TransactionTypeBuy, model.TransactionTypeTransferIn:
 			if tx.Quantity == nil || tx.UnitPriceAmount == nil || !tx.UnitPriceCurrency.IsValid() || tx.Quantity.IsZero() {
 				continue
 			}
+			buyQty := tx.Quantity.Abs()
+			if oversoldDeficit.GreaterThan(decimal.Zero) {
+				if buyQty.LessThanOrEqual(oversoldDeficit) {
+					oversoldDeficit = oversoldDeficit.Sub(buyQty)
+					continue
+				}
+				buyQty = buyQty.Sub(oversoldDeficit)
+				oversoldDeficit = decimal.Zero
+			}
+
 			lots = append(lots, positionCostLot{
-				Quantity:   tx.Quantity.Abs(),
+				Quantity:   buyQty,
 				Price:      *tx.UnitPriceAmount,
 				Currency:   tx.UnitPriceCurrency,
 				ExecutedAt: tx.ExecutedAt,
@@ -505,6 +689,9 @@ func (s *portfolioValuationService) remainingCostLots(ctx context.Context, posit
 				}
 				lots[0].Quantity = headLot.Quantity.Sub(remainingToSell)
 				remainingToSell = decimal.Zero
+			}
+			if remainingToSell.GreaterThan(decimal.Zero) {
+				oversoldDeficit = oversoldDeficit.Add(remainingToSell)
 			}
 		default:
 			continue

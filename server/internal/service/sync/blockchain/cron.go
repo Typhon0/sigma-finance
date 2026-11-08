@@ -3,6 +3,7 @@ package blockchain
 import (
 	"context"
 	"log"
+	"sync"
 	"time"
 )
 
@@ -18,6 +19,7 @@ type BackgroundSyncWorker struct {
 	throttler   ThrottleChecker
 	interval    time.Duration
 	stopChan    chan struct{}
+	stopOnce    sync.Once
 }
 
 // NewBackgroundSyncWorker creates a new 12-hour background sync worker
@@ -48,9 +50,11 @@ func (w *BackgroundSyncWorker) Start(ctx context.Context) {
 	}()
 }
 
-// Stop terminates the worker
+// Stop terminates the worker safely without panicking on multiple calls
 func (w *BackgroundSyncWorker) Stop() {
-	close(w.stopChan)
+	w.stopOnce.Do(func() {
+		close(w.stopChan)
+	})
 }
 
 func (w *BackgroundSyncWorker) executePeriodicSync(ctx context.Context) {

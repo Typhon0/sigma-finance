@@ -75,6 +75,44 @@ type basisUoWStub struct {
 	repository.IUnitOfWork
 	transactions map[string][]model.Transaction // by position id
 	latestPrice  map[string]decimal.Decimal     // by asset id
+	assets       map[string]*model.Asset
+	instruments  map[string]*model.Instrument
+}
+
+type basisAssetRepoStub struct {
+	repository.IAssetRepository
+	uow *basisUoWStub
+}
+
+func (r *basisAssetRepoStub) GetByID(ctx context.Context, id string) (*model.Asset, error) {
+	if r.uow.assets != nil {
+		if a, ok := r.uow.assets[id]; ok {
+			return a, nil
+		}
+	}
+	return nil, fmt.Errorf("asset not found: %s", id)
+}
+
+type basisInstrumentRepoStub struct {
+	repository.IInstrumentRepository
+	uow *basisUoWStub
+}
+
+func (r *basisInstrumentRepoStub) GetByID(ctx context.Context, id string) (*model.Instrument, error) {
+	if r.uow.instruments != nil {
+		if i, ok := r.uow.instruments[id]; ok {
+			return i, nil
+		}
+	}
+	return nil, fmt.Errorf("instrument not found: %s", id)
+}
+
+func (u *basisUoWStub) Asset() repository.IAssetRepository {
+	return &basisAssetRepoStub{uow: u}
+}
+
+func (u *basisUoWStub) Instrument() repository.IInstrumentRepository {
+	return &basisInstrumentRepoStub{uow: u}
 }
 
 type basisTransactionRepoStub struct {
@@ -97,6 +135,16 @@ func (r *basisPriceRepoStub) GetLatestPrice(ctx context.Context, assetID string)
 		return nil, fmt.Errorf("no price for asset %s", assetID)
 	}
 	return &model.AssetPrice{AssetID: assetID, Price: price}, nil
+}
+
+func (r *basisPriceRepoStub) GetLatestPrices(ctx context.Context, assetIDs []string) ([]model.AssetPrice, error) {
+	var result []model.AssetPrice
+	for _, id := range assetIDs {
+		if price, ok := r.uow.latestPrice[id]; ok {
+			result = append(result, model.AssetPrice{AssetID: id, Price: price})
+		}
+	}
+	return result, nil
 }
 
 func (u *basisUoWStub) Transaction() repository.ITransactionRepository {
@@ -567,5 +615,151 @@ func TestCalculateGainLossPercent(t *testing.T) {
 				t.Fatalf("calculateGainLossPercent() = %f, want %f", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestCalculatePositionValue_CrossCurrency_USStockInEURAccount(t *testing.T) {
+	t.Parallel()
+
+	instCurrency := "USD"
+	instID := "inst-googl"
+	uow := &basisUoWStub{
+		assets: map[string]*model.Asset{
+			"a-googl": {ID: "a-googl", InstrumentID: &instID},
+		},
+		instruments: map[string]*model.Instrument{
+			instID: {ID: instID, Symbol: "GOOGL", Currency: &instCurrency},
+		},
+		latestPrice: map[string]decimal.Decimal{
+			"a-googl": decimal.RequireFromString("279.84"),
+		},
+	}
+	fx := &basisFXStub{
+		latest: map[string]decimal.Decimal{
+			"USD/EUR": decimal.RequireFromString("0.89509488"),
+		},
+	}
+	svc := NewPortfolioValuationService(uow, fx)
+	// Holding 13 shares in a EUR-denominated account
+	pos := model.Position{
+		ID:            "pos-1",
+		AssetID:       "a-googl",
+		Quantity:      decimal.RequireFromString("13"),
+		QuoteCurrency: model.CurrencyEUR,
+	}
+
+	valuation, err := svc.CalculatePositionValue(context.Background(), pos, model.CurrencyEUR)
+	if err != nil {
+		t.Fatalf("CalculatePositionValue() error = %v", err)
+	}
+
+	// Native price is in USD: 13 × 279.84 = $3,637.92 USD (363792 cents)
+	if valuation.QuoteCurrency != model.CurrencyUSD {
+		t.Errorf("QuoteCurrency = %s, want %s", valuation.QuoteCurrency, model.CurrencyUSD)
+	}
+	if valuation.NativeValue != 363_792 {
+		t.Errorf("NativeValue = %d, want 363792", valuation.NativeValue)
+	}
+
+	// Converted to EUR: $3,637.92 × 0.89509488 = 3,256.28 EUR (325628 cents)
+	if valuation.DisplayCurrency != model.CurrencyEUR {
+		t.Errorf("DisplayCurrency = %s, want %s", valuation.DisplayCurrency, model.CurrencyEUR)
+	}
+	if valuation.DisplayValue != 325_628 {
+		t.Errorf("DisplayValue = %d, want 325628", valuation.DisplayValue)
+	}
+}
+
+func TestRemainingCostLots_OversoldDeficitAbsorption(t *testing.T) {
+	t0 := time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC)
+	t1 := t0.Add(1 * time.Hour)
+	t2 := t0.Add(2 * time.Hour)
+	t3 := t0.Add(3 * time.Hour)
+
+	// Sequence:
+	// 1. Buy 10 @ $50
+	// 2. Sell 15 @ $55 -> exhausts the 10 bought, leaves deficit of 5
+	// 3. Buy 3 @ $60 -> absorbed into deficit (deficit becomes 2), no lot added
+	// 4. Buy 5 @ $70 -> absorbs 2 from deficit, remaining 3 form a lot @ $70
+	transactions := []model.Transaction{
+		basisTx("tx-1", model.TransactionTypeBuy, "10", "50", model.CurrencyUSD, t0),
+		basisTx("tx-2", model.TransactionTypeSell, "15", "55", model.CurrencyUSD, t1),
+		basisTx("tx-3", model.TransactionTypeBuy, "3", "60", model.CurrencyUSD, t2),
+		basisTx("tx-4", model.TransactionTypeBuy, "5", "70", model.CurrencyUSD, t3),
+	}
+
+	uow := &basisUoWStub{
+		transactions: map[string][]model.Transaction{
+			"pos-1": transactions,
+		},
+	}
+	svc := &portfolioValuationService{uow: uow}
+	pos := model.Position{ID: "pos-1"}
+
+	lots, err := svc.remainingCostLots(context.Background(), pos)
+	if err != nil {
+		t.Fatalf("remainingCostLots failed: %v", err)
+	}
+
+	if len(lots) != 1 {
+		t.Fatalf("expected 1 remaining lot, got %d", len(lots))
+	}
+	expectedQty := decimal.RequireFromString("3")
+	expectedPrice := decimal.RequireFromString("70")
+	if !lots[0].Quantity.Equal(expectedQty) {
+		t.Errorf("expected lot quantity %s, got %s", expectedQty, lots[0].Quantity)
+	}
+	if !lots[0].Price.Equal(expectedPrice) {
+		t.Errorf("expected lot price %s, got %s", expectedPrice, lots[0].Price)
+	}
+}
+
+func TestCalculatePortfolioValue_BatchPreFetchMatchesSingleEvaluation(t *testing.T) {
+	t0 := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
+	uow := &basisUoWStub{
+		latestPrice: map[string]decimal.Decimal{
+			"asset-1": decimal.RequireFromString("150"),
+			"asset-2": decimal.RequireFromString("200"),
+		},
+		transactions: map[string][]model.Transaction{
+			"pos-1": {basisTx("tx-1", model.TransactionTypeBuy, "2", "140", model.CurrencyUSD, t0)},
+			"pos-2": {basisTx("tx-2", model.TransactionTypeBuy, "5", "190", model.CurrencyUSD, t0)},
+		},
+	}
+	fx := &basisFXStub{
+		latest: map[string]decimal.Decimal{
+			"USD/USD": decimal.RequireFromString("1"),
+		},
+	}
+	svc := NewPortfolioValuationService(uow, fx)
+
+	positions := []model.Position{
+		{ID: "pos-1", AssetID: "asset-1", Quantity: decimal.RequireFromString("2"), QuoteCurrency: model.CurrencyUSD},
+		{ID: "pos-2", AssetID: "asset-2", Quantity: decimal.RequireFromString("5"), QuoteCurrency: model.CurrencyUSD},
+	}
+
+	portfolioVal, err := svc.CalculatePortfolioValue(context.Background(), positions, model.CurrencyUSD)
+	if err != nil {
+		t.Fatalf("CalculatePortfolioValue failed: %v", err)
+	}
+
+	pos1Val, err := svc.CalculatePositionValue(context.Background(), positions[0], model.CurrencyUSD)
+	if err != nil {
+		t.Fatalf("CalculatePositionValue pos-1 failed: %v", err)
+	}
+
+	pos2Val, err := svc.CalculatePositionValue(context.Background(), positions[1], model.CurrencyUSD)
+	if err != nil {
+		t.Fatalf("CalculatePositionValue pos-2 failed: %v", err)
+	}
+
+	// Verify portfolio totals match sum of individual valuations
+	expectedTotalDisplay := pos1Val.DisplayValue + pos2Val.DisplayValue
+	if portfolioVal.TotalDisplayValue != expectedTotalDisplay {
+		t.Errorf("expected total display value %d, got %d", expectedTotalDisplay, portfolioVal.TotalDisplayValue)
+	}
+	expectedTotalCostBasis := pos1Val.CostBasisDisplay + pos2Val.CostBasisDisplay
+	if portfolioVal.TotalDisplayCostBasis != expectedTotalCostBasis {
+		t.Errorf("expected total display cost basis %d, got %d", expectedTotalCostBasis, portfolioVal.TotalDisplayCostBasis)
 	}
 }

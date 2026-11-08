@@ -320,10 +320,6 @@ Tests cover:
 - User interactions
 - Responsive behavior
 
-## Examples
-
-See `ChartExamples.tsx` for comprehensive usage examples and `DashboardIntegrationExample.tsx` for dashboard integration patterns.
-
 ## Requirements Covered
 
 This implementation addresses the following requirements:
