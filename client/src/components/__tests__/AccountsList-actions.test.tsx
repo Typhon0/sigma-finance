@@ -2,12 +2,13 @@ import "@testing-library/jest-dom";
 import { MockedProvider } from "@apollo/client/testing";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { GET_ACCOUNTS } from "@/graphql/queries/accounts";
+import { GET_ACCOUNTS, GET_CO_OWNER_CANDIDATES } from "@/graphql/queries/accounts";
+import { GET_SCOPED_PERFORMANCE_HISTORY } from "@/graphql/queries/portfolios";
 import { GET_PENDING_WALLET_REVIEWS, GET_WALLET_ACCOUNTS } from "@/graphql/queries/wallets";
 import { AccountsList } from "../AccountsList";
 
 // Mock resize-observer and echarts
-vi.mock("echarts-for-react", () => ({
+vi.mock("@/components/charts/EChart", () => ({
 	default: () => <div data-testid="echarts-mock" />,
 }));
 
@@ -26,6 +27,7 @@ vi.mock("@/components/PortfolioProvider", () => ({
 		assets: [],
 		currentPortfolio: "port-1",
 		refetch: vi.fn(),
+		getPortfolioValue: () => 15000,
 	}),
 }));
 
@@ -41,6 +43,10 @@ describe("AccountsList actions", () => {
 			accountNumber: "U1234567",
 			currency: "EUR",
 			syncProvider: null,
+			ownershipPercentage: 100,
+			coOwnerName: null,
+			coOwnerUserId: null,
+			coOwnerUser: null,
 			externalId: null,
 			syncConnection: null,
 			positionsCount: 3,
@@ -76,6 +82,42 @@ describe("AccountsList actions", () => {
 			},
 			result: {
 				data: { pendingWalletReviews: [] },
+			},
+		},
+		{
+			request: {
+				query: GET_SCOPED_PERFORMANCE_HISTORY,
+				variables: { portfolioID: "port-1", assetTypes: ["BANK", "SAVINGS"] },
+			},
+			result: {
+				data: { scopedPerformanceHistory: [] },
+			},
+		},
+		{
+			request: {
+				query: GET_CO_OWNER_CANDIDATES,
+				variables: {},
+			},
+			result: {
+				data: { coOwnerCandidates: [] },
+			},
+		},
+		{
+			request: {
+				query: GET_CO_OWNER_CANDIDATES,
+				variables: {},
+			},
+			result: {
+				data: { coOwnerCandidates: [] },
+			},
+		},
+		{
+			request: {
+				query: GET_CO_OWNER_CANDIDATES,
+				variables: {},
+			},
+			result: {
+				data: { coOwnerCandidates: [] },
 			},
 		},
 	];
@@ -160,6 +202,49 @@ describe("AccountsList actions", () => {
 					/All associated positions and holdings in this account will be permanently removed/i,
 				),
 			).toBeInTheDocument();
+		});
+	});
+
+	it("opens the Add Account chooser dialog when clicking Add Account", async () => {
+		render(
+			<MockedProvider mocks={createMocks()} addTypename={false}>
+				<AccountsList onSelectAccount={vi.fn()} />
+			</MockedProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText(/U1234567/)).toBeInTheDocument();
+		});
+
+		const addBtn = screen.getByRole("button", { name: /Add Account/i });
+		fireEvent.click(addBtn);
+
+		await waitFor(() => {
+			expect(screen.getByText("Add Financial Account")).toBeInTheDocument();
+			expect(screen.getByText("Connect Bank or Broker")).toBeInTheDocument();
+			expect(screen.getByText("Connect Crypto Wallet")).toBeInTheDocument();
+			expect(screen.getByText("Manual Bank or Savings")).toBeInTheDocument();
+			expect(screen.getByText("Custom Account Envelope")).toBeInTheDocument();
+		});
+	});
+
+	it("switches between Accounts Ledger and Holdings by Account tabs", async () => {
+		render(
+			<MockedProvider mocks={createMocks()} addTypename={false}>
+				<AccountsList onSelectAccount={vi.fn()} />
+			</MockedProvider>,
+		);
+
+		await waitFor(() => {
+			expect(screen.getByText("Accounts Ledger")).toBeInTheDocument();
+			expect(screen.getByText("Holdings by Account")).toBeInTheDocument();
+		});
+
+		const holdingsTab = screen.getByRole("tab", { name: /Holdings by Account/i });
+		fireEvent.click(holdingsTab);
+
+		await waitFor(() => {
+			expect(holdingsTab).toHaveAttribute("aria-selected", "true");
 		});
 	});
 });
