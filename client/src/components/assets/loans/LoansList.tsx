@@ -198,6 +198,19 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 		otherFees: string;
 		earlyRepaymentFee: string;
 		ownershipMode: string;
+		ownershipPercentage?: string;
+		linkedAssetIds?: string[];
+		steps?: Array<{ id: string; date: Date | undefined; amount: string; interestRate: string }>;
+		coOwners?: Array<{ id: string; type: string; userId?: string; name: string; percentage: string }>;
+		companyOwners?: Array<{
+			id: string;
+			type: string;
+			companyId?: string;
+			name: string;
+			registrationNumber: string;
+			legalForm: string;
+			percentage: string;
+		}>;
 	}) => {
 		if (!currentPortfolio) {
 			toast.error("No portfolio selected. Please select a portfolio first.");
@@ -226,12 +239,44 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 			downPayment: formData.downPayment ? parseFloat(formData.downPayment) : undefined,
 			status: "active",
 			ownershipMode: formData.ownershipMode || undefined,
+			ownershipPercentage: formData.ownershipPercentage
+				? parseFloat(formData.ownershipPercentage)
+				: 100,
 			applicationFee: formData.applicationFee ? parseFloat(formData.applicationFee) : undefined,
 			brokerFee: formData.brokerFee ? parseFloat(formData.brokerFee) : undefined,
 			insuranceFee: formData.insuranceFee ? parseFloat(formData.insuranceFee) : undefined,
 			otherFees: formData.otherFees ? parseFloat(formData.otherFees) : undefined,
 			earlyRepaymentFee: formData.earlyRepaymentFee
 				? parseFloat(formData.earlyRepaymentFee)
+				: undefined,
+			linkedAssetIDs: formData.linkedAssetIds?.length ? formData.linkedAssetIds : undefined,
+			steps: formData.steps?.length
+				? formData.steps.map((s) => ({
+						id: s.id,
+						date: s.date ? s.date.toISOString().split("T")[0] : undefined,
+						amount: parseFloat(s.amount) || 0,
+						interestRate: parseFloat(s.interestRate) || 0,
+					}))
+				: undefined,
+			coOwners: formData.coOwners?.length
+				? formData.coOwners.map((co) => ({
+						id: co.id,
+						type: co.type,
+						userId: co.userId,
+						name: co.name,
+						percentage: parseFloat(co.percentage) || 0,
+					}))
+				: undefined,
+			companyOwners: formData.companyOwners?.length
+				? formData.companyOwners.map((co) => ({
+						id: co.id,
+						type: co.type,
+						companyId: co.companyId,
+						name: co.name,
+						registrationNumber: co.registrationNumber,
+						legalForm: co.legalForm,
+						percentage: parseFloat(co.percentage) || 0,
+					}))
 				: undefined,
 			currentValue: parseFloat(formData.remainingBalance) || parseFloat(formData.loanAmount) || 0,
 			purchasePrice: parseFloat(formData.loanAmount) || 0,
