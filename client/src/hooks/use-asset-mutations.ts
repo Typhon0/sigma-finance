@@ -70,6 +70,42 @@ export interface AddRealEstateInput {
 	currentValue?: number;
 	purchasePrice?: number;
 	purchaseDate?: string;
+
+	category?: string;
+	landSurface?: number;
+	rooms?: number;
+	floor?: number;
+	totalFloors?: number;
+	garages?: number;
+	parkingSpaces?: number;
+	energyLabel?: string;
+	condition?: string;
+	agencyFees?: number;
+	notaryFees?: number;
+	renovationFees?: number;
+	furnishingCosts?: number;
+	rentalType?: string;
+	rentalPeriod?: string;
+	monthlyRent?: number;
+	utilityCosts?: number;
+	yearlyMiscCosts?: number;
+	hasGarden?: boolean;
+	hasBalcony?: boolean;
+	hasLift?: boolean;
+	hasPool?: boolean;
+	hasSauna?: boolean;
+	isFurnished?: boolean;
+	isNewConstruction?: boolean;
+	kitchenQuality?: string;
+	kitchenCondition?: string;
+	bathroomQuality?: string;
+	bathroomCondition?: string;
+	flooringQuality?: string;
+	flooringCondition?: string;
+	windowsQuality?: string;
+	windowsCondition?: string;
+	generalQuality?: string;
+	generalCondition?: string;
 }
 
 export interface AddLifeInsuranceInput {
@@ -135,6 +171,19 @@ export interface AddLoanInput {
 	currentValue?: number;
 	purchasePrice?: number;
 	purchaseDate?: string;
+	linkedAssetIDs?: string[];
+	ownershipPercentage?: number;
+	steps?: Array<{ id: string; date?: string; amount: number; interestRate: number }>;
+	coOwners?: Array<{ id: string; type: string; userId?: string; name: string; percentage: number }>;
+	companyOwners?: Array<{
+		id: string;
+		type: string;
+		companyId?: string;
+		name: string;
+		registrationNumber?: string;
+		legalForm?: string;
+		percentage: number;
+	}>;
 }
 
 export interface AddCryptoInput {
@@ -609,6 +658,42 @@ export const useAssetMutations = () => {
 				currentValue: input.currentValue,
 				purchasePrice: input.purchasePrice,
 				purchaseDate: input.purchaseDate,
+
+				category: input.category,
+				landSurface: input.landSurface,
+				rooms: input.rooms,
+				floor: input.floor,
+				totalFloors: input.totalFloors,
+				garages: input.garages,
+				parkingSpaces: input.parkingSpaces,
+				energyLabel: input.energyLabel,
+				condition: input.condition,
+				agencyFees: input.agencyFees,
+				notaryFees: input.notaryFees,
+				renovationFees: input.renovationFees,
+				furnishingCosts: input.furnishingCosts,
+				rentalType: input.rentalType,
+				rentalPeriod: input.rentalPeriod,
+				monthlyRent: input.monthlyRent,
+				utilityCosts: input.utilityCosts,
+				yearlyMiscCosts: input.yearlyMiscCosts,
+				hasGarden: input.hasGarden,
+				hasBalcony: input.hasBalcony,
+				hasLift: input.hasLift,
+				hasPool: input.hasPool,
+				hasSauna: input.hasSauna,
+				isFurnished: input.isFurnished,
+				isNewConstruction: input.isNewConstruction,
+				kitchenQuality: input.kitchenQuality,
+				kitchenCondition: input.kitchenCondition,
+				bathroomQuality: input.bathroomQuality,
+				bathroomCondition: input.bathroomCondition,
+				flooringQuality: input.flooringQuality,
+				flooringCondition: input.flooringCondition,
+				windowsQuality: input.windowsQuality,
+				windowsCondition: input.windowsCondition,
+				generalQuality: input.generalQuality,
+				generalCondition: input.generalCondition,
 			};
 
 			const realEstateResult = await createRealEstateAsset({
@@ -758,6 +843,11 @@ export const useAssetMutations = () => {
 				insuranceFee: input.insuranceFee,
 				otherFees: input.otherFees,
 				earlyRepaymentFee: input.earlyRepaymentFee,
+				linkedAssetIDs: input.linkedAssetIDs,
+				ownershipPercentage: input.ownershipPercentage,
+				steps: input.steps,
+				coOwners: input.coOwners,
+				companyOwners: input.companyOwners,
 				currentValue: input.currentValue,
 				purchasePrice: input.purchasePrice,
 				purchaseDate: input.purchaseDate,

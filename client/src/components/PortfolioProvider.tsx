@@ -70,6 +70,126 @@ export interface PortfolioAssetItem {
 	currency?: string;
 	interestRate?: number | null;
 	balance?: number | null;
+	// RealEstate-specific metadata
+	propertyType?: string;
+	address?: string;
+	city?: string;
+	state?: string;
+	country?: string;
+	zipCode?: string;
+	surfaceArea?: number;
+	yearBuilt?: number;
+	bedrooms?: number;
+	bathrooms?: number;
+	category?: string;
+	landSurface?: number;
+	rooms?: number;
+	floor?: number;
+	totalFloors?: number;
+	garages?: number;
+	parkingSpaces?: number;
+	energyLabel?: string;
+	condition?: string;
+	agencyFees?: number;
+	notaryFees?: number;
+	renovationFees?: number;
+	furnishingCosts?: number;
+	rentalType?: string;
+	rentalPeriod?: string;
+	monthlyRent?: number;
+	utilityCosts?: number;
+	yearlyMiscCosts?: number;
+	hasGarden?: boolean;
+	hasBalcony?: boolean;
+	hasLift?: boolean;
+	hasPool?: boolean;
+	hasSauna?: boolean;
+	isFurnished?: boolean;
+	isNewConstruction?: boolean;
+	kitchenQuality?: string;
+	kitchenCondition?: string;
+	bathroomQuality?: string;
+	bathroomCondition?: string;
+	flooringQuality?: string;
+	flooringCondition?: string;
+	windowsQuality?: string;
+	windowsCondition?: string;
+	generalQuality?: string;
+	generalCondition?: string;
+	// Loan-specific metadata
+	loanType?: string;
+	loanAmount?: number;
+	remainingBalance?: number;
+	durationMonths?: number;
+	monthlyPayment?: number;
+	startDate?: string;
+	endDate?: string;
+	lender?: string;
+	loanNumber?: string;
+	downPayment?: number;
+	status?: string;
+	ownershipMode?: string;
+	ownershipPercentage?: number;
+	applicationFee?: number;
+	brokerFee?: number;
+	insuranceFee?: number;
+	otherFees?: number;
+	earlyRepaymentFee?: number;
+	linkedAssetIDs?: string[];
+	steps?: Array<{ id: string; date?: string; amount: number; interestRate: number }>;
+	coOwners?: Array<{ id: string; type: string; userId?: string; name: string; percentage: number }>;
+	companyOwners?: Array<{
+		id: string;
+		type: string;
+		companyId?: string;
+		name: string;
+		registrationNumber?: string;
+		legalForm?: string;
+		percentage: number;
+	}>;
+}
+
+/** Extract Loan-specific fields from a GraphQL asset object */
+function extractLoanFields(
+	asset: { __typename?: string } & Record<string, unknown>,
+): Partial<PortfolioAssetItem> {
+	const isLoan =
+		asset.__typename === "Loan" ||
+		(asset.assetType as { name?: string } | undefined)?.name?.toLowerCase() === "loan";
+	if (!isLoan) return {};
+	return {
+		type: "loan",
+		loanType: asset.loanType as string | undefined,
+		loanAmount: typeof asset.loanAmount === "number" ? asset.loanAmount : undefined,
+		remainingBalance:
+			typeof asset.remainingBalance === "number" ? asset.remainingBalance : undefined,
+		interestRate: typeof asset.interestRate === "number" ? asset.interestRate : undefined,
+		durationMonths: typeof asset.durationMonths === "number" ? asset.durationMonths : undefined,
+		monthlyPayment: typeof asset.monthlyPayment === "number" ? asset.monthlyPayment : undefined,
+		startDate: asset.startDate as string | undefined,
+		endDate: asset.endDate as string | undefined,
+		lender:
+			(asset.lender as string | undefined) ||
+			(asset.symbol as string | undefined) ||
+			(asset.institution as string | undefined),
+		loanNumber: asset.loanNumber as string | undefined,
+		currency: asset.currency as string | undefined,
+		downPayment: typeof asset.downPayment === "number" ? asset.downPayment : undefined,
+		status: asset.status as string | undefined,
+		ownershipMode: asset.ownershipMode as string | undefined,
+		ownershipPercentage:
+			typeof asset.ownershipPercentage === "number" ? asset.ownershipPercentage : 100,
+		applicationFee: typeof asset.applicationFee === "number" ? asset.applicationFee : undefined,
+		brokerFee: typeof asset.brokerFee === "number" ? asset.brokerFee : undefined,
+		insuranceFee: typeof asset.insuranceFee === "number" ? asset.insuranceFee : undefined,
+		otherFees: typeof asset.otherFees === "number" ? asset.otherFees : undefined,
+		earlyRepaymentFee:
+			typeof asset.earlyRepaymentFee === "number" ? asset.earlyRepaymentFee : undefined,
+		linkedAssetIDs: (asset.linkedAssetIDs as string[]) || [],
+		steps: asset.steps as any,
+		coOwners: asset.coOwners as any,
+		companyOwners: asset.companyOwners as any,
+	};
 }
 
 /** Extract BankAccount-specific fields from a GraphQL asset object */
@@ -86,6 +206,114 @@ function extractBankAccountFields(
 		currency: asset.currency as string | undefined,
 		interestRate: asset.interestRate as number | null | undefined,
 		balance: asset.balance as number | null | undefined,
+	};
+}
+
+/** Extract RealEstate-specific fields from a GraphQL asset object */
+function extractRealEstateFields(
+	asset: { __typename?: string } & Record<string, unknown>,
+): Partial<PortfolioAssetItem> {
+	const isRealEstate = asset.__typename === "RealEstate";
+	if (!isRealEstate) return {};
+	return {
+		type: "real_estate",
+		propertyType: asset.propertyType as string | undefined,
+		address: asset.address as string | undefined,
+		city: asset.city as string | undefined,
+		state: asset.state as string | undefined,
+		country: asset.country as string | undefined,
+		zipCode: asset.zipCode as string | undefined,
+		surfaceArea:
+			typeof asset.squareFeet === "number" && Number.isFinite(asset.squareFeet)
+				? asset.squareFeet
+				: undefined,
+		yearBuilt:
+			typeof asset.yearBuilt === "number" && Number.isFinite(asset.yearBuilt)
+				? asset.yearBuilt
+				: undefined,
+		bedrooms:
+			typeof asset.bedrooms === "number" && Number.isFinite(asset.bedrooms)
+				? asset.bedrooms
+				: undefined,
+		bathrooms:
+			typeof asset.bathrooms === "number" && Number.isFinite(asset.bathrooms)
+				? asset.bathrooms
+				: undefined,
+		category: asset.category as string | undefined,
+		landSurface:
+			typeof asset.landSurface === "number" && Number.isFinite(asset.landSurface)
+				? asset.landSurface
+				: undefined,
+		rooms:
+			typeof asset.rooms === "number" && Number.isFinite(asset.rooms)
+				? asset.rooms
+				: undefined,
+		floor:
+			typeof asset.floor === "number" && Number.isFinite(asset.floor)
+				? asset.floor
+				: undefined,
+		totalFloors:
+			typeof asset.totalFloors === "number" && Number.isFinite(asset.totalFloors)
+				? asset.totalFloors
+				: undefined,
+		garages:
+			typeof asset.garages === "number" && Number.isFinite(asset.garages)
+				? asset.garages
+				: undefined,
+		parkingSpaces:
+			typeof asset.parkingSpaces === "number" && Number.isFinite(asset.parkingSpaces)
+				? asset.parkingSpaces
+				: undefined,
+		energyLabel: asset.energyLabel as string | undefined,
+		condition: asset.condition as string | undefined,
+		agencyFees:
+			typeof asset.agencyFees === "number" && Number.isFinite(asset.agencyFees)
+				? asset.agencyFees
+				: undefined,
+		notaryFees:
+			typeof asset.notaryFees === "number" && Number.isFinite(asset.notaryFees)
+				? asset.notaryFees
+				: undefined,
+		renovationFees:
+			typeof asset.renovationFees === "number" && Number.isFinite(asset.renovationFees)
+				? asset.renovationFees
+				: undefined,
+		furnishingCosts:
+			typeof asset.furnishingCosts === "number" && Number.isFinite(asset.furnishingCosts)
+				? asset.furnishingCosts
+				: undefined,
+		rentalType: asset.rentalType as string | undefined,
+		rentalPeriod: asset.rentalPeriod as string | undefined,
+		monthlyRent:
+			typeof asset.monthlyRent === "number" && Number.isFinite(asset.monthlyRent)
+				? asset.monthlyRent
+				: undefined,
+		utilityCosts:
+			typeof asset.utilityCosts === "number" && Number.isFinite(asset.utilityCosts)
+				? asset.utilityCosts
+				: undefined,
+		yearlyMiscCosts:
+			typeof asset.yearlyMiscCosts === "number" && Number.isFinite(asset.yearlyMiscCosts)
+				? asset.yearlyMiscCosts
+				: undefined,
+		hasGarden: typeof asset.hasGarden === "boolean" ? asset.hasGarden : undefined,
+		hasBalcony: typeof asset.hasBalcony === "boolean" ? asset.hasBalcony : undefined,
+		hasLift: typeof asset.hasLift === "boolean" ? asset.hasLift : undefined,
+		hasPool: typeof asset.hasPool === "boolean" ? asset.hasPool : undefined,
+		hasSauna: typeof asset.hasSauna === "boolean" ? asset.hasSauna : undefined,
+		isFurnished: typeof asset.isFurnished === "boolean" ? asset.isFurnished : undefined,
+		isNewConstruction:
+			typeof asset.isNewConstruction === "boolean" ? asset.isNewConstruction : undefined,
+		kitchenQuality: asset.kitchenQuality as string | undefined,
+		kitchenCondition: asset.kitchenCondition as string | undefined,
+		bathroomQuality: asset.bathroomQuality as string | undefined,
+		bathroomCondition: asset.bathroomCondition as string | undefined,
+		flooringQuality: asset.flooringQuality as string | undefined,
+		flooringCondition: asset.flooringCondition as string | undefined,
+		windowsQuality: asset.windowsQuality as string | undefined,
+		windowsCondition: asset.windowsCondition as string | undefined,
+		generalQuality: asset.generalQuality as string | undefined,
+		generalCondition: asset.generalCondition as string | undefined,
 	};
 }
 
@@ -235,6 +463,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				const bankFields = extractBankAccountFields(
 					a.asset as { __typename?: string } & Record<string, unknown>,
 				);
+				const realEstateFields = extractRealEstateFields(
+					a.asset as { __typename?: string } & Record<string, unknown>,
+				);
+				const loanFields = extractLoanFields(
+					a.asset as { __typename?: string } & Record<string, unknown>,
+				);
 				const currentPrice =
 					typeof a.asset?.currentValue === "number" && Number.isFinite(a.asset.currentValue)
 						? a.asset.currentValue
@@ -277,11 +511,13 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 					fx: resolveAssetFx(p.id, a.asset?.id),
 					positionId: resolvePositionId(p.id, a.asset?.id),
 					...bankFields,
-					institution: bankFields.institution || a.accountName || undefined,
-					account: a.accountName || bankFields.institution || undefined,
+					...realEstateFields,
+					...loanFields,
+					institution: bankFields.institution || a.accountName || loanFields.lender || undefined,
+					account: a.accountName || bankFields.institution || loanFields.lender || undefined,
 					accountId: a.accountID || undefined,
-					// Ensure type is set correctly after spread (bankFields may override)
-					type: bankFields.type || assetType,
+					// Ensure type is set correctly after spread (bankFields, realEstateFields or loanFields may override)
+					type: bankFields.type || realEstateFields.type || loanFields.type || assetType,
 				};
 			}),
 		);
@@ -301,6 +537,12 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			const assetType = a.asset?.assetType?.name?.toLowerCase() || "stock";
 			const assetRecord = (a.asset ?? {}) as Record<string, unknown>;
 			const bankFields = extractBankAccountFields(
+				a.asset as { __typename?: string } & Record<string, unknown>,
+			);
+			const realEstateFields = extractRealEstateFields(
+				a.asset as { __typename?: string } & Record<string, unknown>,
+			);
+			const loanFields = extractLoanFields(
 				a.asset as { __typename?: string } & Record<string, unknown>,
 			);
 			const currentPrice =
@@ -343,11 +585,13 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				fx: resolveAssetFx(selectedPortfolio.id, a.asset?.id),
 				positionId: resolvePositionId(selectedPortfolio.id, a.asset?.id),
 				...bankFields,
-				institution: bankFields.institution || a.accountName || undefined,
-				account: a.accountName || bankFields.institution || undefined,
+				...realEstateFields,
+				...loanFields,
+				institution: bankFields.institution || a.accountName || loanFields.lender || undefined,
+				account: a.accountName || bankFields.institution || loanFields.lender || undefined,
 				accountId: a.accountID || undefined,
-				// Ensure type is set correctly after spread (bankFields may override)
-				type: bankFields.type || assetType,
+				// Ensure type is set correctly after spread (bankFields, realEstateFields or loanFields may override)
+				type: bankFields.type || realEstateFields.type || loanFields.type || assetType,
 			};
 		});
 

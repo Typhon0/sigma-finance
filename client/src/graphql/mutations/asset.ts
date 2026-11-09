@@ -78,15 +78,50 @@ export const CREATE_REAL_ESTATE_ASSET = gql`
       purchasePrice
       purchaseDate
       propertyType
+      category
       address
       city
       state
       country
       zipCode
       squareFeet
+      landSurface
       yearBuilt
       bedrooms
       bathrooms
+      rooms
+      floor
+      totalFloors
+      garages
+      parkingSpaces
+      energyLabel
+      condition
+      agencyFees
+      notaryFees
+      renovationFees
+      furnishingCosts
+      rentalType
+      rentalPeriod
+      monthlyRent
+      utilityCosts
+      yearlyMiscCosts
+      hasGarden
+      hasBalcony
+      hasLift
+      hasPool
+      hasSauna
+      isFurnished
+      isNewConstruction
+      kitchenQuality
+      kitchenCondition
+      bathroomQuality
+      bathroomCondition
+      flooringQuality
+      flooringCondition
+      windowsQuality
+      windowsCondition
+      generalQuality
+      generalCondition
       dayChange
       dayChangePercent
       assetType {
@@ -182,6 +217,30 @@ export const CREATE_LOAN_ASSET = gql`
       insuranceFee
       otherFees
       earlyRepaymentFee
+      linkedAssetIDs
+      ownershipPercentage
+      steps {
+        id
+        date
+        amount
+        interestRate
+      }
+      coOwners {
+        id
+        type
+        userId
+        name
+        percentage
+      }
+      companyOwners {
+        id
+        type
+        companyId
+        name
+        registrationNumber
+        legalForm
+        percentage
+      }
       dayChange
       dayChangePercent
       assetType {

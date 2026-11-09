@@ -88,6 +88,98 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
             interestRate
             balance
           }
+          ... on RealEstate {
+            propertyType
+            category
+            address
+            city
+            state
+            country
+            zipCode
+            squareFeet
+            landSurface
+            yearBuilt
+            bedrooms
+            bathrooms
+            rooms
+            floor
+            totalFloors
+            garages
+            parkingSpaces
+            energyLabel
+            condition
+            agencyFees
+            notaryFees
+            renovationFees
+            furnishingCosts
+            rentalType
+            rentalPeriod
+            monthlyRent
+            utilityCosts
+            yearlyMiscCosts
+            hasGarden
+            hasBalcony
+            hasLift
+            hasPool
+            hasSauna
+            isFurnished
+            isNewConstruction
+            kitchenQuality
+            kitchenCondition
+            bathroomQuality
+            bathroomCondition
+            flooringQuality
+            flooringCondition
+            windowsQuality
+            windowsCondition
+            generalQuality
+            generalCondition
+          }
+          ... on Loan {
+            loanType
+            loanAmount
+            remainingBalance
+            interestRate
+            durationMonths
+            monthlyPayment
+            startDate
+            endDate
+            lender
+            loanNumber
+            currency
+            downPayment
+            status
+            ownershipMode
+            applicationFee
+            brokerFee
+            insuranceFee
+            otherFees
+            earlyRepaymentFee
+            linkedAssetIDs
+            ownershipPercentage
+            steps {
+              id
+              date
+              amount
+              interestRate
+            }
+            coOwners {
+              id
+              type
+              userId
+              name
+              percentage
+            }
+            companyOwners {
+              id
+              type
+              companyId
+              name
+              registrationNumber
+              legalForm
+              percentage
+            }
+          }
           assetType {
             id
             name
