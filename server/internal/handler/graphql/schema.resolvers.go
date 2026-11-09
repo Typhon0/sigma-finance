@@ -692,16 +692,51 @@ func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlM
 
 	// Build real estate metadata
 	metadata := model.RealEstateMetadata{
-		PropertyType: input.PropertyType,
-		Address:      input.Address,
-		City:         input.City,
-		State:        getStr(input.State),
-		Country:      input.Country,
-		ZipCode:      getStr(input.ZipCode),
-		SquareFeet:   int32ToInt(input.SquareFeet),
-		YearBuilt:    int32ToInt(input.YearBuilt),
-		Bedrooms:     int32ToInt(input.Bedrooms),
-		Bathrooms:    input.Bathrooms,
+		PropertyType:      input.PropertyType,
+		Category:          input.Category,
+		Address:           input.Address,
+		City:              input.City,
+		State:             getStr(input.State),
+		Country:           input.Country,
+		ZipCode:           getStr(input.ZipCode),
+		SquareFeet:        int32ToInt(input.SquareFeet),
+		LandSurface:       input.LandSurface,
+		YearBuilt:         int32ToInt(input.YearBuilt),
+		Bedrooms:          int32ToInt(input.Bedrooms),
+		Bathrooms:         input.Bathrooms,
+		Rooms:             int32ToInt(input.Rooms),
+		Floor:             int32ToInt(input.Floor),
+		TotalFloors:       int32ToInt(input.TotalFloors),
+		Garages:           int32ToInt(input.Garages),
+		ParkingSpaces:     int32ToInt(input.ParkingSpaces),
+		EnergyLabel:       input.EnergyLabel,
+		Condition:         input.Condition,
+		AgencyFees:        input.AgencyFees,
+		NotaryFees:        input.NotaryFees,
+		RenovationFees:    input.RenovationFees,
+		FurnishingCosts:   input.FurnishingCosts,
+		RentalType:        input.RentalType,
+		RentalPeriod:      input.RentalPeriod,
+		MonthlyRent:       input.MonthlyRent,
+		UtilityCosts:      input.UtilityCosts,
+		YearlyMiscCosts:   input.YearlyMiscCosts,
+		HasGarden:         input.HasGarden,
+		HasBalcony:        input.HasBalcony,
+		HasLift:           input.HasLift,
+		HasPool:           input.HasPool,
+		HasSauna:          input.HasSauna,
+		IsFurnished:       input.IsFurnished,
+		IsNewConstruction: input.IsNewConstruction,
+		KitchenQuality:    input.KitchenQuality,
+		KitchenCondition:  input.KitchenCondition,
+		BathroomQuality:   input.BathroomQuality,
+		BathroomCondition: input.BathroomCondition,
+		FlooringQuality:   input.FlooringQuality,
+		FlooringCondition: input.FlooringCondition,
+		WindowsQuality:    input.WindowsQuality,
+		WindowsCondition:  input.WindowsCondition,
+		GeneralQuality:    input.GeneralQuality,
+		GeneralCondition:  input.GeneralCondition,
 	}
 	metadataBytes, marshalErr := json.Marshal(metadata)
 	if marshalErr != nil {
@@ -886,6 +921,52 @@ func (r *mutationResolver) CreateLoanAsset(ctx context.Context, input gqlModel.C
 	}
 	if input.EarlyRepaymentFee != nil {
 		metadata.EarlyRepaymentFee = *input.EarlyRepaymentFee
+	}
+	if input.OwnershipPercentage != nil {
+		metadata.OwnershipPercentage = input.OwnershipPercentage
+	}
+	if len(input.LinkedAssetIDs) > 0 {
+		metadata.LinkedAssetIDs = input.LinkedAssetIDs
+	}
+	if len(input.Steps) > 0 {
+		steps := make([]model.LoanStepMetadata, len(input.Steps))
+		for i, s := range input.Steps {
+			steps[i] = model.LoanStepMetadata{
+				ID:           s.ID,
+				Date:         getStr(s.Date),
+				Amount:       int64(s.Amount * 100), // Convert to cents
+				InterestRate: s.InterestRate,
+			}
+		}
+		metadata.Steps = steps
+	}
+	if len(input.CoOwners) > 0 {
+		coOwners := make([]model.CoOwnerMetadata, len(input.CoOwners))
+		for i, co := range input.CoOwners {
+			coOwners[i] = model.CoOwnerMetadata{
+				ID:         co.ID,
+				Type:       co.Type,
+				UserID:     co.UserID,
+				Name:       co.Name,
+				Percentage: co.Percentage,
+			}
+		}
+		metadata.CoOwners = coOwners
+	}
+	if len(input.CompanyOwners) > 0 {
+		companyOwners := make([]model.CompanyOwnerMetadata, len(input.CompanyOwners))
+		for i, co := range input.CompanyOwners {
+			companyOwners[i] = model.CompanyOwnerMetadata{
+				ID:                 co.ID,
+				Type:               co.Type,
+				CompanyID:          co.CompanyID,
+				Name:               co.Name,
+				RegistrationNumber: getStr(co.RegistrationNumber),
+				LegalForm:          getStr(co.LegalForm),
+				Percentage:         co.Percentage,
+			}
+		}
+		metadata.CompanyOwners = companyOwners
 	}
 
 	metadataBytes, marshalErr := json.Marshal(metadata)

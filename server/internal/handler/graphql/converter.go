@@ -391,23 +391,58 @@ func mapRealEstateToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, da
 	_ = json.Unmarshal(domainAsset.Metadata, &metadata)
 
 	realEstate := &gqlModel.RealEstate{
-		ID:               domainAsset.ID,
-		Name:             domainAsset.Name,
-		Symbol:           domainAsset.Symbol,
-		Tags:             mapTagsToGQL(tags),
-		PropertyType:     metadata.PropertyType,
-		Address:          metadata.Address,
-		City:             metadata.City,
-		State:            &metadata.State,
-		Country:          metadata.Country,
-		ZipCode:          &metadata.ZipCode,
-		SquareFeet:       intToInt32(metadata.SquareFeet),
-		YearBuilt:        intToInt32(metadata.YearBuilt),
-		Bedrooms:         intToInt32(metadata.Bedrooms),
-		Bathrooms:        metadata.Bathrooms,
-		DayChange:        dayChange,
-		DayChangePercent: dayChangePercent,
-		CurrentValue:     currentValue,
+		ID:                domainAsset.ID,
+		Name:              domainAsset.Name,
+		Symbol:            domainAsset.Symbol,
+		Tags:              mapTagsToGQL(tags),
+		PropertyType:      metadata.PropertyType,
+		Category:          metadata.Category,
+		Address:           metadata.Address,
+		City:              metadata.City,
+		State:             &metadata.State,
+		Country:           metadata.Country,
+		ZipCode:           &metadata.ZipCode,
+		SquareFeet:        intToInt32(metadata.SquareFeet),
+		LandSurface:       metadata.LandSurface,
+		YearBuilt:         intToInt32(metadata.YearBuilt),
+		Bedrooms:          intToInt32(metadata.Bedrooms),
+		Bathrooms:         metadata.Bathrooms,
+		Rooms:             intToInt32(metadata.Rooms),
+		Floor:             intToInt32(metadata.Floor),
+		TotalFloors:       intToInt32(metadata.TotalFloors),
+		Garages:           intToInt32(metadata.Garages),
+		ParkingSpaces:     intToInt32(metadata.ParkingSpaces),
+		EnergyLabel:       metadata.EnergyLabel,
+		Condition:         metadata.Condition,
+		AgencyFees:        metadata.AgencyFees,
+		NotaryFees:        metadata.NotaryFees,
+		RenovationFees:    metadata.RenovationFees,
+		FurnishingCosts:   metadata.FurnishingCosts,
+		RentalType:        metadata.RentalType,
+		RentalPeriod:      metadata.RentalPeriod,
+		MonthlyRent:       metadata.MonthlyRent,
+		UtilityCosts:      metadata.UtilityCosts,
+		YearlyMiscCosts:   metadata.YearlyMiscCosts,
+		HasGarden:         metadata.HasGarden,
+		HasBalcony:        metadata.HasBalcony,
+		HasLift:           metadata.HasLift,
+		HasPool:           metadata.HasPool,
+		HasSauna:          metadata.HasSauna,
+		IsFurnished:       metadata.IsFurnished,
+		IsNewConstruction: metadata.IsNewConstruction,
+		KitchenQuality:    metadata.KitchenQuality,
+		KitchenCondition:  metadata.KitchenCondition,
+		BathroomQuality:   metadata.BathroomQuality,
+		BathroomCondition: metadata.BathroomCondition,
+		FlooringQuality:   metadata.FlooringQuality,
+		FlooringCondition: metadata.FlooringCondition,
+		WindowsQuality:    metadata.WindowsQuality,
+		WindowsCondition:  metadata.WindowsCondition,
+		GeneralQuality:    metadata.GeneralQuality,
+		GeneralCondition:  metadata.GeneralCondition,
+		DayChange:         dayChange,
+		DayChangePercent:  dayChangePercent,
+		CurrentValue:      currentValue,
 	}
 
 	realEstate.AssetType = mapAssetTypeToGQL(domainAsset.Type)
@@ -492,25 +527,76 @@ func mapLoanToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChang
 	insuranceFee := float64(metadata.InsuranceFee) / 100.0
 	otherFees := float64(metadata.OtherFees) / 100.0
 
+	if currentValue == nil {
+		currentValue = &remainingBalance
+	}
+	purchasePrice := loanAmount
+
 	loan := &gqlModel.Loan{
-		ID:               domainAsset.ID,
-		Name:             domainAsset.Name,
-		Symbol:           domainAsset.Symbol,
-		Tags:             mapTagsToGQL(tags),
-		Description:      stringPtrIfNotEmpty(metadata.Description),
-		LoanType:         metadata.LoanType,
-		LoanAmount:       loanAmount,
-		RemainingBalance: remainingBalance,
-		InterestRate:     metadata.InterestRate,
-		DurationMonths:   int32(metadata.DurationMonths),
-		MonthlyPayment:   monthlyPayment,
-		StartDate:        metadata.StartDate,
-		Lender:           metadata.Lender,
-		Currency:         metadata.Currency,
-		Status:           metadata.Status,
-		DayChange:        dayChange,
-		DayChangePercent: dayChangePercent,
-		CurrentValue:     currentValue,
+		ID:                  domainAsset.ID,
+		Name:                domainAsset.Name,
+		Symbol:              domainAsset.Symbol,
+		Tags:                mapTagsToGQL(tags),
+		Description:         stringPtrIfNotEmpty(metadata.Description),
+		LoanType:            metadata.LoanType,
+		LoanAmount:          loanAmount,
+		RemainingBalance:    remainingBalance,
+		InterestRate:        metadata.InterestRate,
+		DurationMonths:      int32(metadata.DurationMonths),
+		MonthlyPayment:      monthlyPayment,
+		StartDate:           metadata.StartDate,
+		Lender:              metadata.Lender,
+		Currency:            metadata.Currency,
+		Status:              metadata.Status,
+		DayChange:           dayChange,
+		DayChangePercent:    dayChangePercent,
+		CurrentValue:        currentValue,
+		PurchasePrice:       &purchasePrice,
+		LinkedAssetIDs:      metadata.LinkedAssetIDs,
+		OwnershipPercentage: metadata.OwnershipPercentage,
+	}
+
+	if len(metadata.Steps) > 0 {
+		steps := make([]*gqlModel.LoanStep, len(metadata.Steps))
+		for i, s := range metadata.Steps {
+			steps[i] = &gqlModel.LoanStep{
+				ID:           s.ID,
+				Date:         stringPtrIfNotEmpty(s.Date),
+				Amount:       float64(s.Amount) / 100.0,
+				InterestRate: s.InterestRate,
+			}
+		}
+		loan.Steps = steps
+	}
+
+	if len(metadata.CoOwners) > 0 {
+		coOwners := make([]*gqlModel.LoanCoOwner, len(metadata.CoOwners))
+		for i, co := range metadata.CoOwners {
+			coOwners[i] = &gqlModel.LoanCoOwner{
+				ID:         co.ID,
+				Type:       co.Type,
+				UserID:     co.UserID,
+				Name:       co.Name,
+				Percentage: co.Percentage,
+			}
+		}
+		loan.CoOwners = coOwners
+	}
+
+	if len(metadata.CompanyOwners) > 0 {
+		companyOwners := make([]*gqlModel.LoanCompanyOwner, len(metadata.CompanyOwners))
+		for i, co := range metadata.CompanyOwners {
+			companyOwners[i] = &gqlModel.LoanCompanyOwner{
+				ID:                 co.ID,
+				Type:               co.Type,
+				CompanyID:          co.CompanyID,
+				Name:               co.Name,
+				RegistrationNumber: stringPtrIfNotEmpty(co.RegistrationNumber),
+				LegalForm:          stringPtrIfNotEmpty(co.LegalForm),
+				Percentage:         co.Percentage,
+			}
+		}
+		loan.CompanyOwners = companyOwners
 	}
 
 	if metadata.EndDate != "" {

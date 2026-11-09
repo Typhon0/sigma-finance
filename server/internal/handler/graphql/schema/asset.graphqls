@@ -126,15 +126,59 @@ type RealEstate implements Asset {
     tags: [Tag!]!
 
     propertyType: String!
+    category: String
     address: String!
     city: String!
     state: String
     country: String!
     zipCode: String
     squareFeet: Int
+    landSurface: Float
     yearBuilt: Int
     bedrooms: Int
     bathrooms: Float
+    rooms: Int
+    floor: Int
+    totalFloors: Int
+    garages: Int
+    parkingSpaces: Int
+    energyLabel: String
+    condition: String
+
+    # Fees & Acquisition Costs
+    agencyFees: Float
+    notaryFees: Float
+    renovationFees: Float
+    furnishingCosts: Float
+
+    # Rental Stream
+    rentalType: String
+    rentalPeriod: String
+    monthlyRent: Float
+    utilityCosts: Float
+    yearlyMiscCosts: Float
+
+    # Amenities
+    hasGarden: Boolean
+    hasBalcony: Boolean
+    hasLift: Boolean
+    hasPool: Boolean
+    hasSauna: Boolean
+    isFurnished: Boolean
+    isNewConstruction: Boolean
+
+    # Quality details
+    kitchenQuality: String
+    kitchenCondition: String
+    bathroomQuality: String
+    bathroomCondition: String
+    flooringQuality: String
+    flooringCondition: String
+    windowsQuality: String
+    windowsCondition: String
+    generalQuality: String
+    generalCondition: String
+
     sector: String
     exchange: String
     dayChange: Float
@@ -224,11 +268,41 @@ type Loan implements Asset {
     insuranceFee: Float
     otherFees: Float
     earlyRepaymentFee: Float
+    linkedAssetIDs: [ID!]
+    ownershipPercentage: Float
+    coOwners: [LoanCoOwner!]
+    companyOwners: [LoanCompanyOwner!]
+    steps: [LoanStep!]
     sector: String
     exchange: String
     dayChange: Float
     dayChangePercent: Float
     positions: [Position!]!
+}
+
+type LoanStep {
+    id: ID!
+    date: String
+    amount: Float!
+    interestRate: Float!
+}
+
+type LoanCoOwner {
+    id: ID!
+    type: String!
+    userId: ID
+    name: String!
+    percentage: Float!
+}
+
+type LoanCompanyOwner {
+    id: ID!
+    type: String!
+    companyId: ID
+    name: String!
+    registrationNumber: String
+    legalForm: String
+    percentage: Float!
 }
 
 type Tag {
@@ -294,15 +368,58 @@ input CreateRealEstateInput {
     purchaseDate: Time
     purchasePrice: Float
     propertyType: String!
+    category: String
     address: String!
     city: String!
     state: String
     country: String!
     zipCode: String
     squareFeet: Int
+    landSurface: Float
     yearBuilt: Int
     bedrooms: Int
     bathrooms: Float
+    rooms: Int
+    floor: Int
+    totalFloors: Int
+    garages: Int
+    parkingSpaces: Int
+    energyLabel: String
+    condition: String
+
+    # Fees & Acquisition Costs
+    agencyFees: Float
+    notaryFees: Float
+    renovationFees: Float
+    furnishingCosts: Float
+
+    # Rental Stream
+    rentalType: String
+    rentalPeriod: String
+    monthlyRent: Float
+    utilityCosts: Float
+    yearlyMiscCosts: Float
+
+    # Amenities
+    hasGarden: Boolean
+    hasBalcony: Boolean
+    hasLift: Boolean
+    hasPool: Boolean
+    hasSauna: Boolean
+    isFurnished: Boolean
+    isNewConstruction: Boolean
+
+    # Quality details
+    kitchenQuality: String
+    kitchenCondition: String
+    bathroomQuality: String
+    bathroomCondition: String
+    flooringQuality: String
+    flooringCondition: String
+    windowsQuality: String
+    windowsCondition: String
+    generalQuality: String
+    generalCondition: String
 }
 
 # Input for creating a new LifeInsurance asset
@@ -349,6 +466,36 @@ input CreateLoanInput {
     insuranceFee: Float
     otherFees: Float
     earlyRepaymentFee: Float
+    linkedAssetIDs: [ID!]
+    ownershipPercentage: Float
+    coOwners: [LoanCoOwnerInput!]
+    companyOwners: [LoanCompanyOwnerInput!]
+    steps: [LoanStepInput!]
+}
+
+input LoanStepInput {
+    id: ID!
+    date: String
+    amount: Float!
+    interestRate: Float!
+}
+
+input LoanCoOwnerInput {
+    id: ID!
+    type: String!
+    userId: ID
+    name: String!
+    percentage: Float!
+}
+
+input LoanCompanyOwnerInput {
+    id: ID!
+    type: String!
+    companyId: ID
+    name: String!
+    registrationNumber: String
+    legalForm: String
+    percentage: Float!
 }
 
 # Input for creating a new Watch asset

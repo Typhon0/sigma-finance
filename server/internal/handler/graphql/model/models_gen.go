@@ -600,31 +600,36 @@ type CreateLifeInsuranceInput struct {
 }
 
 type CreateLoanInput struct {
-	Name              string     `json:"name"`
-	AssetTypeID       string     `json:"assetTypeID"`
-	CurrentValue      *float64   `json:"currentValue,omitempty"`
-	PurchaseDate      *time.Time `json:"purchaseDate,omitempty"`
-	PurchasePrice     *float64   `json:"purchasePrice,omitempty"`
-	Description       *string    `json:"description,omitempty"`
-	LoanType          string     `json:"loanType"`
-	LoanAmount        float64    `json:"loanAmount"`
-	RemainingBalance  float64    `json:"remainingBalance"`
-	InterestRate      float64    `json:"interestRate"`
-	DurationMonths    int32      `json:"durationMonths"`
-	MonthlyPayment    float64    `json:"monthlyPayment"`
-	StartDate         string     `json:"startDate"`
-	EndDate           *string    `json:"endDate,omitempty"`
-	Lender            string     `json:"lender"`
-	LoanNumber        *string    `json:"loanNumber,omitempty"`
-	Currency          string     `json:"currency"`
-	DownPayment       *float64   `json:"downPayment,omitempty"`
-	Status            string     `json:"status"`
-	OwnershipMode     *string    `json:"ownershipMode,omitempty"`
-	ApplicationFee    *float64   `json:"applicationFee,omitempty"`
-	BrokerFee         *float64   `json:"brokerFee,omitempty"`
-	InsuranceFee      *float64   `json:"insuranceFee,omitempty"`
-	OtherFees         *float64   `json:"otherFees,omitempty"`
-	EarlyRepaymentFee *float64   `json:"earlyRepaymentFee,omitempty"`
+	Name                string                   `json:"name"`
+	AssetTypeID         string                   `json:"assetTypeID"`
+	CurrentValue        *float64                 `json:"currentValue,omitempty"`
+	PurchaseDate        *time.Time               `json:"purchaseDate,omitempty"`
+	PurchasePrice       *float64                 `json:"purchasePrice,omitempty"`
+	Description         *string                  `json:"description,omitempty"`
+	LoanType            string                   `json:"loanType"`
+	LoanAmount          float64                  `json:"loanAmount"`
+	RemainingBalance    float64                  `json:"remainingBalance"`
+	InterestRate        float64                  `json:"interestRate"`
+	DurationMonths      int32                    `json:"durationMonths"`
+	MonthlyPayment      float64                  `json:"monthlyPayment"`
+	StartDate           string                   `json:"startDate"`
+	EndDate             *string                  `json:"endDate,omitempty"`
+	Lender              string                   `json:"lender"`
+	LoanNumber          *string                  `json:"loanNumber,omitempty"`
+	Currency            string                   `json:"currency"`
+	DownPayment         *float64                 `json:"downPayment,omitempty"`
+	Status              string                   `json:"status"`
+	OwnershipMode       *string                  `json:"ownershipMode,omitempty"`
+	ApplicationFee      *float64                 `json:"applicationFee,omitempty"`
+	BrokerFee           *float64                 `json:"brokerFee,omitempty"`
+	InsuranceFee        *float64                 `json:"insuranceFee,omitempty"`
+	OtherFees           *float64                 `json:"otherFees,omitempty"`
+	EarlyRepaymentFee   *float64                 `json:"earlyRepaymentFee,omitempty"`
+	LinkedAssetIDs      []string                 `json:"linkedAssetIDs,omitempty"`
+	OwnershipPercentage *float64                 `json:"ownershipPercentage,omitempty"`
+	CoOwners            []*LoanCoOwnerInput      `json:"coOwners,omitempty"`
+	CompanyOwners       []*LoanCompanyOwnerInput `json:"companyOwners,omitempty"`
+	Steps               []*LoanStepInput         `json:"steps,omitempty"`
 }
 
 type CreatePortfolioInput struct {
@@ -635,21 +640,56 @@ type CreatePortfolioInput struct {
 }
 
 type CreateRealEstateInput struct {
-	Name          string     `json:"name"`
-	AssetTypeID   string     `json:"assetTypeID"`
-	CurrentValue  *float64   `json:"currentValue,omitempty"`
-	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
-	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
-	PropertyType  string     `json:"propertyType"`
-	Address       string     `json:"address"`
-	City          string     `json:"city"`
-	State         *string    `json:"state,omitempty"`
-	Country       string     `json:"country"`
-	ZipCode       *string    `json:"zipCode,omitempty"`
-	SquareFeet    *int32     `json:"squareFeet,omitempty"`
-	YearBuilt     *int32     `json:"yearBuilt,omitempty"`
-	Bedrooms      *int32     `json:"bedrooms,omitempty"`
-	Bathrooms     *float64   `json:"bathrooms,omitempty"`
+	Name              string     `json:"name"`
+	AssetTypeID       string     `json:"assetTypeID"`
+	CurrentValue      *float64   `json:"currentValue,omitempty"`
+	PurchaseDate      *time.Time `json:"purchaseDate,omitempty"`
+	PurchasePrice     *float64   `json:"purchasePrice,omitempty"`
+	PropertyType      string     `json:"propertyType"`
+	Category          *string    `json:"category,omitempty"`
+	Address           string     `json:"address"`
+	City              string     `json:"city"`
+	State             *string    `json:"state,omitempty"`
+	Country           string     `json:"country"`
+	ZipCode           *string    `json:"zipCode,omitempty"`
+	SquareFeet        *int32     `json:"squareFeet,omitempty"`
+	LandSurface       *float64   `json:"landSurface,omitempty"`
+	YearBuilt         *int32     `json:"yearBuilt,omitempty"`
+	Bedrooms          *int32     `json:"bedrooms,omitempty"`
+	Bathrooms         *float64   `json:"bathrooms,omitempty"`
+	Rooms             *int32     `json:"rooms,omitempty"`
+	Floor             *int32     `json:"floor,omitempty"`
+	TotalFloors       *int32     `json:"totalFloors,omitempty"`
+	Garages           *int32     `json:"garages,omitempty"`
+	ParkingSpaces     *int32     `json:"parkingSpaces,omitempty"`
+	EnergyLabel       *string    `json:"energyLabel,omitempty"`
+	Condition         *string    `json:"condition,omitempty"`
+	AgencyFees        *float64   `json:"agencyFees,omitempty"`
+	NotaryFees        *float64   `json:"notaryFees,omitempty"`
+	RenovationFees    *float64   `json:"renovationFees,omitempty"`
+	FurnishingCosts   *float64   `json:"furnishingCosts,omitempty"`
+	RentalType        *string    `json:"rentalType,omitempty"`
+	RentalPeriod      *string    `json:"rentalPeriod,omitempty"`
+	MonthlyRent       *float64   `json:"monthlyRent,omitempty"`
+	UtilityCosts      *float64   `json:"utilityCosts,omitempty"`
+	YearlyMiscCosts   *float64   `json:"yearlyMiscCosts,omitempty"`
+	HasGarden         *bool      `json:"hasGarden,omitempty"`
+	HasBalcony        *bool      `json:"hasBalcony,omitempty"`
+	HasLift           *bool      `json:"hasLift,omitempty"`
+	HasPool           *bool      `json:"hasPool,omitempty"`
+	HasSauna          *bool      `json:"hasSauna,omitempty"`
+	IsFurnished       *bool      `json:"isFurnished,omitempty"`
+	IsNewConstruction *bool      `json:"isNewConstruction,omitempty"`
+	KitchenQuality    *string    `json:"kitchenQuality,omitempty"`
+	KitchenCondition  *string    `json:"kitchenCondition,omitempty"`
+	BathroomQuality   *string    `json:"bathroomQuality,omitempty"`
+	BathroomCondition *string    `json:"bathroomCondition,omitempty"`
+	FlooringQuality   *string    `json:"flooringQuality,omitempty"`
+	FlooringCondition *string    `json:"flooringCondition,omitempty"`
+	WindowsQuality    *string    `json:"windowsQuality,omitempty"`
+	WindowsCondition  *string    `json:"windowsCondition,omitempty"`
+	GeneralQuality    *string    `json:"generalQuality,omitempty"`
+	GeneralCondition  *string    `json:"generalCondition,omitempty"`
 }
 
 type CreateStockInput struct {
@@ -1153,39 +1193,44 @@ func (this LifeInsurance) GetDayChange() *float64        { return this.DayChange
 func (this LifeInsurance) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
 type Loan struct {
-	ID                string      `json:"id"`
-	Name              string      `json:"name"`
-	Symbol            *string     `json:"symbol,omitempty"`
-	AssetType         *AssetType  `json:"assetType"`
-	CurrentValue      *float64    `json:"currentValue,omitempty"`
-	PurchaseDate      *time.Time  `json:"purchaseDate,omitempty"`
-	PurchasePrice     *float64    `json:"purchasePrice,omitempty"`
-	Tags              []*Tag      `json:"tags"`
-	Description       *string     `json:"description,omitempty"`
-	LoanType          string      `json:"loanType"`
-	LoanAmount        float64     `json:"loanAmount"`
-	RemainingBalance  float64     `json:"remainingBalance"`
-	InterestRate      float64     `json:"interestRate"`
-	DurationMonths    int32       `json:"durationMonths"`
-	MonthlyPayment    float64     `json:"monthlyPayment"`
-	StartDate         string      `json:"startDate"`
-	EndDate           *string     `json:"endDate,omitempty"`
-	Lender            string      `json:"lender"`
-	LoanNumber        *string     `json:"loanNumber,omitempty"`
-	Currency          string      `json:"currency"`
-	DownPayment       *float64    `json:"downPayment,omitempty"`
-	Status            string      `json:"status"`
-	OwnershipMode     *string     `json:"ownershipMode,omitempty"`
-	ApplicationFee    *float64    `json:"applicationFee,omitempty"`
-	BrokerFee         *float64    `json:"brokerFee,omitempty"`
-	InsuranceFee      *float64    `json:"insuranceFee,omitempty"`
-	OtherFees         *float64    `json:"otherFees,omitempty"`
-	EarlyRepaymentFee *float64    `json:"earlyRepaymentFee,omitempty"`
-	Sector            *string     `json:"sector,omitempty"`
-	Exchange          *string     `json:"exchange,omitempty"`
-	DayChange         *float64    `json:"dayChange,omitempty"`
-	DayChangePercent  *float64    `json:"dayChangePercent,omitempty"`
-	Positions         []*Position `json:"positions"`
+	ID                  string              `json:"id"`
+	Name                string              `json:"name"`
+	Symbol              *string             `json:"symbol,omitempty"`
+	AssetType           *AssetType          `json:"assetType"`
+	CurrentValue        *float64            `json:"currentValue,omitempty"`
+	PurchaseDate        *time.Time          `json:"purchaseDate,omitempty"`
+	PurchasePrice       *float64            `json:"purchasePrice,omitempty"`
+	Tags                []*Tag              `json:"tags"`
+	Description         *string             `json:"description,omitempty"`
+	LoanType            string              `json:"loanType"`
+	LoanAmount          float64             `json:"loanAmount"`
+	RemainingBalance    float64             `json:"remainingBalance"`
+	InterestRate        float64             `json:"interestRate"`
+	DurationMonths      int32               `json:"durationMonths"`
+	MonthlyPayment      float64             `json:"monthlyPayment"`
+	StartDate           string              `json:"startDate"`
+	EndDate             *string             `json:"endDate,omitempty"`
+	Lender              string              `json:"lender"`
+	LoanNumber          *string             `json:"loanNumber,omitempty"`
+	Currency            string              `json:"currency"`
+	DownPayment         *float64            `json:"downPayment,omitempty"`
+	Status              string              `json:"status"`
+	OwnershipMode       *string             `json:"ownershipMode,omitempty"`
+	ApplicationFee      *float64            `json:"applicationFee,omitempty"`
+	BrokerFee           *float64            `json:"brokerFee,omitempty"`
+	InsuranceFee        *float64            `json:"insuranceFee,omitempty"`
+	OtherFees           *float64            `json:"otherFees,omitempty"`
+	EarlyRepaymentFee   *float64            `json:"earlyRepaymentFee,omitempty"`
+	LinkedAssetIDs      []string            `json:"linkedAssetIDs,omitempty"`
+	OwnershipPercentage *float64            `json:"ownershipPercentage,omitempty"`
+	CoOwners            []*LoanCoOwner      `json:"coOwners,omitempty"`
+	CompanyOwners       []*LoanCompanyOwner `json:"companyOwners,omitempty"`
+	Steps               []*LoanStep         `json:"steps,omitempty"`
+	Sector              *string             `json:"sector,omitempty"`
+	Exchange            *string             `json:"exchange,omitempty"`
+	DayChange           *float64            `json:"dayChange,omitempty"`
+	DayChangePercent    *float64            `json:"dayChangePercent,omitempty"`
+	Positions           []*Position         `json:"positions"`
 }
 
 func (Loan) IsAsset()                         {}
@@ -1220,6 +1265,56 @@ func (this Loan) GetSector() *string            { return this.Sector }
 func (this Loan) GetExchange() *string          { return this.Exchange }
 func (this Loan) GetDayChange() *float64        { return this.DayChange }
 func (this Loan) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
+type LoanCoOwner struct {
+	ID         string  `json:"id"`
+	Type       string  `json:"type"`
+	UserID     *string `json:"userId,omitempty"`
+	Name       string  `json:"name"`
+	Percentage float64 `json:"percentage"`
+}
+
+type LoanCoOwnerInput struct {
+	ID         string  `json:"id"`
+	Type       string  `json:"type"`
+	UserID     *string `json:"userId,omitempty"`
+	Name       string  `json:"name"`
+	Percentage float64 `json:"percentage"`
+}
+
+type LoanCompanyOwner struct {
+	ID                 string  `json:"id"`
+	Type               string  `json:"type"`
+	CompanyID          *string `json:"companyId,omitempty"`
+	Name               string  `json:"name"`
+	RegistrationNumber *string `json:"registrationNumber,omitempty"`
+	LegalForm          *string `json:"legalForm,omitempty"`
+	Percentage         float64 `json:"percentage"`
+}
+
+type LoanCompanyOwnerInput struct {
+	ID                 string  `json:"id"`
+	Type               string  `json:"type"`
+	CompanyID          *string `json:"companyId,omitempty"`
+	Name               string  `json:"name"`
+	RegistrationNumber *string `json:"registrationNumber,omitempty"`
+	LegalForm          *string `json:"legalForm,omitempty"`
+	Percentage         float64 `json:"percentage"`
+}
+
+type LoanStep struct {
+	ID           string  `json:"id"`
+	Date         *string `json:"date,omitempty"`
+	Amount       float64 `json:"amount"`
+	InterestRate float64 `json:"interestRate"`
+}
+
+type LoanStepInput struct {
+	ID           string  `json:"id"`
+	Date         *string `json:"date,omitempty"`
+	Amount       float64 `json:"amount"`
+	InterestRate float64 `json:"interestRate"`
+}
 
 type LoginInput struct {
 	Email    string `json:"email"`
@@ -1717,29 +1812,64 @@ type RateLimit struct {
 }
 
 type RealEstate struct {
-	ID               string      `json:"id"`
-	Name             string      `json:"name"`
-	Symbol           *string     `json:"symbol,omitempty"`
-	AssetType        *AssetType  `json:"assetType"`
-	CurrentValue     *float64    `json:"currentValue,omitempty"`
-	PurchaseDate     *time.Time  `json:"purchaseDate,omitempty"`
-	PurchasePrice    *float64    `json:"purchasePrice,omitempty"`
-	Tags             []*Tag      `json:"tags"`
-	PropertyType     string      `json:"propertyType"`
-	Address          string      `json:"address"`
-	City             string      `json:"city"`
-	State            *string     `json:"state,omitempty"`
-	Country          string      `json:"country"`
-	ZipCode          *string     `json:"zipCode,omitempty"`
-	SquareFeet       *int32      `json:"squareFeet,omitempty"`
-	YearBuilt        *int32      `json:"yearBuilt,omitempty"`
-	Bedrooms         *int32      `json:"bedrooms,omitempty"`
-	Bathrooms        *float64    `json:"bathrooms,omitempty"`
-	Sector           *string     `json:"sector,omitempty"`
-	Exchange         *string     `json:"exchange,omitempty"`
-	DayChange        *float64    `json:"dayChange,omitempty"`
-	DayChangePercent *float64    `json:"dayChangePercent,omitempty"`
-	Positions        []*Position `json:"positions"`
+	ID                string      `json:"id"`
+	Name              string      `json:"name"`
+	Symbol            *string     `json:"symbol,omitempty"`
+	AssetType         *AssetType  `json:"assetType"`
+	CurrentValue      *float64    `json:"currentValue,omitempty"`
+	PurchaseDate      *time.Time  `json:"purchaseDate,omitempty"`
+	PurchasePrice     *float64    `json:"purchasePrice,omitempty"`
+	Tags              []*Tag      `json:"tags"`
+	PropertyType      string      `json:"propertyType"`
+	Category          *string     `json:"category,omitempty"`
+	Address           string      `json:"address"`
+	City              string      `json:"city"`
+	State             *string     `json:"state,omitempty"`
+	Country           string      `json:"country"`
+	ZipCode           *string     `json:"zipCode,omitempty"`
+	SquareFeet        *int32      `json:"squareFeet,omitempty"`
+	LandSurface       *float64    `json:"landSurface,omitempty"`
+	YearBuilt         *int32      `json:"yearBuilt,omitempty"`
+	Bedrooms          *int32      `json:"bedrooms,omitempty"`
+	Bathrooms         *float64    `json:"bathrooms,omitempty"`
+	Rooms             *int32      `json:"rooms,omitempty"`
+	Floor             *int32      `json:"floor,omitempty"`
+	TotalFloors       *int32      `json:"totalFloors,omitempty"`
+	Garages           *int32      `json:"garages,omitempty"`
+	ParkingSpaces     *int32      `json:"parkingSpaces,omitempty"`
+	EnergyLabel       *string     `json:"energyLabel,omitempty"`
+	Condition         *string     `json:"condition,omitempty"`
+	AgencyFees        *float64    `json:"agencyFees,omitempty"`
+	NotaryFees        *float64    `json:"notaryFees,omitempty"`
+	RenovationFees    *float64    `json:"renovationFees,omitempty"`
+	FurnishingCosts   *float64    `json:"furnishingCosts,omitempty"`
+	RentalType        *string     `json:"rentalType,omitempty"`
+	RentalPeriod      *string     `json:"rentalPeriod,omitempty"`
+	MonthlyRent       *float64    `json:"monthlyRent,omitempty"`
+	UtilityCosts      *float64    `json:"utilityCosts,omitempty"`
+	YearlyMiscCosts   *float64    `json:"yearlyMiscCosts,omitempty"`
+	HasGarden         *bool       `json:"hasGarden,omitempty"`
+	HasBalcony        *bool       `json:"hasBalcony,omitempty"`
+	HasLift           *bool       `json:"hasLift,omitempty"`
+	HasPool           *bool       `json:"hasPool,omitempty"`
+	HasSauna          *bool       `json:"hasSauna,omitempty"`
+	IsFurnished       *bool       `json:"isFurnished,omitempty"`
+	IsNewConstruction *bool       `json:"isNewConstruction,omitempty"`
+	KitchenQuality    *string     `json:"kitchenQuality,omitempty"`
+	KitchenCondition  *string     `json:"kitchenCondition,omitempty"`
+	BathroomQuality   *string     `json:"bathroomQuality,omitempty"`
+	BathroomCondition *string     `json:"bathroomCondition,omitempty"`
+	FlooringQuality   *string     `json:"flooringQuality,omitempty"`
+	FlooringCondition *string     `json:"flooringCondition,omitempty"`
+	WindowsQuality    *string     `json:"windowsQuality,omitempty"`
+	WindowsCondition  *string     `json:"windowsCondition,omitempty"`
+	GeneralQuality    *string     `json:"generalQuality,omitempty"`
+	GeneralCondition  *string     `json:"generalCondition,omitempty"`
+	Sector            *string     `json:"sector,omitempty"`
+	Exchange          *string     `json:"exchange,omitempty"`
+	DayChange         *float64    `json:"dayChange,omitempty"`
+	DayChangePercent  *float64    `json:"dayChangePercent,omitempty"`
+	Positions         []*Position `json:"positions"`
 }
 
 func (RealEstate) IsAsset()                         {}

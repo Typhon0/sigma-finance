@@ -668,39 +668,69 @@ type ComplexityRoot struct {
 	}
 
 	Loan struct {
-		ApplicationFee    func(childComplexity int) int
-		AssetType         func(childComplexity int) int
-		BrokerFee         func(childComplexity int) int
-		Currency          func(childComplexity int) int
-		CurrentValue      func(childComplexity int) int
-		DayChange         func(childComplexity int) int
-		DayChangePercent  func(childComplexity int) int
-		Description       func(childComplexity int) int
-		DownPayment       func(childComplexity int) int
-		DurationMonths    func(childComplexity int) int
-		EarlyRepaymentFee func(childComplexity int) int
-		EndDate           func(childComplexity int) int
-		Exchange          func(childComplexity int) int
-		ID                func(childComplexity int) int
-		InsuranceFee      func(childComplexity int) int
-		InterestRate      func(childComplexity int) int
-		Lender            func(childComplexity int) int
-		LoanAmount        func(childComplexity int) int
-		LoanNumber        func(childComplexity int) int
-		LoanType          func(childComplexity int) int
-		MonthlyPayment    func(childComplexity int) int
-		Name              func(childComplexity int) int
-		OtherFees         func(childComplexity int) int
-		OwnershipMode     func(childComplexity int) int
-		Positions         func(childComplexity int) int
-		PurchaseDate      func(childComplexity int) int
-		PurchasePrice     func(childComplexity int) int
-		RemainingBalance  func(childComplexity int) int
-		Sector            func(childComplexity int) int
-		StartDate         func(childComplexity int) int
-		Status            func(childComplexity int) int
-		Symbol            func(childComplexity int) int
-		Tags              func(childComplexity int) int
+		ApplicationFee      func(childComplexity int) int
+		AssetType           func(childComplexity int) int
+		BrokerFee           func(childComplexity int) int
+		CoOwners            func(childComplexity int) int
+		CompanyOwners       func(childComplexity int) int
+		Currency            func(childComplexity int) int
+		CurrentValue        func(childComplexity int) int
+		DayChange           func(childComplexity int) int
+		DayChangePercent    func(childComplexity int) int
+		Description         func(childComplexity int) int
+		DownPayment         func(childComplexity int) int
+		DurationMonths      func(childComplexity int) int
+		EarlyRepaymentFee   func(childComplexity int) int
+		EndDate             func(childComplexity int) int
+		Exchange            func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		InsuranceFee        func(childComplexity int) int
+		InterestRate        func(childComplexity int) int
+		Lender              func(childComplexity int) int
+		LinkedAssetIDs      func(childComplexity int) int
+		LoanAmount          func(childComplexity int) int
+		LoanNumber          func(childComplexity int) int
+		LoanType            func(childComplexity int) int
+		MonthlyPayment      func(childComplexity int) int
+		Name                func(childComplexity int) int
+		OtherFees           func(childComplexity int) int
+		OwnershipMode       func(childComplexity int) int
+		OwnershipPercentage func(childComplexity int) int
+		Positions           func(childComplexity int) int
+		PurchaseDate        func(childComplexity int) int
+		PurchasePrice       func(childComplexity int) int
+		RemainingBalance    func(childComplexity int) int
+		Sector              func(childComplexity int) int
+		StartDate           func(childComplexity int) int
+		Status              func(childComplexity int) int
+		Steps               func(childComplexity int) int
+		Symbol              func(childComplexity int) int
+		Tags                func(childComplexity int) int
+	}
+
+	LoanCoOwner struct {
+		ID         func(childComplexity int) int
+		Name       func(childComplexity int) int
+		Percentage func(childComplexity int) int
+		Type       func(childComplexity int) int
+		UserID     func(childComplexity int) int
+	}
+
+	LoanCompanyOwner struct {
+		CompanyID          func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		LegalForm          func(childComplexity int) int
+		Name               func(childComplexity int) int
+		Percentage         func(childComplexity int) int
+		RegistrationNumber func(childComplexity int) int
+		Type               func(childComplexity int) int
+	}
+
+	LoanStep struct {
+		Amount       func(childComplexity int) int
+		Date         func(childComplexity int) int
+		ID           func(childComplexity int) int
+		InterestRate func(childComplexity int) int
 	}
 
 	LogoutResponse struct {
@@ -1306,29 +1336,64 @@ type ComplexityRoot struct {
 	}
 
 	RealEstate struct {
-		Address          func(childComplexity int) int
-		AssetType        func(childComplexity int) int
-		Bathrooms        func(childComplexity int) int
-		Bedrooms         func(childComplexity int) int
-		City             func(childComplexity int) int
-		Country          func(childComplexity int) int
-		CurrentValue     func(childComplexity int) int
-		DayChange        func(childComplexity int) int
-		DayChangePercent func(childComplexity int) int
-		Exchange         func(childComplexity int) int
-		ID               func(childComplexity int) int
-		Name             func(childComplexity int) int
-		Positions        func(childComplexity int) int
-		PropertyType     func(childComplexity int) int
-		PurchaseDate     func(childComplexity int) int
-		PurchasePrice    func(childComplexity int) int
-		Sector           func(childComplexity int) int
-		SquareFeet       func(childComplexity int) int
-		State            func(childComplexity int) int
-		Symbol           func(childComplexity int) int
-		Tags             func(childComplexity int) int
-		YearBuilt        func(childComplexity int) int
-		ZipCode          func(childComplexity int) int
+		Address           func(childComplexity int) int
+		AgencyFees        func(childComplexity int) int
+		AssetType         func(childComplexity int) int
+		BathroomCondition func(childComplexity int) int
+		BathroomQuality   func(childComplexity int) int
+		Bathrooms         func(childComplexity int) int
+		Bedrooms          func(childComplexity int) int
+		Category          func(childComplexity int) int
+		City              func(childComplexity int) int
+		Condition         func(childComplexity int) int
+		Country           func(childComplexity int) int
+		CurrentValue      func(childComplexity int) int
+		DayChange         func(childComplexity int) int
+		DayChangePercent  func(childComplexity int) int
+		EnergyLabel       func(childComplexity int) int
+		Exchange          func(childComplexity int) int
+		Floor             func(childComplexity int) int
+		FlooringCondition func(childComplexity int) int
+		FlooringQuality   func(childComplexity int) int
+		FurnishingCosts   func(childComplexity int) int
+		Garages           func(childComplexity int) int
+		GeneralCondition  func(childComplexity int) int
+		GeneralQuality    func(childComplexity int) int
+		HasBalcony        func(childComplexity int) int
+		HasGarden         func(childComplexity int) int
+		HasLift           func(childComplexity int) int
+		HasPool           func(childComplexity int) int
+		HasSauna          func(childComplexity int) int
+		ID                func(childComplexity int) int
+		IsFurnished       func(childComplexity int) int
+		IsNewConstruction func(childComplexity int) int
+		KitchenCondition  func(childComplexity int) int
+		KitchenQuality    func(childComplexity int) int
+		LandSurface       func(childComplexity int) int
+		MonthlyRent       func(childComplexity int) int
+		Name              func(childComplexity int) int
+		NotaryFees        func(childComplexity int) int
+		ParkingSpaces     func(childComplexity int) int
+		Positions         func(childComplexity int) int
+		PropertyType      func(childComplexity int) int
+		PurchaseDate      func(childComplexity int) int
+		PurchasePrice     func(childComplexity int) int
+		RenovationFees    func(childComplexity int) int
+		RentalPeriod      func(childComplexity int) int
+		RentalType        func(childComplexity int) int
+		Rooms             func(childComplexity int) int
+		Sector            func(childComplexity int) int
+		SquareFeet        func(childComplexity int) int
+		State             func(childComplexity int) int
+		Symbol            func(childComplexity int) int
+		Tags              func(childComplexity int) int
+		TotalFloors       func(childComplexity int) int
+		UtilityCosts      func(childComplexity int) int
+		WindowsCondition  func(childComplexity int) int
+		WindowsQuality    func(childComplexity int) int
+		YearBuilt         func(childComplexity int) int
+		YearlyMiscCosts   func(childComplexity int) int
+		ZipCode           func(childComplexity int) int
 	}
 
 	RealizedGainsSummary struct {
@@ -4718,6 +4783,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Loan.BrokerFee(childComplexity), true
+	case "Loan.coOwners":
+		if e.ComplexityRoot.Loan.CoOwners == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Loan.CoOwners(childComplexity), true
+	case "Loan.companyOwners":
+		if e.ComplexityRoot.Loan.CompanyOwners == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Loan.CompanyOwners(childComplexity), true
 	case "Loan.currency":
 		if e.ComplexityRoot.Loan.Currency == nil {
 			break
@@ -4802,6 +4879,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Loan.Lender(childComplexity), true
+	case "Loan.linkedAssetIDs":
+		if e.ComplexityRoot.Loan.LinkedAssetIDs == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Loan.LinkedAssetIDs(childComplexity), true
 	case "Loan.loanAmount":
 		if e.ComplexityRoot.Loan.LoanAmount == nil {
 			break
@@ -4844,6 +4927,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Loan.OwnershipMode(childComplexity), true
+	case "Loan.ownershipPercentage":
+		if e.ComplexityRoot.Loan.OwnershipPercentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Loan.OwnershipPercentage(childComplexity), true
 	case "Loan.positions":
 		if e.ComplexityRoot.Loan.Positions == nil {
 			break
@@ -4886,6 +4975,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Loan.Status(childComplexity), true
+	case "Loan.steps":
+		if e.ComplexityRoot.Loan.Steps == nil {
+			break
+		}
+
+		return e.ComplexityRoot.Loan.Steps(childComplexity), true
 	case "Loan.symbol":
 		if e.ComplexityRoot.Loan.Symbol == nil {
 			break
@@ -4898,6 +4993,105 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Loan.Tags(childComplexity), true
+
+	case "LoanCoOwner.id":
+		if e.ComplexityRoot.LoanCoOwner.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCoOwner.ID(childComplexity), true
+	case "LoanCoOwner.name":
+		if e.ComplexityRoot.LoanCoOwner.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCoOwner.Name(childComplexity), true
+	case "LoanCoOwner.percentage":
+		if e.ComplexityRoot.LoanCoOwner.Percentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCoOwner.Percentage(childComplexity), true
+	case "LoanCoOwner.type":
+		if e.ComplexityRoot.LoanCoOwner.Type == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCoOwner.Type(childComplexity), true
+	case "LoanCoOwner.userId":
+		if e.ComplexityRoot.LoanCoOwner.UserID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCoOwner.UserID(childComplexity), true
+
+	case "LoanCompanyOwner.companyId":
+		if e.ComplexityRoot.LoanCompanyOwner.CompanyID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.CompanyID(childComplexity), true
+	case "LoanCompanyOwner.id":
+		if e.ComplexityRoot.LoanCompanyOwner.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.ID(childComplexity), true
+	case "LoanCompanyOwner.legalForm":
+		if e.ComplexityRoot.LoanCompanyOwner.LegalForm == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.LegalForm(childComplexity), true
+	case "LoanCompanyOwner.name":
+		if e.ComplexityRoot.LoanCompanyOwner.Name == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.Name(childComplexity), true
+	case "LoanCompanyOwner.percentage":
+		if e.ComplexityRoot.LoanCompanyOwner.Percentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.Percentage(childComplexity), true
+	case "LoanCompanyOwner.registrationNumber":
+		if e.ComplexityRoot.LoanCompanyOwner.RegistrationNumber == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.RegistrationNumber(childComplexity), true
+	case "LoanCompanyOwner.type":
+		if e.ComplexityRoot.LoanCompanyOwner.Type == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanCompanyOwner.Type(childComplexity), true
+
+	case "LoanStep.amount":
+		if e.ComplexityRoot.LoanStep.Amount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanStep.Amount(childComplexity), true
+	case "LoanStep.date":
+		if e.ComplexityRoot.LoanStep.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanStep.Date(childComplexity), true
+	case "LoanStep.id":
+		if e.ComplexityRoot.LoanStep.ID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanStep.ID(childComplexity), true
+	case "LoanStep.interestRate":
+		if e.ComplexityRoot.LoanStep.InterestRate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.LoanStep.InterestRate(childComplexity), true
 
 	case "LogoutResponse.errors":
 		if e.ComplexityRoot.LogoutResponse.Errors == nil {
@@ -8787,12 +8981,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.Address(childComplexity), true
+	case "RealEstate.agencyFees":
+		if e.ComplexityRoot.RealEstate.AgencyFees == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.AgencyFees(childComplexity), true
 	case "RealEstate.assetType":
 		if e.ComplexityRoot.RealEstate.AssetType == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.AssetType(childComplexity), true
+	case "RealEstate.bathroomCondition":
+		if e.ComplexityRoot.RealEstate.BathroomCondition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.BathroomCondition(childComplexity), true
+	case "RealEstate.bathroomQuality":
+		if e.ComplexityRoot.RealEstate.BathroomQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.BathroomQuality(childComplexity), true
 	case "RealEstate.bathrooms":
 		if e.ComplexityRoot.RealEstate.Bathrooms == nil {
 			break
@@ -8805,12 +9017,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.Bedrooms(childComplexity), true
+	case "RealEstate.category":
+		if e.ComplexityRoot.RealEstate.Category == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Category(childComplexity), true
 	case "RealEstate.city":
 		if e.ComplexityRoot.RealEstate.City == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.City(childComplexity), true
+	case "RealEstate.condition":
+		if e.ComplexityRoot.RealEstate.Condition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Condition(childComplexity), true
 	case "RealEstate.country":
 		if e.ComplexityRoot.RealEstate.Country == nil {
 			break
@@ -8835,24 +9059,150 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.DayChangePercent(childComplexity), true
+	case "RealEstate.energyLabel":
+		if e.ComplexityRoot.RealEstate.EnergyLabel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EnergyLabel(childComplexity), true
 	case "RealEstate.exchange":
 		if e.ComplexityRoot.RealEstate.Exchange == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.Exchange(childComplexity), true
+	case "RealEstate.floor":
+		if e.ComplexityRoot.RealEstate.Floor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Floor(childComplexity), true
+	case "RealEstate.flooringCondition":
+		if e.ComplexityRoot.RealEstate.FlooringCondition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.FlooringCondition(childComplexity), true
+	case "RealEstate.flooringQuality":
+		if e.ComplexityRoot.RealEstate.FlooringQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.FlooringQuality(childComplexity), true
+	case "RealEstate.furnishingCosts":
+		if e.ComplexityRoot.RealEstate.FurnishingCosts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.FurnishingCosts(childComplexity), true
+	case "RealEstate.garages":
+		if e.ComplexityRoot.RealEstate.Garages == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Garages(childComplexity), true
+	case "RealEstate.generalCondition":
+		if e.ComplexityRoot.RealEstate.GeneralCondition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.GeneralCondition(childComplexity), true
+	case "RealEstate.generalQuality":
+		if e.ComplexityRoot.RealEstate.GeneralQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.GeneralQuality(childComplexity), true
+	case "RealEstate.hasBalcony":
+		if e.ComplexityRoot.RealEstate.HasBalcony == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasBalcony(childComplexity), true
+	case "RealEstate.hasGarden":
+		if e.ComplexityRoot.RealEstate.HasGarden == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasGarden(childComplexity), true
+	case "RealEstate.hasLift":
+		if e.ComplexityRoot.RealEstate.HasLift == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasLift(childComplexity), true
+	case "RealEstate.hasPool":
+		if e.ComplexityRoot.RealEstate.HasPool == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasPool(childComplexity), true
+	case "RealEstate.hasSauna":
+		if e.ComplexityRoot.RealEstate.HasSauna == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasSauna(childComplexity), true
 	case "RealEstate.id":
 		if e.ComplexityRoot.RealEstate.ID == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.ID(childComplexity), true
+	case "RealEstate.isFurnished":
+		if e.ComplexityRoot.RealEstate.IsFurnished == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.IsFurnished(childComplexity), true
+	case "RealEstate.isNewConstruction":
+		if e.ComplexityRoot.RealEstate.IsNewConstruction == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.IsNewConstruction(childComplexity), true
+	case "RealEstate.kitchenCondition":
+		if e.ComplexityRoot.RealEstate.KitchenCondition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.KitchenCondition(childComplexity), true
+	case "RealEstate.kitchenQuality":
+		if e.ComplexityRoot.RealEstate.KitchenQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.KitchenQuality(childComplexity), true
+	case "RealEstate.landSurface":
+		if e.ComplexityRoot.RealEstate.LandSurface == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.LandSurface(childComplexity), true
+	case "RealEstate.monthlyRent":
+		if e.ComplexityRoot.RealEstate.MonthlyRent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.MonthlyRent(childComplexity), true
 	case "RealEstate.name":
 		if e.ComplexityRoot.RealEstate.Name == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.Name(childComplexity), true
+	case "RealEstate.notaryFees":
+		if e.ComplexityRoot.RealEstate.NotaryFees == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.NotaryFees(childComplexity), true
+	case "RealEstate.parkingSpaces":
+		if e.ComplexityRoot.RealEstate.ParkingSpaces == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ParkingSpaces(childComplexity), true
 	case "RealEstate.positions":
 		if e.ComplexityRoot.RealEstate.Positions == nil {
 			break
@@ -8877,6 +9227,30 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.PurchasePrice(childComplexity), true
+	case "RealEstate.renovationFees":
+		if e.ComplexityRoot.RealEstate.RenovationFees == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.RenovationFees(childComplexity), true
+	case "RealEstate.rentalPeriod":
+		if e.ComplexityRoot.RealEstate.RentalPeriod == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.RentalPeriod(childComplexity), true
+	case "RealEstate.rentalType":
+		if e.ComplexityRoot.RealEstate.RentalType == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.RentalType(childComplexity), true
+	case "RealEstate.rooms":
+		if e.ComplexityRoot.RealEstate.Rooms == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Rooms(childComplexity), true
 	case "RealEstate.sector":
 		if e.ComplexityRoot.RealEstate.Sector == nil {
 			break
@@ -8907,12 +9281,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.Tags(childComplexity), true
+	case "RealEstate.totalFloors":
+		if e.ComplexityRoot.RealEstate.TotalFloors == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.TotalFloors(childComplexity), true
+	case "RealEstate.utilityCosts":
+		if e.ComplexityRoot.RealEstate.UtilityCosts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.UtilityCosts(childComplexity), true
+	case "RealEstate.windowsCondition":
+		if e.ComplexityRoot.RealEstate.WindowsCondition == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.WindowsCondition(childComplexity), true
+	case "RealEstate.windowsQuality":
+		if e.ComplexityRoot.RealEstate.WindowsQuality == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.WindowsQuality(childComplexity), true
 	case "RealEstate.yearBuilt":
 		if e.ComplexityRoot.RealEstate.YearBuilt == nil {
 			break
 		}
 
 		return e.ComplexityRoot.RealEstate.YearBuilt(childComplexity), true
+	case "RealEstate.yearlyMiscCosts":
+		if e.ComplexityRoot.RealEstate.YearlyMiscCosts == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.YearlyMiscCosts(childComplexity), true
 	case "RealEstate.zipCode":
 		if e.ComplexityRoot.RealEstate.ZipCode == nil {
 			break
@@ -10833,6 +11237,9 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputHistoricalDataBackfillJobFilterInput,
 		ec.unmarshalInputImportInstrumentFromSourceInput,
 		ec.unmarshalInputInstrumentSearchInput,
+		ec.unmarshalInputLoanCoOwnerInput,
+		ec.unmarshalInputLoanCompanyOwnerInput,
+		ec.unmarshalInputLoanStepInput,
 		ec.unmarshalInputLoginInput,
 		ec.unmarshalInputLogoutInput,
 		ec.unmarshalInputManualInstrumentFilterInput,
@@ -28367,6 +28774,189 @@ func (ec *executionContext) fieldContext_Loan_earlyRepaymentFee(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Loan_linkedAssetIDs(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Loan_linkedAssetIDs,
+		func(ctx context.Context) (any, error) {
+			return obj.LinkedAssetIDs, nil
+		},
+		nil,
+		ec.marshalOID2ᚕstringᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Loan_linkedAssetIDs(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Loan",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Loan_ownershipPercentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Loan_ownershipPercentage,
+		func(ctx context.Context) (any, error) {
+			return obj.OwnershipPercentage, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Loan_ownershipPercentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Loan",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Loan_coOwners(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Loan_coOwners,
+		func(ctx context.Context) (any, error) {
+			return obj.CoOwners, nil
+		},
+		nil,
+		ec.marshalOLoanCoOwner2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Loan_coOwners(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Loan",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LoanCoOwner_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LoanCoOwner_type(ctx, field)
+			case "userId":
+				return ec.fieldContext_LoanCoOwner_userId(ctx, field)
+			case "name":
+				return ec.fieldContext_LoanCoOwner_name(ctx, field)
+			case "percentage":
+				return ec.fieldContext_LoanCoOwner_percentage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LoanCoOwner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Loan_companyOwners(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Loan_companyOwners,
+		func(ctx context.Context) (any, error) {
+			return obj.CompanyOwners, nil
+		},
+		nil,
+		ec.marshalOLoanCompanyOwner2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Loan_companyOwners(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Loan",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LoanCompanyOwner_id(ctx, field)
+			case "type":
+				return ec.fieldContext_LoanCompanyOwner_type(ctx, field)
+			case "companyId":
+				return ec.fieldContext_LoanCompanyOwner_companyId(ctx, field)
+			case "name":
+				return ec.fieldContext_LoanCompanyOwner_name(ctx, field)
+			case "registrationNumber":
+				return ec.fieldContext_LoanCompanyOwner_registrationNumber(ctx, field)
+			case "legalForm":
+				return ec.fieldContext_LoanCompanyOwner_legalForm(ctx, field)
+			case "percentage":
+				return ec.fieldContext_LoanCompanyOwner_percentage(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LoanCompanyOwner", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Loan_steps(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Loan_steps,
+		func(ctx context.Context) (any, error) {
+			return obj.Steps, nil
+		},
+		nil,
+		ec.marshalOLoanStep2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Loan_steps(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Loan",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_LoanStep_id(ctx, field)
+			case "date":
+				return ec.fieldContext_LoanStep_date(ctx, field)
+			case "amount":
+				return ec.fieldContext_LoanStep_amount(ctx, field)
+			case "interestRate":
+				return ec.fieldContext_LoanStep_interestRate(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type LoanStep", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Loan_sector(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Loan) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -28525,6 +29115,470 @@ func (ec *executionContext) fieldContext_Loan_positions(_ context.Context, field
 				return ec.fieldContext_Position_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCoOwner_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCoOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCoOwner_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCoOwner_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCoOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCoOwner_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCoOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCoOwner_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCoOwner_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCoOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCoOwner_userId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCoOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCoOwner_userId,
+		func(ctx context.Context) (any, error) {
+			return obj.UserID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCoOwner_userId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCoOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCoOwner_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCoOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCoOwner_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCoOwner_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCoOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCoOwner_percentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCoOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCoOwner_percentage,
+		func(ctx context.Context) (any, error) {
+			return obj.Percentage, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCoOwner_percentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCoOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_type,
+		func(ctx context.Context) (any, error) {
+			return obj.Type, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_companyId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_companyId,
+		func(ctx context.Context) (any, error) {
+			return obj.CompanyID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_companyId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_name,
+		func(ctx context.Context) (any, error) {
+			return obj.Name, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_registrationNumber(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_registrationNumber,
+		func(ctx context.Context) (any, error) {
+			return obj.RegistrationNumber, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_registrationNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_legalForm(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_legalForm,
+		func(ctx context.Context) (any, error) {
+			return obj.LegalForm, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_legalForm(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanCompanyOwner_percentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanCompanyOwner) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanCompanyOwner_percentage,
+		func(ctx context.Context) (any, error) {
+			return obj.Percentage, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanCompanyOwner_percentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanCompanyOwner",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanStep_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanStep_id,
+		func(ctx context.Context) (any, error) {
+			return obj.ID, nil
+		},
+		nil,
+		ec.marshalNID2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanStep_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanStep_date(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanStep_date,
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanStep_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanStep_amount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanStep_amount,
+		func(ctx context.Context) (any, error) {
+			return obj.Amount, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanStep_amount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _LoanStep_interestRate(ctx context.Context, field graphql.CollectedField, obj *gqlModel.LoanStep) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_LoanStep_interestRate,
+		func(ctx context.Context) (any, error) {
+			return obj.InterestRate, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_LoanStep_interestRate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "LoanStep",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -33674,6 +34728,8 @@ func (ec *executionContext) fieldContext_Mutation_createRealEstateAsset(ctx cont
 				return ec.fieldContext_RealEstate_tags(ctx, field)
 			case "propertyType":
 				return ec.fieldContext_RealEstate_propertyType(ctx, field)
+			case "category":
+				return ec.fieldContext_RealEstate_category(ctx, field)
 			case "address":
 				return ec.fieldContext_RealEstate_address(ctx, field)
 			case "city":
@@ -33686,12 +34742,80 @@ func (ec *executionContext) fieldContext_Mutation_createRealEstateAsset(ctx cont
 				return ec.fieldContext_RealEstate_zipCode(ctx, field)
 			case "squareFeet":
 				return ec.fieldContext_RealEstate_squareFeet(ctx, field)
+			case "landSurface":
+				return ec.fieldContext_RealEstate_landSurface(ctx, field)
 			case "yearBuilt":
 				return ec.fieldContext_RealEstate_yearBuilt(ctx, field)
 			case "bedrooms":
 				return ec.fieldContext_RealEstate_bedrooms(ctx, field)
 			case "bathrooms":
 				return ec.fieldContext_RealEstate_bathrooms(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RealEstate_rooms(ctx, field)
+			case "floor":
+				return ec.fieldContext_RealEstate_floor(ctx, field)
+			case "totalFloors":
+				return ec.fieldContext_RealEstate_totalFloors(ctx, field)
+			case "garages":
+				return ec.fieldContext_RealEstate_garages(ctx, field)
+			case "parkingSpaces":
+				return ec.fieldContext_RealEstate_parkingSpaces(ctx, field)
+			case "energyLabel":
+				return ec.fieldContext_RealEstate_energyLabel(ctx, field)
+			case "condition":
+				return ec.fieldContext_RealEstate_condition(ctx, field)
+			case "agencyFees":
+				return ec.fieldContext_RealEstate_agencyFees(ctx, field)
+			case "notaryFees":
+				return ec.fieldContext_RealEstate_notaryFees(ctx, field)
+			case "renovationFees":
+				return ec.fieldContext_RealEstate_renovationFees(ctx, field)
+			case "furnishingCosts":
+				return ec.fieldContext_RealEstate_furnishingCosts(ctx, field)
+			case "rentalType":
+				return ec.fieldContext_RealEstate_rentalType(ctx, field)
+			case "rentalPeriod":
+				return ec.fieldContext_RealEstate_rentalPeriod(ctx, field)
+			case "monthlyRent":
+				return ec.fieldContext_RealEstate_monthlyRent(ctx, field)
+			case "utilityCosts":
+				return ec.fieldContext_RealEstate_utilityCosts(ctx, field)
+			case "yearlyMiscCosts":
+				return ec.fieldContext_RealEstate_yearlyMiscCosts(ctx, field)
+			case "hasGarden":
+				return ec.fieldContext_RealEstate_hasGarden(ctx, field)
+			case "hasBalcony":
+				return ec.fieldContext_RealEstate_hasBalcony(ctx, field)
+			case "hasLift":
+				return ec.fieldContext_RealEstate_hasLift(ctx, field)
+			case "hasPool":
+				return ec.fieldContext_RealEstate_hasPool(ctx, field)
+			case "hasSauna":
+				return ec.fieldContext_RealEstate_hasSauna(ctx, field)
+			case "isFurnished":
+				return ec.fieldContext_RealEstate_isFurnished(ctx, field)
+			case "isNewConstruction":
+				return ec.fieldContext_RealEstate_isNewConstruction(ctx, field)
+			case "kitchenQuality":
+				return ec.fieldContext_RealEstate_kitchenQuality(ctx, field)
+			case "kitchenCondition":
+				return ec.fieldContext_RealEstate_kitchenCondition(ctx, field)
+			case "bathroomQuality":
+				return ec.fieldContext_RealEstate_bathroomQuality(ctx, field)
+			case "bathroomCondition":
+				return ec.fieldContext_RealEstate_bathroomCondition(ctx, field)
+			case "flooringQuality":
+				return ec.fieldContext_RealEstate_flooringQuality(ctx, field)
+			case "flooringCondition":
+				return ec.fieldContext_RealEstate_flooringCondition(ctx, field)
+			case "windowsQuality":
+				return ec.fieldContext_RealEstate_windowsQuality(ctx, field)
+			case "windowsCondition":
+				return ec.fieldContext_RealEstate_windowsCondition(ctx, field)
+			case "generalQuality":
+				return ec.fieldContext_RealEstate_generalQuality(ctx, field)
+			case "generalCondition":
+				return ec.fieldContext_RealEstate_generalCondition(ctx, field)
 			case "sector":
 				return ec.fieldContext_RealEstate_sector(ctx, field)
 			case "exchange":
@@ -34014,6 +35138,16 @@ func (ec *executionContext) fieldContext_Mutation_createLoanAsset(ctx context.Co
 				return ec.fieldContext_Loan_otherFees(ctx, field)
 			case "earlyRepaymentFee":
 				return ec.fieldContext_Loan_earlyRepaymentFee(ctx, field)
+			case "linkedAssetIDs":
+				return ec.fieldContext_Loan_linkedAssetIDs(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_Loan_ownershipPercentage(ctx, field)
+			case "coOwners":
+				return ec.fieldContext_Loan_coOwners(ctx, field)
+			case "companyOwners":
+				return ec.fieldContext_Loan_companyOwners(ctx, field)
+			case "steps":
+				return ec.fieldContext_Loan_steps(ctx, field)
 			case "sector":
 				return ec.fieldContext_Loan_sector(ctx, field)
 			case "exchange":
@@ -52542,6 +53676,35 @@ func (ec *executionContext) fieldContext_RealEstate_propertyType(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _RealEstate_category(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_category,
+		func(ctx context.Context) (any, error) {
+			return obj.Category, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_category(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RealEstate_address(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52716,6 +53879,35 @@ func (ec *executionContext) fieldContext_RealEstate_squareFeet(_ context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _RealEstate_landSurface(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_landSurface,
+		func(ctx context.Context) (any, error) {
+			return obj.LandSurface, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_landSurface(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RealEstate_yearBuilt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52798,6 +53990,963 @@ func (ec *executionContext) fieldContext_RealEstate_bathrooms(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_rooms(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_rooms,
+		func(ctx context.Context) (any, error) {
+			return obj.Rooms, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_rooms(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_floor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_floor,
+		func(ctx context.Context) (any, error) {
+			return obj.Floor, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_floor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_totalFloors(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_totalFloors,
+		func(ctx context.Context) (any, error) {
+			return obj.TotalFloors, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_totalFloors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_garages(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_garages,
+		func(ctx context.Context) (any, error) {
+			return obj.Garages, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_garages(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_parkingSpaces(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_parkingSpaces,
+		func(ctx context.Context) (any, error) {
+			return obj.ParkingSpaces, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_parkingSpaces(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_energyLabel(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_energyLabel,
+		func(ctx context.Context) (any, error) {
+			return obj.EnergyLabel, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_energyLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_condition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_condition,
+		func(ctx context.Context) (any, error) {
+			return obj.Condition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_condition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_agencyFees(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_agencyFees,
+		func(ctx context.Context) (any, error) {
+			return obj.AgencyFees, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_agencyFees(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_notaryFees(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_notaryFees,
+		func(ctx context.Context) (any, error) {
+			return obj.NotaryFees, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_notaryFees(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_renovationFees(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_renovationFees,
+		func(ctx context.Context) (any, error) {
+			return obj.RenovationFees, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_renovationFees(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_furnishingCosts(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_furnishingCosts,
+		func(ctx context.Context) (any, error) {
+			return obj.FurnishingCosts, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_furnishingCosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_rentalType(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_rentalType,
+		func(ctx context.Context) (any, error) {
+			return obj.RentalType, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_rentalType(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_rentalPeriod(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_rentalPeriod,
+		func(ctx context.Context) (any, error) {
+			return obj.RentalPeriod, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_rentalPeriod(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_monthlyRent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_monthlyRent,
+		func(ctx context.Context) (any, error) {
+			return obj.MonthlyRent, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_monthlyRent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_utilityCosts(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_utilityCosts,
+		func(ctx context.Context) (any, error) {
+			return obj.UtilityCosts, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_utilityCosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_yearlyMiscCosts(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_yearlyMiscCosts,
+		func(ctx context.Context) (any, error) {
+			return obj.YearlyMiscCosts, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_yearlyMiscCosts(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasGarden(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasGarden,
+		func(ctx context.Context) (any, error) {
+			return obj.HasGarden, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasGarden(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasBalcony(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasBalcony,
+		func(ctx context.Context) (any, error) {
+			return obj.HasBalcony, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasBalcony(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasLift(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasLift,
+		func(ctx context.Context) (any, error) {
+			return obj.HasLift, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasLift(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasPool(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasPool,
+		func(ctx context.Context) (any, error) {
+			return obj.HasPool, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasPool(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasSauna(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasSauna,
+		func(ctx context.Context) (any, error) {
+			return obj.HasSauna, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasSauna(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_isFurnished(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_isFurnished,
+		func(ctx context.Context) (any, error) {
+			return obj.IsFurnished, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_isFurnished(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_isNewConstruction(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_isNewConstruction,
+		func(ctx context.Context) (any, error) {
+			return obj.IsNewConstruction, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_isNewConstruction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_kitchenQuality(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_kitchenQuality,
+		func(ctx context.Context) (any, error) {
+			return obj.KitchenQuality, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_kitchenQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_kitchenCondition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_kitchenCondition,
+		func(ctx context.Context) (any, error) {
+			return obj.KitchenCondition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_kitchenCondition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_bathroomQuality(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_bathroomQuality,
+		func(ctx context.Context) (any, error) {
+			return obj.BathroomQuality, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_bathroomQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_bathroomCondition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_bathroomCondition,
+		func(ctx context.Context) (any, error) {
+			return obj.BathroomCondition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_bathroomCondition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_flooringQuality(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_flooringQuality,
+		func(ctx context.Context) (any, error) {
+			return obj.FlooringQuality, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_flooringQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_flooringCondition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_flooringCondition,
+		func(ctx context.Context) (any, error) {
+			return obj.FlooringCondition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_flooringCondition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_windowsQuality(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_windowsQuality,
+		func(ctx context.Context) (any, error) {
+			return obj.WindowsQuality, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_windowsQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_windowsCondition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_windowsCondition,
+		func(ctx context.Context) (any, error) {
+			return obj.WindowsCondition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_windowsCondition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_generalQuality(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_generalQuality,
+		func(ctx context.Context) (any, error) {
+			return obj.GeneralQuality, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_generalQuality(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_generalCondition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_generalCondition,
+		func(ctx context.Context) (any, error) {
+			return obj.GeneralCondition, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_generalCondition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -65295,7 +67444,7 @@ func (ec *executionContext) unmarshalInputCreateLoanInput(ctx context.Context, o
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "description", "loanType", "loanAmount", "remainingBalance", "interestRate", "durationMonths", "monthlyPayment", "startDate", "endDate", "lender", "loanNumber", "currency", "downPayment", "status", "ownershipMode", "applicationFee", "brokerFee", "insuranceFee", "otherFees", "earlyRepaymentFee"}
+	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "description", "loanType", "loanAmount", "remainingBalance", "interestRate", "durationMonths", "monthlyPayment", "startDate", "endDate", "lender", "loanNumber", "currency", "downPayment", "status", "ownershipMode", "applicationFee", "brokerFee", "insuranceFee", "otherFees", "earlyRepaymentFee", "linkedAssetIDs", "ownershipPercentage", "coOwners", "companyOwners", "steps"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65477,6 +67626,41 @@ func (ec *executionContext) unmarshalInputCreateLoanInput(ctx context.Context, o
 				return it, err
 			}
 			it.EarlyRepaymentFee = data
+		case "linkedAssetIDs":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("linkedAssetIDs"))
+			data, err := ec.unmarshalOID2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LinkedAssetIDs = data
+		case "ownershipPercentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipPercentage"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipPercentage = data
+		case "coOwners":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("coOwners"))
+			data, err := ec.unmarshalOLoanCoOwnerInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CoOwners = data
+		case "companyOwners":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("companyOwners"))
+			data, err := ec.unmarshalOLoanCompanyOwnerInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CompanyOwners = data
+		case "steps":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("steps"))
+			data, err := ec.unmarshalOLoanStepInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Steps = data
 		}
 	}
 	return it, nil
@@ -65544,7 +67728,7 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "propertyType", "address", "city", "state", "country", "zipCode", "squareFeet", "yearBuilt", "bedrooms", "bathrooms"}
+	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "propertyType", "category", "address", "city", "state", "country", "zipCode", "squareFeet", "landSurface", "yearBuilt", "bedrooms", "bathrooms", "rooms", "floor", "totalFloors", "garages", "parkingSpaces", "energyLabel", "condition", "agencyFees", "notaryFees", "renovationFees", "furnishingCosts", "rentalType", "rentalPeriod", "monthlyRent", "utilityCosts", "yearlyMiscCosts", "hasGarden", "hasBalcony", "hasLift", "hasPool", "hasSauna", "isFurnished", "isNewConstruction", "kitchenQuality", "kitchenCondition", "bathroomQuality", "bathroomCondition", "flooringQuality", "flooringCondition", "windowsQuality", "windowsCondition", "generalQuality", "generalCondition"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -65593,6 +67777,13 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 				return it, err
 			}
 			it.PropertyType = data
+		case "category":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Category = data
 		case "address":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
 			data, err := ec.unmarshalNString2string(ctx, v)
@@ -65635,6 +67826,13 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 				return it, err
 			}
 			it.SquareFeet = data
+		case "landSurface":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("landSurface"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LandSurface = data
 		case "yearBuilt":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("yearBuilt"))
 			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
@@ -65656,6 +67854,237 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 				return it, err
 			}
 			it.Bathrooms = data
+		case "rooms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rooms"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Rooms = data
+		case "floor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("floor"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Floor = data
+		case "totalFloors":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalFloors"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalFloors = data
+		case "garages":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("garages"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Garages = data
+		case "parkingSpaces":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parkingSpaces"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParkingSpaces = data
+		case "energyLabel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("energyLabel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EnergyLabel = data
+		case "condition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Condition = data
+		case "agencyFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agencyFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgencyFees = data
+		case "notaryFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notaryFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NotaryFees = data
+		case "renovationFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("renovationFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RenovationFees = data
+		case "furnishingCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("furnishingCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FurnishingCosts = data
+		case "rentalType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rentalType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RentalType = data
+		case "rentalPeriod":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rentalPeriod"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RentalPeriod = data
+		case "monthlyRent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monthlyRent"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MonthlyRent = data
+		case "utilityCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("utilityCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UtilityCosts = data
+		case "yearlyMiscCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("yearlyMiscCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.YearlyMiscCosts = data
+		case "hasGarden":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasGarden"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasGarden = data
+		case "hasBalcony":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBalcony"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasBalcony = data
+		case "hasLift":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLift"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasLift = data
+		case "hasPool":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPool"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasPool = data
+		case "hasSauna":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasSauna"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasSauna = data
+		case "isFurnished":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isFurnished"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsFurnished = data
+		case "isNewConstruction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isNewConstruction"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsNewConstruction = data
+		case "kitchenQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kitchenQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KitchenQuality = data
+		case "kitchenCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kitchenCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KitchenCondition = data
+		case "bathroomQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bathroomQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BathroomQuality = data
+		case "bathroomCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bathroomCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BathroomCondition = data
+		case "flooringQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flooringQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlooringQuality = data
+		case "flooringCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flooringCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlooringCondition = data
+		case "windowsQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowsQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowsQuality = data
+		case "windowsCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowsCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowsCondition = data
+		case "generalQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generalQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GeneralQuality = data
+		case "generalCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generalCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GeneralCondition = data
 		}
 	}
 	return it, nil
@@ -66451,6 +68880,187 @@ func (ec *executionContext) unmarshalInputInstrumentSearchInput(ctx context.Cont
 				return it, err
 			}
 			it.Offset = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLoanCoOwnerInput(ctx context.Context, obj any) (gqlModel.LoanCoOwnerInput, error) {
+	var it gqlModel.LoanCoOwnerInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "type", "userId", "name", "percentage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "userId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UserID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "percentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("percentage"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Percentage = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLoanCompanyOwnerInput(ctx context.Context, obj any) (gqlModel.LoanCompanyOwnerInput, error) {
+	var it gqlModel.LoanCompanyOwnerInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "type", "companyId", "name", "registrationNumber", "legalForm", "percentage"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "type":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Type = data
+		case "companyId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("companyId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CompanyID = data
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "registrationNumber":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("registrationNumber"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RegistrationNumber = data
+		case "legalForm":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("legalForm"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LegalForm = data
+		case "percentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("percentage"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Percentage = data
+		}
+	}
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputLoanStepInput(ctx context.Context, obj any) (gqlModel.LoanStepInput, error) {
+	var it gqlModel.LoanStepInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "date", "amount", "interestRate"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ID = data
+		case "date":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("date"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Date = data
+		case "amount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("amount"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Amount = data
+		case "interestRate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("interestRate"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.InterestRate = data
 		}
 	}
 	return it, nil
@@ -72356,6 +74966,16 @@ func (ec *executionContext) _Loan(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Loan_otherFees(ctx, field, obj)
 		case "earlyRepaymentFee":
 			out.Values[i] = ec._Loan_earlyRepaymentFee(ctx, field, obj)
+		case "linkedAssetIDs":
+			out.Values[i] = ec._Loan_linkedAssetIDs(ctx, field, obj)
+		case "ownershipPercentage":
+			out.Values[i] = ec._Loan_ownershipPercentage(ctx, field, obj)
+		case "coOwners":
+			out.Values[i] = ec._Loan_coOwners(ctx, field, obj)
+		case "companyOwners":
+			out.Values[i] = ec._Loan_companyOwners(ctx, field, obj)
+		case "steps":
+			out.Values[i] = ec._Loan_steps(ctx, field, obj)
 		case "sector":
 			out.Values[i] = ec._Loan_sector(ctx, field, obj)
 		case "exchange":
@@ -72366,6 +74986,173 @@ func (ec *executionContext) _Loan(ctx context.Context, sel ast.SelectionSet, obj
 			out.Values[i] = ec._Loan_dayChangePercent(ctx, field, obj)
 		case "positions":
 			out.Values[i] = ec._Loan_positions(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var loanCoOwnerImplementors = []string{"LoanCoOwner"}
+
+func (ec *executionContext) _LoanCoOwner(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.LoanCoOwner) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, loanCoOwnerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LoanCoOwner")
+		case "id":
+			out.Values[i] = ec._LoanCoOwner_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._LoanCoOwner_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "userId":
+			out.Values[i] = ec._LoanCoOwner_userId(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._LoanCoOwner_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "percentage":
+			out.Values[i] = ec._LoanCoOwner_percentage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var loanCompanyOwnerImplementors = []string{"LoanCompanyOwner"}
+
+func (ec *executionContext) _LoanCompanyOwner(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.LoanCompanyOwner) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, loanCompanyOwnerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LoanCompanyOwner")
+		case "id":
+			out.Values[i] = ec._LoanCompanyOwner_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "type":
+			out.Values[i] = ec._LoanCompanyOwner_type(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "companyId":
+			out.Values[i] = ec._LoanCompanyOwner_companyId(ctx, field, obj)
+		case "name":
+			out.Values[i] = ec._LoanCompanyOwner_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "registrationNumber":
+			out.Values[i] = ec._LoanCompanyOwner_registrationNumber(ctx, field, obj)
+		case "legalForm":
+			out.Values[i] = ec._LoanCompanyOwner_legalForm(ctx, field, obj)
+		case "percentage":
+			out.Values[i] = ec._LoanCompanyOwner_percentage(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var loanStepImplementors = []string{"LoanStep"}
+
+func (ec *executionContext) _LoanStep(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.LoanStep) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, loanStepImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("LoanStep")
+		case "id":
+			out.Values[i] = ec._LoanStep_id(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "date":
+			out.Values[i] = ec._LoanStep_date(ctx, field, obj)
+		case "amount":
+			out.Values[i] = ec._LoanStep_amount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "interestRate":
+			out.Values[i] = ec._LoanStep_interestRate(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77598,6 +80385,8 @@ func (ec *executionContext) _RealEstate(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "category":
+			out.Values[i] = ec._RealEstate_category(ctx, field, obj)
 		case "address":
 			out.Values[i] = ec._RealEstate_address(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -77619,12 +80408,80 @@ func (ec *executionContext) _RealEstate(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._RealEstate_zipCode(ctx, field, obj)
 		case "squareFeet":
 			out.Values[i] = ec._RealEstate_squareFeet(ctx, field, obj)
+		case "landSurface":
+			out.Values[i] = ec._RealEstate_landSurface(ctx, field, obj)
 		case "yearBuilt":
 			out.Values[i] = ec._RealEstate_yearBuilt(ctx, field, obj)
 		case "bedrooms":
 			out.Values[i] = ec._RealEstate_bedrooms(ctx, field, obj)
 		case "bathrooms":
 			out.Values[i] = ec._RealEstate_bathrooms(ctx, field, obj)
+		case "rooms":
+			out.Values[i] = ec._RealEstate_rooms(ctx, field, obj)
+		case "floor":
+			out.Values[i] = ec._RealEstate_floor(ctx, field, obj)
+		case "totalFloors":
+			out.Values[i] = ec._RealEstate_totalFloors(ctx, field, obj)
+		case "garages":
+			out.Values[i] = ec._RealEstate_garages(ctx, field, obj)
+		case "parkingSpaces":
+			out.Values[i] = ec._RealEstate_parkingSpaces(ctx, field, obj)
+		case "energyLabel":
+			out.Values[i] = ec._RealEstate_energyLabel(ctx, field, obj)
+		case "condition":
+			out.Values[i] = ec._RealEstate_condition(ctx, field, obj)
+		case "agencyFees":
+			out.Values[i] = ec._RealEstate_agencyFees(ctx, field, obj)
+		case "notaryFees":
+			out.Values[i] = ec._RealEstate_notaryFees(ctx, field, obj)
+		case "renovationFees":
+			out.Values[i] = ec._RealEstate_renovationFees(ctx, field, obj)
+		case "furnishingCosts":
+			out.Values[i] = ec._RealEstate_furnishingCosts(ctx, field, obj)
+		case "rentalType":
+			out.Values[i] = ec._RealEstate_rentalType(ctx, field, obj)
+		case "rentalPeriod":
+			out.Values[i] = ec._RealEstate_rentalPeriod(ctx, field, obj)
+		case "monthlyRent":
+			out.Values[i] = ec._RealEstate_monthlyRent(ctx, field, obj)
+		case "utilityCosts":
+			out.Values[i] = ec._RealEstate_utilityCosts(ctx, field, obj)
+		case "yearlyMiscCosts":
+			out.Values[i] = ec._RealEstate_yearlyMiscCosts(ctx, field, obj)
+		case "hasGarden":
+			out.Values[i] = ec._RealEstate_hasGarden(ctx, field, obj)
+		case "hasBalcony":
+			out.Values[i] = ec._RealEstate_hasBalcony(ctx, field, obj)
+		case "hasLift":
+			out.Values[i] = ec._RealEstate_hasLift(ctx, field, obj)
+		case "hasPool":
+			out.Values[i] = ec._RealEstate_hasPool(ctx, field, obj)
+		case "hasSauna":
+			out.Values[i] = ec._RealEstate_hasSauna(ctx, field, obj)
+		case "isFurnished":
+			out.Values[i] = ec._RealEstate_isFurnished(ctx, field, obj)
+		case "isNewConstruction":
+			out.Values[i] = ec._RealEstate_isNewConstruction(ctx, field, obj)
+		case "kitchenQuality":
+			out.Values[i] = ec._RealEstate_kitchenQuality(ctx, field, obj)
+		case "kitchenCondition":
+			out.Values[i] = ec._RealEstate_kitchenCondition(ctx, field, obj)
+		case "bathroomQuality":
+			out.Values[i] = ec._RealEstate_bathroomQuality(ctx, field, obj)
+		case "bathroomCondition":
+			out.Values[i] = ec._RealEstate_bathroomCondition(ctx, field, obj)
+		case "flooringQuality":
+			out.Values[i] = ec._RealEstate_flooringQuality(ctx, field, obj)
+		case "flooringCondition":
+			out.Values[i] = ec._RealEstate_flooringCondition(ctx, field, obj)
+		case "windowsQuality":
+			out.Values[i] = ec._RealEstate_windowsQuality(ctx, field, obj)
+		case "windowsCondition":
+			out.Values[i] = ec._RealEstate_windowsCondition(ctx, field, obj)
+		case "generalQuality":
+			out.Values[i] = ec._RealEstate_generalQuality(ctx, field, obj)
+		case "generalCondition":
+			out.Values[i] = ec._RealEstate_generalCondition(ctx, field, obj)
 		case "sector":
 			out.Values[i] = ec._RealEstate_sector(ctx, field, obj)
 		case "exchange":
@@ -82055,6 +84912,51 @@ func (ec *executionContext) marshalNLoan2ᚖsigma_financeᚋinternalᚋhandler�
 	return ec._Loan(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNLoanCoOwner2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwner(ctx context.Context, sel ast.SelectionSet, v *gqlModel.LoanCoOwner) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LoanCoOwner(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLoanCoOwnerInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerInput(ctx context.Context, v any) (*gqlModel.LoanCoOwnerInput, error) {
+	res, err := ec.unmarshalInputLoanCoOwnerInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLoanCompanyOwner2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwner(ctx context.Context, sel ast.SelectionSet, v *gqlModel.LoanCompanyOwner) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LoanCompanyOwner(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLoanCompanyOwnerInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerInput(ctx context.Context, v any) (*gqlModel.LoanCompanyOwnerInput, error) {
+	res, err := ec.unmarshalInputLoanCompanyOwnerInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNLoanStep2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStep(ctx context.Context, sel ast.SelectionSet, v *gqlModel.LoanStep) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._LoanStep(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNLoanStepInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepInput(ctx context.Context, v any) (*gqlModel.LoanStepInput, error) {
+	res, err := ec.unmarshalInputLoanStepInput(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
 func (ec *executionContext) unmarshalNLoginInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoginInput(ctx context.Context, v any) (gqlModel.LoginInput, error) {
 	res, err := ec.unmarshalInputLoginInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -84459,6 +87361,117 @@ func (ec *executionContext) marshalOKeyValuePair2ᚕᚖsigma_financeᚋinternal�
 	}
 
 	return ret
+}
+
+func (ec *executionContext) marshalOLoanCoOwner2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.LoanCoOwner) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNLoanCoOwner2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwner(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOLoanCoOwnerInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerInputᚄ(ctx context.Context, v any) ([]*gqlModel.LoanCoOwnerInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*gqlModel.LoanCoOwnerInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNLoanCoOwnerInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCoOwnerInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOLoanCompanyOwner2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.LoanCompanyOwner) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNLoanCompanyOwner2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwner(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOLoanCompanyOwnerInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerInputᚄ(ctx context.Context, v any) ([]*gqlModel.LoanCompanyOwnerInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*gqlModel.LoanCompanyOwnerInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNLoanCompanyOwnerInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanCompanyOwnerInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
+}
+
+func (ec *executionContext) marshalOLoanStep2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.LoanStep) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNLoanStep2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStep(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) unmarshalOLoanStepInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepInputᚄ(ctx context.Context, v any) ([]*gqlModel.LoanStepInput, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var vSlice []any
+	vSlice = graphql.CoerceList(v)
+	var err error
+	res := make([]*gqlModel.LoanStepInput, len(vSlice))
+	for i := range vSlice {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
+		res[i], err = ec.unmarshalNLoanStepInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐLoanStepInput(ctx, vSlice[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return res, nil
 }
 
 func (ec *executionContext) unmarshalOManualInstrumentFilterInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐManualInstrumentFilterInput(ctx context.Context, v any) (*gqlModel.ManualInstrumentFilterInput, error) {
