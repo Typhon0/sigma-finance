@@ -28320,9 +28320,9 @@ func (ec *executionContext) _Loan_interestRate(ctx context.Context, field graphq
 			return obj.InterestRate, nil
 		},
 		nil,
-		ec.marshalNFloat2float64,
+		ec.marshalOFloat2ᚖfloat64,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -74915,9 +74915,6 @@ func (ec *executionContext) _Loan(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "interestRate":
 			out.Values[i] = ec._Loan_interestRate(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "durationMonths":
 			out.Values[i] = ec._Loan_durationMonths(ctx, field, obj)
 			if out.Values[i] == graphql.Null {

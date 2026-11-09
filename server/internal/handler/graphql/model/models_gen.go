@@ -1205,7 +1205,7 @@ type Loan struct {
 	LoanType            string              `json:"loanType"`
 	LoanAmount          float64             `json:"loanAmount"`
 	RemainingBalance    float64             `json:"remainingBalance"`
-	InterestRate        float64             `json:"interestRate"`
+	InterestRate        *float64            `json:"interestRate,omitempty"`
 	DurationMonths      int32               `json:"durationMonths"`
 	MonthlyPayment      float64             `json:"monthlyPayment"`
 	StartDate           string              `json:"startDate"`

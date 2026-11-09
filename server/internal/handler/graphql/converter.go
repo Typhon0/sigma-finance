@@ -541,7 +541,7 @@ func mapLoanToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, dayChang
 		LoanType:            metadata.LoanType,
 		LoanAmount:          loanAmount,
 		RemainingBalance:    remainingBalance,
-		InterestRate:        metadata.InterestRate,
+		InterestRate:        &metadata.InterestRate,
 		DurationMonths:      int32(metadata.DurationMonths),
 		MonthlyPayment:      monthlyPayment,
 		StartDate:           metadata.StartDate,

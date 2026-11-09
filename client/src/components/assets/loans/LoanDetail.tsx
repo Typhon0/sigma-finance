@@ -1,34 +1,39 @@
 import {
 	AlertCircle,
 	ArrowLeft,
-	BarChart3,
 	Building2,
-	Clock,
+	Calendar,
+	Check,
+	ChevronDown,
+	ChevronRight,
 	CreditCard,
 	DollarSign,
-	Edit,
+	ExternalLink,
 	FileText,
-	MoreVertical,
+	HelpCircle,
+	Layers,
 	Percent,
-	PieChart,
-	Target,
-	TrendingDown,
+	Search,
+	ShieldCheck,
+	Trash2,
+	Users,
+	X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import EChart from "@/components/charts/EChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
 	Table,
 	TableBody,
@@ -39,91 +44,149 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrency } from "@/hooks/use-currency";
-import { cn } from "@/lib/utils";
+import {
+	computeFullAmortizationSchedule,
+	computeLoanAmortization,
+	computeLoanToValue,
+} from "@/lib/loan-calculator";
+import { cn, formatCurrency as formatCurrencyWithCode } from "@/lib/utils";
 
 interface LoanDetailProps {
 	loanId: string;
 	onBack: () => void;
+	onSelectAsset?: (assetId: string) => void;
 	isPanel?: boolean;
 }
 
-export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps) {
-	const { assets, loading } = usePortfolio();
-	const [_timePeriod, _setTimePeriod] = useState("ALL");
+export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: LoanDetailProps) {
+	const { assets, loading, deleteAsset, currentPortfolio, refetch } = usePortfolio();
+	const { formatCurrency, currency: displayCurrency } = useCurrency();
+	const [scheduleMode, setScheduleMode] = useState<"annual" | "monthly">("annual");
+	const [searchSchedule, setSearchSchedule] = useState("");
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+	const [isDeleting, setIsDeleting] = useState(false);
 
-	// Loan-specific data structure — TODO: backend should provide loan-specific fields
-	// (interestRate, remainingBalance, duration, monthlyPayment, etc.)
-	// For now we derive what we can from PortfolioAssetItem and use sensible defaults
-	interface LoanData {
-		id: string;
-		name: string;
-		type: string;
-		loanAmount: number;
-		remainingBalance: number;
-		interestRate: number;
-		duration: number;
-		monthlyPayment: number;
-		startDate: Date;
-		endDate: Date;
-		bank: string;
-		currency: string;
-		linkedAssets: string[];
-		ownershipMode: string;
-		status: string;
-		applicationFee?: number;
-		brokerFee?: number;
-		insuranceFee?: number;
-		earlyRepaymentFee?: number;
-	}
+	// Find the loan in portfolio assets
+	const rawAsset = useMemo(() => {
+		return assets.find((a) => a.id === loanId);
+	}, [assets, loanId]);
 
-	// Derive loan assets from real portfolio data
-	const loanAssets = useMemo(() => assets.filter((a) => a.type === "loan"), [assets]);
+	const loan = useMemo(() => {
+		if (!rawAsset) return null;
 
-	// TODO: Replace with loan-specific fields once backend supports them
-	// Currently we map PortfolioAssetItem fields to LoanData as best we can
-	const loans: LoanData[] = useMemo(
-		() =>
-			loanAssets.map((a) => {
-				const loanAmount = a.currentValue || 0;
-				const interestRate = a.interestRate ?? 5.0; // TODO: from backend
-				const duration = 120; // TODO: from backend (months)
-				const monthlyRate = interestRate / 100 / 12;
-				const monthlyPayment =
-					loanAmount > 0 && duration > 0
-						? (loanAmount * monthlyRate * (1 + monthlyRate) ** duration) /
-							((1 + monthlyRate) ** duration - 1)
-						: 0;
+		const originalAmount = rawAsset.loanAmount || rawAsset.purchasePrice || rawAsset.currentValue || 0;
+		const balance = rawAsset.remainingBalance ?? rawAsset.currentValue ?? originalAmount;
+		const rate = rawAsset.interestRate ?? 0;
+		const duration = rawAsset.durationMonths || 120;
+		const currency = rawAsset.currency || displayCurrency;
 
+		// Deterministic amortization
+		const baseAmort = computeLoanAmortization({
+			loanAmount: originalAmount,
+			interestRate: rate,
+			durationMonths: duration,
+			startDate: rawAsset.startDate,
+			insuranceFeeMonthly: rawAsset.insuranceFee || 0,
+		});
+
+		const monthlyPayment = rawAsset.monthlyPayment || baseAmort.monthlyPayment;
+		const ownershipShare =
+			typeof rawAsset.ownershipPercentage === "number" ? rawAsset.ownershipPercentage : 100;
+
+		return {
+			id: rawAsset.id,
+			name: rawAsset.name,
+			type: rawAsset.loanType || "amortizing",
+			loanAmount: originalAmount,
+			remainingBalance: balance,
+			interestRate: rate,
+			durationMonths: duration,
+			monthlyPayment,
+			startDate: rawAsset.startDate ? new Date(rawAsset.startDate) : new Date(),
+			endDate: rawAsset.endDate
+				? new Date(rawAsset.endDate)
+				: baseAmort.endDate || new Date(),
+			bank: rawAsset.lender || rawAsset.institution || rawAsset.symbol || "Lender",
+			loanNumber: rawAsset.loanNumber,
+			currency,
+			downPayment: rawAsset.downPayment,
+			status: rawAsset.status || "active",
+			ownershipMode: rawAsset.ownershipMode || "personal",
+			ownershipPercentage: ownershipShare,
+			applicationFee: rawAsset.applicationFee,
+			brokerFee: rawAsset.brokerFee,
+			insuranceFee: rawAsset.insuranceFee,
+			otherFees: rawAsset.otherFees,
+			earlyRepaymentFee: rawAsset.earlyRepaymentFee,
+			linkedAssetIDs: rawAsset.linkedAssetIDs || [],
+			coOwners: rawAsset.coOwners || [],
+			companyOwners: rawAsset.companyOwners || [],
+			steps: rawAsset.steps || [],
+			monthsElapsed: baseAmort.monthsElapsed,
+			monthsRemaining: baseAmort.monthsRemaining,
+		};
+	}, [rawAsset, displayCurrency]);
+
+	// Full deterministic amortization schedule
+	const scheduleData = useMemo(() => {
+		if (!loan) return null;
+		return computeFullAmortizationSchedule({
+			loanAmount: loan.loanAmount,
+			interestRate: loan.interestRate,
+			durationMonths: loan.durationMonths,
+			startDate: loan.startDate,
+			monthlyPayment: loan.monthlyPayment,
+			insuranceFeeMonthly: loan.insuranceFee || 0,
+			loanType: loan.type,
+			steps: loan.steps,
+		});
+	}, [loan]);
+
+	// Collateral & Linked assets with LTV
+	const linkedAssetsList = useMemo(() => {
+		if (!loan || !loan.linkedAssetIDs.length) return [];
+		return loan.linkedAssetIDs
+			.map((id) => assets.find((a) => a.id === id))
+			.filter((a): a is NonNullable<typeof a> => Boolean(a))
+			.map((asset) => {
+				const assetVal = asset.currentValue || asset.purchasePrice || 0;
+				const ltv = computeLoanToValue(loan.remainingBalance, assetVal);
 				return {
-					id: a.id,
-					name: a.name,
-					type: "amortizing", // TODO: from backend
-					loanAmount,
-					remainingBalance: loanAmount, // TODO: from backend
-					interestRate,
-					duration,
-					monthlyPayment,
-					startDate: new Date(), // TODO: from backend
-					endDate: new Date(Date.now() + duration * 30 * 86400000),
-					bank: a.institution || "Unknown",
-					currency: a.currency || "USD",
-					linkedAssets: [], // TODO: from backend
-					ownershipMode: "personal", // TODO: from backend
-					status: "active",
+					id: asset.id,
+					name: asset.name,
+					type: asset.type,
+					value: assetVal,
+					ltv,
 				};
-			}),
-		[loanAssets],
-	);
+			});
+	}, [loan, assets]);
 
-	const loan = loans.find((l) => l.id === loanId) || null;
+	const handleDelete = async () => {
+		if (!loan) return;
+		setIsDeleting(true);
+		try {
+			if (typeof deleteAsset === "function") {
+				await deleteAsset(loan.id, currentPortfolio || undefined);
+				toast.success(`Loan "${loan.name}" deleted`);
+				await refetch?.();
+				setIsDeleteDialogOpen(false);
+				onBack();
+			} else {
+				throw new Error("deleteAsset handler not available");
+			}
+		} catch (_err) {
+			toast.error("Failed to delete loan. Please try again.");
+		} finally {
+			setIsDeleting(false);
+		}
+	};
 
-	// Loading state
 	if (loading) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="text-center space-y-4">
-					<div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-					<p className="text-muted-foreground">Loading loan details...</p>
+			<div className="flex items-center justify-center h-64 p-6">
+				<div className="flex flex-col items-center space-y-3">
+					<div className="h-6 w-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+					<p className="text-xs text-muted-foreground">Loading loan details...</p>
 				</div>
 			</div>
 		);
@@ -131,805 +194,485 @@ export function LoanDetail({ loanId, onBack, isPanel = false }: LoanDetailProps)
 
 	if (!loan) {
 		return (
-			<div className="flex items-center justify-center h-full">
-				<div className="text-center space-y-4">
-					<CreditCard className="h-12 w-12 mx-auto text-muted-foreground" />
-					<p className="text-muted-foreground">Loan not found</p>
-					<Button onClick={onBack}>
-						<ArrowLeft className="h-4 w-4 mr-2" />
-						Back to Loans
-					</Button>
-				</div>
+			<div className="flex flex-col items-center justify-center h-64 p-6 space-y-3 text-center">
+				<CreditCard className="h-10 w-10 text-muted-foreground/60" />
+				<p className="text-sm font-semibold text-foreground">Loan not found</p>
+				<p className="text-xs text-muted-foreground">This debt record may have been removed.</p>
+				<Button size="sm" variant="outline" onClick={onBack} className="h-8 text-xs">
+					<ArrowLeft className="h-3.5 w-3.5 mr-1.5" />
+					Return to Ledger
+				</Button>
 			</div>
 		);
 	}
 
-	// biome-ignore lint/correctness/useHookAtTopLevel: unavoidable
-	const { formatCurrencyCompact: formatCurrency } = useCurrency();
-
-	const formatDate = (date: Date) => {
-		const dateObj = date instanceof Date ? date : new Date(date);
-		return dateObj.toLocaleDateString("fr-FR", {
-			year: "numeric",
-			month: "long",
-			day: "numeric",
-		});
+	const formatNativeCurrency = (amount: number) => {
+		return formatCurrencyWithCode(amount, loan.currency);
 	};
 
-	// Calculate loan metrics
-	const paidAmount = loan.loanAmount - loan.remainingBalance;
-	const paymentProgress = (paidAmount / loan.loanAmount) * 100;
-	const totalInterestPaid = paidAmount * (loan.interestRate / 100);
-	const totalCost =
-		loan.loanAmount + ((loan.loanAmount * loan.interestRate) / 100) * (loan.duration / 12);
-	const monthsElapsed = Math.floor(
-		(Date.now() - loan.startDate.getTime()) / (1000 * 60 * 60 * 24 * 30),
-	);
-	const monthsRemaining = loan.duration - monthsElapsed;
+	// Progress
+	const totalPaid = Math.max(0, loan.loanAmount - loan.remainingBalance);
+	const amortizedPct = loan.loanAmount > 0 ? (totalPaid / loan.loanAmount) * 100 : 0;
+	const shareRatio = (loan.ownershipPercentage || 100) / 100;
+	const netBalance = loan.remainingBalance * shareRatio;
+	const netMonthly = loan.monthlyPayment * shareRatio;
 
-	// Get loan type badge color
 	const getLoanTypeBadgeVariant = (type: string) => {
 		switch (type) {
 			case "amortizing":
-				return "default";
+				return "bg-blue-500/10 text-blue-500 border-blue-500/20";
 			case "in-fine":
-				return "secondary";
-			case "deferred-interest":
-				return "outline";
-			case "deferred-total":
-				return "destructive";
+				return "bg-pink-500/10 text-pink-500 border-pink-500/20";
 			case "step":
-				return "default";
-			default:
-				return "outline";
-		}
-	};
-
-	const getLoanTypeLabel = (type: string) => {
-		switch (type) {
-			case "amortizing":
-				return "Amortizing";
-			case "in-fine":
-				return "In Fine";
+				return "bg-purple-500/10 text-purple-500 border-purple-500/20";
 			case "deferred-interest":
-				return "Deferred Interest";
+				return "bg-amber-500/10 text-amber-500 border-amber-500/20";
 			case "deferred-total":
-				return "Deferred Total";
-			case "step":
-				return "Step Loan";
+				return "bg-rose-500/10 text-rose-500 border-rose-500/20";
 			default:
-				return type;
+				return "bg-secondary text-secondary-foreground border-border/40";
 		}
 	};
 
-	// Generate amortization schedule
-	const generateAmortizationSchedule = () => {
-		const schedule: {
-			month: number;
-			date: string;
-			payment: number;
-			principal: number;
-			interest: number;
-			balance: number;
-		}[] = [];
-		let balance = loan.loanAmount;
-		const monthlyRate = loan.interestRate / 100 / 12;
-
-		for (let month = 1; month <= Math.min(loan.duration, 60); month++) {
-			// Limit to 60 months for display
-			let principal = 0;
-			let interest = balance * monthlyRate;
-
-			if (loan.type === "amortizing") {
-				principal = loan.monthlyPayment - interest;
-			} else if (loan.type === "in-fine") {
-				principal = month === loan.duration ? balance : 0;
-			} else if (loan.type === "deferred-total") {
-				principal = 0;
-				interest = 0;
-			}
-
-			balance -= principal;
-
-			const date = new Date(loan.startDate);
-			date.setMonth(date.getMonth() + month);
-
-			schedule.push({
-				month,
-				date: date.toLocaleDateString("fr-FR", {
-					month: "short",
-					year: "numeric",
-				}),
-				payment: principal + interest,
-				principal,
-				interest,
-				balance: Math.max(0, balance),
-			});
-		}
-
-		return schedule;
-	};
-
-	const amortizationSchedule = generateAmortizationSchedule();
-
-	// Chart: Balance Evolution
-	const balanceEvolutionOption = {
-		tooltip: {
-			trigger: "axis",
-			backgroundColor: "rgba(0, 0, 0, 0.8)",
-			borderColor: "#333",
-			textStyle: { color: "#fff" },
-			// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-			formatter: (params: any) => {
-				const data = params[0];
-				return `${data.name}<br/>Balance: ${formatCurrency(data.value)}`;
-			},
-		},
-		grid: { left: 60, right: 20, top: 40, bottom: 40 },
-		xAxis: {
-			type: "category",
-			data: amortizationSchedule.map((s) => s.date),
-			axisLabel: { rotate: 45, fontSize: 10 },
-		},
-		yAxis: {
-			type: "value",
-			axisLabel: {
-				formatter: (value: number) => `${(value / 1000).toFixed(0)}K`,
-			},
-		},
-		series: [
-			{
-				name: "Balance",
-				type: "line",
-				data: amortizationSchedule.map((s) => s.balance),
-				smooth: true,
-				areaStyle: {
-					color: {
-						type: "linear",
-						x: 0,
-						y: 0,
-						x2: 0,
-						y2: 1,
-						colorStops: [
-							{ offset: 0, color: "rgba(239, 68, 68, 0.3)" },
-							{ offset: 1, color: "rgba(239, 68, 68, 0.05)" },
-						],
-					},
-				},
-				lineStyle: { color: "#ef4444", width: 2 },
-				itemStyle: { color: "#ef4444" },
-			},
-		],
-	};
-
-	// Chart: Payment Breakdown
-	const paymentBreakdownOption = {
-		tooltip: {
-			trigger: "axis",
-			backgroundColor: "rgba(0, 0, 0, 0.8)",
-			borderColor: "#333",
-			textStyle: { color: "#fff" },
-		},
-		legend: { data: ["Principal", "Interest"], bottom: 0 },
-		grid: { left: 60, right: 20, top: 20, bottom: 60 },
-		xAxis: {
-			type: "category",
-			data: amortizationSchedule.slice(0, 24).map((s) => s.date),
-			axisLabel: { rotate: 45, fontSize: 10 },
-		},
-		yAxis: {
-			type: "value",
-			axisLabel: {
-				formatter: (value: number) => `${(value / 1000).toFixed(1)}K`,
-			},
-		},
-		series: [
-			{
-				name: "Principal",
-				type: "bar",
-				stack: "total",
-				data: amortizationSchedule.slice(0, 24).map((s) => s.principal),
-				itemStyle: { color: "#10b981" },
-			},
-			{
-				name: "Interest",
-				type: "bar",
-				stack: "total",
-				data: amortizationSchedule.slice(0, 24).map((s) => s.interest),
-				itemStyle: { color: "#f59e0b" },
-			},
-		],
-	};
-
-	// Chart: Interest vs Principal Pie
-	const interestPrincipalOption = {
-		tooltip: {
-			trigger: "item",
-			backgroundColor: "rgba(0, 0, 0, 0.8)",
-			borderColor: "#333",
-			textStyle: { color: "#fff" },
-			formatter: "{b}: {c} ({d}%)",
-		},
-		legend: { bottom: 0 },
-		series: [
-			{
-				type: "pie",
-				radius: ["40%", "70%"],
-				avoidLabelOverlap: false,
-				itemStyle: {
-					borderRadius: 10,
-					borderColor: "#fff",
-					borderWidth: 2,
-				},
-				label: { show: true, formatter: "{b}\n{d}%" },
-				data: [
-					{
-						value: paidAmount,
-						name: "Principal Paid",
-						itemStyle: { color: "#10b981" },
-					},
-					{
-						value: totalInterestPaid,
-						name: "Interest Paid",
-						itemStyle: { color: "#f59e0b" },
-					},
-					{
-						value: loan.remainingBalance,
-						name: "Remaining",
-						itemStyle: { color: "#ef4444" },
-					},
-				],
-			},
-		],
-	};
-
-	// Get linked assets
-	const linkedAssets = assets.filter((a) => loan.linkedAssets?.includes(a.id));
+	const filteredMonthlyEntries = (scheduleData?.entries || []).filter((e) => {
+		if (!searchSchedule) return true;
+		const query = searchSchedule.toLowerCase();
+		return e.dateString.toLowerCase().includes(query) || `month ${e.month}`.includes(query);
+	});
 
 	return (
-		<ScrollArea className="h-full">
-			<div className={cn("space-y-6", isPanel ? "p-4" : "p-6")}>
-				{/* Header */}
-				<div className="flex items-center justify-between">
-					<div className="flex items-center space-x-4">
-						{!isPanel && (
-							<Button variant="ghost" size="sm" onClick={onBack}>
-								<ArrowLeft className="h-4 w-4 mr-2" />
-								Back
-							</Button>
-						)}
-						<div>
-							<div className="flex items-center gap-3">
-								<h1 className={cn("text-3xl", isPanel && "text-xl font-bold")}>{loan.name}</h1>
-								<Badge variant={getLoanTypeBadgeVariant(loan.type)}>
-									{getLoanTypeLabel(loan.type)}
-								</Badge>
-								<Badge variant={loan.status === "active" ? "default" : "secondary"}>
-									{loan.status}
-								</Badge>
+		<div className="flex flex-col h-full bg-background text-foreground">
+			{/* Slide-over Header */}
+			<div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/30 bg-background/95 px-6 py-4 backdrop-blur-md">
+				<div className="flex items-center gap-3 min-w-0">
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onBack}
+						className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground cursor-pointer"
+						aria-label="Back to loans ledger"
+					>
+						<ArrowLeft className="h-4 w-4" />
+					</Button>
+					<div className="min-w-0">
+						<div className="flex items-center gap-2 flex-wrap">
+							<h2 className="text-base font-bold tracking-tight truncate text-foreground">
+								{loan.name}
+							</h2>
+							<Badge
+								variant="outline"
+								className={cn("text-[11px] font-semibold border uppercase", getLoanTypeBadgeVariant(loan.type))}
+							>
+								{loan.type}
+							</Badge>
+							<Badge
+								variant="outline"
+								className="text-[11px] font-semibold border border-border/40 text-muted-foreground"
+							>
+								{loan.status}
+							</Badge>
+						</div>
+						<p className="text-xs text-muted-foreground truncate font-mono">
+							{loan.bank} {loan.loanNumber ? `· Ref: ${loan.loanNumber}` : ""}
+						</p>
+					</div>
+				</div>
+
+				<div className="flex items-center gap-2">
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setIsDeleteDialogOpen(true)}
+						className="h-8 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive cursor-pointer gap-1.5"
+					>
+						<Trash2 className="h-3.5 w-3.5" />
+						<span className="hidden sm:inline">Delete</span>
+					</Button>
+				</div>
+			</div>
+
+			{/* Slide-over Content Scroll */}
+			<div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
+				{/* 4 KPI Cards Grid */}
+				<div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+					<div className="p-3.5 rounded-xl border border-border/30 bg-card/60 space-y-1">
+						<div className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
+							Outstanding Balance
+						</div>
+						<div className="text-lg font-bold font-mono tabular-nums text-foreground">
+							{formatNativeCurrency(loan.remainingBalance)}
+						</div>
+						{loan.ownershipPercentage < 100 && (
+							<div className="text-micro text-muted-foreground font-mono">
+								Net share: {formatNativeCurrency(netBalance)} ({loan.ownershipPercentage}%)
 							</div>
-							<p className="text-muted-foreground mt-1">
-								{loan.bank} • {formatDate(loan.startDate)}
-							</p>
+						)}
+					</div>
+
+					<div className="p-3.5 rounded-xl border border-border/30 bg-card/60 space-y-1">
+						<div className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
+							Monthly Payment
+						</div>
+						<div className="text-lg font-bold font-mono tabular-nums text-foreground">
+							{loan.monthlyPayment > 0 ? `${formatNativeCurrency(loan.monthlyPayment)}/mo` : "--"}
+						</div>
+						{loan.ownershipPercentage < 100 && (
+							<div className="text-micro text-muted-foreground font-mono">
+								Net share: {formatNativeCurrency(netMonthly)}/mo
+							</div>
+						)}
+					</div>
+
+					<div className="p-3.5 rounded-xl border border-border/30 bg-card/60 space-y-1">
+						<div className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
+							Interest Rate
+						</div>
+						<div className="text-lg font-bold font-mono tabular-nums text-foreground">
+							{loan.interestRate > 0 ? `${loan.interestRate.toFixed(2)}%` : "0.00% (PTZ)"}
+						</div>
+						<div className="text-micro text-muted-foreground">Nominal fixed rate</div>
+					</div>
+
+					<div className="p-3.5 rounded-xl border border-border/30 bg-card/60 space-y-1">
+						<div className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
+							Total Interest
+						</div>
+						<div className="text-lg font-bold font-mono tabular-nums text-foreground">
+							{scheduleData?.totalInterest ? formatNativeCurrency(scheduleData.totalInterest) : "--"}
+						</div>
+						<div className="text-micro text-muted-foreground">Lifetime credit cost</div>
+					</div>
+				</div>
+
+				{/* Amortization Progress Bar */}
+				<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-3">
+					<div className="flex items-center justify-between text-xs">
+						<span className="font-semibold text-foreground">Amortization Progress</span>
+						<span className="font-mono font-bold text-gain tabular-nums">
+							{amortizedPct.toFixed(1)}% Amortized
+						</span>
+					</div>
+
+					<div className="h-2 w-full overflow-hidden rounded-full bg-secondary/60">
+						<div
+							className="h-full bg-gain transition-all duration-300"
+							style={{ width: `${Math.min(100, Math.max(0, amortizedPct))}%` }}
+						/>
+					</div>
+
+					<div className="flex items-center justify-between text-micro text-muted-foreground font-mono">
+						<span>Started: {loan.startDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
+						<span>
+							{loan.monthsElapsed} mos elapsed · {loan.monthsRemaining} mos remaining
+						</span>
+						<span>Maturity: {loan.endDate.toLocaleDateString("en-US", { month: "short", year: "numeric" })}</span>
+					</div>
+				</div>
+
+				{/* Loan Characteristics & Fees Details */}
+				<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+					<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-3 text-xs">
+						<h3 className="font-semibold text-foreground flex items-center gap-2">
+							<Building2 className="h-4 w-4 text-muted-foreground" />
+							<span>Loan Terms</span>
+						</h3>
+						<div className="space-y-2 border-t border-border/15 pt-2">
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Original Principal:</span>
+								<span className="font-mono font-semibold">{formatNativeCurrency(loan.loanAmount)}</span>
+							</div>
+							{Boolean(loan.downPayment) && (
+								<div className="flex justify-between">
+									<span className="text-muted-foreground">Down Payment (Apport):</span>
+									<span className="font-mono">{formatNativeCurrency(loan.downPayment || 0)}</span>
+								</div>
+							)}
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Total Duration:</span>
+								<span className="font-mono">
+									{loan.durationMonths} months ({(loan.durationMonths / 12).toFixed(1)} yrs)
+								</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Lender / Institution:</span>
+								<span className="font-semibold text-foreground">{loan.bank}</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Ownership Mode:</span>
+								<span className="capitalize">{loan.ownershipMode}</span>
+							</div>
 						</div>
 					</div>
 
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<Button variant="outline" size="icon">
-								<MoreVertical className="h-4 w-4" />
-							</Button>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
-							<DropdownMenuItem onClick={() => toast.info("Edit feature coming soon")}>
-								<Edit className="h-4 w-4 mr-2" />
-								Edit Loan
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => toast.success("Downloading statement...")}>
-								<FileText className="h-4 w-4 mr-2" />
-								Download Statement
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => toast.info("Export feature coming soon")}>
-								<FileText className="h-4 w-4 mr-2" />
-								Export Data
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+					<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-3 text-xs">
+						<h3 className="font-semibold text-foreground flex items-center gap-2">
+							<ShieldCheck className="h-4 w-4 text-muted-foreground" />
+							<span>Fees & Ancillary Costs</span>
+						</h3>
+						<div className="space-y-2 border-t border-border/15 pt-2">
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Monthly Insurance:</span>
+								<span className="font-mono">
+									{loan.insuranceFee ? `${formatNativeCurrency(loan.insuranceFee)}/mo` : "--"}
+								</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Application Fee:</span>
+								<span className="font-mono">
+									{loan.applicationFee ? formatNativeCurrency(loan.applicationFee) : "--"}
+								</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Broker Fee:</span>
+								<span className="font-mono">
+									{loan.brokerFee ? formatNativeCurrency(loan.brokerFee) : "--"}
+								</span>
+							</div>
+							<div className="flex justify-between">
+								<span className="text-muted-foreground">Early Repayment Fee (IRA):</span>
+								<span className="font-mono">
+									{loan.earlyRepaymentFee ? `${loan.earlyRepaymentFee.toFixed(2)}%` : "--"}
+								</span>
+							</div>
+						</div>
+					</div>
 				</div>
 
-				{/* Key Metrics */}
-				<div
-					className={cn(
-						"grid gap-4",
-						isPanel ? "grid-cols-2" : "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
-					)}
-				>
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-								<DollarSign className="h-4 w-4" />
-								Remaining Balance
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-mono text-red-600">
-								{formatCurrency(loan.remainingBalance)}
-							</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								of {formatCurrency(loan.loanAmount)} original
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-								<CreditCard className="h-4 w-4" />
-								Monthly Payment
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-mono">{formatCurrency(loan.monthlyPayment)}</div>
-							<p className="text-xs text-muted-foreground mt-1">
-								{monthsRemaining} payments remaining
-							</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-								<Percent className="h-4 w-4" />
-								Interest Rate
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-mono">{loan.interestRate.toFixed(2)}%</div>
-							<p className="text-xs text-muted-foreground mt-1">Fixed rate</p>
-						</CardContent>
-					</Card>
-
-					<Card>
-						<CardHeader className="pb-3">
-							<CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-								<Target className="h-4 w-4" />
-								Progress
-							</CardTitle>
-						</CardHeader>
-						<CardContent>
-							<div className="text-2xl font-mono text-green-600">{paymentProgress.toFixed(1)}%</div>
-							<div className="mt-2 h-2 bg-muted rounded-full overflow-hidden">
+				{/* Linked Assets & Collateral (LTV) */}
+				{linkedAssetsList.length > 0 && (
+					<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-3 text-xs">
+						<h3 className="font-semibold text-foreground flex items-center gap-2">
+							<Layers className="h-4 w-4 text-muted-foreground" />
+							<span>Financed Assets & Collateral (Loan-to-Value)</span>
+						</h3>
+						<div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+							{linkedAssetsList.map((asset) => (
 								<div
-									className="h-full bg-green-600 transition-all"
-									style={{ width: `${paymentProgress}%` }}
-								/>
+									key={asset.id}
+									className="flex items-center justify-between p-2.5 rounded-lg border border-border/25 bg-background/60"
+								>
+									<div className="min-w-0 pr-2">
+										<button
+											type="button"
+											onClick={() => onSelectAsset?.(asset.id)}
+											className="font-medium text-foreground hover:underline flex items-center gap-1.5 truncate text-left cursor-pointer"
+										>
+											<span className="truncate">{asset.name}</span>
+											<ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+										</button>
+										<span className="text-micro text-muted-foreground font-mono">
+											Val: {formatCurrency(asset.value)}
+										</span>
+									</div>
+									<div className="text-right shrink-0">
+										<Badge
+											variant="outline"
+											className={cn(
+												"text-micro font-bold font-mono px-2 py-0.5",
+												asset.ltv > 90
+													? "bg-rose-500/10 text-rose-500 border-rose-500/30"
+													: asset.ltv > 70
+														? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+														: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
+											)}
+										>
+											{asset.ltv}% LTV
+										</Badge>
+									</div>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Co-Borrowers / Company Owners */}
+				{(loan.coOwners.length > 0 || loan.companyOwners.length > 0) && (
+					<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-3 text-xs">
+						<h3 className="font-semibold text-foreground flex items-center gap-2">
+							<Users className="h-4 w-4 text-muted-foreground" />
+							<span>Co-Borrowers & Ownership Structure</span>
+						</h3>
+						<div className="space-y-1.5 pt-1">
+							<div className="flex justify-between text-muted-foreground">
+								<span>My Personal Share:</span>
+								<span className="font-mono font-semibold text-foreground">
+									{loan.ownershipPercentage}% ({formatNativeCurrency(netBalance)})
+								</span>
 							</div>
-						</CardContent>
-					</Card>
+							{loan.coOwners.map((co) => (
+								<div key={co.id} className="flex justify-between text-muted-foreground">
+									<span>{co.name} (Co-borrower):</span>
+									<span className="font-mono font-semibold text-foreground">{co.percentage}%</span>
+								</div>
+							))}
+							{loan.companyOwners.map((co) => (
+								<div key={co.id} className="flex justify-between text-muted-foreground">
+									<span>
+										{co.name} ({co.legalForm || "Company"}):
+									</span>
+									<span className="font-mono font-semibold text-foreground">{co.percentage}%</span>
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Hybrid Amortization Schedule Table */}
+				<div className="p-4 rounded-xl border border-border/30 bg-card/40 space-y-4 text-xs">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+						<div>
+							<h3 className="font-semibold text-foreground flex items-center gap-2">
+								<Calendar className="h-4 w-4 text-muted-foreground" />
+								<span>Amortization Schedule</span>
+							</h3>
+							<p className="text-micro text-muted-foreground">
+								Deterministic principal, interest, and residual debt breakdown
+							</p>
+						</div>
+
+						<div className="flex items-center gap-2">
+							{scheduleMode === "monthly" && (
+								<div className="relative">
+									<Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+									<Input
+										placeholder="Filter date..."
+										value={searchSchedule}
+										onChange={(e) => setSearchSchedule(e.target.value)}
+										className="h-7 text-micro pl-8 w-32 bg-background border-border/40"
+									/>
+								</div>
+							)}
+
+							<div className="flex p-0.5 rounded-lg bg-muted border border-border/40">
+								<button
+									type="button"
+									onClick={() => setScheduleMode("annual")}
+									className={cn(
+										"px-2.5 py-1 text-micro font-medium rounded-md transition-colors cursor-pointer",
+										scheduleMode === "annual"
+											? "bg-background text-foreground font-bold shadow-xs"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									Annual Summary
+								</button>
+								<button
+									type="button"
+									onClick={() => setScheduleMode("monthly")}
+									className={cn(
+										"px-2.5 py-1 text-micro font-medium rounded-md transition-colors cursor-pointer",
+										scheduleMode === "monthly"
+											? "bg-background text-foreground font-bold shadow-xs"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									Monthly Breakdown
+								</button>
+							</div>
+						</div>
+					</div>
+
+					{/* Schedule Table */}
+					<div className="rounded-lg border border-border/30 overflow-hidden bg-background/50">
+						<Table>
+							<TableHeader className="bg-muted/40">
+								<TableRow className="border-border/20 text-micro">
+									<TableHead className="w-16">Period</TableHead>
+									<TableHead className="text-right">Monthly / Ann.</TableHead>
+									<TableHead className="text-right">Principal</TableHead>
+									<TableHead className="text-right">Interest</TableHead>
+									<TableHead className="text-right">Ending Balance</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody className="text-micro font-mono">
+								{scheduleMode === "annual" ? (
+									(scheduleData?.annualSummaries || []).map((summary) => (
+										<TableRow key={summary.year} className="border-border/15 hover:bg-muted/30">
+											<TableCell className="font-semibold text-foreground">
+												Year {summary.year} ({summary.calendarYear})
+											</TableCell>
+											<TableCell className="text-right tabular-nums">
+												{formatNativeCurrency(summary.totalPayment)}
+											</TableCell>
+											<TableCell className="text-right text-gain font-semibold tabular-nums">
+												{formatNativeCurrency(summary.totalPrincipal)}
+											</TableCell>
+											<TableCell className="text-right text-muted-foreground tabular-nums">
+												{formatNativeCurrency(summary.totalInterest)}
+											</TableCell>
+											<TableCell className="text-right font-bold text-foreground tabular-nums">
+												{formatNativeCurrency(summary.endingBalance)}
+											</TableCell>
+										</TableRow>
+									))
+								) : filteredMonthlyEntries.length === 0 ? (
+									<TableRow>
+										<TableCell colSpan={5} className="text-center py-6 text-muted-foreground font-sans">
+											No matching monthly periods found
+										</TableCell>
+									</TableRow>
+								) : (
+									filteredMonthlyEntries.slice(0, 120).map((entry) => (
+										<TableRow key={entry.month} className="border-border/15 hover:bg-muted/30">
+											<TableCell className="font-medium text-foreground">
+												M{entry.month} ({entry.dateString})
+											</TableCell>
+											<TableCell className="text-right tabular-nums">
+												{formatNativeCurrency(entry.payment)}
+											</TableCell>
+											<TableCell className="text-right text-gain font-medium tabular-nums">
+												{formatNativeCurrency(entry.principal)}
+											</TableCell>
+											<TableCell className="text-right text-muted-foreground tabular-nums">
+												{formatNativeCurrency(entry.interest)}
+											</TableCell>
+											<TableCell className="text-right font-semibold text-foreground tabular-nums">
+												{formatNativeCurrency(entry.remainingBalance)}
+											</TableCell>
+										</TableRow>
+									))
+								)}
+							</TableBody>
+						</Table>
+					</div>
+					{scheduleMode === "monthly" && (scheduleData?.entries.length || 0) > 120 && (
+						<p className="text-micro text-muted-foreground text-center">
+							Showing first 120 months. Use period filter for later dates.
+						</p>
+					)}
 				</div>
-
-				{/* Tabs */}
-				<Tabs defaultValue="overview" className="space-y-4">
-					<TabsList>
-						<TabsTrigger value="overview">Overview</TabsTrigger>
-						<TabsTrigger value="schedule">Amortization Schedule</TabsTrigger>
-						<TabsTrigger value="analytics">Analytics</TabsTrigger>
-						<TabsTrigger value="details">Details</TabsTrigger>
-					</TabsList>
-
-					{/* Overview Tab */}
-					<TabsContent value="overview" className="space-y-4">
-						<div
-							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
-						>
-							{/* Balance Evolution Chart */}
-							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<TrendingDown className="h-5 w-5" />
-										Balance Evolution
-									</CardTitle>
-									<CardDescription>Remaining balance over time</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<EChart
-										option={balanceEvolutionOption}
-										style={{ height: "300px" }}
-										opts={{ renderer: "svg" }}
-									/>
-								</CardContent>
-							</Card>
-
-							{/* Payment Breakdown Chart */}
-							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<BarChart3 className="h-5 w-5" />
-										Payment Breakdown
-									</CardTitle>
-									<CardDescription>Principal vs Interest (24 months)</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<EChart
-										option={paymentBreakdownOption}
-										style={{ height: "300px" }}
-										opts={{ renderer: "svg" }}
-									/>
-								</CardContent>
-							</Card>
-						</div>
-
-						{/* Summary Cards */}
-						<div
-							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 md:grid-cols-3")}
-						>
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-sm">Total Paid</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="text-xl font-mono text-green-600">
-										{formatCurrency(paidAmount)}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">
-										{paymentProgress.toFixed(1)}% of loan amount
-									</p>
-								</CardContent>
-							</Card>
-
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-sm">Interest Paid</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="text-xl font-mono text-orange-600">
-										{formatCurrency(totalInterestPaid)}
-									</div>
-									<p className="text-xs text-muted-foreground mt-1">Estimated so far</p>
-								</CardContent>
-							</Card>
-
-							<Card>
-								<CardHeader>
-									<CardTitle className="text-sm">Total Cost</CardTitle>
-								</CardHeader>
-								<CardContent>
-									<div className="text-xl font-mono">{formatCurrency(totalCost)}</div>
-									<p className="text-xs text-muted-foreground mt-1">Principal + Interest</p>
-								</CardContent>
-							</Card>
-						</div>
-
-						{/* Linked Assets */}
-						{linkedAssets.length > 0 && (
-							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<Building2 className="h-5 w-5" />
-										Linked Assets
-									</CardTitle>
-									<CardDescription>Assets financed by this loan</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-3">
-										{linkedAssets.map((asset) => (
-											<div
-												key={asset.id}
-												className="flex items-center justify-between p-3 border rounded-lg"
-											>
-												<div className="flex items-center gap-3">
-													<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-														<Building2 className="h-5 w-5 text-primary" />
-													</div>
-													<div>
-														<p className="font-medium">{asset.name}</p>
-														<p className="text-sm text-muted-foreground capitalize">{asset.type}</p>
-													</div>
-												</div>
-												<div className="text-right">
-													<p className="font-mono">{formatCurrency(asset.currentValue)}</p>
-													{asset.currentValue && loan.remainingBalance && (
-														<p className="text-xs text-muted-foreground">
-															LTV: {((loan.remainingBalance / asset.currentValue) * 100).toFixed(1)}
-															%
-														</p>
-													)}
-												</div>
-											</div>
-										))}
-									</div>
-								</CardContent>
-							</Card>
-						)}
-					</TabsContent>
-
-					{/* Amortization Schedule Tab */}
-					<TabsContent value="schedule" className="space-y-4">
-						<Card>
-							<CardHeader>
-								<CardTitle>Amortization Schedule</CardTitle>
-								<CardDescription>
-									Detailed payment breakdown for each month (showing first 60 payments)
-								</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<ScrollArea className="h-[600px]">
-									<Table>
-										<TableHeader>
-											<TableRow>
-												<TableHead>Month</TableHead>
-												<TableHead>Date</TableHead>
-												<TableHead className="text-right">Payment</TableHead>
-												<TableHead className="text-right">Principal</TableHead>
-												<TableHead className="text-right">Interest</TableHead>
-												<TableHead className="text-right">Balance</TableHead>
-											</TableRow>
-										</TableHeader>
-										<TableBody>
-											{amortizationSchedule.map((row) => (
-												<TableRow key={row.month}>
-													<TableCell className="font-medium">{row.month}</TableCell>
-													<TableCell>{row.date}</TableCell>
-													<TableCell className="text-right font-mono">
-														{formatCurrency(row.payment)}
-													</TableCell>
-													<TableCell className="text-right font-mono text-green-600">
-														{formatCurrency(row.principal)}
-													</TableCell>
-													<TableCell className="text-right font-mono text-orange-600">
-														{formatCurrency(row.interest)}
-													</TableCell>
-													<TableCell className="text-right font-mono">
-														{formatCurrency(row.balance)}
-													</TableCell>
-												</TableRow>
-											))}
-										</TableBody>
-									</Table>
-								</ScrollArea>
-							</CardContent>
-						</Card>
-					</TabsContent>
-
-					{/* Analytics Tab */}
-					<TabsContent value="analytics" className="space-y-4">
-						<div
-							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
-						>
-							{/* Interest vs Principal Pie */}
-							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<PieChart className="h-5 w-5" />
-										Loan Composition
-									</CardTitle>
-									<CardDescription>Distribution of payments</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<EChart
-										option={interestPrincipalOption}
-										style={{ height: "350px" }}
-										opts={{ renderer: "svg" }}
-									/>
-								</CardContent>
-							</Card>
-
-							{/* Key Insights */}
-							<Card>
-								<CardHeader>
-									<CardTitle className="flex items-center gap-2">
-										<AlertCircle className="h-5 w-5" />
-										Key Insights
-									</CardTitle>
-									<CardDescription>Important metrics and recommendations</CardDescription>
-								</CardHeader>
-								<CardContent>
-									<div className="space-y-4">
-										<div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-											<div className="flex items-start gap-3">
-												<div className="h-8 w-8 rounded-full bg-green-600 flex items-center justify-center flex-shrink-0">
-													<Target className="h-4 w-4 text-white" />
-												</div>
-												<div>
-													<p className="font-medium text-green-900 dark:text-green-100">On Track</p>
-													<p className="text-sm text-green-700 dark:text-green-300 mt-1">
-														You've paid {paymentProgress.toFixed(1)}% of your loan. Keep up the good
-														work!
-													</p>
-												</div>
-											</div>
-										</div>
-
-										<div className="p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
-											<div className="flex items-start gap-3">
-												<div className="h-8 w-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-													<Clock className="h-4 w-4 text-white" />
-												</div>
-												<div>
-													<p className="font-medium text-blue-900 dark:text-blue-100">
-														Time Remaining
-													</p>
-													<p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-														{monthsRemaining} months ({(monthsRemaining / 12).toFixed(1)} years)
-														until loan payoff
-													</p>
-												</div>
-											</div>
-										</div>
-
-										<div className="p-4 bg-orange-50 dark:bg-orange-950 border border-orange-200 dark:border-orange-800 rounded-lg">
-											<div className="flex items-start gap-3">
-												<div className="h-8 w-8 rounded-full bg-orange-600 flex items-center justify-center flex-shrink-0">
-													<Percent className="h-4 w-4 text-white" />
-												</div>
-												<div>
-													<p className="font-medium text-orange-900 dark:text-orange-100">
-														Interest Impact
-													</p>
-													<p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-														Interest represents {((totalInterestPaid / totalCost) * 100).toFixed(1)}
-														% of total cost
-													</p>
-												</div>
-											</div>
-										</div>
-
-										{loan.interestRate > 5 && (
-											<div className="p-4 bg-purple-50 dark:bg-purple-950 border border-purple-200 dark:border-purple-800 rounded-lg">
-												<div className="flex items-start gap-3">
-													<div className="h-8 w-8 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
-														<TrendingDown className="h-4 w-4 text-white" />
-													</div>
-													<div>
-														<p className="font-medium text-purple-900 dark:text-purple-100">
-															Refinancing Opportunity
-														</p>
-														<p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
-															Your rate ({loan.interestRate}%) is higher than average. Consider
-															refinancing.
-														</p>
-													</div>
-												</div>
-											</div>
-										)}
-									</div>
-								</CardContent>
-							</Card>
-						</div>
-					</TabsContent>
-
-					{/* Details Tab */}
-					<TabsContent value="details" className="space-y-4">
-						<div
-							className={cn("grid gap-4", isPanel ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-2")}
-						>
-							{/* Loan Information */}
-							<Card>
-								<CardHeader>
-									<CardTitle>Loan Information</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Loan Type</span>
-										<span className="font-medium">{getLoanTypeLabel(loan.type)}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Bank</span>
-										<span className="font-medium">{loan.bank}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Original Amount</span>
-										<span className="font-mono">{formatCurrency(loan.loanAmount)}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Remaining Balance</span>
-										<span className="font-mono text-red-600">
-											{formatCurrency(loan.remainingBalance)}
-										</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Interest Rate</span>
-										<span className="font-mono">{loan.interestRate}%</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Duration</span>
-										<span className="font-medium">
-											{loan.duration} months ({(loan.duration / 12).toFixed(1)} years)
-										</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Monthly Payment</span>
-										<span className="font-mono">{formatCurrency(loan.monthlyPayment)}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Currency</span>
-										<span className="font-medium">{loan.currency}</span>
-									</div>
-									<div className="flex justify-between py-2">
-										<span className="text-muted-foreground">Status</span>
-										<Badge variant={loan.status === "active" ? "default" : "secondary"}>
-											{loan.status}
-										</Badge>
-									</div>
-								</CardContent>
-							</Card>
-
-							{/* Timeline & Fees */}
-							<Card>
-								<CardHeader>
-									<CardTitle>Timeline & Fees</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Start Date</span>
-										<span className="font-medium">{formatDate(loan.startDate)}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">End Date</span>
-										<span className="font-medium">{formatDate(loan.endDate)}</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Months Elapsed</span>
-										<span className="font-medium">{monthsElapsed} months</span>
-									</div>
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Months Remaining</span>
-										<span className="font-medium">{monthsRemaining} months</span>
-									</div>
-
-									<Separator className="my-4" />
-
-									{loan.applicationFee && (
-										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">Application Fee</span>
-											<span className="font-mono">{formatCurrency(loan.applicationFee)}</span>
-										</div>
-									)}
-									{loan.brokerFee && (
-										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">Broker Fee</span>
-											<span className="font-mono">{formatCurrency(loan.brokerFee)}</span>
-										</div>
-									)}
-									{loan.insuranceFee && (
-										<div className="flex justify-between py-2 border-b">
-											<span className="text-muted-foreground">Insurance (monthly)</span>
-											<span className="font-mono">{formatCurrency(loan.insuranceFee)}</span>
-										</div>
-									)}
-									{loan.earlyRepaymentFee && (
-										<div className="flex justify-between py-2">
-											<span className="text-muted-foreground">Early Repayment Fee</span>
-											<span className="font-mono">{loan.earlyRepaymentFee}%</span>
-										</div>
-									)}
-								</CardContent>
-							</Card>
-
-							{/* Ownership */}
-							<Card>
-								<CardHeader>
-									<CardTitle>Ownership</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									<div className="flex justify-between py-2 border-b">
-										<span className="text-muted-foreground">Ownership Mode</span>
-										<Badge variant={loan.ownershipMode === "personal" ? "default" : "secondary"}>
-											{loan.ownershipMode === "personal" ? "Personal" : "Company"}
-										</Badge>
-									</div>
-									<div className="p-4 bg-muted rounded-lg">
-										<p className="text-sm text-muted-foreground">
-											This loan is held under{" "}
-											{loan.ownershipMode === "personal" ? "personal" : "company"} ownership.
-										</p>
-									</div>
-								</CardContent>
-							</Card>
-						</div>
-					</TabsContent>
-				</Tabs>
 			</div>
-		</ScrollArea>
+
+			{/* Delete Loan Confirmation Dialog */}
+			<Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+				<DialogContent className="sm:max-w-md">
+					<DialogHeader>
+						<DialogTitle>Delete Loan</DialogTitle>
+						<DialogDescription>
+							Are you sure you want to remove <strong>{loan.name}</strong> from your portfolio?
+							This will delete the loan record and its amortization history.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setIsDeleteDialogOpen(false)}
+							disabled={isDeleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							size="sm"
+							onClick={handleDelete}
+							disabled={isDeleting}
+						>
+							{isDeleting ? "Deleting..." : "Delete Loan"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</div>
 	);
 }

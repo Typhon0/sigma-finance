@@ -252,7 +252,7 @@ type Loan implements Asset {
     loanType: String!
     loanAmount: Float!
     remainingBalance: Float!
-    interestRate: Float!
+    interestRate: Float
     durationMonths: Int!
     monthlyPayment: Float!
     startDate: String!
