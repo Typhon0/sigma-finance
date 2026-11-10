@@ -311,6 +311,9 @@ export interface PortfolioLoanItem {
 	ownershipPercentage?: number;
 	status?: string;
 	currency?: string;
+	loanType?: string;
+	lender?: string;
+	linkedAssetIds?: string[];
 }
 
 export interface PortfolioDebtSummary {
@@ -326,6 +329,7 @@ export interface PortfolioDebtSummary {
 	amortizedRatio: number;
 	activeLoansCount: number;
 	averageRemainingMonths: number;
+	currencyBreakdown?: Array<{ currency: string; value: number; percent: number }>;
 }
 
 /**
@@ -383,6 +387,17 @@ export function computePortfolioDebtSummary(loans: PortfolioLoanItem[]): Portfol
 	const amortizedRatio =
 		totalGrossOriginal > 0 ? Math.round((principalPaidGross / totalGrossOriginal) * 1000) / 10 : 0;
 
+	const curMap: Record<string, number> = {};
+	activeLoans.forEach((loan) => {
+		const cur = loan.currency || "EUR";
+		curMap[cur] = (curMap[cur] || 0) + (loan.remainingBalance || 0);
+	});
+	const currencyBreakdown = Object.entries(curMap).map(([cur, val]) => ({
+		currency: cur,
+		value: Math.round(val * 100) / 100,
+		percent: totalGrossDebt > 0 ? Math.round(((val / totalGrossDebt) * 100) * 10) / 10 : 0,
+	}));
+
 	return {
 		totalGrossDebt: Math.round(totalGrossDebt * 100) / 100,
 		totalNetDebt: Math.round(totalNetDebt * 100) / 100,
@@ -396,5 +411,6 @@ export function computePortfolioDebtSummary(loans: PortfolioLoanItem[]): Portfol
 		amortizedRatio,
 		activeLoansCount: activeLoans.length,
 		averageRemainingMonths: 0,
+		currencyBreakdown,
 	};
 }

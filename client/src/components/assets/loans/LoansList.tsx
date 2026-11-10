@@ -1,28 +1,39 @@
 import {
 	Banknote,
-	BarChart3,
 	Building2,
 	Calendar,
-	ChevronLeft,
-	ChevronRight,
+	CheckCircle2,
+	ChevronDown,
 	CreditCard,
-	FileText,
+	ExternalLink,
 	Filter,
-	LayoutGrid,
-	List,
+	Layers,
 	MoreVertical,
 	Percent,
 	Plus,
-	SortAsc,
+	SlidersHorizontal,
+	Trash2,
+	TrendingDown,
 	TrendingUp,
+	X,
 } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import React, { memo, useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
+import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts/AssetHeroChart";
+import type { TimeRange } from "@/components/charts/PortfolioHeroChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -30,6 +41,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ErrorBoundary from "@/components/ui/error-boundary";
+import { Progress } from "@/components/ui/progress";
 import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
@@ -47,14 +60,23 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { type AddLoanInput, useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
-import { formatCurrency as formatCurrencyForCurrency } from "@/lib/utils";
+import {
+	computeLoanToValue,
+	computePortfolioDebtSummary,
+	type PortfolioLoanItem,
+} from "@/lib/loan-calculator";
+import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
 import { AddLoanForm } from "./AddLoanForm";
 import { LoanDetail } from "./LoanDetail";
-import { LoansAnalytics } from "./LoansAnalytics";
+import {
+	type LoanCategorySlice,
+	LoansExposureWidget,
+	LOAN_TYPE_COLORS,
+} from "./LoansExposureWidget";
 
 interface LoansListProps {
 	onSelectLoan?: (loanId: string) => void;
@@ -62,41 +84,170 @@ interface LoansListProps {
 	onBack?: () => void;
 }
 
-type ViewMode = "grid" | "list";
-type LoanType = "step" | "amortizing" | "in-fine" | "deferred-interest" | "deferred-total";
-
-interface Loan {
-	id: string;
-	name: string;
-	type: LoanType;
-	loanAmount: number;
-	remainingBalance: number;
-	interestRate: number;
-	duration: number; // months
-	monthlyPayment: number;
-	startDate: Date;
-	endDate?: Date;
-	bank?: string;
-	currency: string;
-	linkedAssets?: string[];
-	ownershipMode: "personal" | "company";
-	status: "active" | "paid-off" | "delinquent";
-}
-
 const LOAN_ASSET_TYPE_ID = "7"; // Loan asset type ID from server
 
 export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansListProps) {
-	const { assets, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
+	const shouldReduceMotion = useReducedMotion();
+	const { assets, currentPortfolio, refetch, selectedPortfolio, deleteAsset } = usePortfolio();
 	const { addLoan } = useAssetMutations();
-	const [searchTerm, setSearchTerm] = useState("");
-	const [sortBy, setSortBy] = useState("balance");
-	const [filterType, setFilterType] = useState("all");
-	const [filterStatus, setFilterStatus] = useState("all");
-	const [viewMode, setViewMode] = useState<ViewMode>("list");
-	const [currentPage, setCurrentPage] = useState(1);
-	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-	const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+	const { formatCurrencyCompact: formatCurrency, currency: displayCurrency } = useCurrency();
 
+	// Navigation & state
+	const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"ledger" | "holdings">("ledger");
+	const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
+	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+	const [loanToDelete, setLoanToDelete] = useState<{ id: string; name: string } | null>(null);
+	const [isDeleting, setIsDeleting] = useState(false);
+
+	// Filters & table controls
+	const [searchTerm, setSearchTerm] = useState("");
+	const [sortBy, setSortBy] = useState<"balance" | "payment" | "rate" | "name" | "progress">("balance");
+	const [filterType, setFilterType] = useState<string>("all");
+	const [filterStatus, setFilterStatus] = useState<string>("all");
+	const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+	const [timeRange, setTimeRange] = useState<TimeRange>("1Y");
+
+	// Row density with local storage persistence
+	const [density, setDensity] = useState<"compact" | "normal">(() => {
+		try {
+			const saved = localStorage.getItem("sf_loans_table_density");
+			return saved === "compact" || saved === "normal" ? saved : "compact";
+		} catch {
+			return "compact";
+		}
+	});
+
+	const handleToggleDensity = () => {
+		const next = density === "compact" ? "normal" : "compact";
+		setDensity(next);
+		try {
+			localStorage.setItem("sf_loans_table_density", next);
+		} catch {
+			// ignore storage errors
+		}
+	};
+
+	// Map raw assets to typed PortfolioLoanItem list
+	const loanItems = useMemo((): PortfolioLoanItem[] => {
+		return assets
+			.filter((a) => a.type === "loan")
+			.map((a) => {
+				const remBal = a.remainingBalance ?? a.currentValue ?? 0;
+				const origAmt = a.loanAmount ?? a.purchasePrice ?? remBal;
+				return {
+					id: a.id,
+					name: a.name,
+					loanType: a.loanType || "amortizing",
+					loanAmount: origAmt,
+					remainingBalance: remBal,
+					interestRate: a.interestRate ?? 0,
+					durationMonths: a.durationMonths ?? 0,
+					monthlyPayment: a.monthlyPayment ?? 0,
+					currency: a.currency || displayCurrency,
+					ownershipPercentage: a.ownershipPercentage ?? 100,
+					lender: a.lender || a.symbol,
+					status: a.status || "active",
+					startDate: a.startDate,
+					linkedAssetIds: a.linkedAssetIds || [],
+				};
+			});
+	}, [assets, displayCurrency]);
+
+	// Compute aggregated debt metrics using zero-random calculator
+	const debtSummary = useMemo(() => {
+		return computePortfolioDebtSummary(loanItems);
+	}, [loanItems]);
+
+	// Build exposure slices for LoansExposureWidget
+	const categorySlices = useMemo((): LoanCategorySlice[] => {
+		if (loanItems.length === 0) return [];
+		const map: Record<string, { count: number; value: number }> = {};
+
+		for (const loan of loanItems) {
+			const key = loan.loanType || "other";
+			if (!map[key]) {
+				map[key] = { count: 0, value: 0 };
+			}
+			map[key].count += 1;
+			map[key].value += loan.remainingBalance;
+		}
+
+		const totalGross = debtSummary.totalGrossDebt;
+
+		return Object.entries(map)
+			.map(([key, data]) => {
+				const rawLabel = key.replace("-", " ");
+				const label = rawLabel.charAt(0).toUpperCase() + rawLabel.slice(1);
+				const color = LOAN_TYPE_COLORS[key] || LOAN_TYPE_COLORS.other;
+				return {
+					key,
+					label,
+					color,
+					count: data.count,
+					value: data.value,
+					percent: totalGross > 0 ? (data.value / totalGross) * 100 : 0,
+				};
+			})
+			.sort((a, b) => b.value - a.value);
+	}, [loanItems, debtSummary.totalGrossDebt]);
+
+	// Active filter slice stats
+	const activeFilterStats = useMemo(() => {
+		if (!activeCategoryFilter) return null;
+		return categorySlices.find((s) => s.key === activeCategoryFilter) || null;
+	}, [activeCategoryFilter, categorySlices]);
+
+	// Performance series for HeroChart: descending debt balance trajectory
+	const performanceData = useMemo(() => {
+		if (loanItems.length === 0) {
+			return buildPerformanceSeries([], 0);
+		}
+		const now = new Date();
+		const points: Array<{ date: string; value: number }> = [];
+
+		for (let i = 11; i >= 0; i--) {
+			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+			const dateStr = d.toISOString().split("T")[0];
+
+			let totalAtDate = 0;
+			for (const loan of loanItems) {
+				const sDate = loan.startDate ? new Date(loan.startDate) : now;
+				if (d < sDate) {
+					continue;
+				}
+				const monthsSinceStart = Math.max(
+					0,
+					(d.getFullYear() - sDate.getFullYear()) * 12 + (d.getMonth() - sDate.getMonth()),
+				);
+				const totalMonthsElapsed = Math.max(
+					1,
+					(now.getFullYear() - sDate.getFullYear()) * 12 + (now.getMonth() - sDate.getMonth()),
+				);
+
+				const totalAmortizedSoFar = Math.max(0, loan.loanAmount - loan.remainingBalance);
+				const amortizedAtD = Math.min(
+					totalAmortizedSoFar,
+					(monthsSinceStart / totalMonthsElapsed) * totalAmortizedSoFar,
+				);
+				const balanceAtD = Math.max(0, loan.loanAmount - amortizedAtD);
+				totalAtDate += balanceAtD;
+			}
+			points.push({ date: dateStr, value: totalAtDate });
+		}
+
+		return buildPerformanceSeries(points, debtSummary.totalGrossDebt);
+	}, [loanItems, debtSummary.totalGrossDebt]);
+
+	// Chart holdings for HeroChart
+	const chartHoldings = useMemo(() => {
+		return loanItems.map((loan) => ({
+			value: loan.remainingBalance,
+			currentPrice: loan.remainingBalance,
+			changePercent: 0,
+		}));
+	}, [loanItems]);
+
+	// Handle row click
 	const handleSelectLoan = (loanId: string) => {
 		if (detailMode === "panel") {
 			setSelectedLoanId(loanId);
@@ -104,79 +255,50 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 			onSelectLoan?.(loanId);
 		}
 	};
-	const itemsPerPage = viewMode === "grid" ? 9 : 15;
 
-	// Currency hook — must be called before useMemo that uses displayCurrency
-	const { formatCurrencyCompact: formatCurrency, currency: displayCurrency } = useCurrency();
+	// Filtered & sorted loans
+	const filteredLoans = useMemo(() => {
+		return loanItems
+			.filter((loan) => {
+				if (searchTerm.trim()) {
+					const term = searchTerm.toLowerCase();
+					const matchName = loan.name?.toLowerCase().includes(term);
+					const matchLender = loan.lender?.toLowerCase().includes(term);
+					if (!matchName && !matchLender) return false;
+				}
+				if (filterType !== "all" && loan.loanType !== filterType) {
+					return false;
+				}
+				if (filterStatus !== "all" && loan.status !== filterStatus) {
+					return false;
+				}
+				if (activeCategoryFilter && loan.loanType !== activeCategoryFilter) {
+					return false;
+				}
+				return true;
+			})
+			.sort((a, b) => {
+				switch (sortBy) {
+					case "balance":
+						return b.remainingBalance - a.remainingBalance;
+					case "payment":
+						return b.monthlyPayment - a.monthlyPayment;
+					case "rate":
+						return b.interestRate - a.interestRate;
+					case "name":
+						return a.name.localeCompare(b.name);
+					case "progress": {
+						const progA = a.loanAmount > 0 ? (a.loanAmount - a.remainingBalance) / a.loanAmount : 0;
+						const progB = b.loanAmount > 0 ? (b.loanAmount - b.remainingBalance) / b.loanAmount : 0;
+						return progB - progA;
+					}
+					default:
+						return 0;
+				}
+			});
+	}, [loanItems, searchTerm, filterType, filterStatus, activeCategoryFilter, sortBy]);
 
-	// Derive loans from assets with type 'loan'
-	const loans = useMemo(() => {
-		return assets
-			.filter((a) => a.type === "loan")
-			.map((a) => ({
-				id: a.id,
-				name: a.name,
-				type: "amortizing" as LoanType,
-				loanAmount: a.purchasePrice || a.currentValue || 0,
-				remainingBalance: a.currentValue || 0,
-				interestRate: 0,
-				duration: 0,
-				monthlyPayment: 0,
-				startDate: new Date(),
-				bank: a.symbol || undefined,
-				currency: a.currency || displayCurrency,
-				ownershipMode: "personal" as const,
-				status: "active" as const,
-			}));
-	}, [assets, displayCurrency]);
-
-	const filteredLoans = loans
-		.filter((loan) => {
-			const matchesSearch =
-				loan.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				loan.bank?.toLowerCase().includes(searchTerm.toLowerCase());
-			const matchesType = filterType === "all" || loan.type === filterType;
-			const matchesStatus = filterStatus === "all" || loan.status === filterStatus;
-			return matchesSearch && matchesType && matchesStatus;
-		})
-		.sort((a, b) => {
-			switch (sortBy) {
-				case "balance":
-					return b.remainingBalance - a.remainingBalance;
-				case "payment":
-					return b.monthlyPayment - a.monthlyPayment;
-				case "rate":
-					return b.interestRate - a.interestRate;
-				case "name":
-					return a.name.localeCompare(b.name);
-				default:
-					return 0;
-			}
-		});
-
-	const getTotalBalance = () => {
-		return loans.reduce((sum, loan) => sum + loan.remainingBalance, 0);
-	};
-
-	const getTotalMonthlyPayment = () => {
-		return loans.reduce((sum, loan) => sum + loan.monthlyPayment, 0);
-	};
-
-	const getTotalPrincipalPaid = () => {
-		return loans.reduce((sum, loan) => sum + (loan.loanAmount - loan.remainingBalance), 0);
-	};
-
-	const getAverageInterestRate = () => {
-		if (loans.length === 0) return 0;
-		const totalRate = loans.reduce((sum, loan) => sum + loan.interestRate, 0);
-		return totalRate / loans.length;
-	};
-
-	const totalBalance = getTotalBalance();
-	const totalMonthlyPayment = getTotalMonthlyPayment();
-	const totalPrincipalPaid = getTotalPrincipalPaid();
-	const avgInterestRate = getAverageInterestRate();
-
+	// Add loan form handler
 	const handleAddLoan = async (formData: {
 		name: string;
 		type: string;
@@ -296,584 +418,833 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 			}
 		} catch (error) {
 			toast.error("Failed to add loan. Please try again.");
-			throw error; // Re-throw so AddLoanForm keeps dialog open
+			throw error;
 		}
 	};
 
-	// Pagination
-	const totalPages = Math.ceil(filteredLoans.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const endIndex = startIndex + itemsPerPage;
-	const paginatedLoans = filteredLoans.slice(startIndex, endIndex);
-
-	// Reset to page 1 when filters change
-	React.useEffect(() => {
-		setCurrentPage(1);
-	}, []);
-
-	const getLoanTypeLabel = (type: LoanType) => {
-		switch (type) {
-			case "amortizing":
-				return "Amortizing";
-			case "in-fine":
-				return "In Fine";
-			case "deferred-interest":
-				return "Deferred Interest";
-			case "deferred-total":
-				return "Deferred Total";
-			case "step":
-				return "Step";
-			default:
-				return type;
+	// Delete loan handler
+	const handleDeleteConfirm = async () => {
+		if (!loanToDelete) return;
+		setIsDeleting(true);
+		try {
+			if (typeof deleteAsset === "function") {
+				await deleteAsset(loanToDelete.id, currentPortfolio || undefined);
+				toast.success(`Loan "${loanToDelete.name}" deleted`);
+				setLoanToDelete(null);
+				if (selectedLoanId === loanToDelete.id) {
+					setSelectedLoanId(null);
+				}
+				await refetch();
+			} else {
+				throw new Error("deleteAsset handler unavailable");
+			}
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Failed to delete loan";
+			toast.error(msg);
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
-	const getLoanTypeBadgeColor = (type: LoanType) => {
-		switch (type) {
-			case "amortizing":
-				return "bg-blue-500/10 text-blue-500 border border-blue-500/20";
-			case "in-fine":
-				return "bg-purple-500/10 text-purple-500 border border-purple-500/20";
-			case "deferred-interest":
-				return "bg-amber-500/10 text-amber-500 border border-amber-500/20";
-			case "deferred-total":
-				return "bg-rose-500/10 text-rose-500 border border-rose-500/20";
-			case "step":
-				return "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20";
-			default:
-				return "bg-muted text-muted-foreground border border-border/40";
-		}
-	};
-
-	const getStatusBadge = (status: string) => {
-		switch (status) {
-			case "active":
-				return (
-					<Badge
-						variant="outline"
-						className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
-					>
-						Active
-					</Badge>
-				);
-			case "paid-off":
-				return (
-					<Badge
-						variant="outline"
-						className="bg-muted text-muted-foreground border border-border/40"
-					>
-						Paid Off
-					</Badge>
-				);
-			case "delinquent":
-				return (
-					<Badge
-						variant="outline"
-						className="bg-rose-500/10 text-rose-500 border border-rose-500/20"
-					>
-						Delinquent
-					</Badge>
-				);
-			default:
-				return <Badge variant="outline">{status}</Badge>;
-		}
-	};
-
-	// Format a loan amount in the loan's native currency (not the display currency)
-	const formatLoanCurrency = (amount: number, loanCurrency: string) =>
-		formatCurrencyForCurrency(amount, loanCurrency);
-
-	const formatDate = (date: Date) => {
-		const dateObj = date instanceof Date ? date : new Date(date);
-		return dateObj.toLocaleDateString("fr-FR", {
-			year: "numeric",
-			month: "short",
-		});
-	};
-
-	const calculateProgress = (loan: Loan) => {
-		const paid = loan.loanAmount - loan.remainingBalance;
-		return (paid / loan.loanAmount) * 100;
-	};
+	// Helper to find linked asset and calculate LTV
+	const getLinkedAssetInfo = useCallback(
+		(loan: PortfolioLoanItem) => {
+			if (!loan.linkedAssetIds || loan.linkedAssetIds.length === 0) return null;
+			const linkedId = loan.linkedAssetIds[0];
+			const linked = assets.find((a) => a.id === linkedId);
+			if (!linked) return null;
+			const ltv = computeLoanToValue(loan.remainingBalance, linked.currentValue || 0);
+			return {
+				name: linked.name,
+				type: linked.type,
+				value: linked.currentValue || 0,
+				ltv,
+			};
+		},
+		[assets],
+	);
 
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			{/* Canonical Page Header */}
 			<AssetPageHeader
 				title="Loans & Debt"
-				description="Manage your active loans, track outstanding debt, amortization, and payment schedules."
+				description="Manage liabilities, monitor amortized reduction, debt service drag, and collateral coverage."
 				onBack={onBack}
 				actions={
-					<Button
-						size="sm"
-						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
-						onClick={() => setIsAddFormOpen(true)}
-					>
-						<Plus className="mr-1.5 h-3.5 w-3.5" />
-						Add Loan
-					</Button>
+					<div className="flex items-center gap-2 flex-wrap">
+						{loanItems.length > 0 && (
+							<div className="hidden sm:flex items-center gap-3 px-3 py-1.5 rounded-lg bg-muted/60 border border-border/40 text-xs font-mono text-muted-foreground">
+								<div className="flex items-center gap-1.5">
+									<span className="h-1.5 w-1.5 rounded-full bg-loss" />
+									<span className="text-foreground font-semibold">
+										{formatCurrency(debtSummary.totalNetDebt)}
+									</span>
+									<span className="text-micro text-muted-foreground">net</span>
+								</div>
+								<span className="text-border">|</span>
+								<div>
+									<span>{debtSummary.activeLoansCount} active</span>
+								</div>
+								<span className="text-border">|</span>
+								<div>
+									<span>{debtSummary.weightedAverageRate.toFixed(2)}% WAC</span>
+								</div>
+							</div>
+						)}
+
+						<Button
+							size="sm"
+							onClick={() => setIsAddFormOpen(true)}
+							className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs touch-target"
+						>
+							<Plus className="mr-1.5 h-3.5 w-3.5" />
+							Add Loan
+						</Button>
+					</div>
 				}
 			/>
 
-			{/* Main Tabs */}
-			<Tabs defaultValue="loans" className="space-y-6">
-				<TabsList className="grid w-full max-w-md grid-cols-2">
-					<TabsTrigger value="loans">
-						<CreditCard className="h-4 w-4 mr-2" />
-						Loans
-					</TabsTrigger>
-					<TabsTrigger value="analytics">
-						<BarChart3 className="h-4 w-4 mr-2" />
-						Analytics
-					</TabsTrigger>
-				</TabsList>
+			{/* 70/30 Hero Section: AssetHeroChart (70%) + LoansExposureWidget (30%) */}
+			<div className="grid grid-cols-1 gap-6 border-b border-border/30 pb-6 lg:grid-cols-10">
+				{/* Left 70%: Debt Outstanding Trajectory Hero Chart */}
+				<div className="lg:col-span-7 pr-0 lg:pr-6 flex flex-col justify-between">
+					<ErrorBoundary>
+						<AssetHeroChart
+							title="Total Debt Outstanding"
+							titleTooltip="Aggregated liabilities and amortized reduction trajectory across all loans"
+							data={performanceData}
+							holdings={chartHoldings}
+							totalEquity={debtSummary.totalGrossDebt}
+							formatCurrency={formatCurrency}
+							timeRange={timeRange}
+							onTimeRangeChange={setTimeRange}
+							portfolioID={selectedPortfolio?.id}
+							defaultBenchmark="none"
+							layoutId="loansHeroRangePillActive"
+						/>
+					</ErrorBoundary>
+				</div>
 
-				{/* Loans Tab */}
-				<TabsContent value="loans" className="space-y-6">
-					{/* Benchmark metrics */}
-					<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
+				{/* Right 30%: Debt Exposure & Service Brief */}
+				<div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-border/30 pt-6 lg:pt-0 pl-0 lg:pl-6 flex flex-col justify-between">
+					<ErrorBoundary>
+						<LoansExposureWidget
+							totalGrossDebt={debtSummary.totalGrossDebt}
+							totalNetDebt={debtSummary.totalNetDebt}
+							slices={categorySlices}
+							activeFilter={activeCategoryFilter}
+							onSelectCategory={setActiveCategoryFilter}
+							formatCurrency={formatCurrency}
+							weightedAverageRate={debtSummary.weightedAverageRate}
+							totalGrossMonthlyPayment={debtSummary.totalGrossMonthlyPayment}
+							totalNetMonthlyPayment={debtSummary.totalNetMonthlyPayment}
+							amortizedRatio={debtSummary.amortizedRatio}
+							principalPaidGross={debtSummary.principalPaidGross}
+							currencyBreakdown={debtSummary.currencyBreakdown}
+						/>
+					</ErrorBoundary>
+				</div>
+			</div>
 
-					{/* Summary Cards */}
-					<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">Total Debt</CardTitle>
-								<Banknote className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">{formatCurrency(totalBalance)}</div>
-								<p className="text-xs text-muted-foreground">
-									{loans.length} active {loans.length === 1 ? "loan" : "loans"}
-								</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">Monthly Payments</CardTitle>
-								<Calendar className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">{formatCurrency(totalMonthlyPayment)}</div>
-								<p className="text-xs text-muted-foreground">Total monthly obligation</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">Principal Paid</CardTitle>
-								<TrendingUp className="h-4 w-4 text-green-600" />
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold text-green-600">
-									{formatCurrency(totalPrincipalPaid)}
-								</div>
-								<p className="text-xs text-muted-foreground">Total debt reduction</p>
-							</CardContent>
-						</Card>
-
-						<Card>
-							<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-								<CardTitle className="text-sm font-medium">Avg Interest Rate</CardTitle>
-								<Percent className="h-4 w-4 text-muted-foreground" />
-							</CardHeader>
-							<CardContent>
-								<div className="text-2xl font-bold">{avgInterestRate.toFixed(2)}%</div>
-								<p className="text-xs text-muted-foreground">Across all loans</p>
-							</CardContent>
-						</Card>
-					</div>
-
-					{/* Filters and Search */}
-					<div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-						<div className="flex flex-1 gap-2">
-							<SearchInput
-								placeholder="Search loans..."
-								value={searchTerm}
-								onChange={(e) => setSearchTerm(e.target.value)}
-								onClear={() => setSearchTerm("")}
-								size="sm"
-								containerClassName="flex-1 max-w-sm"
+			{/* In-Viewport Active Cross-Filter Banner */}
+			{activeFilterStats && (
+				<motion.div
+					key="loans-cross-filter-banner"
+					data-testid="cross-filter-banner"
+					initial={shouldReduceMotion ? false : { opacity: 0, y: -6, scale: 0.99 }}
+					animate={{ opacity: 1, y: 0, scale: 1 }}
+					transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+					className="overflow-hidden"
+				>
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5 text-xs shadow-xs mb-1">
+						<div className="flex items-center gap-2.5 flex-wrap">
+							<span
+								className="h-2 w-2 rounded-full animate-pulse"
+								style={{ backgroundColor: activeFilterStats.color }}
 							/>
-
-							<Select value={filterType} onValueChange={setFilterType}>
-								<SelectTrigger className="w-[180px]">
-									<Filter className="h-4 w-4 mr-2" />
-									<SelectValue placeholder="Filter by type" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Types</SelectItem>
-									<SelectItem value="amortizing">Amortizing</SelectItem>
-									<SelectItem value="in-fine">In Fine</SelectItem>
-									<SelectItem value="deferred-interest">Deferred Interest</SelectItem>
-									<SelectItem value="deferred-total">Deferred Total</SelectItem>
-									<SelectItem value="step">Step</SelectItem>
-								</SelectContent>
-							</Select>
-
-							<Select value={filterStatus} onValueChange={setFilterStatus}>
-								<SelectTrigger className="w-[150px]">
-									<SelectValue placeholder="Status" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="all">All Status</SelectItem>
-									<SelectItem value="active">Active</SelectItem>
-									<SelectItem value="paid-off">Paid Off</SelectItem>
-									<SelectItem value="delinquent">Delinquent</SelectItem>
-								</SelectContent>
-							</Select>
+							<span className="font-semibold text-foreground">Filtered by Loan Type:</span>
+							<span className="font-bold text-primary px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-micro">
+								{activeFilterStats.label}
+							</span>
+							<span className="text-muted-foreground text-micro sm:text-xs">
+								({activeFilterStats.count} {activeFilterStats.count !== 1 ? "loans" : "loan"} •{" "}
+								{formatCurrency(activeFilterStats.value)} •{" "}
+								{activeFilterStats.percent.toFixed(1)}% of total debt)
+							</span>
 						</div>
-
-						<div className="flex gap-2">
-							<Select value={sortBy} onValueChange={setSortBy}>
-								<SelectTrigger className="w-[180px]">
-									<SortAsc className="h-4 w-4 mr-2" />
-									<SelectValue placeholder="Sort by" />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="balance">Balance</SelectItem>
-									<SelectItem value="payment">Monthly Payment</SelectItem>
-									<SelectItem value="rate">Interest Rate</SelectItem>
-									<SelectItem value="name">Name</SelectItem>
-								</SelectContent>
-							</Select>
-
-							<div className="flex gap-1 border rounded-lg p-1">
-								<Button
-									variant={viewMode === "list" ? "secondary" : "ghost"}
-									size="sm"
-									onClick={() => setViewMode("list")}
-									className="h-8 w-8 p-0"
-								>
-									<List className="h-4 w-4" />
-								</Button>
-								<Button
-									variant={viewMode === "grid" ? "secondary" : "ghost"}
-									size="sm"
-									onClick={() => setViewMode("grid")}
-									className="h-8 w-8 p-0"
-								>
-									<LayoutGrid className="h-4 w-4" />
-								</Button>
-							</div>
+						<div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									const el = document.getElementById("loans-workspace-section");
+									el?.scrollIntoView({ behavior: "smooth" });
+								}}
+								className="h-7 text-xs bg-background/80 hover:bg-background border-border/60 gap-1.5 cursor-pointer touch-target"
+							>
+								<span>Jump to Ledger</span>
+								<ChevronDown className="h-3 w-3" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setActiveCategoryFilter(null)}
+								className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer touch-target"
+							>
+								<X className="h-3.5 w-3.5" />
+								<span>Clear</span>
+							</Button>
 						</div>
 					</div>
+				</motion.div>
+			)}
 
-					{/* Loans Display */}
-					{viewMode === "list" ? (
-						<Card>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead>Loan Name</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead>Bank</TableHead>
-										<TableHead className="text-right">Original Amount</TableHead>
-										<TableHead className="text-right">Remaining</TableHead>
-										<TableHead className="text-right">Monthly Payment</TableHead>
-										<TableHead className="text-center">Rate</TableHead>
-										<TableHead className="text-center">Progress</TableHead>
-										<TableHead className="text-center">Status</TableHead>
-										<TableHead className="text-right">Actions</TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{paginatedLoans.length === 0 ? (
-										<TableRow>
-											<TableCell colSpan={10} className="text-center py-12">
-												<div className="flex flex-col items-center gap-2">
-													<FileText className="h-12 w-12 text-muted-foreground/50" />
-													<p className="text-muted-foreground">No loans found</p>
-													<Button
-														variant="outline"
-														size="sm"
-														onClick={() => setIsAddFormOpen(true)}
+			{/* Segmented Workspace Navigation (2 Tabs) */}
+			<div id="loans-workspace-section" className="flex flex-col space-y-4">
+				<div className="flex items-center justify-between border-b border-border/20 pb-3 mt-1 flex-wrap gap-2">
+					{/* Tab switcher */}
+					<div
+						className="relative flex max-w-full overflow-x-auto p-0.5 rounded-lg bg-muted border border-border/40"
+						role="tablist"
+						aria-label="Loans workspace view"
+					>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeWorkspaceTab === "ledger"}
+							onClick={() => setActiveWorkspaceTab("ledger")}
+							className={cn(
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[36px] touch-target",
+								activeWorkspaceTab === "ledger"
+									? "text-foreground font-bold"
+									: "text-foreground/70 hover:text-foreground border border-transparent",
+							)}
+						>
+							{activeWorkspaceTab === "ledger" && (
+								<motion.span
+									layoutId="loansActiveTabIndicator"
+									className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 38 }
+									}
+								/>
+							)}
+							<CreditCard className="relative z-10 h-3.5 w-3.5" />
+							<span className="relative z-10">Debt Ledger</span>
+							<span className="relative z-10 text-micro font-mono px-1.5 py-0.5 rounded-full bg-secondary/80 text-foreground/80 font-normal">
+								{filteredLoans.length}
+							</span>
+						</button>
+
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeWorkspaceTab === "holdings"}
+							onClick={() => setActiveWorkspaceTab("holdings")}
+							className={cn(
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[36px] touch-target",
+								activeWorkspaceTab === "holdings"
+									? "text-foreground font-bold"
+									: "text-foreground/70 hover:text-foreground border border-transparent",
+							)}
+						>
+							{activeWorkspaceTab === "holdings" && (
+								<motion.span
+									layoutId="loansActiveTabIndicator"
+									className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 38 }
+									}
+								/>
+							)}
+							<Layers className="relative z-10 h-3.5 w-3.5" />
+							<span className="relative z-10">Holdings & Amortization</span>
+							<span className="relative z-10 text-micro font-mono px-1.5 py-0.5 rounded-full bg-secondary/80 text-foreground/80 font-normal">
+								{loanItems.length}
+							</span>
+						</button>
+					</div>
+
+					{/* Workspace Toolbar Controls */}
+					<div className="flex items-center gap-2">
+						{activeWorkspaceTab === "ledger" && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleToggleDensity}
+								className="h-8 text-xs gap-1.5 border-border/50 hidden sm:flex touch-target"
+								title="Toggle table row height"
+							>
+								<SlidersHorizontal className="h-3.5 w-3.5" />
+								<span>{density === "compact" ? "Compact" : "Normal"}</span>
+							</Button>
+						)}
+					</div>
+				</div>
+
+				{/* Empty State when zero loans */}
+				{loanItems.length === 0 ? (
+					<div className="rounded-xl border border-dashed border-border/60 p-10 text-center space-y-3 bg-card/30 my-4">
+						<div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+							<CreditCard className="h-5 w-5" />
+						</div>
+						<h3 className="font-semibold text-foreground text-sm">No Active Loans Found</h3>
+						<p className="text-xs text-muted-foreground max-w-md mx-auto">
+							Track real mortgages, consumer loans, auto financing, student debt, and in-fine facilities
+							with accurate amortization and collateral monitoring.
+						</p>
+						<Button
+							size="sm"
+							onClick={() => setIsAddFormOpen(true)}
+							className="mt-2 h-8 text-xs font-semibold"
+						>
+							<Plus className="mr-1.5 h-3.5 w-3.5" />
+							Add Your First Loan
+						</Button>
+					</div>
+				) : (
+					<>
+						{/* Tab 1: Debt Ledger */}
+						{activeWorkspaceTab === "ledger" && (
+							<div className="space-y-4">
+								{/* Filters Bar */}
+								<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+									<div className="flex items-center gap-2 flex-1 flex-wrap">
+										<SearchInput
+											placeholder="Search loans, lenders..."
+											value={searchTerm}
+											onChange={(e) => setSearchTerm(e.target.value)}
+											onClear={() => setSearchTerm("")}
+											size="sm"
+											containerClassName="w-full sm:w-64"
+										/>
+
+										<Select value={filterType} onValueChange={setFilterType}>
+											<SelectTrigger className="w-[140px] h-8 text-xs">
+												<Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+												<SelectValue placeholder="All Types" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="all">All Types</SelectItem>
+												<SelectItem value="amortizing">Amortizing</SelectItem>
+												<SelectItem value="in-fine">In Fine</SelectItem>
+												<SelectItem value="step">Step (Palier)</SelectItem>
+												<SelectItem value="deferred-interest">Deferred Interest</SelectItem>
+												<SelectItem value="deferred-total">Deferred Total</SelectItem>
+											</SelectContent>
+										</Select>
+
+										<Select value={filterStatus} onValueChange={setFilterStatus}>
+											<SelectTrigger className="w-[130px] h-8 text-xs">
+												<SelectValue placeholder="All Statuses" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="all">All Statuses</SelectItem>
+												<SelectItem value="active">Active</SelectItem>
+												<SelectItem value="paid-off">Paid Off</SelectItem>
+												<SelectItem value="delinquent">Delinquent</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="flex items-center gap-2 shrink-0">
+										<Select
+											value={sortBy}
+											onValueChange={(val) =>
+												setSortBy(val as "balance" | "payment" | "rate" | "name" | "progress")
+											}
+										>
+											<SelectTrigger className="w-[160px] h-8 text-xs">
+												<span className="text-muted-foreground mr-1">Sort:</span>
+												<SelectValue />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="balance">Outstanding Balance</SelectItem>
+												<SelectItem value="payment">Monthly Payment</SelectItem>
+												<SelectItem value="rate">Interest Rate</SelectItem>
+												<SelectItem value="progress">Amortized %</SelectItem>
+												<SelectItem value="name">Loan Name</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+								</div>
+
+								{/* High-Density Ledger Table */}
+								<div className="rounded-xl border border-border/40 overflow-hidden bg-card/60 shadow-xs">
+									<Table>
+										<TableHeader className="bg-muted/40">
+											<TableRow className="border-b border-border/40 hover:bg-transparent">
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Loan & Lender
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Type
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Collateral / LTV
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Ownership
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground text-right py-2.5">
+													Outstanding Balance
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Principal Amortized
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground text-right py-2.5">
+													Rate
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground text-right py-2.5">
+													Monthly Service
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground py-2.5">
+													Status
+												</TableHead>
+												<TableHead className="text-xs font-semibold text-foreground text-right py-2.5 w-10">
+													Actions
+												</TableHead>
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{filteredLoans.length === 0 ? (
+												<TableRow>
+													<TableCell
+														colSpan={10}
+														className="text-center py-8 text-xs text-muted-foreground"
 													>
-														<Plus className="h-4 w-4 mr-2" />
-														Add your first loan
-													</Button>
-												</div>
-											</TableCell>
-										</TableRow>
-									) : (
-										paginatedLoans.map((loan) => {
-											const progress = calculateProgress(loan);
-											return (
-												<TableRow
-													key={loan.id}
-													className="cursor-pointer hover:bg-accent/50"
-													onClick={() => handleSelectLoan(loan.id)}
-												>
-													<TableCell>
-														<div className="flex items-center gap-2">
-															<div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-																<CreditCard className="h-4 w-4 text-primary" />
-															</div>
-															<div>
-																<p className="font-medium">{loan.name}</p>
-																<p className="text-xs text-muted-foreground">
-																	{formatDate(loan.startDate)} -{" "}
-																	{loan.endDate ? formatDate(loan.endDate) : "Ongoing"}
-																</p>
-															</div>
-														</div>
-													</TableCell>
-													<TableCell>
-														<Badge className={getLoanTypeBadgeColor(loan.type)}>
-															{getLoanTypeLabel(loan.type)}
-														</Badge>
-													</TableCell>
-													<TableCell>
-														<div className="flex items-center gap-2">
-															<Building2 className="h-3 w-3 text-muted-foreground" />
-															<span className="text-sm">{loan.bank || "N/A"}</span>
-														</div>
-													</TableCell>
-													<TableCell className="text-right">
-														<span className="text-sm text-muted-foreground">
-															{formatLoanCurrency(loan.loanAmount, loan.currency)}
-														</span>
-													</TableCell>
-													<TableCell className="text-right">
-														<span className="font-medium">
-															{formatLoanCurrency(loan.remainingBalance, loan.currency)}
-														</span>
-													</TableCell>
-													<TableCell className="text-right">
-														<span className="font-medium">
-															{formatLoanCurrency(loan.monthlyPayment, loan.currency)}
-														</span>
-													</TableCell>
-													<TableCell className="text-center">
-														<Badge variant="outline" className="font-mono">
-															{loan.interestRate.toFixed(2)}%
-														</Badge>
-													</TableCell>
-													<TableCell>
-														<div className="flex items-center gap-2">
-															<div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-																<div
-																	className="h-full bg-green-600 transition-all"
-																	style={{ width: `${progress}%` }}
-																/>
-															</div>
-															<span className="text-xs text-muted-foreground w-12 text-right">
-																{progress.toFixed(0)}%
-															</span>
-														</div>
-													</TableCell>
-													<TableCell className="text-center">
-														{getStatusBadge(loan.status)}
-													</TableCell>
-													<TableCell className="text-right">
-														<DropdownMenu>
-															<DropdownMenuTrigger asChild>
-																<Button
-																	variant="ghost"
-																	size="sm"
-																	className="h-8 w-8 p-0"
-																	onClick={(e) => e.stopPropagation()}
-																>
-																	<MoreVertical className="h-4 w-4" />
-																</Button>
-															</DropdownMenuTrigger>
-															<DropdownMenuContent align="end">
-																<DropdownMenuItem onClick={() => handleSelectLoan(loan.id)}>
-																	View Details
-																</DropdownMenuItem>
-																<DropdownMenuItem>Edit Loan</DropdownMenuItem>
-																<DropdownMenuItem>Payment History</DropdownMenuItem>
-																<DropdownMenuSeparator />
-																<DropdownMenuItem className="text-destructive">
-																	Delete Loan
-																</DropdownMenuItem>
-															</DropdownMenuContent>
-														</DropdownMenu>
+														No loans match current search and filter criteria.
 													</TableCell>
 												</TableRow>
-											);
-										})
-									)}
-								</TableBody>
-							</Table>
-						</Card>
-					) : (
-						<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-							{paginatedLoans.map((loan) => {
-								const progress = calculateProgress(loan);
-								return (
-									<Card
-										key={loan.id}
-										className="hover:shadow-lg transition-shadow cursor-pointer"
-										onClick={() => handleSelectLoan(loan.id)}
-									>
-										<CardHeader>
-											<div className="flex items-start justify-between">
-												<div className="flex items-center gap-3">
-													<div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-														<CreditCard className="h-5 w-5 text-primary" />
-													</div>
-													<div>
-														<CardTitle className="text-lg">{loan.name}</CardTitle>
-														<CardDescription className="flex items-center gap-1 mt-1">
-															<Building2 className="h-3 w-3" />
-															{loan.bank || "N/A"}
-														</CardDescription>
-													</div>
-												</div>
-												<DropdownMenu>
-													<DropdownMenuTrigger asChild>
-														<Button
-															variant="ghost"
-															size="sm"
-															className="h-8 w-8 p-0"
-															onClick={(e) => e.stopPropagation()}
-														>
-															<MoreVertical className="h-4 w-4" />
-														</Button>
-													</DropdownMenuTrigger>
-													<DropdownMenuContent align="end">
-														<DropdownMenuItem onClick={() => handleSelectLoan(loan.id)}>
-															View Details
-														</DropdownMenuItem>
-														<DropdownMenuItem>Edit Loan</DropdownMenuItem>
-														<DropdownMenuItem>Payment History</DropdownMenuItem>
-														<DropdownMenuSeparator />
-														<DropdownMenuItem className="text-destructive">
-															Delete Loan
-														</DropdownMenuItem>
-													</DropdownMenuContent>
-												</DropdownMenu>
-											</div>
-										</CardHeader>
-										<CardContent className="space-y-4">
-											<div className="flex items-center justify-between">
-												<Badge className={getLoanTypeBadgeColor(loan.type)}>
-													{getLoanTypeLabel(loan.type)}
-												</Badge>
-												{getStatusBadge(loan.status)}
-											</div>
+											) : (
+												filteredLoans.map((loan) => {
+													const paid = Math.max(0, loan.loanAmount - loan.remainingBalance);
+													const progress =
+														loan.loanAmount > 0 ? (paid / loan.loanAmount) * 100 : 0;
+													const collateral = getLinkedAssetInfo(loan);
+													const isCompact = density === "compact";
+													const ownPct = loan.ownershipPercentage ?? 100;
+													const isPartialOwnership = ownPct < 100;
+													const netBalance = (loan.remainingBalance * ownPct) / 100;
 
-											<div className="space-y-2">
-												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">Remaining Balance</span>
-													<span className="font-bold">
-														{formatLoanCurrency(loan.remainingBalance, loan.currency)}
-													</span>
-												</div>
-												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">Monthly Payment</span>
-													<span className="font-medium">
-														{formatLoanCurrency(loan.monthlyPayment, loan.currency)}
-													</span>
-												</div>
-												<div className="flex justify-between text-sm">
-													<span className="text-muted-foreground">Interest Rate</span>
-													<Badge variant="outline" className="font-mono">
-														{loan.interestRate.toFixed(2)}%
+													return (
+														<TableRow
+															key={loan.id}
+															onClick={() => handleSelectLoan(loan.id)}
+															className={cn(
+																"cursor-pointer transition-colors border-b border-border/30 hover:bg-muted/40",
+																isCompact ? "h-11" : "h-14",
+															)}
+														>
+															{/* Loan & Lender */}
+															<TableCell className="py-2">
+																<div className="flex flex-col">
+																	<span className="font-semibold text-foreground text-xs leading-tight">
+																		{loan.name}
+																	</span>
+																	{loan.lender && (
+																		<span className="text-micro text-muted-foreground flex items-center gap-1">
+																			<Building2 className="h-3 w-3" />
+																			{loan.lender}
+																		</span>
+																	)}
+																</div>
+															</TableCell>
+
+															{/* Type */}
+															<TableCell className="py-2">
+																<Badge
+																	variant="outline"
+																	className="text-micro font-medium capitalize border-border/40 bg-muted/30"
+																>
+																	{(loan.loanType || "amortizing").replace("-", " ")}
+																</Badge>
+															</TableCell>
+
+															{/* Collateral / LTV */}
+															<TableCell className="py-2">
+																{collateral ? (
+																	<TooltipProvider>
+																		<Tooltip>
+																			<TooltipTrigger asChild>
+																				<div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted/60 border border-border/40 text-micro">
+																					<span className="truncate max-w-[110px] text-foreground font-medium">
+																						{collateral.name}
+																					</span>
+																					<span
+																						className={cn(
+																							"font-mono font-semibold",
+																							collateral.ltv > 80
+																								? "text-loss"
+																								: collateral.ltv > 60
+																									? "text-amber-500"
+																									: "text-gain",
+																						)}
+																					>
+																						{collateral.ltv.toFixed(0)}% LTV
+																					</span>
+																				</div>
+																			</TooltipTrigger>
+																			<TooltipContent className="text-xs">
+																				<p>
+																					Linked Asset: <strong>{collateral.name}</strong>
+																				</p>
+																				<p>Valuation: {formatCurrency(collateral.value)}</p>
+																				<p>Loan-to-Value: {collateral.ltv.toFixed(1)}%</p>
+																			</TooltipContent>
+																		</Tooltip>
+																	</TooltipProvider>
+																) : (
+																	<span className="text-micro text-muted-foreground/60">—</span>
+																)}
+															</TableCell>
+
+															{/* Ownership Share */}
+															<TableCell className="py-2">
+																<span className="text-xs font-mono text-muted-foreground">
+																	{ownPct}%
+																</span>
+															</TableCell>
+
+															{/* Outstanding Balance */}
+															<TableCell className="py-2 text-right">
+																<div className="flex flex-col items-end">
+																	<span className="font-mono font-bold text-foreground text-xs tabular-nums">
+																		{formatCurrency(isPartialOwnership ? netBalance : loan.remainingBalance)}
+																	</span>
+																	{isPartialOwnership && (
+																		<span className="text-micro font-mono text-muted-foreground tabular-nums">
+																			{formatCurrency(loan.remainingBalance)} gross
+																		</span>
+																	)}
+																</div>
+															</TableCell>
+
+															{/* Principal Amortized % */}
+															<TableCell className="py-2">
+																<div className="flex flex-col gap-1 w-24">
+																	<div className="flex items-center justify-between text-micro font-mono">
+																		<span className="text-muted-foreground">
+																			{progress.toFixed(0)}%
+																		</span>
+																		<span className="text-foreground/80">
+																			{formatCurrency(paid)}
+																		</span>
+																	</div>
+																	<Progress value={progress} className="h-1 bg-muted" />
+																</div>
+															</TableCell>
+
+															{/* Rate */}
+															<TableCell className="py-2 text-right">
+																<span className="font-mono text-xs tabular-nums text-foreground">
+																	{loan.interestRate.toFixed(2)}%
+																</span>
+															</TableCell>
+
+															{/* Monthly Service */}
+															<TableCell className="py-2 text-right">
+																<div className="flex flex-col items-end">
+																	<span className="font-mono font-semibold text-xs tabular-nums text-foreground">
+																		{formatCurrency(
+																			isPartialOwnership
+																				? (loan.monthlyPayment * ownPct) / 100
+																				: loan.monthlyPayment,
+																		)}
+																	</span>
+																	<span className="text-micro text-muted-foreground">/mo</span>
+																</div>
+															</TableCell>
+
+															{/* Status */}
+															<TableCell className="py-2">
+																<Badge
+																	variant="outline"
+																	className={cn(
+																		"text-micro font-medium capitalize",
+																		loan.status === "active"
+																			? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+																			: loan.status === "paid-off"
+																				? "bg-muted text-muted-foreground border-border/40"
+																				: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+																	)}
+																>
+																	{loan.status}
+																</Badge>
+															</TableCell>
+
+															{/* Actions */}
+															<TableCell
+																className="py-2 text-right"
+																onClick={(e) => e.stopPropagation()}
+															>
+																<DropdownMenu>
+																	<DropdownMenuTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className="h-7 w-7 text-muted-foreground hover:text-foreground"
+																		>
+																			<MoreVertical className="h-3.5 w-3.5" />
+																		</Button>
+																	</DropdownMenuTrigger>
+																	<DropdownMenuContent align="end" className="text-xs">
+																		<DropdownMenuItem
+																			onClick={() => handleSelectLoan(loan.id)}
+																		>
+																			View Schedule & Details
+																		</DropdownMenuItem>
+																		<DropdownMenuSeparator />
+																		<DropdownMenuItem
+																			onClick={() =>
+																				setLoanToDelete({ id: loan.id, name: loan.name })
+																			}
+																			className="text-destructive focus:text-destructive"
+																		>
+																			<Trash2 className="h-3.5 w-3.5 mr-1.5" />
+																			Delete Loan
+																		</DropdownMenuItem>
+																	</DropdownMenuContent>
+																</DropdownMenu>
+															</TableCell>
+														</TableRow>
+													);
+												})
+											)}
+										</TableBody>
+									</Table>
+								</div>
+							</div>
+						)}
+
+						{/* Tab 2: Holdings & Amortization (Detailed Cards Grid) */}
+						{activeWorkspaceTab === "holdings" && (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								{loanItems.map((loan) => {
+									const paid = Math.max(0, loan.loanAmount - loan.remainingBalance);
+									const progress =
+										loan.loanAmount > 0 ? (paid / loan.loanAmount) * 100 : 0;
+									const collateral = getLinkedAssetInfo(loan);
+									const ownPct = loan.ownershipPercentage ?? 100;
+									const isPartial = ownPct < 100;
+									const netBalance = (loan.remainingBalance * ownPct) / 100;
+
+									return (
+										<Card
+											key={loan.id}
+											className="border border-border/40 bg-card/60 hover:border-primary/40 transition-colors cursor-pointer group"
+											onClick={() => handleSelectLoan(loan.id)}
+										>
+											<CardHeader className="pb-3 space-y-2">
+												<div className="flex items-start justify-between gap-2">
+													<div className="min-w-0 flex-1">
+														<CardTitle className="text-sm font-bold text-foreground truncate group-hover:text-primary transition-colors">
+															{loan.name}
+														</CardTitle>
+														{loan.lender && (
+															<p className="text-micro text-muted-foreground flex items-center gap-1 mt-0.5">
+																<Building2 className="h-3 w-3" />
+																{loan.lender}
+															</p>
+														)}
+													</div>
+													<Badge
+														variant="outline"
+														className={cn(
+															"text-micro font-medium capitalize shrink-0",
+															loan.status === "active"
+																? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+																: "bg-muted text-muted-foreground border-border/40",
+														)}
+													>
+														{loan.status}
 													</Badge>
 												</div>
-											</div>
 
-											<div className="space-y-2">
-												<div className="flex justify-between text-xs text-muted-foreground">
-													<span>Progress</span>
-													<span>{progress.toFixed(0)}% paid</span>
+												{/* Badges line: type + collateral */}
+												<div className="flex items-center gap-1.5 flex-wrap pt-1">
+													<Badge
+														variant="outline"
+														className="text-micro capitalize bg-muted/30 border-border/40"
+													>
+														{(loan.loanType || "amortizing").replace("-", " ")}
+													</Badge>
+													{collateral && (
+														<Badge
+															variant="outline"
+															className="text-micro bg-primary/5 text-primary border-primary/20"
+														>
+															{collateral.name} • {collateral.ltv.toFixed(0)}% LTV
+														</Badge>
+													)}
+													{isPartial && (
+														<Badge
+															variant="outline"
+															className="text-micro bg-secondary/80 text-foreground/80 border-border/40"
+														>
+															{ownPct}% share
+														</Badge>
+													)}
 												</div>
-												<div className="h-2 bg-muted rounded-full overflow-hidden">
-													<div
-														className="h-full bg-green-600 transition-all"
-														style={{ width: `${progress}%` }}
-													/>
-												</div>
-											</div>
+											</CardHeader>
 
-											<div className="pt-2 border-t">
-												<div className="flex justify-between text-xs text-muted-foreground">
-													<span>{formatDate(loan.startDate)}</span>
-													<span>{loan.endDate ? formatDate(loan.endDate) : "Ongoing"}</span>
+											<CardContent className="space-y-4 pt-0">
+												{/* 4 KPI metrics */}
+												<div className="grid grid-cols-2 gap-2 p-2.5 rounded-lg bg-muted/40 border border-border/30 text-xs">
+													<div>
+														<span className="text-micro text-muted-foreground block">
+															Outstanding
+														</span>
+														<span className="font-mono font-bold text-foreground">
+															{formatCurrency(isPartial ? netBalance : loan.remainingBalance)}
+														</span>
+														{isPartial && (
+															<span className="text-micro font-mono text-muted-foreground block">
+																{formatCurrency(loan.remainingBalance)} gross
+															</span>
+														)}
+													</div>
+													<div>
+														<span className="text-micro text-muted-foreground block">
+															Monthly
+														</span>
+														<span className="font-mono font-bold text-foreground">
+															{formatCurrency(
+																isPartial
+																	? (loan.monthlyPayment * ownPct) / 100
+																	: loan.monthlyPayment,
+															)}
+														</span>
+														<span className="text-micro text-muted-foreground">/mo</span>
+													</div>
+													<div>
+														<span className="text-micro text-muted-foreground block">
+															Rate
+														</span>
+														<span className="font-mono font-semibold text-foreground">
+															{loan.interestRate.toFixed(2)}%
+														</span>
+													</div>
+													<div>
+														<span className="text-micro text-muted-foreground block">
+															Duration
+														</span>
+														<span className="font-mono font-semibold text-foreground">
+															{(loan.durationMonths ?? 0) > 0 ? `${loan.durationMonths} mos` : "—"}
+														</span>
+													</div>
 												</div>
-											</div>
-										</CardContent>
-									</Card>
-								);
-							})}
-						</div>
-					)}
 
-					{/* Pagination */}
-					{totalPages > 1 && (
-						<div className="flex items-center justify-between">
-							<p className="text-sm text-muted-foreground">
-								Showing {startIndex + 1} to {Math.min(endIndex, filteredLoans.length)} of{" "}
-								{filteredLoans.length} loans
-							</p>
-							<div className="flex items-center gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-									disabled={currentPage === 1}
-								>
-									<ChevronLeft className="h-4 w-4" />
-									Previous
-								</Button>
-								<div className="flex items-center gap-1">
-									{Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-										<Button
-											key={page}
-											variant={currentPage === page ? "default" : "outline"}
-											size="sm"
-											onClick={() => setCurrentPage(page)}
-											className="w-8 h-8 p-0"
-										>
-											{page}
-										</Button>
-									))}
-								</div>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-									disabled={currentPage === totalPages}
-								>
-									Next
-									<ChevronRight className="h-4 w-4" />
-								</Button>
+												{/* Amortization Progress */}
+												<div className="space-y-1.5">
+													<div className="flex items-center justify-between text-micro">
+														<span className="text-muted-foreground font-mono">
+															Amortized: {progress.toFixed(1)}%
+														</span>
+														<span className="font-mono text-muted-foreground">
+															{formatCurrency(paid)} / {formatCurrency(loan.loanAmount)}
+														</span>
+													</div>
+													<Progress value={progress} className="h-1.5 bg-muted" />
+												</div>
+
+												{/* Actions footer */}
+												<div className="flex items-center justify-between pt-2 border-t border-border/30">
+													<Button
+														variant="ghost"
+														size="sm"
+														className="h-7 text-xs px-2 text-primary hover:text-primary gap-1 cursor-pointer"
+														onClick={() => handleSelectLoan(loan.id)}
+													>
+														<span>View Schedule</span>
+														<ExternalLink className="h-3 w-3" />
+													</Button>
+													<Button
+														variant="ghost"
+														size="icon"
+														className="h-7 w-7 text-muted-foreground hover:text-destructive"
+														onClick={(e) => {
+															e.stopPropagation();
+															setLoanToDelete({ id: loan.id, name: loan.name });
+														}}
+													>
+														<Trash2 className="h-3.5 w-3.5" />
+													</Button>
+												</div>
+											</CardContent>
+										</Card>
+									);
+								})}
 							</div>
-						</div>
+						)}
+					</>
+				)}
+			</div>
+
+			{/* Slide-over Sheet for Loan Details & Amortization Schedule */}
+			<Sheet
+				open={Boolean(selectedLoanId)}
+				onOpenChange={(open) => !open && setSelectedLoanId(null)}
+			>
+				<SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 border-l border-border/40">
+					{selectedLoanId && (
+						<LoanDetail
+							loanId={selectedLoanId}
+							onBack={() => setSelectedLoanId(null)}
+							isPanel
+						/>
 					)}
-				</TabsContent>
+				</SheetContent>
+			</Sheet>
 
-				{/* Analytics Tab */}
-				<TabsContent value="analytics">
-					<LoansAnalytics loans={loans} />
-				</TabsContent>
-			</Tabs>
+			{/* Delete Loan Confirmation Dialog */}
+			<Dialog
+				open={Boolean(loanToDelete)}
+				onOpenChange={(open) => !open && setLoanToDelete(null)}
+			>
+				<DialogContent className="max-w-md bg-card border border-border/60">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-destructive">
+							<Trash2 className="h-5 w-5" />
+							Delete Loan
+						</DialogTitle>
+						<DialogDescription className="text-xs text-muted-foreground pt-1">
+							Are you sure you want to remove <strong>{loanToDelete?.name}</strong> from your
+							portfolio? This will permanently delete the liability and its amortization schedule.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0 pt-3">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setLoanToDelete(null)}
+							disabled={isDeleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							size="sm"
+							onClick={handleDeleteConfirm}
+							disabled={isDeleting}
+						>
+							{isDeleting ? "Deleting..." : "Delete Loan"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 
-			{/* Add Loan Form */}
+			{/* Add Loan Form Modal */}
 			<AddLoanForm
 				open={isAddFormOpen}
 				onClose={() => setIsAddFormOpen(false)}
 				onSubmit={handleAddLoan}
 			/>
-
-			{/* Loan Detail Panel */}
-			<Sheet
-				open={detailMode === "panel" && selectedLoanId !== null}
-				onOpenChange={(open) => {
-					if (!open) setSelectedLoanId(null);
-				}}
-			>
-				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
-					{selectedLoanId && (
-						<LoanDetail
-							loanId={selectedLoanId}
-							onBack={() => setSelectedLoanId(null)}
-							isPanel={true}
-						/>
-					)}
-				</SheetContent>
-			</Sheet>
 		</div>
 	);
 }
