@@ -51,7 +51,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -988,6 +988,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 																		<Button
 																			variant="ghost"
 																			size="icon"
+																			aria-label="Loan actions"
 																			className="h-7 w-7 text-muted-foreground hover:text-foreground"
 																		>
 																			<MoreVertical className="h-3.5 w-3.5" />
@@ -1192,6 +1193,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 				onOpenChange={(open) => !open && setSelectedLoanId(null)}
 			>
 				<SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0 border-l border-border/40">
+					<SheetTitle className="sr-only">Loan Details</SheetTitle>
 					{selectedLoanId && (
 						<LoanDetail
 							loanId={selectedLoanId}
