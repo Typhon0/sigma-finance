@@ -58,6 +58,14 @@ jobs:
           PGPASSWORD=postgres psql -h localhost -U postgres -d sigma_finance_test \
             -c "CREATE ROLE sigma_finance LOGIN PASSWORD 'test_password';"
 
+      - name: Check formatting
+        working-directory: server
+        run: test -z "$(gofmt -l .)"
+
+      - name: Vet
+        working-directory: server
+        run: go vet ./...
+
       - name: Run Go tests
         shell: bash
         working-directory: server
