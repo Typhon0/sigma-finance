@@ -659,6 +659,36 @@ func TestSyncService_LinkAccount_TenantIsolation(t *testing.T) {
 	assert.Contains(t, err.Error(), "unauthorized account linkage")
 }
 
+func TestSyncService_RegisterCredential_PortfolioScoped(t *testing.T) {
+	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
+	ctx := context.Background()
+	uow := newSyncTestUOW()
+	uow.portfolios["portfolio-1"] = &model.Portfolio{ID: "portfolio-1", UserID: "user-1", Name: "Loic"}
+	uow.portfolios["portfolio-2"] = &model.Portfolio{ID: "portfolio-2", UserID: "user-1", Name: "Emma"}
+
+	service := syncservice.NewSyncService(uow, nil)
+
+	p1 := "portfolio-1"
+	p2 := "portfolio-2"
+
+	// Register credential for portfolio-1
+	cred1, err := service.RegisterCredential(ctx, "user-1", "KRAKEN", `{"apiKey":"k1","apiSecret":"s1"}`, &p1)
+	require.NoError(t, err)
+	require.NotNil(t, cred1)
+	require.NotNil(t, cred1.PortfolioID)
+	assert.Equal(t, "portfolio-1", *cred1.PortfolioID)
+
+	// Register different credential for portfolio-2
+	cred2, err := service.RegisterCredential(ctx, "user-1", "KRAKEN", `{"apiKey":"k2","apiSecret":"s2"}`, &p2)
+	require.NoError(t, err)
+	require.NotNil(t, cred2)
+	require.NotNil(t, cred2.PortfolioID)
+	assert.Equal(t, "portfolio-2", *cred2.PortfolioID)
+
+	// They must have distinct IDs and not overwrite each other
+	assert.NotEqual(t, cred1.ID, cred2.ID)
+}
+
 func TestSyncService_ResidualTaxLotCreationIsIdempotent(t *testing.T) {
 	model.SetEncryptionKey("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	ctx := context.Background()
@@ -1534,6 +1564,25 @@ func (r *syncTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID s
 		}
 	}
 	return nil, repository.ErrNotFound
+}
+
+func (r *syncTestSyncRepo) GetCredentialByPortfolioAndProvider(ctx context.Context, userID string, portfolioID string, provider string) (*model.SyncCredential, error) {
+	for _, c := range r.u.credentials {
+		if c.UserID == userID && c.PortfolioID != nil && *c.PortfolioID == portfolioID && c.Provider == provider {
+			return c, nil
+		}
+	}
+	return r.GetCredentialByProvider(ctx, userID, provider)
+}
+
+func (r *syncTestSyncRepo) ListConnectionsByCredentialID(ctx context.Context, credentialID string) ([]*model.SyncConnection, error) {
+	var res []*model.SyncConnection
+	for _, c := range r.u.connections {
+		if c.CredentialID == credentialID {
+			res = append(res, c)
+		}
+	}
+	return res, nil
 }
 
 func (r *syncTestSyncRepo) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {

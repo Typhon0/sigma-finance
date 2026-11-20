@@ -7,6 +7,7 @@ interface AssetPageHeaderProps {
 	onBack?: () => void;
 	backLabel?: string;
 	actions?: ReactNode;
+	meta?: ReactNode;
 }
 
 export function AssetPageHeader({
@@ -15,6 +16,7 @@ export function AssetPageHeader({
 	onBack,
 	backLabel = "Back to Portfolios",
 	actions,
+	meta,
 }: AssetPageHeaderProps) {
 	return (
 		<div className="flex flex-col space-y-2 border-b border-border/30 pb-4">
@@ -30,9 +32,10 @@ export function AssetPageHeader({
 			)}
 
 			<div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pt-1">
-				<div className="space-y-0.5 text-left">
+				<div className="space-y-1.5 text-left">
 					<h1 className="text-2xl font-bold tracking-tight text-foreground text-left">{title}</h1>
 					<p className="text-xs text-muted-foreground text-left">{description}</p>
+					{meta && <div className="pt-0.5">{meta}</div>}
 				</div>
 				{/* Wraps on narrow screens: the actions row (market chip + import +
 				    add) is wider than a 390px viewport and used to push the primary

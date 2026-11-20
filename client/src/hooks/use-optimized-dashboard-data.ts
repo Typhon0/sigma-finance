@@ -1,4 +1,4 @@
-import { useLazyQuery, useQuery, useSubscription } from "@apollo/client";
+import { useLazyQuery, useQuery } from "@apollo/client";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	GET_ASSET_PERFORMANCE_OPTIMIZED,
@@ -6,7 +6,6 @@ import {
 	GET_DASHBOARD_SECONDARY,
 	GET_RECENT_TRANSACTIONS_MINIMAL,
 } from "@/graphql/queries";
-import { PORTFOLIO_UPDATE_SUBSCRIPTION } from "@/graphql/subscriptions";
 
 // Hook for critical dashboard data (loads first)
 export const useCriticalDashboardData = (userId: string) => {
@@ -102,20 +101,6 @@ export const useAssetPerformance = (userId: string, limit = 10) => {
 		pollInterval: 10 * 60 * 1000,
 		skip: !userId || userId.trim() === "",
 	});
-};
-
-// Hook for real-time dashboard updates
-export const useDashboardSubscription = (userId: string, enabled = true) => {
-	const { data: subscriptionData } = useSubscription(PORTFOLIO_UPDATE_SUBSCRIPTION, {
-		variables: { userID: userId },
-		skip: !userId || userId.trim() === "" || !enabled,
-		onSubscriptionData: ({ subscriptionData }) => {
-			if (subscriptionData.data) {
-			}
-		},
-	});
-
-	return subscriptionData;
 };
 
 // Optimized dashboard data hook with progressive loading

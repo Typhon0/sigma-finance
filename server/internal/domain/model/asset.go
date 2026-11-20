@@ -135,6 +135,7 @@ type BankAccountMetadata struct {
 type RealEstateMetadata struct {
 	PropertyType        string   `json:"property_type"` // residential, commercial, land, house, apartment, etc.
 	Category            *string  `json:"category,omitempty"`
+	Currency            string   `json:"currency,omitempty"`
 	Address             string   `json:"address"`
 	City                string   `json:"city"`
 	State               string   `json:"state"`
@@ -186,6 +187,52 @@ type RealEstateMetadata struct {
 	WindowsCondition    *string  `json:"windows_condition,omitempty"`
 	GeneralQuality      *string  `json:"general_quality,omitempty"`
 	GeneralCondition    *string  `json:"general_condition,omitempty"`
+
+	// Debt & Ownership Structure
+	LinkedLoanID        *string  `json:"linked_loan_id,omitempty"`
+	OwnershipPercentage *float64 `json:"ownership_percentage,omitempty"`
+	OwnershipStructure  string   `json:"ownership_structure,omitempty"`
+
+	// BAN Geocoding
+	AddressLabel        *string  `json:"address_label,omitempty"`
+	CityCode            *string  `json:"city_code,omitempty"`
+	BANID               *string  `json:"ban_id,omitempty"`
+	Latitude            *float64 `json:"latitude,omitempty"`
+	Longitude           *float64 `json:"longitude,omitempty"`
+	HasOutdoor          *bool    `json:"has_outdoor,omitempty"`
+	IsGroundFloor       *bool    `json:"is_ground_floor,omitempty"`
+
+	// Financial & Valuation
+	PurchasePrice       *float64                   `json:"purchase_price,omitempty"`
+	PurchaseDate        *time.Time                 `json:"purchase_date,omitempty"`
+	ValuationMode       *string                    `json:"valuation_mode,omitempty"`
+	EstimationMethod    *string                    `json:"estimation_method,omitempty"`
+	ManualValue         *float64                   `json:"manual_value,omitempty"`
+	EstimatedValue      *float64                   `json:"estimated_value,omitempty"`
+	EstimatedMin        *float64                   `json:"estimated_min,omitempty"`
+	EstimatedMax        *float64                   `json:"estimated_max,omitempty"`
+	EstimatedPricePerM2 *float64                   `json:"estimated_price_per_m2,omitempty"`
+	BasePricePerM2      *float64                   `json:"base_price_per_m2,omitempty"`
+	ValuationConfidence *string                    `json:"valuation_confidence,omitempty"`
+	ComparablesCount    *int                       `json:"comparables_count,omitempty"`
+	SearchRadiusMeters  *int                       `json:"search_radius_meters,omitempty"`
+	LastEstimatedAt     *time.Time                 `json:"last_estimated_at,omitempty"`
+	ValuationHistory    []RealEstateValuationPoint `json:"valuation_history,omitempty"`
+
+	// Carte des loyers 2025
+	MarketRentPerM2      *float64 `json:"market_rent_per_m2,omitempty"`
+	EstimatedMonthlyRent *float64 `json:"estimated_monthly_rent,omitempty"`
+	EstimatedGrossYield  *float64 `json:"estimated_gross_yield,omitempty"`
+	RentalR2Adjusted     *float64 `json:"rental_r2_adjusted,omitempty"`
+}
+
+// RealEstateValuationPoint tracks an estimation history point
+type RealEstateValuationPoint struct {
+	Date         time.Time `json:"date"`
+	Value        float64   `json:"value"`
+	Mode         string    `json:"mode"`
+	EstimatedMin *float64  `json:"estimated_min,omitempty"`
+	EstimatedMax *float64  `json:"estimated_max,omitempty"`
 }
 
 // LifeInsuranceMetadata contains life insurance-specific information

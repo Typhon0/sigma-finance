@@ -1,0 +1,5 @@
+"""Custom scalar for JSON data"""
+scalar JSON
+
+"""Custom scalar for DateTime"""
+scalar DateTime

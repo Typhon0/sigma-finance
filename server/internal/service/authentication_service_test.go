@@ -19,7 +19,7 @@ func TestAuthenticationService_Register(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("successful registration", func(t *testing.T) {
-		authService, userRepo, sessionRepo, _, emailVerificationTokenRepo, securityService, auditService, emailService := createTestAuthService(t)
+		authService, userRepo, _, _, emailVerificationTokenRepo, securityService, auditService, emailService := createTestAuthService(t)
 
 		req := RegisterRequest{
 			Email:    "test@example.com",
@@ -44,25 +44,16 @@ func TestAuthenticationService_Register(t *testing.T) {
 		securityService.On("GenerateSecureToken").Return("verification_token", nil).Once()
 		emailVerificationTokenRepo.On("Create", ctx, mock.AnythingOfType("*model.EmailVerificationToken")).Return(&model.EmailVerificationToken{}, nil)
 
-		sessionRepo.On("CreateSession", ctx, createdUser.ID, mock.AnythingOfType("string"), mock.AnythingOfType("string")).Return(&model.Session{Token: "jwt_token", RefreshToken: "refresh_token"}, nil)
-		securityService.On("ValidateJWT", "jwt_token").Return(&JWTClaims{
-			UserID: createdUser.ID,
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
-			},
-		}, nil)
-
-
 		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)
 
 		// Execute
 		response, err := authService.Register(ctx, req)
 
-		// Assert
+		// Assert: registration does not issue a session for an unverified account
 		require.NoError(t, err)
 		assert.NotNil(t, response)
-		assert.Equal(t, "jwt_token", response.Token)
-		assert.Equal(t, "refresh_token", response.RefreshToken)
+		assert.Empty(t, response.Token)
+		assert.Empty(t, response.RefreshToken)
 		assert.Equal(t, createdUser.ID, response.User.ID)
 		assert.Equal(t, createdUser.Email, response.User.Email)
 		assert.False(t, response.User.EmailVerified)
@@ -76,7 +67,6 @@ func TestAuthenticationService_Register(t *testing.T) {
 		assert.Equal(t, req.Email, sentEmails[0].Email)
 
 		userRepo.AssertExpectations(t)
-		sessionRepo.AssertExpectations(t)
 		emailVerificationTokenRepo.AssertExpectations(t)
 		securityService.AssertExpectations(t)
 		auditService.AssertExpectations(t)
@@ -171,6 +161,7 @@ func TestAuthenticationService_Login(t *testing.T) {
 		userRepo.On("GetByEmail", ctx, req.Email).Return(user, nil)
 		securityService.On("VerifyPassword", req.Password, "hashed_password").Return(nil)
 		userRepo.On("ResetFailedLoginCount", ctx, user.ID).Return(nil)
+		securityService.On("ResetRateLimit", ctx, LoginRateLimitKey(req.Email)).Return(nil)
 		userRepo.On("UpdateLastLogin", ctx, user.ID, mock.AnythingOfType("time.Time"), req.IPAddress).Return(nil)
 
 		sessionRepo.On("CreateSession", ctx, user.ID, req.IPAddress, req.UserAgent).Return(&model.Session{Token: "jwt_token", RefreshToken: "refresh_token"}, nil)
@@ -180,7 +171,6 @@ func TestAuthenticationService_Login(t *testing.T) {
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			},
 		}, nil)
-
 
 		auditService.On("LogAuthEvent", ctx, mock.AnythingOfType("*model.AuthEvent")).Return(nil)
 

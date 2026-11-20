@@ -144,10 +144,3 @@ extend type Mutation {
     createBatchAlerts(input: BatchAlertInput!): BatchAlertResult! @auth
     deactivateBatchAlerts(input: BatchDeactivateInput!): BatchDeactivateResult! @auth
 }
-
-# Subscription Extensions
-
-extend type Subscription {
-    # Alert Updates
-    alertTriggered(userId: ID!): AlertTriggerEvent! @auth
-}

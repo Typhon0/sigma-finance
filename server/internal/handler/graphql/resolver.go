@@ -7,13 +7,12 @@ package graphql
 import (
 	"context"
 	"sigma_finance/internal/domain/model"
-	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
+	realestate "sigma_finance/internal/service/realestate"
 	syncservice "sigma_finance/internal/service/sync"
-	"sync"
 )
 
 // Resolver serves as the root for dependency injection into your resolvers.
@@ -33,15 +32,10 @@ type Resolver struct {
 	MarketDataPackService marketdatapacks.Service
 	PerformanceService    service.IPerformanceService
 	AlertService          service.IAlertService
-	MonitoringService     *service.MonitoringService
 	InstrumentService     service.InstrumentService
+	RealEstateService     realestate.IRealEstateValuationService
 	SyncService           syncservice.ISyncService
 	UOW                   repository.IUnitOfWork
-
-	// Subscription broadcaster state
-	PortfolioSubscribers   map[string][]chan *gqlModel.PortfolioUpdatePayload
-	TransactionSubscribers map[string][]chan *gqlModel.TransactionUpdatePayload
-	BroadcasterMu          *sync.Mutex
 }
 
 func (r *Resolver) getDisplayCurrencyFromContext(ctx context.Context) (model.Currency, error) {

@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -302,14 +303,21 @@ func (k *KrakenAdapter) FetchAccounts(ctx context.Context, cred *model.SyncCrede
 		return nil, err
 	}
 
+	extID := "kraken-spot"
+	apiKey, _, err := parseKrakenCredentials(cred)
+	if err == nil && apiKey != "" {
+		h := sha256.Sum256([]byte(apiKey))
+		extID = fmt.Sprintf("kraken-spot-%x", h[:6])
+	}
+
 	return []syncservice.RawAccount{
 		{
-			ExternalID:    "kraken-spot",
+			ExternalID:    extID,
 			Name:          "Kraken Spot",
 			Type:          model.AccountTypeCryptoExchange,
 			TaxWrapper:    model.TaxWrapperCryptoVault,
 			Institution:   "Kraken",
-			AccountNumber: "Kraken Spot",
+			AccountNumber: extID,
 			Currency:      model.CurrencyEUR,
 		},
 	}, nil

@@ -20,6 +20,7 @@ import (
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 	catalogservice "sigma_finance/internal/service/catalog"
+	cryptosvc "sigma_finance/internal/service/crypto"
 	logoservice "sigma_finance/internal/service/logo"
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
 	syncservice "sigma_finance/internal/service/sync"
@@ -27,7 +28,6 @@ import (
 	"sigma_finance/internal/service/sync/blockchain"
 	"sigma_finance/internal/service/sync/blockchain/alchemy"
 	"sigma_finance/internal/service/sync/blockchain/registry"
-	cryptosvc "sigma_finance/internal/service/crypto"
 	"slices"
 	"strconv"
 	"strings"
@@ -204,9 +204,21 @@ func NewApp() (*AppContainer, error) {
 		SyncService:           syncService,
 		PerformanceService:    serviceContainer.Performance,
 		AlertService:          serviceContainer.Alert,
-		MonitoringService:     serviceContainer.Monitoring,
+		RealEstateService:     serviceContainer.RealEstate,
 		UOW:                   uow,
 	}
+
+	// Wire real estate auto-valuation monthly background worker (24h tick checking 30d threshold)
+	go func() {
+		time.Sleep(1 * time.Minute)
+		ticker := time.NewTicker(24 * time.Hour)
+		defer ticker.Stop()
+		for range ticker.C {
+			if _, err := serviceContainer.RealEstate.BatchRefreshAutoValuations(context.Background()); err != nil {
+				log.Printf("[WARN] [app] periodic real estate auto-valuation refresh failed: %v", err)
+			}
+		}
+	}()
 
 	// Initialize Fiber app
 	app := fiber.New()
@@ -253,6 +265,12 @@ func NewApp() (*AppContainer, error) {
 		},
 		Level: compress.LevelBestSpeed,
 	}))
+
+	// Security headers, request size/content-type validation, and per-IP
+	// tracking of the client address used by auth rate limiting.
+	securityMiddleware := middleware.NewSecurityMiddleware(serviceContainer.Security, nil)
+	app.Use(securityMiddleware.RequestValidation())
+	app.Use(securityMiddleware.IPTracking())
 
 	logosDir := os.Getenv("LOGOS_STORAGE_PATH")
 	if logosDir == "" {
@@ -564,14 +582,24 @@ func NewApp() (*AppContainer, error) {
 
 	pg := playground.Handler("GraphQL playground", "/graphql")
 
-	app.All("/graphql", func(c *fiber.Ctx) error {
+	app.All("/graphql", securityMiddleware.GlobalRateLimit(middleware.DefaultRateLimitConfig()), func(c *fiber.Ctx) error {
 		// Handle authentication at the HTTP level before passing to GraphQL
 		authHeader := c.Get("Authorization")
+		clientIP, _ := c.Locals("client_ip").(string)
+		clientUserAgent, _ := c.Locals("user_agent").(string)
 
 		// Create a custom handler that includes authentication context
 		customHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// Start with the original request context
 			ctx := r.Context()
+
+			// Expose the caller's address to resolvers (auth rate limiting, audit logs).
+			if clientIP != "" {
+				ctx = context.WithValue(ctx, "client_ip", clientIP)
+			}
+			if clientUserAgent != "" {
+				ctx = context.WithValue(ctx, "user_agent", clientUserAgent)
+			}
 
 			// If we have an auth header, validate it and add user info to context
 			if authHeader != "" {

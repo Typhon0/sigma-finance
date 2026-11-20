@@ -179,6 +179,41 @@ type RealEstate implements Asset {
     generalQuality: String
     generalCondition: String
 
+    # Debt & Ownership Structure
+    linkedLoanId: ID
+    ownershipPercentage: Float
+    ownershipStructure: String
+
+    # BAN Geocoding
+    addressLabel: String
+    cityCode: String
+    banId: String
+    latitude: Float
+    longitude: Float
+    hasOutdoor: Boolean
+    isGroundFloor: Boolean
+
+    # Financial & Valuation
+    valuationMode: ValuationMode
+    estimationMethod: EstimationMethod
+    manualValue: Float
+    estimatedValue: Float
+    estimatedMin: Float
+    estimatedMax: Float
+    estimatedPricePerM2: Float
+    basePricePerM2: Float
+    valuationConfidence: ValuationConfidence
+    comparablesCount: Int
+    searchRadiusMeters: Int
+    lastEstimatedAt: Time
+    valuationHistory: [RealEstateValuationPoint!]
+
+    # Carte des loyers 2025
+    marketRentPerM2: Float
+    estimatedMonthlyRent: Float
+    estimatedGrossYield: Float
+    rentalR2Adjusted: Float
+
     sector: String
     exchange: String
     dayChange: Float
@@ -420,6 +455,103 @@ input CreateRealEstateInput {
     windowsCondition: String
     generalQuality: String
     generalCondition: String
+
+    # Debt & Ownership Structure
+    linkedLoanId: ID
+    ownershipPercentage: Float
+    ownershipStructure: String
+
+    # BAN Geocoding
+    addressLabel: String
+    cityCode: String
+    banId: String
+    latitude: Float
+    longitude: Float
+    hasOutdoor: Boolean
+    isGroundFloor: Boolean
+
+    # Financial & Valuation
+    valuationMode: ValuationMode
+    manualValue: Float
+}
+
+# Input for updating an existing RealEstate asset
+input UpdateRealEstateInput {
+    name: String
+    propertyType: String
+    category: String
+    address: String
+    city: String
+    state: String
+    country: String
+    zipCode: String
+    squareFeet: Int
+    landSurface: Float
+    yearBuilt: Int
+    bedrooms: Int
+    bathrooms: Float
+    rooms: Int
+    floor: Int
+    totalFloors: Int
+    garages: Int
+    parkingSpaces: Int
+    energyLabel: String
+    condition: String
+    currentValue: Float
+    purchasePrice: Float
+    purchaseDate: Time
+
+    # Fees & Acquisition Costs
+    agencyFees: Float
+    notaryFees: Float
+    renovationFees: Float
+    furnishingCosts: Float
+
+    # Rental Stream
+    rentalType: String
+    rentalPeriod: String
+    monthlyRent: Float
+    utilityCosts: Float
+    yearlyMiscCosts: Float
+
+    # Amenities
+    hasGarden: Boolean
+    hasBalcony: Boolean
+    hasLift: Boolean
+    hasPool: Boolean
+    hasSauna: Boolean
+    isFurnished: Boolean
+    isNewConstruction: Boolean
+
+    # Quality details
+    kitchenQuality: String
+    kitchenCondition: String
+    bathroomQuality: String
+    bathroomCondition: String
+    flooringQuality: String
+    flooringCondition: String
+    windowsQuality: String
+    windowsCondition: String
+    generalQuality: String
+    generalCondition: String
+
+    # Debt & Ownership Structure
+    linkedLoanId: ID
+    ownershipPercentage: Float
+    ownershipStructure: String
+
+    # BAN Geocoding
+    addressLabel: String
+    cityCode: String
+    banId: String
+    latitude: Float
+    longitude: Float
+    hasOutdoor: Boolean
+    isGroundFloor: Boolean
+
+    # Financial & Valuation
+    valuationMode: ValuationMode
+    manualValue: Float
 }
 
 # Input for creating a new LifeInsurance asset
@@ -534,3 +666,91 @@ enum AssetOrderField {
     CURRENT_VALUE
     PURCHASE_DATE
 }
+
+# --- Real Estate Auto-Valuation ---
+
+enum ValuationMode {
+    AUTO
+    MANUAL
+}
+
+enum EstimationMethod {
+    DVF_COMPARABLES
+    INSEE_INDEX
+    ACQUISITION_COST
+}
+
+enum ValuationConfidence {
+    HIGH
+    MEDIUM
+    LOW
+    UNAVAILABLE
+}
+
+type RealEstateValuationPoint {
+    date: Time!
+    value: Float!
+    mode: String
+    estimatedMin: Float
+    estimatedMax: Float
+}
+
+type ADEMEDpeResult {
+    rating: String!
+    surfaceM2: Float
+    diagnosticDate: String
+    sourceDataset: String
+}
+
+type RealEstateRentalMarket {
+    marketRentPerM2: Float
+    estimatedMonthlyRent: Float
+    estimatedGrossYield: Float
+    isCommuneLevel: Boolean!
+    r2Adjusted: Float
+    sourceLabel: String!
+}
+
+type RealEstateEstimationResult {
+    estimatedValue: Float
+    estimatedMin: Float
+    estimatedMax: Float
+    estimatedPricePerM2: Float
+    basePricePerM2: Float
+    confidence: ValuationConfidence!
+    method: EstimationMethod!
+    comparablesCount: Int!
+    searchRadiusMeters: Int
+    lastEstimatedAt: Time!
+    rentalMarket: RealEstateRentalMarket
+}
+
+input RealEstateEstimationInput {
+    propertyType: String!
+    surfaceM2: Float!
+    latitude: Float
+    longitude: Float
+    cityCode: String
+    address: String
+    city: String
+    postcode: String
+    banId: String
+    energyLabel: String
+    condition: String
+    purchasePrice: Float
+    purchaseDate: Time
+    isGroundFloor: Boolean
+    hasOutdoor: Boolean
+    roomsCount: Int
+}
+
+extend type Query {
+    estimateRealEstate(input: RealEstateEstimationInput!): RealEstateEstimationResult! @auth
+    fetchADEMEDpe(banId: String!, surfaceM2: Float!, propertyType: String): ADEMEDpeResult @auth
+    getCommuneRentalIndicators(cityCode: String!, propertyType: String, roomsCount: Int, surfaceM2: Float, propertyValue: Float): RealEstateRentalMarket @auth
+}
+
+extend type Mutation {
+    refreshRealEstateValuation(id: ID!): RealEstate! @auth
+}
+

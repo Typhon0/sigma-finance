@@ -332,6 +332,66 @@ func TestSyncRepository_UnitOfWorkTransactionRollback(t *testing.T) {
 	assert.True(t, errors.Is(getErr, repository.ErrNotFound), "credential should have rolled back")
 }
 
+func TestSyncRepository_PortfolioScopedCredential(t *testing.T) {
+	testDB, uow, user, portfolio := setupSyncTestContext(t)
+	defer testDB.Close()
+
+	ctx := context.Background()
+	syncRepo := uow.Sync()
+
+	// 1. Create portfolio-scoped credential
+	pID := portfolio.ID
+	portCred := &model.SyncCredential{
+		UserID:        user.ID,
+		PortfolioID:   &pID,
+		Provider:      model.SyncProviderKraken,
+		EncryptedData: "portfolio-kraken-key",
+		Status:        model.SyncCredentialStatusActive,
+	}
+	err := syncRepo.CreateCredential(ctx, portCred)
+	require.NoError(t, err)
+
+	// 2. Create global user credential
+	userCred := &model.SyncCredential{
+		UserID:        user.ID,
+		Provider:      model.SyncProviderKraken,
+		EncryptedData: "global-kraken-key",
+		Status:        model.SyncCredentialStatusActive,
+	}
+	err = syncRepo.CreateCredential(ctx, userCred)
+	require.NoError(t, err)
+
+	// 3. Query specifically for portfolio should return portfolio-scoped credential
+	fetchedPort, err := syncRepo.GetCredentialByPortfolioAndProvider(ctx, user.ID, portfolio.ID, model.SyncProviderKraken)
+	require.NoError(t, err)
+	assert.Equal(t, portCred.ID, fetchedPort.ID)
+
+	// 4. Query for another portfolio should fall back to global user credential
+	otherPortID := uuid.NewString()
+	fetchedFallback, err := syncRepo.GetCredentialByPortfolioAndProvider(ctx, user.ID, otherPortID, model.SyncProviderKraken)
+	require.NoError(t, err)
+	assert.Equal(t, userCred.ID, fetchedFallback.ID)
+
+	// 5. Test ListConnectionsByCredentialID
+	conn := &model.SyncConnection{
+		UserID:                user.ID,
+		PortfolioID:           portfolio.ID,
+		CredentialID:          portCred.ID,
+		Provider:              model.SyncProviderKraken,
+		ExternalInstitutionID: "Kraken",
+		ExternalAccountID:     "kraken-test-acc-1",
+		InstitutionName:       "Kraken",
+		SyncStatus:            model.SyncConnectionStatusIdle,
+	}
+	err = syncRepo.CreateConnection(ctx, conn)
+	require.NoError(t, err)
+
+	conns, err := syncRepo.ListConnectionsByCredentialID(ctx, portCred.ID)
+	require.NoError(t, err)
+	require.Len(t, conns, 1)
+	assert.Equal(t, conn.ID, conns[0].ID)
+}
+
 func TestSyncRepository_InterfaceCompliance(t *testing.T) {
 	var _ repository.ISyncRepository = (*repository.SyncRepository)(nil)
 }

@@ -207,8 +207,17 @@ func (sm *SecurityMiddleware) AuthenticationRateLimit(config RateLimitConfig) fi
 	}
 }
 
-// GetClientIP extracts the real client IP address from the request
+// GetClientIP extracts the real client IP address from the request.
+//
+// Forwarding headers are only trusted when the request itself arrives from a
+// loopback or private-network peer (a local reverse proxy). Otherwise any
+// client could spoof X-Forwarded-For and evade per-IP rate limits.
 func GetClientIP(c *fiber.Ctx) string {
+	peerIP := c.IP()
+	if !isTrustedProxy(peerIP) {
+		return peerIP
+	}
+
 	// Check X-Forwarded-For header (most common)
 	xForwardedFor := c.Get("X-Forwarded-For")
 	if xForwardedFor != "" {
@@ -239,7 +248,17 @@ func GetClientIP(c *fiber.Ctx) string {
 	}
 
 	// Fall back to remote address
-	return c.IP()
+	return peerIP
+}
+
+// isTrustedProxy reports whether the address belongs to a local or private
+// network peer whose forwarding headers can be believed.
+func isTrustedProxy(ip string) bool {
+	parsed := net.ParseIP(strings.TrimSpace(ip))
+	if parsed == nil {
+		return false
+	}
+	return parsed.IsLoopback() || parsed.IsPrivate()
 }
 
 // SecurityEventLogger logs security-related events

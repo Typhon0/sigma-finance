@@ -12,6 +12,8 @@ import {
 	Percent,
 	Plus,
 	SlidersHorizontal,
+	Sparkles,
+	Download,
 	Trash2,
 	TrendingDown,
 	TrendingUp,
@@ -64,6 +66,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { type AddLoanInput, useAssetMutations } from "@/hooks/use-asset-mutations";
 import { useCurrency } from "@/hooks/use-currency";
 import {
+	computeFullAmortizationSchedule,
 	computeLoanToValue,
 	computePortfolioDebtSummary,
 	type PortfolioLoanItem,
@@ -71,6 +74,7 @@ import {
 import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
 import { AddLoanForm } from "./AddLoanForm";
+import { EarlyRepaymentSimulatorDialog } from "./EarlyRepaymentSimulatorDialog";
 import { LoanDetail } from "./LoanDetail";
 import {
 	type LoanCategorySlice,
@@ -96,6 +100,8 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 	const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<"ledger" | "holdings">("ledger");
 	const [selectedLoanId, setSelectedLoanId] = useState<string | null>(null);
 	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
+	const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+	const [viewMode, setViewMode] = useState<"history" | "projection">("history");
 	const [loanToDelete, setLoanToDelete] = useState<{ id: string; name: string } | null>(null);
 	const [isDeleting, setIsDeleting] = useState(false);
 
@@ -148,7 +154,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 					lender: a.lender || a.symbol,
 					status: a.status || "active",
 					startDate: a.startDate,
-					linkedAssetIds: a.linkedAssetIds || [],
+					linkedAssetIds: (a as any).linkedAssetIDs || a.linkedAssetIds || [],
 				};
 			});
 	}, [assets, displayCurrency]);
@@ -197,46 +203,156 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 		return categorySlices.find((s) => s.key === activeCategoryFilter) || null;
 	}, [activeCategoryFilter, categorySlices]);
 
-	// Performance series for HeroChart: descending debt balance trajectory
+	// Real estate equity data: collateral value vs total debt
+	const equityData = useMemo(() => {
+		if (loanItems.length === 0) return undefined;
+		const linkedIds = new Set<string>();
+		for (const l of loanItems) {
+			for (const id of l.linkedAssetIds || []) {
+				linkedIds.add(id);
+			}
+		}
+		if (linkedIds.size === 0) return undefined;
+
+		let totalCollateralValue = 0;
+		for (const id of linkedIds) {
+			const asset = assets.find((a) => a.id === id);
+			if (asset && asset.currentValue) {
+				totalCollateralValue += asset.currentValue;
+			}
+		}
+		if (totalCollateralValue <= 0) return undefined;
+
+		const totalRemainingDebt = debtSummary.totalGrossDebt;
+		const netEquity = totalCollateralValue - totalRemainingDebt;
+		const ltvPercent = (totalRemainingDebt / totalCollateralValue) * 100;
+
+		return {
+			totalCollateralValue,
+			totalRemainingDebt,
+			netEquity,
+			ltvPercent,
+		};
+	}, [loanItems, assets, debtSummary.totalGrossDebt]);
+
+	// Performance series for HeroChart: deterministic descending debt balance trajectory or projection
 	const performanceData = useMemo(() => {
 		if (loanItems.length === 0) {
 			return buildPerformanceSeries([], 0);
 		}
+
 		const now = new Date();
+		let minStartDate: Date | null = null;
+		let maxDuration = 0;
+
+		for (const loan of loanItems) {
+			if (loan.startDate) {
+				const d = new Date(loan.startDate);
+				if (!isNaN(d.getTime())) {
+					if (!minStartDate || d < minStartDate) {
+						minStartDate = d;
+					}
+				}
+			}
+			const dMonths = loan.durationMonths ?? 120;
+			if (dMonths > maxDuration) {
+				maxDuration = dMonths;
+			}
+		}
+
+		const originDate = minStartDate || new Date(now.getFullYear() - 1, now.getMonth(), 1);
+
+		// Pre-compute schedule for each loan
+		const loanSchedules = loanItems.map((loan) => ({
+			loan,
+			schedule: computeFullAmortizationSchedule({
+				loanAmount: loan.loanAmount,
+				interestRate: loan.interestRate,
+				durationMonths: loan.durationMonths ?? 120,
+				startDate: loan.startDate,
+				monthlyPayment: loan.monthlyPayment,
+				loanType: loan.loanType as any,
+			}),
+		}));
+
 		const points: Array<{ date: string; value: number }> = [];
 
-		for (let i = 11; i >= 0; i--) {
-			const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-			const dateStr = d.toISOString().split("T")[0];
+		if (viewMode === "projection") {
+			// Generate projection from originDate to max maturity date (up to origin + maxDuration months)
+			const totalMonths = Math.max(12, maxDuration);
+			for (let m = 0; m <= totalMonths; m++) {
+				const d = new Date(originDate);
+				d.setMonth(d.getMonth() + m);
+				const dateStr = d.toISOString().split("T")[0];
 
-			let totalAtDate = 0;
-			for (const loan of loanItems) {
-				const sDate = loan.startDate ? new Date(loan.startDate) : now;
-				if (d < sDate) {
-					continue;
+				let totalAtDate = 0;
+				for (const { loan, schedule } of loanSchedules) {
+					const lStart = loan.startDate ? new Date(loan.startDate) : originDate;
+					if (d < lStart) {
+						totalAtDate += loan.loanAmount;
+						continue;
+					}
+					const monthsSinceLoanStart =
+						(d.getFullYear() - lStart.getFullYear()) * 12 + (d.getMonth() - lStart.getMonth());
+					if (monthsSinceLoanStart <= 0) {
+						totalAtDate += loan.loanAmount;
+					} else if (monthsSinceLoanStart >= schedule.entries.length) {
+						totalAtDate += 0;
+					} else {
+						const entry = schedule.entries[monthsSinceLoanStart - 1];
+						totalAtDate += entry ? entry.remainingBalance : 0;
+					}
 				}
-				const monthsSinceStart = Math.max(
-					0,
-					(d.getFullYear() - sDate.getFullYear()) * 12 + (d.getMonth() - sDate.getMonth()),
-				);
-				const totalMonthsElapsed = Math.max(
-					1,
-					(now.getFullYear() - sDate.getFullYear()) * 12 + (now.getMonth() - sDate.getMonth()),
-				);
-
-				const totalAmortizedSoFar = Math.max(0, loan.loanAmount - loan.remainingBalance);
-				const amortizedAtD = Math.min(
-					totalAmortizedSoFar,
-					(monthsSinceStart / totalMonthsElapsed) * totalAmortizedSoFar,
-				);
-				const balanceAtD = Math.max(0, loan.loanAmount - amortizedAtD);
-				totalAtDate += balanceAtD;
+				points.push({ date: dateStr, value: Math.round(totalAtDate * 100) / 100 });
 			}
-			points.push({ date: dateStr, value: totalAtDate });
+		} else {
+			// Historical mode: generate all months from loan origin to today
+			// Step month by month from now backwards to originDate
+			const totalMonths = Math.max(
+				1,
+				(now.getFullYear() - originDate.getFullYear()) * 12 +
+					(now.getMonth() - originDate.getMonth()),
+			);
+
+			for (let i = totalMonths; i >= 0; i--) {
+				const d = new Date(now.getFullYear(), now.getMonth() - i, now.getDate());
+				const dateStr = d.toISOString().split("T")[0];
+
+				let totalAtDate = 0;
+				for (const { loan, schedule } of loanSchedules) {
+					const lStart = loan.startDate ? new Date(loan.startDate) : originDate;
+					if (d < lStart) {
+						totalAtDate += loan.loanAmount;
+						continue;
+					}
+					const monthsSinceLoanStart =
+						(d.getFullYear() - lStart.getFullYear()) * 12 + (d.getMonth() - lStart.getMonth());
+					if (monthsSinceLoanStart <= 0) {
+						totalAtDate += loan.loanAmount;
+					} else if (monthsSinceLoanStart >= schedule.entries.length) {
+						totalAtDate += 0;
+					} else {
+						const entry = schedule.entries[monthsSinceLoanStart - 1];
+						totalAtDate += entry ? entry.remainingBalance : loan.remainingBalance;
+					}
+				}
+				points.push({ date: dateStr, value: Math.round(totalAtDate * 100) / 100 });
+			}
 		}
 
 		return buildPerformanceSeries(points, debtSummary.totalGrossDebt);
-	}, [loanItems, debtSummary.totalGrossDebt]);
+	}, [loanItems, debtSummary.totalGrossDebt, viewMode]);
+
+	// All-time debt gain/reduction delta
+	const totalGain = useMemo(() => {
+		if (debtSummary.totalGrossOriginal <= 0) return 0;
+		return debtSummary.totalGrossDebt - debtSummary.totalGrossOriginal;
+	}, [debtSummary.totalGrossDebt, debtSummary.totalGrossOriginal]);
+
+	const totalGainPercent = useMemo(() => {
+		if (debtSummary.totalGrossOriginal <= 0) return 0;
+		return (totalGain / debtSummary.totalGrossOriginal) * 100;
+	}, [totalGain, debtSummary.totalGrossOriginal]);
 
 	// Chart holdings for HeroChart
 	const chartHoldings = useMemo(() => {
@@ -297,6 +413,20 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 				}
 			});
 	}, [loanItems, searchTerm, filterType, filterStatus, activeCategoryFilter, sortBy]);
+
+	// Dynamic maximum loan maturity year across active loans
+	const maxMaturityYear = useMemo(() => {
+		let maxYear = 0;
+		const targetLoans = filteredLoans.length > 0 ? filteredLoans : loanItems;
+		for (const loan of targetLoans) {
+			if (loan.startDate && loan.durationMonths) {
+				const start = new Date(loan.startDate);
+				const endYear = start.getFullYear() + Math.ceil(loan.durationMonths / 12);
+				if (endYear > maxYear) maxYear = endYear;
+			}
+		}
+		return maxYear > 0 ? maxYear : null;
+	}, [filteredLoans, loanItems]);
 
 	// Add loan form handler
 	const handleAddLoan = async (formData: {
@@ -464,6 +594,51 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 		[assets],
 	);
 
+	// Helper to export full amortization schedule to CSV
+	const handleExportCSV = useCallback((e: React.MouseEvent, loan: PortfolioLoanItem) => {
+		e.stopPropagation();
+		const schedule = computeFullAmortizationSchedule({
+			loanAmount: loan.loanAmount,
+			interestRate: loan.interestRate,
+			durationMonths: loan.durationMonths ?? 120,
+			startDate: loan.startDate,
+			monthlyPayment: loan.monthlyPayment,
+			loanType: loan.loanType as any,
+		});
+
+		const headers = [
+			"Mois",
+			"Date",
+			"Mensualite",
+			"Capital",
+			"Interets",
+			"Assurance",
+			"Capital_Restant_Du",
+		];
+		const rows = schedule.entries.map((entry) => [
+			entry.month,
+			`"${entry.dateString}"`,
+			entry.payment.toFixed(2),
+			entry.principal.toFixed(2),
+			entry.interest.toFixed(2),
+			entry.insurance.toFixed(2),
+			entry.remainingBalance.toFixed(2),
+		]);
+
+		const csvContent =
+			"data:text/csv;charset=utf-8," +
+			[headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+		const encodedUri = encodeURI(csvContent);
+		const link = document.createElement("a");
+		link.setAttribute("href", encodedUri);
+		const safeName = loan.name.toLowerCase().replace(/[^a-z0-9]/g, "_");
+		link.setAttribute("download", `amortization_schedule_${safeName}.csv`);
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		toast.success(`Amortization schedule exported to CSV (${loan.name})`);
+	}, []);
+
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
 			{/* Canonical Page Header */}
@@ -493,6 +668,19 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 							</div>
 						)}
 
+						{loanItems.length > 0 && (
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={() => setIsSimulatorOpen(true)}
+								className="h-8 text-xs gap-1.5 border-border/50 bg-card hover:bg-muted font-medium touch-target"
+							>
+								<Sparkles className="h-3.5 w-3.5 text-gain" />
+								Early Repayment Simulator
+							</Button>
+						)}
+
 						<Button
 							size="sm"
 							onClick={() => setIsAddFormOpen(true)}
@@ -514,14 +702,60 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 							title="Total Debt Outstanding"
 							titleTooltip="Aggregated liabilities and amortized reduction trajectory across all loans"
 							data={performanceData}
-							holdings={chartHoldings}
 							totalEquity={debtSummary.totalGrossDebt}
+							totalGain={totalGain}
+							totalGainPercent={totalGainPercent}
 							formatCurrency={formatCurrency}
 							timeRange={timeRange}
 							onTimeRangeChange={setTimeRange}
 							portfolioID={selectedPortfolio?.id}
 							defaultBenchmark="none"
+							variant="liability"
 							layoutId="loansHeroRangePillActive"
+							headerSlot={
+								<div className="relative flex items-center rounded-full bg-secondary/35 border border-border/50 p-0.5 mr-1">
+									<button
+										type="button"
+										onClick={() => setViewMode("history")}
+										className={cn(
+											"relative z-10 min-h-[32px] sm:min-h-0 sm:h-6 rounded-full px-2.5 text-micro font-medium cursor-pointer transition-colors touch-target",
+											viewMode === "history"
+												? "text-foreground font-bold"
+												: "text-muted-foreground hover:text-foreground",
+										)}
+									>
+										{viewMode === "history" && !shouldReduceMotion && (
+											<motion.div
+												layoutId="loansProjectionToggleActive"
+												className="absolute inset-0 rounded-full bg-secondary-foreground/15 shadow-xs"
+												transition={{ type: "spring", stiffness: 400, damping: 30 }}
+											/>
+										)}
+										<span className="relative z-10">History</span>
+									</button>
+									<button
+										type="button"
+										onClick={() => setViewMode("projection")}
+										className={cn(
+											"relative z-10 min-h-[32px] sm:min-h-0 sm:h-6 rounded-full px-2.5 text-micro font-medium cursor-pointer transition-colors touch-target",
+											viewMode === "projection"
+												? "text-foreground font-bold"
+												: "text-muted-foreground hover:text-foreground",
+										)}
+									>
+										{viewMode === "projection" && !shouldReduceMotion && (
+											<motion.div
+												layoutId="loansProjectionToggleActive"
+												className="absolute inset-0 rounded-full bg-secondary-foreground/15 shadow-xs"
+												transition={{ type: "spring", stiffness: 400, damping: 30 }}
+											/>
+										)}
+										<span className="relative z-10">
+											{maxMaturityYear ? `Projection (${maxMaturityYear})` : "Projection"}
+										</span>
+									</button>
+								</div>
+							}
 						/>
 					</ErrorBoundary>
 				</div>
@@ -542,6 +776,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 							amortizedRatio={debtSummary.amortizedRatio}
 							principalPaidGross={debtSummary.principalPaidGross}
 							currencyBreakdown={debtSummary.currencyBreakdown}
+							equityData={equityData}
 						/>
 					</ErrorBoundary>
 				</div>
@@ -709,71 +944,71 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 					</div>
 				) : (
 					<>
+						{/* Filters Bar (Shared across both Debt Ledger & Holdings tabs) */}
+						<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+							<div className="flex items-center gap-2 flex-1 flex-wrap">
+								<SearchInput
+									placeholder="Search loans, lenders..."
+									value={searchTerm}
+									onChange={(e) => setSearchTerm(e.target.value)}
+									onClear={() => setSearchTerm("")}
+									size="sm"
+									containerClassName="w-full sm:w-64"
+								/>
+
+								<Select value={filterType} onValueChange={setFilterType}>
+									<SelectTrigger className="w-[140px] h-8 text-xs">
+										<Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+										<SelectValue placeholder="All Types" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All Types</SelectItem>
+										<SelectItem value="amortizing">Amortizing</SelectItem>
+										<SelectItem value="in-fine">In Fine</SelectItem>
+										<SelectItem value="step">Step (Palier)</SelectItem>
+										<SelectItem value="deferred-interest">Deferred Interest</SelectItem>
+										<SelectItem value="deferred-total">Deferred Total</SelectItem>
+									</SelectContent>
+								</Select>
+
+								<Select value={filterStatus} onValueChange={setFilterStatus}>
+									<SelectTrigger className="w-[130px] h-8 text-xs">
+										<SelectValue placeholder="All Statuses" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All Statuses</SelectItem>
+										<SelectItem value="active">Active</SelectItem>
+										<SelectItem value="paid-off">Paid Off</SelectItem>
+										<SelectItem value="delinquent">Delinquent</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+
+							<div className="flex items-center gap-2 shrink-0">
+								<Select
+									value={sortBy}
+									onValueChange={(val) =>
+										setSortBy(val as "balance" | "payment" | "rate" | "name" | "progress")
+									}
+								>
+									<SelectTrigger className="w-[160px] h-8 text-xs">
+										<span className="text-muted-foreground mr-1">Sort:</span>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="balance">Outstanding Balance</SelectItem>
+										<SelectItem value="payment">Monthly Payment</SelectItem>
+										<SelectItem value="rate">Interest Rate</SelectItem>
+										<SelectItem value="progress">Amortized %</SelectItem>
+										<SelectItem value="name">Loan Name</SelectItem>
+									</SelectContent>
+								</Select>
+							</div>
+						</div>
+
 						{/* Tab 1: Debt Ledger */}
 						{activeWorkspaceTab === "ledger" && (
 							<div className="space-y-4">
-								{/* Filters Bar */}
-								<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-									<div className="flex items-center gap-2 flex-1 flex-wrap">
-										<SearchInput
-											placeholder="Search loans, lenders..."
-											value={searchTerm}
-											onChange={(e) => setSearchTerm(e.target.value)}
-											onClear={() => setSearchTerm("")}
-											size="sm"
-											containerClassName="w-full sm:w-64"
-										/>
-
-										<Select value={filterType} onValueChange={setFilterType}>
-											<SelectTrigger className="w-[140px] h-8 text-xs">
-												<Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-												<SelectValue placeholder="All Types" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="all">All Types</SelectItem>
-												<SelectItem value="amortizing">Amortizing</SelectItem>
-												<SelectItem value="in-fine">In Fine</SelectItem>
-												<SelectItem value="step">Step (Palier)</SelectItem>
-												<SelectItem value="deferred-interest">Deferred Interest</SelectItem>
-												<SelectItem value="deferred-total">Deferred Total</SelectItem>
-											</SelectContent>
-										</Select>
-
-										<Select value={filterStatus} onValueChange={setFilterStatus}>
-											<SelectTrigger className="w-[130px] h-8 text-xs">
-												<SelectValue placeholder="All Statuses" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="all">All Statuses</SelectItem>
-												<SelectItem value="active">Active</SelectItem>
-												<SelectItem value="paid-off">Paid Off</SelectItem>
-												<SelectItem value="delinquent">Delinquent</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-
-									<div className="flex items-center gap-2 shrink-0">
-										<Select
-											value={sortBy}
-											onValueChange={(val) =>
-												setSortBy(val as "balance" | "payment" | "rate" | "name" | "progress")
-											}
-										>
-											<SelectTrigger className="w-[160px] h-8 text-xs">
-												<span className="text-muted-foreground mr-1">Sort:</span>
-												<SelectValue />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="balance">Outstanding Balance</SelectItem>
-												<SelectItem value="payment">Monthly Payment</SelectItem>
-												<SelectItem value="rate">Interest Rate</SelectItem>
-												<SelectItem value="progress">Amortized %</SelectItem>
-												<SelectItem value="name">Loan Name</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-								</div>
-
 								{/* High-Density Ledger Table */}
 								<div className="rounded-xl border border-border/40 overflow-hidden bg-card/60 shadow-xs">
 									<Table>
@@ -842,15 +1077,15 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 															)}
 														>
 															{/* Loan & Lender */}
-															<TableCell className="py-2">
-																<div className="flex flex-col">
-																	<span className="font-semibold text-foreground text-xs leading-tight">
+															<TableCell className="py-2 max-w-[220px]">
+																<div className="flex flex-col min-w-0">
+																	<span className="font-semibold text-foreground text-xs leading-tight truncate" title={loan.name}>
 																		{loan.name}
 																	</span>
 																	{loan.lender && (
-																		<span className="text-micro text-muted-foreground flex items-center gap-1">
-																			<Building2 className="h-3 w-3" />
-																			{loan.lender}
+																		<span className="text-micro text-muted-foreground flex items-center gap-1 truncate" title={loan.lender}>
+																			<Building2 className="h-3 w-3 shrink-0" />
+																			<span className="truncate">{loan.lender}</span>
 																		</span>
 																	)}
 																</div>
@@ -882,7 +1117,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 																							collateral.ltv > 80
 																								? "text-loss"
 																								: collateral.ltv > 60
-																									? "text-amber-500"
+																									? "text-warning"
 																									: "text-gain",
 																						)}
 																					>
@@ -900,7 +1135,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 																		</Tooltip>
 																	</TooltipProvider>
 																) : (
-																	<span className="text-micro text-muted-foreground/60">—</span>
+																	<span className="text-micro text-muted-foreground">—</span>
 																)}
 															</TableCell>
 
@@ -966,14 +1201,17 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 																<Badge
 																	variant="outline"
 																	className={cn(
-																		"text-micro font-medium capitalize",
+																		"text-micro font-medium capitalize inline-flex items-center",
 																		loan.status === "active"
-																			? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+																			? "bg-gain/10 text-gain border-gain/20"
 																			: loan.status === "paid-off"
-																				? "bg-muted text-muted-foreground border-border/40"
-																				: "bg-rose-500/10 text-rose-500 border-rose-500/20",
+																				? "bg-gain/15 text-gain border-gain/30 font-semibold shadow-xs"
+																				: "bg-loss/10 text-loss border-loss/20",
 																	)}
 																>
+																	{loan.status === "paid-off" && (
+																		<CheckCircle2 className="h-3 w-3 mr-1 text-gain" />
+																	)}
 																	{loan.status}
 																</Badge>
 															</TableCell>
@@ -1000,6 +1238,12 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 																		>
 																			View Schedule & Details
 																		</DropdownMenuItem>
+																		<DropdownMenuItem
+																			onClick={(e) => handleExportCSV(e, loan)}
+																		>
+																			<Download className="h-3.5 w-3.5 mr-1.5" />
+																			Export Amortization Schedule (.CSV)
+																		</DropdownMenuItem>
 																		<DropdownMenuSeparator />
 																		<DropdownMenuItem
 																			onClick={() =>
@@ -1024,23 +1268,43 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 						)}
 
 						{/* Tab 2: Holdings & Amortization (Detailed Cards Grid) */}
-						{activeWorkspaceTab === "holdings" && (
-							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-								{loanItems.map((loan) => {
-									const paid = Math.max(0, loan.loanAmount - loan.remainingBalance);
-									const progress =
-										loan.loanAmount > 0 ? (paid / loan.loanAmount) * 100 : 0;
-									const collateral = getLinkedAssetInfo(loan);
-									const ownPct = loan.ownershipPercentage ?? 100;
-									const isPartial = ownPct < 100;
-									const netBalance = (loan.remainingBalance * ownPct) / 100;
+						{activeWorkspaceTab === "holdings" &&
+							(filteredLoans.length === 0 ? (
+								<div className="py-12 text-center rounded-xl border border-dashed border-border/40 bg-card/20 space-y-3">
+									<p className="text-sm text-muted-foreground">
+										No loans match current search and filter criteria.
+									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											setSearchTerm("");
+											setFilterType("all");
+											setFilterStatus("all");
+											setActiveCategoryFilter(null);
+										}}
+										className="text-xs"
+									>
+										Reset filters
+									</Button>
+								</div>
+							) : (
+								<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+									{filteredLoans.map((loan) => {
+										const paid = Math.max(0, loan.loanAmount - loan.remainingBalance);
+										const progress =
+											loan.loanAmount > 0 ? (paid / loan.loanAmount) * 100 : 0;
+										const collateral = getLinkedAssetInfo(loan);
+										const ownPct = loan.ownershipPercentage ?? 100;
+										const isPartial = ownPct < 100;
+										const netBalance = (loan.remainingBalance * ownPct) / 100;
 
-									return (
-										<Card
-											key={loan.id}
-											className="border border-border/40 bg-card/60 hover:border-primary/40 transition-colors cursor-pointer group"
-											onClick={() => handleSelectLoan(loan.id)}
-										>
+										return (
+											<Card
+												key={loan.id}
+												className="border border-border/40 bg-card/60 hover:border-primary/40 transition-colors cursor-pointer group"
+												onClick={() => handleSelectLoan(loan.id)}
+											>
 											<CardHeader className="pb-3 space-y-2">
 												<div className="flex items-start justify-between gap-2">
 													<div className="min-w-0 flex-1">
@@ -1057,12 +1321,17 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 													<Badge
 														variant="outline"
 														className={cn(
-															"text-micro font-medium capitalize shrink-0",
+															"text-micro font-medium capitalize shrink-0 inline-flex items-center",
 															loan.status === "active"
-																? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-																: "bg-muted text-muted-foreground border-border/40",
+																? "bg-gain/10 text-gain border-gain/20"
+																: loan.status === "paid-off"
+																	? "bg-gain/15 text-gain border-gain/30 font-semibold shadow-xs"
+																	: "bg-muted text-muted-foreground border-border/40",
 														)}
 													>
+														{loan.status === "paid-off" && (
+															<CheckCircle2 className="h-3 w-3 mr-1 text-gain" />
+														)}
 														{loan.status}
 													</Badge>
 												</div>
@@ -1156,15 +1425,27 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 
 												{/* Actions footer */}
 												<div className="flex items-center justify-between pt-2 border-t border-border/30">
-													<Button
-														variant="ghost"
-														size="sm"
-														className="h-7 text-xs px-2 text-primary hover:text-primary gap-1 cursor-pointer"
-														onClick={() => handleSelectLoan(loan.id)}
-													>
-														<span>View Schedule</span>
-														<ExternalLink className="h-3 w-3" />
-													</Button>
+													<div className="flex items-center gap-1">
+														<Button
+															variant="ghost"
+															size="sm"
+															className="h-7 text-xs px-2 text-muted-foreground hover:text-foreground gap-1 cursor-pointer"
+															onClick={(e) => handleExportCSV(e, loan)}
+															title="Export Amortization Schedule (.CSV)"
+														>
+															<Download className="h-3 w-3" />
+															<span className="hidden sm:inline">CSV</span>
+														</Button>
+														<Button
+															variant="ghost"
+															size="sm"
+															className="h-7 text-xs px-2 text-primary hover:text-primary gap-1 cursor-pointer"
+															onClick={() => handleSelectLoan(loan.id)}
+														>
+															<span>View Schedule</span>
+															<ExternalLink className="h-3 w-3" />
+														</Button>
+													</div>
 													<Button
 														variant="ghost"
 														size="icon"
@@ -1182,7 +1463,7 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 									);
 								})}
 							</div>
-						)}
+						))}
 					</>
 				)}
 			</div>
@@ -1246,6 +1527,14 @@ export function LoansList({ onSelectLoan, detailMode = "panel", onBack }: LoansL
 				open={isAddFormOpen}
 				onClose={() => setIsAddFormOpen(false)}
 				onSubmit={handleAddLoan}
+			/>
+
+			{/* Early Repayment Simulator Dialog */}
+			<EarlyRepaymentSimulatorDialog
+				isOpen={isSimulatorOpen}
+				onOpenChange={setIsSimulatorOpen}
+				loanItems={loanItems}
+				formatCurrency={formatCurrency}
 			/>
 		</div>
 	);

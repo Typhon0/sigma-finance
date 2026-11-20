@@ -9,11 +9,11 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"strings"
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
 	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/service"
+	"strings"
 )
 
 // Register is the resolver for the register field.
@@ -25,16 +25,22 @@ func (r *mutationResolver) Register(ctx context.Context, input gqlModel.Register
 	}
 
 	resp, err := r.AuthenticationService.Register(ctx, service.RegisterRequest{
-		Email:    input.Email,
-		Password: input.Password,
-		Name:     input.Name,
+		Email:     input.Email,
+		Password:  input.Password,
+		Name:      input.Name,
+		IPAddress: extractIPFromContext(ctx),
+		UserAgent: extractUserAgentFromContext(ctx),
 	})
 	if err != nil {
 		log.Printf("[WARN] [graphql] Register: registration failed email=%s: %v", maskEmail(input.Email), err)
 		return convertAuthErrorToGraphQL(err), nil
 	}
-	log.Printf("[INFO] [graphql] Register: completed user=%s", resp.User.ID)
-	return mapAuthResponseToGQL(resp), nil
+	if resp != nil && resp.User != nil {
+		log.Printf("[INFO] [graphql] Register: completed user=%s (verification pending)", resp.User.ID)
+	}
+	// Registration does not log the user in: report success without auth data
+	// so the client cannot store a session for an unverified account.
+	return &gqlModel.AuthResponse{Success: true}, nil
 }
 
 // Login is the resolver for the login field.

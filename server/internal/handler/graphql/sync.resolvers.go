@@ -30,7 +30,7 @@ func (r *mutationResolver) RegisterSyncCredential(ctx context.Context, provider 
 		return nil, fmt.Errorf("invalid credentials payload: %w", err)
 	}
 
-	cred, err := r.SyncService.RegisterCredential(ctx, userID, provider, string(rawJSON))
+	cred, err := r.SyncService.RegisterCredential(ctx, userID, provider, string(rawJSON), portfolioId)
 	if err != nil {
 		return nil, err
 	}

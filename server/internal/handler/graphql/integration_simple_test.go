@@ -34,6 +34,9 @@ func TestGraphQLIntegration_SimpleUserOperations(t *testing.T) {
 	queryResolver := &queryResolver{resolver}
 	mutationResolver := &mutationResolver{resolver}
 
+	// The list query is admin-only, so run this suite as an admin caller.
+	ctx = seedAdminCaller(t, ctx, uow, mutationResolver)
+
 	t.Run("UserCRUDOperations", func(t *testing.T) {
 		// Create user
 		input := gqlModel.CreateUserInput{
@@ -298,6 +301,8 @@ func TestGraphQLIntegration_SimpleWatchlistOperations(t *testing.T) {
 	testUser, err := mutationResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
 
+	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
+
 	t.Run("WatchlistCreationAndListing", func(t *testing.T) {
 		// Create watchlist
 		input := gqlModel.CreateWatchlistInput{
@@ -365,6 +370,14 @@ func TestGraphQLIntegration_SimpleErrorHandling(t *testing.T) {
 
 	queryResolver := &queryResolver{resolver}
 	mutationResolver := &mutationResolver{resolver}
+
+	caller, err := mutationResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+		Username: "errcaller",
+		Email:    "errcaller@example.com",
+		Password: "password123",
+	})
+	require.NoError(t, err)
+	ctx = withAuthUser(ctx, caller.ID, caller.Email)
 
 	t.Run("InvalidIDHandling", func(t *testing.T) {
 		// Test invalid ID formats — resolvers return nil for not-found
@@ -436,6 +449,9 @@ func TestGraphQLIntegration_PaginationAndFiltering(t *testing.T) {
 
 	queryResolver := &queryResolver{resolver}
 	mutationResolver := &mutationResolver{resolver}
+
+	// The list query is admin-only, so run this suite as an admin caller.
+	ctx = seedAdminCaller(t, ctx, uow, mutationResolver)
 
 	t.Run("UserPaginationAndFiltering", func(t *testing.T) {
 		// Create multiple users

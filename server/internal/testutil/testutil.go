@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"sigma_finance/cmd/bun/migrations"
 	"sigma_finance/internal/config"
 	"sigma_finance/internal/domain/model"
 	"sync"
@@ -55,14 +54,14 @@ func NewTestDB(t *testing.T) *TestDB {
 		}
 	})
 
-	// Run migrations to ensure tables exist
+	// Ensure the test tables exist
 	err = acquireTestDBLock()
 	require.NoError(t, err, "Failed to acquire test database lock")
-	err = runTestMigrations(ctx, db)
+	err = prepareTestSchema(ctx, db)
 	if err != nil {
 		releaseTestDBLock()
 	}
-	require.NoError(t, err, "Failed to run test migrations")
+	require.NoError(t, err, "Failed to prepare test schema")
 	testDB := &TestDB{
 		DB: db,
 		t:  t,
@@ -133,16 +132,20 @@ func ensureSchemaPermissions(ctx context.Context) error {
 }
 
 var (
-	testMigrationsOnce sync.Once
-	testMigrationsErr  error
+	testSchemaOnce sync.Once
+	testSchemaErr  error
 )
 
-// runTestMigrations runs the database migrations for testing
-func runTestMigrations(ctx context.Context, db *bun.DB) error {
-	testMigrationsOnce.Do(func() {
-		testMigrationsErr = migrations.Migrate(ctx, db)
+// prepareTestSchema makes sure the test tables exist.
+//
+// It builds them from the bun models (see schema.go) rather than running
+// cmd/bun/migrations, which cannot run against an empty database. It runs at
+// most once per process.
+func prepareTestSchema(ctx context.Context, db *bun.DB) error {
+	testSchemaOnce.Do(func() {
+		testSchemaErr = createTestSchema(ctx, db)
 	})
-	return testMigrationsErr
+	return testSchemaErr
 }
 
 // releaseTestDBLock decrements the process-level refcount and, when it

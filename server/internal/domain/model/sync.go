@@ -85,6 +85,7 @@ type SyncCredential struct {
 
 	ID            string               `bun:"id,pk,type:uuid,default:gen_random_uuid()"`
 	UserID        string               `bun:"user_id,nullzero,type:uuid"` // Nullable in DB for system-wide keys
+	PortfolioID   *string              `bun:"portfolio_id,type:uuid"`
 	IsSystem      bool                 `bun:"is_system,notnull,default:false"`
 	Provider      string               `bun:"provider,notnull"`
 	EncryptedData string               `bun:"encrypted_data,notnull"`

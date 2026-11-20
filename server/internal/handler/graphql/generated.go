@@ -32,7 +32,6 @@ type Config = graphql.Config[ResolverRoot, DirectiveRoot, ComplexityRoot]
 type ResolverRoot interface {
 	Mutation() MutationResolver
 	Query() QueryResolver
-	Subscription() SubscriptionResolver
 }
 
 type DirectiveRoot struct {
@@ -41,6 +40,13 @@ type DirectiveRoot struct {
 }
 
 type ComplexityRoot struct {
+	ADEMEDpeResult struct {
+		DiagnosticDate func(childComplexity int) int
+		Rating         func(childComplexity int) int
+		SourceDataset  func(childComplexity int) int
+		SurfaceM2      func(childComplexity int) int
+	}
+
 	Account struct {
 		AccountNumber       func(childComplexity int) int
 		CoOwnerName         func(childComplexity int) int
@@ -100,41 +106,9 @@ type ComplexityRoot struct {
 		UserID              func(childComplexity int) int
 	}
 
-	AlertAction struct {
-		Config func(childComplexity int) int
-		Type   func(childComplexity int) int
-	}
-
 	AlertError struct {
 		Index   func(childComplexity int) int
 		Message func(childComplexity int) int
-	}
-
-	AlertNotification struct {
-		AlertID      func(childComplexity int) int
-		AlertName    func(childComplexity int) int
-		CurrentValue func(childComplexity int) int
-		ID           func(childComplexity int) int
-		Message      func(childComplexity int) int
-		MetricName   func(childComplexity int) int
-		Severity     func(childComplexity int) int
-		Threshold    func(childComplexity int) int
-		Timestamp    func(childComplexity int) int
-	}
-
-	AlertRule struct {
-		Actions    func(childComplexity int) int
-		Condition  func(childComplexity int) int
-		CreatedAt  func(childComplexity int) int
-		Duration   func(childComplexity int) int
-		Enabled    func(childComplexity int) int
-		ID         func(childComplexity int) int
-		Labels     func(childComplexity int) int
-		LastFired  func(childComplexity int) int
-		MetricName func(childComplexity int) int
-		Name       func(childComplexity int) int
-		Threshold  func(childComplexity int) int
-		UpdatedAt  func(childComplexity int) int
 	}
 
 	AlertTriggerEvent struct {
@@ -394,14 +368,6 @@ type ComplexityRoot struct {
 		WalletAddress     func(childComplexity int) int
 	}
 
-	DashboardPerformanceMetrics struct {
-		DashboardStateTransitions func(childComplexity int) int
-		DataLoadTimes             func(childComplexity int) int
-		ErrorRates                func(childComplexity int) int
-		MarketDataUpdates         func(childComplexity int) int
-		UserInteractions          func(childComplexity int) int
-	}
-
 	DataQuality struct {
 		EstimatedDataPoints func(childComplexity int) int
 		LastUpdated         func(childComplexity int) int
@@ -448,13 +414,6 @@ type ComplexityRoot struct {
 		DownloadURL func(childComplexity int) int
 		Error       func(childComplexity int) int
 		Success     func(childComplexity int) int
-	}
-
-	FeatureUsage struct {
-		AvgDuration func(childComplexity int) int
-		Feature     func(childComplexity int) int
-		UniqueUsers func(childComplexity int) int
-		UsageCount  func(childComplexity int) int
 	}
 
 	FinanceDatabasePreviewItem struct {
@@ -862,28 +821,6 @@ type ComplexityRoot struct {
 		Value func(childComplexity int) int
 	}
 
-	Metric struct {
-		Aggregations func(childComplexity int) int
-		Labels       func(childComplexity int) int
-		LastUpdated  func(childComplexity int) int
-		Name         func(childComplexity int) int
-		Type         func(childComplexity int) int
-		Value        func(childComplexity int) int
-	}
-
-	MetricSummary struct {
-		Average   func(childComplexity int) int
-		Breakdown func(childComplexity int) int
-		LastDay   func(childComplexity int) int
-		LastHour  func(childComplexity int) int
-		Max       func(childComplexity int) int
-		Min       func(childComplexity int) int
-		P50       func(childComplexity int) int
-		P95       func(childComplexity int) int
-		P99       func(childComplexity int) int
-		Total     func(childComplexity int) int
-	}
-
 	Mutation struct {
 		AcknowledgeAlert                 func(childComplexity int, alertID string) int
 		AddAssetToPortfolio              func(childComplexity int, input gqlModel.PortfolioAssetInput) int
@@ -910,7 +847,6 @@ type ComplexityRoot struct {
 		ConfirmPasswordReset             func(childComplexity int, input gqlModel.PasswordResetConfirmInput) int
 		CreateAccount                    func(childComplexity int, input gqlModel.CreateAccountInput) int
 		CreateAlert                      func(childComplexity int, input gqlModel.CreateAlertInput) int
-		CreateAlertRule                  func(childComplexity int, input gqlModel.AlertRuleInput) int
 		CreateBankAccountAsset           func(childComplexity int, input gqlModel.CreateBankAccountInput) int
 		CreateBatchAlerts                func(childComplexity int, input gqlModel.BatchAlertInput) int
 		CreateCryptoAsset                func(childComplexity int, input gqlModel.CreateCryptoInput) int
@@ -927,7 +863,6 @@ type ComplexityRoot struct {
 		DeactivateBatchAlerts            func(childComplexity int, input gqlModel.BatchDeactivateInput) int
 		DeleteAccount                    func(childComplexity int, id string) int
 		DeleteAlert                      func(childComplexity int, id string) int
-		DeleteAlertRule                  func(childComplexity int, id string) int
 		DeleteMarketDataCredential       func(childComplexity int, provider string) int
 		DeletePortfolio                  func(childComplexity int, id string) int
 		DeleteTransaction                func(childComplexity int, id string) int
@@ -949,8 +884,8 @@ type ComplexityRoot struct {
 		PersistDiscoveredInstrument      func(childComplexity int, input gqlModel.PersistDiscoveredInstrumentInput) int
 		PollTradeRepublicAuth            func(childComplexity int, authSessionID string) int
 		PollWoobAuth                     func(childComplexity int, authSessionID string, otpCode *string) int
-		RecordDashboardEvent             func(childComplexity int, input gqlModel.DashboardEventInput) int
 		RefreshAssetPrices               func(childComplexity int, assetID *string) int
+		RefreshRealEstateValuation       func(childComplexity int, id string) int
 		RefreshSingleAssetPrice          func(childComplexity int, assetID string) int
 		RefreshToken                     func(childComplexity int, input gqlModel.RefreshTokenInput) int
 		RefreshWalletBalancePrice        func(childComplexity int, balanceID string) int
@@ -982,7 +917,6 @@ type ComplexityRoot struct {
 		UntagPortfolio                   func(childComplexity int, portfolioID string, tagID string) int
 		UpdateAccount                    func(childComplexity int, id string, input gqlModel.UpdateAccountInput) int
 		UpdateAlert                      func(childComplexity int, id string, input gqlModel.UpdateAlertInput) int
-		UpdateAlertRule                  func(childComplexity int, id string, input gqlModel.AlertRuleInput) int
 		UpdateAssetInPortfolio           func(childComplexity int, input gqlModel.PortfolioAssetInput) int
 		UpdateBlockchainNetworkConfig    func(childComplexity int, input gqlModel.UpdateBlockchainNetworkConfigInput) int
 		UpdateFinanceDatabaseSyncEnabled func(childComplexity int, assetType gqlModel.AssetSyncType, enabled bool) int
@@ -991,6 +925,7 @@ type ComplexityRoot struct {
 		UpdatePerformanceSnapshots       func(childComplexity int, portfolioIds []string, asOfDate time.Time) int
 		UpdatePortfolio                  func(childComplexity int, id string, input gqlModel.UpdatePortfolioInput) int
 		UpdateProviderRoutingPreferences func(childComplexity int, input gqlModel.ProviderRoutingPreferencesInput) int
+		UpdateRealEstateAsset            func(childComplexity int, id string, input gqlModel.UpdateRealEstateInput) int
 		UpdateTransaction                func(childComplexity int, id string, input gqlModel.UpdateTransactionInput) int
 		UpdateUser                       func(childComplexity int, id string, input gqlModel.UpdateUserInput) int
 		UpdateUserDisplayCurrency        func(childComplexity int, input gqlModel.UpdateUserDisplayCurrencyInput) int
@@ -1000,13 +935,6 @@ type ComplexityRoot struct {
 		UpsertMarketDataCredential       func(childComplexity int, provider string, apiKey string, isEnabled *bool, priority *int32) int
 		ValidateProviderCredentials      func(childComplexity int, provider string, apiKey string) int
 		VerifyEmail                      func(childComplexity int, input gqlModel.EmailVerificationInput) int
-	}
-
-	NavigationPattern struct {
-		AvgDuration func(childComplexity int) int
-		Conversion  func(childComplexity int) int
-		Count       func(childComplexity int) int
-		Pattern     func(childComplexity int) int
 	}
 
 	OnlineInstrumentResult struct {
@@ -1156,11 +1084,6 @@ type ComplexityRoot struct {
 		QuoteCurrency        func(childComplexity int) int
 	}
 
-	PortfolioUpdatePayload struct {
-		Portfolio func(childComplexity int) int
-		Type      func(childComplexity int) int
-	}
-
 	Position struct {
 		Account              func(childComplexity int) int
 		AccountID            func(childComplexity int) int
@@ -1268,11 +1191,13 @@ type ComplexityRoot struct {
 		ComparePortfolios               func(childComplexity int, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		DispositionsByPosition          func(childComplexity int, positionID string) int
 		EnableBankingInstitutions       func(childComplexity int, country string) int
-		ExportPortfolioData             func(childComplexity int, input gqlModel.ExportDataInput) int
+		EstimateRealEstate              func(childComplexity int, input gqlModel.RealEstateEstimationInput) int
+		FetchADEMEDpe                   func(childComplexity int, banID string, surfaceM2 float64, propertyType *string) int
 		FinanceDatabasePreview          func(childComplexity int, assetType gqlModel.AssetSyncType, search *string, limit *int32) int
 		FinanceDatabaseSyncHistory      func(childComplexity int, limit *int32) int
 		FinanceDatabaseSyncStatus       func(childComplexity int) int
 		GeneratePerformanceReport       func(childComplexity int, input gqlModel.GenerateReportInput) int
+		GetCommuneRentalIndicators      func(childComplexity int, cityCode string, propertyType *string, roomsCount *int32, surfaceM2 *float64, propertyValue *float64) int
 		GetPortfoliosWithAnalytics      func(childComplexity int, userID string) int
 		HistoricalDataBackfillJob       func(childComplexity int, id string) int
 		HistoricalDataBackfillJobs      func(childComplexity int, filter *gqlModel.HistoricalDataBackfillJobFilterInput, pagination *gqlModel.PaginationInput) int
@@ -1285,12 +1210,9 @@ type ComplexityRoot struct {
 		MarketDataCredentials           func(childComplexity int) int
 		MarketDataPackJob               func(childComplexity int, id string) int
 		Me                              func(childComplexity int) int
-		Metric                          func(childComplexity int, name string) int
-		Metrics                         func(childComplexity int) int
 		PackBuildJob                    func(childComplexity int, id string) int
 		PackBuildJobs                   func(childComplexity int, limit *int32) int
 		PendingWalletReviews            func(childComplexity int, portfolioID string) int
-		PerformanceMetrics              func(childComplexity int, timeRange *string) int
 		PerformanceSnapshots            func(childComplexity int, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) int
 		Portfolio                       func(childComplexity int, id string) int
 		PortfolioAllocation             func(childComplexity int, portfolioID string, asOfDate *time.Time) int
@@ -1309,7 +1231,6 @@ type ComplexityRoot struct {
 		SupportedProviders              func(childComplexity int, assetType *string) int
 		SyncConnections                 func(childComplexity int, portfolioID string) int
 		SyncCredentials                 func(childComplexity int) int
-		SystemHealth                    func(childComplexity int) int
 		Tag                             func(childComplexity int, id string) int
 		Tags                            func(childComplexity int) int
 		TaxHarvestOpportunities         func(childComplexity int, portfolioID string) int
@@ -1319,7 +1240,6 @@ type ComplexityRoot struct {
 		Transaction                     func(childComplexity int, id string) int
 		Transactions                    func(childComplexity int, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) int
 		User                            func(childComplexity int, id string) int
-		UserEngagementMetrics           func(childComplexity int, timeRange *string) int
 		Users                           func(childComplexity int, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) int
 		WalletAccounts                  func(childComplexity int, portfolioID *string) int
 		WalletCUUsage                   func(childComplexity int) int
@@ -1336,64 +1256,122 @@ type ComplexityRoot struct {
 	}
 
 	RealEstate struct {
-		Address           func(childComplexity int) int
-		AgencyFees        func(childComplexity int) int
-		AssetType         func(childComplexity int) int
-		BathroomCondition func(childComplexity int) int
-		BathroomQuality   func(childComplexity int) int
-		Bathrooms         func(childComplexity int) int
-		Bedrooms          func(childComplexity int) int
-		Category          func(childComplexity int) int
-		City              func(childComplexity int) int
-		Condition         func(childComplexity int) int
-		Country           func(childComplexity int) int
-		CurrentValue      func(childComplexity int) int
-		DayChange         func(childComplexity int) int
-		DayChangePercent  func(childComplexity int) int
-		EnergyLabel       func(childComplexity int) int
-		Exchange          func(childComplexity int) int
-		Floor             func(childComplexity int) int
-		FlooringCondition func(childComplexity int) int
-		FlooringQuality   func(childComplexity int) int
-		FurnishingCosts   func(childComplexity int) int
-		Garages           func(childComplexity int) int
-		GeneralCondition  func(childComplexity int) int
-		GeneralQuality    func(childComplexity int) int
-		HasBalcony        func(childComplexity int) int
-		HasGarden         func(childComplexity int) int
-		HasLift           func(childComplexity int) int
-		HasPool           func(childComplexity int) int
-		HasSauna          func(childComplexity int) int
-		ID                func(childComplexity int) int
-		IsFurnished       func(childComplexity int) int
-		IsNewConstruction func(childComplexity int) int
-		KitchenCondition  func(childComplexity int) int
-		KitchenQuality    func(childComplexity int) int
-		LandSurface       func(childComplexity int) int
-		MonthlyRent       func(childComplexity int) int
-		Name              func(childComplexity int) int
-		NotaryFees        func(childComplexity int) int
-		ParkingSpaces     func(childComplexity int) int
-		Positions         func(childComplexity int) int
-		PropertyType      func(childComplexity int) int
-		PurchaseDate      func(childComplexity int) int
-		PurchasePrice     func(childComplexity int) int
-		RenovationFees    func(childComplexity int) int
-		RentalPeriod      func(childComplexity int) int
-		RentalType        func(childComplexity int) int
-		Rooms             func(childComplexity int) int
-		Sector            func(childComplexity int) int
-		SquareFeet        func(childComplexity int) int
-		State             func(childComplexity int) int
-		Symbol            func(childComplexity int) int
-		Tags              func(childComplexity int) int
-		TotalFloors       func(childComplexity int) int
-		UtilityCosts      func(childComplexity int) int
-		WindowsCondition  func(childComplexity int) int
-		WindowsQuality    func(childComplexity int) int
-		YearBuilt         func(childComplexity int) int
-		YearlyMiscCosts   func(childComplexity int) int
-		ZipCode           func(childComplexity int) int
+		Address              func(childComplexity int) int
+		AddressLabel         func(childComplexity int) int
+		AgencyFees           func(childComplexity int) int
+		AssetType            func(childComplexity int) int
+		BanID                func(childComplexity int) int
+		BasePricePerM2       func(childComplexity int) int
+		BathroomCondition    func(childComplexity int) int
+		BathroomQuality      func(childComplexity int) int
+		Bathrooms            func(childComplexity int) int
+		Bedrooms             func(childComplexity int) int
+		Category             func(childComplexity int) int
+		City                 func(childComplexity int) int
+		CityCode             func(childComplexity int) int
+		ComparablesCount     func(childComplexity int) int
+		Condition            func(childComplexity int) int
+		Country              func(childComplexity int) int
+		CurrentValue         func(childComplexity int) int
+		DayChange            func(childComplexity int) int
+		DayChangePercent     func(childComplexity int) int
+		EnergyLabel          func(childComplexity int) int
+		EstimatedGrossYield  func(childComplexity int) int
+		EstimatedMax         func(childComplexity int) int
+		EstimatedMin         func(childComplexity int) int
+		EstimatedMonthlyRent func(childComplexity int) int
+		EstimatedPricePerM2  func(childComplexity int) int
+		EstimatedValue       func(childComplexity int) int
+		EstimationMethod     func(childComplexity int) int
+		Exchange             func(childComplexity int) int
+		Floor                func(childComplexity int) int
+		FlooringCondition    func(childComplexity int) int
+		FlooringQuality      func(childComplexity int) int
+		FurnishingCosts      func(childComplexity int) int
+		Garages              func(childComplexity int) int
+		GeneralCondition     func(childComplexity int) int
+		GeneralQuality       func(childComplexity int) int
+		HasBalcony           func(childComplexity int) int
+		HasGarden            func(childComplexity int) int
+		HasLift              func(childComplexity int) int
+		HasOutdoor           func(childComplexity int) int
+		HasPool              func(childComplexity int) int
+		HasSauna             func(childComplexity int) int
+		ID                   func(childComplexity int) int
+		IsFurnished          func(childComplexity int) int
+		IsGroundFloor        func(childComplexity int) int
+		IsNewConstruction    func(childComplexity int) int
+		KitchenCondition     func(childComplexity int) int
+		KitchenQuality       func(childComplexity int) int
+		LandSurface          func(childComplexity int) int
+		LastEstimatedAt      func(childComplexity int) int
+		Latitude             func(childComplexity int) int
+		LinkedLoanID         func(childComplexity int) int
+		Longitude            func(childComplexity int) int
+		ManualValue          func(childComplexity int) int
+		MarketRentPerM2      func(childComplexity int) int
+		MonthlyRent          func(childComplexity int) int
+		Name                 func(childComplexity int) int
+		NotaryFees           func(childComplexity int) int
+		OwnershipPercentage  func(childComplexity int) int
+		OwnershipStructure   func(childComplexity int) int
+		ParkingSpaces        func(childComplexity int) int
+		Positions            func(childComplexity int) int
+		PropertyType         func(childComplexity int) int
+		PurchaseDate         func(childComplexity int) int
+		PurchasePrice        func(childComplexity int) int
+		RenovationFees       func(childComplexity int) int
+		RentalPeriod         func(childComplexity int) int
+		RentalR2Adjusted     func(childComplexity int) int
+		RentalType           func(childComplexity int) int
+		Rooms                func(childComplexity int) int
+		SearchRadiusMeters   func(childComplexity int) int
+		Sector               func(childComplexity int) int
+		SquareFeet           func(childComplexity int) int
+		State                func(childComplexity int) int
+		Symbol               func(childComplexity int) int
+		Tags                 func(childComplexity int) int
+		TotalFloors          func(childComplexity int) int
+		UtilityCosts         func(childComplexity int) int
+		ValuationConfidence  func(childComplexity int) int
+		ValuationHistory     func(childComplexity int) int
+		ValuationMode        func(childComplexity int) int
+		WindowsCondition     func(childComplexity int) int
+		WindowsQuality       func(childComplexity int) int
+		YearBuilt            func(childComplexity int) int
+		YearlyMiscCosts      func(childComplexity int) int
+		ZipCode              func(childComplexity int) int
+	}
+
+	RealEstateEstimationResult struct {
+		BasePricePerM2      func(childComplexity int) int
+		ComparablesCount    func(childComplexity int) int
+		Confidence          func(childComplexity int) int
+		EstimatedMax        func(childComplexity int) int
+		EstimatedMin        func(childComplexity int) int
+		EstimatedPricePerM2 func(childComplexity int) int
+		EstimatedValue      func(childComplexity int) int
+		LastEstimatedAt     func(childComplexity int) int
+		Method              func(childComplexity int) int
+		RentalMarket        func(childComplexity int) int
+		SearchRadiusMeters  func(childComplexity int) int
+	}
+
+	RealEstateRentalMarket struct {
+		EstimatedGrossYield  func(childComplexity int) int
+		EstimatedMonthlyRent func(childComplexity int) int
+		IsCommuneLevel       func(childComplexity int) int
+		MarketRentPerM2      func(childComplexity int) int
+		R2Adjusted           func(childComplexity int) int
+		SourceLabel          func(childComplexity int) int
+	}
+
+	RealEstateValuationPoint struct {
+		Date         func(childComplexity int) int
+		EstimatedMax func(childComplexity int) int
+		EstimatedMin func(childComplexity int) int
+		Mode         func(childComplexity int) int
+		Value        func(childComplexity int) int
 	}
 
 	RealizedGainsSummary struct {
@@ -1455,16 +1433,6 @@ type ComplexityRoot struct {
 		Ticker           func(childComplexity int) int
 	}
 
-	Subscription struct {
-		AlertTriggered              func(childComplexity int, userID string) int
-		PerformanceMetricsUpdated   func(childComplexity int) int
-		PortfolioPerformanceUpdates func(childComplexity int, portfolioID string) int
-		PortfolioUpdates            func(childComplexity int, userID string) int
-		PriceUpdates                func(childComplexity int, assetIds []string) int
-		SystemHealthUpdated         func(childComplexity int) int
-		TransactionUpdates          func(childComplexity int, userID string) int
-	}
-
 	SyncConnection struct {
 		Account               func(childComplexity int) int
 		AccountID             func(childComplexity int) int
@@ -1499,15 +1467,6 @@ type ComplexityRoot struct {
 		ItemsUpdated  func(childComplexity int) int
 		StartedAt     func(childComplexity int) int
 		Status        func(childComplexity int) int
-	}
-
-	SystemHealth struct {
-		AlertsCount  func(childComplexity int) int
-		Details      func(childComplexity int) int
-		MetricsCount func(childComplexity int) int
-		RecentErrors func(childComplexity int) int
-		Status       func(childComplexity int) int
-		Timestamp    func(childComplexity int) int
 	}
 
 	Tag struct {
@@ -1625,11 +1584,6 @@ type ComplexityRoot struct {
 		UnitPriceCurrency func(childComplexity int) int
 	}
 
-	TransactionUpdatePayload struct {
-		Transaction func(childComplexity int) int
-		Type        func(childComplexity int) int
-	}
-
 	TriggerFinanceDatabaseSyncPayload struct {
 		Message    func(childComplexity int) int
 		Success    func(childComplexity int) int
@@ -1662,16 +1616,6 @@ type ComplexityRoot struct {
 		UpdatedAt           func(childComplexity int) int
 		Username            func(childComplexity int) int
 		Watchlists          func(childComplexity int) int
-	}
-
-	UserEngagementMetrics struct {
-		ActiveUsers        func(childComplexity int) int
-		AvgSessionDuration func(childComplexity int) int
-		DeviceBreakdown    func(childComplexity int) int
-		ErrorsByComponent  func(childComplexity int) int
-		NavigationPatterns func(childComplexity int) int
-		TopFeatures        func(childComplexity int) int
-		TotalUsers         func(childComplexity int) int
 	}
 
 	ValidationResult struct {
@@ -1824,6 +1768,7 @@ type MutationResolver interface {
 	CreateCryptoAsset(ctx context.Context, input gqlModel.CreateCryptoInput) (*gqlModel.Crypto, error)
 	CreateBankAccountAsset(ctx context.Context, input gqlModel.CreateBankAccountInput) (*gqlModel.BankAccount, error)
 	CreateRealEstateAsset(ctx context.Context, input gqlModel.CreateRealEstateInput) (*gqlModel.RealEstate, error)
+	UpdateRealEstateAsset(ctx context.Context, id string, input gqlModel.UpdateRealEstateInput) (*gqlModel.RealEstate, error)
 	CreateLifeInsuranceAsset(ctx context.Context, input gqlModel.CreateLifeInsuranceInput) (*gqlModel.LifeInsurance, error)
 	CreateWatchAsset(ctx context.Context, input gqlModel.CreateWatchInput) (*gqlModel.Watch, error)
 	CreateLoanAsset(ctx context.Context, input gqlModel.CreateLoanInput) (*gqlModel.Loan, error)
@@ -1842,6 +1787,7 @@ type MutationResolver interface {
 	AcknowledgeAlert(ctx context.Context, alertID string) (bool, error)
 	CreateBatchAlerts(ctx context.Context, input gqlModel.BatchAlertInput) (*gqlModel.BatchAlertResult, error)
 	DeactivateBatchAlerts(ctx context.Context, input gqlModel.BatchDeactivateInput) (*gqlModel.BatchDeactivateResult, error)
+	RefreshRealEstateValuation(ctx context.Context, id string) (*gqlModel.RealEstate, error)
 	Register(ctx context.Context, input gqlModel.RegisterInput) (*gqlModel.AuthResponse, error)
 	Login(ctx context.Context, input gqlModel.LoginInput) (*gqlModel.AuthResponse, error)
 	Logout(ctx context.Context, input gqlModel.LogoutInput) (*gqlModel.LogoutResponse, error)
@@ -1874,10 +1820,6 @@ type MutationResolver interface {
 	CancelMarketDataPackJob(ctx context.Context, jobID string) (*gqlModel.MarketDataPackJob, error)
 	StartLocalPackBuild(ctx context.Context, input gqlModel.StartLocalPackBuildInput) (*gqlModel.MarketDataPackBuildJob, error)
 	CancelPackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error)
-	RecordDashboardEvent(ctx context.Context, input gqlModel.DashboardEventInput) (bool, error)
-	CreateAlertRule(ctx context.Context, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error)
-	UpdateAlertRule(ctx context.Context, id string, input gqlModel.AlertRuleInput) (*gqlModel.AlertRule, error)
-	DeleteAlertRule(ctx context.Context, id string) (bool, error)
 	CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error)
 	UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error)
 	RegisterSyncCredential(ctx context.Context, provider string, credentials map[string]any, portfolioID *string) (*gqlModel.SyncCredential, error)
@@ -1941,6 +1883,9 @@ type QueryResolver interface {
 	Alerts(ctx context.Context, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Alert, error)
 	Alert(ctx context.Context, id string) (*gqlModel.Alert, error)
 	AlertHistory(ctx context.Context, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.AlertTriggerEvent, error)
+	EstimateRealEstate(ctx context.Context, input gqlModel.RealEstateEstimationInput) (*gqlModel.RealEstateEstimationResult, error)
+	FetchADEMEDpe(ctx context.Context, banID string, surfaceM2 float64, propertyType *string) (*gqlModel.ADEMEDpeResult, error)
+	GetCommuneRentalIndicators(ctx context.Context, cityCode string, propertyType *string, roomsCount *int32, surfaceM2 *float64, propertyValue *float64) (*gqlModel.RealEstateRentalMarket, error)
 	Me(ctx context.Context) (*gqlModel.AuthUser, error)
 	CatalogSyncStatus(ctx context.Context, source gqlModel.CatalogSource) (*gqlModel.CatalogSyncRun, error)
 	FinanceDatabaseSyncStatus(ctx context.Context) (*gqlModel.FinanceDatabaseSyncStatusPayload, error)
@@ -1971,11 +1916,6 @@ type QueryResolver interface {
 	MarketDataCoverage(ctx context.Context, instrumentID string) ([]*gqlModel.MarketDataPackCoverage, error)
 	PackBuildJob(ctx context.Context, id string) (*gqlModel.MarketDataPackBuildJob, error)
 	PackBuildJobs(ctx context.Context, limit *int32) ([]*gqlModel.MarketDataPackBuildJob, error)
-	SystemHealth(ctx context.Context) (*gqlModel.SystemHealth, error)
-	PerformanceMetrics(ctx context.Context, timeRange *string) (*gqlModel.DashboardPerformanceMetrics, error)
-	UserEngagementMetrics(ctx context.Context, timeRange *string) (*gqlModel.UserEngagementMetrics, error)
-	Metric(ctx context.Context, name string) (*gqlModel.Metric, error)
-	Metrics(ctx context.Context) ([]*gqlModel.Metric, error)
 	PortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.PerformanceMetrics, error)
 	PortfolioAllocation(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.AllocationBreakdown, error)
 	PortfolioRiskMetrics(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.RiskMetrics, error)
@@ -1989,7 +1929,6 @@ type QueryResolver interface {
 	TopPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error)
 	WorstPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error)
 	GeneratePerformanceReport(ctx context.Context, input gqlModel.GenerateReportInput) (*gqlModel.PerformanceReport, error)
-	ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error)
 	SyncConnections(ctx context.Context, portfolioID string) ([]*gqlModel.SyncConnection, error)
 	SyncCredentials(ctx context.Context) ([]*gqlModel.SyncCredential, error)
 	EnableBankingInstitutions(ctx context.Context, country string) ([]*gqlModel.EnableBankingInstitution, error)
@@ -2005,15 +1944,6 @@ type QueryResolver interface {
 	PendingWalletReviews(ctx context.Context, portfolioID string) ([]*gqlModel.WalletActivityReview, error)
 	BlockchainNetworkConfigs(ctx context.Context) ([]*gqlModel.BlockchainNetworkConfig, error)
 }
-type SubscriptionResolver interface {
-	PortfolioUpdates(ctx context.Context, userID string) (<-chan *gqlModel.PortfolioUpdatePayload, error)
-	TransactionUpdates(ctx context.Context, userID string) (<-chan *gqlModel.TransactionUpdatePayload, error)
-	AlertTriggered(ctx context.Context, userID string) (<-chan *gqlModel.AlertTriggerEvent, error)
-	PerformanceMetricsUpdated(ctx context.Context) (<-chan *gqlModel.DashboardPerformanceMetrics, error)
-	SystemHealthUpdated(ctx context.Context) (<-chan *gqlModel.SystemHealth, error)
-	PortfolioPerformanceUpdates(ctx context.Context, portfolioID string) (<-chan *gqlModel.PerformanceMetrics, error)
-	PriceUpdates(ctx context.Context, assetIds []string) (<-chan *gqlModel.ChartDataPoint, error)
-}
 
 type executableSchema graphql.ExecutableSchemaState[ResolverRoot, DirectiveRoot, ComplexityRoot]
 
@@ -2028,6 +1958,31 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 	ec := newExecutionContext(nil, e, nil)
 	_ = ec
 	switch typeName + "." + field {
+
+	case "ADEMEDpeResult.diagnosticDate":
+		if e.ComplexityRoot.ADEMEDpeResult.DiagnosticDate == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ADEMEDpeResult.DiagnosticDate(childComplexity), true
+	case "ADEMEDpeResult.rating":
+		if e.ComplexityRoot.ADEMEDpeResult.Rating == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ADEMEDpeResult.Rating(childComplexity), true
+	case "ADEMEDpeResult.sourceDataset":
+		if e.ComplexityRoot.ADEMEDpeResult.SourceDataset == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ADEMEDpeResult.SourceDataset(childComplexity), true
+	case "ADEMEDpeResult.surfaceM2":
+		if e.ComplexityRoot.ADEMEDpeResult.SurfaceM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.ADEMEDpeResult.SurfaceM2(childComplexity), true
 
 	case "Account.accountNumber":
 		if e.ComplexityRoot.Account.AccountNumber == nil {
@@ -2298,19 +2253,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Alert.UserID(childComplexity), true
 
-	case "AlertAction.config":
-		if e.ComplexityRoot.AlertAction.Config == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertAction.Config(childComplexity), true
-	case "AlertAction.type":
-		if e.ComplexityRoot.AlertAction.Type == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertAction.Type(childComplexity), true
-
 	case "AlertError.index":
 		if e.ComplexityRoot.AlertError.Index == nil {
 			break
@@ -2323,134 +2265,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.AlertError.Message(childComplexity), true
-
-	case "AlertNotification.alertId":
-		if e.ComplexityRoot.AlertNotification.AlertID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.AlertID(childComplexity), true
-	case "AlertNotification.alertName":
-		if e.ComplexityRoot.AlertNotification.AlertName == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.AlertName(childComplexity), true
-	case "AlertNotification.currentValue":
-		if e.ComplexityRoot.AlertNotification.CurrentValue == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.CurrentValue(childComplexity), true
-	case "AlertNotification.id":
-		if e.ComplexityRoot.AlertNotification.ID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.ID(childComplexity), true
-	case "AlertNotification.message":
-		if e.ComplexityRoot.AlertNotification.Message == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.Message(childComplexity), true
-	case "AlertNotification.metricName":
-		if e.ComplexityRoot.AlertNotification.MetricName == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.MetricName(childComplexity), true
-	case "AlertNotification.severity":
-		if e.ComplexityRoot.AlertNotification.Severity == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.Severity(childComplexity), true
-	case "AlertNotification.threshold":
-		if e.ComplexityRoot.AlertNotification.Threshold == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.Threshold(childComplexity), true
-	case "AlertNotification.timestamp":
-		if e.ComplexityRoot.AlertNotification.Timestamp == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertNotification.Timestamp(childComplexity), true
-
-	case "AlertRule.actions":
-		if e.ComplexityRoot.AlertRule.Actions == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Actions(childComplexity), true
-	case "AlertRule.condition":
-		if e.ComplexityRoot.AlertRule.Condition == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Condition(childComplexity), true
-	case "AlertRule.createdAt":
-		if e.ComplexityRoot.AlertRule.CreatedAt == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.CreatedAt(childComplexity), true
-	case "AlertRule.duration":
-		if e.ComplexityRoot.AlertRule.Duration == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Duration(childComplexity), true
-	case "AlertRule.enabled":
-		if e.ComplexityRoot.AlertRule.Enabled == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Enabled(childComplexity), true
-	case "AlertRule.id":
-		if e.ComplexityRoot.AlertRule.ID == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.ID(childComplexity), true
-	case "AlertRule.labels":
-		if e.ComplexityRoot.AlertRule.Labels == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Labels(childComplexity), true
-	case "AlertRule.lastFired":
-		if e.ComplexityRoot.AlertRule.LastFired == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.LastFired(childComplexity), true
-	case "AlertRule.metricName":
-		if e.ComplexityRoot.AlertRule.MetricName == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.MetricName(childComplexity), true
-	case "AlertRule.name":
-		if e.ComplexityRoot.AlertRule.Name == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Name(childComplexity), true
-	case "AlertRule.threshold":
-		if e.ComplexityRoot.AlertRule.Threshold == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.Threshold(childComplexity), true
-	case "AlertRule.updatedAt":
-		if e.ComplexityRoot.AlertRule.UpdatedAt == nil {
-			break
-		}
-
-		return e.ComplexityRoot.AlertRule.UpdatedAt(childComplexity), true
 
 	case "AlertTriggerEvent.acknowledged":
 		if e.ComplexityRoot.AlertTriggerEvent.Acknowledged == nil {
@@ -3552,37 +3366,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Crypto.WalletAddress(childComplexity), true
 
-	case "DashboardPerformanceMetrics.dashboardStateTransitions":
-		if e.ComplexityRoot.DashboardPerformanceMetrics.DashboardStateTransitions == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DashboardPerformanceMetrics.DashboardStateTransitions(childComplexity), true
-	case "DashboardPerformanceMetrics.dataLoadTimes":
-		if e.ComplexityRoot.DashboardPerformanceMetrics.DataLoadTimes == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DashboardPerformanceMetrics.DataLoadTimes(childComplexity), true
-	case "DashboardPerformanceMetrics.errorRates":
-		if e.ComplexityRoot.DashboardPerformanceMetrics.ErrorRates == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DashboardPerformanceMetrics.ErrorRates(childComplexity), true
-	case "DashboardPerformanceMetrics.marketDataUpdates":
-		if e.ComplexityRoot.DashboardPerformanceMetrics.MarketDataUpdates == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DashboardPerformanceMetrics.MarketDataUpdates(childComplexity), true
-	case "DashboardPerformanceMetrics.userInteractions":
-		if e.ComplexityRoot.DashboardPerformanceMetrics.UserInteractions == nil {
-			break
-		}
-
-		return e.ComplexityRoot.DashboardPerformanceMetrics.UserInteractions(childComplexity), true
-
 	case "DataQuality.estimatedDataPoints":
 		if e.ComplexityRoot.DataQuality.EstimatedDataPoints == nil {
 			break
@@ -3751,31 +3534,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.ExportResult.Success(childComplexity), true
-
-	case "FeatureUsage.avgDuration":
-		if e.ComplexityRoot.FeatureUsage.AvgDuration == nil {
-			break
-		}
-
-		return e.ComplexityRoot.FeatureUsage.AvgDuration(childComplexity), true
-	case "FeatureUsage.feature":
-		if e.ComplexityRoot.FeatureUsage.Feature == nil {
-			break
-		}
-
-		return e.ComplexityRoot.FeatureUsage.Feature(childComplexity), true
-	case "FeatureUsage.uniqueUsers":
-		if e.ComplexityRoot.FeatureUsage.UniqueUsers == nil {
-			break
-		}
-
-		return e.ComplexityRoot.FeatureUsage.UniqueUsers(childComplexity), true
-	case "FeatureUsage.usageCount":
-		if e.ComplexityRoot.FeatureUsage.UsageCount == nil {
-			break
-		}
-
-		return e.ComplexityRoot.FeatureUsage.UsageCount(childComplexity), true
 
 	case "FinanceDatabasePreviewItem.country":
 		if e.ComplexityRoot.FinanceDatabasePreviewItem.Country == nil {
@@ -5680,104 +5438,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.MethodParameter.Value(childComplexity), true
 
-	case "Metric.aggregations":
-		if e.ComplexityRoot.Metric.Aggregations == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.Aggregations(childComplexity), true
-	case "Metric.labels":
-		if e.ComplexityRoot.Metric.Labels == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.Labels(childComplexity), true
-	case "Metric.lastUpdated":
-		if e.ComplexityRoot.Metric.LastUpdated == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.LastUpdated(childComplexity), true
-	case "Metric.name":
-		if e.ComplexityRoot.Metric.Name == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.Name(childComplexity), true
-	case "Metric.type":
-		if e.ComplexityRoot.Metric.Type == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.Type(childComplexity), true
-	case "Metric.value":
-		if e.ComplexityRoot.Metric.Value == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Metric.Value(childComplexity), true
-
-	case "MetricSummary.average":
-		if e.ComplexityRoot.MetricSummary.Average == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.Average(childComplexity), true
-	case "MetricSummary.breakdown":
-		if e.ComplexityRoot.MetricSummary.Breakdown == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.Breakdown(childComplexity), true
-	case "MetricSummary.lastDay":
-		if e.ComplexityRoot.MetricSummary.LastDay == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.LastDay(childComplexity), true
-	case "MetricSummary.lastHour":
-		if e.ComplexityRoot.MetricSummary.LastHour == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.LastHour(childComplexity), true
-	case "MetricSummary.max":
-		if e.ComplexityRoot.MetricSummary.Max == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.Max(childComplexity), true
-	case "MetricSummary.min":
-		if e.ComplexityRoot.MetricSummary.Min == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.Min(childComplexity), true
-	case "MetricSummary.p50":
-		if e.ComplexityRoot.MetricSummary.P50 == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.P50(childComplexity), true
-	case "MetricSummary.p95":
-		if e.ComplexityRoot.MetricSummary.P95 == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.P95(childComplexity), true
-	case "MetricSummary.p99":
-		if e.ComplexityRoot.MetricSummary.P99 == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.P99(childComplexity), true
-	case "MetricSummary.total":
-		if e.ComplexityRoot.MetricSummary.Total == nil {
-			break
-		}
-
-		return e.ComplexityRoot.MetricSummary.Total(childComplexity), true
-
 	case "Mutation.acknowledgeAlert":
 		if e.ComplexityRoot.Mutation.AcknowledgeAlert == nil {
 			break
@@ -6053,17 +5713,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.CreateAlert(childComplexity, args["input"].(gqlModel.CreateAlertInput)), true
-	case "Mutation.createAlertRule":
-		if e.ComplexityRoot.Mutation.CreateAlertRule == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_createAlertRule_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.CreateAlertRule(childComplexity, args["input"].(gqlModel.AlertRuleInput)), true
 	case "Mutation.createBankAccountAsset":
 		if e.ComplexityRoot.Mutation.CreateBankAccountAsset == nil {
 			break
@@ -6240,17 +5889,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.DeleteAlert(childComplexity, args["id"].(string)), true
-	case "Mutation.deleteAlertRule":
-		if e.ComplexityRoot.Mutation.DeleteAlertRule == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_deleteAlertRule_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.DeleteAlertRule(childComplexity, args["id"].(string)), true
 	case "Mutation.deleteMarketDataCredential":
 		if e.ComplexityRoot.Mutation.DeleteMarketDataCredential == nil {
 			break
@@ -6482,17 +6120,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.PollWoobAuth(childComplexity, args["authSessionId"].(string), args["otpCode"].(*string)), true
-	case "Mutation.recordDashboardEvent":
-		if e.ComplexityRoot.Mutation.RecordDashboardEvent == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_recordDashboardEvent_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.RecordDashboardEvent(childComplexity, args["input"].(gqlModel.DashboardEventInput)), true
 	case "Mutation.refreshAssetPrices":
 		if e.ComplexityRoot.Mutation.RefreshAssetPrices == nil {
 			break
@@ -6504,6 +6131,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.RefreshAssetPrices(childComplexity, args["assetId"].(*string)), true
+	case "Mutation.refreshRealEstateValuation":
+		if e.ComplexityRoot.Mutation.RefreshRealEstateValuation == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_refreshRealEstateValuation_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.RefreshRealEstateValuation(childComplexity, args["id"].(string)), true
 	case "Mutation.refreshSingleAssetPrice":
 		if e.ComplexityRoot.Mutation.RefreshSingleAssetPrice == nil {
 			break
@@ -6845,17 +6483,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateAlert(childComplexity, args["id"].(string), args["input"].(gqlModel.UpdateAlertInput)), true
-	case "Mutation.updateAlertRule":
-		if e.ComplexityRoot.Mutation.UpdateAlertRule == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_updateAlertRule_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Mutation.UpdateAlertRule(childComplexity, args["id"].(string), args["input"].(gqlModel.AlertRuleInput)), true
 	case "Mutation.updateAssetInPortfolio":
 		if e.ComplexityRoot.Mutation.UpdateAssetInPortfolio == nil {
 			break
@@ -6944,6 +6571,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.UpdateProviderRoutingPreferences(childComplexity, args["input"].(gqlModel.ProviderRoutingPreferencesInput)), true
+	case "Mutation.updateRealEstateAsset":
+		if e.ComplexityRoot.Mutation.UpdateRealEstateAsset == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_updateRealEstateAsset_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Mutation.UpdateRealEstateAsset(childComplexity, args["id"].(string), args["input"].(gqlModel.UpdateRealEstateInput)), true
 	case "Mutation.updateTransaction":
 		if e.ComplexityRoot.Mutation.UpdateTransaction == nil {
 			break
@@ -7043,31 +6681,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Mutation.VerifyEmail(childComplexity, args["input"].(gqlModel.EmailVerificationInput)), true
-
-	case "NavigationPattern.avgDuration":
-		if e.ComplexityRoot.NavigationPattern.AvgDuration == nil {
-			break
-		}
-
-		return e.ComplexityRoot.NavigationPattern.AvgDuration(childComplexity), true
-	case "NavigationPattern.conversion":
-		if e.ComplexityRoot.NavigationPattern.Conversion == nil {
-			break
-		}
-
-		return e.ComplexityRoot.NavigationPattern.Conversion(childComplexity), true
-	case "NavigationPattern.count":
-		if e.ComplexityRoot.NavigationPattern.Count == nil {
-			break
-		}
-
-		return e.ComplexityRoot.NavigationPattern.Count(childComplexity), true
-	case "NavigationPattern.pattern":
-		if e.ComplexityRoot.NavigationPattern.Pattern == nil {
-			break
-		}
-
-		return e.ComplexityRoot.NavigationPattern.Pattern(childComplexity), true
 
 	case "OnlineInstrumentResult.assetType":
 		if e.ComplexityRoot.OnlineInstrumentResult.AssetType == nil {
@@ -7747,19 +7360,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.PortfolioAsset.QuoteCurrency(childComplexity), true
 
-	case "PortfolioUpdatePayload.portfolio":
-		if e.ComplexityRoot.PortfolioUpdatePayload.Portfolio == nil {
-			break
-		}
-
-		return e.ComplexityRoot.PortfolioUpdatePayload.Portfolio(childComplexity), true
-	case "PortfolioUpdatePayload.type":
-		if e.ComplexityRoot.PortfolioUpdatePayload.Type == nil {
-			break
-		}
-
-		return e.ComplexityRoot.PortfolioUpdatePayload.Type(childComplexity), true
-
 	case "Position.account":
 		if e.ComplexityRoot.Position.Account == nil {
 			break
@@ -8365,17 +7965,28 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.EnableBankingInstitutions(childComplexity, args["country"].(string)), true
-	case "Query.exportPortfolioData":
-		if e.ComplexityRoot.Query.ExportPortfolioData == nil {
+	case "Query.estimateRealEstate":
+		if e.ComplexityRoot.Query.EstimateRealEstate == nil {
 			break
 		}
 
-		args, err := ec.field_Query_exportPortfolioData_args(ctx, rawArgs)
+		args, err := ec.field_Query_estimateRealEstate_args(ctx, rawArgs)
 		if err != nil {
 			return 0, false
 		}
 
-		return e.ComplexityRoot.Query.ExportPortfolioData(childComplexity, args["input"].(gqlModel.ExportDataInput)), true
+		return e.ComplexityRoot.Query.EstimateRealEstate(childComplexity, args["input"].(gqlModel.RealEstateEstimationInput)), true
+	case "Query.fetchADEMEDpe":
+		if e.ComplexityRoot.Query.FetchADEMEDpe == nil {
+			break
+		}
+
+		args, err := ec.field_Query_fetchADEMEDpe_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.FetchADEMEDpe(childComplexity, args["banId"].(string), args["surfaceM2"].(float64), args["propertyType"].(*string)), true
 	case "Query.financeDatabasePreview":
 		if e.ComplexityRoot.Query.FinanceDatabasePreview == nil {
 			break
@@ -8415,6 +8026,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.GeneratePerformanceReport(childComplexity, args["input"].(gqlModel.GenerateReportInput)), true
+	case "Query.getCommuneRentalIndicators":
+		if e.ComplexityRoot.Query.GetCommuneRentalIndicators == nil {
+			break
+		}
+
+		args, err := ec.field_Query_getCommuneRentalIndicators_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.ComplexityRoot.Query.GetCommuneRentalIndicators(childComplexity, args["cityCode"].(string), args["propertyType"].(*string), args["roomsCount"].(*int32), args["surfaceM2"].(*float64), args["propertyValue"].(*float64)), true
 	case "Query.GetPortfoliosWithAnalytics":
 		if e.ComplexityRoot.Query.GetPortfoliosWithAnalytics == nil {
 			break
@@ -8533,23 +8155,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.Me(childComplexity), true
-	case "Query.metric":
-		if e.ComplexityRoot.Query.Metric == nil {
-			break
-		}
-
-		args, err := ec.field_Query_metric_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.Metric(childComplexity, args["name"].(string)), true
-	case "Query.metrics":
-		if e.ComplexityRoot.Query.Metrics == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Query.Metrics(childComplexity), true
 	case "Query.packBuildJob":
 		if e.ComplexityRoot.Query.PackBuildJob == nil {
 			break
@@ -8583,17 +8188,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.PendingWalletReviews(childComplexity, args["portfolioId"].(string)), true
-	case "Query.performanceMetrics":
-		if e.ComplexityRoot.Query.PerformanceMetrics == nil {
-			break
-		}
-
-		args, err := ec.field_Query_performanceMetrics_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.PerformanceMetrics(childComplexity, args["timeRange"].(*string)), true
 	case "Query.performanceSnapshots":
 		if e.ComplexityRoot.Query.PerformanceSnapshots == nil {
 			break
@@ -8777,12 +8371,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.SyncCredentials(childComplexity), true
-	case "Query.systemHealth":
-		if e.ComplexityRoot.Query.SystemHealth == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Query.SystemHealth(childComplexity), true
 	case "Query.tag":
 		if e.ComplexityRoot.Query.Tag == nil {
 			break
@@ -8877,17 +8465,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.Query.User(childComplexity, args["id"].(string)), true
-	case "Query.userEngagementMetrics":
-		if e.ComplexityRoot.Query.UserEngagementMetrics == nil {
-			break
-		}
-
-		args, err := ec.field_Query_userEngagementMetrics_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Query.UserEngagementMetrics(childComplexity, args["timeRange"].(*string)), true
 	case "Query.users":
 		if e.ComplexityRoot.Query.Users == nil {
 			break
@@ -8981,6 +8558,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.Address(childComplexity), true
+	case "RealEstate.addressLabel":
+		if e.ComplexityRoot.RealEstate.AddressLabel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.AddressLabel(childComplexity), true
 	case "RealEstate.agencyFees":
 		if e.ComplexityRoot.RealEstate.AgencyFees == nil {
 			break
@@ -8993,6 +8576,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.AssetType(childComplexity), true
+	case "RealEstate.banId":
+		if e.ComplexityRoot.RealEstate.BanID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.BanID(childComplexity), true
+	case "RealEstate.basePricePerM2":
+		if e.ComplexityRoot.RealEstate.BasePricePerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.BasePricePerM2(childComplexity), true
 	case "RealEstate.bathroomCondition":
 		if e.ComplexityRoot.RealEstate.BathroomCondition == nil {
 			break
@@ -9029,6 +8624,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.City(childComplexity), true
+	case "RealEstate.cityCode":
+		if e.ComplexityRoot.RealEstate.CityCode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.CityCode(childComplexity), true
+	case "RealEstate.comparablesCount":
+		if e.ComplexityRoot.RealEstate.ComparablesCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ComparablesCount(childComplexity), true
 	case "RealEstate.condition":
 		if e.ComplexityRoot.RealEstate.Condition == nil {
 			break
@@ -9065,6 +8672,48 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.EnergyLabel(childComplexity), true
+	case "RealEstate.estimatedGrossYield":
+		if e.ComplexityRoot.RealEstate.EstimatedGrossYield == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedGrossYield(childComplexity), true
+	case "RealEstate.estimatedMax":
+		if e.ComplexityRoot.RealEstate.EstimatedMax == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedMax(childComplexity), true
+	case "RealEstate.estimatedMin":
+		if e.ComplexityRoot.RealEstate.EstimatedMin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedMin(childComplexity), true
+	case "RealEstate.estimatedMonthlyRent":
+		if e.ComplexityRoot.RealEstate.EstimatedMonthlyRent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedMonthlyRent(childComplexity), true
+	case "RealEstate.estimatedPricePerM2":
+		if e.ComplexityRoot.RealEstate.EstimatedPricePerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedPricePerM2(childComplexity), true
+	case "RealEstate.estimatedValue":
+		if e.ComplexityRoot.RealEstate.EstimatedValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimatedValue(childComplexity), true
+	case "RealEstate.estimationMethod":
+		if e.ComplexityRoot.RealEstate.EstimationMethod == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.EstimationMethod(childComplexity), true
 	case "RealEstate.exchange":
 		if e.ComplexityRoot.RealEstate.Exchange == nil {
 			break
@@ -9131,6 +8780,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.HasLift(childComplexity), true
+	case "RealEstate.hasOutdoor":
+		if e.ComplexityRoot.RealEstate.HasOutdoor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.HasOutdoor(childComplexity), true
 	case "RealEstate.hasPool":
 		if e.ComplexityRoot.RealEstate.HasPool == nil {
 			break
@@ -9155,6 +8810,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.IsFurnished(childComplexity), true
+	case "RealEstate.isGroundFloor":
+		if e.ComplexityRoot.RealEstate.IsGroundFloor == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.IsGroundFloor(childComplexity), true
 	case "RealEstate.isNewConstruction":
 		if e.ComplexityRoot.RealEstate.IsNewConstruction == nil {
 			break
@@ -9179,6 +8840,42 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.LandSurface(childComplexity), true
+	case "RealEstate.lastEstimatedAt":
+		if e.ComplexityRoot.RealEstate.LastEstimatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.LastEstimatedAt(childComplexity), true
+	case "RealEstate.latitude":
+		if e.ComplexityRoot.RealEstate.Latitude == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Latitude(childComplexity), true
+	case "RealEstate.linkedLoanId":
+		if e.ComplexityRoot.RealEstate.LinkedLoanID == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.LinkedLoanID(childComplexity), true
+	case "RealEstate.longitude":
+		if e.ComplexityRoot.RealEstate.Longitude == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.Longitude(childComplexity), true
+	case "RealEstate.manualValue":
+		if e.ComplexityRoot.RealEstate.ManualValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ManualValue(childComplexity), true
+	case "RealEstate.marketRentPerM2":
+		if e.ComplexityRoot.RealEstate.MarketRentPerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.MarketRentPerM2(childComplexity), true
 	case "RealEstate.monthlyRent":
 		if e.ComplexityRoot.RealEstate.MonthlyRent == nil {
 			break
@@ -9197,6 +8894,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.NotaryFees(childComplexity), true
+	case "RealEstate.ownershipPercentage":
+		if e.ComplexityRoot.RealEstate.OwnershipPercentage == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.OwnershipPercentage(childComplexity), true
+	case "RealEstate.ownershipStructure":
+		if e.ComplexityRoot.RealEstate.OwnershipStructure == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.OwnershipStructure(childComplexity), true
 	case "RealEstate.parkingSpaces":
 		if e.ComplexityRoot.RealEstate.ParkingSpaces == nil {
 			break
@@ -9239,6 +8948,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.RentalPeriod(childComplexity), true
+	case "RealEstate.rentalR2Adjusted":
+		if e.ComplexityRoot.RealEstate.RentalR2Adjusted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.RentalR2Adjusted(childComplexity), true
 	case "RealEstate.rentalType":
 		if e.ComplexityRoot.RealEstate.RentalType == nil {
 			break
@@ -9251,6 +8966,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.Rooms(childComplexity), true
+	case "RealEstate.searchRadiusMeters":
+		if e.ComplexityRoot.RealEstate.SearchRadiusMeters == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.SearchRadiusMeters(childComplexity), true
 	case "RealEstate.sector":
 		if e.ComplexityRoot.RealEstate.Sector == nil {
 			break
@@ -9293,6 +9014,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.UtilityCosts(childComplexity), true
+	case "RealEstate.valuationConfidence":
+		if e.ComplexityRoot.RealEstate.ValuationConfidence == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ValuationConfidence(childComplexity), true
+	case "RealEstate.valuationHistory":
+		if e.ComplexityRoot.RealEstate.ValuationHistory == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ValuationHistory(childComplexity), true
+	case "RealEstate.valuationMode":
+		if e.ComplexityRoot.RealEstate.ValuationMode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstate.ValuationMode(childComplexity), true
 	case "RealEstate.windowsCondition":
 		if e.ComplexityRoot.RealEstate.WindowsCondition == nil {
 			break
@@ -9323,6 +9062,141 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.RealEstate.ZipCode(childComplexity), true
+
+	case "RealEstateEstimationResult.basePricePerM2":
+		if e.ComplexityRoot.RealEstateEstimationResult.BasePricePerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.BasePricePerM2(childComplexity), true
+	case "RealEstateEstimationResult.comparablesCount":
+		if e.ComplexityRoot.RealEstateEstimationResult.ComparablesCount == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.ComparablesCount(childComplexity), true
+	case "RealEstateEstimationResult.confidence":
+		if e.ComplexityRoot.RealEstateEstimationResult.Confidence == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.Confidence(childComplexity), true
+	case "RealEstateEstimationResult.estimatedMax":
+		if e.ComplexityRoot.RealEstateEstimationResult.EstimatedMax == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.EstimatedMax(childComplexity), true
+	case "RealEstateEstimationResult.estimatedMin":
+		if e.ComplexityRoot.RealEstateEstimationResult.EstimatedMin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.EstimatedMin(childComplexity), true
+	case "RealEstateEstimationResult.estimatedPricePerM2":
+		if e.ComplexityRoot.RealEstateEstimationResult.EstimatedPricePerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.EstimatedPricePerM2(childComplexity), true
+	case "RealEstateEstimationResult.estimatedValue":
+		if e.ComplexityRoot.RealEstateEstimationResult.EstimatedValue == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.EstimatedValue(childComplexity), true
+	case "RealEstateEstimationResult.lastEstimatedAt":
+		if e.ComplexityRoot.RealEstateEstimationResult.LastEstimatedAt == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.LastEstimatedAt(childComplexity), true
+	case "RealEstateEstimationResult.method":
+		if e.ComplexityRoot.RealEstateEstimationResult.Method == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.Method(childComplexity), true
+	case "RealEstateEstimationResult.rentalMarket":
+		if e.ComplexityRoot.RealEstateEstimationResult.RentalMarket == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.RentalMarket(childComplexity), true
+	case "RealEstateEstimationResult.searchRadiusMeters":
+		if e.ComplexityRoot.RealEstateEstimationResult.SearchRadiusMeters == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateEstimationResult.SearchRadiusMeters(childComplexity), true
+
+	case "RealEstateRentalMarket.estimatedGrossYield":
+		if e.ComplexityRoot.RealEstateRentalMarket.EstimatedGrossYield == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.EstimatedGrossYield(childComplexity), true
+	case "RealEstateRentalMarket.estimatedMonthlyRent":
+		if e.ComplexityRoot.RealEstateRentalMarket.EstimatedMonthlyRent == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.EstimatedMonthlyRent(childComplexity), true
+	case "RealEstateRentalMarket.isCommuneLevel":
+		if e.ComplexityRoot.RealEstateRentalMarket.IsCommuneLevel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.IsCommuneLevel(childComplexity), true
+	case "RealEstateRentalMarket.marketRentPerM2":
+		if e.ComplexityRoot.RealEstateRentalMarket.MarketRentPerM2 == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.MarketRentPerM2(childComplexity), true
+	case "RealEstateRentalMarket.r2Adjusted":
+		if e.ComplexityRoot.RealEstateRentalMarket.R2Adjusted == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.R2Adjusted(childComplexity), true
+	case "RealEstateRentalMarket.sourceLabel":
+		if e.ComplexityRoot.RealEstateRentalMarket.SourceLabel == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateRentalMarket.SourceLabel(childComplexity), true
+
+	case "RealEstateValuationPoint.date":
+		if e.ComplexityRoot.RealEstateValuationPoint.Date == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateValuationPoint.Date(childComplexity), true
+	case "RealEstateValuationPoint.estimatedMax":
+		if e.ComplexityRoot.RealEstateValuationPoint.EstimatedMax == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateValuationPoint.EstimatedMax(childComplexity), true
+	case "RealEstateValuationPoint.estimatedMin":
+		if e.ComplexityRoot.RealEstateValuationPoint.EstimatedMin == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateValuationPoint.EstimatedMin(childComplexity), true
+	case "RealEstateValuationPoint.mode":
+		if e.ComplexityRoot.RealEstateValuationPoint.Mode == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateValuationPoint.Mode(childComplexity), true
+	case "RealEstateValuationPoint.value":
+		if e.ComplexityRoot.RealEstateValuationPoint.Value == nil {
+			break
+		}
+
+		return e.ComplexityRoot.RealEstateValuationPoint.Value(childComplexity), true
 
 	case "RealizedGainsSummary.dateFrom":
 		if e.ComplexityRoot.RealizedGainsSummary.DateFrom == nil {
@@ -9593,74 +9467,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Stock.Ticker(childComplexity), true
 
-	case "Subscription.alertTriggered":
-		if e.ComplexityRoot.Subscription.AlertTriggered == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_alertTriggered_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.AlertTriggered(childComplexity, args["userId"].(string)), true
-	case "Subscription.performanceMetricsUpdated":
-		if e.ComplexityRoot.Subscription.PerformanceMetricsUpdated == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Subscription.PerformanceMetricsUpdated(childComplexity), true
-	case "Subscription.portfolioPerformanceUpdates":
-		if e.ComplexityRoot.Subscription.PortfolioPerformanceUpdates == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_portfolioPerformanceUpdates_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.PortfolioPerformanceUpdates(childComplexity, args["portfolioId"].(string)), true
-	case "Subscription.portfolioUpdates":
-		if e.ComplexityRoot.Subscription.PortfolioUpdates == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_portfolioUpdates_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.PortfolioUpdates(childComplexity, args["userID"].(string)), true
-	case "Subscription.priceUpdates":
-		if e.ComplexityRoot.Subscription.PriceUpdates == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_priceUpdates_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.PriceUpdates(childComplexity, args["assetIds"].([]string)), true
-	case "Subscription.systemHealthUpdated":
-		if e.ComplexityRoot.Subscription.SystemHealthUpdated == nil {
-			break
-		}
-
-		return e.ComplexityRoot.Subscription.SystemHealthUpdated(childComplexity), true
-	case "Subscription.transactionUpdates":
-		if e.ComplexityRoot.Subscription.TransactionUpdates == nil {
-			break
-		}
-
-		args, err := ec.field_Subscription_transactionUpdates_args(ctx, rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.ComplexityRoot.Subscription.TransactionUpdates(childComplexity, args["userID"].(string)), true
-
 	case "SyncConnection.account":
 		if e.ComplexityRoot.SyncConnection.Account == nil {
 			break
@@ -9825,43 +9631,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.SyncRun.Status(childComplexity), true
-
-	case "SystemHealth.alertsCount":
-		if e.ComplexityRoot.SystemHealth.AlertsCount == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.AlertsCount(childComplexity), true
-	case "SystemHealth.details":
-		if e.ComplexityRoot.SystemHealth.Details == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.Details(childComplexity), true
-	case "SystemHealth.metricsCount":
-		if e.ComplexityRoot.SystemHealth.MetricsCount == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.MetricsCount(childComplexity), true
-	case "SystemHealth.recentErrors":
-		if e.ComplexityRoot.SystemHealth.RecentErrors == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.RecentErrors(childComplexity), true
-	case "SystemHealth.status":
-		if e.ComplexityRoot.SystemHealth.Status == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.Status(childComplexity), true
-	case "SystemHealth.timestamp":
-		if e.ComplexityRoot.SystemHealth.Timestamp == nil {
-			break
-		}
-
-		return e.ComplexityRoot.SystemHealth.Timestamp(childComplexity), true
 
 	case "Tag.id":
 		if e.ComplexityRoot.Tag.ID == nil {
@@ -10366,19 +10135,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.ComplexityRoot.Transaction.UnitPriceCurrency(childComplexity), true
 
-	case "TransactionUpdatePayload.transaction":
-		if e.ComplexityRoot.TransactionUpdatePayload.Transaction == nil {
-			break
-		}
-
-		return e.ComplexityRoot.TransactionUpdatePayload.Transaction(childComplexity), true
-	case "TransactionUpdatePayload.type":
-		if e.ComplexityRoot.TransactionUpdatePayload.Type == nil {
-			break
-		}
-
-		return e.ComplexityRoot.TransactionUpdatePayload.Type(childComplexity), true
-
 	case "TriggerFinanceDatabaseSyncPayload.message":
 		if e.ComplexityRoot.TriggerFinanceDatabaseSyncPayload.Message == nil {
 			break
@@ -10548,49 +10304,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.ComplexityRoot.User.Watchlists(childComplexity), true
-
-	case "UserEngagementMetrics.activeUsers":
-		if e.ComplexityRoot.UserEngagementMetrics.ActiveUsers == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.ActiveUsers(childComplexity), true
-	case "UserEngagementMetrics.avgSessionDuration":
-		if e.ComplexityRoot.UserEngagementMetrics.AvgSessionDuration == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.AvgSessionDuration(childComplexity), true
-	case "UserEngagementMetrics.deviceBreakdown":
-		if e.ComplexityRoot.UserEngagementMetrics.DeviceBreakdown == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.DeviceBreakdown(childComplexity), true
-	case "UserEngagementMetrics.errorsByComponent":
-		if e.ComplexityRoot.UserEngagementMetrics.ErrorsByComponent == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.ErrorsByComponent(childComplexity), true
-	case "UserEngagementMetrics.navigationPatterns":
-		if e.ComplexityRoot.UserEngagementMetrics.NavigationPatterns == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.NavigationPatterns(childComplexity), true
-	case "UserEngagementMetrics.topFeatures":
-		if e.ComplexityRoot.UserEngagementMetrics.TopFeatures == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.TopFeatures(childComplexity), true
-	case "UserEngagementMetrics.totalUsers":
-		if e.ComplexityRoot.UserEngagementMetrics.TotalUsers == nil {
-			break
-		}
-
-		return e.ComplexityRoot.UserEngagementMetrics.TotalUsers(childComplexity), true
 
 	case "ValidationResult.message":
 		if e.ComplexityRoot.ValidationResult.Message == nil {
@@ -11205,10 +10918,8 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputAdminCreateUserInput,
 		ec.unmarshalInputAdminUpdateUserInput,
 		ec.unmarshalInputAdminUserFilter,
-		ec.unmarshalInputAlertActionInput,
 		ec.unmarshalInputAlertFilter,
 		ec.unmarshalInputAlertHistoryFilter,
-		ec.unmarshalInputAlertRuleInput,
 		ec.unmarshalInputAssetFilter,
 		ec.unmarshalInputAssetOrder,
 		ec.unmarshalInputBatchAlertInput,
@@ -11228,7 +10939,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputCreateWalletDeviceInput,
 		ec.unmarshalInputCreateWatchInput,
 		ec.unmarshalInputCreateWatchlistInput,
-		ec.unmarshalInputDashboardEventInput,
 		ec.unmarshalInputDuplicatePortfolioInput,
 		ec.unmarshalInputEmailVerificationInput,
 		ec.unmarshalInputExportDataInput,
@@ -11255,6 +10965,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputPortfolioOrderInput,
 		ec.unmarshalInputProviderPreferenceInput,
 		ec.unmarshalInputProviderRoutingPreferencesInput,
+		ec.unmarshalInputRealEstateEstimationInput,
 		ec.unmarshalInputRefreshTokenInput,
 		ec.unmarshalInputRegisterInput,
 		ec.unmarshalInputReorderPortfoliosInput,
@@ -11267,6 +10978,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputUpdateBlockchainNetworkConfigInput,
 		ec.unmarshalInputUpdateManualInstrumentInput,
 		ec.unmarshalInputUpdatePortfolioInput,
+		ec.unmarshalInputUpdateRealEstateInput,
 		ec.unmarshalInputUpdateTransactionInput,
 		ec.unmarshalInputUpdateUserDisplayCurrencyInput,
 		ec.unmarshalInputUpdateUserInput,
@@ -11324,23 +11036,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 				Data: buf.Bytes(),
 			}
 		}
-	case ast.Subscription:
-		next := ec._Subscription(ctx, opCtx.Operation.SelectionSet)
-
-		var buf bytes.Buffer
-		return func(ctx context.Context) *graphql.Response {
-			buf.Reset()
-			data := next(ctx)
-
-			if data == nil {
-				return nil
-			}
-			data.MarshalGQL(&buf)
-
-			return &graphql.Response{
-				Data: buf.Bytes(),
-			}
-		}
 
 	default:
 		return graphql.OneShot(graphql.ErrorResponse(ctx, "unsupported GraphQL operation"))
@@ -11366,7 +11061,7 @@ func newExecutionContext(
 	}
 }
 
-//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/monitoring.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/schema.graphqls" "schema/subscription.graphqls" "schema/sync.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/wallet.graphqls" "schema/watchlist.graphqls"
+//go:embed "schema/account.graphqls" "schema/alert.graphqls" "schema/asset.graphqls" "schema/auth.graphqls" "schema/catalog_source.graphqls" "schema/finance_database.graphqls" "schema/instrument.graphqls" "schema/market_data.graphqls" "schema/market_data_packs.graphqls" "schema/ownership.graphqls" "schema/performance.graphqls" "schema/portfolio.graphqls" "schema/position.graphqls" "schema/scalars.graphqls" "schema/schema.graphqls" "schema/sync.graphqls" "schema/tax_lot.graphqls" "schema/transaction.graphqls" "schema/user.graphqls" "schema/wallet.graphqls" "schema/watchlist.graphqls"
 var sourcesFS embed.FS
 
 func sourceData(filename string) string {
@@ -11387,13 +11082,12 @@ var sources = []*ast.Source{
 	{Name: "schema/instrument.graphqls", Input: sourceData("schema/instrument.graphqls"), BuiltIn: false},
 	{Name: "schema/market_data.graphqls", Input: sourceData("schema/market_data.graphqls"), BuiltIn: false},
 	{Name: "schema/market_data_packs.graphqls", Input: sourceData("schema/market_data_packs.graphqls"), BuiltIn: false},
-	{Name: "schema/monitoring.graphqls", Input: sourceData("schema/monitoring.graphqls"), BuiltIn: false},
 	{Name: "schema/ownership.graphqls", Input: sourceData("schema/ownership.graphqls"), BuiltIn: false},
 	{Name: "schema/performance.graphqls", Input: sourceData("schema/performance.graphqls"), BuiltIn: false},
 	{Name: "schema/portfolio.graphqls", Input: sourceData("schema/portfolio.graphqls"), BuiltIn: false},
 	{Name: "schema/position.graphqls", Input: sourceData("schema/position.graphqls"), BuiltIn: false},
+	{Name: "schema/scalars.graphqls", Input: sourceData("schema/scalars.graphqls"), BuiltIn: false},
 	{Name: "schema/schema.graphqls", Input: sourceData("schema/schema.graphqls"), BuiltIn: false},
-	{Name: "schema/subscription.graphqls", Input: sourceData("schema/subscription.graphqls"), BuiltIn: false},
 	{Name: "schema/sync.graphqls", Input: sourceData("schema/sync.graphqls"), BuiltIn: false},
 	{Name: "schema/tax_lot.graphqls", Input: sourceData("schema/tax_lot.graphqls"), BuiltIn: false},
 	{Name: "schema/transaction.graphqls", Input: sourceData("schema/transaction.graphqls"), BuiltIn: false},
@@ -11731,17 +11425,6 @@ func (ec *executionContext) field_Mutation_createAccount_args(ctx context.Contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_createAlertRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAlertRuleInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRuleInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_createAlert_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -11913,17 +11596,6 @@ func (ec *executionContext) field_Mutation_deactivateBatchAlerts_args(ctx contex
 }
 
 func (ec *executionContext) field_Mutation_deleteAccount_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_deleteAlertRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
 	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
@@ -12256,17 +11928,6 @@ func (ec *executionContext) field_Mutation_pollWoobAuth_args(ctx context.Context
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_recordDashboardEvent_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNDashboardEventInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardEventInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_refreshAssetPrices_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12275,6 +11936,17 @@ func (ec *executionContext) field_Mutation_refreshAssetPrices_args(ctx context.C
 		return nil, err
 	}
 	args["assetId"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_refreshRealEstateValuation_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -12683,22 +12355,6 @@ func (ec *executionContext) field_Mutation_updateAccount_args(ctx context.Contex
 	return args, nil
 }
 
-func (ec *executionContext) field_Mutation_updateAlertRule_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["id"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNAlertRuleInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRuleInput)
-	if err != nil {
-		return nil, err
-	}
-	args["input"] = arg1
-	return args, nil
-}
-
 func (ec *executionContext) field_Mutation_updateAlert_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -12820,6 +12476,22 @@ func (ec *executionContext) field_Mutation_updateProviderRoutingPreferences_args
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_updateRealEstateAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "id", ec.unmarshalNID2string)
+	if err != nil {
+		return nil, err
+	}
+	args["id"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNUpdateRealEstateInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateRealEstateInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg1
 	return args, nil
 }
 
@@ -13340,14 +13012,35 @@ func (ec *executionContext) field_Query_enableBankingInstitutions_args(ctx conte
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_exportPortfolioData_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+func (ec *executionContext) field_Query_estimateRealEstate_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNExportDataInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportDataInput)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNRealEstateEstimationInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateEstimationInput)
 	if err != nil {
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_fetchADEMEDpe_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "banId", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["banId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "surfaceM2", ec.unmarshalNFloat2float64)
+	if err != nil {
+		return nil, err
+	}
+	args["surfaceM2"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "propertyType", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["propertyType"] = arg2
 	return args, nil
 }
 
@@ -13391,6 +13084,37 @@ func (ec *executionContext) field_Query_generatePerformanceReport_args(ctx conte
 		return nil, err
 	}
 	args["input"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_getCommuneRentalIndicators_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "cityCode", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["cityCode"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "propertyType", ec.unmarshalOString2ᚖstring)
+	if err != nil {
+		return nil, err
+	}
+	args["propertyType"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "roomsCount", ec.unmarshalOInt2ᚖint32)
+	if err != nil {
+		return nil, err
+	}
+	args["roomsCount"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "surfaceM2", ec.unmarshalOFloat2ᚖfloat64)
+	if err != nil {
+		return nil, err
+	}
+	args["surfaceM2"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "propertyValue", ec.unmarshalOFloat2ᚖfloat64)
+	if err != nil {
+		return nil, err
+	}
+	args["propertyValue"] = arg4
 	return args, nil
 }
 
@@ -13497,17 +13221,6 @@ func (ec *executionContext) field_Query_marketDataPackJob_args(ctx context.Conte
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_metric_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "name", ec.unmarshalNString2string)
-	if err != nil {
-		return nil, err
-	}
-	args["name"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_packBuildJob_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -13538,17 +13251,6 @@ func (ec *executionContext) field_Query_pendingWalletReviews_args(ctx context.Co
 		return nil, err
 	}
 	args["portfolioId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_performanceMetrics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeRange", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["timeRange"] = arg0
 	return args, nil
 }
 
@@ -13904,17 +13606,6 @@ func (ec *executionContext) field_Query_transactions_args(ctx context.Context, r
 	return args, nil
 }
 
-func (ec *executionContext) field_Query_userEngagementMetrics_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "timeRange", ec.unmarshalOString2ᚖstring)
-	if err != nil {
-		return nil, err
-	}
-	args["timeRange"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14006,61 +13697,6 @@ func (ec *executionContext) field_Query_worstPerformingAssets_args(ctx context.C
 	return args, nil
 }
 
-func (ec *executionContext) field_Subscription_alertTriggered_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["userId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_portfolioPerformanceUpdates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "portfolioId", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["portfolioId"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_portfolioUpdates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userID", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["userID"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_priceUpdates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "assetIds", ec.unmarshalNID2ᚕstringᚄ)
-	if err != nil {
-		return nil, err
-	}
-	args["assetIds"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Subscription_transactionUpdates_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
-	var err error
-	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "userID", ec.unmarshalNID2string)
-	if err != nil {
-		return nil, err
-	}
-	args["userID"] = arg0
-	return args, nil
-}
-
 func (ec *executionContext) field_WalletAccount_balances_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -14123,6 +13759,122 @@ func (ec *executionContext) field___Type_fields_args(ctx context.Context, rawArg
 // endregion ************************** directives.gotpl **************************
 
 // region    **************************** field.gotpl *****************************
+
+func (ec *executionContext) _ADEMEDpeResult_rating(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ADEMEDpeResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ADEMEDpeResult_rating,
+		func(ctx context.Context) (any, error) {
+			return obj.Rating, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ADEMEDpeResult_rating(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ADEMEDpeResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ADEMEDpeResult_surfaceM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ADEMEDpeResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ADEMEDpeResult_surfaceM2,
+		func(ctx context.Context) (any, error) {
+			return obj.SurfaceM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ADEMEDpeResult_surfaceM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ADEMEDpeResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ADEMEDpeResult_diagnosticDate(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ADEMEDpeResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ADEMEDpeResult_diagnosticDate,
+		func(ctx context.Context) (any, error) {
+			return obj.DiagnosticDate, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ADEMEDpeResult_diagnosticDate(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ADEMEDpeResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ADEMEDpeResult_sourceDataset(ctx context.Context, field graphql.CollectedField, obj *gqlModel.ADEMEDpeResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ADEMEDpeResult_sourceDataset,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceDataset, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_ADEMEDpeResult_sourceDataset(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ADEMEDpeResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
 
 func (ec *executionContext) _Account_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Account) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
@@ -15578,64 +15330,6 @@ func (ec *executionContext) fieldContext_Alert_notificationMethods(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _AlertAction_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertAction) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertAction_type,
-		func(ctx context.Context) (any, error) {
-			return obj.Type, nil
-		},
-		nil,
-		ec.marshalNAlertActionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionType,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertAction_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertAction",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type AlertActionType does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertAction_config(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertAction) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertAction_config,
-		func(ctx context.Context) (any, error) {
-			return obj.Config, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertAction_config(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertAction",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _AlertError_index(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertError) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15689,621 +15383,6 @@ func (ec *executionContext) fieldContext_AlertError_message(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNID2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_alertId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_alertId,
-		func(ctx context.Context) (any, error) {
-			return obj.AlertID, nil
-		},
-		nil,
-		ec.marshalNID2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_alertId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_alertName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_alertName,
-		func(ctx context.Context) (any, error) {
-			return obj.AlertName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_alertName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_metricName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_metricName,
-		func(ctx context.Context) (any, error) {
-			return obj.MetricName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_metricName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_currentValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_currentValue,
-		func(ctx context.Context) (any, error) {
-			return obj.CurrentValue, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_currentValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_threshold(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_threshold,
-		func(ctx context.Context) (any, error) {
-			return obj.Threshold, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_threshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_severity(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_severity,
-		func(ctx context.Context) (any, error) {
-			return obj.Severity, nil
-		},
-		nil,
-		ec.marshalNAlertSeverity2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertSeverity,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_severity(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type AlertSeverity does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_timestamp,
-		func(ctx context.Context) (any, error) {
-			return obj.Timestamp, nil
-		},
-		nil,
-		ec.marshalNDateTime2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertNotification_message(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertNotification) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertNotification_message,
-		func(ctx context.Context) (any, error) {
-			return obj.Message, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertNotification_message(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertNotification",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_id,
-		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
-		},
-		nil,
-		ec.marshalNID2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type ID does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_name,
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_metricName(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_metricName,
-		func(ctx context.Context) (any, error) {
-			return obj.MetricName, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_metricName(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_condition(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_condition,
-		func(ctx context.Context) (any, error) {
-			return obj.Condition, nil
-		},
-		nil,
-		ec.marshalNAlertCondition2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertCondition,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_condition(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type AlertCondition does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_threshold(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_threshold,
-		func(ctx context.Context) (any, error) {
-			return obj.Threshold, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_threshold(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_duration(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_duration,
-		func(ctx context.Context) (any, error) {
-			return obj.Duration, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_duration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_labels(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_labels,
-		func(ctx context.Context) (any, error) {
-			return obj.Labels, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_labels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_actions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_actions,
-		func(ctx context.Context) (any, error) {
-			return obj.Actions, nil
-		},
-		nil,
-		ec.marshalNAlertAction2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_actions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "type":
-				return ec.fieldContext_AlertAction_type(ctx, field)
-			case "config":
-				return ec.fieldContext_AlertAction_config(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AlertAction", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_lastFired(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_lastFired,
-		func(ctx context.Context) (any, error) {
-			return obj.LastFired, nil
-		},
-		nil,
-		ec.marshalODateTime2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_lastFired(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_enabled(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_enabled,
-		func(ctx context.Context) (any, error) {
-			return obj.Enabled, nil
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_enabled(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_createdAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_createdAt,
-		func(ctx context.Context) (any, error) {
-			return obj.CreatedAt, nil
-		},
-		nil,
-		ec.marshalNDateTime2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_createdAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _AlertRule_updatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.AlertRule) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_AlertRule_updatedAt,
-		func(ctx context.Context) (any, error) {
-			return obj.UpdatedAt, nil
-		},
-		nil,
-		ec.marshalNDateTime2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_AlertRule_updatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "AlertRule",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21718,261 +20797,6 @@ func (ec *executionContext) fieldContext_Crypto_positions(_ context.Context, fie
 	return fc, nil
 }
 
-func (ec *executionContext) _DashboardPerformanceMetrics_dashboardStateTransitions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DashboardPerformanceMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DashboardPerformanceMetrics_dashboardStateTransitions,
-		func(ctx context.Context) (any, error) {
-			return obj.DashboardStateTransitions, nil
-		},
-		nil,
-		ec.marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DashboardPerformanceMetrics_dashboardStateTransitions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardPerformanceMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_MetricSummary_total(ctx, field)
-			case "average":
-				return ec.fieldContext_MetricSummary_average(ctx, field)
-			case "min":
-				return ec.fieldContext_MetricSummary_min(ctx, field)
-			case "max":
-				return ec.fieldContext_MetricSummary_max(ctx, field)
-			case "p50":
-				return ec.fieldContext_MetricSummary_p50(ctx, field)
-			case "p95":
-				return ec.fieldContext_MetricSummary_p95(ctx, field)
-			case "p99":
-				return ec.fieldContext_MetricSummary_p99(ctx, field)
-			case "lastHour":
-				return ec.fieldContext_MetricSummary_lastHour(ctx, field)
-			case "lastDay":
-				return ec.fieldContext_MetricSummary_lastDay(ctx, field)
-			case "breakdown":
-				return ec.fieldContext_MetricSummary_breakdown(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MetricSummary", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardPerformanceMetrics_dataLoadTimes(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DashboardPerformanceMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DashboardPerformanceMetrics_dataLoadTimes,
-		func(ctx context.Context) (any, error) {
-			return obj.DataLoadTimes, nil
-		},
-		nil,
-		ec.marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DashboardPerformanceMetrics_dataLoadTimes(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardPerformanceMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_MetricSummary_total(ctx, field)
-			case "average":
-				return ec.fieldContext_MetricSummary_average(ctx, field)
-			case "min":
-				return ec.fieldContext_MetricSummary_min(ctx, field)
-			case "max":
-				return ec.fieldContext_MetricSummary_max(ctx, field)
-			case "p50":
-				return ec.fieldContext_MetricSummary_p50(ctx, field)
-			case "p95":
-				return ec.fieldContext_MetricSummary_p95(ctx, field)
-			case "p99":
-				return ec.fieldContext_MetricSummary_p99(ctx, field)
-			case "lastHour":
-				return ec.fieldContext_MetricSummary_lastHour(ctx, field)
-			case "lastDay":
-				return ec.fieldContext_MetricSummary_lastDay(ctx, field)
-			case "breakdown":
-				return ec.fieldContext_MetricSummary_breakdown(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MetricSummary", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardPerformanceMetrics_userInteractions(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DashboardPerformanceMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DashboardPerformanceMetrics_userInteractions,
-		func(ctx context.Context) (any, error) {
-			return obj.UserInteractions, nil
-		},
-		nil,
-		ec.marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DashboardPerformanceMetrics_userInteractions(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardPerformanceMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_MetricSummary_total(ctx, field)
-			case "average":
-				return ec.fieldContext_MetricSummary_average(ctx, field)
-			case "min":
-				return ec.fieldContext_MetricSummary_min(ctx, field)
-			case "max":
-				return ec.fieldContext_MetricSummary_max(ctx, field)
-			case "p50":
-				return ec.fieldContext_MetricSummary_p50(ctx, field)
-			case "p95":
-				return ec.fieldContext_MetricSummary_p95(ctx, field)
-			case "p99":
-				return ec.fieldContext_MetricSummary_p99(ctx, field)
-			case "lastHour":
-				return ec.fieldContext_MetricSummary_lastHour(ctx, field)
-			case "lastDay":
-				return ec.fieldContext_MetricSummary_lastDay(ctx, field)
-			case "breakdown":
-				return ec.fieldContext_MetricSummary_breakdown(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MetricSummary", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardPerformanceMetrics_errorRates(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DashboardPerformanceMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DashboardPerformanceMetrics_errorRates,
-		func(ctx context.Context) (any, error) {
-			return obj.ErrorRates, nil
-		},
-		nil,
-		ec.marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DashboardPerformanceMetrics_errorRates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardPerformanceMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_MetricSummary_total(ctx, field)
-			case "average":
-				return ec.fieldContext_MetricSummary_average(ctx, field)
-			case "min":
-				return ec.fieldContext_MetricSummary_min(ctx, field)
-			case "max":
-				return ec.fieldContext_MetricSummary_max(ctx, field)
-			case "p50":
-				return ec.fieldContext_MetricSummary_p50(ctx, field)
-			case "p95":
-				return ec.fieldContext_MetricSummary_p95(ctx, field)
-			case "p99":
-				return ec.fieldContext_MetricSummary_p99(ctx, field)
-			case "lastHour":
-				return ec.fieldContext_MetricSummary_lastHour(ctx, field)
-			case "lastDay":
-				return ec.fieldContext_MetricSummary_lastDay(ctx, field)
-			case "breakdown":
-				return ec.fieldContext_MetricSummary_breakdown(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MetricSummary", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _DashboardPerformanceMetrics_marketDataUpdates(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DashboardPerformanceMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_DashboardPerformanceMetrics_marketDataUpdates,
-		func(ctx context.Context) (any, error) {
-			return obj.MarketDataUpdates, nil
-		},
-		nil,
-		ec.marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_DashboardPerformanceMetrics_marketDataUpdates(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "DashboardPerformanceMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "total":
-				return ec.fieldContext_MetricSummary_total(ctx, field)
-			case "average":
-				return ec.fieldContext_MetricSummary_average(ctx, field)
-			case "min":
-				return ec.fieldContext_MetricSummary_min(ctx, field)
-			case "max":
-				return ec.fieldContext_MetricSummary_max(ctx, field)
-			case "p50":
-				return ec.fieldContext_MetricSummary_p50(ctx, field)
-			case "p95":
-				return ec.fieldContext_MetricSummary_p95(ctx, field)
-			case "p99":
-				return ec.fieldContext_MetricSummary_p99(ctx, field)
-			case "lastHour":
-				return ec.fieldContext_MetricSummary_lastHour(ctx, field)
-			case "lastDay":
-				return ec.fieldContext_MetricSummary_lastDay(ctx, field)
-			case "breakdown":
-				return ec.fieldContext_MetricSummary_breakdown(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type MetricSummary", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _DataQuality_score(ctx context.Context, field graphql.CollectedField, obj *gqlModel.DataQuality) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -22759,122 +21583,6 @@ func (ec *executionContext) fieldContext_ExportResult_error(_ context.Context, f
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _FeatureUsage_feature(ctx context.Context, field graphql.CollectedField, obj *gqlModel.FeatureUsage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_FeatureUsage_feature,
-		func(ctx context.Context) (any, error) {
-			return obj.Feature, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_FeatureUsage_feature(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "FeatureUsage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _FeatureUsage_usageCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.FeatureUsage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_FeatureUsage_usageCount,
-		func(ctx context.Context) (any, error) {
-			return obj.UsageCount, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_FeatureUsage_usageCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "FeatureUsage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _FeatureUsage_uniqueUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.FeatureUsage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_FeatureUsage_uniqueUsers,
-		func(ctx context.Context) (any, error) {
-			return obj.UniqueUsers, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_FeatureUsage_uniqueUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "FeatureUsage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _FeatureUsage_avgDuration(ctx context.Context, field graphql.CollectedField, obj *gqlModel.FeatureUsage) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_FeatureUsage_avgDuration,
-		func(ctx context.Context) (any, error) {
-			return obj.AvgDuration, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_FeatureUsage_avgDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "FeatureUsage",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -32528,470 +31236,6 @@ func (ec *executionContext) fieldContext_MethodParameter_value(_ context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Metric_name(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_name,
-		func(ctx context.Context) (any, error) {
-			return obj.Name, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_name(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Metric_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_type,
-		func(ctx context.Context) (any, error) {
-			return obj.Type, nil
-		},
-		nil,
-		ec.marshalNMetricType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricType,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type MetricType does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Metric_value(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_value,
-		func(ctx context.Context) (any, error) {
-			return obj.Value, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Metric_labels(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_labels,
-		func(ctx context.Context) (any, error) {
-			return obj.Labels, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_labels(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Metric_aggregations(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_aggregations,
-		func(ctx context.Context) (any, error) {
-			return obj.Aggregations, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_aggregations(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Metric_lastUpdated(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Metric) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Metric_lastUpdated,
-		func(ctx context.Context) (any, error) {
-			return obj.LastUpdated, nil
-		},
-		nil,
-		ec.marshalNDateTime2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Metric_lastUpdated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Metric",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_total(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_total,
-		func(ctx context.Context) (any, error) {
-			return obj.Total, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_total(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_average(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_average,
-		func(ctx context.Context) (any, error) {
-			return obj.Average, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_average(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_min(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_min,
-		func(ctx context.Context) (any, error) {
-			return obj.Min, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_min(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_max(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_max,
-		func(ctx context.Context) (any, error) {
-			return obj.Max, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_max(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_p50(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_p50,
-		func(ctx context.Context) (any, error) {
-			return obj.P50, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_p50(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_p95(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_p95,
-		func(ctx context.Context) (any, error) {
-			return obj.P95, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_p95(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_p99(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_p99,
-		func(ctx context.Context) (any, error) {
-			return obj.P99, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_p99(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_lastHour(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_lastHour,
-		func(ctx context.Context) (any, error) {
-			return obj.LastHour, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_lastHour(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_lastDay(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_lastDay,
-		func(ctx context.Context) (any, error) {
-			return obj.LastDay, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_lastDay(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _MetricSummary_breakdown(ctx context.Context, field graphql.CollectedField, obj *gqlModel.MetricSummary) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_MetricSummary_breakdown,
-		func(ctx context.Context) (any, error) {
-			return obj.Breakdown, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_MetricSummary_breakdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "MetricSummary",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Mutation_createUser(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -34816,6 +33060,60 @@ func (ec *executionContext) fieldContext_Mutation_createRealEstateAsset(ctx cont
 				return ec.fieldContext_RealEstate_generalQuality(ctx, field)
 			case "generalCondition":
 				return ec.fieldContext_RealEstate_generalCondition(ctx, field)
+			case "linkedLoanId":
+				return ec.fieldContext_RealEstate_linkedLoanId(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_RealEstate_ownershipPercentage(ctx, field)
+			case "ownershipStructure":
+				return ec.fieldContext_RealEstate_ownershipStructure(ctx, field)
+			case "addressLabel":
+				return ec.fieldContext_RealEstate_addressLabel(ctx, field)
+			case "cityCode":
+				return ec.fieldContext_RealEstate_cityCode(ctx, field)
+			case "banId":
+				return ec.fieldContext_RealEstate_banId(ctx, field)
+			case "latitude":
+				return ec.fieldContext_RealEstate_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_RealEstate_longitude(ctx, field)
+			case "hasOutdoor":
+				return ec.fieldContext_RealEstate_hasOutdoor(ctx, field)
+			case "isGroundFloor":
+				return ec.fieldContext_RealEstate_isGroundFloor(ctx, field)
+			case "valuationMode":
+				return ec.fieldContext_RealEstate_valuationMode(ctx, field)
+			case "estimationMethod":
+				return ec.fieldContext_RealEstate_estimationMethod(ctx, field)
+			case "manualValue":
+				return ec.fieldContext_RealEstate_manualValue(ctx, field)
+			case "estimatedValue":
+				return ec.fieldContext_RealEstate_estimatedValue(ctx, field)
+			case "estimatedMin":
+				return ec.fieldContext_RealEstate_estimatedMin(ctx, field)
+			case "estimatedMax":
+				return ec.fieldContext_RealEstate_estimatedMax(ctx, field)
+			case "estimatedPricePerM2":
+				return ec.fieldContext_RealEstate_estimatedPricePerM2(ctx, field)
+			case "basePricePerM2":
+				return ec.fieldContext_RealEstate_basePricePerM2(ctx, field)
+			case "valuationConfidence":
+				return ec.fieldContext_RealEstate_valuationConfidence(ctx, field)
+			case "comparablesCount":
+				return ec.fieldContext_RealEstate_comparablesCount(ctx, field)
+			case "searchRadiusMeters":
+				return ec.fieldContext_RealEstate_searchRadiusMeters(ctx, field)
+			case "lastEstimatedAt":
+				return ec.fieldContext_RealEstate_lastEstimatedAt(ctx, field)
+			case "valuationHistory":
+				return ec.fieldContext_RealEstate_valuationHistory(ctx, field)
+			case "marketRentPerM2":
+				return ec.fieldContext_RealEstate_marketRentPerM2(ctx, field)
+			case "estimatedMonthlyRent":
+				return ec.fieldContext_RealEstate_estimatedMonthlyRent(ctx, field)
+			case "estimatedGrossYield":
+				return ec.fieldContext_RealEstate_estimatedGrossYield(ctx, field)
+			case "rentalR2Adjusted":
+				return ec.fieldContext_RealEstate_rentalR2Adjusted(ctx, field)
 			case "sector":
 				return ec.fieldContext_RealEstate_sector(ctx, field)
 			case "exchange":
@@ -34838,6 +33136,232 @@ func (ec *executionContext) fieldContext_Mutation_createRealEstateAsset(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_createRealEstateAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_updateRealEstateAsset(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_updateRealEstateAsset,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().UpdateRealEstateAsset(ctx, fc.Args["id"].(string), fc.Args["input"].(gqlModel.UpdateRealEstateInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.RealEstate
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNRealEstate2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstate,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_updateRealEstateAsset(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RealEstate_id(ctx, field)
+			case "name":
+				return ec.fieldContext_RealEstate_name(ctx, field)
+			case "symbol":
+				return ec.fieldContext_RealEstate_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_RealEstate_assetType(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_RealEstate_currentValue(ctx, field)
+			case "purchaseDate":
+				return ec.fieldContext_RealEstate_purchaseDate(ctx, field)
+			case "purchasePrice":
+				return ec.fieldContext_RealEstate_purchasePrice(ctx, field)
+			case "tags":
+				return ec.fieldContext_RealEstate_tags(ctx, field)
+			case "propertyType":
+				return ec.fieldContext_RealEstate_propertyType(ctx, field)
+			case "category":
+				return ec.fieldContext_RealEstate_category(ctx, field)
+			case "address":
+				return ec.fieldContext_RealEstate_address(ctx, field)
+			case "city":
+				return ec.fieldContext_RealEstate_city(ctx, field)
+			case "state":
+				return ec.fieldContext_RealEstate_state(ctx, field)
+			case "country":
+				return ec.fieldContext_RealEstate_country(ctx, field)
+			case "zipCode":
+				return ec.fieldContext_RealEstate_zipCode(ctx, field)
+			case "squareFeet":
+				return ec.fieldContext_RealEstate_squareFeet(ctx, field)
+			case "landSurface":
+				return ec.fieldContext_RealEstate_landSurface(ctx, field)
+			case "yearBuilt":
+				return ec.fieldContext_RealEstate_yearBuilt(ctx, field)
+			case "bedrooms":
+				return ec.fieldContext_RealEstate_bedrooms(ctx, field)
+			case "bathrooms":
+				return ec.fieldContext_RealEstate_bathrooms(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RealEstate_rooms(ctx, field)
+			case "floor":
+				return ec.fieldContext_RealEstate_floor(ctx, field)
+			case "totalFloors":
+				return ec.fieldContext_RealEstate_totalFloors(ctx, field)
+			case "garages":
+				return ec.fieldContext_RealEstate_garages(ctx, field)
+			case "parkingSpaces":
+				return ec.fieldContext_RealEstate_parkingSpaces(ctx, field)
+			case "energyLabel":
+				return ec.fieldContext_RealEstate_energyLabel(ctx, field)
+			case "condition":
+				return ec.fieldContext_RealEstate_condition(ctx, field)
+			case "agencyFees":
+				return ec.fieldContext_RealEstate_agencyFees(ctx, field)
+			case "notaryFees":
+				return ec.fieldContext_RealEstate_notaryFees(ctx, field)
+			case "renovationFees":
+				return ec.fieldContext_RealEstate_renovationFees(ctx, field)
+			case "furnishingCosts":
+				return ec.fieldContext_RealEstate_furnishingCosts(ctx, field)
+			case "rentalType":
+				return ec.fieldContext_RealEstate_rentalType(ctx, field)
+			case "rentalPeriod":
+				return ec.fieldContext_RealEstate_rentalPeriod(ctx, field)
+			case "monthlyRent":
+				return ec.fieldContext_RealEstate_monthlyRent(ctx, field)
+			case "utilityCosts":
+				return ec.fieldContext_RealEstate_utilityCosts(ctx, field)
+			case "yearlyMiscCosts":
+				return ec.fieldContext_RealEstate_yearlyMiscCosts(ctx, field)
+			case "hasGarden":
+				return ec.fieldContext_RealEstate_hasGarden(ctx, field)
+			case "hasBalcony":
+				return ec.fieldContext_RealEstate_hasBalcony(ctx, field)
+			case "hasLift":
+				return ec.fieldContext_RealEstate_hasLift(ctx, field)
+			case "hasPool":
+				return ec.fieldContext_RealEstate_hasPool(ctx, field)
+			case "hasSauna":
+				return ec.fieldContext_RealEstate_hasSauna(ctx, field)
+			case "isFurnished":
+				return ec.fieldContext_RealEstate_isFurnished(ctx, field)
+			case "isNewConstruction":
+				return ec.fieldContext_RealEstate_isNewConstruction(ctx, field)
+			case "kitchenQuality":
+				return ec.fieldContext_RealEstate_kitchenQuality(ctx, field)
+			case "kitchenCondition":
+				return ec.fieldContext_RealEstate_kitchenCondition(ctx, field)
+			case "bathroomQuality":
+				return ec.fieldContext_RealEstate_bathroomQuality(ctx, field)
+			case "bathroomCondition":
+				return ec.fieldContext_RealEstate_bathroomCondition(ctx, field)
+			case "flooringQuality":
+				return ec.fieldContext_RealEstate_flooringQuality(ctx, field)
+			case "flooringCondition":
+				return ec.fieldContext_RealEstate_flooringCondition(ctx, field)
+			case "windowsQuality":
+				return ec.fieldContext_RealEstate_windowsQuality(ctx, field)
+			case "windowsCondition":
+				return ec.fieldContext_RealEstate_windowsCondition(ctx, field)
+			case "generalQuality":
+				return ec.fieldContext_RealEstate_generalQuality(ctx, field)
+			case "generalCondition":
+				return ec.fieldContext_RealEstate_generalCondition(ctx, field)
+			case "linkedLoanId":
+				return ec.fieldContext_RealEstate_linkedLoanId(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_RealEstate_ownershipPercentage(ctx, field)
+			case "ownershipStructure":
+				return ec.fieldContext_RealEstate_ownershipStructure(ctx, field)
+			case "addressLabel":
+				return ec.fieldContext_RealEstate_addressLabel(ctx, field)
+			case "cityCode":
+				return ec.fieldContext_RealEstate_cityCode(ctx, field)
+			case "banId":
+				return ec.fieldContext_RealEstate_banId(ctx, field)
+			case "latitude":
+				return ec.fieldContext_RealEstate_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_RealEstate_longitude(ctx, field)
+			case "hasOutdoor":
+				return ec.fieldContext_RealEstate_hasOutdoor(ctx, field)
+			case "isGroundFloor":
+				return ec.fieldContext_RealEstate_isGroundFloor(ctx, field)
+			case "valuationMode":
+				return ec.fieldContext_RealEstate_valuationMode(ctx, field)
+			case "estimationMethod":
+				return ec.fieldContext_RealEstate_estimationMethod(ctx, field)
+			case "manualValue":
+				return ec.fieldContext_RealEstate_manualValue(ctx, field)
+			case "estimatedValue":
+				return ec.fieldContext_RealEstate_estimatedValue(ctx, field)
+			case "estimatedMin":
+				return ec.fieldContext_RealEstate_estimatedMin(ctx, field)
+			case "estimatedMax":
+				return ec.fieldContext_RealEstate_estimatedMax(ctx, field)
+			case "estimatedPricePerM2":
+				return ec.fieldContext_RealEstate_estimatedPricePerM2(ctx, field)
+			case "basePricePerM2":
+				return ec.fieldContext_RealEstate_basePricePerM2(ctx, field)
+			case "valuationConfidence":
+				return ec.fieldContext_RealEstate_valuationConfidence(ctx, field)
+			case "comparablesCount":
+				return ec.fieldContext_RealEstate_comparablesCount(ctx, field)
+			case "searchRadiusMeters":
+				return ec.fieldContext_RealEstate_searchRadiusMeters(ctx, field)
+			case "lastEstimatedAt":
+				return ec.fieldContext_RealEstate_lastEstimatedAt(ctx, field)
+			case "valuationHistory":
+				return ec.fieldContext_RealEstate_valuationHistory(ctx, field)
+			case "marketRentPerM2":
+				return ec.fieldContext_RealEstate_marketRentPerM2(ctx, field)
+			case "estimatedMonthlyRent":
+				return ec.fieldContext_RealEstate_estimatedMonthlyRent(ctx, field)
+			case "estimatedGrossYield":
+				return ec.fieldContext_RealEstate_estimatedGrossYield(ctx, field)
+			case "rentalR2Adjusted":
+				return ec.fieldContext_RealEstate_rentalR2Adjusted(ctx, field)
+			case "sector":
+				return ec.fieldContext_RealEstate_sector(ctx, field)
+			case "exchange":
+				return ec.fieldContext_RealEstate_exchange(ctx, field)
+			case "dayChange":
+				return ec.fieldContext_RealEstate_dayChange(ctx, field)
+			case "dayChangePercent":
+				return ec.fieldContext_RealEstate_dayChangePercent(ctx, field)
+			case "positions":
+				return ec.fieldContext_RealEstate_positions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstate", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_updateRealEstateAsset_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -36190,6 +34714,232 @@ func (ec *executionContext) fieldContext_Mutation_deactivateBatchAlerts(ctx cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deactivateBatchAlerts_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_refreshRealEstateValuation(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_refreshRealEstateValuation,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Mutation().RefreshRealEstateValuation(ctx, fc.Args["id"].(string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.RealEstate
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNRealEstate2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstate,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_refreshRealEstateValuation(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_RealEstate_id(ctx, field)
+			case "name":
+				return ec.fieldContext_RealEstate_name(ctx, field)
+			case "symbol":
+				return ec.fieldContext_RealEstate_symbol(ctx, field)
+			case "assetType":
+				return ec.fieldContext_RealEstate_assetType(ctx, field)
+			case "currentValue":
+				return ec.fieldContext_RealEstate_currentValue(ctx, field)
+			case "purchaseDate":
+				return ec.fieldContext_RealEstate_purchaseDate(ctx, field)
+			case "purchasePrice":
+				return ec.fieldContext_RealEstate_purchasePrice(ctx, field)
+			case "tags":
+				return ec.fieldContext_RealEstate_tags(ctx, field)
+			case "propertyType":
+				return ec.fieldContext_RealEstate_propertyType(ctx, field)
+			case "category":
+				return ec.fieldContext_RealEstate_category(ctx, field)
+			case "address":
+				return ec.fieldContext_RealEstate_address(ctx, field)
+			case "city":
+				return ec.fieldContext_RealEstate_city(ctx, field)
+			case "state":
+				return ec.fieldContext_RealEstate_state(ctx, field)
+			case "country":
+				return ec.fieldContext_RealEstate_country(ctx, field)
+			case "zipCode":
+				return ec.fieldContext_RealEstate_zipCode(ctx, field)
+			case "squareFeet":
+				return ec.fieldContext_RealEstate_squareFeet(ctx, field)
+			case "landSurface":
+				return ec.fieldContext_RealEstate_landSurface(ctx, field)
+			case "yearBuilt":
+				return ec.fieldContext_RealEstate_yearBuilt(ctx, field)
+			case "bedrooms":
+				return ec.fieldContext_RealEstate_bedrooms(ctx, field)
+			case "bathrooms":
+				return ec.fieldContext_RealEstate_bathrooms(ctx, field)
+			case "rooms":
+				return ec.fieldContext_RealEstate_rooms(ctx, field)
+			case "floor":
+				return ec.fieldContext_RealEstate_floor(ctx, field)
+			case "totalFloors":
+				return ec.fieldContext_RealEstate_totalFloors(ctx, field)
+			case "garages":
+				return ec.fieldContext_RealEstate_garages(ctx, field)
+			case "parkingSpaces":
+				return ec.fieldContext_RealEstate_parkingSpaces(ctx, field)
+			case "energyLabel":
+				return ec.fieldContext_RealEstate_energyLabel(ctx, field)
+			case "condition":
+				return ec.fieldContext_RealEstate_condition(ctx, field)
+			case "agencyFees":
+				return ec.fieldContext_RealEstate_agencyFees(ctx, field)
+			case "notaryFees":
+				return ec.fieldContext_RealEstate_notaryFees(ctx, field)
+			case "renovationFees":
+				return ec.fieldContext_RealEstate_renovationFees(ctx, field)
+			case "furnishingCosts":
+				return ec.fieldContext_RealEstate_furnishingCosts(ctx, field)
+			case "rentalType":
+				return ec.fieldContext_RealEstate_rentalType(ctx, field)
+			case "rentalPeriod":
+				return ec.fieldContext_RealEstate_rentalPeriod(ctx, field)
+			case "monthlyRent":
+				return ec.fieldContext_RealEstate_monthlyRent(ctx, field)
+			case "utilityCosts":
+				return ec.fieldContext_RealEstate_utilityCosts(ctx, field)
+			case "yearlyMiscCosts":
+				return ec.fieldContext_RealEstate_yearlyMiscCosts(ctx, field)
+			case "hasGarden":
+				return ec.fieldContext_RealEstate_hasGarden(ctx, field)
+			case "hasBalcony":
+				return ec.fieldContext_RealEstate_hasBalcony(ctx, field)
+			case "hasLift":
+				return ec.fieldContext_RealEstate_hasLift(ctx, field)
+			case "hasPool":
+				return ec.fieldContext_RealEstate_hasPool(ctx, field)
+			case "hasSauna":
+				return ec.fieldContext_RealEstate_hasSauna(ctx, field)
+			case "isFurnished":
+				return ec.fieldContext_RealEstate_isFurnished(ctx, field)
+			case "isNewConstruction":
+				return ec.fieldContext_RealEstate_isNewConstruction(ctx, field)
+			case "kitchenQuality":
+				return ec.fieldContext_RealEstate_kitchenQuality(ctx, field)
+			case "kitchenCondition":
+				return ec.fieldContext_RealEstate_kitchenCondition(ctx, field)
+			case "bathroomQuality":
+				return ec.fieldContext_RealEstate_bathroomQuality(ctx, field)
+			case "bathroomCondition":
+				return ec.fieldContext_RealEstate_bathroomCondition(ctx, field)
+			case "flooringQuality":
+				return ec.fieldContext_RealEstate_flooringQuality(ctx, field)
+			case "flooringCondition":
+				return ec.fieldContext_RealEstate_flooringCondition(ctx, field)
+			case "windowsQuality":
+				return ec.fieldContext_RealEstate_windowsQuality(ctx, field)
+			case "windowsCondition":
+				return ec.fieldContext_RealEstate_windowsCondition(ctx, field)
+			case "generalQuality":
+				return ec.fieldContext_RealEstate_generalQuality(ctx, field)
+			case "generalCondition":
+				return ec.fieldContext_RealEstate_generalCondition(ctx, field)
+			case "linkedLoanId":
+				return ec.fieldContext_RealEstate_linkedLoanId(ctx, field)
+			case "ownershipPercentage":
+				return ec.fieldContext_RealEstate_ownershipPercentage(ctx, field)
+			case "ownershipStructure":
+				return ec.fieldContext_RealEstate_ownershipStructure(ctx, field)
+			case "addressLabel":
+				return ec.fieldContext_RealEstate_addressLabel(ctx, field)
+			case "cityCode":
+				return ec.fieldContext_RealEstate_cityCode(ctx, field)
+			case "banId":
+				return ec.fieldContext_RealEstate_banId(ctx, field)
+			case "latitude":
+				return ec.fieldContext_RealEstate_latitude(ctx, field)
+			case "longitude":
+				return ec.fieldContext_RealEstate_longitude(ctx, field)
+			case "hasOutdoor":
+				return ec.fieldContext_RealEstate_hasOutdoor(ctx, field)
+			case "isGroundFloor":
+				return ec.fieldContext_RealEstate_isGroundFloor(ctx, field)
+			case "valuationMode":
+				return ec.fieldContext_RealEstate_valuationMode(ctx, field)
+			case "estimationMethod":
+				return ec.fieldContext_RealEstate_estimationMethod(ctx, field)
+			case "manualValue":
+				return ec.fieldContext_RealEstate_manualValue(ctx, field)
+			case "estimatedValue":
+				return ec.fieldContext_RealEstate_estimatedValue(ctx, field)
+			case "estimatedMin":
+				return ec.fieldContext_RealEstate_estimatedMin(ctx, field)
+			case "estimatedMax":
+				return ec.fieldContext_RealEstate_estimatedMax(ctx, field)
+			case "estimatedPricePerM2":
+				return ec.fieldContext_RealEstate_estimatedPricePerM2(ctx, field)
+			case "basePricePerM2":
+				return ec.fieldContext_RealEstate_basePricePerM2(ctx, field)
+			case "valuationConfidence":
+				return ec.fieldContext_RealEstate_valuationConfidence(ctx, field)
+			case "comparablesCount":
+				return ec.fieldContext_RealEstate_comparablesCount(ctx, field)
+			case "searchRadiusMeters":
+				return ec.fieldContext_RealEstate_searchRadiusMeters(ctx, field)
+			case "lastEstimatedAt":
+				return ec.fieldContext_RealEstate_lastEstimatedAt(ctx, field)
+			case "valuationHistory":
+				return ec.fieldContext_RealEstate_valuationHistory(ctx, field)
+			case "marketRentPerM2":
+				return ec.fieldContext_RealEstate_marketRentPerM2(ctx, field)
+			case "estimatedMonthlyRent":
+				return ec.fieldContext_RealEstate_estimatedMonthlyRent(ctx, field)
+			case "estimatedGrossYield":
+				return ec.fieldContext_RealEstate_estimatedGrossYield(ctx, field)
+			case "rentalR2Adjusted":
+				return ec.fieldContext_RealEstate_rentalR2Adjusted(ctx, field)
+			case "sector":
+				return ec.fieldContext_RealEstate_sector(ctx, field)
+			case "exchange":
+				return ec.fieldContext_RealEstate_exchange(ctx, field)
+			case "dayChange":
+				return ec.fieldContext_RealEstate_dayChange(ctx, field)
+			case "dayChangePercent":
+				return ec.fieldContext_RealEstate_dayChangePercent(ctx, field)
+			case "positions":
+				return ec.fieldContext_RealEstate_positions(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstate", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_refreshRealEstateValuation_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -38638,222 +37388,6 @@ func (ec *executionContext) fieldContext_Mutation_cancelPackBuildJob(ctx context
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_cancelPackBuildJob_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_recordDashboardEvent(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_recordDashboardEvent,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().RecordDashboardEvent(ctx, fc.Args["input"].(gqlModel.DashboardEventInput))
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_recordDashboardEvent(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_recordDashboardEvent_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_createAlertRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_createAlertRule,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().CreateAlertRule(ctx, fc.Args["input"].(gqlModel.AlertRuleInput))
-		},
-		nil,
-		ec.marshalNAlertRule2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRule,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_createAlertRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_AlertRule_id(ctx, field)
-			case "name":
-				return ec.fieldContext_AlertRule_name(ctx, field)
-			case "metricName":
-				return ec.fieldContext_AlertRule_metricName(ctx, field)
-			case "condition":
-				return ec.fieldContext_AlertRule_condition(ctx, field)
-			case "threshold":
-				return ec.fieldContext_AlertRule_threshold(ctx, field)
-			case "duration":
-				return ec.fieldContext_AlertRule_duration(ctx, field)
-			case "labels":
-				return ec.fieldContext_AlertRule_labels(ctx, field)
-			case "actions":
-				return ec.fieldContext_AlertRule_actions(ctx, field)
-			case "lastFired":
-				return ec.fieldContext_AlertRule_lastFired(ctx, field)
-			case "enabled":
-				return ec.fieldContext_AlertRule_enabled(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_AlertRule_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_AlertRule_updatedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AlertRule", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_createAlertRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_updateAlertRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_updateAlertRule,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().UpdateAlertRule(ctx, fc.Args["id"].(string), fc.Args["input"].(gqlModel.AlertRuleInput))
-		},
-		nil,
-		ec.marshalNAlertRule2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRule,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_updateAlertRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_AlertRule_id(ctx, field)
-			case "name":
-				return ec.fieldContext_AlertRule_name(ctx, field)
-			case "metricName":
-				return ec.fieldContext_AlertRule_metricName(ctx, field)
-			case "condition":
-				return ec.fieldContext_AlertRule_condition(ctx, field)
-			case "threshold":
-				return ec.fieldContext_AlertRule_threshold(ctx, field)
-			case "duration":
-				return ec.fieldContext_AlertRule_duration(ctx, field)
-			case "labels":
-				return ec.fieldContext_AlertRule_labels(ctx, field)
-			case "actions":
-				return ec.fieldContext_AlertRule_actions(ctx, field)
-			case "lastFired":
-				return ec.fieldContext_AlertRule_lastFired(ctx, field)
-			case "enabled":
-				return ec.fieldContext_AlertRule_enabled(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_AlertRule_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_AlertRule_updatedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AlertRule", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_updateAlertRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Mutation_deleteAlertRule(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Mutation_deleteAlertRule,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Mutation().DeleteAlertRule(ctx, fc.Args["id"].(string))
-		},
-		nil,
-		ec.marshalNBoolean2bool,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Mutation_deleteAlertRule(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Mutation",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Boolean does not have child fields")
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Mutation_deleteAlertRule_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -41496,122 +40030,6 @@ func (ec *executionContext) fieldContext_Mutation_configureAlchemyKey(ctx contex
 	if fc.Args, err = ec.field_Mutation_configureAlchemyKey_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NavigationPattern_pattern(ctx context.Context, field graphql.CollectedField, obj *gqlModel.NavigationPattern) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NavigationPattern_pattern,
-		func(ctx context.Context) (any, error) {
-			return obj.Pattern, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NavigationPattern_pattern(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NavigationPattern",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NavigationPattern_count(ctx context.Context, field graphql.CollectedField, obj *gqlModel.NavigationPattern) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NavigationPattern_count,
-		func(ctx context.Context) (any, error) {
-			return obj.Count, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NavigationPattern_count(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NavigationPattern",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NavigationPattern_avgDuration(ctx context.Context, field graphql.CollectedField, obj *gqlModel.NavigationPattern) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NavigationPattern_avgDuration,
-		func(ctx context.Context) (any, error) {
-			return obj.AvgDuration, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NavigationPattern_avgDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NavigationPattern",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _NavigationPattern_conversion(ctx context.Context, field graphql.CollectedField, obj *gqlModel.NavigationPattern) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_NavigationPattern_conversion,
-		func(ctx context.Context) (any, error) {
-			return obj.Conversion, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_NavigationPattern_conversion(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "NavigationPattern",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
 	}
 	return fc, nil
 }
@@ -45377,92 +43795,6 @@ func (ec *executionContext) fieldContext_PortfolioAsset_positionID(_ context.Con
 	return fc, nil
 }
 
-func (ec *executionContext) _PortfolioUpdatePayload_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioUpdatePayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_PortfolioUpdatePayload_type,
-		func(ctx context.Context) (any, error) {
-			return obj.Type, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_PortfolioUpdatePayload_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PortfolioUpdatePayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _PortfolioUpdatePayload_portfolio(ctx context.Context, field graphql.CollectedField, obj *gqlModel.PortfolioUpdatePayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_PortfolioUpdatePayload_portfolio,
-		func(ctx context.Context) (any, error) {
-			return obj.Portfolio, nil
-		},
-		nil,
-		ec.marshalNPortfolio2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolio,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_PortfolioUpdatePayload_portfolio(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "PortfolioUpdatePayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Portfolio_id(ctx, field)
-			case "name":
-				return ec.fieldContext_Portfolio_name(ctx, field)
-			case "description":
-				return ec.fieldContext_Portfolio_description(ctx, field)
-			case "taxWrapper":
-				return ec.fieldContext_Portfolio_taxWrapper(ctx, field)
-			case "sortOrder":
-				return ec.fieldContext_Portfolio_sortOrder(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Portfolio_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Portfolio_updatedAt(ctx, field)
-			case "user":
-				return ec.fieldContext_Portfolio_user(ctx, field)
-			case "tags":
-				return ec.fieldContext_Portfolio_tags(ctx, field)
-			case "accounts":
-				return ec.fieldContext_Portfolio_accounts(ctx, field)
-			case "assets":
-				return ec.fieldContext_Portfolio_assets(ctx, field)
-			case "transactions":
-				return ec.fieldContext_Portfolio_transactions(ctx, field)
-			case "analytics":
-				return ec.fieldContext_Portfolio_analytics(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Portfolio", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Position_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.Position) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -48784,6 +47116,216 @@ func (ec *executionContext) fieldContext_Query_alertHistory(ctx context.Context,
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_estimateRealEstate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_estimateRealEstate,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().EstimateRealEstate(ctx, fc.Args["input"].(gqlModel.RealEstateEstimationInput))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.RealEstateEstimationResult
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalNRealEstateEstimationResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateEstimationResult,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_estimateRealEstate(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "estimatedValue":
+				return ec.fieldContext_RealEstateEstimationResult_estimatedValue(ctx, field)
+			case "estimatedMin":
+				return ec.fieldContext_RealEstateEstimationResult_estimatedMin(ctx, field)
+			case "estimatedMax":
+				return ec.fieldContext_RealEstateEstimationResult_estimatedMax(ctx, field)
+			case "estimatedPricePerM2":
+				return ec.fieldContext_RealEstateEstimationResult_estimatedPricePerM2(ctx, field)
+			case "basePricePerM2":
+				return ec.fieldContext_RealEstateEstimationResult_basePricePerM2(ctx, field)
+			case "confidence":
+				return ec.fieldContext_RealEstateEstimationResult_confidence(ctx, field)
+			case "method":
+				return ec.fieldContext_RealEstateEstimationResult_method(ctx, field)
+			case "comparablesCount":
+				return ec.fieldContext_RealEstateEstimationResult_comparablesCount(ctx, field)
+			case "searchRadiusMeters":
+				return ec.fieldContext_RealEstateEstimationResult_searchRadiusMeters(ctx, field)
+			case "lastEstimatedAt":
+				return ec.fieldContext_RealEstateEstimationResult_lastEstimatedAt(ctx, field)
+			case "rentalMarket":
+				return ec.fieldContext_RealEstateEstimationResult_rentalMarket(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstateEstimationResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_estimateRealEstate_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_fetchADEMEDpe(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_fetchADEMEDpe,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().FetchADEMEDpe(ctx, fc.Args["banId"].(string), fc.Args["surfaceM2"].(float64), fc.Args["propertyType"].(*string))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.ADEMEDpeResult
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalOADEMEDpeResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐADEMEDpeResult,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_fetchADEMEDpe(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "rating":
+				return ec.fieldContext_ADEMEDpeResult_rating(ctx, field)
+			case "surfaceM2":
+				return ec.fieldContext_ADEMEDpeResult_surfaceM2(ctx, field)
+			case "diagnosticDate":
+				return ec.fieldContext_ADEMEDpeResult_diagnosticDate(ctx, field)
+			case "sourceDataset":
+				return ec.fieldContext_ADEMEDpeResult_sourceDataset(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ADEMEDpeResult", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_fetchADEMEDpe_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Query_getCommuneRentalIndicators(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_getCommuneRentalIndicators,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.Resolvers.Query().GetCommuneRentalIndicators(ctx, fc.Args["cityCode"].(string), fc.Args["propertyType"].(*string), fc.Args["roomsCount"].(*int32), fc.Args["surfaceM2"].(*float64), fc.Args["propertyValue"].(*float64))
+		},
+		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
+			directive0 := next
+
+			directive1 := func(ctx context.Context) (any, error) {
+				if ec.Directives.Auth == nil {
+					var zeroVal *gqlModel.RealEstateRentalMarket
+					return zeroVal, errors.New("directive auth is not implemented")
+				}
+				return ec.Directives.Auth(ctx, nil, directive0)
+			}
+
+			next = directive1
+			return next
+		},
+		ec.marshalORealEstateRentalMarket2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateRentalMarket,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_getCommuneRentalIndicators(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "marketRentPerM2":
+				return ec.fieldContext_RealEstateRentalMarket_marketRentPerM2(ctx, field)
+			case "estimatedMonthlyRent":
+				return ec.fieldContext_RealEstateRentalMarket_estimatedMonthlyRent(ctx, field)
+			case "estimatedGrossYield":
+				return ec.fieldContext_RealEstateRentalMarket_estimatedGrossYield(ctx, field)
+			case "isCommuneLevel":
+				return ec.fieldContext_RealEstateRentalMarket_isCommuneLevel(ctx, field)
+			case "r2Adjusted":
+				return ec.fieldContext_RealEstateRentalMarket_r2Adjusted(ctx, field)
+			case "sourceLabel":
+				return ec.fieldContext_RealEstateRentalMarket_sourceLabel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstateRentalMarket", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_getCommuneRentalIndicators_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_me(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -51042,257 +49584,6 @@ func (ec *executionContext) fieldContext_Query_packBuildJobs(ctx context.Context
 	return fc, nil
 }
 
-func (ec *executionContext) _Query_systemHealth(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_systemHealth,
-		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().SystemHealth(ctx)
-		},
-		nil,
-		ec.marshalNSystemHealth2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSystemHealth,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_systemHealth(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "status":
-				return ec.fieldContext_SystemHealth_status(ctx, field)
-			case "timestamp":
-				return ec.fieldContext_SystemHealth_timestamp(ctx, field)
-			case "metricsCount":
-				return ec.fieldContext_SystemHealth_metricsCount(ctx, field)
-			case "alertsCount":
-				return ec.fieldContext_SystemHealth_alertsCount(ctx, field)
-			case "recentErrors":
-				return ec.fieldContext_SystemHealth_recentErrors(ctx, field)
-			case "details":
-				return ec.fieldContext_SystemHealth_details(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemHealth", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_performanceMetrics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_performanceMetrics,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().PerformanceMetrics(ctx, fc.Args["timeRange"].(*string))
-		},
-		nil,
-		ec.marshalNDashboardPerformanceMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardPerformanceMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_performanceMetrics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dashboardStateTransitions":
-				return ec.fieldContext_DashboardPerformanceMetrics_dashboardStateTransitions(ctx, field)
-			case "dataLoadTimes":
-				return ec.fieldContext_DashboardPerformanceMetrics_dataLoadTimes(ctx, field)
-			case "userInteractions":
-				return ec.fieldContext_DashboardPerformanceMetrics_userInteractions(ctx, field)
-			case "errorRates":
-				return ec.fieldContext_DashboardPerformanceMetrics_errorRates(ctx, field)
-			case "marketDataUpdates":
-				return ec.fieldContext_DashboardPerformanceMetrics_marketDataUpdates(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type DashboardPerformanceMetrics", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_performanceMetrics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_userEngagementMetrics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_userEngagementMetrics,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().UserEngagementMetrics(ctx, fc.Args["timeRange"].(*string))
-		},
-		nil,
-		ec.marshalNUserEngagementMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserEngagementMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_userEngagementMetrics(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "totalUsers":
-				return ec.fieldContext_UserEngagementMetrics_totalUsers(ctx, field)
-			case "activeUsers":
-				return ec.fieldContext_UserEngagementMetrics_activeUsers(ctx, field)
-			case "avgSessionDuration":
-				return ec.fieldContext_UserEngagementMetrics_avgSessionDuration(ctx, field)
-			case "topFeatures":
-				return ec.fieldContext_UserEngagementMetrics_topFeatures(ctx, field)
-			case "navigationPatterns":
-				return ec.fieldContext_UserEngagementMetrics_navigationPatterns(ctx, field)
-			case "deviceBreakdown":
-				return ec.fieldContext_UserEngagementMetrics_deviceBreakdown(ctx, field)
-			case "errorsByComponent":
-				return ec.fieldContext_UserEngagementMetrics_errorsByComponent(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type UserEngagementMetrics", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_userEngagementMetrics_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_metric(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_metric,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().Metric(ctx, fc.Args["name"].(string))
-		},
-		nil,
-		ec.marshalOMetric2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetric,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_metric(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Metric_name(ctx, field)
-			case "type":
-				return ec.fieldContext_Metric_type(ctx, field)
-			case "value":
-				return ec.fieldContext_Metric_value(ctx, field)
-			case "labels":
-				return ec.fieldContext_Metric_labels(ctx, field)
-			case "aggregations":
-				return ec.fieldContext_Metric_aggregations(ctx, field)
-			case "lastUpdated":
-				return ec.fieldContext_Metric_lastUpdated(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Metric", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_metric_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_metrics(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_metrics,
-		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Query().Metrics(ctx)
-		},
-		nil,
-		ec.marshalNMetric2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_metrics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "name":
-				return ec.fieldContext_Metric_name(ctx, field)
-			case "type":
-				return ec.fieldContext_Metric_type(ctx, field)
-			case "value":
-				return ec.fieldContext_Metric_value(ctx, field)
-			case "labels":
-				return ec.fieldContext_Metric_labels(ctx, field)
-			case "aggregations":
-				return ec.fieldContext_Metric_aggregations(ctx, field)
-			case "lastUpdated":
-				return ec.fieldContext_Metric_lastUpdated(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Metric", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _Query_portfolioPerformance(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -52227,74 +50518,6 @@ func (ec *executionContext) fieldContext_Query_generatePerformanceReport(ctx con
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Query_generatePerformanceReport_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Query_exportPortfolioData(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Query_exportPortfolioData,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Query().ExportPortfolioData(ctx, fc.Args["input"].(gqlModel.ExportDataInput))
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.Directives.Auth == nil {
-					var zeroVal *gqlModel.ExportData
-					return zeroVal, errors.New("directive auth is not implemented")
-				}
-				return ec.Directives.Auth(ctx, nil, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNExportData2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportData,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Query_exportPortfolioData(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "portfolioId":
-				return ec.fieldContext_ExportData_portfolioId(ctx, field)
-			case "format":
-				return ec.fieldContext_ExportData_format(ctx, field)
-			case "data":
-				return ec.fieldContext_ExportData_data(ctx, field)
-			case "downloadUrl":
-				return ec.fieldContext_ExportData_downloadUrl(ctx, field)
-			case "generatedAt":
-				return ec.fieldContext_ExportData_generatedAt(ctx, field)
-			case "expiresAt":
-				return ec.fieldContext_ExportData_expiresAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ExportData", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Query_exportPortfolioData_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -54952,6 +53175,801 @@ func (ec *executionContext) fieldContext_RealEstate_generalCondition(_ context.C
 	return fc, nil
 }
 
+func (ec *executionContext) _RealEstate_linkedLoanId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_linkedLoanId,
+		func(ctx context.Context) (any, error) {
+			return obj.LinkedLoanID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_linkedLoanId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_ownershipPercentage(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_ownershipPercentage,
+		func(ctx context.Context) (any, error) {
+			return obj.OwnershipPercentage, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_ownershipPercentage(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_ownershipStructure(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_ownershipStructure,
+		func(ctx context.Context) (any, error) {
+			return obj.OwnershipStructure, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_ownershipStructure(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_addressLabel(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_addressLabel,
+		func(ctx context.Context) (any, error) {
+			return obj.AddressLabel, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_addressLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_cityCode(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_cityCode,
+		func(ctx context.Context) (any, error) {
+			return obj.CityCode, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_cityCode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_banId(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_banId,
+		func(ctx context.Context) (any, error) {
+			return obj.BanID, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_banId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_latitude(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_latitude,
+		func(ctx context.Context) (any, error) {
+			return obj.Latitude, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_latitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_longitude(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_longitude,
+		func(ctx context.Context) (any, error) {
+			return obj.Longitude, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_longitude(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_hasOutdoor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_hasOutdoor,
+		func(ctx context.Context) (any, error) {
+			return obj.HasOutdoor, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_hasOutdoor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_isGroundFloor(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_isGroundFloor,
+		func(ctx context.Context) (any, error) {
+			return obj.IsGroundFloor, nil
+		},
+		nil,
+		ec.marshalOBoolean2ᚖbool,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_isGroundFloor(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_valuationMode(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_valuationMode,
+		func(ctx context.Context) (any, error) {
+			return obj.ValuationMode, nil
+		},
+		nil,
+		ec.marshalOValuationMode2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationMode,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_valuationMode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ValuationMode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimationMethod(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimationMethod,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimationMethod, nil
+		},
+		nil,
+		ec.marshalOEstimationMethod2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimationMethod(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type EstimationMethod does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_manualValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_manualValue,
+		func(ctx context.Context) (any, error) {
+			return obj.ManualValue, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_manualValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedValue,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedValue, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedMin(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedMin,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMin, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedMax(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedMax,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMax, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedMax(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedPricePerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedPricePerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedPricePerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedPricePerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_basePricePerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_basePricePerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.BasePricePerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_basePricePerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_valuationConfidence(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_valuationConfidence,
+		func(ctx context.Context) (any, error) {
+			return obj.ValuationConfidence, nil
+		},
+		nil,
+		ec.marshalOValuationConfidence2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_valuationConfidence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ValuationConfidence does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_comparablesCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_comparablesCount,
+		func(ctx context.Context) (any, error) {
+			return obj.ComparablesCount, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_comparablesCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_searchRadiusMeters(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_searchRadiusMeters,
+		func(ctx context.Context) (any, error) {
+			return obj.SearchRadiusMeters, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_searchRadiusMeters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_lastEstimatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_lastEstimatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastEstimatedAt, nil
+		},
+		nil,
+		ec.marshalOTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_lastEstimatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_valuationHistory(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_valuationHistory,
+		func(ctx context.Context) (any, error) {
+			return obj.ValuationHistory, nil
+		},
+		nil,
+		ec.marshalORealEstateValuationPoint2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateValuationPointᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_valuationHistory(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "date":
+				return ec.fieldContext_RealEstateValuationPoint_date(ctx, field)
+			case "value":
+				return ec.fieldContext_RealEstateValuationPoint_value(ctx, field)
+			case "mode":
+				return ec.fieldContext_RealEstateValuationPoint_mode(ctx, field)
+			case "estimatedMin":
+				return ec.fieldContext_RealEstateValuationPoint_estimatedMin(ctx, field)
+			case "estimatedMax":
+				return ec.fieldContext_RealEstateValuationPoint_estimatedMax(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstateValuationPoint", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_marketRentPerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_marketRentPerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.MarketRentPerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_marketRentPerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedMonthlyRent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedMonthlyRent,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMonthlyRent, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedMonthlyRent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_estimatedGrossYield(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_estimatedGrossYield,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedGrossYield, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_estimatedGrossYield(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstate_rentalR2Adjusted(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstate_rentalR2Adjusted,
+		func(ctx context.Context) (any, error) {
+			return obj.RentalR2Adjusted, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstate_rentalR2Adjusted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstate",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _RealEstate_sector(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstate) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -55110,6 +54128,658 @@ func (ec *executionContext) fieldContext_RealEstate_positions(_ context.Context,
 				return ec.fieldContext_Position_ownershipPct(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Position", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_estimatedValue(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_estimatedValue,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedValue, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_estimatedValue(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_estimatedMin(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_estimatedMin,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMin, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_estimatedMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_estimatedMax(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_estimatedMax,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMax, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_estimatedMax(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_estimatedPricePerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_estimatedPricePerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedPricePerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_estimatedPricePerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_basePricePerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_basePricePerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.BasePricePerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_basePricePerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_confidence(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_confidence,
+		func(ctx context.Context) (any, error) {
+			return obj.Confidence, nil
+		},
+		nil,
+		ec.marshalNValuationConfidence2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_confidence(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ValuationConfidence does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_method(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_method,
+		func(ctx context.Context) (any, error) {
+			return obj.Method, nil
+		},
+		nil,
+		ec.marshalNEstimationMethod2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_method(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type EstimationMethod does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_comparablesCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_comparablesCount,
+		func(ctx context.Context) (any, error) {
+			return obj.ComparablesCount, nil
+		},
+		nil,
+		ec.marshalNInt2int32,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_comparablesCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_searchRadiusMeters(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_searchRadiusMeters,
+		func(ctx context.Context) (any, error) {
+			return obj.SearchRadiusMeters, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint32,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_searchRadiusMeters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_lastEstimatedAt(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_lastEstimatedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.LastEstimatedAt, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_lastEstimatedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateEstimationResult_rentalMarket(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateEstimationResult) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateEstimationResult_rentalMarket,
+		func(ctx context.Context) (any, error) {
+			return obj.RentalMarket, nil
+		},
+		nil,
+		ec.marshalORealEstateRentalMarket2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateRentalMarket,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateEstimationResult_rentalMarket(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateEstimationResult",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "marketRentPerM2":
+				return ec.fieldContext_RealEstateRentalMarket_marketRentPerM2(ctx, field)
+			case "estimatedMonthlyRent":
+				return ec.fieldContext_RealEstateRentalMarket_estimatedMonthlyRent(ctx, field)
+			case "estimatedGrossYield":
+				return ec.fieldContext_RealEstateRentalMarket_estimatedGrossYield(ctx, field)
+			case "isCommuneLevel":
+				return ec.fieldContext_RealEstateRentalMarket_isCommuneLevel(ctx, field)
+			case "r2Adjusted":
+				return ec.fieldContext_RealEstateRentalMarket_r2Adjusted(ctx, field)
+			case "sourceLabel":
+				return ec.fieldContext_RealEstateRentalMarket_sourceLabel(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type RealEstateRentalMarket", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_marketRentPerM2(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_marketRentPerM2,
+		func(ctx context.Context) (any, error) {
+			return obj.MarketRentPerM2, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_marketRentPerM2(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_estimatedMonthlyRent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_estimatedMonthlyRent,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMonthlyRent, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_estimatedMonthlyRent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_estimatedGrossYield(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_estimatedGrossYield,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedGrossYield, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_estimatedGrossYield(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_isCommuneLevel(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_isCommuneLevel,
+		func(ctx context.Context) (any, error) {
+			return obj.IsCommuneLevel, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_isCommuneLevel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_r2Adjusted(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_r2Adjusted,
+		func(ctx context.Context) (any, error) {
+			return obj.R2Adjusted, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_r2Adjusted(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateRentalMarket_sourceLabel(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateRentalMarket) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateRentalMarket_sourceLabel,
+		func(ctx context.Context) (any, error) {
+			return obj.SourceLabel, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateRentalMarket_sourceLabel(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateRentalMarket",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateValuationPoint_date(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateValuationPoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateValuationPoint_date,
+		func(ctx context.Context) (any, error) {
+			return obj.Date, nil
+		},
+		nil,
+		ec.marshalNTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateValuationPoint_date(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateValuationPoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Time does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateValuationPoint_value(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateValuationPoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateValuationPoint_value,
+		func(ctx context.Context) (any, error) {
+			return obj.Value, nil
+		},
+		nil,
+		ec.marshalNFloat2float64,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateValuationPoint_value(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateValuationPoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateValuationPoint_mode(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateValuationPoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateValuationPoint_mode,
+		func(ctx context.Context) (any, error) {
+			return obj.Mode, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateValuationPoint_mode(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateValuationPoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateValuationPoint_estimatedMin(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateValuationPoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateValuationPoint_estimatedMin,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMin, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateValuationPoint_estimatedMin(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateValuationPoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _RealEstateValuationPoint_estimatedMax(ctx context.Context, field graphql.CollectedField, obj *gqlModel.RealEstateValuationPoint) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_RealEstateValuationPoint_estimatedMax,
+		func(ctx context.Context) (any, error) {
+			return obj.EstimatedMax, nil
+		},
+		nil,
+		ec.marshalOFloat2ᚖfloat64,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_RealEstateValuationPoint_estimatedMax(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "RealEstateValuationPoint",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Float does not have child fields")
 		},
 	}
 	return fc, nil
@@ -56421,400 +56091,6 @@ func (ec *executionContext) fieldContext_Stock_dividendYield(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Subscription_portfolioUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_portfolioUpdates,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().PortfolioUpdates(ctx, fc.Args["userID"].(string))
-		},
-		nil,
-		ec.marshalNPortfolioUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_portfolioUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "type":
-				return ec.fieldContext_PortfolioUpdatePayload_type(ctx, field)
-			case "portfolio":
-				return ec.fieldContext_PortfolioUpdatePayload_portfolio(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PortfolioUpdatePayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_portfolioUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_transactionUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_transactionUpdates,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().TransactionUpdates(ctx, fc.Args["userID"].(string))
-		},
-		nil,
-		ec.marshalNTransactionUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_transactionUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "type":
-				return ec.fieldContext_TransactionUpdatePayload_type(ctx, field)
-			case "transaction":
-				return ec.fieldContext_TransactionUpdatePayload_transaction(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type TransactionUpdatePayload", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_transactionUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_alertTriggered(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_alertTriggered,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().AlertTriggered(ctx, fc.Args["userId"].(string))
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.Directives.Auth == nil {
-					var zeroVal *gqlModel.AlertTriggerEvent
-					return zeroVal, errors.New("directive auth is not implemented")
-				}
-				return ec.Directives.Auth(ctx, nil, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNAlertTriggerEvent2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertTriggerEvent,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_alertTriggered(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_AlertTriggerEvent_id(ctx, field)
-			case "alertId":
-				return ec.fieldContext_AlertTriggerEvent_alertId(ctx, field)
-			case "triggeredAt":
-				return ec.fieldContext_AlertTriggerEvent_triggeredAt(ctx, field)
-			case "currentValue":
-				return ec.fieldContext_AlertTriggerEvent_currentValue(ctx, field)
-			case "thresholdValue":
-				return ec.fieldContext_AlertTriggerEvent_thresholdValue(ctx, field)
-			case "message":
-				return ec.fieldContext_AlertTriggerEvent_message(ctx, field)
-			case "acknowledged":
-				return ec.fieldContext_AlertTriggerEvent_acknowledged(ctx, field)
-			case "acknowledgedAt":
-				return ec.fieldContext_AlertTriggerEvent_acknowledgedAt(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type AlertTriggerEvent", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_alertTriggered_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_performanceMetricsUpdated(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_performanceMetricsUpdated,
-		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Subscription().PerformanceMetricsUpdated(ctx)
-		},
-		nil,
-		ec.marshalNDashboardPerformanceMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardPerformanceMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_performanceMetricsUpdated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "dashboardStateTransitions":
-				return ec.fieldContext_DashboardPerformanceMetrics_dashboardStateTransitions(ctx, field)
-			case "dataLoadTimes":
-				return ec.fieldContext_DashboardPerformanceMetrics_dataLoadTimes(ctx, field)
-			case "userInteractions":
-				return ec.fieldContext_DashboardPerformanceMetrics_userInteractions(ctx, field)
-			case "errorRates":
-				return ec.fieldContext_DashboardPerformanceMetrics_errorRates(ctx, field)
-			case "marketDataUpdates":
-				return ec.fieldContext_DashboardPerformanceMetrics_marketDataUpdates(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type DashboardPerformanceMetrics", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_systemHealthUpdated(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_systemHealthUpdated,
-		func(ctx context.Context) (any, error) {
-			return ec.Resolvers.Subscription().SystemHealthUpdated(ctx)
-		},
-		nil,
-		ec.marshalNSystemHealth2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSystemHealth,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_systemHealthUpdated(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "status":
-				return ec.fieldContext_SystemHealth_status(ctx, field)
-			case "timestamp":
-				return ec.fieldContext_SystemHealth_timestamp(ctx, field)
-			case "metricsCount":
-				return ec.fieldContext_SystemHealth_metricsCount(ctx, field)
-			case "alertsCount":
-				return ec.fieldContext_SystemHealth_alertsCount(ctx, field)
-			case "recentErrors":
-				return ec.fieldContext_SystemHealth_recentErrors(ctx, field)
-			case "details":
-				return ec.fieldContext_SystemHealth_details(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type SystemHealth", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_portfolioPerformanceUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_portfolioPerformanceUpdates,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().PortfolioPerformanceUpdates(ctx, fc.Args["portfolioId"].(string))
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.Directives.Auth == nil {
-					var zeroVal *gqlModel.PerformanceMetrics
-					return zeroVal, errors.New("directive auth is not implemented")
-				}
-				return ec.Directives.Auth(ctx, nil, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNPerformanceMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPerformanceMetrics,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_portfolioPerformanceUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "portfolioId":
-				return ec.fieldContext_PerformanceMetrics_portfolioId(ctx, field)
-			case "totalValue":
-				return ec.fieldContext_PerformanceMetrics_totalValue(ctx, field)
-			case "totalCostBasis":
-				return ec.fieldContext_PerformanceMetrics_totalCostBasis(ctx, field)
-			case "unrealizedGainLoss":
-				return ec.fieldContext_PerformanceMetrics_unrealizedGainLoss(ctx, field)
-			case "realizedGainLoss":
-				return ec.fieldContext_PerformanceMetrics_realizedGainLoss(ctx, field)
-			case "totalReturnPercentage":
-				return ec.fieldContext_PerformanceMetrics_totalReturnPercentage(ctx, field)
-			case "timeWeightedReturn":
-				return ec.fieldContext_PerformanceMetrics_timeWeightedReturn(ctx, field)
-			case "isValid":
-				return ec.fieldContext_PerformanceMetrics_isValid(ctx, field)
-			case "validationErrors":
-				return ec.fieldContext_PerformanceMetrics_validationErrors(ctx, field)
-			case "dataQuality":
-				return ec.fieldContext_PerformanceMetrics_dataQuality(ctx, field)
-			case "calculationMethod":
-				return ec.fieldContext_PerformanceMetrics_calculationMethod(ctx, field)
-			case "benchmarks":
-				return ec.fieldContext_PerformanceMetrics_benchmarks(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type PerformanceMetrics", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_portfolioPerformanceUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _Subscription_priceUpdates(ctx context.Context, field graphql.CollectedField) (ret func(ctx context.Context) graphql.Marshaler) {
-	return graphql.ResolveFieldStream(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_Subscription_priceUpdates,
-		func(ctx context.Context) (any, error) {
-			fc := graphql.GetFieldContext(ctx)
-			return ec.Resolvers.Subscription().PriceUpdates(ctx, fc.Args["assetIds"].([]string))
-		},
-		func(ctx context.Context, next graphql.Resolver) graphql.Resolver {
-			directive0 := next
-
-			directive1 := func(ctx context.Context) (any, error) {
-				if ec.Directives.Auth == nil {
-					var zeroVal *gqlModel.ChartDataPoint
-					return zeroVal, errors.New("directive auth is not implemented")
-				}
-				return ec.Directives.Auth(ctx, nil, directive0)
-			}
-
-			next = directive1
-			return next
-		},
-		ec.marshalNChartDataPoint2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐChartDataPoint,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_Subscription_priceUpdates(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "Subscription",
-		Field:      field,
-		IsMethod:   true,
-		IsResolver: true,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "timestamp":
-				return ec.fieldContext_ChartDataPoint_timestamp(ctx, field)
-			case "value":
-				return ec.fieldContext_ChartDataPoint_value(ctx, field)
-			case "volume":
-				return ec.fieldContext_ChartDataPoint_volume(ctx, field)
-			case "metadata":
-				return ec.fieldContext_ChartDataPoint_metadata(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type ChartDataPoint", field.Name)
-		},
-	}
-	defer func() {
-		if r := recover(); r != nil {
-			err = ec.Recover(ctx, r)
-			ec.Error(ctx, err)
-		}
-	}()
-	ctx = graphql.WithFieldContext(ctx, fc)
-	if fc.Args, err = ec.field_Subscription_priceUpdates_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
-		ec.Error(ctx, err)
-		return fc, err
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _SyncConnection_id(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SyncConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -57637,180 +56913,6 @@ func (ec *executionContext) fieldContext_SyncRun_completedAt(_ context.Context, 
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Time does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_status(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_status,
-		func(ctx context.Context) (any, error) {
-			return obj.Status, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_status(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_timestamp(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_timestamp,
-		func(ctx context.Context) (any, error) {
-			return obj.Timestamp, nil
-		},
-		nil,
-		ec.marshalNDateTime2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_timestamp(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type DateTime does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_metricsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_metricsCount,
-		func(ctx context.Context) (any, error) {
-			return obj.MetricsCount, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_metricsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_alertsCount(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_alertsCount,
-		func(ctx context.Context) (any, error) {
-			return obj.AlertsCount, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_alertsCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_recentErrors(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_recentErrors,
-		func(ctx context.Context) (any, error) {
-			return obj.RecentErrors, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_recentErrors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _SystemHealth_details(ctx context.Context, field graphql.CollectedField, obj *gqlModel.SystemHealth) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_SystemHealth_details,
-		func(ctx context.Context) (any, error) {
-			return obj.Details, nil
-		},
-		nil,
-		ec.marshalOJSON2map,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_SystemHealth_details(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "SystemHealth",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
 		},
 	}
 	return fc, nil
@@ -60324,94 +59426,6 @@ func (ec *executionContext) fieldContext_Transaction_notes(_ context.Context, fi
 	return fc, nil
 }
 
-func (ec *executionContext) _TransactionUpdatePayload_type(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TransactionUpdatePayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TransactionUpdatePayload_type,
-		func(ctx context.Context) (any, error) {
-			return obj.Type, nil
-		},
-		nil,
-		ec.marshalNString2string,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_TransactionUpdatePayload_type(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TransactionUpdatePayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _TransactionUpdatePayload_transaction(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TransactionUpdatePayload) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_TransactionUpdatePayload_transaction,
-		func(ctx context.Context) (any, error) {
-			return obj.Transaction, nil
-		},
-		nil,
-		ec.marshalNTransaction2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransaction,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_TransactionUpdatePayload_transaction(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "TransactionUpdatePayload",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "id":
-				return ec.fieldContext_Transaction_id(ctx, field)
-			case "portfolio":
-				return ec.fieldContext_Transaction_portfolio(ctx, field)
-			case "accountId":
-				return ec.fieldContext_Transaction_accountId(ctx, field)
-			case "account":
-				return ec.fieldContext_Transaction_account(ctx, field)
-			case "asset":
-				return ec.fieldContext_Transaction_asset(ctx, field)
-			case "amount":
-				return ec.fieldContext_Transaction_amount(ctx, field)
-			case "transactionType":
-				return ec.fieldContext_Transaction_transactionType(ctx, field)
-			case "quantity":
-				return ec.fieldContext_Transaction_quantity(ctx, field)
-			case "unitPriceAmount":
-				return ec.fieldContext_Transaction_unitPriceAmount(ctx, field)
-			case "unitPriceCurrency":
-				return ec.fieldContext_Transaction_unitPriceCurrency(ctx, field)
-			case "feesAmount":
-				return ec.fieldContext_Transaction_feesAmount(ctx, field)
-			case "feesCurrency":
-				return ec.fieldContext_Transaction_feesCurrency(ctx, field)
-			case "executedAt":
-				return ec.fieldContext_Transaction_executedAt(ctx, field)
-			case "notes":
-				return ec.fieldContext_Transaction_notes(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type Transaction", field.Name)
-		},
-	}
-	return fc, nil
-}
-
 func (ec *executionContext) _TriggerFinanceDatabaseSyncPayload_success(ctx context.Context, field graphql.CollectedField, obj *gqlModel.TriggerFinanceDatabaseSyncPayload) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -61279,229 +60293,6 @@ func (ec *executionContext) fieldContext_User_taxJurisdiction(_ context.Context,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_totalUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_totalUsers,
-		func(ctx context.Context) (any, error) {
-			return obj.TotalUsers, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_totalUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_activeUsers(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_activeUsers,
-		func(ctx context.Context) (any, error) {
-			return obj.ActiveUsers, nil
-		},
-		nil,
-		ec.marshalNInt2int32,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_activeUsers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_avgSessionDuration(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_avgSessionDuration,
-		func(ctx context.Context) (any, error) {
-			return obj.AvgSessionDuration, nil
-		},
-		nil,
-		ec.marshalNFloat2float64,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_avgSessionDuration(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Float does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_topFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_topFeatures,
-		func(ctx context.Context) (any, error) {
-			return obj.TopFeatures, nil
-		},
-		nil,
-		ec.marshalNFeatureUsage2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐFeatureUsageᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_topFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "feature":
-				return ec.fieldContext_FeatureUsage_feature(ctx, field)
-			case "usageCount":
-				return ec.fieldContext_FeatureUsage_usageCount(ctx, field)
-			case "uniqueUsers":
-				return ec.fieldContext_FeatureUsage_uniqueUsers(ctx, field)
-			case "avgDuration":
-				return ec.fieldContext_FeatureUsage_avgDuration(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type FeatureUsage", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_navigationPatterns(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_navigationPatterns,
-		func(ctx context.Context) (any, error) {
-			return obj.NavigationPatterns, nil
-		},
-		nil,
-		ec.marshalNNavigationPattern2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐNavigationPatternᚄ,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_navigationPatterns(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			switch field.Name {
-			case "pattern":
-				return ec.fieldContext_NavigationPattern_pattern(ctx, field)
-			case "count":
-				return ec.fieldContext_NavigationPattern_count(ctx, field)
-			case "avgDuration":
-				return ec.fieldContext_NavigationPattern_avgDuration(ctx, field)
-			case "conversion":
-				return ec.fieldContext_NavigationPattern_conversion(ctx, field)
-			}
-			return nil, fmt.Errorf("no field named %q was found under type NavigationPattern", field.Name)
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_deviceBreakdown(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_deviceBreakdown,
-		func(ctx context.Context) (any, error) {
-			return obj.DeviceBreakdown, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_deviceBreakdown(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _UserEngagementMetrics_errorsByComponent(ctx context.Context, field graphql.CollectedField, obj *gqlModel.UserEngagementMetrics) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_UserEngagementMetrics_errorsByComponent,
-		func(ctx context.Context) (any, error) {
-			return obj.ErrorsByComponent, nil
-		},
-		nil,
-		ec.marshalNJSON2map,
-		true,
-		true,
-	)
-}
-
-func (ec *executionContext) fieldContext_UserEngagementMetrics_errorsByComponent(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "UserEngagementMetrics",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type JSON does not have child fields")
 		},
 	}
 	return fc, nil
@@ -66454,43 +65245,6 @@ func (ec *executionContext) unmarshalInputAdminUserFilter(ctx context.Context, o
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputAlertActionInput(ctx context.Context, obj any) (gqlModel.AlertActionInput, error) {
-	var it gqlModel.AlertActionInput
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"type", "config"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "type":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalNAlertActionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionType(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Type = data
-		case "config":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("config"))
-			data, err := ec.unmarshalNJSON2map(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Config = data
-		}
-	}
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputAlertFilter(ctx context.Context, obj any) (gqlModel.AlertFilter, error) {
 	var it gqlModel.AlertFilter
 	if obj == nil {
@@ -66595,85 +65349,6 @@ func (ec *executionContext) unmarshalInputAlertHistoryFilter(ctx context.Context
 				return it, err
 			}
 			it.TimeRange = data
-		}
-	}
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputAlertRuleInput(ctx context.Context, obj any) (gqlModel.AlertRuleInput, error) {
-	var it gqlModel.AlertRuleInput
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"name", "metricName", "condition", "threshold", "duration", "labels", "actions", "enabled"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "name":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Name = data
-		case "metricName":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("metricName"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MetricName = data
-		case "condition":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
-			data, err := ec.unmarshalNAlertCondition2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertCondition(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Condition = data
-		case "threshold":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("threshold"))
-			data, err := ec.unmarshalNFloat2float64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Threshold = data
-		case "duration":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("duration"))
-			data, err := ec.unmarshalNInt2int32(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Duration = data
-		case "labels":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("labels"))
-			data, err := ec.unmarshalOJSON2map(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Labels = data
-		case "actions":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("actions"))
-			data, err := ec.unmarshalNAlertActionInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionInputᚄ(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Actions = data
-		case "enabled":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
-			data, err := ec.unmarshalNBoolean2bool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Enabled = data
 		}
 	}
 	return it, nil
@@ -67728,7 +66403,7 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "propertyType", "category", "address", "city", "state", "country", "zipCode", "squareFeet", "landSurface", "yearBuilt", "bedrooms", "bathrooms", "rooms", "floor", "totalFloors", "garages", "parkingSpaces", "energyLabel", "condition", "agencyFees", "notaryFees", "renovationFees", "furnishingCosts", "rentalType", "rentalPeriod", "monthlyRent", "utilityCosts", "yearlyMiscCosts", "hasGarden", "hasBalcony", "hasLift", "hasPool", "hasSauna", "isFurnished", "isNewConstruction", "kitchenQuality", "kitchenCondition", "bathroomQuality", "bathroomCondition", "flooringQuality", "flooringCondition", "windowsQuality", "windowsCondition", "generalQuality", "generalCondition"}
+	fieldsInOrder := [...]string{"name", "assetTypeID", "currentValue", "purchaseDate", "purchasePrice", "propertyType", "category", "address", "city", "state", "country", "zipCode", "squareFeet", "landSurface", "yearBuilt", "bedrooms", "bathrooms", "rooms", "floor", "totalFloors", "garages", "parkingSpaces", "energyLabel", "condition", "agencyFees", "notaryFees", "renovationFees", "furnishingCosts", "rentalType", "rentalPeriod", "monthlyRent", "utilityCosts", "yearlyMiscCosts", "hasGarden", "hasBalcony", "hasLift", "hasPool", "hasSauna", "isFurnished", "isNewConstruction", "kitchenQuality", "kitchenCondition", "bathroomQuality", "bathroomCondition", "flooringQuality", "flooringCondition", "windowsQuality", "windowsCondition", "generalQuality", "generalCondition", "linkedLoanId", "ownershipPercentage", "ownershipStructure", "addressLabel", "cityCode", "banId", "latitude", "longitude", "hasOutdoor", "isGroundFloor", "valuationMode", "manualValue"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -68085,6 +66760,90 @@ func (ec *executionContext) unmarshalInputCreateRealEstateInput(ctx context.Cont
 				return it, err
 			}
 			it.GeneralCondition = data
+		case "linkedLoanId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("linkedLoanId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LinkedLoanID = data
+		case "ownershipPercentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipPercentage"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipPercentage = data
+		case "ownershipStructure":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipStructure"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipStructure = data
+		case "addressLabel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addressLabel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddressLabel = data
+		case "cityCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cityCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CityCode = data
+		case "banId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BanID = data
+		case "latitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("latitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Latitude = data
+		case "longitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("longitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Longitude = data
+		case "hasOutdoor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOutdoor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasOutdoor = data
+		case "isGroundFloor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isGroundFloor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsGroundFloor = data
+		case "valuationMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valuationMode"))
+			data, err := ec.unmarshalOValuationMode2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ValuationMode = data
+		case "manualValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualValue"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ManualValue = data
 		}
 	}
 	return it, nil
@@ -68410,57 +67169,6 @@ func (ec *executionContext) unmarshalInputCreateWatchlistInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
-		}
-	}
-	return it, nil
-}
-
-func (ec *executionContext) unmarshalInputDashboardEventInput(ctx context.Context, obj any) (gqlModel.DashboardEventInput, error) {
-	var it gqlModel.DashboardEventInput
-	if obj == nil {
-		return it, nil
-	}
-
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"type", "userId", "sessionId", "data"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "type":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("type"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Type = data
-		case "userId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.UserID = data
-		case "sessionId":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sessionId"))
-			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.SessionID = data
-		case "data":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("data"))
-			data, err := ec.unmarshalNJSON2map(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Data = data
 		}
 	}
 	return it, nil
@@ -69733,6 +68441,141 @@ func (ec *executionContext) unmarshalInputProviderRoutingPreferencesInput(ctx co
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputRealEstateEstimationInput(ctx context.Context, obj any) (gqlModel.RealEstateEstimationInput, error) {
+	var it gqlModel.RealEstateEstimationInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"propertyType", "surfaceM2", "latitude", "longitude", "cityCode", "address", "city", "postcode", "banId", "energyLabel", "condition", "purchasePrice", "purchaseDate", "isGroundFloor", "hasOutdoor", "roomsCount"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "propertyType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("propertyType"))
+			data, err := ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PropertyType = data
+		case "surfaceM2":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("surfaceM2"))
+			data, err := ec.unmarshalNFloat2float64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SurfaceM2 = data
+		case "latitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("latitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Latitude = data
+		case "longitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("longitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Longitude = data
+		case "cityCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cityCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CityCode = data
+		case "address":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Address = data
+		case "city":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("city"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.City = data
+		case "postcode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("postcode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Postcode = data
+		case "banId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BanID = data
+		case "energyLabel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("energyLabel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EnergyLabel = data
+		case "condition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Condition = data
+		case "purchasePrice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchasePrice"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchasePrice = data
+		case "purchaseDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchaseDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchaseDate = data
+		case "isGroundFloor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isGroundFloor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsGroundFloor = data
+		case "hasOutdoor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOutdoor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasOutdoor = data
+		case "roomsCount":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("roomsCount"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RoomsCount = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputRefreshTokenInput(ctx context.Context, obj any) (gqlModel.RefreshTokenInput, error) {
 	var it gqlModel.RefreshTokenInput
 	if obj == nil {
@@ -70538,6 +69381,456 @@ func (ec *executionContext) unmarshalInputUpdatePortfolioInput(ctx context.Conte
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUpdateRealEstateInput(ctx context.Context, obj any) (gqlModel.UpdateRealEstateInput, error) {
+	var it gqlModel.UpdateRealEstateInput
+	if obj == nil {
+		return it, nil
+	}
+
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"name", "propertyType", "category", "address", "city", "state", "country", "zipCode", "squareFeet", "landSurface", "yearBuilt", "bedrooms", "bathrooms", "rooms", "floor", "totalFloors", "garages", "parkingSpaces", "energyLabel", "condition", "currentValue", "purchasePrice", "purchaseDate", "agencyFees", "notaryFees", "renovationFees", "furnishingCosts", "rentalType", "rentalPeriod", "monthlyRent", "utilityCosts", "yearlyMiscCosts", "hasGarden", "hasBalcony", "hasLift", "hasPool", "hasSauna", "isFurnished", "isNewConstruction", "kitchenQuality", "kitchenCondition", "bathroomQuality", "bathroomCondition", "flooringQuality", "flooringCondition", "windowsQuality", "windowsCondition", "generalQuality", "generalCondition", "linkedLoanId", "ownershipPercentage", "ownershipStructure", "addressLabel", "cityCode", "banId", "latitude", "longitude", "hasOutdoor", "isGroundFloor", "valuationMode", "manualValue"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "name":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("name"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Name = data
+		case "propertyType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("propertyType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PropertyType = data
+		case "category":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("category"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Category = data
+		case "address":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("address"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Address = data
+		case "city":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("city"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.City = data
+		case "state":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("state"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.State = data
+		case "country":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("country"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Country = data
+		case "zipCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("zipCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ZipCode = data
+		case "squareFeet":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("squareFeet"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.SquareFeet = data
+		case "landSurface":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("landSurface"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LandSurface = data
+		case "yearBuilt":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("yearBuilt"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.YearBuilt = data
+		case "bedrooms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bedrooms"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Bedrooms = data
+		case "bathrooms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bathrooms"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Bathrooms = data
+		case "rooms":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rooms"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Rooms = data
+		case "floor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("floor"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Floor = data
+		case "totalFloors":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("totalFloors"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.TotalFloors = data
+		case "garages":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("garages"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Garages = data
+		case "parkingSpaces":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parkingSpaces"))
+			data, err := ec.unmarshalOInt2ᚖint32(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ParkingSpaces = data
+		case "energyLabel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("energyLabel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EnergyLabel = data
+		case "condition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("condition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Condition = data
+		case "currentValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("currentValue"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CurrentValue = data
+		case "purchasePrice":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchasePrice"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchasePrice = data
+		case "purchaseDate":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("purchaseDate"))
+			data, err := ec.unmarshalOTime2ᚖtimeᚐTime(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PurchaseDate = data
+		case "agencyFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("agencyFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AgencyFees = data
+		case "notaryFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("notaryFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.NotaryFees = data
+		case "renovationFees":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("renovationFees"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RenovationFees = data
+		case "furnishingCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("furnishingCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FurnishingCosts = data
+		case "rentalType":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rentalType"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RentalType = data
+		case "rentalPeriod":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("rentalPeriod"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.RentalPeriod = data
+		case "monthlyRent":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("monthlyRent"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.MonthlyRent = data
+		case "utilityCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("utilityCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.UtilityCosts = data
+		case "yearlyMiscCosts":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("yearlyMiscCosts"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.YearlyMiscCosts = data
+		case "hasGarden":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasGarden"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasGarden = data
+		case "hasBalcony":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasBalcony"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasBalcony = data
+		case "hasLift":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasLift"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasLift = data
+		case "hasPool":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasPool"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasPool = data
+		case "hasSauna":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasSauna"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasSauna = data
+		case "isFurnished":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isFurnished"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsFurnished = data
+		case "isNewConstruction":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isNewConstruction"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsNewConstruction = data
+		case "kitchenQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kitchenQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KitchenQuality = data
+		case "kitchenCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("kitchenCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.KitchenCondition = data
+		case "bathroomQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bathroomQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BathroomQuality = data
+		case "bathroomCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("bathroomCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BathroomCondition = data
+		case "flooringQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flooringQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlooringQuality = data
+		case "flooringCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("flooringCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FlooringCondition = data
+		case "windowsQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowsQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowsQuality = data
+		case "windowsCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("windowsCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.WindowsCondition = data
+		case "generalQuality":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generalQuality"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GeneralQuality = data
+		case "generalCondition":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("generalCondition"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.GeneralCondition = data
+		case "linkedLoanId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("linkedLoanId"))
+			data, err := ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.LinkedLoanID = data
+		case "ownershipPercentage":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipPercentage"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipPercentage = data
+		case "ownershipStructure":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("ownershipStructure"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OwnershipStructure = data
+		case "addressLabel":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("addressLabel"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.AddressLabel = data
+		case "cityCode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("cityCode"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.CityCode = data
+		case "banId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("banId"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.BanID = data
+		case "latitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("latitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Latitude = data
+		case "longitude":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("longitude"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Longitude = data
+		case "hasOutdoor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("hasOutdoor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.HasOutdoor = data
+		case "isGroundFloor":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("isGroundFloor"))
+			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.IsGroundFloor = data
+		case "valuationMode":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("valuationMode"))
+			data, err := ec.unmarshalOValuationMode2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationMode(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ValuationMode = data
+		case "manualValue":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("manualValue"))
+			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ManualValue = data
+		}
+	}
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUpdateTransactionInput(ctx context.Context, obj any) (gqlModel.UpdateTransactionInput, error) {
 	var it gqlModel.UpdateTransactionInput
 	if obj == nil {
@@ -70995,6 +70288,51 @@ func (ec *executionContext) _Asset(ctx context.Context, sel ast.SelectionSet, ob
 
 // region    **************************** object.gotpl ****************************
 
+var aDEMEDpeResultImplementors = []string{"ADEMEDpeResult"}
+
+func (ec *executionContext) _ADEMEDpeResult(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.ADEMEDpeResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, aDEMEDpeResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ADEMEDpeResult")
+		case "rating":
+			out.Values[i] = ec._ADEMEDpeResult_rating(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "surfaceM2":
+			out.Values[i] = ec._ADEMEDpeResult_surfaceM2(ctx, field, obj)
+		case "diagnosticDate":
+			out.Values[i] = ec._ADEMEDpeResult_diagnosticDate(ctx, field, obj)
+		case "sourceDataset":
+			out.Values[i] = ec._ADEMEDpeResult_sourceDataset(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
 var accountImplementors = []string{"Account"}
 
 func (ec *executionContext) _Account(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Account) graphql.Marshaler {
@@ -71346,50 +70684,6 @@ func (ec *executionContext) _Alert(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
-var alertActionImplementors = []string{"AlertAction"}
-
-func (ec *executionContext) _AlertAction(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AlertAction) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, alertActionImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AlertAction")
-		case "type":
-			out.Values[i] = ec._AlertAction_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "config":
-			out.Values[i] = ec._AlertAction_config(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var alertErrorImplementors = []string{"AlertError"}
 
 func (ec *executionContext) _AlertError(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AlertError) graphql.Marshaler {
@@ -71408,176 +70702,6 @@ func (ec *executionContext) _AlertError(ctx context.Context, sel ast.SelectionSe
 			}
 		case "message":
 			out.Values[i] = ec._AlertError_message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var alertNotificationImplementors = []string{"AlertNotification"}
-
-func (ec *executionContext) _AlertNotification(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AlertNotification) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, alertNotificationImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AlertNotification")
-		case "id":
-			out.Values[i] = ec._AlertNotification_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "alertId":
-			out.Values[i] = ec._AlertNotification_alertId(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "alertName":
-			out.Values[i] = ec._AlertNotification_alertName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "metricName":
-			out.Values[i] = ec._AlertNotification_metricName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "currentValue":
-			out.Values[i] = ec._AlertNotification_currentValue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "threshold":
-			out.Values[i] = ec._AlertNotification_threshold(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "severity":
-			out.Values[i] = ec._AlertNotification_severity(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "timestamp":
-			out.Values[i] = ec._AlertNotification_timestamp(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "message":
-			out.Values[i] = ec._AlertNotification_message(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var alertRuleImplementors = []string{"AlertRule"}
-
-func (ec *executionContext) _AlertRule(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.AlertRule) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, alertRuleImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("AlertRule")
-		case "id":
-			out.Values[i] = ec._AlertRule_id(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "name":
-			out.Values[i] = ec._AlertRule_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "metricName":
-			out.Values[i] = ec._AlertRule_metricName(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "condition":
-			out.Values[i] = ec._AlertRule_condition(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "threshold":
-			out.Values[i] = ec._AlertRule_threshold(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "duration":
-			out.Values[i] = ec._AlertRule_duration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "labels":
-			out.Values[i] = ec._AlertRule_labels(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "actions":
-			out.Values[i] = ec._AlertRule_actions(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "lastFired":
-			out.Values[i] = ec._AlertRule_lastFired(ctx, field, obj)
-		case "enabled":
-			out.Values[i] = ec._AlertRule_enabled(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createdAt":
-			out.Values[i] = ec._AlertRule_createdAt(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updatedAt":
-			out.Values[i] = ec._AlertRule_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -73269,50 +72393,6 @@ func (ec *executionContext) _Crypto(ctx context.Context, sel ast.SelectionSet, o
 	return out
 }
 
-var dashboardPerformanceMetricsImplementors = []string{"DashboardPerformanceMetrics"}
-
-func (ec *executionContext) _DashboardPerformanceMetrics(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.DashboardPerformanceMetrics) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, dashboardPerformanceMetricsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("DashboardPerformanceMetrics")
-		case "dashboardStateTransitions":
-			out.Values[i] = ec._DashboardPerformanceMetrics_dashboardStateTransitions(ctx, field, obj)
-		case "dataLoadTimes":
-			out.Values[i] = ec._DashboardPerformanceMetrics_dataLoadTimes(ctx, field, obj)
-		case "userInteractions":
-			out.Values[i] = ec._DashboardPerformanceMetrics_userInteractions(ctx, field, obj)
-		case "errorRates":
-			out.Values[i] = ec._DashboardPerformanceMetrics_errorRates(ctx, field, obj)
-		case "marketDataUpdates":
-			out.Values[i] = ec._DashboardPerformanceMetrics_marketDataUpdates(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var dataQualityImplementors = []string{"DataQuality"}
 
 func (ec *executionContext) _DataQuality(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.DataQuality) graphql.Marshaler {
@@ -73648,60 +72728,6 @@ func (ec *executionContext) _ExportResult(ctx context.Context, sel ast.Selection
 			out.Values[i] = ec._ExportResult_downloadUrl(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._ExportResult_error(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var featureUsageImplementors = []string{"FeatureUsage"}
-
-func (ec *executionContext) _FeatureUsage(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.FeatureUsage) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, featureUsageImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("FeatureUsage")
-		case "feature":
-			out.Values[i] = ec._FeatureUsage_feature(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "usageCount":
-			out.Values[i] = ec._FeatureUsage_usageCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "uniqueUsers":
-			out.Values[i] = ec._FeatureUsage_uniqueUsers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgDuration":
-			out.Values[i] = ec._FeatureUsage_avgDuration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -75973,154 +74999,6 @@ func (ec *executionContext) _MethodParameter(ctx context.Context, sel ast.Select
 	return out
 }
 
-var metricImplementors = []string{"Metric"}
-
-func (ec *executionContext) _Metric(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.Metric) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, metricImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("Metric")
-		case "name":
-			out.Values[i] = ec._Metric_name(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "type":
-			out.Values[i] = ec._Metric_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "value":
-			out.Values[i] = ec._Metric_value(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "labels":
-			out.Values[i] = ec._Metric_labels(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "aggregations":
-			out.Values[i] = ec._Metric_aggregations(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "lastUpdated":
-			out.Values[i] = ec._Metric_lastUpdated(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var metricSummaryImplementors = []string{"MetricSummary"}
-
-func (ec *executionContext) _MetricSummary(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.MetricSummary) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, metricSummaryImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("MetricSummary")
-		case "total":
-			out.Values[i] = ec._MetricSummary_total(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "average":
-			out.Values[i] = ec._MetricSummary_average(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "min":
-			out.Values[i] = ec._MetricSummary_min(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "max":
-			out.Values[i] = ec._MetricSummary_max(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "p50":
-			out.Values[i] = ec._MetricSummary_p50(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "p95":
-			out.Values[i] = ec._MetricSummary_p95(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "p99":
-			out.Values[i] = ec._MetricSummary_p99(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "lastHour":
-			out.Values[i] = ec._MetricSummary_lastHour(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "lastDay":
-			out.Values[i] = ec._MetricSummary_lastDay(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "breakdown":
-			out.Values[i] = ec._MetricSummary_breakdown(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var mutationImplementors = []string{"Mutation"}
 
 func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet) graphql.Marshaler {
@@ -76287,6 +75165,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "updateRealEstateAsset":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_updateRealEstateAsset(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "createLifeInsuranceAsset":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_createLifeInsuranceAsset(ctx, field)
@@ -76409,6 +75294,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "deactivateBatchAlerts":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deactivateBatchAlerts(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "refreshRealEstateValuation":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_refreshRealEstateValuation(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76633,34 +75525,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 		case "cancelPackBuildJob":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_cancelPackBuildJob(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "recordDashboardEvent":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_recordDashboardEvent(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "createAlertRule":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_createAlertRule(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "updateAlertRule":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_updateAlertRule(ctx, field)
-			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deleteAlertRule":
-			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
-				return ec._Mutation_deleteAlertRule(ctx, field)
 			})
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
@@ -76942,60 +75806,6 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_configureAlchemyKey(ctx, field)
 			})
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var navigationPatternImplementors = []string{"NavigationPattern"}
-
-func (ec *executionContext) _NavigationPattern(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.NavigationPattern) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, navigationPatternImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("NavigationPattern")
-		case "pattern":
-			out.Values[i] = ec._NavigationPattern_pattern(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "count":
-			out.Values[i] = ec._NavigationPattern_count(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgDuration":
-			out.Values[i] = ec._NavigationPattern_avgDuration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "conversion":
-			out.Values[i] = ec._NavigationPattern_conversion(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -77848,50 +76658,6 @@ func (ec *executionContext) _PortfolioAsset(ctx context.Context, sel ast.Selecti
 			out.Values[i] = ec._PortfolioAsset_accountID(ctx, field, obj)
 		case "positionID":
 			out.Values[i] = ec._PortfolioAsset_positionID(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var portfolioUpdatePayloadImplementors = []string{"PortfolioUpdatePayload"}
-
-func (ec *executionContext) _PortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, portfolioUpdatePayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("PortfolioUpdatePayload")
-		case "type":
-			out.Values[i] = ec._PortfolioUpdatePayload_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "portfolio":
-			out.Values[i] = ec._PortfolioUpdatePayload_portfolio(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -78905,6 +77671,66 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "estimateRealEstate":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_estimateRealEstate(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "fetchADEMEDpe":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_fetchADEMEDpe(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "getCommuneRentalIndicators":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_getCommuneRentalIndicators(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "me":
 			field := field
 
@@ -79538,113 +78364,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "systemHealth":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_systemHealth(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "performanceMetrics":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_performanceMetrics(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "userEngagementMetrics":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_userEngagementMetrics(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "metric":
-			field := field
-
-			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_metric(ctx, field)
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "metrics":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_metrics(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "portfolioPerformance":
 			field := field
 
@@ -79916,28 +78635,6 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_generatePerformanceReport(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&fs.Invalids, 1)
-				}
-				return res
-			}
-
-			rrm := func(ctx context.Context) graphql.Marshaler {
-				return ec.OperationContext.RootResolverMiddleware(ctx,
-					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
-			}
-
-			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
-		case "exportPortfolioData":
-			field := field
-
-			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_exportPortfolioData(ctx, field)
 				if res == graphql.Null {
 					atomic.AddUint32(&fs.Invalids, 1)
 				}
@@ -80479,6 +79176,60 @@ func (ec *executionContext) _RealEstate(ctx context.Context, sel ast.SelectionSe
 			out.Values[i] = ec._RealEstate_generalQuality(ctx, field, obj)
 		case "generalCondition":
 			out.Values[i] = ec._RealEstate_generalCondition(ctx, field, obj)
+		case "linkedLoanId":
+			out.Values[i] = ec._RealEstate_linkedLoanId(ctx, field, obj)
+		case "ownershipPercentage":
+			out.Values[i] = ec._RealEstate_ownershipPercentage(ctx, field, obj)
+		case "ownershipStructure":
+			out.Values[i] = ec._RealEstate_ownershipStructure(ctx, field, obj)
+		case "addressLabel":
+			out.Values[i] = ec._RealEstate_addressLabel(ctx, field, obj)
+		case "cityCode":
+			out.Values[i] = ec._RealEstate_cityCode(ctx, field, obj)
+		case "banId":
+			out.Values[i] = ec._RealEstate_banId(ctx, field, obj)
+		case "latitude":
+			out.Values[i] = ec._RealEstate_latitude(ctx, field, obj)
+		case "longitude":
+			out.Values[i] = ec._RealEstate_longitude(ctx, field, obj)
+		case "hasOutdoor":
+			out.Values[i] = ec._RealEstate_hasOutdoor(ctx, field, obj)
+		case "isGroundFloor":
+			out.Values[i] = ec._RealEstate_isGroundFloor(ctx, field, obj)
+		case "valuationMode":
+			out.Values[i] = ec._RealEstate_valuationMode(ctx, field, obj)
+		case "estimationMethod":
+			out.Values[i] = ec._RealEstate_estimationMethod(ctx, field, obj)
+		case "manualValue":
+			out.Values[i] = ec._RealEstate_manualValue(ctx, field, obj)
+		case "estimatedValue":
+			out.Values[i] = ec._RealEstate_estimatedValue(ctx, field, obj)
+		case "estimatedMin":
+			out.Values[i] = ec._RealEstate_estimatedMin(ctx, field, obj)
+		case "estimatedMax":
+			out.Values[i] = ec._RealEstate_estimatedMax(ctx, field, obj)
+		case "estimatedPricePerM2":
+			out.Values[i] = ec._RealEstate_estimatedPricePerM2(ctx, field, obj)
+		case "basePricePerM2":
+			out.Values[i] = ec._RealEstate_basePricePerM2(ctx, field, obj)
+		case "valuationConfidence":
+			out.Values[i] = ec._RealEstate_valuationConfidence(ctx, field, obj)
+		case "comparablesCount":
+			out.Values[i] = ec._RealEstate_comparablesCount(ctx, field, obj)
+		case "searchRadiusMeters":
+			out.Values[i] = ec._RealEstate_searchRadiusMeters(ctx, field, obj)
+		case "lastEstimatedAt":
+			out.Values[i] = ec._RealEstate_lastEstimatedAt(ctx, field, obj)
+		case "valuationHistory":
+			out.Values[i] = ec._RealEstate_valuationHistory(ctx, field, obj)
+		case "marketRentPerM2":
+			out.Values[i] = ec._RealEstate_marketRentPerM2(ctx, field, obj)
+		case "estimatedMonthlyRent":
+			out.Values[i] = ec._RealEstate_estimatedMonthlyRent(ctx, field, obj)
+		case "estimatedGrossYield":
+			out.Values[i] = ec._RealEstate_estimatedGrossYield(ctx, field, obj)
+		case "rentalR2Adjusted":
+			out.Values[i] = ec._RealEstate_rentalR2Adjusted(ctx, field, obj)
 		case "sector":
 			out.Values[i] = ec._RealEstate_sector(ctx, field, obj)
 		case "exchange":
@@ -80492,6 +79243,176 @@ func (ec *executionContext) _RealEstate(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var realEstateEstimationResultImplementors = []string{"RealEstateEstimationResult"}
+
+func (ec *executionContext) _RealEstateEstimationResult(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.RealEstateEstimationResult) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, realEstateEstimationResultImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RealEstateEstimationResult")
+		case "estimatedValue":
+			out.Values[i] = ec._RealEstateEstimationResult_estimatedValue(ctx, field, obj)
+		case "estimatedMin":
+			out.Values[i] = ec._RealEstateEstimationResult_estimatedMin(ctx, field, obj)
+		case "estimatedMax":
+			out.Values[i] = ec._RealEstateEstimationResult_estimatedMax(ctx, field, obj)
+		case "estimatedPricePerM2":
+			out.Values[i] = ec._RealEstateEstimationResult_estimatedPricePerM2(ctx, field, obj)
+		case "basePricePerM2":
+			out.Values[i] = ec._RealEstateEstimationResult_basePricePerM2(ctx, field, obj)
+		case "confidence":
+			out.Values[i] = ec._RealEstateEstimationResult_confidence(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "method":
+			out.Values[i] = ec._RealEstateEstimationResult_method(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "comparablesCount":
+			out.Values[i] = ec._RealEstateEstimationResult_comparablesCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "searchRadiusMeters":
+			out.Values[i] = ec._RealEstateEstimationResult_searchRadiusMeters(ctx, field, obj)
+		case "lastEstimatedAt":
+			out.Values[i] = ec._RealEstateEstimationResult_lastEstimatedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "rentalMarket":
+			out.Values[i] = ec._RealEstateEstimationResult_rentalMarket(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var realEstateRentalMarketImplementors = []string{"RealEstateRentalMarket"}
+
+func (ec *executionContext) _RealEstateRentalMarket(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.RealEstateRentalMarket) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, realEstateRentalMarketImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RealEstateRentalMarket")
+		case "marketRentPerM2":
+			out.Values[i] = ec._RealEstateRentalMarket_marketRentPerM2(ctx, field, obj)
+		case "estimatedMonthlyRent":
+			out.Values[i] = ec._RealEstateRentalMarket_estimatedMonthlyRent(ctx, field, obj)
+		case "estimatedGrossYield":
+			out.Values[i] = ec._RealEstateRentalMarket_estimatedGrossYield(ctx, field, obj)
+		case "isCommuneLevel":
+			out.Values[i] = ec._RealEstateRentalMarket_isCommuneLevel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "r2Adjusted":
+			out.Values[i] = ec._RealEstateRentalMarket_r2Adjusted(ctx, field, obj)
+		case "sourceLabel":
+			out.Values[i] = ec._RealEstateRentalMarket_sourceLabel(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.ProcessDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var realEstateValuationPointImplementors = []string{"RealEstateValuationPoint"}
+
+func (ec *executionContext) _RealEstateValuationPoint(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.RealEstateValuationPoint) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, realEstateValuationPointImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("RealEstateValuationPoint")
+		case "date":
+			out.Values[i] = ec._RealEstateValuationPoint_date(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "value":
+			out.Values[i] = ec._RealEstateValuationPoint_value(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "mode":
+			out.Values[i] = ec._RealEstateValuationPoint_mode(ctx, field, obj)
+		case "estimatedMin":
+			out.Values[i] = ec._RealEstateValuationPoint_estimatedMin(ctx, field, obj)
+		case "estimatedMax":
+			out.Values[i] = ec._RealEstateValuationPoint_estimatedMax(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -80848,38 +79769,6 @@ func (ec *executionContext) _Stock(ctx context.Context, sel ast.SelectionSet, ob
 	return out
 }
 
-var subscriptionImplementors = []string{"Subscription"}
-
-func (ec *executionContext) _Subscription(ctx context.Context, sel ast.SelectionSet) func(ctx context.Context) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, subscriptionImplementors)
-	ctx = graphql.WithFieldContext(ctx, &graphql.FieldContext{
-		Object: "Subscription",
-	})
-	if len(fields) != 1 {
-		graphql.AddErrorf(ctx, "must subscribe to exactly one stream")
-		return nil
-	}
-
-	switch fields[0].Name {
-	case "portfolioUpdates":
-		return ec._Subscription_portfolioUpdates(ctx, fields[0])
-	case "transactionUpdates":
-		return ec._Subscription_transactionUpdates(ctx, fields[0])
-	case "alertTriggered":
-		return ec._Subscription_alertTriggered(ctx, fields[0])
-	case "performanceMetricsUpdated":
-		return ec._Subscription_performanceMetricsUpdated(ctx, fields[0])
-	case "systemHealthUpdated":
-		return ec._Subscription_systemHealthUpdated(ctx, fields[0])
-	case "portfolioPerformanceUpdates":
-		return ec._Subscription_portfolioPerformanceUpdates(ctx, fields[0])
-	case "priceUpdates":
-		return ec._Subscription_priceUpdates(ctx, fields[0])
-	default:
-		panic("unknown field " + strconv.Quote(fields[0].Name))
-	}
-}
-
 var syncConnectionImplementors = []string{"SyncConnection"}
 
 func (ec *executionContext) _SyncConnection(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.SyncConnection) graphql.Marshaler {
@@ -81073,67 +79962,6 @@ func (ec *executionContext) _SyncRun(ctx context.Context, sel ast.SelectionSet, 
 			}
 		case "completedAt":
 			out.Values[i] = ec._SyncRun_completedAt(ctx, field, obj)
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var systemHealthImplementors = []string{"SystemHealth"}
-
-func (ec *executionContext) _SystemHealth(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.SystemHealth) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, systemHealthImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("SystemHealth")
-		case "status":
-			out.Values[i] = ec._SystemHealth_status(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "timestamp":
-			out.Values[i] = ec._SystemHealth_timestamp(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "metricsCount":
-			out.Values[i] = ec._SystemHealth_metricsCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "alertsCount":
-			out.Values[i] = ec._SystemHealth_alertsCount(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "recentErrors":
-			out.Values[i] = ec._SystemHealth_recentErrors(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "details":
-			out.Values[i] = ec._SystemHealth_details(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -81881,50 +80709,6 @@ func (ec *executionContext) _Transaction(ctx context.Context, sel ast.SelectionS
 	return out
 }
 
-var transactionUpdatePayloadImplementors = []string{"TransactionUpdatePayload"}
-
-func (ec *executionContext) _TransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.TransactionUpdatePayload) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, transactionUpdatePayloadImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("TransactionUpdatePayload")
-		case "type":
-			out.Values[i] = ec._TransactionUpdatePayload_type(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "transaction":
-			out.Values[i] = ec._TransactionUpdatePayload_transaction(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
 var triggerFinanceDatabaseSyncPayloadImplementors = []string{"TriggerFinanceDatabaseSyncPayload"}
 
 func (ec *executionContext) _TriggerFinanceDatabaseSyncPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.TriggerFinanceDatabaseSyncPayload) graphql.Marshaler {
@@ -82101,75 +80885,6 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			}
 		case "taxJurisdiction":
 			out.Values[i] = ec._User_taxJurisdiction(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		default:
-			panic("unknown field " + strconv.Quote(field.Name))
-		}
-	}
-	out.Dispatch(ctx)
-	if out.Invalids > 0 {
-		return graphql.Null
-	}
-
-	atomic.AddInt32(&ec.Deferred, int32(len(deferred)))
-
-	for label, dfs := range deferred {
-		ec.ProcessDeferredGroup(graphql.DeferredGroup{
-			Label:    label,
-			Path:     graphql.GetPath(ctx),
-			FieldSet: dfs,
-			Context:  ctx,
-		})
-	}
-
-	return out
-}
-
-var userEngagementMetricsImplementors = []string{"UserEngagementMetrics"}
-
-func (ec *executionContext) _UserEngagementMetrics(ctx context.Context, sel ast.SelectionSet, obj *gqlModel.UserEngagementMetrics) graphql.Marshaler {
-	fields := graphql.CollectFields(ec.OperationContext, sel, userEngagementMetricsImplementors)
-
-	out := graphql.NewFieldSet(fields)
-	deferred := make(map[string]*graphql.FieldSet)
-	for i, field := range fields {
-		switch field.Name {
-		case "__typename":
-			out.Values[i] = graphql.MarshalString("UserEngagementMetrics")
-		case "totalUsers":
-			out.Values[i] = ec._UserEngagementMetrics_totalUsers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "activeUsers":
-			out.Values[i] = ec._UserEngagementMetrics_activeUsers(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "avgSessionDuration":
-			out.Values[i] = ec._UserEngagementMetrics_avgSessionDuration(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "topFeatures":
-			out.Values[i] = ec._UserEngagementMetrics_topFeatures(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "navigationPatterns":
-			out.Values[i] = ec._UserEngagementMetrics_navigationPatterns(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "deviceBreakdown":
-			out.Values[i] = ec._UserEngagementMetrics_deviceBreakdown(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
-		case "errorsByComponent":
-			out.Values[i] = ec._UserEngagementMetrics_errorsByComponent(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -83386,72 +82101,6 @@ func (ec *executionContext) marshalNAlert2ᚖsigma_financeᚋinternalᚋhandler�
 	return ec._Alert(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNAlertAction2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.AlertAction) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNAlertAction2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertAction(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNAlertAction2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertAction(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AlertAction) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._AlertAction(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNAlertActionInput2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionInputᚄ(ctx context.Context, v any) ([]*gqlModel.AlertActionInput, error) {
-	var vSlice []any
-	vSlice = graphql.CoerceList(v)
-	var err error
-	res := make([]*gqlModel.AlertActionInput, len(vSlice))
-	for i := range vSlice {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithIndex(i))
-		res[i], err = ec.unmarshalNAlertActionInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionInput(ctx, vSlice[i])
-		if err != nil {
-			return nil, err
-		}
-	}
-	return res, nil
-}
-
-func (ec *executionContext) unmarshalNAlertActionInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionInput(ctx context.Context, v any) (*gqlModel.AlertActionInput, error) {
-	res, err := ec.unmarshalInputAlertActionInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNAlertActionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionType(ctx context.Context, v any) (gqlModel.AlertActionType, error) {
-	var res gqlModel.AlertActionType
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNAlertActionType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertActionType(ctx context.Context, sel ast.SelectionSet, v gqlModel.AlertActionType) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) unmarshalNAlertCondition2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertCondition(ctx context.Context, v any) (gqlModel.AlertCondition, error) {
-	var res gqlModel.AlertCondition
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNAlertCondition2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertCondition(ctx context.Context, sel ast.SelectionSet, v gqlModel.AlertCondition) graphql.Marshaler {
-	return v
-}
-
 func (ec *executionContext) marshalNAlertError2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.AlertError) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -83517,39 +82166,6 @@ func (ec *executionContext) marshalNAlertNotificationMethod2ᚕsigma_financeᚋi
 	}
 
 	return ret
-}
-
-func (ec *executionContext) marshalNAlertRule2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRule(ctx context.Context, sel ast.SelectionSet, v gqlModel.AlertRule) graphql.Marshaler {
-	return ec._AlertRule(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNAlertRule2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRule(ctx context.Context, sel ast.SelectionSet, v *gqlModel.AlertRule) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._AlertRule(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNAlertRuleInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertRuleInput(ctx context.Context, v any) (gqlModel.AlertRuleInput, error) {
-	res, err := ec.unmarshalInputAlertRuleInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalNAlertSeverity2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertSeverity(ctx context.Context, v any) (gqlModel.AlertSeverity, error) {
-	var res gqlModel.AlertSeverity
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNAlertSeverity2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertSeverity(ctx context.Context, sel ast.SelectionSet, v gqlModel.AlertSeverity) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) marshalNAlertTriggerEvent2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertTriggerEvent(ctx context.Context, sel ast.SelectionSet, v gqlModel.AlertTriggerEvent) graphql.Marshaler {
-	return ec._AlertTriggerEvent(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNAlertTriggerEvent2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAlertTriggerEventᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.AlertTriggerEvent) graphql.Marshaler {
@@ -84086,10 +82702,6 @@ func (ec *executionContext) unmarshalNChartDataInput2sigma_financeᚋinternalᚋ
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNChartDataPoint2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐChartDataPoint(ctx context.Context, sel ast.SelectionSet, v gqlModel.ChartDataPoint) graphql.Marshaler {
-	return ec._ChartDataPoint(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNChartDataPoint2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐChartDataPointᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.ChartDataPoint) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -84261,25 +82873,6 @@ func (ec *executionContext) marshalNCrypto2ᚖsigma_financeᚋinternalᚋhandler
 	return ec._Crypto(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNDashboardEventInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardEventInput(ctx context.Context, v any) (gqlModel.DashboardEventInput, error) {
-	res, err := ec.unmarshalInputDashboardEventInput(ctx, v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNDashboardPerformanceMetrics2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardPerformanceMetrics(ctx context.Context, sel ast.SelectionSet, v gqlModel.DashboardPerformanceMetrics) graphql.Marshaler {
-	return ec._DashboardPerformanceMetrics(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNDashboardPerformanceMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDashboardPerformanceMetrics(ctx context.Context, sel ast.SelectionSet, v *gqlModel.DashboardPerformanceMetrics) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._DashboardPerformanceMetrics(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNDataQuality2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDataQuality(ctx context.Context, sel ast.SelectionSet, v *gqlModel.DataQuality) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
@@ -84288,22 +82881,6 @@ func (ec *executionContext) marshalNDataQuality2ᚖsigma_financeᚋinternalᚋha
 		return graphql.Null
 	}
 	return ec._DataQuality(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNDateTime2string(ctx context.Context, v any) (string, error) {
-	res, err := graphql.UnmarshalString(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNDateTime2string(ctx context.Context, sel ast.SelectionSet, v string) graphql.Marshaler {
-	_ = sel
-	res := graphql.MarshalString(v)
-	if res == graphql.Null {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-	}
-	return res
 }
 
 func (ec *executionContext) marshalNDeactivationError2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐDeactivationErrorᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.DeactivationError) graphql.Marshaler {
@@ -84396,23 +82973,14 @@ func (ec *executionContext) marshalNEnableBankingInstitution2ᚖsigma_financeᚋ
 	return ec._EnableBankingInstitution(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNExportData2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportData(ctx context.Context, sel ast.SelectionSet, v gqlModel.ExportData) graphql.Marshaler {
-	return ec._ExportData(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNExportData2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportData(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ExportData) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._ExportData(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNExportDataInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportDataInput(ctx context.Context, v any) (gqlModel.ExportDataInput, error) {
-	res, err := ec.unmarshalInputExportDataInput(ctx, v)
+func (ec *executionContext) unmarshalNEstimationMethod2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod(ctx context.Context, v any) (gqlModel.EstimationMethod, error) {
+	var res gqlModel.EstimationMethod
+	err := res.UnmarshalGQL(v)
 	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNEstimationMethod2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod(ctx context.Context, sel ast.SelectionSet, v gqlModel.EstimationMethod) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalNExportFormat2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐExportFormat(ctx context.Context, v any) (gqlModel.ExportFormat, error) {
@@ -84442,32 +83010,6 @@ func (ec *executionContext) marshalNExportResult2ᚖsigma_financeᚋinternalᚋh
 		return graphql.Null
 	}
 	return ec._ExportResult(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNFeatureUsage2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐFeatureUsageᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.FeatureUsage) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNFeatureUsage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐFeatureUsage(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNFeatureUsage2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐFeatureUsage(ctx context.Context, sel ast.SelectionSet, v *gqlModel.FeatureUsage) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._FeatureUsage(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNFinanceDatabasePreviewItem2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐFinanceDatabasePreviewItemᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.FinanceDatabasePreviewItem) graphql.Marshaler {
@@ -85184,68 +83726,6 @@ func (ec *executionContext) marshalNMethodParameter2ᚖsigma_financeᚋinternal�
 	return ec._MethodParameter(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNMetric2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Metric) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNMetric2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetric(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNMetric2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetric(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Metric) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._Metric(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalNMetricType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricType(ctx context.Context, v any) (gqlModel.MetricType, error) {
-	var res gqlModel.MetricType
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalNMetricType2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricType(ctx context.Context, sel ast.SelectionSet, v gqlModel.MetricType) graphql.Marshaler {
-	return v
-}
-
-func (ec *executionContext) marshalNNavigationPattern2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐNavigationPatternᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.NavigationPattern) graphql.Marshaler {
-	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
-		fc := graphql.GetFieldContext(ctx)
-		fc.Result = &v[i]
-		return ec.marshalNNavigationPattern2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐNavigationPattern(ctx, sel, v[i])
-	})
-
-	for _, e := range ret {
-		if e == graphql.Null {
-			return graphql.Null
-		}
-	}
-
-	return ret
-}
-
-func (ec *executionContext) marshalNNavigationPattern2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐNavigationPattern(ctx context.Context, sel ast.SelectionSet, v *gqlModel.NavigationPattern) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._NavigationPattern(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNOnlineInstrumentInput2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐOnlineInstrumentInput(ctx context.Context, v any) (*gqlModel.OnlineInstrumentInput, error) {
 	res, err := ec.unmarshalInputOnlineInstrumentInput(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
@@ -85535,20 +84015,6 @@ func (ec *executionContext) unmarshalNPortfolioOrderInput2ᚖsigma_financeᚋint
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNPortfolioUpdatePayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
-	return ec._PortfolioUpdatePayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNPortfolioUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPortfolioUpdatePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.PortfolioUpdatePayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._PortfolioUpdatePayload(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNPosition2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPositionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Position) graphql.Marshaler {
 	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
 		fc := graphql.GetFieldContext(ctx)
@@ -85776,6 +84242,35 @@ func (ec *executionContext) marshalNRealEstate2ᚖsigma_financeᚋinternalᚋhan
 		return graphql.Null
 	}
 	return ec._RealEstate(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNRealEstateEstimationInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateEstimationInput(ctx context.Context, v any) (gqlModel.RealEstateEstimationInput, error) {
+	res, err := ec.unmarshalInputRealEstateEstimationInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNRealEstateEstimationResult2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateEstimationResult(ctx context.Context, sel ast.SelectionSet, v gqlModel.RealEstateEstimationResult) graphql.Marshaler {
+	return ec._RealEstateEstimationResult(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNRealEstateEstimationResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateEstimationResult(ctx context.Context, sel ast.SelectionSet, v *gqlModel.RealEstateEstimationResult) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RealEstateEstimationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNRealEstateValuationPoint2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateValuationPoint(ctx context.Context, sel ast.SelectionSet, v *gqlModel.RealEstateValuationPoint) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._RealEstateValuationPoint(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNRealizedGainsSummary2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealizedGainsSummary(ctx context.Context, sel ast.SelectionSet, v gqlModel.RealizedGainsSummary) graphql.Marshaler {
@@ -86033,20 +84528,6 @@ func (ec *executionContext) unmarshalNSyncStatus2sigma_financeᚋinternalᚋhand
 
 func (ec *executionContext) marshalNSyncStatus2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSyncStatus(ctx context.Context, sel ast.SelectionSet, v gqlModel.SyncStatus) graphql.Marshaler {
 	return v
-}
-
-func (ec *executionContext) marshalNSystemHealth2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSystemHealth(ctx context.Context, sel ast.SelectionSet, v gqlModel.SystemHealth) graphql.Marshaler {
-	return ec._SystemHealth(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNSystemHealth2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐSystemHealth(ctx context.Context, sel ast.SelectionSet, v *gqlModel.SystemHealth) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._SystemHealth(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalNTag2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTagᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.Tag) graphql.Marshaler {
@@ -86357,20 +84838,6 @@ func (ec *executionContext) marshalNTransactionType2sigma_financeᚋinternalᚋh
 	return v
 }
 
-func (ec *executionContext) marshalNTransactionUpdatePayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.TransactionUpdatePayload) graphql.Marshaler {
-	return ec._TransactionUpdatePayload(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNTransactionUpdatePayload2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTransactionUpdatePayload(ctx context.Context, sel ast.SelectionSet, v *gqlModel.TransactionUpdatePayload) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._TransactionUpdatePayload(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalNTriggerFinanceDatabaseSyncPayload2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐTriggerFinanceDatabaseSyncPayload(ctx context.Context, sel ast.SelectionSet, v gqlModel.TriggerFinanceDatabaseSyncPayload) graphql.Marshaler {
 	return ec._TriggerFinanceDatabaseSyncPayload(ctx, sel, &v)
 }
@@ -86407,6 +84874,11 @@ func (ec *executionContext) unmarshalNUpdateManualInstrumentInput2sigma_finance�
 
 func (ec *executionContext) unmarshalNUpdatePortfolioInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdatePortfolioInput(ctx context.Context, v any) (gqlModel.UpdatePortfolioInput, error) {
 	res, err := ec.unmarshalInputUpdatePortfolioInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNUpdateRealEstateInput2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUpdateRealEstateInput(ctx context.Context, v any) (gqlModel.UpdateRealEstateInput, error) {
+	res, err := ec.unmarshalInputUpdateRealEstateInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -86465,20 +84937,6 @@ func (ec *executionContext) marshalNUser2ᚖsigma_financeᚋinternalᚋhandler�
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUserEngagementMetrics2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserEngagementMetrics(ctx context.Context, sel ast.SelectionSet, v gqlModel.UserEngagementMetrics) graphql.Marshaler {
-	return ec._UserEngagementMetrics(ctx, sel, &v)
-}
-
-func (ec *executionContext) marshalNUserEngagementMetrics2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserEngagementMetrics(ctx context.Context, sel ast.SelectionSet, v *gqlModel.UserEngagementMetrics) graphql.Marshaler {
-	if v == nil {
-		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
-			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
-		}
-		return graphql.Null
-	}
-	return ec._UserEngagementMetrics(ctx, sel, v)
-}
-
 func (ec *executionContext) unmarshalNUserOrderField2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐUserOrderField(ctx context.Context, v any) (gqlModel.UserOrderField, error) {
 	var res gqlModel.UserOrderField
 	err := res.UnmarshalGQL(v)
@@ -86501,6 +84959,16 @@ func (ec *executionContext) marshalNValidationResult2ᚖsigma_financeᚋinternal
 		return graphql.Null
 	}
 	return ec._ValidationResult(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNValuationConfidence2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence(ctx context.Context, v any) (gqlModel.ValuationConfidence, error) {
+	var res gqlModel.ValuationConfidence
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNValuationConfidence2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence(ctx context.Context, sel ast.SelectionSet, v gqlModel.ValuationConfidence) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) marshalNWalletAccount2sigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletAccount(ctx context.Context, sel ast.SelectionSet, v gqlModel.WalletAccount) graphql.Marshaler {
@@ -86883,6 +85351,13 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
+func (ec *executionContext) marshalOADEMEDpeResult2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐADEMEDpeResult(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ADEMEDpeResult) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._ADEMEDpeResult(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalOAccount2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐAccount(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Account) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -87150,22 +85625,20 @@ func (ec *executionContext) marshalOConditionType2ᚖsigma_financeᚋinternalᚋ
 	return v
 }
 
-func (ec *executionContext) unmarshalODateTime2ᚖstring(ctx context.Context, v any) (*string, error) {
+func (ec *executionContext) unmarshalOEstimationMethod2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod(ctx context.Context, v any) (*gqlModel.EstimationMethod, error) {
 	if v == nil {
 		return nil, nil
 	}
-	res, err := graphql.UnmarshalString(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
+	var res = new(gqlModel.EstimationMethod)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalODateTime2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+func (ec *executionContext) marshalOEstimationMethod2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐEstimationMethod(ctx context.Context, sel ast.SelectionSet, v *gqlModel.EstimationMethod) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
-	_ = sel
-	_ = ctx
-	res := graphql.MarshalString(*v)
-	return res
+	return v
 }
 
 func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
@@ -87500,20 +85973,6 @@ func (ec *executionContext) marshalOMarketDataPackJob2ᚖsigma_financeᚋinterna
 	return ec._MarketDataPackJob(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalOMetric2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetric(ctx context.Context, sel ast.SelectionSet, v *gqlModel.Metric) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._Metric(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalOMetricSummary2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐMetricSummary(ctx context.Context, sel ast.SelectionSet, v *gqlModel.MetricSummary) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return ec._MetricSummary(ctx, sel, v)
-}
-
 func (ec *executionContext) marshalOOnlineInstrumentResult2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐOnlineInstrumentResultᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.OnlineInstrumentResult) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -87613,6 +86072,32 @@ func (ec *executionContext) marshalOPositionValuation2ᚕᚖsigma_financeᚋinte
 		fc := graphql.GetFieldContext(ctx)
 		fc.Result = &v[i]
 		return ec.marshalNPositionValuation2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐPositionValuation(ctx, sel, v[i])
+	})
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalORealEstateRentalMarket2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateRentalMarket(ctx context.Context, sel ast.SelectionSet, v *gqlModel.RealEstateRentalMarket) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._RealEstateRentalMarket(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalORealEstateValuationPoint2ᚕᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateValuationPointᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlModel.RealEstateValuationPoint) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := graphql.MarshalSliceConcurrently(ctx, len(v), 0, false, func(ctx context.Context, i int) graphql.Marshaler {
+		fc := graphql.GetFieldContext(ctx)
+		fc.Result = &v[i]
+		return ec.marshalNRealEstateValuationPoint2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐRealEstateValuationPoint(ctx, sel, v[i])
 	})
 
 	for _, e := range ret {
@@ -87805,6 +86290,38 @@ func (ec *executionContext) unmarshalOUserOrder2ᚖsigma_financeᚋinternalᚋha
 	}
 	res, err := ec.unmarshalInputUserOrder(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalOValuationConfidence2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence(ctx context.Context, v any) (*gqlModel.ValuationConfidence, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlModel.ValuationConfidence)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOValuationConfidence2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationConfidence(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ValuationConfidence) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
+func (ec *executionContext) unmarshalOValuationMode2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationMode(ctx context.Context, v any) (*gqlModel.ValuationMode, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlModel.ValuationMode)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOValuationMode2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐValuationMode(ctx context.Context, sel ast.SelectionSet, v *gqlModel.ValuationMode) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalOWalletDevice2ᚖsigma_financeᚋinternalᚋhandlerᚋgraphqlᚋmodelᚐWalletDevice(ctx context.Context, sel ast.SelectionSet, v *gqlModel.WalletDevice) graphql.Marshaler {

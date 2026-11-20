@@ -63,6 +63,7 @@ export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: L
 	const { formatCurrency, currency: displayCurrency } = useCurrency();
 	const [scheduleMode, setScheduleMode] = useState<"annual" | "monthly">("annual");
 	const [searchSchedule, setSearchSchedule] = useState("");
+	const [showAllMonths, setShowAllMonths] = useState(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 	const [isDeleting, setIsDeleting] = useState(false);
 
@@ -220,25 +221,35 @@ export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: L
 	const getLoanTypeBadgeVariant = (type: string) => {
 		switch (type) {
 			case "amortizing":
-				return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+				return "bg-info/10 text-info border-info/20";
 			case "in-fine":
-				return "bg-pink-500/10 text-pink-500 border-pink-500/20";
+				return "bg-warning/10 text-warning border-warning/20";
 			case "step":
-				return "bg-purple-500/10 text-purple-500 border-purple-500/20";
+				return "bg-primary/10 text-primary border-primary/20";
 			case "deferred-interest":
-				return "bg-amber-500/10 text-amber-500 border-amber-500/20";
+				return "bg-warning/10 text-warning border-warning/20";
 			case "deferred-total":
-				return "bg-rose-500/10 text-rose-500 border-rose-500/20";
+				return "bg-loss/10 text-loss border-loss/20";
 			default:
 				return "bg-secondary text-secondary-foreground border-border/40";
 		}
 	};
 
-	const filteredMonthlyEntries = (scheduleData?.entries || []).filter((e) => {
-		if (!searchSchedule) return true;
+	const filteredMonthlyEntries = useMemo(() => {
+		const entries = scheduleData?.entries || [];
+		if (!searchSchedule) return entries;
 		const query = searchSchedule.toLowerCase();
-		return e.dateString.toLowerCase().includes(query) || `month ${e.month}`.includes(query);
-	});
+		return entries.filter(
+			(e) => e.dateString.toLowerCase().includes(query) || `month ${e.month}`.includes(query),
+		);
+	}, [scheduleData?.entries, searchSchedule]);
+
+	const displayedMonthlyEntries = useMemo(() => {
+		if (showAllMonths || searchSchedule) {
+			return filteredMonthlyEntries;
+		}
+		return filteredMonthlyEntries.slice(0, 120);
+	}, [filteredMonthlyEntries, showAllMonths, searchSchedule]);
 
 	return (
 		<div className="flex flex-col h-full bg-background text-foreground">
@@ -470,10 +481,10 @@ export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: L
 											className={cn(
 												"text-micro font-bold font-mono px-2 py-0.5",
 												asset.ltv > 90
-													? "bg-rose-500/10 text-rose-500 border-rose-500/30"
+													? "bg-loss/10 text-loss border-loss/30"
 													: asset.ltv > 70
-														? "bg-amber-500/10 text-amber-500 border-amber-500/30"
-														: "bg-emerald-500/10 text-emerald-500 border-emerald-500/30",
+														? "bg-warning/10 text-warning border-warning/30"
+														: "bg-gain/10 text-gain border-gain/30",
 											)}
 										>
 											{asset.ltv}% LTV
@@ -612,7 +623,7 @@ export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: L
 										</TableCell>
 									</TableRow>
 								) : (
-									filteredMonthlyEntries.slice(0, 120).map((entry) => (
+									displayedMonthlyEntries.map((entry) => (
 										<TableRow key={entry.month} className="border-border/15 hover:bg-muted/30">
 											<TableCell className="font-medium text-foreground">
 												M{entry.month} ({entry.dateString})
@@ -636,9 +647,26 @@ export function LoanDetail({ loanId, onBack, onSelectAsset, isPanel = false }: L
 						</Table>
 					</div>
 					{scheduleMode === "monthly" && (scheduleData?.entries.length || 0) > 120 && (
-						<p className="text-micro text-muted-foreground text-center">
-							Showing first 120 months. Use period filter for later dates.
-						</p>
+						<div className="flex items-center justify-between pt-2 px-1">
+							<span className="text-micro text-muted-foreground">
+								{showAllMonths || searchSchedule
+									? `Showing all ${filteredMonthlyEntries.length} months.`
+									: `Showing first 120 of ${scheduleData?.entries.length} months.`}
+							</span>
+							{!searchSchedule && (
+								<Button
+									variant="ghost"
+									size="sm"
+									type="button"
+									onClick={() => setShowAllMonths(!showAllMonths)}
+									className="h-6 text-micro font-medium hover:underline text-primary cursor-pointer"
+								>
+									{showAllMonths
+										? "Show first 120 months"
+										: `Show all ${scheduleData?.entries.length} months`}
+								</Button>
+							)}
+						</div>
 					)}
 				</div>
 			</div>

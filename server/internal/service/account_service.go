@@ -80,7 +80,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID string, input
 		return nil, errors.New("portfolio ID is required")
 	}
 
-	// 1. Verify that the portfolio belongs to this user
+	// 1. Verify that the portfolio belongs to this user (or user is admin)
 	pf, err := s.uow.Portfolio().GetByID(ctx, input.PortfolioID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -88,7 +88,9 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID string, input
 		}
 		return nil, fmt.Errorf("failed to retrieve portfolio: %w", err)
 	}
-	if pf.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if pf.UserID != userID && !isAdmin {
 		return nil, ErrPortfolioUnauthorized
 	}
 
@@ -176,7 +178,7 @@ func (s *AccountService) CreateAccount(ctx context.Context, userID string, input
 	return created, nil
 }
 
-// GetAccount retrieves an account by ID, verifying user ownership
+// GetAccount retrieves an account by ID, verifying user ownership (or admin role)
 func (s *AccountService) GetAccount(ctx context.Context, userID, accountID string) (*model.Account, error) {
 	acc, err := s.uow.Account().GetByID(ctx, accountID)
 	if err != nil {
@@ -185,7 +187,9 @@ func (s *AccountService) GetAccount(ctx context.Context, userID, accountID strin
 		}
 		return nil, err
 	}
-	if acc.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if acc.UserID != userID && !isAdmin {
 		return nil, ErrAccountUnauthorized
 	}
 	return acc, nil
@@ -200,7 +204,9 @@ func (s *AccountService) ListPortfolioAccounts(ctx context.Context, userID, port
 		}
 		return nil, err
 	}
-	if pf.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if pf.UserID != userID && !isAdmin {
 		return nil, ErrPortfolioUnauthorized
 	}
 

@@ -134,6 +134,39 @@ export const GET_DASHBOARD_CRITICAL = graphql(/* GraphQL */ `
             windowsCondition
             generalQuality
             generalCondition
+            linkedLoanId
+            ownershipPercentage
+            ownershipStructure
+            addressLabel
+            cityCode
+            banId
+            latitude
+            longitude
+            hasOutdoor
+            isGroundFloor
+            valuationMode
+            estimationMethod
+            manualValue
+            estimatedValue
+            estimatedMin
+            estimatedMax
+            estimatedPricePerM2
+            basePricePerM2
+            valuationConfidence
+            comparablesCount
+            searchRadiusMeters
+            lastEstimatedAt
+            valuationHistory {
+              date
+              value
+              mode
+              estimatedMin
+              estimatedMax
+            }
+            marketRentPerM2
+            estimatedMonthlyRent
+            estimatedGrossYield
+            rentalR2Adjusted
           }
           ... on Loan {
             loanType

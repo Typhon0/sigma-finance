@@ -143,8 +143,13 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 		return nil, err
 	}
 
-	// Check rate limiting for registration
-	rateLimitKey := RegistrationRateLimitKey("global") // Could use IP if available
+	// Check rate limiting for registration, keyed per client IP so a single
+	// client cannot exhaust the allowance for everybody else.
+	registrationSubject := strings.TrimSpace(req.IPAddress)
+	if registrationSubject == "" {
+		registrationSubject = "unknown"
+	}
+	rateLimitKey := RegistrationRateLimitKey(registrationSubject)
 	if err := a.securityService.CheckRateLimit(ctx, rateLimitKey, 3, time.Hour); err != nil {
 		// Log security event
 		a.auditService.LogSecurityEvent(ctx, "registration_rate_limit", "", "", map[string]interface{}{
@@ -244,11 +249,17 @@ func (a *authenticationService) Register(ctx context.Context, req RegisterReques
 	})
 	a.auditService.LogAuthEvent(ctx, event)
 
-	// Create session for the new user
-	// Use default values for IP and user agent if not provided
-	ipAddress := "127.0.0.1" // Default for testing/registration
-	userAgent := "Registration-Client/1.0"
-	return a.createUserSession(ctx, createdUser, ipAddress, userAgent)
+	// No session is issued here: the account has to verify its email address
+	// before it can log in, and a token minted now would bypass that gate.
+	return &AuthResponse{
+		User: &UserInfo{
+			ID:            createdUser.ID,
+			Email:         createdUser.Email,
+			Role:          string(createdUser.Role),
+			Name:          createdUser.Name,
+			EmailVerified: createdUser.EmailVerified,
+		},
+	}, nil
 }
 
 // Login authenticates a user and creates a session
@@ -363,8 +374,12 @@ func (a *authenticationService) Login(ctx context.Context, req LoginRequest) (*A
 		return nil, NewAuthError(ErrEmailNotVerified, "Please verify your email address before logging in", "")
 	}
 
-	// Reset failed login count on successful authentication
+	// Reset failed login count and the rate-limit bucket on successful
+	// authentication, so successful logins do not count towards the limit.
 	a.userRepo.ResetFailedLoginCount(ctx, user.ID)
+	if resetErr := a.securityService.ResetRateLimit(ctx, rateLimitKey); resetErr != nil {
+		log.Printf("[WARN] [AuthenticationService] Login: rate limit reset failed user=%s: %v", user.ID, resetErr)
+	}
 
 	// Update last login
 	a.userRepo.UpdateLastLogin(ctx, user.ID, time.Now(), req.IPAddress)

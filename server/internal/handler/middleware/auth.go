@@ -42,6 +42,11 @@ type AuthenticatedUser struct {
 	EmailVerified bool   `json:"emailVerified"`
 }
 
+// IsAdmin returns true if the authenticated user has an ADMIN role.
+func (u *AuthenticatedUser) IsAdmin() bool {
+	return u != nil && strings.EqualFold(strings.TrimSpace(u.Role), "ADMIN")
+}
+
 // SessionInfo represents session information in context
 type SessionInfo struct {
 	ID        string    `json:"id"`

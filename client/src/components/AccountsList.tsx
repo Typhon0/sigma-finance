@@ -29,6 +29,7 @@ import {
 	X,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
 	type BasePositionItem,
@@ -192,6 +193,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 	const [accountToDelete, setAccountToDelete] = useState<AccountData | null>(null);
 	const [isSyncingAll, setIsSyncingAll] = useState(false);
 	const [copiedAccountId, setCopiedAccountId] = useState<string | null>(null);
+	const navigate = useNavigate();
 
 	// Query Accounts from server
 	const {
@@ -747,9 +749,7 @@ export function AccountsList({ onSelectAccount }: AccountsListProps) {
 									variant="outline"
 									size="icon"
 									className="h-8 w-8 border-border/50 text-muted-foreground hover:text-foreground touch-target"
-									onClick={() => {
-										window.location.href = "/settings/connections";
-									}}
+									onClick={() => navigate({ to: "/settings/connections" })}
 									title="Manage Connections"
 								>
 									<Link2 className="h-3.5 w-3.5" />

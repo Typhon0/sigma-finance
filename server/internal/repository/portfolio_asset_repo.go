@@ -13,6 +13,7 @@ import (
 type IPortfolioAssetRepository interface {
 	IRepository[model.PortfolioAsset]
 	FindByPortfolioID(ctx context.Context, portfolioID string) ([]model.PortfolioAsset, error)
+	FindByAssetID(ctx context.Context, assetID string) ([]model.PortfolioAsset, error)
 	FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.PortfolioAsset, error)
 	FindByPortfolioAndInstrument(ctx context.Context, portfolioID, instrumentID string) (*model.PortfolioAsset, error)
 	UpdatePortfolioAsset(ctx context.Context, portfolioAsset *model.PortfolioAsset) error
@@ -35,6 +36,11 @@ func NewPortfolioAssetRepository(db bun.IDB) *PortfolioAssetRepository {
 // FindByPortfolioID retrieves all assets for a specific portfolio
 func (r *PortfolioAssetRepository) FindByPortfolioID(ctx context.Context, portfolioID string) ([]model.PortfolioAsset, error) {
 	return r.FindAllBy(ctx, ByColumn("portfolio_id", portfolioID))
+}
+
+// FindByAssetID retrieves all portfolio holdings for a specific asset
+func (r *PortfolioAssetRepository) FindByAssetID(ctx context.Context, assetID string) ([]model.PortfolioAsset, error) {
+	return r.FindAllBy(ctx, ByColumn("asset_id", assetID))
 }
 
 // FindByPortfolioAndAsset retrieves a specific asset in a portfolio

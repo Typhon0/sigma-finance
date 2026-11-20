@@ -12,6 +12,13 @@ export interface LoanCategorySlice {
 	percent: number;
 }
 
+export interface LoanEquityData {
+	totalCollateralValue: number;
+	totalRemainingDebt: number;
+	netEquity: number;
+	ltvPercent: number;
+}
+
 export interface LoansExposureWidgetProps {
 	totalGrossDebt: number;
 	totalNetDebt?: number;
@@ -25,20 +32,21 @@ export interface LoansExposureWidgetProps {
 	amortizedRatio: number;
 	principalPaidGross: number;
 	currencyBreakdown?: Array<{ currency: string; value: number; percent: number }>;
+	equityData?: LoanEquityData;
 	loading?: boolean;
 }
 
 export const LOAN_TYPE_COLORS: Record<string, string> = {
-	amortizing: "#3B82F6", // Blue
-	"in-fine": "#EC4899", // Pink
-	"deferred-interest": "#F59E0B", // Amber
-	"deferred-total": "#EF4444", // Rose/Red
-	step: "#8B5CF6", // Purple
-	mortgage: "#3B82F6",
-	consumer: "#10B981",
-	student: "#06B6D4",
-	auto: "#F97316",
-	other: "#64748B",
+	amortizing: "var(--chart-1)",
+	"in-fine": "var(--chart-2)",
+	"deferred-interest": "var(--chart-3)",
+	"deferred-total": "var(--chart-4)",
+	step: "var(--chart-5)",
+	mortgage: "var(--chart-1)",
+	consumer: "var(--chart-2)",
+	student: "var(--chart-3)",
+	auto: "var(--chart-4)",
+	other: "var(--muted-foreground)",
 };
 
 export const LoansExposureWidget = memo(function LoansExposureWidget({
@@ -54,6 +62,7 @@ export const LoansExposureWidget = memo(function LoansExposureWidget({
 	amortizedRatio,
 	principalPaidGross,
 	currencyBreakdown = [],
+	equityData,
 	loading = false,
 }: LoansExposureWidgetProps) {
 	const shouldReduceMotion = useReducedMotion();
@@ -211,6 +220,56 @@ export const LoansExposureWidget = memo(function LoansExposureWidget({
 						<span className="font-mono tabular-nums">
 							{currencyBreakdown.map((c) => `${c.currency} ${c.percent.toFixed(0)}%`).join(" · ")}
 						</span>
+					</div>
+				)}
+
+				{equityData && equityData.totalCollateralValue > 0 && (
+					<div className="space-y-2 border-t border-border/20 pt-3">
+						<div className="flex items-center justify-between">
+							<span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+								Net Real Estate Equity
+							</span>
+							<span className="font-mono text-micro font-semibold text-gain">
+								+{formatCurrency(equityData.netEquity)}
+							</span>
+						</div>
+						<div className="rounded-lg bg-secondary/30 p-2.5 space-y-1.5 border border-border/30">
+							<div className="flex items-center justify-between text-micro">
+								<span className="text-muted-foreground">Collateral Value</span>
+								<span className="font-mono font-medium text-foreground">
+									{formatCurrency(equityData.totalCollateralValue)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-micro">
+								<span className="text-muted-foreground">Remaining Debt</span>
+								<span className="font-mono font-medium text-loss">
+									-{formatCurrency(equityData.totalRemainingDebt)}
+								</span>
+							</div>
+							<div className="flex items-center justify-between text-micro border-t border-border/20 pt-1 font-semibold">
+								<span className="text-foreground">Net Acquired Equity</span>
+								<span className="font-mono text-gain">
+									+{formatCurrency(equityData.netEquity)}
+								</span>
+							</div>
+							<div className="space-y-1 pt-1">
+								<div className="flex justify-between text-[10px] text-muted-foreground">
+									<span>LTV (Couverture)</span>
+									<span className="font-mono font-semibold text-foreground">
+										{equityData.ltvPercent.toFixed(1)}%
+									</span>
+								</div>
+								<div className="h-1.5 w-full bg-secondary/60 rounded-full overflow-hidden">
+									<div
+										className={cn(
+											"h-full rounded-full transition-all",
+											equityData.ltvPercent > 80 ? "bg-amber-500" : "bg-emerald-500",
+										)}
+										style={{ width: `${Math.min(100, Math.max(0, equityData.ltvPercent))}%` }}
+									/>
+								</div>
+							</div>
+						</div>
 					</div>
 				)}
 			</div>

@@ -38,9 +38,9 @@ type TestAdminDBConfig struct {
 // GetTestDBConfig returns test database configuration
 func GetTestDBConfig() *TestDBConfig {
 	return &TestDBConfig{
-		Host:     getEnvOrDefault("TEST_DB_HOST", "localhost"),
-		Port:     getEnvOrDefault("TEST_DB_PORT", "5432"),
-		User:     getEnvOrDefault("TEST_DB_USER", "sigma_finance"),
+		Host: getEnvOrDefault("TEST_DB_HOST", "localhost"),
+		Port: getEnvOrDefault("TEST_DB_PORT", "5432"),
+		User: getEnvOrDefault("TEST_DB_USER", "sigma_finance"),
 		// No default: tests must supply TEST_DB_PASSWORD (see .env.example).
 		// A hardcoded default previously leaked a real credential into git.
 		Password: getEnvOrDefault("TEST_DB_PASSWORD", ""),
@@ -136,10 +136,17 @@ func EnsureTestSchemaPermissions(ctx context.Context, adminDB *bun.DB) error {
 		return fmt.Errorf("failed to create schema: %w", err)
 	}
 
-	// Create pg_trgm extension in the schema
-	_, err = adminDB.ExecContext(ctx, fmt.Sprintf("CREATE EXTENSION IF NOT EXISTS pg_trgm SCHEMA %s", schemaName))
+	// Create pg_trgm in the default schema (public), the same place the
+	// migrations put it. Installing it in sigma_finance instead leaves the
+	// trigram operators out of search_path, so queries using `%` fail.
+	_, err = adminDB.ExecContext(ctx, "CREATE EXTENSION IF NOT EXISTS pg_trgm")
 	if err != nil {
 		return fmt.Errorf("failed to create pg_trgm extension: %w", err)
+	}
+	// Move an extension created by an older version of this helper.
+	_, err = adminDB.ExecContext(ctx, "ALTER EXTENSION pg_trgm SET SCHEMA public")
+	if err != nil {
+		return fmt.Errorf("failed to move pg_trgm extension: %w", err)
 	}
 
 	// Grant schema-level privileges

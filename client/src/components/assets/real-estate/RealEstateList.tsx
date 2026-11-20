@@ -1,31 +1,55 @@
+import { useQuery } from "@apollo/client";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-	ArrowRight,
-	BarChart3,
+	Bath,
+	Bed,
 	Building2,
-	ChevronLeft,
-	ChevronRight,
-	Euro,
+	Calendar,
+	Check,
+	ChevronDown,
+	Coins,
+	Eye,
 	Filter,
 	Home,
-	LayoutGrid,
+	Layers,
 	List,
 	MapPin,
 	Maximize,
+	MoreVertical,
+	Pencil,
 	Plus,
-	SortAsc,
+	Search,
+	SlidersHorizontal,
+	Trash2,
 	TrendingDown,
 	TrendingUp,
+	X,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import exampleImage from "@/assets/placeholder.svg";
-import { BenchmarkMetricsBar } from "@/components/charts/BenchmarkMetricsBar";
-import EChart from "@/components/charts/EChart";
+import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts/AssetHeroChart";
+import type { TimeRange } from "@/components/charts/PortfolioHeroChart";
 import { usePortfolio } from "@/components/PortfolioProvider";
 import { TrendArrowDown, TrendArrowUp } from "@/components/TrendArrows";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import ErrorBoundary from "@/components/ui/error-boundary";
 import { SearchInput } from "@/components/ui/search-input";
 import {
 	Select,
@@ -34,7 +58,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
 	Table,
 	TableBody,
@@ -43,11 +67,17 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GET_SCOPED_PERFORMANCE_HISTORY } from "@/graphql/queries/portfolios";
+import { useCurrency } from "@/hooks/use-currency";
+import { cn } from "@/lib/utils";
 import { AssetPageHeader } from "../AssetPageHeader";
-import { AddRealEstateForm } from "./AddRealEstateForm";
-import { RealEstateAnalytics } from "./RealEstateAnalytics";
+import { AddRealEstateForm, type AddRealEstateFormSubmitData } from "./AddRealEstateForm";
 import { RealEstateDetail } from "./RealEstateDetail";
+import {
+	type ExposureDimension,
+	type RealEstateExposureSlice,
+	RealEstateExposureWidget,
+} from "./RealEstateExposureWidget";
 
 interface RealEstateListProps {
 	onSelectProperty?: (propertyId: string) => void;
@@ -55,108 +85,423 @@ interface RealEstateListProps {
 	onBack?: () => void;
 }
 
-type ViewMode = "grid" | "list";
+type WorkspaceTab = "ledger" | "holdings";
+type TableDensity = "compact" | "normal";
+
+const TERMINAL_PALETTE = [
+	"#3b82f6", // Blue
+	"#10b981", // Emerald
+	"#8b5cf6", // Purple
+	"#f59e0b", // Amber
+	"#06b6d4", // Cyan
+	"#ec4899", // Pink
+	"#64748b", // Slate
+];
 
 export function RealEstateList({
 	onSelectProperty,
 	detailMode = "panel",
 	onBack,
 }: RealEstateListProps) {
-	const { assets, addRealEstate, currentPortfolio, refetch, selectedPortfolio } = usePortfolio();
+	const shouldReduceMotion = useReducedMotion();
+	const {
+		assets,
+		addRealEstate,
+		deleteAsset,
+		currentPortfolio,
+		selectedPortfolio,
+		refetch,
+		getPortfolioValue,
+	} = usePortfolio();
+	const { formatCurrency } = useCurrency();
+
+	const portfolioId =
+		typeof currentPortfolio === "string"
+			? currentPortfolio
+			: selectedPortfolio?.id || currentPortfolio?.id;
+
+	// Component UI States
 	const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-
-	const handleSelectProperty = (propertyId: string) => {
-		if (detailMode === "panel") {
-			setSelectedPropertyId(propertyId);
-		} else {
-			onSelectProperty?.(propertyId);
-		}
-	};
-
-	const [searchTerm, setSearchTerm] = useState("");
-	const [sortBy, setSortBy] = useState("value");
-	const [filterType, setFilterType] = useState("all");
-	const [viewMode, setViewMode] = useState<ViewMode>("grid");
-	const [currentPage, setCurrentPage] = useState(1);
+	const [activeWorkspaceTab, setActiveWorkspaceTab] = useState<WorkspaceTab>("ledger");
 	const [isAddFormOpen, setIsAddFormOpen] = useState(false);
-	const itemsPerPage = viewMode === "grid" ? 9 : 15;
+	const [propertyToDelete, setPropertyToDelete] = useState<{ id: string; name: string } | null>(
+		null,
+	);
+	const [isDeleting, setIsDeleting] = useState(false);
 
-	const realEstateAssets = assets.filter((asset) => asset.type === "real_estate");
-
-	// Debug log
-	React.useEffect(() => {
-		if (realEstateAssets.length === 0) {
+	// Table Density
+	const [density, setDensity] = useState<TableDensity>(() => {
+		try {
+			const saved = localStorage.getItem("sf_real_estate_table_density");
+			return saved === "normal" ? "normal" : "compact";
+		} catch {
+			return "compact";
 		}
-	}, [realEstateAssets.length, realEstateAssets]);
+	});
 
-	const filteredProperties = realEstateAssets
-		.filter((property) => {
-			const matchesSearch =
-				property.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				property.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				property.city?.toLowerCase().includes(searchTerm.toLowerCase());
-			const matchesType = filterType === "all" || property.propertyType === filterType;
-			return matchesSearch && matchesType;
-		})
-		.sort((a, b) => {
-			switch (sortBy) {
-				case "value":
-					return (b.currentValue || 0) - (a.currentValue || 0);
-				case "gain": {
-					const gainA = (a.currentValue || 0) - (a.purchasePrice || 0);
-					const gainB = (b.currentValue || 0) - (b.purchasePrice || 0);
-					return gainB - gainA;
-				}
-				case "name":
-					return (a.name || "").localeCompare(b.name || "");
-				default:
-					return 0;
+	const handleToggleDensity = () => {
+		const next = density === "compact" ? "normal" : "compact";
+		setDensity(next);
+		try {
+			localStorage.setItem("sf_real_estate_table_density", next);
+		} catch {
+			// ignore storage errors
+		}
+	};
+
+	// Filters & Search
+	const [searchTerm, setSearchTerm] = useState("");
+	const [filterType, setFilterType] = useState<string>("all");
+	const [sortBy, setSortBy] = useState<"value" | "gain" | "surface" | "name">("value");
+	const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
+
+	// Cross-filter from Exposure Widget
+	const [activeExposureFilter, setActiveExposureFilter] = useState<string | null>(null);
+	const [exposureDimension, setExposureDimension] = useState<ExposureDimension>("type");
+
+	// Scoped Performance History query for HeroChart
+	const { data: scopedHistoryData, loading: scopedHistoryLoading } = useQuery(
+		GET_SCOPED_PERFORMANCE_HISTORY,
+		{
+			variables: {
+				portfolioID: portfolioId,
+				assetTypes: ["REAL_ESTATE"],
+			},
+			skip: !portfolioId,
+			fetchPolicy: "cache-and-network",
+			nextFetchPolicy: "cache-first",
+		},
+	);
+
+	// All real estate assets
+	const realEstateAssets = useMemo(() => {
+		return assets.filter((asset) => asset.type === "real_estate");
+	}, [assets]);
+
+	// All loans for linked debt lookup
+	const loans = useMemo(() => {
+		return assets.filter((asset) => asset.type === "loan");
+	}, [assets]);
+
+	// Map of real estate asset id -> linked loan
+	const propertyLoanMap = useMemo(() => {
+		const map = new Map<string, (typeof loans)[0]>();
+		for (const prop of realEstateAssets) {
+			if (prop.linkedLoanId) {
+				const loan = loans.find((l) => l.id === prop.linkedLoanId);
+				if (loan) map.set(prop.id, loan);
+			} else {
+				const loan = loans.find((l) => (l as unknown as { linkedAssetIDs?: string[] }).linkedAssetIDs?.includes(prop.id));
+				if (loan) map.set(prop.id, loan);
 			}
-		});
+		}
+		return map;
+	}, [realEstateAssets, loans]);
 
-	const getTotalValue = () => {
-		return realEstateAssets.reduce((sum, asset) => sum + (asset.currentValue || 0), 0);
-	};
+	// Valuation Mode: "gross" vs "net"
+	const [valuationMode, setValuationMode] = useState<"gross" | "net">("gross");
 
-	const getTotalGain = () => {
-		return realEstateAssets.reduce((sum, asset) => {
-			const gain = (asset.currentValue || 0) - (asset.purchasePrice || 0);
-			return sum + gain;
+	// Total values (prorated by ownership %)
+	const totalGrossValue = useMemo(() => {
+		return realEstateAssets.reduce((sum, a) => {
+			const pct = typeof a.ownershipPercentage === "number" ? a.ownershipPercentage : 100;
+			return sum + (a.currentValue || 0) * (pct / 100);
 		}, 0);
+	}, [realEstateAssets]);
+
+	const totalDebt = useMemo(() => {
+		return realEstateAssets.reduce((sum, a) => {
+			const loan = propertyLoanMap.get(a.id);
+			return sum + (loan ? (loan.remainingBalance ?? loan.loanAmount ?? 0) : 0);
+		}, 0);
+	}, [realEstateAssets, propertyLoanMap]);
+
+	const totalNetEquity = Math.max(0, totalGrossValue - totalDebt);
+	const totalLTV = totalGrossValue > 0 && totalDebt > 0 ? (totalDebt / totalGrossValue) * 100 : 0;
+	const displayedHeroValue = valuationMode === "gross" ? totalGrossValue : totalNetEquity;
+	const totalValue = totalGrossValue; // Fallback canonical alias
+
+	const totalCost = useMemo(() => {
+		return realEstateAssets.reduce((sum, a) => {
+			const pct = typeof a.ownershipPercentage === "number" ? a.ownershipPercentage : 100;
+			return sum + (a.purchasePrice || a.currentValue || 0) * (pct / 100);
+		}, 0);
+	}, [realEstateAssets]);
+
+	const totalPortfolioValue = useMemo(() => {
+		if (typeof getPortfolioValue === "function") {
+			const val = getPortfolioValue();
+			if (typeof val === "number" && val > 0) return val;
+		}
+		return assets.reduce((sum, a) => sum + (a.currentValue || 0), 0);
+	}, [getPortfolioValue, assets]);
+
+	const totalSurface = useMemo(() => {
+		return realEstateAssets.reduce((sum, a) => sum + (a.surfaceArea || 0), 0);
+	}, [realEstateAssets]);
+
+	// Performance series for HeroChart
+	const performanceData = useMemo(() => {
+		const history = scopedHistoryData?.scopedPerformanceHistory ?? [];
+		return buildPerformanceSeries(history, displayedHeroValue);
+	}, [scopedHistoryData, displayedHeroValue]);
+
+	// Chart holdings for HeroChart
+	const chartHoldings = useMemo(() => {
+		const denom = displayedHeroValue;
+		return realEstateAssets.map((a) => {
+			const pct = typeof a.ownershipPercentage === "number" ? a.ownershipPercentage : 100;
+			const gross = (a.currentValue || 0) * (pct / 100);
+			const loan = propertyLoanMap.get(a.id);
+			const debt = loan ? (loan.remainingBalance ?? loan.loanAmount ?? 0) : 0;
+			const val = valuationMode === "gross" ? gross : Math.max(0, gross - debt);
+
+			return {
+				symbol: a.symbol || a.name.slice(0, 4).toUpperCase(),
+				name: a.name,
+				weight: denom > 0 ? (val / denom) * 100 : 0,
+				totalValue: val,
+			};
+		});
+	}, [realEstateAssets, valuationMode, displayedHeroValue, propertyLoanMap]);
+
+	// Compute Exposure Slices: By Type
+	const typeSlices = useMemo((): RealEstateExposureSlice[] => {
+		if (realEstateAssets.length === 0) return [];
+		const map: Record<string, { count: number; value: number; surfaceArea: number }> = {};
+
+		for (const a of realEstateAssets) {
+			const typeKey = a.propertyType || "Residential";
+			if (!map[typeKey]) {
+				map[typeKey] = { count: 0, value: 0, surfaceArea: 0 };
+			}
+			map[typeKey].count += 1;
+			map[typeKey].value += a.currentValue || 0;
+			map[typeKey].surfaceArea += a.surfaceArea || 0;
+		}
+
+		return Object.entries(map)
+			.map(([key, data], idx) => ({
+				key,
+				label: key,
+				color: TERMINAL_PALETTE[idx % TERMINAL_PALETTE.length],
+				count: data.count,
+				value: data.value,
+				percent: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+				surfaceArea: data.surfaceArea,
+			}))
+			.sort((a, b) => b.value - a.value);
+	}, [realEstateAssets, totalValue]);
+
+	// Compute Exposure Slices: By Location (City)
+	const locationSlices = useMemo((): RealEstateExposureSlice[] => {
+		if (realEstateAssets.length === 0) return [];
+		const map: Record<string, { count: number; value: number; surfaceArea: number }> = {};
+
+		for (const a of realEstateAssets) {
+			const cityKey = a.city || "Unspecified Location";
+			if (!map[cityKey]) {
+				map[cityKey] = { count: 0, value: 0, surfaceArea: 0 };
+			}
+			map[cityKey].count += 1;
+			map[cityKey].value += a.currentValue || 0;
+			map[cityKey].surfaceArea += a.surfaceArea || 0;
+		}
+
+		return Object.entries(map)
+			.map(([key, data], idx) => ({
+				key,
+				label: key,
+				color: TERMINAL_PALETTE[(idx + 2) % TERMINAL_PALETTE.length],
+				count: data.count,
+				value: data.value,
+				percent: totalValue > 0 ? (data.value / totalValue) * 100 : 0,
+				surfaceArea: data.surfaceArea,
+			}))
+			.sort((a, b) => b.value - a.value);
+	}, [realEstateAssets, totalValue]);
+
+	// Handle cross-filter selection
+	const handleSelectExposureSlice = useCallback(
+		(key: string | null, dimension: ExposureDimension) => {
+			setActiveExposureFilter(key);
+			setExposureDimension(dimension);
+		},
+		[],
+	);
+
+	// Filtered & Sorted Properties
+	const filteredProperties = useMemo(() => {
+		return realEstateAssets
+			.filter((property) => {
+				// Text search
+				if (searchTerm.trim()) {
+					const term = searchTerm.toLowerCase();
+					const matchName = property.name?.toLowerCase().includes(term);
+					const matchAddress = property.address?.toLowerCase().includes(term);
+					const matchCity = property.city?.toLowerCase().includes(term);
+					if (!matchName && !matchAddress && !matchCity) return false;
+				}
+
+				// Dropdown property type filter
+				if (filterType !== "all" && property.propertyType !== filterType) {
+					return false;
+				}
+
+				// Cross-filter from Exposure Widget
+				if (activeExposureFilter) {
+					if (exposureDimension === "type") {
+						const type = property.propertyType || "Residential";
+						if (type !== activeExposureFilter) return false;
+					} else if (exposureDimension === "location") {
+						const city = property.city || "Unspecified Location";
+						if (city !== activeExposureFilter) return false;
+					}
+				}
+
+				return true;
+			})
+			.sort((a, b) => {
+				switch (sortBy) {
+					case "value":
+						return (b.currentValue || 0) - (a.currentValue || 0);
+					case "gain": {
+						const gainA = (a.currentValue || 0) - (a.purchasePrice || 0);
+						const gainB = (b.currentValue || 0) - (b.purchasePrice || 0);
+						return gainB - gainA;
+					}
+					case "surface":
+						return (b.surfaceArea || 0) - (a.surfaceArea || 0);
+					case "name":
+						return (a.name || "").localeCompare(b.name || "");
+					default:
+						return 0;
+				}
+			});
+	}, [realEstateAssets, searchTerm, filterType, activeExposureFilter, exposureDimension, sortBy]);
+
+	// Active cross-filter stats
+	const activeFilterStats = useMemo(() => {
+		if (!activeExposureFilter) return null;
+		const pool = exposureDimension === "type" ? typeSlices : locationSlices;
+		return pool.find((s) => s.key === activeExposureFilter) || null;
+	}, [activeExposureFilter, exposureDimension, typeSlices, locationSlices]);
+
+	// Available property types for the select dropdown
+	const availableTypes = useMemo(() => {
+		const types = new Set<string>();
+		for (const a of realEstateAssets) {
+			if (a.propertyType) types.add(a.propertyType);
+		}
+		return Array.from(types).sort();
+	}, [realEstateAssets]);
+
+	const handleOpenDetail = (id: string) => {
+		if (detailMode === "panel") {
+			setSelectedPropertyId(id);
+		} else {
+			onSelectProperty?.(id);
+		}
 	};
 
-	const totalValue = getTotalValue();
-	const totalGain = getTotalGain();
-
-	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-	const handleAddProperty = async (formData: any) => {
+	const handleAddProperty = async (formData: AddRealEstateFormSubmitData) => {
 		if (!currentPortfolio) {
 			toast.error("No portfolio selected. Please select a portfolio first.");
 			throw new Error("No portfolio selected");
 		}
 		try {
+			const currentVal =
+				parseFloat(formData.currentValuation) || parseFloat(formData.purchasePrice) || 0;
+			const purchaseVal = parseFloat(formData.purchasePrice) || currentVal;
+			const surface = parseFloat(formData.surface || "") || undefined;
+			const landSurface = parseFloat(formData.landSurface || "") || undefined;
+			const year = formData.yearBuilt ? parseInt(formData.yearBuilt, 10) : undefined;
+			const rooms = formData.rooms ? parseInt(formData.rooms, 10) : undefined;
+			const beds = formData.bedrooms ? parseInt(formData.bedrooms, 10) : undefined;
+			const baths = formData.bathrooms ? parseFloat(formData.bathrooms) : undefined;
+			const floor = formData.floor ? parseInt(formData.floor, 10) : undefined;
+			const totalFloors = formData.totalFloors ? parseInt(formData.totalFloors, 10) : undefined;
+			const garages = formData.garages ? parseInt(formData.garages, 10) : undefined;
+			const parkingSpaces = formData.parkingSpaces ? parseInt(formData.parkingSpaces, 10) : undefined;
+			const agencyFees = parseFloat(formData.agencyFees || "") || undefined;
+			const notaryFees = parseFloat(formData.notaryFees || "") || undefined;
+			const renovationFees = parseFloat(formData.renovationFees || "") || undefined;
+			const furnishingCosts = parseFloat(formData.furnishingCosts || "") || undefined;
+			const monthlyRent = parseFloat(formData.monthlyRent || "") || undefined;
+			const utilityCosts = parseFloat(formData.utilityCosts || "") || undefined;
+			const yearlyMiscCosts = parseFloat(formData.yearlyMiscCosts || "") || undefined;
+
 			const result = await addRealEstate({
 				name: formData.name || formData.type || "Property",
-				assetTypeID: "4", // Real Estate asset type ID from server
+				assetTypeID: "4", // Real Estate asset type ID
 				propertyType: formData.type || "House",
 				address: formData.address || "",
 				city: formData.city || "",
 				state: formData.state || undefined,
-				country: formData.country || "US",
+				country: formData.country || "France",
 				zipCode: formData.postalCode || undefined,
-				squareFeet: parseFloat(formData.surface) || undefined,
-				bedrooms: undefined,
-				bathrooms: undefined,
-				currentValue:
-					parseFloat(formData.currentValuation) || parseFloat(formData.purchasePrice) || undefined,
-				purchasePrice: parseFloat(formData.purchasePrice) || undefined,
+				squareFeet: surface ? Math.round(surface) : undefined,
+				yearBuilt: !isNaN(year as number) ? year : undefined,
+				bedrooms: !isNaN(beds as number) ? beds : undefined,
+				bathrooms: !isNaN(baths as number) ? baths : undefined,
+				currentValue: currentVal,
+				purchasePrice: purchaseVal,
 				purchaseDate: formData.purchaseDate || undefined,
+
+				category: formData.category || undefined,
+				landSurface,
+				rooms: !isNaN(rooms as number) ? rooms : undefined,
+				floor: !isNaN(floor as number) ? floor : undefined,
+				totalFloors: !isNaN(totalFloors as number) ? totalFloors : undefined,
+				garages: !isNaN(garages as number) ? garages : undefined,
+				parkingSpaces: !isNaN(parkingSpaces as number) ? parkingSpaces : undefined,
+				energyLabel: formData.energyLabel || undefined,
+				condition: formData.condition || undefined,
+				agencyFees,
+				notaryFees,
+				renovationFees,
+				furnishingCosts,
+				rentalType: formData.rentalType || undefined,
+				rentalPeriod: formData.rentalPeriod || undefined,
+				monthlyRent,
+				utilityCosts,
+				yearlyMiscCosts,
+				hasGarden: formData.hasGarden,
+				hasBalcony: formData.hasBalcony,
+				hasLift: formData.hasLift,
+				hasPool: formData.hasPool,
+				hasSauna: formData.hasSauna,
+				isFurnished: formData.isFurnished,
+				isNewConstruction: formData.isNewConstruction,
+				kitchenQuality: formData.kitchenQuality || undefined,
+				kitchenCondition: formData.kitchenCondition || undefined,
+				bathroomQuality: formData.bathroomQuality || undefined,
+				bathroomCondition: formData.bathroomCondition || undefined,
+				flooringQuality: formData.flooringQuality || undefined,
+				flooringCondition: formData.flooringCondition || undefined,
+				windowsQuality: formData.windowsQuality || undefined,
+				windowsCondition: formData.windowsCondition || undefined,
+				generalQuality: formData.generalQuality || undefined,
+				generalCondition: formData.generalCondition || undefined,
+				linkedLoanId: formData.linkedLoanId,
+				ownershipPercentage: formData.ownershipPercentage ? parseFloat(formData.ownershipPercentage) : undefined,
+				ownershipStructure: formData.ownershipStructure,
+
+				// BAN & Auto-Valuation
+				addressLabel: formData.addressLabel,
+				cityCode: formData.cityCode,
+				banId: formData.banId,
+				latitude: formData.latitude,
+				longitude: formData.longitude,
+				hasOutdoor: formData.hasOutdoor,
+				isGroundFloor: formData.isGroundFloor,
+				valuationMode: formData.valuationMode,
+				manualValue: formData.manualValue ? parseFloat(formData.manualValue) : undefined,
 			});
 
 			if (result.asset) {
-				toast.success("Property added successfully!", {
-					description: `${formData.name || formData.type || "Property"} has been added to your portfolio.`,
-				});
+				toast.success("Property added successfully!");
+				setIsAddFormOpen(false);
 				await refetch();
 			} else {
 				throw new Error("createRealEstateAsset returned no asset");
@@ -166,911 +511,808 @@ export function RealEstateList({
 			throw error;
 		}
 	};
-	const totalGainPercent = totalValue > 0 ? (totalGain / (totalValue - totalGain)) * 100 : 0;
 
-	// Pagination
-	const totalPages = Math.ceil(filteredProperties.length / itemsPerPage);
-	const startIndex = (currentPage - 1) * itemsPerPage;
-	const endIndex = startIndex + itemsPerPage;
-	const paginatedProperties = filteredProperties.slice(startIndex, endIndex);
-
-	// Reset to page 1 when filters change
-	React.useEffect(() => {
-		setCurrentPage(1);
-	}, []);
+	const handleDeleteConfirm = async () => {
+		if (!propertyToDelete) return;
+		setIsDeleting(true);
+		try {
+			if (typeof deleteAsset === "function") {
+				await deleteAsset(propertyToDelete.id, currentPortfolio || undefined);
+				toast.success(`Property "${propertyToDelete.name}" removed`);
+				setPropertyToDelete(null);
+				if (selectedPropertyId === propertyToDelete.id) {
+					setSelectedPropertyId(null);
+				}
+				await refetch();
+			} else {
+				throw new Error("deleteAsset handler unavailable");
+			}
+		} catch (err) {
+			const msg = err instanceof Error ? err.message : "Failed to delete property";
+			toast.error(msg);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
 
 	return (
 		<div className="animate-in fade-in flex h-full flex-col space-y-6 duration-500">
+			{/* Canonical Page Header */}
 			<AssetPageHeader
 				title="Real Estate"
-				description="Manage your property investments, valuations, yields, and geographic distribution."
+				description="Manage property investments, physical assets, valuations, and portfolio exposure."
 				onBack={onBack}
 				actions={
-					<Button
-						size="sm"
-						className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs"
-						onClick={() => setIsAddFormOpen(true)}
-					>
-						<Plus className="mr-1.5 h-3.5 w-3.5" />
-						Add Property
-					</Button>
+					<div className="flex items-center gap-2 flex-wrap">
+						{realEstateAssets.length > 0 && (
+							<div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/60 border border-border/40 text-micro font-mono text-muted-foreground">
+								<span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+								<span>
+									{realEstateAssets.length} {realEstateAssets.length === 1 ? "property" : "properties"}
+									{totalSurface > 0 ? ` • ${totalSurface.toLocaleString()} m²` : ""}
+								</span>
+							</div>
+						)}
+
+						<Button
+							size="sm"
+							onClick={() => setIsAddFormOpen(true)}
+							className="h-8 text-xs border-0 bg-primary text-primary-foreground hover:bg-primary/95 font-semibold shadow-xs touch-target"
+						>
+							<Plus className="mr-1.5 h-3.5 w-3.5" />
+							Add Property
+						</Button>
+					</div>
 				}
 			/>
 
-			{/* Main Tabs */}
-			<Tabs defaultValue="properties" className="space-y-6">
-				<TabsList className="grid w-full max-w-md grid-cols-2">
-					<TabsTrigger value="properties">
-						<LayoutGrid className="h-4 w-4 mr-2" />
-						Properties
-					</TabsTrigger>
-					<TabsTrigger value="analytics">
-						<BarChart3 className="h-4 w-4 mr-2" />
-						Analytics
-					</TabsTrigger>
-				</TabsList>
+			{/* 70/30 Hero Section: AssetHeroChart (70%) + RealEstateExposureWidget (30%) */}
+			<div className="grid grid-cols-1 gap-6 border-b border-border/30 pb-6 lg:grid-cols-10">
+				{/* Left 70%: Real Estate Valuation Hero Chart */}
+				<div className="lg:col-span-7 pr-0 lg:pr-6 flex flex-col justify-between">
+					{totalDebt > 0 && (
+						<div className="flex flex-wrap items-center justify-between gap-2 pb-3 mb-2 border-b border-border/20 text-xs">
+							<div className="flex items-center gap-1.5 p-0.5 rounded-lg bg-muted border border-border/40">
+								<button
+									type="button"
+									onClick={() => setValuationMode("gross")}
+									className={cn(
+										"px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer",
+										valuationMode === "gross"
+											? "bg-background text-foreground shadow-xs border border-border/60"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									Valeur Brute ({formatCurrency(totalGrossValue)})
+								</button>
+								<button
+									type="button"
+									onClick={() => setValuationMode("net")}
+									className={cn(
+										"px-2.5 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer",
+										valuationMode === "net"
+											? "bg-background text-foreground shadow-xs border border-border/60"
+											: "text-muted-foreground hover:text-foreground",
+									)}
+								>
+									Valeur Nette ({formatCurrency(totalNetEquity)})
+								</button>
+							</div>
 
-				{/* Properties Tab */}
-				<TabsContent value="properties" className="space-y-6">
-					{/* Benchmark metrics */}
-					<BenchmarkMetricsBar portfolioID={selectedPortfolio?.id} benchmarkMode="sp500" />
-
-					{/* Help Banner for empty state */}
-					{realEstateAssets.length === 0 && (
-						<Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/20 dark:border-blue-900">
-							<CardContent className="pt-6">
-								<div className="flex items-start gap-3">
-									<div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-										<span className="text-blue-600 dark:text-blue-400">💡</span>
-									</div>
-									<div className="flex-1">
-										<h4 className="font-medium text-blue-900 dark:text-blue-100 mb-1">
-											No Properties Found
-										</h4>
-										<p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-											It looks like your demo data hasn't loaded. This can happen if you were using
-											the app before the Real Estate feature was added.
-										</p>
-										<p className="text-sm text-blue-700 dark:text-blue-300">
-											<strong>Quick fix:</strong> Click on your profile picture in the top-right
-											corner and select <strong>"Reset Demo Data"</strong> or simply{" "}
-											<strong>log out and log back in</strong> to reload the demo properties.
-										</p>
-									</div>
-								</div>
-							</CardContent>
-						</Card>
+							<div className="flex items-center gap-2 font-mono text-micro text-muted-foreground">
+								<span>Dette: <strong className="text-foreground">{formatCurrency(totalDebt)}</strong></span>
+								<span>•</span>
+								<span>LTV: <strong className={cn(totalLTV > 75 ? "text-rose-500" : totalLTV > 50 ? "text-amber-500" : "text-emerald-500")}>{totalLTV.toFixed(1)}%</strong></span>
+							</div>
+						</div>
 					)}
 
-					{/* Performance Overview */}
-					{realEstateAssets.length > 0 && (
-						<Card>
-							<CardHeader>
-								<div className="flex items-center justify-between">
-									<div>
-										<CardTitle>Performance Overview</CardTitle>
-										<CardDescription>Quick snapshot of your real estate portfolio</CardDescription>
+					<ErrorBoundary>
+						<AssetHeroChart
+							title={valuationMode === "gross" ? "Real Estate Portfolio Valuation" : "Real Estate Net Equity"}
+							titleTooltip={valuationMode === "gross" ? "Aggregated asset valuation of physical properties (prorated by ownership %)" : "Net equity after deducting linked mortgage debts"}
+							data={performanceData}
+							holdings={chartHoldings}
+							totalEquity={displayedHeroValue}
+							formatCurrency={formatCurrency}
+							timeRange={timeRange}
+							onTimeRangeChange={setTimeRange}
+							portfolioID={portfolioId}
+							loading={scopedHistoryLoading && realEstateAssets.length === 0}
+							defaultBenchmark="none"
+							layoutId="realEstateHeroRangePillActive"
+						/>
+					</ErrorBoundary>
+				</div>
+
+				{/* Right 30%: Real Estate Exposure & Split */}
+				<div className="lg:col-span-3 border-t lg:border-t-0 lg:border-l border-border/30 pt-6 lg:pt-0 pl-0 lg:pl-6 flex flex-col justify-between">
+					<ErrorBoundary>
+						<RealEstateExposureWidget
+							totalRealEstateValue={totalValue}
+							totalCost={totalCost}
+							totalPortfolioValue={totalPortfolioValue}
+							totalSurface={totalSurface}
+							typeSlices={typeSlices}
+							locationSlices={locationSlices}
+							activeFilter={activeExposureFilter}
+							activeDimension={exposureDimension}
+							onSelectSlice={handleSelectExposureSlice}
+							formatCurrency={formatCurrency}
+							loading={scopedHistoryLoading && realEstateAssets.length === 0}
+						/>
+					</ErrorBoundary>
+				</div>
+			</div>
+
+			{/* In-Viewport Active Cross-Filter Banner */}
+			{activeFilterStats && (
+				<motion.div
+					key="real-estate-cross-filter-banner"
+					data-testid="cross-filter-banner"
+					initial={shouldReduceMotion ? false : { opacity: 0, y: -6, scale: 0.99 }}
+					animate={{ opacity: 1, y: 0, scale: 1 }}
+					transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+					className="overflow-hidden"
+				>
+					<div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border border-primary/30 bg-primary/5 text-xs shadow-xs mb-1">
+						<div className="flex items-center gap-2.5 flex-wrap">
+							<span
+								className="h-2 w-2 rounded-full animate-pulse"
+								style={{ backgroundColor: activeFilterStats.color }}
+							/>
+							<span className="font-semibold text-foreground">
+								Filtered by {exposureDimension === "type" ? "Type" : "City"}:
+							</span>
+							<span className="font-bold text-primary px-2 py-0.5 rounded-md bg-primary/10 border border-primary/20 text-micro">
+								{activeFilterStats.label}
+							</span>
+							<span className="text-muted-foreground text-micro sm:text-xs">
+								({activeFilterStats.count} {activeFilterStats.count !== 1 ? "properties" : "property"}{" "}
+								• {formatCurrency(activeFilterStats.value)} •{" "}
+								{activeFilterStats.percent.toFixed(1)}% of real estate)
+							</span>
+						</div>
+						<div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									const el = document.getElementById("real-estate-workspace-section");
+									el?.scrollIntoView({ behavior: "smooth" });
+								}}
+								className="h-7 text-xs bg-background/80 hover:bg-background border-border/60 gap-1.5 cursor-pointer touch-target"
+							>
+								<span>Jump to Ledger</span>
+								<ChevronDown className="h-3 w-3" />
+							</Button>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setActiveExposureFilter(null)}
+								className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1 cursor-pointer touch-target"
+							>
+								<X className="h-3.5 w-3.5" />
+								<span>Clear</span>
+							</Button>
+						</div>
+					</div>
+				</motion.div>
+			)}
+
+			{/* Segmented Workspace Navigation (2 Tabs) */}
+			<div id="real-estate-workspace-section" className="flex flex-col space-y-4">
+				<div className="flex items-center justify-between border-b border-border/20 pb-3 mt-1 flex-wrap gap-2">
+					{/* Tab switcher */}
+					<div
+						className="relative flex max-w-full overflow-x-auto p-0.5 rounded-lg bg-muted border border-border/40"
+						role="tablist"
+						aria-label="Real estate workspace view"
+					>
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeWorkspaceTab === "ledger"}
+							onClick={() => setActiveWorkspaceTab("ledger")}
+							className={cn(
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[36px] touch-target",
+								activeWorkspaceTab === "ledger"
+									? "text-foreground font-bold"
+									: "text-foreground/70 hover:text-foreground border border-transparent",
+							)}
+						>
+							{activeWorkspaceTab === "ledger" && (
+								<motion.span
+									layoutId="realEstateActiveTabIndicator"
+									className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 38 }
+									}
+								/>
+							)}
+							<span className="relative z-10">Real Estate Ledger</span>
+							<span className="relative z-10 text-micro font-mono px-1.5 py-0.5 rounded-full bg-secondary/80 text-foreground/80 font-normal">
+								{filteredProperties.length}
+							</span>
+						</button>
+
+						<button
+							type="button"
+							role="tab"
+							aria-selected={activeWorkspaceTab === "holdings"}
+							onClick={() => setActiveWorkspaceTab("holdings")}
+							className={cn(
+								"relative shrink-0 whitespace-nowrap px-4 py-2 text-xs font-semibold rounded-md transition-colors duration-150 cursor-pointer flex items-center gap-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary min-h-[36px] touch-target",
+								activeWorkspaceTab === "holdings"
+									? "text-foreground font-bold"
+									: "text-foreground/70 hover:text-foreground border border-transparent",
+							)}
+						>
+							{activeWorkspaceTab === "holdings" && (
+								<motion.span
+									layoutId="realEstateActiveTabIndicator"
+									className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
+									transition={
+										shouldReduceMotion
+											? { duration: 0 }
+											: { type: "spring", stiffness: 500, damping: 38 }
+									}
+								/>
+							)}
+							<span className="relative z-10">Holdings & Specifications</span>
+							<span className="relative z-10 text-micro font-mono px-1.5 py-0.5 rounded-full bg-secondary/80 text-foreground/80 font-normal">
+								{realEstateAssets.length}
+							</span>
+						</button>
+					</div>
+
+					{/* Workspace Toolbar Controls */}
+					<div className="flex items-center gap-2">
+						{activeWorkspaceTab === "ledger" && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleToggleDensity}
+								className="h-8 text-xs gap-1.5 border-border/50 hidden sm:flex touch-target"
+								title="Toggle table row height"
+							>
+								<SlidersHorizontal className="h-3.5 w-3.5" />
+								<span>{density === "compact" ? "Compact" : "Normal"}</span>
+							</Button>
+						)}
+					</div>
+				</div>
+
+				{/* Empty State when zero real estate assets */}
+				{realEstateAssets.length === 0 ? (
+					<div className="rounded-xl border border-dashed border-border/60 p-10 text-center space-y-3 bg-card/30 my-4">
+						<div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+							<Building2 className="h-5 w-5" />
+						</div>
+						<h3 className="font-semibold text-foreground text-sm">No Real Estate Properties</h3>
+						<p className="text-xs text-muted-foreground max-w-md mx-auto">
+							Track real estate acquisitions, physical valuations, surface metrics (m²), and net worth
+							exposure in this portfolio.
+						</p>
+						<Button
+							size="sm"
+							onClick={() => setIsAddFormOpen(true)}
+							className="mt-2 text-xs gap-1.5"
+						>
+							<Plus className="h-3.5 w-3.5" />
+							Add First Property
+						</Button>
+					</div>
+				) : (
+					<div>
+						{/* Tab 1: Real Estate Ledger */}
+						{activeWorkspaceTab === "ledger" && (
+							<div className="space-y-3">
+								{/* Search & Type Filter Toolbar */}
+								<div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+									<div className="flex items-center gap-2 flex-1 max-w-md">
+										<SearchInput
+											placeholder="Search property, address, city..."
+											value={searchTerm}
+											onChange={(e) => setSearchTerm(e.target.value)}
+											className="h-8 text-xs w-full"
+										/>
 									</div>
-									<Button
-										variant="ghost"
-										size="sm"
-										onClick={() => {
-											const tabsElement = document.querySelector('[value="analytics"]');
-											if (tabsElement instanceof HTMLElement) {
-												tabsElement.click();
+
+									<div className="flex items-center gap-2 shrink-0">
+										<Select value={filterType} onValueChange={setFilterType}>
+											<SelectTrigger className="h-8 text-xs w-[140px] border-border/60">
+												<SelectValue placeholder="All Types" />
+											</SelectTrigger>
+											<SelectContent className="text-xs">
+												<SelectItem value="all">All Types</SelectItem>
+												{availableTypes.map((type) => (
+													<SelectItem key={type} value={type}>
+														{type}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+
+										<Select
+											value={sortBy}
+											onValueChange={(v) =>
+												setSortBy(v as "value" | "gain" | "surface" | "name")
 											}
-										}}
-									>
-										View All Analytics
-										<ArrowRight className="h-4 w-4 ml-1" />
-									</Button>
-								</div>
-							</CardHeader>
-							<CardContent className="space-y-6">
-								{/* Quick Stats Grid - Real Estate Specific */}
-								<div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-2">
-											<Home className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">Total Value</p>
-										</div>
-										<div className="font-mono text-xl">€{(totalValue / 1000).toFixed(0)}k</div>
-										<p
-											className={`text-xs mt-1 ${totalGain >= 0 ? "text-green-600" : "text-red-600"}`}
 										>
-											{totalGain >= 0 ? "+" : ""}€{(Math.abs(totalGain) / 1000).toFixed(0)}k (
-											{totalGain >= 0 ? "+" : ""}
-											{totalGainPercent.toFixed(1)}%)
-										</p>
-									</div>
-
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-2">
-											<Building2 className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">Properties</p>
-										</div>
-										<div className="font-mono text-xl">{realEstateAssets.length}</div>
-										<p className="text-xs text-muted-foreground mt-1">
-											{new Set(realEstateAssets.map((p) => p.city)).size} locations
-										</p>
-									</div>
-
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-2">
-											<Maximize className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">Total Surface</p>
-										</div>
-										<div className="font-mono text-xl">
-											{realEstateAssets
-												.reduce((sum, p) => sum + (p.surface || 0), 0)
-												.toLocaleString()}{" "}
-											m²
-										</div>
-										<p className="text-xs text-muted-foreground mt-1">
-											Avg:{" "}
-											{Math.round(
-												realEstateAssets.reduce((sum, p) => sum + (p.surface || 0), 0) /
-													realEstateAssets.length,
-											)}{" "}
-											m²
-										</p>
-									</div>
-
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-2">
-											<Euro className="h-4 w-4 text-muted-foreground" />
-											<p className="text-xs text-muted-foreground">Avg. Price/m²</p>
-										</div>
-										<div className="font-mono text-xl">
-											€{(() => {
-												const totalSurface = realEstateAssets.reduce(
-													(sum, p) => sum + (p.surface || 0),
-													0,
-												);
-												return totalSurface > 0
-													? Math.round(totalValue / totalSurface).toLocaleString()
-													: "0";
-											})()}
-										</div>
-										<p className="text-xs text-muted-foreground mt-1">per square meter</p>
+											<SelectTrigger className="h-8 text-xs w-[130px] border-border/60">
+												<SelectValue placeholder="Sort by" />
+											</SelectTrigger>
+											<SelectContent className="text-xs">
+												<SelectItem value="value">By Valuation</SelectItem>
+												<SelectItem value="gain">By P&L Return</SelectItem>
+												<SelectItem value="surface">By Surface</SelectItem>
+												<SelectItem value="name">By Name</SelectItem>
+											</SelectContent>
+										</Select>
 									</div>
 								</div>
 
-								{/* Charts Grid */}
-								<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-									{/* Geographic Distribution */}
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-4">
-											<MapPin className="h-4 w-4" />
-											<h4 className="text-sm font-medium">Geographic Distribution</h4>
-										</div>
-										<EChart
-											option={{
-												tooltip: {
-													trigger: "axis",
-													backgroundColor: document.documentElement.classList.contains("dark")
-														? "#161b22"
-														: "#ffffff",
-													borderColor: document.documentElement.classList.contains("dark")
-														? "#30363d"
-														: "#e9e9e7",
-													textStyle: {
-														color: document.documentElement.classList.contains("dark")
-															? "#e6edf3"
-															: "#37352f",
-													},
-													axisPointer: { type: "shadow" },
-												},
-												grid: {
-													left: "5%",
-													right: "15%",
-													top: "5%",
-													bottom: "5%",
-													containLabel: true,
-												},
-												xAxis: {
-													type: "value",
-													axisLine: { show: false },
-													axisTick: { show: false },
-													axisLabel: {
-														color: document.documentElement.classList.contains("dark")
-															? "#7d8590"
-															: "#888888",
-														formatter: "€{value}k",
-													},
-													splitLine: {
-														lineStyle: {
-															color: document.documentElement.classList.contains("dark")
-																? "#30363d"
-																: "#e9e9e7",
-															type: "dashed",
-														},
-													},
-												},
-												yAxis: {
-													type: "category",
-													data: (() => {
-														const cities: { [key: string]: number } = {};
-														realEstateAssets.forEach((p) => {
-															const city = p.city || "Unknown";
-															cities[city] = (cities[city] || 0) + (p.currentValue || 0);
-														});
-														return Object.entries(cities)
-															.sort((a, b) => b[1] - a[1])
-															.map(([city]) => city);
-													})(),
-													axisLine: { show: false },
-													axisTick: { show: false },
-													axisLabel: {
-														color: document.documentElement.classList.contains("dark")
-															? "#e6edf3"
-															: "#37352f",
-														fontSize: 11,
-													},
-												},
-												series: [
-													{
-														type: "bar",
-														data: (() => {
-															const cities: { [key: string]: number } = {};
-															realEstateAssets.forEach((p) => {
-																const city = p.city || "Unknown";
-																cities[city] = (cities[city] || 0) + (p.currentValue || 0);
-															});
-															const colors = [
-																"#3b82f6",
-																"#8b5cf6",
-																"#ec4899",
-																"#f59e0b",
-																"#10b981",
-																"#06b6d4",
-															];
-															return Object.entries(cities)
-																.sort((a, b) => b[1] - a[1])
-																.map(([, value], index) => ({
-																	value: Math.round(value / 1000),
-																	itemStyle: {
-																		color: colors[index % colors.length],
-																		borderRadius: [0, 4, 4, 0],
-																	},
-																}));
-														})(),
-														barWidth: "60%",
-														label: {
-															show: true,
-															position: "right",
-															formatter: "€{c}k",
-															color: document.documentElement.classList.contains("dark")
-																? "#e6edf3"
-																: "#37352f",
-															fontSize: 10,
-														},
-													},
-												],
-											}}
-											style={{ height: "180px", width: "100%" }}
-											opts={{ renderer: "svg" }}
-										/>
-									</div>
+								{/* High-Density Ledger Table */}
+								<div className="rounded-xl border border-border/60 bg-card overflow-hidden">
+									<Table>
+										<TableHeader className="bg-muted/40">
+											<TableRow className="hover:bg-transparent border-border/40 text-micro">
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground w-[220px]">
+													Property & Address
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground w-[110px]">
+													Type
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground text-right w-[110px]">
+													Surface & €/m²
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground text-right w-[130px] hidden md:table-cell">
+													Purchase Cost
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground text-right w-[130px]">
+													Current Value
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground text-right w-[130px]">
+													Unrealized Return
+												</TableHead>
+												<TableHead className="font-bold uppercase tracking-wider text-muted-foreground text-right w-[90px] hidden lg:table-cell">
+													Weight
+												</TableHead>
+												<TableHead className="w-[44px] text-right" />
+											</TableRow>
+										</TableHeader>
+										<TableBody>
+											{filteredProperties.length === 0 ? (
+												<TableRow>
+													<TableCell
+														colSpan={8}
+														className="h-28 text-center text-xs text-muted-foreground"
+													>
+														No properties match the active search and filter criteria.
+													</TableCell>
+												</TableRow>
+											) : (
+												filteredProperties.map((prop) => {
+													const ownershipPct = typeof prop.ownershipPercentage === "number" ? prop.ownershipPercentage : 100;
+													const grossVal = (prop.currentValue || 0) * (ownershipPct / 100);
+													const linkedLoan = propertyLoanMap.get(prop.id);
+													const loanDebt = linkedLoan ? (linkedLoan.remainingBalance ?? linkedLoan.loanAmount ?? 0) : 0;
+													const netEquity = Math.max(0, grossVal - loanDebt);
+													const propLtv = grossVal > 0 && loanDebt > 0 ? (loanDebt / grossVal) * 100 : 0;
+													const val = valuationMode === "gross" ? grossVal : netEquity;
 
-									{/* Property Types Distribution */}
-									<div className="p-4 rounded-lg border bg-card">
-										<div className="flex items-center gap-2 mb-4">
-											<Building2 className="h-4 w-4" />
-											<h4 className="text-sm font-medium">Property Types</h4>
-										</div>
-										<EChart
-											option={{
-												tooltip: {
-													trigger: "item",
-													backgroundColor: document.documentElement.classList.contains("dark")
-														? "#161b22"
-														: "#ffffff",
-													borderColor: document.documentElement.classList.contains("dark")
-														? "#30363d"
-														: "#e9e9e7",
-													textStyle: {
-														color: document.documentElement.classList.contains("dark")
-															? "#e6edf3"
-															: "#37352f",
-													},
-													// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-													formatter: (params: any) => {
-														return `
-                          <div style="padding: 4px;">
-                            <div style="font-weight: 600; margin-bottom: 4px;">${params.name}</div>
-                            <div style="font-family: monospace;">€${params.value}k (${params.percent}%)</div>
-                          </div>
-                        `;
-													},
-												},
-												legend: {
-													orient: "horizontal",
-													bottom: 0,
-													textStyle: {
-														color: document.documentElement.classList.contains("dark")
-															? "#e6edf3"
-															: "#37352f",
-														fontSize: 10,
-													},
-												},
-												series: [
-													{
-														type: "pie",
-														radius: ["40%", "65%"],
-														center: ["50%", "42%"],
-														avoidLabelOverlap: false,
-														label: { show: false },
-														emphasis: {
-															label: {
-																show: true,
-																fontSize: 13,
-																fontWeight: "bold",
-																formatter: "{d}%",
-															},
-														},
-														data: (() => {
-															const types: { [key: string]: number } = {};
-															realEstateAssets.forEach((p) => {
-																const type = p.propertyType || "Unknown";
-																types[type] = (types[type] || 0) + (p.currentValue || 0);
-															});
-															const colors = [
-																"#3b82f6",
-																"#8b5cf6",
-																"#ec4899",
-																"#f59e0b",
-																"#10b981",
-															];
-															return Object.entries(types).map(([name, value], index) => ({
-																name,
-																value: Math.round(value / 1000),
-																itemStyle: {
-																	color: colors[index % colors.length],
-																},
-															}));
-														})(),
-													},
-												],
-											}}
-											style={{ height: "180px", width: "100%" }}
-											opts={{ renderer: "svg" }}
-										/>
-									</div>
-								</div>
+													const cost = (prop.purchasePrice || prop.currentValue || 0) * (ownershipPct / 100);
+													const pnl = grossVal - cost;
+													const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+													const weight = totalValue > 0 ? (val / totalValue) * 100 : 0;
+													const surface = prop.surfaceArea;
+													const priceM2 =
+														surface && surface > 0 ? Math.round(grossVal / surface) : null;
+													const isCompact = density === "compact";
 
-								{/* Price per Square Meter Comparison */}
-								<div className="p-4 rounded-lg border bg-card">
-									<div className="flex items-center justify-between mb-4">
-										<div className="flex items-center gap-2">
-											<Euro className="h-4 w-4" />
-											<h4 className="text-sm font-medium">Price per m² Analysis</h4>
-										</div>
-										<span className="text-xs text-muted-foreground">
-											Top {Math.min(6, realEstateAssets.length)} properties
-										</span>
-									</div>
-									<EChart
-										option={{
-											tooltip: {
-												trigger: "axis",
-												backgroundColor: document.documentElement.classList.contains("dark")
-													? "#161b22"
-													: "#ffffff",
-												borderColor: document.documentElement.classList.contains("dark")
-													? "#30363d"
-													: "#e9e9e7",
-												textStyle: {
-													color: document.documentElement.classList.contains("dark")
-														? "#e6edf3"
-														: "#37352f",
-												},
-												axisPointer: { type: "shadow" },
-											},
-											grid: {
-												left: "22%",
-												right: "15%",
-												top: "5%",
-												bottom: "5%",
-												containLabel: true,
-											},
-											xAxis: {
-												type: "value",
-												axisLine: { show: false },
-												axisTick: { show: false },
-												axisLabel: {
-													color: document.documentElement.classList.contains("dark")
-														? "#7d8590"
-														: "#888888",
-													formatter: "€{value}",
-												},
-												splitLine: {
-													lineStyle: {
-														color: document.documentElement.classList.contains("dark")
-															? "#30363d"
-															: "#e9e9e7",
-														type: "dashed",
-													},
-												},
-											},
-											yAxis: {
-												type: "category",
-												data: (() => {
-													const propsWithPrice = realEstateAssets
-														.filter((p) => (p.surface || 0) > 0)
-														.map((p) => ({
-															name: p.name,
-															pricePerSqm: (p.currentValue || 0) / (p.surface || 1),
-														}))
-														.sort((a, b) => b.pricePerSqm - a.pricePerSqm)
-														.slice(0, 6);
-													return propsWithPrice.map((p) =>
-														p.name.length > 18 ? `${p.name.substring(0, 18)}...` : p.name,
+													return (
+														<TableRow
+															key={prop.id}
+															onClick={() => handleOpenDetail(prop.id)}
+															className={cn(
+																"cursor-pointer hover:bg-muted/50 border-border/30 transition-colors",
+																isCompact ? "h-11" : "h-14",
+															)}
+														>
+															{/* Property Name & Address */}
+															<TableCell className={cn("font-medium", isCompact ? "py-1.5" : "py-2.5")}>
+																<div className="flex items-center gap-2.5">
+																	<div className="h-7 w-7 rounded-md bg-secondary/80 flex items-center justify-center text-primary shrink-0">
+																		<Home className="h-3.5 w-3.5" />
+																	</div>
+																	<div className="min-w-0">
+																		<div className="flex items-center gap-1.5">
+																			<p className="font-semibold text-xs text-foreground truncate max-w-[170px]">
+																				{prop.name}
+																			</p>
+																			{ownershipPct < 100 && (
+																				<span className="text-[10px] font-mono px-1 rounded bg-muted/60 text-muted-foreground border border-border/40 shrink-0">
+																					{ownershipPct}%
+																				</span>
+																			)}
+																		</div>
+																		<p className="text-micro text-muted-foreground truncate max-w-[190px]">
+																			{prop.city
+																				? `${prop.city}${prop.country ? `, ${prop.country}` : ""}`
+																				: prop.address || "No address"}
+																		</p>
+																	</div>
+																</div>
+															</TableCell>
+
+															{/* Property Type Badge */}
+															<TableCell className={isCompact ? "py-1.5" : "py-2.5"}>
+																<Badge
+																	variant="secondary"
+																	className="text-[10px] uppercase font-mono px-1.5 py-0 h-4 rounded-sm"
+																>
+																	{prop.propertyType || "Residential"}
+																</Badge>
+															</TableCell>
+
+															{/* Surface & Price/m² */}
+															<TableCell className={cn("text-right font-mono", isCompact ? "py-1.5" : "py-2.5")}>
+																<div className="text-xs font-semibold">
+																	{surface ? `${surface} m²` : "—"}
+																</div>
+																<div className="text-micro text-muted-foreground">
+																	{priceM2 !== null ? `${formatCurrency(priceM2)}/m²` : "—"}
+																</div>
+															</TableCell>
+
+															{/* Purchase Cost & Date */}
+															<TableCell className={cn("text-right font-mono hidden md:table-cell", isCompact ? "py-1.5" : "py-2.5")}>
+																<div className="text-xs text-muted-foreground">
+																	{cost > 0 ? formatCurrency(cost) : "—"}
+																</div>
+																<div className="text-micro text-muted-foreground">
+																	{prop.purchaseDate
+																		? new Date(prop.purchaseDate).toLocaleDateString()
+																		: "—"}
+																</div>
+															</TableCell>
+
+															{/* Current Valuation / Net Equity */}
+															<TableCell className={cn("text-right font-mono", isCompact ? "py-1.5" : "py-2.5")}>
+																<div className="flex items-center justify-end gap-1.5">
+																	<span className="text-xs font-bold text-foreground">
+																		{formatCurrency(val)}
+																	</span>
+																	{prop.valuationConfidence && (
+																		<span
+																			className={cn(
+																				"h-2 w-2 rounded-full shrink-0",
+																				prop.valuationConfidence === "HIGH" && "bg-emerald-500",
+																				prop.valuationConfidence === "MEDIUM" && "bg-sky-500",
+																				prop.valuationConfidence === "LOW" && "bg-amber-500",
+																				prop.valuationConfidence === "UNAVAILABLE" && "bg-muted-foreground",
+																			)}
+																			title={`Estimation: ${prop.valuationConfidence} (${prop.estimationMethod || "Auto"})`}
+																		/>
+																	)}
+																</div>
+																{loanDebt > 0 && (
+																	<div className="text-micro text-muted-foreground">
+																		Dette: {formatCurrency(loanDebt)} ({propLtv.toFixed(0)}%)
+																	</div>
+																)}
+															</TableCell>
+
+															{/* Unrealized Return */}
+															<TableCell className={cn("text-right font-mono", isCompact ? "py-1.5" : "py-2.5")}>
+																<div
+																	className={cn(
+																		"text-xs font-semibold flex items-center justify-end gap-1",
+																		pnl >= 0 ? "text-gain" : "text-loss",
+																	)}
+																>
+																	{pnl >= 0 ? (
+																		<TrendArrowUp className="h-3 w-3 inline text-gain" />
+																	) : (
+																		<TrendArrowDown className="h-3 w-3 inline text-loss" />
+																	)}
+																	<span>
+																		{pnl >= 0 ? "+" : ""}
+																		{formatCurrency(pnl)}
+																	</span>
+																</div>
+																<div
+																	className={cn(
+																		"text-micro font-medium",
+																		pnl >= 0 ? "text-gain" : "text-loss",
+																	)}
+																>
+																	{cost > 0
+																		? `${pnl >= 0 ? "+" : ""}${pnlPct.toFixed(1)}%`
+																		: "—"}
+																</div>
+															</TableCell>
+
+															{/* Weight */}
+															<TableCell className={cn("text-right font-mono text-xs hidden lg:table-cell text-muted-foreground", isCompact ? "py-1.5" : "py-2.5")}>
+																{weight.toFixed(1)}%
+															</TableCell>
+
+															{/* Action Menu */}
+															<TableCell
+																className={cn("text-right", isCompact ? "py-1.5" : "py-2.5")}
+																onClick={(e) => e.stopPropagation()}
+															>
+																<DropdownMenu>
+																	<DropdownMenuTrigger asChild>
+																		<Button
+																			variant="ghost"
+																			size="icon"
+																			className="h-7 w-7 text-muted-foreground hover:text-foreground touch-target"
+																			aria-label="Property actions"
+																		>
+																			<MoreVertical className="h-3.5 w-3.5" />
+																		</Button>
+																	</DropdownMenuTrigger>
+																	<DropdownMenuContent align="end" className="text-xs">
+																		<DropdownMenuItem onClick={() => handleOpenDetail(prop.id)}>
+																			<Eye className="h-3.5 w-3.5 mr-2" />
+																			View Details
+																		</DropdownMenuItem>
+																		<DropdownMenuSeparator />
+																		<DropdownMenuItem
+																			onClick={() =>
+																				setPropertyToDelete({ id: prop.id, name: prop.name })
+																			}
+																			className="text-destructive focus:text-destructive"
+																		>
+																			<Trash2 className="h-3.5 w-3.5 mr-2" />
+																			Delete Property
+																		</DropdownMenuItem>
+																	</DropdownMenuContent>
+																</DropdownMenu>
+															</TableCell>
+														</TableRow>
 													);
-												})(),
-												axisLine: { show: false },
-												axisTick: { show: false },
-												axisLabel: {
-													color: document.documentElement.classList.contains("dark")
-														? "#e6edf3"
-														: "#37352f",
-													fontSize: 10,
-												},
-											},
-											series: [
-												{
-													type: "bar",
-													data: (() => {
-														const propsWithPrice = realEstateAssets
-															.filter((p) => (p.surface || 0) > 0)
-															.map((p) => ({
-																pricePerSqm: (p.currentValue || 0) / (p.surface || 1),
-															}))
-															.sort((a, b) => b.pricePerSqm - a.pricePerSqm)
-															.slice(0, 6);
-														const maxPrice = Math.max(...propsWithPrice.map((p) => p.pricePerSqm));
-														return propsWithPrice.map((p) => ({
-															value: Math.round(p.pricePerSqm),
-															itemStyle: {
-																color: {
-																	type: "linear",
-																	x: 0,
-																	y: 0,
-																	x2: 1,
-																	y2: 0,
-																	colorStops: [
-																		{ offset: 0, color: "#3b82f6" },
-																		{
-																			offset: 1,
-																			color: p.pricePerSqm === maxPrice ? "#8b5cf6" : "#3b82f6",
-																		},
-																	],
-																},
-																borderRadius: [0, 4, 4, 0],
-															},
-														}));
-													})(),
-													barWidth: "60%",
-													label: {
-														show: true,
-														position: "right",
-														formatter: "€{c}/m²",
-														color: document.documentElement.classList.contains("dark")
-															? "#e6edf3"
-															: "#37352f",
-														fontSize: 10,
-													},
-												},
-											],
-										}}
-										style={{ height: "200px", width: "100%" }}
-										opts={{ renderer: "svg" }}
-									/>
-								</div>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Filters and View Toggle */}
-					<Card>
-						<CardContent className="pt-6">
-							<div className="flex flex-col gap-4">
-								<div className="flex flex-col md:flex-row gap-4">
-									<SearchInput
-										placeholder="Search by name, address, or city..."
-										value={searchTerm}
-										onChange={(e) => setSearchTerm(e.target.value)}
-										onClear={() => setSearchTerm("")}
-										containerClassName="flex-1"
-									/>
-
-									<Select value={filterType} onValueChange={setFilterType}>
-										<SelectTrigger className="w-full md:w-[180px]">
-											<Filter className="h-4 w-4 mr-2" />
-											<SelectValue placeholder="Filter by type" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="all">All Types</SelectItem>
-											<SelectItem value="House">House</SelectItem>
-											<SelectItem value="Apartment">Apartment</SelectItem>
-											<SelectItem value="Commercial">Commercial</SelectItem>
-											<SelectItem value="Land">Land</SelectItem>
-										</SelectContent>
-									</Select>
-
-									<Select value={sortBy} onValueChange={setSortBy}>
-										<SelectTrigger className="w-full md:w-[180px]">
-											<SortAsc className="h-4 w-4 mr-2" />
-											<SelectValue placeholder="Sort by" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="value">Highest Value</SelectItem>
-											<SelectItem value="gain">Highest Gain</SelectItem>
-											<SelectItem value="name">Name (A-Z)</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-
-								{/* View Mode Toggle and Results Count */}
-								<div className="flex items-center justify-between">
-									<p className="text-sm text-muted-foreground">
-										{filteredProperties.length > 0
-											? `Showing ${startIndex + 1}-${Math.min(endIndex, filteredProperties.length)} of ${filteredProperties.length} properties`
-											: "No properties to display"}
-									</p>
-									<div className="flex gap-1 border rounded-lg p-1">
-										<Button
-											variant={viewMode === "grid" ? "secondary" : "ghost"}
-											size="sm"
-											onClick={() => setViewMode("grid")}
-											className="h-8 px-3"
-										>
-											<LayoutGrid className="h-4 w-4" />
-										</Button>
-										<Button
-											variant={viewMode === "list" ? "secondary" : "ghost"}
-											size="sm"
-											onClick={() => setViewMode("list")}
-											className="h-8 px-3"
-										>
-											<List className="h-4 w-4" />
-										</Button>
-									</div>
+												})
+											)}
+										</TableBody>
+									</Table>
 								</div>
 							</div>
-						</CardContent>
-					</Card>
+						)}
 
-					{/* Properties Grid/List */}
-					{filteredProperties.length === 0 ? (
-						<Card>
-							<CardContent className="flex flex-col items-center justify-center py-12">
-								<Home className="h-12 w-12 text-muted-foreground mb-4" />
-								<h3 className="text-lg font-medium mb-2">No properties found</h3>
-								<p className="text-sm text-muted-foreground mb-4">
-									{searchTerm
-										? "Try adjusting your search or filters"
-										: "Start building your real estate portfolio"}
-								</p>
-								<Button onClick={() => setIsAddFormOpen(true)}>
-									<Plus className="h-4 w-4 mr-2" />
-									Add Your First Property
-								</Button>
-							</CardContent>
-						</Card>
-					) : viewMode === "grid" ? (
-						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-							{paginatedProperties.map((property) => {
-								const currentValue = property.currentValue || 0;
-								const purchasePrice = property.purchasePrice || 0;
-								const gain = currentValue - purchasePrice;
-								const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
-								const surfaceArea = property.surfaceArea || 0;
-								const pricePerM2 = surfaceArea > 0 ? Math.round(currentValue / surfaceArea) : 0;
+						{/* Tab 2: Holdings & Specifications (Property Dossiers) */}
+						{activeWorkspaceTab === "holdings" && (
+							<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+								{filteredProperties.map((prop) => {
+									const val = prop.currentValue || 0;
+									const cost = prop.purchasePrice || val;
+									const pnl = val - cost;
+									const pnlPct = cost > 0 ? (pnl / cost) * 100 : 0;
+									const surface = prop.surfaceArea;
+									const priceM2 =
+										surface && surface > 0 ? Math.round(val / surface) : null;
+									const loanInfo = propertyLoanMap[prop.id];
+									const ownPct = prop.ownershipPercentage ?? 100;
+									const displayedVal =
+										valuationMode === "net" && loanInfo ? val - loanInfo.debt : val;
 
-								return (
-									<Card
-										key={property.id}
-										className="cursor-pointer hover:shadow-lg transition-all group"
-										onClick={() => handleSelectProperty(property.id)}
-									>
-										<CardContent className="p-0">
-											{/* Property Image */}
-											<div className="relative h-32 overflow-hidden rounded-t-lg">
-												<img
-													src={property.imageUrl || exampleImage}
-													alt={property.name}
-													className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-												/>
-												<div className="absolute top-2 right-2">
-													<Badge
-														variant="secondary"
-														className="backdrop-blur-sm bg-background/80 text-xs"
-													>
-														{property.propertyType || "House"}
-													</Badge>
-												</div>
-											</div>
-
-											{/* Property Details */}
-											<div className="p-4">
-												<div className="space-y-3">
-													{/* Name and Location */}
-													<div>
-														<h3 className="font-medium mb-1">{property.name}</h3>
-														<div className="flex items-center text-xs text-muted-foreground">
-															<MapPin className="h-3 w-3 mr-1 flex-shrink-0" />
-															<span className="truncate">
-																{property.city || "Location not specified"}
-															</span>
-														</div>
-													</div>
-
-													{/* Price and Gain */}
-													<div>
-														<div className="font-mono">€{currentValue.toLocaleString()}</div>
-														<div className="flex items-center space-x-1 mt-0.5">
-															{gain >= 0 ? <TrendArrowUp /> : <TrendArrowDown />}
-															<span
-																className={`text-xs ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
-															>
-																{gain >= 0 ? "+" : ""}
-																{gainPercent.toFixed(1)}%
-															</span>
-														</div>
-													</div>
-
-													{/* Property Stats */}
-													<div className="grid grid-cols-2 gap-2 pt-3 border-t text-xs">
-														<div>
-															<p className="text-muted-foreground">Surface</p>
-															<p className="font-medium">{surfaceArea} m²</p>
-														</div>
-														<div>
-															<p className="text-muted-foreground">€/m²</p>
-															<p className="font-medium">€{pricePerM2.toLocaleString()}</p>
-														</div>
-													</div>
-												</div>
-											</div>
-										</CardContent>
-									</Card>
-								);
-							})}
-						</div>
-					) : (
-						/* Table View */
-						<Card>
-							<Table>
-								<TableHeader>
-									<TableRow>
-										<TableHead className="w-12"></TableHead>
-										<TableHead>Property</TableHead>
-										<TableHead>Type</TableHead>
-										<TableHead className="text-right">Current Value</TableHead>
-										<TableHead className="text-right">Purchase Price</TableHead>
-										<TableHead className="text-right">Gain/Loss</TableHead>
-										<TableHead className="text-right">Surface</TableHead>
-										<TableHead className="w-12"></TableHead>
-									</TableRow>
-								</TableHeader>
-								<TableBody>
-									{paginatedProperties.map((property) => {
-										const currentValue = property.currentValue || 0;
-										const purchasePrice = property.purchasePrice || 0;
-										const gain = currentValue - purchasePrice;
-										const gainPercent = purchasePrice > 0 ? (gain / purchasePrice) * 100 : 0;
-										const surfaceArea = property.surfaceArea || 0;
-										const pricePerM2 = surfaceArea > 0 ? Math.round(currentValue / surfaceArea) : 0;
-
-										return (
-											<TableRow
-												key={property.id}
-												className="cursor-pointer hover:bg-muted/50"
-												onClick={() => handleSelectProperty(property.id)}
-											>
-												<TableCell>
-													<div className="relative w-12 h-12 overflow-hidden rounded">
-														<img
-															src={property.imageUrl || exampleImage}
-															alt={property.name}
-															className="w-full h-full object-cover"
-														/>
-													</div>
-												</TableCell>
-												<TableCell>
-													<div>
-														<div className="font-medium">{property.name}</div>
-														<div className="flex items-center text-xs text-muted-foreground">
-															<MapPin className="h-3 w-3 mr-1" />
-															{property.city || "N/A"}
-														</div>
-													</div>
-												</TableCell>
-												<TableCell>
-													<Badge variant="secondary" className="text-xs">
-														{property.propertyType || "House"}
-													</Badge>
-												</TableCell>
-												<TableCell className="text-right">
-													<div className="font-mono">€{currentValue.toLocaleString()}</div>
-													{pricePerM2 > 0 && (
-														<div className="text-xs text-muted-foreground">€{pricePerM2}/m²</div>
-													)}
-												</TableCell>
-												<TableCell className="text-right">
-													<div className="font-mono text-muted-foreground">
-														€{purchasePrice.toLocaleString()}
-													</div>
-												</TableCell>
-												<TableCell className="text-right">
-													<div className="flex items-center justify-end gap-1">
-														{gain >= 0 ? (
-															<TrendingUp className="h-3 w-3 text-green-600" />
-														) : (
-															<TrendingDown className="h-3 w-3 text-red-600" />
-														)}
-														<span
-															className={`font-mono ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
-														>
-															{gain >= 0 ? "+" : ""}€{Math.abs(gain).toLocaleString()}
+									return (
+										<div
+											key={prop.id}
+											onClick={() => handleOpenDetail(prop.id)}
+											className="p-4 rounded-xl border border-border/60 bg-card hover:border-border transition-all cursor-pointer space-y-3.5 touch-target"
+										>
+											{/* Dossier Header */}
+											<div className="flex items-start justify-between gap-2">
+												<div className="min-w-0">
+													<div className="flex items-center gap-1.5 flex-wrap">
+														<span className="font-bold text-sm text-foreground truncate max-w-[200px]">
+															{prop.name}
 														</span>
+														<Badge
+															variant="secondary"
+															className="text-[10px] uppercase font-mono px-1.5 py-0 h-4 rounded-sm"
+														>
+															{prop.propertyType || "Residential"}
+														</Badge>
+														{ownPct < 100 && (
+															<Badge
+																variant="outline"
+																className="text-[10px] font-mono px-1 py-0 h-4 border-primary/30 text-primary"
+															>
+																{ownPct}%
+															</Badge>
+														)}
+														{loanInfo && (
+															<Badge
+																variant="outline"
+																className="text-[10px] font-mono px-1 py-0 h-4 border-border/60 text-muted-foreground"
+															>
+																LTV {loanInfo.ltv.toFixed(0)}%
+															</Badge>
+														)}
 													</div>
-													<div
-														className={`text-xs ${gain >= 0 ? "text-green-600" : "text-red-600"}`}
-													>
-														{gain >= 0 ? "+" : ""}
-														{gainPercent.toFixed(1)}%
+													<p className="text-micro text-muted-foreground flex items-center gap-1 mt-1 truncate">
+														<MapPin className="h-3 w-3 shrink-0" />
+														<span>
+															{[prop.address, prop.city, prop.country]
+																.filter(Boolean)
+																.join(", ") || "No address specified"}
+														</span>
+													</p>
+												</div>
+
+												<div className="text-right font-mono shrink-0">
+													<div className="flex items-center justify-end gap-1.5 font-bold text-sm text-foreground">
+														<span>{formatCurrency(displayedVal)}</span>
+														{prop.valuationConfidence && (
+															<span
+																className={cn(
+																	"h-2 w-2 rounded-full shrink-0",
+																	prop.valuationConfidence === "HIGH" && "bg-emerald-500",
+																	prop.valuationConfidence === "MEDIUM" && "bg-sky-500",
+																	prop.valuationConfidence === "LOW" && "bg-amber-500",
+																	prop.valuationConfidence === "UNAVAILABLE" && "bg-muted-foreground",
+																)}
+																title={`Estimation: ${prop.valuationConfidence} (${prop.estimationMethod || "Auto"})`}
+															/>
+														)}
 													</div>
-												</TableCell>
-												<TableCell className="text-right">
-													<div>{surfaceArea} m²</div>
-													{property.rooms && (
-														<div className="text-xs text-muted-foreground">
-															{property.rooms} rooms
+													{valuationMode === "net" && loanInfo && (
+														<div className="text-[10px] text-muted-foreground">
+															Net (Brut: {formatCurrency(val)})
 														</div>
 													)}
-												</TableCell>
-												<TableCell>
-													<Button variant="ghost" size="icon" className="h-8 w-8">
-														<ArrowRight className="h-4 w-4" />
-													</Button>
-												</TableCell>
-											</TableRow>
-										);
-									})}
-								</TableBody>
-							</Table>
-						</Card>
-					)}
+													<div
+														className={cn(
+															"text-micro font-semibold",
+															pnl >= 0 ? "text-gain" : "text-loss",
+														)}
+													>
+														{pnl >= 0 ? "+" : ""}
+														{pnlPct.toFixed(1)}%
+													</div>
+												</div>
+											</div>
 
-					{/* Pagination */}
-					{filteredProperties.length > itemsPerPage && (
-						<Card>
-							<CardContent className="py-4">
-								<div className="flex items-center justify-between">
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
-										disabled={currentPage === 1}
-									>
-										<ChevronLeft className="h-4 w-4 mr-1" />
-										Previous
-									</Button>
+											{/* Specifications Grid */}
+											<div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-muted/40 border border-border/30 text-micro">
+												<div>
+													<span className="text-muted-foreground block text-[10px] uppercase font-bold">
+														Surface
+													</span>
+													<span className="font-mono font-semibold text-foreground">
+														{surface ? `${surface} m²` : "—"}
+													</span>
+												</div>
+												<div>
+													<span className="text-muted-foreground block text-[10px] uppercase font-bold">
+														Price / m²
+													</span>
+													<span className="font-mono font-semibold text-foreground">
+														{priceM2 !== null ? `${formatCurrency(priceM2)}` : "—"}
+													</span>
+												</div>
+												<div>
+													<span className="text-muted-foreground block text-[10px] uppercase font-bold">
+														Built Year
+													</span>
+													<span className="font-mono font-semibold text-foreground">
+														{prop.yearBuilt ? String(prop.yearBuilt) : "—"}
+													</span>
+												</div>
+											</div>
 
-									<div className="flex items-center gap-2">
-										{/* Show page numbers with smart truncation */}
-										{totalPages <= 7 ? (
-											// Show all pages if 7 or less
-											Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+											{/* Footer Specs & Action */}
+											<div className="flex items-center justify-between pt-1 text-micro text-muted-foreground border-t border-border/20">
+												<div className="flex items-center gap-3">
+													{prop.bedrooms ? (
+														<span className="flex items-center gap-1 font-mono">
+															<Bed className="h-3 w-3" /> {prop.bedrooms} bed
+														</span>
+													) : null}
+													{prop.bathrooms ? (
+														<span className="flex items-center gap-1 font-mono">
+															<Bath className="h-3 w-3" /> {prop.bathrooms} bath
+														</span>
+													) : null}
+												</div>
+
 												<Button
-													key={page}
-													variant={currentPage === page ? "default" : "outline"}
+													variant="ghost"
 													size="sm"
-													onClick={() => setCurrentPage(page)}
-													className="w-8 h-8 p-0"
+													className="h-6 text-micro px-2 gap-1 text-primary hover:text-primary font-semibold"
+													onClick={(e) => {
+														e.stopPropagation();
+														handleOpenDetail(prop.id);
+													}}
 												>
-													{page}
+													<span>Inspect</span>
+													<Eye className="h-3 w-3" />
 												</Button>
-											))
-										) : (
-											// Smart pagination for many pages
-											<>
-												{/* First page */}
-												<Button
-													variant={currentPage === 1 ? "default" : "outline"}
-													size="sm"
-													onClick={() => setCurrentPage(1)}
-													className="w-8 h-8 p-0"
-												>
-													1
-												</Button>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						)}
+					</div>
+				)}
+			</div>
 
-												{/* Left ellipsis */}
-												{currentPage > 3 && <span className="px-2 text-muted-foreground">...</span>}
-
-												{/* Pages around current */}
-												{Array.from({ length: totalPages }, (_, i) => i + 1)
-													.filter((page) => {
-														if (page === 1 || page === totalPages) return false;
-														return Math.abs(page - currentPage) <= 1;
-													})
-													.map((page) => (
-														<Button
-															key={page}
-															variant={currentPage === page ? "default" : "outline"}
-															size="sm"
-															onClick={() => setCurrentPage(page)}
-															className="w-8 h-8 p-0"
-														>
-															{page}
-														</Button>
-													))}
-
-												{/* Right ellipsis */}
-												{currentPage < totalPages - 2 && (
-													<span className="px-2 text-muted-foreground">...</span>
-												)}
-
-												{/* Last page */}
-												<Button
-													variant={currentPage === totalPages ? "default" : "outline"}
-													size="sm"
-													onClick={() => setCurrentPage(totalPages)}
-													className="w-8 h-8 p-0"
-												>
-													{totalPages}
-												</Button>
-											</>
-										)}
-									</div>
-
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
-										disabled={currentPage === totalPages}
-									>
-										Next
-										<ChevronRight className="h-4 w-4 ml-1" />
-									</Button>
-								</div>
-							</CardContent>
-						</Card>
-					)}
-				</TabsContent>
-
-				{/* Analytics Tab */}
-				<TabsContent value="analytics">
-					<RealEstateAnalytics onSelectProperty={handleSelectProperty} />
-				</TabsContent>
-			</Tabs>
-
-			{/* Add Property Form Dialog */}
+			{/* Add Property Form Modal */}
 			<AddRealEstateForm
 				open={isAddFormOpen}
 				onClose={() => setIsAddFormOpen(false)}
 				onSubmit={handleAddProperty}
 			/>
 
-			{/* Real Estate Detail Panel */}
+			{/* Slide-over Sheet for Property Details */}
 			<Sheet
-				open={detailMode === "panel" && selectedPropertyId !== null}
-				onOpenChange={(open) => {
-					if (!open) setSelectedPropertyId(null);
-				}}
+				open={Boolean(selectedPropertyId)}
+				onOpenChange={(open) => !open && setSelectedPropertyId(null)}
 			>
-				<SheetContent side="right" className="w-full p-0 sm:max-w-2xl">
+				<SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
+					<SheetHeader className="sr-only">
+						<SheetTitle>Property Dossier</SheetTitle>
+						<SheetDescription>
+							Specifications, valuation metrics, and trajectory for the selected real estate asset
+						</SheetDescription>
+					</SheetHeader>
 					{selectedPropertyId && (
 						<RealEstateDetail
 							propertyId={selectedPropertyId}
 							onBack={() => setSelectedPropertyId(null)}
 							isPanel={true}
+							onDeleted={() => {
+								void refetch();
+							}}
 						/>
 					)}
 				</SheetContent>
 			</Sheet>
+
+			{/* Delete Property Confirmation Dialog */}
+			<Dialog
+				open={Boolean(propertyToDelete)}
+				onOpenChange={(open) => !open && setPropertyToDelete(null)}
+			>
+				<DialogContent className="max-w-md bg-card border border-border/60">
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2 text-destructive">
+							<Trash2 className="h-5 w-5" />
+							Delete Property
+						</DialogTitle>
+						<DialogDescription className="text-xs text-muted-foreground pt-1">
+							Are you sure you want to remove <strong>{propertyToDelete?.name}</strong> from your
+							portfolio? This will permanently delete the asset and its valuation records.
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="gap-2 sm:gap-0 pt-3">
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => setPropertyToDelete(null)}
+							disabled={isDeleting}
+						>
+							Cancel
+						</Button>
+						<Button
+							variant="destructive"
+							size="sm"
+							onClick={handleDeleteConfirm}
+							disabled={isDeleting}
+						>
+							{isDeleting ? "Deleting..." : "Confirm Delete"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	);
 }

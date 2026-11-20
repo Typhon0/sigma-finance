@@ -50,7 +50,7 @@ type ISyncService interface {
 	RegisterAdapter(adapter SyncAdapter)
 	TriggerSync(ctx context.Context, connectionID string) (*model.SyncRun, error)
 	TriggerAccountSync(ctx context.Context, accountID string) (*model.SyncRun, error)
-	RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error)
+	RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string, portfolioID ...*string) (*model.SyncCredential, error)
 	LinkAccount(ctx context.Context, connectionID string, accountID string, autoCreate bool) (*model.SyncConnection, error)
 	GetConnection(ctx context.Context, connectionID string) (*model.SyncConnection, error)
 	ListConnections(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
@@ -101,7 +101,7 @@ func (s *SyncService) GetAdapter(provider string) (SyncAdapter, bool) {
 }
 
 // RegisterCredential encrypts and stores external API credentials.
-func (s *SyncService) RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error) {
+func (s *SyncService) RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string, portfolioID ...*string) (*model.SyncCredential, error) {
 	if strings.TrimSpace(userID) == "" {
 		return nil, errors.New("user ID is required")
 	}
@@ -113,19 +113,41 @@ func (s *SyncService) RegisterCredential(ctx context.Context, userID string, pro
 		return nil, errors.New("credential JSON is required")
 	}
 
+	var pID *string
+	if len(portfolioID) > 0 && portfolioID[0] != nil && strings.TrimSpace(*portfolioID[0]) != "" {
+		cleaned := strings.TrimSpace(*portfolioID[0])
+		pID = &cleaned
+	}
+
 	cred := &model.SyncCredential{
-		UserID:   userID,
-		Provider: provider,
-		RawData:  rawJSON,
-		Status:   model.SyncCredentialStatusActive,
+		UserID:      userID,
+		PortfolioID: pID,
+		Provider:    provider,
+		RawData:     rawJSON,
+		Status:      model.SyncCredentialStatusActive,
 	}
 
 	if err := cred.Validate(); err != nil {
 		return nil, fmt.Errorf("credential validation failed: %w", err)
 	}
 
-	// Check if a credential already exists for this user and provider (upsert)
-	existing, getErr := s.uow.Sync().GetCredentialByProvider(ctx, userID, provider)
+	// Check if a credential already exists for this user/portfolio/provider (upsert)
+	var existing *model.SyncCredential
+	var getErr error
+	if pID != nil {
+		existing, getErr = s.uow.Sync().GetCredentialByPortfolioAndProvider(ctx, userID, *pID, provider)
+		if existing != nil && (existing.PortfolioID == nil || *existing.PortfolioID != *pID) {
+			existing = nil
+			getErr = repository.ErrNotFound
+		}
+	} else {
+		existing, getErr = s.uow.Sync().GetCredentialByProvider(ctx, userID, provider)
+		if existing != nil && existing.PortfolioID != nil {
+			existing = nil
+			getErr = repository.ErrNotFound
+		}
+	}
+
 	if getErr == nil && existing != nil {
 		existing.RawData = rawJSON
 		if err := existing.Encrypt(); err != nil {
@@ -190,7 +212,9 @@ func (s *SyncService) LinkAccount(ctx context.Context, connectionID string, acco
 			if getErr != nil {
 				return ErrAccountNotFound
 			}
-			if acc.UserID != conn.UserID || acc.PortfolioID != conn.PortfolioID {
+			callerUser, _ := uow.User().GetByID(ctx, conn.UserID)
+			isAdmin := callerUser != nil && callerUser.IsAdmin()
+			if acc.PortfolioID != conn.PortfolioID || (acc.UserID != conn.UserID && !isAdmin) {
 				return errors.New("unauthorized account linkage: account belongs to different user or portfolio")
 			}
 			acc.SyncProvider = conn.Provider
@@ -497,6 +521,20 @@ func (s *SyncService) TriggerSync(ctx context.Context, connectionID string) (*mo
 	conn.LastError = nil
 	_ = s.uow.Sync().UpdateConnection(ctx, conn)
 
+	// Linked Sync: asynchronously trigger sync for any other connections sharing the same credential
+	if peers, pErr := s.uow.Sync().ListConnectionsByCredentialID(ctx, conn.CredentialID); pErr == nil {
+		for _, peer := range peers {
+			if peer.ID != conn.ID && peer.SyncStatus != model.SyncConnectionStatusSyncing {
+				peerID := peer.ID
+				go func(id string) {
+					bgCtx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+					defer cancel()
+					_, _ = s.TriggerSync(bgCtx, id)
+				}(peerID)
+			}
+		}
+	}
+
 	return run, nil
 }
 
@@ -709,12 +747,26 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 		return nil, errors.New("provider is required")
 	}
 
+	pf, pfErr := s.uow.Portfolio().GetByID(ctx, portfolioID)
+	if pfErr != nil {
+		return nil, fmt.Errorf("failed to verify portfolio: %w", pfErr)
+	}
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if pf.UserID != userID && !isAdmin {
+		return nil, errors.New("unauthorized: portfolio belongs to another user")
+	}
+	resourceOwnerID := pf.UserID
+
 	adapter, ok := s.GetAdapter(normProvider)
 	if !ok {
 		return nil, fmt.Errorf("%w: %s", ErrAdapterNotFound, normProvider)
 	}
 
-	cred, err := s.uow.Sync().GetCredentialByProvider(ctx, userID, normProvider)
+	cred, err := s.uow.Sync().GetCredentialByPortfolioAndProvider(ctx, userID, portfolioID, normProvider)
+	if err != nil {
+		cred, err = s.uow.Sync().GetCredentialByProvider(ctx, userID, normProvider)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("active credential not found for provider %s: %w", normProvider, err)
 	}
@@ -764,7 +816,7 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 					cashAccID = &rawAcc.CashAccountNumber
 				}
 				conn = &model.SyncConnection{
-					UserID:                userID,
+					UserID:                resourceOwnerID,
 					PortfolioID:           portfolioID,
 					CredentialID:          cred.ID,
 					Provider:              normProvider,
@@ -823,7 +875,7 @@ func (s *SyncService) DiscoverAndCreateConnections(ctx context.Context, userID s
 				}
 				extAccID := rawAcc.ExternalID
 				acc := &model.Account{
-					UserID:        userID,
+					UserID:        resourceOwnerID,
 					PortfolioID:   portfolioID,
 					Name:          accountName,
 					Type:          accountType,
@@ -891,7 +943,9 @@ func (s *SyncService) InitiateTradeRepublicAuth(ctx context.Context, userID stri
 		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: portfolio verification failed for %s: %v", portfolioID, err)
 		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
 	}
-	if portfolio.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if portfolio.UserID != userID && !isAdmin {
 		log.Printf("[ERROR] [SyncService] InitiateTradeRepublicAuth: portfolio %s belongs to user %s, not %s", portfolioID, portfolio.UserID, userID)
 		return nil, errors.New("unauthorized: portfolio belongs to another user")
 	}
@@ -1154,7 +1208,9 @@ func (s *SyncService) InitiateEnableBankingAuth(
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
 	}
-	if portfolio.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if portfolio.UserID != userID && !isAdmin {
 		return nil, errors.New("unauthorized: portfolio belongs to another user")
 	}
 
@@ -1290,7 +1346,9 @@ func (s *SyncService) CompleteEnableBankingAuth(
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
 	}
-	if portfolio.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if portfolio.UserID != userID && !isAdmin {
 		return nil, errors.New("unauthorized: portfolio belongs to another user")
 	}
 
@@ -1457,7 +1515,9 @@ func (s *SyncService) InitiateWoobAuth(ctx context.Context, userID, portfolioID,
 	if err != nil {
 		return nil, fmt.Errorf("failed to verify portfolio: %w", err)
 	}
-	if portfolio.UserID != userID {
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	isAdmin := callerUser != nil && callerUser.IsAdmin()
+	if portfolio.UserID != userID && !isAdmin {
 		return nil, errors.New("unauthorized: portfolio belongs to another user")
 	}
 

@@ -39,8 +39,21 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.Create
 }
 
 // UpdateUser is the resolver for the updateUser field.
+//
+// A caller may only edit its own account; administrators may edit any. The
+// input carries a password field, but UserService.UpdateUser does not apply it
+// (password changes belong to the authentication flow), so there is nothing
+// here for it to gate.
 func (r *mutationResolver) UpdateUser(ctx context.Context, id string, input gqlModel.UpdateUserInput) (*gqlModel.User, error) {
 	log.Printf("[INFO] [graphql] UpdateUser: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if caller.ID != id && !r.callerIsAdmin(ctx, caller.ID) {
+		log.Printf("[WARN] [graphql] UpdateUser: denied caller=%s target=%s", caller.ID, id)
+		return nil, fmt.Errorf("not authorized to update another user")
+	}
 	userInput := service.UpdateUserInput{
 		Username: input.Username,
 		Email:    input.Email,
@@ -146,9 +159,19 @@ func (r *mutationResolver) UpdateUserTaxJurisdiction(ctx context.Context, input 
 }
 
 // DeleteUser is the resolver for the deleteUser field.
+// DeleteUser is the resolver for the deleteUser field. Accounts can only be
+// deleted by their owner or by an administrator.
 func (r *mutationResolver) DeleteUser(ctx context.Context, id string) (string, error) {
 	log.Printf("[INFO] [graphql] DeleteUser: started")
-	err := r.UserService.DeleteUser(ctx, id)
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return "", err
+	}
+	if caller.ID != id && !r.callerIsAdmin(ctx, caller.ID) {
+		log.Printf("[WARN] [graphql] DeleteUser: denied caller=%s target=%s", caller.ID, id)
+		return "", fmt.Errorf("not authorized to delete another user")
+	}
+	err = r.UserService.DeleteUser(ctx, id)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] DeleteUser: failed: %v", err)
 		return "", err
@@ -737,7 +760,26 @@ func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlM
 		WindowsCondition:  input.WindowsCondition,
 		GeneralQuality:    input.GeneralQuality,
 		GeneralCondition:  input.GeneralCondition,
+
+		// BAN Geocoding
+		AddressLabel:  input.AddressLabel,
+		CityCode:      input.CityCode,
+		BANID:         input.BanID,
+		Latitude:      input.Latitude,
+		Longitude:     input.Longitude,
+		HasOutdoor:    input.HasOutdoor,
+		IsGroundFloor: input.IsGroundFloor,
+
+		// Financial & Valuation
+		ManualValue: input.ManualValue,
 	}
+
+	modeStr := "AUTO"
+	if input.ValuationMode != nil {
+		modeStr = string(*input.ValuationMode)
+	}
+	metadata.ValuationMode = &modeStr
+
 	metadataBytes, marshalErr := json.Marshal(metadata)
 	if marshalErr != nil {
 		return nil, fmt.Errorf("failed to marshal real estate metadata: %w", marshalErr)
@@ -756,6 +798,13 @@ func (r *mutationResolver) CreateRealEstateAsset(ctx context.Context, input gqlM
 
 	if err != nil {
 		return nil, err
+	}
+
+	callerUserID, _ := getUserIDFromContext(ctx)
+	if callerUserID != "" && modeStr == "AUTO" && r.RealEstateService != nil {
+		if updatedAsset, _, estErr := r.RealEstateService.RefreshRealEstateValuation(ctx, callerUserID, asset.ID); estErr == nil && updatedAsset != nil {
+			asset = updatedAsset
+		}
 	}
 
 	tags, tagErr := r.TagService.GetAssetTags(ctx, asset.ID)
@@ -1027,8 +1076,12 @@ func (r *mutationResolver) UntagAsset(ctx context.Context, assetID string, tagID
 // CreateWatchlist is the resolver for the createWatchlist field.
 func (r *mutationResolver) CreateWatchlist(ctx context.Context, input gqlModel.CreateWatchlistInput) (*gqlModel.Watchlist, error) {
 	log.Printf("[INFO] [graphql] CreateWatchlist: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
 	wlInput := service.CreateWatchlistInput{
-		UserID: input.UserID,
+		UserID: caller.ID,
 		Name:   input.Name,
 	}
 	wl, err := r.WatchlistService.CreateWatchlist(ctx, wlInput)
@@ -1042,7 +1095,14 @@ func (r *mutationResolver) CreateWatchlist(ctx context.Context, input gqlModel.C
 // DeleteWatchlist is the resolver for the deleteWatchlist field.
 func (r *mutationResolver) DeleteWatchlist(ctx context.Context, id string) (string, error) {
 	log.Printf("[INFO] [graphql] DeleteWatchlist: started")
-	err := r.WatchlistService.DeleteWatchlist(ctx, id)
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return "", err
+	}
+	if err := r.WatchlistService.ValidateUserOwnership(ctx, caller.ID, id); err != nil {
+		return "", err
+	}
+	err = r.WatchlistService.DeleteWatchlist(ctx, id)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] DeleteWatchlist: failed: %v", err)
 		return "", err
@@ -1053,7 +1113,14 @@ func (r *mutationResolver) DeleteWatchlist(ctx context.Context, id string) (stri
 // AddAssetToWatchlist is the resolver for the addAssetToWatchlist field.
 func (r *mutationResolver) AddAssetToWatchlist(ctx context.Context, watchlistID string, assetID string) (*gqlModel.Watchlist, error) {
 	log.Printf("[INFO] [graphql] AddAssetToWatchlist: started")
-	err := r.WatchlistService.AddAssetToWatchlist(ctx, watchlistID, assetID)
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.WatchlistService.ValidateUserOwnership(ctx, caller.ID, watchlistID); err != nil {
+		return nil, err
+	}
+	err = r.WatchlistService.AddAssetToWatchlist(ctx, watchlistID, assetID)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] AddAssetToWatchlist: failed: %v", err)
 		return nil, err
@@ -1069,7 +1136,14 @@ func (r *mutationResolver) AddAssetToWatchlist(ctx context.Context, watchlistID 
 // RemoveAssetFromWatchlist is the resolver for the removeAssetFromWatchlist field.
 func (r *mutationResolver) RemoveAssetFromWatchlist(ctx context.Context, watchlistID string, assetID string) (*gqlModel.Watchlist, error) {
 	log.Printf("[INFO] [graphql] RemoveAssetFromWatchlist: started")
-	err := r.WatchlistService.RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.WatchlistService.ValidateUserOwnership(ctx, caller.ID, watchlistID); err != nil {
+		return nil, err
+	}
+	err = r.WatchlistService.RemoveAssetFromWatchlist(ctx, watchlistID, assetID)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] RemoveAssetFromWatchlist: failed: %v", err)
 		return nil, err
@@ -1085,6 +1159,14 @@ func (r *mutationResolver) RemoveAssetFromWatchlist(ctx context.Context, watchli
 // User is the resolver for the user field.
 func (r *queryResolver) User(ctx context.Context, id string) (*gqlModel.User, error) {
 	log.Printf("[INFO] [graphql] User: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Users may only read their own record; admins may read any record.
+	if caller.ID != id && !r.callerIsAdmin(ctx, caller.ID) {
+		return nil, nil
+	}
 	user, err := r.UserService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -1098,6 +1180,13 @@ func (r *queryResolver) User(ctx context.Context, id string) (*gqlModel.User, er
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, filter *gqlModel.UserFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.UserOrder) ([]*gqlModel.User, error) {
 	log.Printf("[INFO] [graphql] Users: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if !r.callerIsAdmin(ctx, caller.ID) {
+		return nil, fmt.Errorf("unauthorized: admin access required")
+	}
 	opts := []repository.QueryOption{}
 	if filter != nil {
 		if filter.Email != nil {
@@ -1158,12 +1247,20 @@ func (r *queryResolver) ScopedPerformanceHistory(ctx context.Context, portfolioI
 
 func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Portfolio, error) {
 	log.Printf("[INFO] [graphql] Portfolio: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
 	p, err := r.PortfolioService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) || errors.Is(err, service.ErrPortfolioNotFound) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	// A portfolio that belongs to someone else is reported as not found.
+	if p.UserID != caller.ID {
+		return nil, nil
 	}
 	gqlP := mapPortfolioToGQL(*p)
 
@@ -1186,7 +1283,15 @@ func (r *queryResolver) Portfolio(ctx context.Context, id string) (*gqlModel.Por
 // GetPortfoliosWithAnalytics is the resolver for the GetPortfoliosWithAnalytics field.
 func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID string) ([]*gqlModel.Portfolio, error) {
 	log.Printf("[INFO] [graphql] GetPortfoliosWithAnalytics: started")
-	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, userID, "sort_order")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// The requested user ID is ignored: this query is always scoped to the caller.
+	if userID != "" && userID != caller.ID {
+		log.Printf("[WARN] [graphql] GetPortfoliosWithAnalytics: ignoring requested user %s for caller %s", userID, caller.ID)
+	}
+	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, caller.ID, "sort_order")
 	if err != nil {
 		return nil, err
 	}
@@ -1216,11 +1321,13 @@ func (r *queryResolver) GetPortfoliosWithAnalytics(ctx context.Context, userID s
 // Portfolios is the resolver for the portfolios field.
 func (r *queryResolver) Portfolios(ctx context.Context, filter *gqlModel.PortfolioFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.PortfolioOrder) ([]*gqlModel.Portfolio, error) {
 	log.Printf("[INFO] [graphql] Portfolios: started")
-	opts := []repository.QueryOption{}
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Always constrain the query to the caller's own portfolios.
+	opts := []repository.QueryOption{repository.ByColumn("user_id", caller.ID)}
 	if filter != nil {
-		if filter.UserID != nil {
-			opts = append(opts, repository.ByColumn("user_id", *filter.UserID))
-		}
 		if filter.NameContains != nil {
 			opts = append(opts, repository.ByColumnLike("name", "%"+*filter.NameContains+"%"))
 		}
@@ -1381,6 +1488,10 @@ func (r *queryResolver) Tags(ctx context.Context) ([]*gqlModel.Tag, error) {
 // Watchlist is the resolver for the watchlist field.
 func (r *queryResolver) Watchlist(ctx context.Context, id string) (*gqlModel.Watchlist, error) {
 	log.Printf("[INFO] [graphql] Watchlist: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
 	wl, err := r.WatchlistService.GetByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -1388,16 +1499,22 @@ func (r *queryResolver) Watchlist(ctx context.Context, id string) (*gqlModel.Wat
 		}
 		return nil, err
 	}
+	// A watchlist that belongs to someone else is reported as not found.
+	if wl.UserID != caller.ID {
+		return nil, nil
+	}
 	return mapWatchlistToGQL(*wl), nil
 }
 
 // Watchlists is the resolver for the watchlists field.
 func (r *queryResolver) Watchlists(ctx context.Context, filter *gqlModel.WatchlistFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Watchlist, error) {
 	log.Printf("[INFO] [graphql] Watchlists: started")
-	opts := []repository.QueryOption{}
-	if filter != nil {
-		opts = append(opts, repository.ByColumn("user_id", filter.UserID))
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
 	}
+	// Always constrain the query to the caller's own watchlists.
+	opts := []repository.QueryOption{repository.ByColumn("user_id", caller.ID)}
 	if pagination != nil {
 		if pagination.Limit != nil {
 			opts = append(opts, repository.WithLimit(int(*pagination.Limit)))
@@ -1422,9 +1539,17 @@ func (r *queryResolver) Watchlists(ctx context.Context, filter *gqlModel.Watchli
 // Transaction is the resolver for the transaction field.
 func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.Transaction, error) {
 	log.Printf("[INFO] [graphql] Transaction: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
 	t, err := r.TransactionService.GetTransaction(ctx, id)
 	if err != nil {
 		return nil, err
+	}
+	// A transaction that belongs to someone else is reported as not found.
+	if t.UserID != caller.ID {
+		return nil, nil
 	}
 	mapped := r.buildGraphQLTransaction(ctx, t)
 	if mapped == nil {
@@ -1436,15 +1561,24 @@ func (r *queryResolver) Transaction(ctx context.Context, id string) (*gqlModel.T
 // Transactions is the resolver for the transactions field.
 func (r *queryResolver) Transactions(ctx context.Context, filter *gqlModel.TransactionFilter, pagination *gqlModel.PaginationInput, orderBy *gqlModel.TransactionOrder) ([]*gqlModel.Transaction, error) {
 	log.Printf("[INFO] [graphql] Transactions: started")
-	serviceFilter := service.TransactionFilter{}
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Always constrain the query to the caller's own transactions.
+	serviceFilter := service.TransactionFilter{UserID: &caller.ID}
 	if filter != nil {
-		serviceFilter.UserID = filter.UserID
 		serviceFilter.PortfolioID = filter.PortfolioID
 		serviceFilter.AccountID = filter.AccountID
 		serviceFilter.AssetID = filter.AssetID
 		if filter.TransactionType != nil {
 			tt := model.TransactionType(*filter.TransactionType)
 			serviceFilter.TransactionType = &tt
+		}
+		if filter.PortfolioID != nil {
+			if err := r.PortfolioService.ValidatePortfolioOwnership(ctx, *filter.PortfolioID, caller.ID); err != nil {
+				return nil, err
+			}
 		}
 	}
 	if pagination != nil {

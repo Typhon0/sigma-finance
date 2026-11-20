@@ -26,6 +26,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
 	type DiscoveredWoobConnection,
@@ -132,6 +133,7 @@ export function ConnectInstitutionDialog({
 		return new ApolloClient({ cache: new InMemoryCache(), link: ApolloLink.empty() });
 	}, [apolloContext?.client]);
 	const apolloClient = apolloContext?.client || fallbackClient;
+	const navigate = useNavigate();
 
 	const [activeProviderTab, setActiveProviderTab] = useState<
 		"traderepublic" | "enablebanking" | "woob" | "snaptrade" | "kraken" | "gocardless" | "wallets"
@@ -859,7 +861,15 @@ export function ConnectInstitutionDialog({
 			resetForm();
 			handleConnectionComplete(credRes.data.registerSyncCredential.id);
 		} catch (err: unknown) {
-			const msg = err instanceof Error ? err.message : "Failed to connect Kraken";
+			const apolloErr = err as {
+				graphQLErrors?: Array<{ message: string }>;
+				networkError?: { message: string };
+				message?: string;
+			};
+			const msg =
+				apolloErr?.graphQLErrors?.[0]?.message ||
+				apolloErr?.networkError?.message ||
+				(err instanceof Error ? err.message : "Failed to connect Kraken");
 			toast.error(msg, { id: toastId });
 		}
 	};
@@ -1442,7 +1452,7 @@ export function ConnectInstitutionDialog({
 														className="h-7 text-xs"
 														onClick={() => {
 															onOpenChange(false);
-															window.location.href = "/settings/api-keys";
+															navigate({ to: "/settings/api-keys" });
 														}}
 													>
 														Configurer dans Paramètres

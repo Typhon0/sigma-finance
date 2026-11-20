@@ -517,11 +517,15 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 			if stock, stockErr := uow.Stock().GetByID(ctx, asset.ID); stockErr == nil && stock != nil {
 				stock.Quantity = decimal.NewFromFloat(newQty)
 				stock.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
-				_ = uow.Stock().Update(ctx, stock)
+				if updateErr := uow.Stock().Update(ctx, stock); updateErr != nil {
+					return fmt.Errorf("failed to sync legacy stock holding: %w", updateErr)
+				}
 			} else if fund, fundErr := uow.Fund().GetByID(ctx, asset.ID); fundErr == nil && fund != nil {
 				fund.Quantity = decimal.NewFromFloat(newQty)
 				fund.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
-				_ = uow.Fund().Update(ctx, fund)
+				if updateErr := uow.Fund().Update(ctx, fund); updateErr != nil {
+					return fmt.Errorf("failed to sync legacy fund holding: %w", updateErr)
+				}
 			}
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing portfolio holding: %w", err)

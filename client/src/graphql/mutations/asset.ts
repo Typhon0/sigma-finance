@@ -122,6 +122,136 @@ export const CREATE_REAL_ESTATE_ASSET = gql`
       windowsCondition
       generalQuality
       generalCondition
+      linkedLoanId
+      ownershipPercentage
+      ownershipStructure
+      addressLabel
+      cityCode
+      banId
+      latitude
+      longitude
+      hasOutdoor
+      isGroundFloor
+      valuationMode
+      estimationMethod
+      manualValue
+      estimatedValue
+      estimatedMin
+      estimatedMax
+      estimatedPricePerM2
+      basePricePerM2
+      valuationConfidence
+      comparablesCount
+      searchRadiusMeters
+      lastEstimatedAt
+      valuationHistory {
+        date
+        value
+        mode
+        estimatedMin
+        estimatedMax
+      }
+      marketRentPerM2
+      estimatedMonthlyRent
+      estimatedGrossYield
+      rentalR2Adjusted
+      dayChange
+      dayChangePercent
+      assetType {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const UPDATE_REAL_ESTATE_ASSET = gql`
+  mutation UpdateRealEstateAsset($id: ID!, $input: UpdateRealEstateInput!) {
+    updateRealEstateAsset(id: $id, input: $input) {
+      id
+      name
+      symbol
+      currentValue
+      purchasePrice
+      purchaseDate
+      propertyType
+      category
+      address
+      city
+      state
+      country
+      zipCode
+      squareFeet
+      landSurface
+      yearBuilt
+      bedrooms
+      bathrooms
+      rooms
+      floor
+      totalFloors
+      garages
+      parkingSpaces
+      energyLabel
+      condition
+      agencyFees
+      notaryFees
+      renovationFees
+      furnishingCosts
+      rentalType
+      rentalPeriod
+      monthlyRent
+      utilityCosts
+      yearlyMiscCosts
+      hasGarden
+      hasBalcony
+      hasLift
+      hasPool
+      hasSauna
+      isFurnished
+      isNewConstruction
+      kitchenQuality
+      kitchenCondition
+      bathroomQuality
+      bathroomCondition
+      flooringQuality
+      flooringCondition
+      windowsQuality
+      windowsCondition
+      generalQuality
+      generalCondition
+      linkedLoanId
+      ownershipPercentage
+      ownershipStructure
+      addressLabel
+      cityCode
+      banId
+      latitude
+      longitude
+      hasOutdoor
+      isGroundFloor
+      valuationMode
+      estimationMethod
+      manualValue
+      estimatedValue
+      estimatedMin
+      estimatedMax
+      estimatedPricePerM2
+      basePricePerM2
+      valuationConfidence
+      comparablesCount
+      searchRadiusMeters
+      lastEstimatedAt
+      valuationHistory {
+        date
+        value
+        mode
+        estimatedMin
+        estimatedMax
+      }
+      marketRentPerM2
+      estimatedMonthlyRent
+      estimatedGrossYield
+      rentalR2Adjusted
       dayChange
       dayChangePercent
       assetType {
@@ -289,3 +419,72 @@ export const REFRESH_SINGLE_ASSET_PRICE = gql`
     }
   }
 `;
+
+export const REFRESH_REAL_ESTATE_VALUATION = gql`
+  mutation RefreshRealEstateValuation($id: ID!) {
+    refreshRealEstateValuation(id: $id) {
+      id
+      name
+      symbol
+      currentValue
+      purchasePrice
+      purchaseDate
+      propertyType
+      category
+      address
+      city
+      state
+      country
+      zipCode
+      squareFeet
+      landSurface
+      yearBuilt
+      bedrooms
+      bathrooms
+      rooms
+      floor
+      totalFloors
+      garages
+      parkingSpaces
+      energyLabel
+      condition
+      addressLabel
+      cityCode
+      banId
+      latitude
+      longitude
+      hasOutdoor
+      isGroundFloor
+      valuationMode
+      estimationMethod
+      manualValue
+      estimatedValue
+      estimatedMin
+      estimatedMax
+      estimatedPricePerM2
+      basePricePerM2
+      valuationConfidence
+      comparablesCount
+      searchRadiusMeters
+      lastEstimatedAt
+      valuationHistory {
+        date
+        value
+        mode
+        estimatedMin
+        estimatedMax
+      }
+      marketRentPerM2
+      estimatedMonthlyRent
+      estimatedGrossYield
+      rentalR2Adjusted
+      dayChange
+      dayChangePercent
+      assetType {
+        id
+        name
+      }
+    }
+  }
+`;
+

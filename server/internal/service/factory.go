@@ -17,6 +17,7 @@ import (
 	"time"
 
 	marketdatapacks "sigma_finance/internal/service/marketdata/packs"
+	realestate "sigma_finance/internal/service/realestate"
 
 	"github.com/uptrace/bun"
 )
@@ -42,6 +43,7 @@ type ServiceContainer struct {
 	Instrument      InstrumentService
 	MarketDataPacks marketdatapacks.Service
 	LogBuffer       *LogBuffer
+	RealEstate      realestate.IRealEstateValuationService
 }
 
 // NewServiceContainer creates a new service container with all services initialized
@@ -155,6 +157,9 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 	logBuffer := NewLogBuffer(10000)
 	logBuffer.CaptureStandardLog()
 	log.Printf("[INFO] [ServiceContainer] log buffer initialized with capacity 10000")
+
+	realEstateService := realestate.NewService(uow, db)
+
 	container := &ServiceContainer{
 		User:           NewUserService(uow),
 		Portfolio:      NewPortfolioService(uow),
@@ -188,7 +193,17 @@ func NewServiceContainer(uow repository.IUnitOfWork, cfg *config.Config) *Servic
 		Instrument:      NewInstrumentServiceWithCache(uow, discoveryClient, cryptoDiscoveryClient, NewSearchCache(500, 5*time.Minute), marketDataService),
 		MarketDataPacks: marketDataPackService,
 		LogBuffer:       logBuffer,
+		RealEstate:      realEstateService,
 	}
+
+	// Seed Carte des loyers 2025 in background
+	go func() {
+		seedCtx, seedCancel := context.WithTimeout(context.Background(), 3*time.Minute)
+		defer seedCancel()
+		if err := realEstateService.SeedRentalData(seedCtx); err != nil {
+			log.Printf("[WARN] [ServiceContainer] SeedRentalData failed: %v", err)
+		}
+	}()
 
 	if portfolioService, ok := container.Portfolio.(*PortfolioService); ok {
 		portfolioService.SetMarketDataService(marketDataService)

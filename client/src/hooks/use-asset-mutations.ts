@@ -1,7 +1,7 @@
 import { type ApolloCache, useApolloClient, useMutation } from "@apollo/client";
 import { useCallback } from "react";
 import { toast } from "sonner";
-import { InstrumentAssetType } from "@/gql/graphql";
+import { InstrumentAssetType, ValuationMode } from "@/gql/graphql";
 import {
 	ADD_ASSET_TO_PORTFOLIO,
 	CREATE_BANK_ACCOUNT_ASSET,
@@ -11,7 +11,9 @@ import {
 	CREATE_REAL_ESTATE_ASSET,
 	CREATE_STOCK_ASSET,
 	CREATE_WATCH_ASSET,
+	REFRESH_REAL_ESTATE_VALUATION,
 	REFRESH_SINGLE_ASSET_PRICE,
+	UPDATE_REAL_ESTATE_ASSET,
 } from "@/graphql/mutations/asset";
 import { ADD_INSTRUMENT_TO_PORTFOLIO } from "@/graphql/mutations/instruments";
 import {
@@ -106,6 +108,93 @@ export interface AddRealEstateInput {
 	windowsCondition?: string;
 	generalQuality?: string;
 	generalCondition?: string;
+
+	linkedLoanId?: string;
+	ownershipPercentage?: number;
+	ownershipStructure?: string;
+
+	// BAN Geocoding
+	addressLabel?: string;
+	cityCode?: string;
+	banId?: string;
+	latitude?: number;
+	longitude?: number;
+	hasOutdoor?: boolean;
+	isGroundFloor?: boolean;
+
+	// Financial & Valuation
+	valuationMode?: ValuationMode | "AUTO" | "MANUAL";
+	manualValue?: number;
+}
+
+export interface UpdateRealEstateInput {
+	name?: string;
+	propertyType?: string;
+	category?: string;
+	address?: string;
+	city?: string;
+	state?: string;
+	country?: string;
+	zipCode?: string;
+	squareFeet?: number;
+	landSurface?: number;
+	yearBuilt?: number;
+	bedrooms?: number;
+	bathrooms?: number;
+	rooms?: number;
+	floor?: number;
+	totalFloors?: number;
+	garages?: number;
+	parkingSpaces?: number;
+	energyLabel?: string;
+	condition?: string;
+	currentValue?: number;
+	purchasePrice?: number;
+	purchaseDate?: string;
+
+	agencyFees?: number;
+	notaryFees?: number;
+	renovationFees?: number;
+	furnishingCosts?: number;
+	rentalType?: string;
+	rentalPeriod?: string;
+	monthlyRent?: number;
+	utilityCosts?: number;
+	yearlyMiscCosts?: number;
+	hasGarden?: boolean;
+	hasBalcony?: boolean;
+	hasLift?: boolean;
+	hasPool?: boolean;
+	hasSauna?: boolean;
+	isFurnished?: boolean;
+	isNewConstruction?: boolean;
+	kitchenQuality?: string;
+	kitchenCondition?: string;
+	bathroomQuality?: string;
+	bathroomCondition?: string;
+	flooringQuality?: string;
+	flooringCondition?: string;
+	windowsQuality?: string;
+	windowsCondition?: string;
+	generalQuality?: string;
+	generalCondition?: string;
+
+	linkedLoanId?: string;
+	ownershipPercentage?: number;
+	ownershipStructure?: string;
+
+	// BAN Geocoding
+	addressLabel?: string;
+	cityCode?: string;
+	banId?: string;
+	latitude?: number;
+	longitude?: number;
+	hasOutdoor?: boolean;
+	isGroundFloor?: boolean;
+
+	// Financial & Valuation
+	valuationMode?: ValuationMode | "AUTO" | "MANUAL";
+	manualValue?: number;
 }
 
 export interface AddLifeInsuranceInput {
@@ -269,6 +358,12 @@ export const useAssetMutations = () => {
 		CREATE_REAL_ESTATE_ASSET,
 		invalidatePortfolioDerivedQueries,
 	);
+	const [updateRealEstateAsset, { loading: updatingRealEstate }] = useMutation(
+		UPDATE_REAL_ESTATE_ASSET,
+		invalidatePortfolioDerivedQueries,
+	);
+	const [refreshRealEstateValuationMutation, { loading: refreshingRealEstateValuation }] =
+		useMutation(REFRESH_REAL_ESTATE_VALUATION, invalidatePortfolioDerivedQueries);
 	const [createLifeInsuranceAsset, { loading: creatingLifeInsurance }] = useMutation(
 		CREATE_LIFE_INSURANCE_ASSET,
 		invalidatePortfolioDerivedQueries,
@@ -694,6 +789,22 @@ export const useAssetMutations = () => {
 				windowsCondition: input.windowsCondition,
 				generalQuality: input.generalQuality,
 				generalCondition: input.generalCondition,
+				linkedLoanId: input.linkedLoanId,
+				ownershipPercentage: input.ownershipPercentage,
+				ownershipStructure: input.ownershipStructure,
+
+				// BAN Geocoding
+				addressLabel: input.addressLabel,
+				cityCode: input.cityCode,
+				banId: input.banId,
+				latitude: input.latitude,
+				longitude: input.longitude,
+				hasOutdoor: input.hasOutdoor,
+				isGroundFloor: input.isGroundFloor,
+
+				// Financial & Valuation
+				valuationMode: input.valuationMode,
+				manualValue: input.manualValue,
 			};
 
 			const realEstateResult = await createRealEstateAsset({
@@ -722,6 +833,26 @@ export const useAssetMutations = () => {
 			};
 		},
 		[createRealEstateAsset, addAssetToPortfolio],
+	);
+
+	const updateRealEstate = useCallback(
+		async (id: string, input: UpdateRealEstateInput) => {
+			const result = await updateRealEstateAsset({
+				variables: { id, input },
+			});
+			return result.data?.updateRealEstateAsset;
+		},
+		[updateRealEstateAsset],
+	);
+
+	const refreshRealEstateValuation = useCallback(
+		async (id: string) => {
+			const result = await refreshRealEstateValuationMutation({
+				variables: { id },
+			});
+			return result.data?.refreshRealEstateValuation;
+		},
+		[refreshRealEstateValuationMutation],
 	);
 
 	const addLifeInsurance = useCallback(
@@ -886,6 +1017,8 @@ export const useAssetMutations = () => {
 		addCrypto,
 		addBankAccount,
 		addRealEstate,
+		updateRealEstate,
+		refreshRealEstateValuation,
 		addLifeInsurance,
 		addWatch,
 		addLoan,
@@ -895,6 +1028,8 @@ export const useAssetMutations = () => {
 			creatingCrypto ||
 			creatingBankAccount ||
 			creatingRealEstate ||
+			updatingRealEstate ||
+			refreshingRealEstateValuation ||
 			creatingLifeInsurance ||
 			creatingWatch ||
 			creatingLoan ||

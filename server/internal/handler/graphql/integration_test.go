@@ -18,6 +18,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// withAuthUser returns a context carrying an authenticated user, mirroring what
+// the GraphQL auth middleware injects in production.
+func withAuthUser(ctx context.Context, userID, email string) context.Context {
+	return context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{ID: userID, Email: email})
+}
+
+// seedAdminCaller creates an ADMIN user and returns a context authenticated as
+// that user, for tests that exercise admin-only queries.
+func seedAdminCaller(t *testing.T, ctx context.Context, uow repository.IUnitOfWork, mut *mutationResolver) context.Context {
+	t.Helper()
+	admin, err := mut.CreateUser(ctx, gqlModel.CreateUserInput{
+		Username: "admincaller",
+		Email:    "admincaller@example.com",
+		Password: "password123",
+	})
+	require.NoError(t, err)
+	record, err := uow.User().GetByID(ctx, admin.ID)
+	require.NoError(t, err)
+	record.Role = model.UserRoleAdmin
+	require.NoError(t, uow.User().Update(ctx, record))
+	return withAuthUser(ctx, admin.ID, admin.Email)
+}
+
 // TestGraphQLIntegration_UserOperations tests all User GraphQL operations
 func TestGraphQLIntegration_UserOperations(t *testing.T) {
 	testDB := testutil.NewTestDB(t)
@@ -36,6 +59,9 @@ func TestGraphQLIntegration_UserOperations(t *testing.T) {
 
 	queryResolver := &queryResolver{resolver}
 	mutationResolver := &mutationResolver{resolver}
+
+	// The list query is admin-only, so run this suite as an admin caller.
+	ctx = seedAdminCaller(t, ctx, uow, mutationResolver)
 
 	t.Run("CreateUser", func(t *testing.T) {
 		input := gqlModel.CreateUserInput{
@@ -482,8 +508,10 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	transactionService := service.NewTransactionService(uow)
 	assetService := service.NewAssetService(uow.Asset())
 	tagService := service.NewTagService(uow)
+	portfolioService := service.NewPortfolioService(uow)
 	resolver := &Resolver{
 		TransactionService: transactionService,
+		PortfolioService:   portfolioService,
 		AssetService:       assetService,
 		TagService:         tagService,
 		UOW:                uow,
@@ -495,6 +523,8 @@ func TestGraphQLIntegration_TransactionOperations(t *testing.T) {
 	testData := testDB.SeedTestData(ctx)
 	testUser := testData.Users[0]
 	testAsset := testData.Assets[0]
+
+	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
 
 	// Create a portfolio
 	portfolio := &model.Portfolio{
@@ -632,6 +662,8 @@ func TestGraphQLIntegration_WatchlistOperations(t *testing.T) {
 	}
 	testUser, err := mutationResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
+
+	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
 
 	// Seed test data for assets
 	testData := testDB.SeedTestData(ctx)

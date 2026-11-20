@@ -168,6 +168,41 @@ describe("LoansList Private Terminal actions", () => {
 		expect(screen.getByText("Crédit Travaux Appart")).toBeInTheDocument();
 	});
 
+	it("filters both Debt Ledger and Holdings & Amortization tabs when searching or cross-filtering", async () => {
+		render(
+			<MockedProvider mocks={[]}>
+				<LoansList />
+			</MockedProvider>,
+		);
+
+		// Switch to Holdings & Amortization
+		const holdingsTab = screen.getByRole("tab", { name: /Holdings & Amortization/i });
+		fireEvent.click(holdingsTab);
+
+		expect(await screen.findAllByText(/View Schedule/i)).toHaveLength(2);
+
+		// Search for "Villa"
+		const searchInput = screen.getByPlaceholderText(/Search loans, lenders/i);
+		fireEvent.change(searchInput, { target: { value: "Villa" } });
+
+		// Only Villa card should be visible
+		expect(screen.getByText("Prêt Principal Villa")).toBeInTheDocument();
+		expect(screen.queryByText("Crédit Travaux Appart")).not.toBeInTheDocument();
+		expect(screen.getAllByText(/View Schedule/i)).toHaveLength(1);
+
+		// Search for nonexistent loan
+		fireEvent.change(searchInput, { target: { value: "NonExistent" } });
+		expect(screen.getByText("No loans match current search and filter criteria.")).toBeInTheDocument();
+
+		// Click Reset filters
+		const resetBtn = screen.getByRole("button", { name: /Reset filters/i });
+		fireEvent.click(resetBtn);
+
+		// Both cards are restored
+		expect(screen.getByText("Prêt Principal Villa")).toBeInTheDocument();
+		expect(screen.getByText("Crédit Travaux Appart")).toBeInTheDocument();
+	});
+
 	it("toggles table density between compact and normal", async () => {
 		render(
 			<MockedProvider mocks={[]}>

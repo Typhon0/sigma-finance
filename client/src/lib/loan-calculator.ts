@@ -414,3 +414,111 @@ export function computePortfolioDebtSummary(loans: PortfolioLoanItem[]): Portfol
 		currencyBreakdown,
 	};
 }
+
+export interface EarlyRepaymentSimulationParams {
+	remainingBalance: number;
+	interestRate: number;
+	monthlyPayment: number;
+	remainingMonths: number;
+	lumpSumPrepayment?: number;
+	extraMonthlyPayment?: number;
+}
+
+export interface EarlyRepaymentSimulationResult {
+	reducedDurationMonths: number;
+	monthsSaved: number;
+	yearsSaved: number;
+	originalTotalInterest: number;
+	newTotalInterest: number;
+	interestSaved: number;
+	newMonthlyPayment: number;
+	monthlyPaymentSavings: number;
+}
+
+/**
+ * Deterministically simulates early loan repayment (lump sum and/or extra recurring monthly payment).
+ * Calculates exact interest savings, duration reduction, or payment reduction.
+ */
+export function simulateEarlyRepayment({
+	remainingBalance,
+	interestRate,
+	monthlyPayment,
+	remainingMonths,
+	lumpSumPrepayment = 0,
+	extraMonthlyPayment = 0,
+}: EarlyRepaymentSimulationParams): EarlyRepaymentSimulationResult {
+	if (remainingBalance <= 0 || remainingMonths <= 0) {
+		return {
+			reducedDurationMonths: 0,
+			monthsSaved: 0,
+			yearsSaved: 0,
+			originalTotalInterest: 0,
+			newTotalInterest: 0,
+			interestSaved: 0,
+			newMonthlyPayment: 0,
+			monthlyPaymentSavings: 0,
+		};
+	}
+
+	const monthlyRate = interestRate > 0 ? interestRate / 100 / 12 : 0;
+	const safeLumpSum = Math.min(remainingBalance, Math.max(0, lumpSumPrepayment));
+	const newBalance = Math.max(0, remainingBalance - safeLumpSum);
+
+	// Calculate original interest remaining without prepayment
+	let origBalance = remainingBalance;
+	let originalTotalInterest = 0;
+	for (let m = 0; m < remainingMonths; m++) {
+		const int = Math.round(origBalance * monthlyRate * 100) / 100;
+		originalTotalInterest += int;
+		const princ = Math.min(origBalance, Math.max(0, monthlyPayment - int));
+		origBalance = Math.max(0, origBalance - princ);
+		if (origBalance <= 0.01) break;
+	}
+
+	// Scenario 1: Same payment (or increased payment), calculate reduced duration & interest saved
+	let simBalance = newBalance;
+	let simMonths = 0;
+	let newTotalInterest = 0;
+	const paymentWithExtra = monthlyPayment + Math.max(0, extraMonthlyPayment);
+
+	if (newBalance > 0 && paymentWithExtra > newBalance * monthlyRate) {
+		while (simBalance > 0.01 && simMonths < remainingMonths * 2) {
+			simMonths++;
+			const int = Math.round(simBalance * monthlyRate * 100) / 100;
+			newTotalInterest += int;
+			const princ = Math.min(simBalance, Math.max(0, paymentWithExtra - int));
+			simBalance = Math.max(0, simBalance - princ);
+		}
+	}
+
+	const monthsSaved = Math.max(0, remainingMonths - simMonths);
+	const yearsSaved = Math.round((monthsSaved / 12) * 10) / 10;
+	const interestSaved = Math.max(0, Math.round((originalTotalInterest - newTotalInterest) * 100) / 100);
+
+	// Scenario 2: Keep remaining duration, calculate reduced monthly payment
+	let newMonthlyPayment = 0;
+	if (newBalance > 0 && remainingMonths > 0) {
+		if (monthlyRate === 0) {
+			newMonthlyPayment = Math.round((newBalance / remainingMonths) * 100) / 100;
+		} else {
+			const factor = (1 + monthlyRate) ** remainingMonths;
+			newMonthlyPayment =
+				Math.round(((newBalance * (monthlyRate * factor)) / (factor - 1)) * 100) / 100;
+		}
+	}
+	const monthlyPaymentSavings = Math.max(
+		0,
+		Math.round((monthlyPayment - newMonthlyPayment) * 100) / 100,
+	);
+
+	return {
+		reducedDurationMonths: simMonths,
+		monthsSaved,
+		yearsSaved,
+		originalTotalInterest: Math.round(originalTotalInterest * 100) / 100,
+		newTotalInterest: Math.round(newTotalInterest * 100) / 100,
+		interestSaved,
+		newMonthlyPayment,
+		monthlyPaymentSavings,
+	};
+}

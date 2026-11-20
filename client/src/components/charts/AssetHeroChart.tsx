@@ -8,6 +8,8 @@ import {
 	PortfolioHeroChart as PortfolioHeroChartCanvas,
 	type TimeRange,
 } from "@/components/charts/PortfolioHeroChart";
+
+export type { TimeRange };
 import {
 	type CurveHoldingInput,
 	resolveHybridPerformanceSeries,
@@ -28,6 +30,14 @@ export const TIME_RANGES: readonly TimeRange[] = [
 	"3M",
 	"YTD",
 	"1Y",
+	"ALL",
+] as const;
+
+export const LIABILITY_TIME_RANGES: readonly TimeRange[] = [
+	"1Y",
+	"3Y",
+	"5Y",
+	"10Y",
 	"ALL",
 ] as const;
 
@@ -102,22 +112,33 @@ export function SignedDelta({
 	label,
 	title,
 	formatCurrency,
+	variant = "asset",
 }: {
 	value: number;
 	percent: number | null;
 	label: string;
 	title: string;
 	formatCurrency: (value: number) => string;
+	variant?: "asset" | "liability";
 }) {
-	const isPositive = value > 0;
 	const isZero = value === 0;
-	const formattedDelta = `${isPositive ? "+" : isZero ? "" : "-"}${formatCurrency(Math.abs(value))}`;
+	// For assets: positive is gain, negative is loss.
+	// For liabilities (debt): negative value is debt reduction (gain/positive), positive value is debt increase (loss).
+	const isPositive = variant === "liability" ? value < 0 : value > 0;
+	const formattedDelta = `${isPositive ? (variant === "liability" ? "-" : "+") : isZero ? "" : variant === "liability" ? "+" : "-"}${formatCurrency(Math.abs(value))}`;
 	const formattedPercent =
 		percent !== null
-			? ` (${isPositive ? "+" : isZero ? "" : "-"}${Math.abs(percent).toFixed(2)}%)`
+			? ` (${isPositive ? (variant === "liability" ? "-" : "+") : isZero ? "" : variant === "liability" ? "+" : "-"}${Math.abs(percent).toFixed(2)}%)`
 			: "";
 
 	const colorClass = isPositive ? "text-gain" : isZero ? "text-muted-foreground" : "text-loss";
+	const effectiveTitle =
+		title ||
+		(variant === "liability"
+			? isPositive
+				? "Amortized principal (debt reduction)"
+				: "Debt increase"
+			: undefined);
 
 	return (
 		<span
@@ -125,14 +146,14 @@ export function SignedDelta({
 				"inline-flex items-center gap-1.5 text-sm font-semibold cursor-help",
 				colorClass,
 			)}
-			title={title}
+			title={effectiveTitle}
 		>
 			<span className="font-mono tabular-nums">
 				{formattedDelta}
 				{formattedPercent}
 			</span>
 			<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
-				{label}
+				{variant === "liability" && isPositive ? `${label} · AMORTIZED` : label}
 			</span>
 		</span>
 	);
@@ -158,6 +179,12 @@ export interface AssetHeroChartProps {
 	onBenchmarkModeChange?: (mode: BenchmarkMode) => void;
 	layoutId?: string;
 	className?: string;
+	/** Invert polarity for liabilities (debt drop is gain/green). Defaults to "asset". */
+	variant?: "asset" | "liability";
+	/** Whether to show the benchmark comparison dropdown. Defaults to true for assets, false for liabilities. */
+	showBenchmarkSelector?: boolean;
+	/** Optional additional action buttons or mode toggles placed before range pills. */
+	headerSlot?: React.ReactNode;
 }
 
 export const AssetHeroChart = memo(function AssetHeroChart({
@@ -179,6 +206,9 @@ export const AssetHeroChart = memo(function AssetHeroChart({
 	onBenchmarkModeChange,
 	layoutId = "heroRangePillActive",
 	className,
+	variant = "asset",
+	showBenchmarkSelector,
+	headerSlot,
 }: AssetHeroChartProps) {
 	const shouldReduceMotion = useReducedMotion();
 	const [, startTransition] = useTransition();
@@ -209,16 +239,17 @@ export const AssetHeroChart = memo(function AssetHeroChart({
 					? "Bitcoin"
 					: "Benchmark";
 
-	const chartData = useMemo(
-		() =>
-			resolveHybridPerformanceSeries({
-				backendSeries: data,
-				holdings,
-				totalValue: totalEquity,
-				timeRange,
-			}),
-		[data, holdings, totalEquity, timeRange],
-	);
+	const chartData = useMemo(() => {
+		if (variant === "liability") {
+			return data;
+		}
+		return resolveHybridPerformanceSeries({
+			backendSeries: data,
+			holdings,
+			totalValue: totalEquity,
+			timeRange,
+		});
+	}, [data, holdings, totalEquity, timeRange, variant]);
 
 	const rangeData = useMemo(() => filterByRange(chartData, timeRange), [chartData, timeRange]);
 
@@ -316,6 +347,7 @@ export const AssetHeroChart = memo(function AssetHeroChart({
 									label={activeDelta.label}
 									title={activeDelta.title}
 									formatCurrency={formatCurrency}
+									variant={variant}
 								/>
 							)}
 						</motion.div>
@@ -325,37 +357,42 @@ export const AssetHeroChart = memo(function AssetHeroChart({
 				{/* Chart controls (benchmark picker + range pills) are hidden on
 				    phones per DESIGN.md — "hide chart controls below 768px". */}
 				<div className="hidden md:flex items-center gap-2">
+					{headerSlot}
 					<div className="flex items-center rounded-full bg-secondary/35 border border-border/50 p-0.5">
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="ghost"
-									size="sm"
-									className="h-6 gap-1 rounded-full px-2.5 text-micro text-muted-foreground hover:text-foreground cursor-pointer active:translate-y-px"
-								>
-									{benchmarkMode === "none" ? "No Benchmark" : `vs ${benchmarkName}`}
-									<ChevronDown className="h-2.5 w-2.5" />
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem onClick={() => handleBenchmarkChange("none")}>
-									None
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => handleBenchmarkChange("sp500")}>
-									S&P 500
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => handleBenchmarkChange("nasdaq")}>
-									NASDAQ 100
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => handleBenchmarkChange("btc")}>
-									Bitcoin (BTC)
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+						{(showBenchmarkSelector ?? variant !== "liability") && (
+							<>
+								<DropdownMenu>
+									<DropdownMenuTrigger asChild>
+										<Button
+											variant="ghost"
+											size="sm"
+											className="h-6 gap-1 rounded-full px-2.5 text-micro text-muted-foreground hover:text-foreground cursor-pointer active:translate-y-px"
+										>
+											{benchmarkMode === "none" ? "No Benchmark" : `vs ${benchmarkName}`}
+											<ChevronDown className="h-2.5 w-2.5" />
+										</Button>
+									</DropdownMenuTrigger>
+									<DropdownMenuContent align="end">
+										<DropdownMenuItem onClick={() => handleBenchmarkChange("none")}>
+											None
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => handleBenchmarkChange("sp500")}>
+											S&P 500
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => handleBenchmarkChange("nasdaq")}>
+											NASDAQ 100
+										</DropdownMenuItem>
+										<DropdownMenuItem onClick={() => handleBenchmarkChange("btc")}>
+											Bitcoin (BTC)
+										</DropdownMenuItem>
+									</DropdownMenuContent>
+								</DropdownMenu>
 
-						<div className="h-3 w-[1px] bg-border/40 mx-1" />
+								<div className="h-3 w-[1px] bg-border/40 mx-1" />
+							</>
+						)}
 
-						{TIME_RANGES.map((range) => {
+						{(variant === "liability" ? LIABILITY_TIME_RANGES : TIME_RANGES).map((range) => {
 							const isSelected = timeRange === range;
 							return (
 								<Button
@@ -402,6 +439,7 @@ export const AssetHeroChart = memo(function AssetHeroChart({
 					portfolioID={portfolioID}
 					loading={loading}
 					error={error}
+					variant={variant}
 				/>
 			</div>
 		</div>

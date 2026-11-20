@@ -259,27 +259,33 @@ export function useWeb3WalletDetection() {
 	const connectPhantomAll = async (): Promise<{ evm?: string; solana?: string; bitcoin?: string }> => {
 		const result: { evm?: string; solana?: string; bitcoin?: string } = {};
 		const win = window as any;
-		if (win.phantom?.solana) {
+		const solProvider = win.phantom?.solana || (win.solana?.isPhantom ? win.solana : null);
+		const ethProvider = win.phantom?.ethereum || (win.ethereum?.isPhantom ? win.ethereum : null);
+		const btcProvider = win.phantom?.bitcoin || (win.bitcoin?.isPhantom ? win.bitcoin : null);
+
+		if (solProvider) {
 			try {
-				const solResp = await win.phantom.solana.connect();
-				result.solana = solResp?.publicKey ? solResp.publicKey.toString() : win.phantom.solana.publicKey?.toString();
+				const solResp = await solProvider.connect();
+				const addr = solResp?.publicKey ? solResp.publicKey.toString() : solProvider.publicKey?.toString();
+				if (addr) result.solana = addr;
 			} catch (e) {
 				console.warn("[Phantom] Solana connect canceled/failed", e);
 			}
 		}
-		if (win.phantom?.ethereum) {
+		if (ethProvider) {
 			try {
-				const ethAccounts = await win.phantom.ethereum.request({ method: "eth_requestAccounts" });
+				const ethAccounts = await ethProvider.request({ method: "eth_requestAccounts" });
 				if (Array.isArray(ethAccounts) && ethAccounts.length > 0) {
-					result.evm = parseAddressString(ethAccounts[0]);
+					const addr = parseAddressString(ethAccounts[0]);
+					if (addr) result.evm = addr;
 				}
 			} catch (e) {
 				console.warn("[Phantom] EVM connect canceled/failed", e);
 			}
 		}
-		if (win.phantom?.bitcoin) {
+		if (btcProvider) {
 			try {
-				const btcRes = await connectBitcoin(win.phantom.bitcoin);
+				const btcRes = await connectBitcoin(btcProvider);
 				if (btcRes?.address) {
 					result.bitcoin = btcRes.address;
 				}

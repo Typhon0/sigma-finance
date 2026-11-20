@@ -113,19 +113,15 @@ func TestGraphQLIntegration_AuthenticationOperations(t *testing.T) {
 		}
 		assert.True(t, response.Success)
 		assert.Nil(t, response.Errors)
-		require.NotNil(t, response.Data)
+		// Registration must not log the user in: no session is issued until the
+		// email address has been verified.
+		assert.Nil(t, response.Data)
 
-		// Check auth data
-		assert.NotEmpty(t, response.Data.Token)
-		assert.NotEmpty(t, response.Data.RefreshToken)
-		assert.False(t, response.Data.ExpiresAt.IsZero())
-
-		// Check user data
-		require.NotNil(t, response.Data.User)
-		assert.NotEmpty(t, response.Data.User.ID)
-		assert.Equal(t, "test@example.com", response.Data.User.Email)
-		assert.Equal(t, "Test User", response.Data.User.Name)
-		assert.False(t, response.Data.User.EmailVerified) // Should be false initially
+		user, err := userRepo.GetByEmail(ctx, "test@example.com")
+		require.NoError(t, err)
+		assert.NotEmpty(t, user.ID)
+		assert.Equal(t, "Test User", user.Name)
+		assert.False(t, user.EmailVerified) // Should be false initially
 	})
 
 	t.Run("Register_DuplicateEmail", func(t *testing.T) {

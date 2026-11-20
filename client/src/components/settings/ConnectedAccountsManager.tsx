@@ -30,6 +30,7 @@ import {
 	Wallet,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { usePortfolio } from "@/components/PortfolioProvider";
@@ -160,6 +161,7 @@ export function ConnectedAccountsManager() {
 	} | null>(null);
 	const [isSyncingAll, setIsSyncingAll] = useState(false);
 	const [expandedWallets, setExpandedWallets] = useState<Record<string, boolean>>({});
+	const navigate = useNavigate();
 
 	// Queries
 	const {
@@ -871,9 +873,7 @@ export function ConnectedAccountsManager() {
 							variant="outline"
 							size="sm"
 							className="shrink-0"
-							onClick={() => {
-								window.location.href = "/settings/api-keys";
-							}}
+							onClick={() => navigate({ to: "/settings/api-keys" })}
 						>
 							Gérer Toutes les Clés
 						</Button>

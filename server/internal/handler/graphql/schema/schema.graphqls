@@ -76,6 +76,7 @@ type Mutation {
     createCryptoAsset(input: CreateCryptoInput!): Crypto! @auth
     createBankAccountAsset(input: CreateBankAccountInput!): BankAccount! @auth
     createRealEstateAsset(input: CreateRealEstateInput!): RealEstate! @auth
+    updateRealEstateAsset(id: ID!, input: UpdateRealEstateInput!): RealEstate! @auth
     createLifeInsuranceAsset(input: CreateLifeInsuranceInput!): LifeInsurance! @auth
     createWatchAsset(input: CreateWatchInput!): Watch! @auth
     createLoanAsset(input: CreateLoanInput!): Loan! @auth

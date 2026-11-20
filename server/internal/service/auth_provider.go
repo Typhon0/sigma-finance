@@ -52,9 +52,11 @@ type UserInfo struct {
 
 // RegisterRequest represents a user registration request
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password,omitempty"` // Optional for external providers
-	Name     string `json:"name"`
+	Email     string `json:"email"`
+	Password  string `json:"password,omitempty"` // Optional for external providers
+	Name      string `json:"name"`
+	IPAddress string `json:"ipAddress,omitempty"`
+	UserAgent string `json:"userAgent,omitempty"`
 }
 
 // Validate performs validation of the registration request

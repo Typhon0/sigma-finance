@@ -43,12 +43,8 @@ func TestComprehensiveAuthenticationFlows(t *testing.T) {
 		registerResponse, err := mutResolver.Register(ctx, registerInput)
 		require.NoError(t, err)
 		require.True(t, registerResponse.Success, "Registration should succeed")
-		require.NotNil(t, registerResponse.Data)
-
-		// Verify initial state
-		assert.NotEmpty(t, registerResponse.Data.Token, "JWT token should not be empty")
-		assert.NotEmpty(t, registerResponse.Data.RefreshToken, "Refresh token should not be empty")
-		assert.False(t, registerResponse.Data.User.EmailVerified, "Email should not be verified initially")
+		// Registration must not issue a session for an unverified account.
+		assert.Nil(t, registerResponse.Data, "Registration should not return auth data")
 
 		// Step 2: Try to login with unverified email (should fail)
 		loginInput := gqlModel.LoginInput{

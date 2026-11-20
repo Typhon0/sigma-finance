@@ -25,11 +25,15 @@ func setupSellWorld(t *testing.T) (context.Context, repository.IUnitOfWork, *mod
 
 	uow := repository.NewUnitOfWork(testDB.DB)
 
+	// State the jurisdiction instead of relying on the column default: France
+	// defaults to the PMP method, which would silently replace the FIFO
+	// matching this test is about with average cost.
 	user, err := uow.User().Create(ctx, &model.User{
-		ID:            uuid.NewString(),
-		Email:         "sell_" + uuid.NewString()[:8] + "@example.com",
-		Name:          "Sell Test User",
-		EmailVerified: true,
+		ID:              uuid.NewString(),
+		Email:           "sell_" + uuid.NewString()[:8] + "@example.com",
+		Name:            "Sell Test User",
+		EmailVerified:   true,
+		TaxJurisdiction: "US",
 	})
 	require.NoError(t, err)
 

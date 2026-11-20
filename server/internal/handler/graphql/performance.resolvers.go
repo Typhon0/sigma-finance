@@ -296,18 +296,4 @@ func (r *queryResolver) GeneratePerformanceReport(ctx context.Context, input gql
 	return mapPerformanceReportToGQL(report), nil
 }
 
-// ExportPortfolioData is the resolver for the exportPortfolioData field.
-func (r *queryResolver) ExportPortfolioData(ctx context.Context, input gqlModel.ExportDataInput) (*gqlModel.ExportData, error) {
-	log.Printf("[INFO] [graphql] ExportPortfolioData: started portfolio=%s", input.PortfolioID)
-	return nil, fmt.Errorf("not implemented: ExportPortfolioData - exportPortfolioData")
-}
 
-// PortfolioPerformanceUpdates is the resolver for the portfolioPerformanceUpdates field.
-func (r *subscriptionResolver) PortfolioPerformanceUpdates(ctx context.Context, portfolioID string) (<-chan *gqlModel.PerformanceMetrics, error) {
-	return nil, fmt.Errorf("not implemented: PortfolioPerformanceUpdates - portfolioPerformanceUpdates")
-}
-
-// PriceUpdates is the resolver for the priceUpdates field.
-func (r *subscriptionResolver) PriceUpdates(ctx context.Context, assetIds []string) (<-chan *gqlModel.ChartDataPoint, error) {
-	return nil, fmt.Errorf("not implemented: PriceUpdates - priceUpdates")
-}

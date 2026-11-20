@@ -28,6 +28,13 @@ type Asset interface {
 	GetDayChangePercent() *float64
 }
 
+type ADEMEDpeResult struct {
+	Rating         string   `json:"rating"`
+	SurfaceM2      *float64 `json:"surfaceM2,omitempty"`
+	DiagnosticDate *string  `json:"diagnosticDate,omitempty"`
+	SourceDataset  *string  `json:"sourceDataset,omitempty"`
+}
+
 type Account struct {
 	ID                  string          `json:"id"`
 	PortfolioID         string          `json:"portfolioId"`
@@ -152,18 +159,6 @@ type Alert struct {
 	NotificationMethods []AlertNotificationMethod `json:"notificationMethods"`
 }
 
-// Alert action configuration
-type AlertAction struct {
-	Type   AlertActionType `json:"type"`
-	Config map[string]any  `json:"config"`
-}
-
-// Input for alert actions
-type AlertActionInput struct {
-	Type   AlertActionType `json:"type"`
-	Config map[string]any  `json:"config"`
-}
-
 type AlertError struct {
 	Index   int32  `json:"index"`
 	Message string `json:"message"`
@@ -182,47 +177,6 @@ type AlertHistoryFilter struct {
 	AssetID     *string                    `json:"assetId,omitempty"`
 	PortfolioID *string                    `json:"portfolioId,omitempty"`
 	TimeRange   *PerformanceTimeRangeInput `json:"timeRange,omitempty"`
-}
-
-// Alert notification
-type AlertNotification struct {
-	ID           string        `json:"id"`
-	AlertID      string        `json:"alertId"`
-	AlertName    string        `json:"alertName"`
-	MetricName   string        `json:"metricName"`
-	CurrentValue float64       `json:"currentValue"`
-	Threshold    float64       `json:"threshold"`
-	Severity     AlertSeverity `json:"severity"`
-	Timestamp    string        `json:"timestamp"`
-	Message      string        `json:"message"`
-}
-
-// Alert rule configuration
-type AlertRule struct {
-	ID         string         `json:"id"`
-	Name       string         `json:"name"`
-	MetricName string         `json:"metricName"`
-	Condition  AlertCondition `json:"condition"`
-	Threshold  float64        `json:"threshold"`
-	Duration   int32          `json:"duration"`
-	Labels     map[string]any `json:"labels"`
-	Actions    []*AlertAction `json:"actions"`
-	LastFired  *string        `json:"lastFired,omitempty"`
-	Enabled    bool           `json:"enabled"`
-	CreatedAt  string         `json:"createdAt"`
-	UpdatedAt  string         `json:"updatedAt"`
-}
-
-// Input for creating/updating alert rules
-type AlertRuleInput struct {
-	Name       string              `json:"name"`
-	MetricName string              `json:"metricName"`
-	Condition  AlertCondition      `json:"condition"`
-	Threshold  float64             `json:"threshold"`
-	Duration   int32               `json:"duration"`
-	Labels     map[string]any      `json:"labels,omitempty"`
-	Actions    []*AlertActionInput `json:"actions"`
-	Enabled    bool                `json:"enabled"`
 }
 
 type AlertTriggerEvent struct {
@@ -640,56 +594,68 @@ type CreatePortfolioInput struct {
 }
 
 type CreateRealEstateInput struct {
-	Name              string     `json:"name"`
-	AssetTypeID       string     `json:"assetTypeID"`
-	CurrentValue      *float64   `json:"currentValue,omitempty"`
-	PurchaseDate      *time.Time `json:"purchaseDate,omitempty"`
-	PurchasePrice     *float64   `json:"purchasePrice,omitempty"`
-	PropertyType      string     `json:"propertyType"`
-	Category          *string    `json:"category,omitempty"`
-	Address           string     `json:"address"`
-	City              string     `json:"city"`
-	State             *string    `json:"state,omitempty"`
-	Country           string     `json:"country"`
-	ZipCode           *string    `json:"zipCode,omitempty"`
-	SquareFeet        *int32     `json:"squareFeet,omitempty"`
-	LandSurface       *float64   `json:"landSurface,omitempty"`
-	YearBuilt         *int32     `json:"yearBuilt,omitempty"`
-	Bedrooms          *int32     `json:"bedrooms,omitempty"`
-	Bathrooms         *float64   `json:"bathrooms,omitempty"`
-	Rooms             *int32     `json:"rooms,omitempty"`
-	Floor             *int32     `json:"floor,omitempty"`
-	TotalFloors       *int32     `json:"totalFloors,omitempty"`
-	Garages           *int32     `json:"garages,omitempty"`
-	ParkingSpaces     *int32     `json:"parkingSpaces,omitempty"`
-	EnergyLabel       *string    `json:"energyLabel,omitempty"`
-	Condition         *string    `json:"condition,omitempty"`
-	AgencyFees        *float64   `json:"agencyFees,omitempty"`
-	NotaryFees        *float64   `json:"notaryFees,omitempty"`
-	RenovationFees    *float64   `json:"renovationFees,omitempty"`
-	FurnishingCosts   *float64   `json:"furnishingCosts,omitempty"`
-	RentalType        *string    `json:"rentalType,omitempty"`
-	RentalPeriod      *string    `json:"rentalPeriod,omitempty"`
-	MonthlyRent       *float64   `json:"monthlyRent,omitempty"`
-	UtilityCosts      *float64   `json:"utilityCosts,omitempty"`
-	YearlyMiscCosts   *float64   `json:"yearlyMiscCosts,omitempty"`
-	HasGarden         *bool      `json:"hasGarden,omitempty"`
-	HasBalcony        *bool      `json:"hasBalcony,omitempty"`
-	HasLift           *bool      `json:"hasLift,omitempty"`
-	HasPool           *bool      `json:"hasPool,omitempty"`
-	HasSauna          *bool      `json:"hasSauna,omitempty"`
-	IsFurnished       *bool      `json:"isFurnished,omitempty"`
-	IsNewConstruction *bool      `json:"isNewConstruction,omitempty"`
-	KitchenQuality    *string    `json:"kitchenQuality,omitempty"`
-	KitchenCondition  *string    `json:"kitchenCondition,omitempty"`
-	BathroomQuality   *string    `json:"bathroomQuality,omitempty"`
-	BathroomCondition *string    `json:"bathroomCondition,omitempty"`
-	FlooringQuality   *string    `json:"flooringQuality,omitempty"`
-	FlooringCondition *string    `json:"flooringCondition,omitempty"`
-	WindowsQuality    *string    `json:"windowsQuality,omitempty"`
-	WindowsCondition  *string    `json:"windowsCondition,omitempty"`
-	GeneralQuality    *string    `json:"generalQuality,omitempty"`
-	GeneralCondition  *string    `json:"generalCondition,omitempty"`
+	Name                string         `json:"name"`
+	AssetTypeID         string         `json:"assetTypeID"`
+	CurrentValue        *float64       `json:"currentValue,omitempty"`
+	PurchaseDate        *time.Time     `json:"purchaseDate,omitempty"`
+	PurchasePrice       *float64       `json:"purchasePrice,omitempty"`
+	PropertyType        string         `json:"propertyType"`
+	Category            *string        `json:"category,omitempty"`
+	Address             string         `json:"address"`
+	City                string         `json:"city"`
+	State               *string        `json:"state,omitempty"`
+	Country             string         `json:"country"`
+	ZipCode             *string        `json:"zipCode,omitempty"`
+	SquareFeet          *int32         `json:"squareFeet,omitempty"`
+	LandSurface         *float64       `json:"landSurface,omitempty"`
+	YearBuilt           *int32         `json:"yearBuilt,omitempty"`
+	Bedrooms            *int32         `json:"bedrooms,omitempty"`
+	Bathrooms           *float64       `json:"bathrooms,omitempty"`
+	Rooms               *int32         `json:"rooms,omitempty"`
+	Floor               *int32         `json:"floor,omitempty"`
+	TotalFloors         *int32         `json:"totalFloors,omitempty"`
+	Garages             *int32         `json:"garages,omitempty"`
+	ParkingSpaces       *int32         `json:"parkingSpaces,omitempty"`
+	EnergyLabel         *string        `json:"energyLabel,omitempty"`
+	Condition           *string        `json:"condition,omitempty"`
+	AgencyFees          *float64       `json:"agencyFees,omitempty"`
+	NotaryFees          *float64       `json:"notaryFees,omitempty"`
+	RenovationFees      *float64       `json:"renovationFees,omitempty"`
+	FurnishingCosts     *float64       `json:"furnishingCosts,omitempty"`
+	RentalType          *string        `json:"rentalType,omitempty"`
+	RentalPeriod        *string        `json:"rentalPeriod,omitempty"`
+	MonthlyRent         *float64       `json:"monthlyRent,omitempty"`
+	UtilityCosts        *float64       `json:"utilityCosts,omitempty"`
+	YearlyMiscCosts     *float64       `json:"yearlyMiscCosts,omitempty"`
+	HasGarden           *bool          `json:"hasGarden,omitempty"`
+	HasBalcony          *bool          `json:"hasBalcony,omitempty"`
+	HasLift             *bool          `json:"hasLift,omitempty"`
+	HasPool             *bool          `json:"hasPool,omitempty"`
+	HasSauna            *bool          `json:"hasSauna,omitempty"`
+	IsFurnished         *bool          `json:"isFurnished,omitempty"`
+	IsNewConstruction   *bool          `json:"isNewConstruction,omitempty"`
+	KitchenQuality      *string        `json:"kitchenQuality,omitempty"`
+	KitchenCondition    *string        `json:"kitchenCondition,omitempty"`
+	BathroomQuality     *string        `json:"bathroomQuality,omitempty"`
+	BathroomCondition   *string        `json:"bathroomCondition,omitempty"`
+	FlooringQuality     *string        `json:"flooringQuality,omitempty"`
+	FlooringCondition   *string        `json:"flooringCondition,omitempty"`
+	WindowsQuality      *string        `json:"windowsQuality,omitempty"`
+	WindowsCondition    *string        `json:"windowsCondition,omitempty"`
+	GeneralQuality      *string        `json:"generalQuality,omitempty"`
+	GeneralCondition    *string        `json:"generalCondition,omitempty"`
+	LinkedLoanID        *string        `json:"linkedLoanId,omitempty"`
+	OwnershipPercentage *float64       `json:"ownershipPercentage,omitempty"`
+	OwnershipStructure  *string        `json:"ownershipStructure,omitempty"`
+	AddressLabel        *string        `json:"addressLabel,omitempty"`
+	CityCode            *string        `json:"cityCode,omitempty"`
+	BanID               *string        `json:"banId,omitempty"`
+	Latitude            *float64       `json:"latitude,omitempty"`
+	Longitude           *float64       `json:"longitude,omitempty"`
+	HasOutdoor          *bool          `json:"hasOutdoor,omitempty"`
+	IsGroundFloor       *bool          `json:"isGroundFloor,omitempty"`
+	ValuationMode       *ValuationMode `json:"valuationMode,omitempty"`
+	ManualValue         *float64       `json:"manualValue,omitempty"`
 }
 
 type CreateStockInput struct {
@@ -789,23 +755,6 @@ func (this Crypto) GetExchange() *string          { return this.Exchange }
 func (this Crypto) GetDayChange() *float64        { return this.DayChange }
 func (this Crypto) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
-// Input for recording dashboard events
-type DashboardEventInput struct {
-	Type      string         `json:"type"`
-	UserID    *string        `json:"userId,omitempty"`
-	SessionID *string        `json:"sessionId,omitempty"`
-	Data      map[string]any `json:"data"`
-}
-
-// Dashboard performance metrics
-type DashboardPerformanceMetrics struct {
-	DashboardStateTransitions *MetricSummary `json:"dashboardStateTransitions,omitempty"`
-	DataLoadTimes             *MetricSummary `json:"dataLoadTimes,omitempty"`
-	UserInteractions          *MetricSummary `json:"userInteractions,omitempty"`
-	ErrorRates                *MetricSummary `json:"errorRates,omitempty"`
-	MarketDataUpdates         *MetricSummary `json:"marketDataUpdates,omitempty"`
-}
-
 type DataQuality struct {
 	Score               float64   `json:"score"`
 	MissingDataPoints   int32     `json:"missingDataPoints"`
@@ -879,14 +828,6 @@ type ExportResult struct {
 	Success     bool    `json:"success"`
 	DownloadURL *string `json:"downloadUrl,omitempty"`
 	Error       *string `json:"error,omitempty"`
-}
-
-// Feature usage statistics
-type FeatureUsage struct {
-	Feature     string  `json:"feature"`
-	UsageCount  int32   `json:"usageCount"`
-	UniqueUsers int32   `json:"uniqueUsers"`
-	AvgDuration float64 `json:"avgDuration"`
 }
 
 type FinanceDatabasePreviewItem struct {
@@ -1460,39 +1401,7 @@ type MethodParameter struct {
 	Value string `json:"value"`
 }
 
-// Individual metric data
-type Metric struct {
-	Name         string         `json:"name"`
-	Type         MetricType     `json:"type"`
-	Value        float64        `json:"value"`
-	Labels       map[string]any `json:"labels"`
-	Aggregations map[string]any `json:"aggregations"`
-	LastUpdated  string         `json:"lastUpdated"`
-}
-
-// Aggregated metric summary
-type MetricSummary struct {
-	Total     float64        `json:"total"`
-	Average   float64        `json:"average"`
-	Min       float64        `json:"min"`
-	Max       float64        `json:"max"`
-	P50       float64        `json:"p50"`
-	P95       float64        `json:"p95"`
-	P99       float64        `json:"p99"`
-	LastHour  float64        `json:"lastHour"`
-	LastDay   float64        `json:"lastDay"`
-	Breakdown map[string]any `json:"breakdown"`
-}
-
 type Mutation struct {
-}
-
-// User navigation pattern
-type NavigationPattern struct {
-	Pattern     string  `json:"pattern"`
-	Count       int32   `json:"count"`
-	AvgDuration float64 `json:"avgDuration"`
-	Conversion  float64 `json:"conversion"`
 }
 
 type OnlineInstrumentInput struct {
@@ -1703,11 +1612,6 @@ type PortfolioOrderInput struct {
 	SortOrder   int32  `json:"sortOrder"`
 }
 
-type PortfolioUpdatePayload struct {
-	Type      string     `json:"type"`
-	Portfolio *Portfolio `json:"portfolio"`
-}
-
 type Position struct {
 	ID                   string     `json:"id"`
 	Portfolio            *Portfolio `json:"portfolio"`
@@ -1812,64 +1716,91 @@ type RateLimit struct {
 }
 
 type RealEstate struct {
-	ID                string      `json:"id"`
-	Name              string      `json:"name"`
-	Symbol            *string     `json:"symbol,omitempty"`
-	AssetType         *AssetType  `json:"assetType"`
-	CurrentValue      *float64    `json:"currentValue,omitempty"`
-	PurchaseDate      *time.Time  `json:"purchaseDate,omitempty"`
-	PurchasePrice     *float64    `json:"purchasePrice,omitempty"`
-	Tags              []*Tag      `json:"tags"`
-	PropertyType      string      `json:"propertyType"`
-	Category          *string     `json:"category,omitempty"`
-	Address           string      `json:"address"`
-	City              string      `json:"city"`
-	State             *string     `json:"state,omitempty"`
-	Country           string      `json:"country"`
-	ZipCode           *string     `json:"zipCode,omitempty"`
-	SquareFeet        *int32      `json:"squareFeet,omitempty"`
-	LandSurface       *float64    `json:"landSurface,omitempty"`
-	YearBuilt         *int32      `json:"yearBuilt,omitempty"`
-	Bedrooms          *int32      `json:"bedrooms,omitempty"`
-	Bathrooms         *float64    `json:"bathrooms,omitempty"`
-	Rooms             *int32      `json:"rooms,omitempty"`
-	Floor             *int32      `json:"floor,omitempty"`
-	TotalFloors       *int32      `json:"totalFloors,omitempty"`
-	Garages           *int32      `json:"garages,omitempty"`
-	ParkingSpaces     *int32      `json:"parkingSpaces,omitempty"`
-	EnergyLabel       *string     `json:"energyLabel,omitempty"`
-	Condition         *string     `json:"condition,omitempty"`
-	AgencyFees        *float64    `json:"agencyFees,omitempty"`
-	NotaryFees        *float64    `json:"notaryFees,omitempty"`
-	RenovationFees    *float64    `json:"renovationFees,omitempty"`
-	FurnishingCosts   *float64    `json:"furnishingCosts,omitempty"`
-	RentalType        *string     `json:"rentalType,omitempty"`
-	RentalPeriod      *string     `json:"rentalPeriod,omitempty"`
-	MonthlyRent       *float64    `json:"monthlyRent,omitempty"`
-	UtilityCosts      *float64    `json:"utilityCosts,omitempty"`
-	YearlyMiscCosts   *float64    `json:"yearlyMiscCosts,omitempty"`
-	HasGarden         *bool       `json:"hasGarden,omitempty"`
-	HasBalcony        *bool       `json:"hasBalcony,omitempty"`
-	HasLift           *bool       `json:"hasLift,omitempty"`
-	HasPool           *bool       `json:"hasPool,omitempty"`
-	HasSauna          *bool       `json:"hasSauna,omitempty"`
-	IsFurnished       *bool       `json:"isFurnished,omitempty"`
-	IsNewConstruction *bool       `json:"isNewConstruction,omitempty"`
-	KitchenQuality    *string     `json:"kitchenQuality,omitempty"`
-	KitchenCondition  *string     `json:"kitchenCondition,omitempty"`
-	BathroomQuality   *string     `json:"bathroomQuality,omitempty"`
-	BathroomCondition *string     `json:"bathroomCondition,omitempty"`
-	FlooringQuality   *string     `json:"flooringQuality,omitempty"`
-	FlooringCondition *string     `json:"flooringCondition,omitempty"`
-	WindowsQuality    *string     `json:"windowsQuality,omitempty"`
-	WindowsCondition  *string     `json:"windowsCondition,omitempty"`
-	GeneralQuality    *string     `json:"generalQuality,omitempty"`
-	GeneralCondition  *string     `json:"generalCondition,omitempty"`
-	Sector            *string     `json:"sector,omitempty"`
-	Exchange          *string     `json:"exchange,omitempty"`
-	DayChange         *float64    `json:"dayChange,omitempty"`
-	DayChangePercent  *float64    `json:"dayChangePercent,omitempty"`
-	Positions         []*Position `json:"positions"`
+	ID                   string                      `json:"id"`
+	Name                 string                      `json:"name"`
+	Symbol               *string                     `json:"symbol,omitempty"`
+	AssetType            *AssetType                  `json:"assetType"`
+	CurrentValue         *float64                    `json:"currentValue,omitempty"`
+	PurchaseDate         *time.Time                  `json:"purchaseDate,omitempty"`
+	PurchasePrice        *float64                    `json:"purchasePrice,omitempty"`
+	Tags                 []*Tag                      `json:"tags"`
+	PropertyType         string                      `json:"propertyType"`
+	Category             *string                     `json:"category,omitempty"`
+	Address              string                      `json:"address"`
+	City                 string                      `json:"city"`
+	State                *string                     `json:"state,omitempty"`
+	Country              string                      `json:"country"`
+	ZipCode              *string                     `json:"zipCode,omitempty"`
+	SquareFeet           *int32                      `json:"squareFeet,omitempty"`
+	LandSurface          *float64                    `json:"landSurface,omitempty"`
+	YearBuilt            *int32                      `json:"yearBuilt,omitempty"`
+	Bedrooms             *int32                      `json:"bedrooms,omitempty"`
+	Bathrooms            *float64                    `json:"bathrooms,omitempty"`
+	Rooms                *int32                      `json:"rooms,omitempty"`
+	Floor                *int32                      `json:"floor,omitempty"`
+	TotalFloors          *int32                      `json:"totalFloors,omitempty"`
+	Garages              *int32                      `json:"garages,omitempty"`
+	ParkingSpaces        *int32                      `json:"parkingSpaces,omitempty"`
+	EnergyLabel          *string                     `json:"energyLabel,omitempty"`
+	Condition            *string                     `json:"condition,omitempty"`
+	AgencyFees           *float64                    `json:"agencyFees,omitempty"`
+	NotaryFees           *float64                    `json:"notaryFees,omitempty"`
+	RenovationFees       *float64                    `json:"renovationFees,omitempty"`
+	FurnishingCosts      *float64                    `json:"furnishingCosts,omitempty"`
+	RentalType           *string                     `json:"rentalType,omitempty"`
+	RentalPeriod         *string                     `json:"rentalPeriod,omitempty"`
+	MonthlyRent          *float64                    `json:"monthlyRent,omitempty"`
+	UtilityCosts         *float64                    `json:"utilityCosts,omitempty"`
+	YearlyMiscCosts      *float64                    `json:"yearlyMiscCosts,omitempty"`
+	HasGarden            *bool                       `json:"hasGarden,omitempty"`
+	HasBalcony           *bool                       `json:"hasBalcony,omitempty"`
+	HasLift              *bool                       `json:"hasLift,omitempty"`
+	HasPool              *bool                       `json:"hasPool,omitempty"`
+	HasSauna             *bool                       `json:"hasSauna,omitempty"`
+	IsFurnished          *bool                       `json:"isFurnished,omitempty"`
+	IsNewConstruction    *bool                       `json:"isNewConstruction,omitempty"`
+	KitchenQuality       *string                     `json:"kitchenQuality,omitempty"`
+	KitchenCondition     *string                     `json:"kitchenCondition,omitempty"`
+	BathroomQuality      *string                     `json:"bathroomQuality,omitempty"`
+	BathroomCondition    *string                     `json:"bathroomCondition,omitempty"`
+	FlooringQuality      *string                     `json:"flooringQuality,omitempty"`
+	FlooringCondition    *string                     `json:"flooringCondition,omitempty"`
+	WindowsQuality       *string                     `json:"windowsQuality,omitempty"`
+	WindowsCondition     *string                     `json:"windowsCondition,omitempty"`
+	GeneralQuality       *string                     `json:"generalQuality,omitempty"`
+	GeneralCondition     *string                     `json:"generalCondition,omitempty"`
+	LinkedLoanID         *string                     `json:"linkedLoanId,omitempty"`
+	OwnershipPercentage  *float64                    `json:"ownershipPercentage,omitempty"`
+	OwnershipStructure   *string                     `json:"ownershipStructure,omitempty"`
+	AddressLabel         *string                     `json:"addressLabel,omitempty"`
+	CityCode             *string                     `json:"cityCode,omitempty"`
+	BanID                *string                     `json:"banId,omitempty"`
+	Latitude             *float64                    `json:"latitude,omitempty"`
+	Longitude            *float64                    `json:"longitude,omitempty"`
+	HasOutdoor           *bool                       `json:"hasOutdoor,omitempty"`
+	IsGroundFloor        *bool                       `json:"isGroundFloor,omitempty"`
+	ValuationMode        *ValuationMode              `json:"valuationMode,omitempty"`
+	EstimationMethod     *EstimationMethod           `json:"estimationMethod,omitempty"`
+	ManualValue          *float64                    `json:"manualValue,omitempty"`
+	EstimatedValue       *float64                    `json:"estimatedValue,omitempty"`
+	EstimatedMin         *float64                    `json:"estimatedMin,omitempty"`
+	EstimatedMax         *float64                    `json:"estimatedMax,omitempty"`
+	EstimatedPricePerM2  *float64                    `json:"estimatedPricePerM2,omitempty"`
+	BasePricePerM2       *float64                    `json:"basePricePerM2,omitempty"`
+	ValuationConfidence  *ValuationConfidence        `json:"valuationConfidence,omitempty"`
+	ComparablesCount     *int32                      `json:"comparablesCount,omitempty"`
+	SearchRadiusMeters   *int32                      `json:"searchRadiusMeters,omitempty"`
+	LastEstimatedAt      *time.Time                  `json:"lastEstimatedAt,omitempty"`
+	ValuationHistory     []*RealEstateValuationPoint `json:"valuationHistory,omitempty"`
+	MarketRentPerM2      *float64                    `json:"marketRentPerM2,omitempty"`
+	EstimatedMonthlyRent *float64                    `json:"estimatedMonthlyRent,omitempty"`
+	EstimatedGrossYield  *float64                    `json:"estimatedGrossYield,omitempty"`
+	RentalR2Adjusted     *float64                    `json:"rentalR2Adjusted,omitempty"`
+	Sector               *string                     `json:"sector,omitempty"`
+	Exchange             *string                     `json:"exchange,omitempty"`
+	DayChange            *float64                    `json:"dayChange,omitempty"`
+	DayChangePercent     *float64                    `json:"dayChangePercent,omitempty"`
+	Positions            []*Position                 `json:"positions"`
 }
 
 func (RealEstate) IsAsset()                         {}
@@ -1904,6 +1835,56 @@ func (this RealEstate) GetSector() *string            { return this.Sector }
 func (this RealEstate) GetExchange() *string          { return this.Exchange }
 func (this RealEstate) GetDayChange() *float64        { return this.DayChange }
 func (this RealEstate) GetDayChangePercent() *float64 { return this.DayChangePercent }
+
+type RealEstateEstimationInput struct {
+	PropertyType  string     `json:"propertyType"`
+	SurfaceM2     float64    `json:"surfaceM2"`
+	Latitude      *float64   `json:"latitude,omitempty"`
+	Longitude     *float64   `json:"longitude,omitempty"`
+	CityCode      *string    `json:"cityCode,omitempty"`
+	Address       *string    `json:"address,omitempty"`
+	City          *string    `json:"city,omitempty"`
+	Postcode      *string    `json:"postcode,omitempty"`
+	BanID         *string    `json:"banId,omitempty"`
+	EnergyLabel   *string    `json:"energyLabel,omitempty"`
+	Condition     *string    `json:"condition,omitempty"`
+	PurchasePrice *float64   `json:"purchasePrice,omitempty"`
+	PurchaseDate  *time.Time `json:"purchaseDate,omitempty"`
+	IsGroundFloor *bool      `json:"isGroundFloor,omitempty"`
+	HasOutdoor    *bool      `json:"hasOutdoor,omitempty"`
+	RoomsCount    *int32     `json:"roomsCount,omitempty"`
+}
+
+type RealEstateEstimationResult struct {
+	EstimatedValue      *float64                `json:"estimatedValue,omitempty"`
+	EstimatedMin        *float64                `json:"estimatedMin,omitempty"`
+	EstimatedMax        *float64                `json:"estimatedMax,omitempty"`
+	EstimatedPricePerM2 *float64                `json:"estimatedPricePerM2,omitempty"`
+	BasePricePerM2      *float64                `json:"basePricePerM2,omitempty"`
+	Confidence          ValuationConfidence     `json:"confidence"`
+	Method              EstimationMethod        `json:"method"`
+	ComparablesCount    int32                   `json:"comparablesCount"`
+	SearchRadiusMeters  *int32                  `json:"searchRadiusMeters,omitempty"`
+	LastEstimatedAt     time.Time               `json:"lastEstimatedAt"`
+	RentalMarket        *RealEstateRentalMarket `json:"rentalMarket,omitempty"`
+}
+
+type RealEstateRentalMarket struct {
+	MarketRentPerM2      *float64 `json:"marketRentPerM2,omitempty"`
+	EstimatedMonthlyRent *float64 `json:"estimatedMonthlyRent,omitempty"`
+	EstimatedGrossYield  *float64 `json:"estimatedGrossYield,omitempty"`
+	IsCommuneLevel       bool     `json:"isCommuneLevel"`
+	R2Adjusted           *float64 `json:"r2Adjusted,omitempty"`
+	SourceLabel          string   `json:"sourceLabel"`
+}
+
+type RealEstateValuationPoint struct {
+	Date         time.Time `json:"date"`
+	Value        float64   `json:"value"`
+	Mode         *string   `json:"mode,omitempty"`
+	EstimatedMin *float64  `json:"estimatedMin,omitempty"`
+	EstimatedMax *float64  `json:"estimatedMax,omitempty"`
+}
 
 type RealizedGainsSummary struct {
 	PortfolioID      string    `json:"portfolioId"`
@@ -2033,9 +2014,6 @@ func (this Stock) GetExchange() *string          { return this.Exchange }
 func (this Stock) GetDayChange() *float64        { return this.DayChange }
 func (this Stock) GetDayChangePercent() *float64 { return this.DayChangePercent }
 
-type Subscription struct {
-}
-
 type SyncConnection struct {
 	ID                    string     `json:"id"`
 	PortfolioID           string     `json:"portfolioId"`
@@ -2070,16 +2048,6 @@ type SyncRun struct {
 	ErrorMessage  *string    `json:"errorMessage,omitempty"`
 	StartedAt     time.Time  `json:"startedAt"`
 	CompletedAt   *time.Time `json:"completedAt,omitempty"`
-}
-
-// System health status
-type SystemHealth struct {
-	Status       string         `json:"status"`
-	Timestamp    string         `json:"timestamp"`
-	MetricsCount int32          `json:"metricsCount"`
-	AlertsCount  int32          `json:"alertsCount"`
-	RecentErrors float64        `json:"recentErrors"`
-	Details      map[string]any `json:"details,omitempty"`
 }
 
 type Tag struct {
@@ -2212,11 +2180,6 @@ type TransactionOrder struct {
 	Direction SortDirection         `json:"direction"`
 }
 
-type TransactionUpdatePayload struct {
-	Type        string       `json:"type"`
-	Transaction *Transaction `json:"transaction"`
-}
-
 type TriggerFinanceDatabaseSyncPayload struct {
 	Success    bool                     `json:"success"`
 	Message    string                   `json:"message"`
@@ -2282,6 +2245,70 @@ type UpdatePortfolioInput struct {
 	SortOrder   *int32          `json:"sortOrder,omitempty"`
 }
 
+type UpdateRealEstateInput struct {
+	Name                *string        `json:"name,omitempty"`
+	PropertyType        *string        `json:"propertyType,omitempty"`
+	Category            *string        `json:"category,omitempty"`
+	Address             *string        `json:"address,omitempty"`
+	City                *string        `json:"city,omitempty"`
+	State               *string        `json:"state,omitempty"`
+	Country             *string        `json:"country,omitempty"`
+	ZipCode             *string        `json:"zipCode,omitempty"`
+	SquareFeet          *int32         `json:"squareFeet,omitempty"`
+	LandSurface         *float64       `json:"landSurface,omitempty"`
+	YearBuilt           *int32         `json:"yearBuilt,omitempty"`
+	Bedrooms            *int32         `json:"bedrooms,omitempty"`
+	Bathrooms           *float64       `json:"bathrooms,omitempty"`
+	Rooms               *int32         `json:"rooms,omitempty"`
+	Floor               *int32         `json:"floor,omitempty"`
+	TotalFloors         *int32         `json:"totalFloors,omitempty"`
+	Garages             *int32         `json:"garages,omitempty"`
+	ParkingSpaces       *int32         `json:"parkingSpaces,omitempty"`
+	EnergyLabel         *string        `json:"energyLabel,omitempty"`
+	Condition           *string        `json:"condition,omitempty"`
+	CurrentValue        *float64       `json:"currentValue,omitempty"`
+	PurchasePrice       *float64       `json:"purchasePrice,omitempty"`
+	PurchaseDate        *time.Time     `json:"purchaseDate,omitempty"`
+	AgencyFees          *float64       `json:"agencyFees,omitempty"`
+	NotaryFees          *float64       `json:"notaryFees,omitempty"`
+	RenovationFees      *float64       `json:"renovationFees,omitempty"`
+	FurnishingCosts     *float64       `json:"furnishingCosts,omitempty"`
+	RentalType          *string        `json:"rentalType,omitempty"`
+	RentalPeriod        *string        `json:"rentalPeriod,omitempty"`
+	MonthlyRent         *float64       `json:"monthlyRent,omitempty"`
+	UtilityCosts        *float64       `json:"utilityCosts,omitempty"`
+	YearlyMiscCosts     *float64       `json:"yearlyMiscCosts,omitempty"`
+	HasGarden           *bool          `json:"hasGarden,omitempty"`
+	HasBalcony          *bool          `json:"hasBalcony,omitempty"`
+	HasLift             *bool          `json:"hasLift,omitempty"`
+	HasPool             *bool          `json:"hasPool,omitempty"`
+	HasSauna            *bool          `json:"hasSauna,omitempty"`
+	IsFurnished         *bool          `json:"isFurnished,omitempty"`
+	IsNewConstruction   *bool          `json:"isNewConstruction,omitempty"`
+	KitchenQuality      *string        `json:"kitchenQuality,omitempty"`
+	KitchenCondition    *string        `json:"kitchenCondition,omitempty"`
+	BathroomQuality     *string        `json:"bathroomQuality,omitempty"`
+	BathroomCondition   *string        `json:"bathroomCondition,omitempty"`
+	FlooringQuality     *string        `json:"flooringQuality,omitempty"`
+	FlooringCondition   *string        `json:"flooringCondition,omitempty"`
+	WindowsQuality      *string        `json:"windowsQuality,omitempty"`
+	WindowsCondition    *string        `json:"windowsCondition,omitempty"`
+	GeneralQuality      *string        `json:"generalQuality,omitempty"`
+	GeneralCondition    *string        `json:"generalCondition,omitempty"`
+	LinkedLoanID        *string        `json:"linkedLoanId,omitempty"`
+	OwnershipPercentage *float64       `json:"ownershipPercentage,omitempty"`
+	OwnershipStructure  *string        `json:"ownershipStructure,omitempty"`
+	AddressLabel        *string        `json:"addressLabel,omitempty"`
+	CityCode            *string        `json:"cityCode,omitempty"`
+	BanID               *string        `json:"banId,omitempty"`
+	Latitude            *float64       `json:"latitude,omitempty"`
+	Longitude           *float64       `json:"longitude,omitempty"`
+	HasOutdoor          *bool          `json:"hasOutdoor,omitempty"`
+	IsGroundFloor       *bool          `json:"isGroundFloor,omitempty"`
+	ValuationMode       *ValuationMode `json:"valuationMode,omitempty"`
+	ManualValue         *float64       `json:"manualValue,omitempty"`
+}
+
 type UpdateTransactionInput struct {
 	Quantity        *float64   `json:"quantity,omitempty"`
 	UnitPriceAmount *float64   `json:"unitPriceAmount,omitempty"`
@@ -2344,17 +2371,6 @@ type User struct {
 	ThemeRadius         float64      `json:"themeRadius"`
 	ThemeRtl            bool         `json:"themeRTL"`
 	TaxJurisdiction     string       `json:"taxJurisdiction"`
-}
-
-// User engagement analytics
-type UserEngagementMetrics struct {
-	TotalUsers         int32                `json:"totalUsers"`
-	ActiveUsers        int32                `json:"activeUsers"`
-	AvgSessionDuration float64              `json:"avgSessionDuration"`
-	TopFeatures        []*FeatureUsage      `json:"topFeatures"`
-	NavigationPatterns []*NavigationPattern `json:"navigationPatterns"`
-	DeviceBreakdown    map[string]any       `json:"deviceBreakdown"`
-	ErrorsByComponent  map[string]any       `json:"errorsByComponent"`
 }
 
 type UserFilter struct {
@@ -2593,132 +2609,6 @@ func (e AccountType) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// Alert action type enumeration
-type AlertActionType string
-
-const (
-	AlertActionTypeLog     AlertActionType = "LOG"
-	AlertActionTypeWebhook AlertActionType = "WEBHOOK"
-	AlertActionTypeEmail   AlertActionType = "EMAIL"
-	AlertActionTypeSLACk   AlertActionType = "SLACK"
-)
-
-var AllAlertActionType = []AlertActionType{
-	AlertActionTypeLog,
-	AlertActionTypeWebhook,
-	AlertActionTypeEmail,
-	AlertActionTypeSLACk,
-}
-
-func (e AlertActionType) IsValid() bool {
-	switch e {
-	case AlertActionTypeLog, AlertActionTypeWebhook, AlertActionTypeEmail, AlertActionTypeSLACk:
-		return true
-	}
-	return false
-}
-
-func (e AlertActionType) String() string {
-	return string(e)
-}
-
-func (e *AlertActionType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = AlertActionType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AlertActionType", str)
-	}
-	return nil
-}
-
-func (e AlertActionType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *AlertActionType) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e AlertActionType) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-// Alert condition enumeration
-type AlertCondition string
-
-const (
-	AlertConditionGreaterThan    AlertCondition = "GREATER_THAN"
-	AlertConditionLessThan       AlertCondition = "LESS_THAN"
-	AlertConditionEqualTo        AlertCondition = "EQUAL_TO"
-	AlertConditionAvgGreaterThan AlertCondition = "AVG_GREATER_THAN"
-	AlertConditionAvgLessThan    AlertCondition = "AVG_LESS_THAN"
-	AlertConditionMaxGreaterThan AlertCondition = "MAX_GREATER_THAN"
-	AlertConditionMinLessThan    AlertCondition = "MIN_LESS_THAN"
-)
-
-var AllAlertCondition = []AlertCondition{
-	AlertConditionGreaterThan,
-	AlertConditionLessThan,
-	AlertConditionEqualTo,
-	AlertConditionAvgGreaterThan,
-	AlertConditionAvgLessThan,
-	AlertConditionMaxGreaterThan,
-	AlertConditionMinLessThan,
-}
-
-func (e AlertCondition) IsValid() bool {
-	switch e {
-	case AlertConditionGreaterThan, AlertConditionLessThan, AlertConditionEqualTo, AlertConditionAvgGreaterThan, AlertConditionAvgLessThan, AlertConditionMaxGreaterThan, AlertConditionMinLessThan:
-		return true
-	}
-	return false
-}
-
-func (e AlertCondition) String() string {
-	return string(e)
-}
-
-func (e *AlertCondition) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = AlertCondition(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AlertCondition", str)
-	}
-	return nil
-}
-
-func (e AlertCondition) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *AlertCondition) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e AlertCondition) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
 type AlertNotificationMethod string
 
 const (
@@ -2773,66 +2663,6 @@ func (e *AlertNotificationMethod) UnmarshalJSON(b []byte) error {
 }
 
 func (e AlertNotificationMethod) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-// Alert severity enumeration
-type AlertSeverity string
-
-const (
-	AlertSeverityLow      AlertSeverity = "LOW"
-	AlertSeverityMedium   AlertSeverity = "MEDIUM"
-	AlertSeverityHigh     AlertSeverity = "HIGH"
-	AlertSeverityCritical AlertSeverity = "CRITICAL"
-)
-
-var AllAlertSeverity = []AlertSeverity{
-	AlertSeverityLow,
-	AlertSeverityMedium,
-	AlertSeverityHigh,
-	AlertSeverityCritical,
-}
-
-func (e AlertSeverity) IsValid() bool {
-	switch e {
-	case AlertSeverityLow, AlertSeverityMedium, AlertSeverityHigh, AlertSeverityCritical:
-		return true
-	}
-	return false
-}
-
-func (e AlertSeverity) String() string {
-	return string(e)
-}
-
-func (e *AlertSeverity) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = AlertSeverity(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid AlertSeverity", str)
-	}
-	return nil
-}
-
-func (e AlertSeverity) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *AlertSeverity) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e AlertSeverity) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -3255,6 +3085,63 @@ func (e CoverageStatus) MarshalJSON() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+type EstimationMethod string
+
+const (
+	EstimationMethodDvfComparables  EstimationMethod = "DVF_COMPARABLES"
+	EstimationMethodInseeIndex      EstimationMethod = "INSEE_INDEX"
+	EstimationMethodAcquisitionCost EstimationMethod = "ACQUISITION_COST"
+)
+
+var AllEstimationMethod = []EstimationMethod{
+	EstimationMethodDvfComparables,
+	EstimationMethodInseeIndex,
+	EstimationMethodAcquisitionCost,
+}
+
+func (e EstimationMethod) IsValid() bool {
+	switch e {
+	case EstimationMethodDvfComparables, EstimationMethodInseeIndex, EstimationMethodAcquisitionCost:
+		return true
+	}
+	return false
+}
+
+func (e EstimationMethod) String() string {
+	return string(e)
+}
+
+func (e *EstimationMethod) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = EstimationMethod(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid EstimationMethod", str)
+	}
+	return nil
+}
+
+func (e EstimationMethod) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *EstimationMethod) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e EstimationMethod) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
 type ExportFormat string
 
 const (
@@ -3372,66 +3259,6 @@ func (e *InstrumentAssetType) UnmarshalJSON(b []byte) error {
 }
 
 func (e InstrumentAssetType) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-// Metric type enumeration
-type MetricType string
-
-const (
-	MetricTypeCounter   MetricType = "COUNTER"
-	MetricTypeGauge     MetricType = "GAUGE"
-	MetricTypeHistogram MetricType = "HISTOGRAM"
-	MetricTypeTiming    MetricType = "TIMING"
-)
-
-var AllMetricType = []MetricType{
-	MetricTypeCounter,
-	MetricTypeGauge,
-	MetricTypeHistogram,
-	MetricTypeTiming,
-}
-
-func (e MetricType) IsValid() bool {
-	switch e {
-	case MetricTypeCounter, MetricTypeGauge, MetricTypeHistogram, MetricTypeTiming:
-		return true
-	}
-	return false
-}
-
-func (e MetricType) String() string {
-	return string(e)
-}
-
-func (e *MetricType) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = MetricType(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid MetricType", str)
-	}
-	return nil
-}
-
-func (e MetricType) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *MetricType) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e MetricType) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
@@ -4278,6 +4105,120 @@ func (e *UserOrderField) UnmarshalJSON(b []byte) error {
 }
 
 func (e UserOrderField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ValuationConfidence string
+
+const (
+	ValuationConfidenceHigh        ValuationConfidence = "HIGH"
+	ValuationConfidenceMedium      ValuationConfidence = "MEDIUM"
+	ValuationConfidenceLow         ValuationConfidence = "LOW"
+	ValuationConfidenceUnavailable ValuationConfidence = "UNAVAILABLE"
+)
+
+var AllValuationConfidence = []ValuationConfidence{
+	ValuationConfidenceHigh,
+	ValuationConfidenceMedium,
+	ValuationConfidenceLow,
+	ValuationConfidenceUnavailable,
+}
+
+func (e ValuationConfidence) IsValid() bool {
+	switch e {
+	case ValuationConfidenceHigh, ValuationConfidenceMedium, ValuationConfidenceLow, ValuationConfidenceUnavailable:
+		return true
+	}
+	return false
+}
+
+func (e ValuationConfidence) String() string {
+	return string(e)
+}
+
+func (e *ValuationConfidence) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ValuationConfidence(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ValuationConfidence", str)
+	}
+	return nil
+}
+
+func (e ValuationConfidence) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ValuationConfidence) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ValuationConfidence) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ValuationMode string
+
+const (
+	ValuationModeAuto   ValuationMode = "AUTO"
+	ValuationModeManual ValuationMode = "MANUAL"
+)
+
+var AllValuationMode = []ValuationMode{
+	ValuationModeAuto,
+	ValuationModeManual,
+}
+
+func (e ValuationMode) IsValid() bool {
+	switch e {
+	case ValuationModeAuto, ValuationModeManual:
+		return true
+	}
+	return false
+}
+
+func (e ValuationMode) String() string {
+	return string(e)
+}
+
+func (e *ValuationMode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ValuationMode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ValuationMode", str)
+	}
+	return nil
+}
+
+func (e ValuationMode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ValuationMode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ValuationMode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

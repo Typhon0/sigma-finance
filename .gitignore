@@ -23,6 +23,8 @@ data/
 dist/
 
 # IDE/Agent specific tool directories
+.claude/
+skills-lock.json
 .antigravitycli/
 .sisyphus/
 .freebuff/

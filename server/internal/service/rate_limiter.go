@@ -30,11 +30,15 @@ type rateBucket struct {
 	window    time.Duration
 }
 
-// NewInMemoryRateLimiter creates a new in-memory rate limiter
+// NewInMemoryRateLimiter creates a new in-memory rate limiter.
+// A background goroutine drops expired buckets so the map does not grow without
+// bound, since every distinct key (one per email/IP) would otherwise be kept
+// for the lifetime of the process.
 func NewInMemoryRateLimiter() RateLimiter {
 	limiter := &InMemoryRateLimiter{
 		buckets: make(map[string]*rateBucket),
 	}
+	go limiter.cleanup()
 	return limiter
 }
 

@@ -440,9 +440,66 @@ func mapRealEstateToGQL(domainAsset model.Asset, tags []model.Tag, dayChange, da
 		WindowsCondition:  metadata.WindowsCondition,
 		GeneralQuality:    metadata.GeneralQuality,
 		GeneralCondition:  metadata.GeneralCondition,
-		DayChange:         dayChange,
-		DayChangePercent:  dayChangePercent,
-		CurrentValue:      currentValue,
+		LinkedLoanID:      metadata.LinkedLoanID,
+		OwnershipPercentage: metadata.OwnershipPercentage,
+		OwnershipStructure:  &metadata.OwnershipStructure,
+
+		// BAN Geocoding
+		AddressLabel:  metadata.AddressLabel,
+		CityCode:      metadata.CityCode,
+		BanID:         metadata.BANID,
+		Latitude:      metadata.Latitude,
+		Longitude:     metadata.Longitude,
+		HasOutdoor:    metadata.HasOutdoor,
+		IsGroundFloor: metadata.IsGroundFloor,
+
+		// Financial & Valuation
+		ManualValue:         metadata.ManualValue,
+		EstimatedValue:      metadata.EstimatedValue,
+		EstimatedMin:        metadata.EstimatedMin,
+		EstimatedMax:        metadata.EstimatedMax,
+		EstimatedPricePerM2: metadata.EstimatedPricePerM2,
+		BasePricePerM2:      metadata.BasePricePerM2,
+		ComparablesCount:    intToInt32(metadata.ComparablesCount),
+		SearchRadiusMeters:  intToInt32(metadata.SearchRadiusMeters),
+		LastEstimatedAt:     metadata.LastEstimatedAt,
+
+		// Carte des loyers
+		MarketRentPerM2:      metadata.MarketRentPerM2,
+		EstimatedMonthlyRent: metadata.EstimatedMonthlyRent,
+		EstimatedGrossYield:  metadata.EstimatedGrossYield,
+		RentalR2Adjusted:     metadata.RentalR2Adjusted,
+
+		DayChange:        dayChange,
+		DayChangePercent: dayChangePercent,
+		CurrentValue:     currentValue,
+	}
+
+	if metadata.ValuationMode != nil {
+		m := gqlModel.ValuationMode(*metadata.ValuationMode)
+		realEstate.ValuationMode = &m
+	}
+	if metadata.EstimationMethod != nil {
+		m := gqlModel.EstimationMethod(*metadata.EstimationMethod)
+		realEstate.EstimationMethod = &m
+	}
+	if metadata.ValuationConfidence != nil {
+		c := gqlModel.ValuationConfidence(*metadata.ValuationConfidence)
+		realEstate.ValuationConfidence = &c
+	}
+	if len(metadata.ValuationHistory) > 0 {
+		history := make([]*gqlModel.RealEstateValuationPoint, len(metadata.ValuationHistory))
+		for i, p := range metadata.ValuationHistory {
+			modeStr := p.Mode
+			history[i] = &gqlModel.RealEstateValuationPoint{
+				Date:         p.Date,
+				Value:        p.Value,
+				Mode:         &modeStr,
+				EstimatedMin: p.EstimatedMin,
+				EstimatedMax: p.EstimatedMax,
+			}
+		}
+		realEstate.ValuationHistory = history
 	}
 
 	realEstate.AssetType = mapAssetTypeToGQL(domainAsset.Type)

@@ -9,6 +9,7 @@ import {
 	ExternalLink,
 	HardDrive,
 	Layers,
+	Plus,
 	QrCode,
 	ShieldCheck,
 	Smartphone,
@@ -244,139 +245,14 @@ export function AddWalletDialog({
 	]);
 	const [showWalletConnectModal, setShowWalletConnectModal] = useState(false);
 	const [showMobileLinks, setShowMobileLinks] = useState(false);
+	const [showExtraChains, setShowExtraChains] = useState(false);
 	const [wcUri, setWcUri] = useState("");
 	const [copiedWcUri, setCopiedWcUri] = useState(false);
 
-	// Deduplicate detected web3 extensions across EVM, Solana & Bitcoin
-	const unifiedDetectedWallets = useMemo(() => {
-		const list: {
-			id: string;
-			name: string;
-			icon?: string;
-			chains: string[];
-			connect: () => Promise<void>;
-		}[] = [];
+	const isExtraChainsVisible =
+		showExtraChains || Boolean(multiSolanaAddress) || Boolean(multiBtcAddress);
 
-		const win = typeof window !== "undefined" ? (window as any) : {};
-		const hasPhantom = !!(win.phantom?.solana || win.solana?.isPhantom);
 
-		// 1. Phantom All-in-One
-		if (hasPhantom) {
-			const chains = ["Solana"];
-			if (
-				win.phantom?.ethereum ||
-				evmProviders.some((p) => p.info.name.toLowerCase().includes("phantom"))
-			) {
-				chains.unshift("EVM");
-			}
-			if (
-				win.phantom?.bitcoin ||
-				bitcoinProviders.some((p) => p.id.includes("phantom"))
-			) {
-				chains.push("Bitcoin");
-			}
-			list.push({
-				id: "phantom-all",
-				name: "Phantom",
-				chains,
-				connect: async () => {
-					try {
-						const res = await connectPhantomAll();
-						if (res.solana) setMultiSolanaAddress(toSafeAddressString(res.solana));
-						if (res.evm) setMultiEvmAddress(toSafeAddressString(res.evm));
-						if (res.bitcoin) {
-							setMultiBtcAddress(toSafeAddressString(res.bitcoin));
-						} else {
-							const btcProv = bitcoinProviders.find((p) =>
-								p.id.includes("phantom"),
-							)?.provider;
-							if (btcProv) {
-								try {
-									const btcRes = await connectBitcoin(btcProv);
-									if (btcRes?.address) {
-										setMultiBtcAddress(toSafeAddressString(btcRes.address));
-									}
-								} catch {}
-							}
-						}
-						setMultiName("Phantom Multi-Chain");
-						toast.success("Phantom connecté avec succès !");
-					} catch (err: any) {
-						toast.error(err?.message || "Erreur de connexion Phantom");
-					}
-				},
-			});
-		}
-
-		// 2. EVM Providers (excluding Phantom if already added)
-		evmProviders.forEach((ep) => {
-			if (hasPhantom && ep.info.name.toLowerCase().includes("phantom")) return;
-			list.push({
-				id: ep.info.uuid,
-				name: ep.info.name,
-				icon: ep.info.icon,
-				chains: ["EVM"],
-				connect: async () => {
-					try {
-						const addr = await connectEvm(ep.provider);
-						if (addr) {
-							setMultiEvmAddress(toSafeAddressString(addr));
-							setMultiName(ep.info.name || "EVM Wallet");
-							toast.success(`${ep.info.name} connecté !`);
-						}
-					} catch (err: any) {
-						toast.error(err?.message || "Connexion refusée");
-					}
-				},
-			});
-		});
-
-		// 3. Solana Providers (excluding Phantom)
-		solanaProviders.forEach((sp) => {
-			if (sp.id.includes("phantom")) return;
-			list.push({
-				id: sp.id,
-				name: sp.name,
-				chains: ["Solana"],
-				connect: async () => {
-					try {
-						const addr = await connectSolana(sp.provider);
-						if (addr) {
-							setMultiSolanaAddress(toSafeAddressString(addr));
-							setMultiName(sp.name);
-							toast.success(`${sp.name} connecté !`);
-						}
-					} catch (err: any) {
-						toast.error(err?.message || "Connexion refusée");
-					}
-				},
-			});
-		});
-
-		// 4. Bitcoin Providers (excluding Phantom)
-		bitcoinProviders.forEach((bp) => {
-			if (bp.id.includes("phantom")) return;
-			list.push({
-				id: bp.id,
-				name: bp.name,
-				chains: ["Bitcoin"],
-				connect: async () => {
-					try {
-						const res = await connectBitcoin(bp.provider);
-						if (res?.address) {
-							setMultiBtcAddress(toSafeAddressString(res.address));
-							setMultiName(bp.name);
-							toast.success(`${bp.name} connecté !`);
-						}
-					} catch (err: any) {
-						toast.error(err?.message || "Connexion refusée");
-					}
-				},
-			});
-		});
-
-		return list;
-	}, [evmProviders, solanaProviders, bitcoinProviders]);
 
 	// Standalone single address state
 	const [network, setNetwork] = useState<BlockchainNetwork>(
@@ -447,6 +323,176 @@ export function AddWalletDialog({
 		},
 	);
 
+	// 1-Click generic auto-submit for any detected web3 extension
+	const autoSubmitDetectedWallet = async (params: {
+		name: string;
+		evm?: string;
+		solana?: string;
+		bitcoin?: string;
+	}) => {
+		const evm = params.evm ? toSafeAddressString(params.evm) : "";
+		const solana = params.solana ? toSafeAddressString(params.solana) : "";
+		const bitcoin = params.bitcoin ? toSafeAddressString(params.bitcoin) : "";
+
+		if (!evm && !solana && !bitcoin) {
+			toast.error("Aucune adresse retournée ou connexion refusée par l'extension");
+			return;
+		}
+
+		if (evm) setMultiEvmAddress(evm);
+		if (solana) setMultiSolanaAddress(solana);
+		if (bitcoin) setMultiBtcAddress(bitcoin);
+		setMultiName(`${params.name} Wallet`);
+
+		if (selectedPortfolio && selectedPortfolio !== "no-portfolio") {
+			toast.loading(`Synchronisation automatique de ${params.name}...`);
+			try {
+				await addMultiChainWallet({
+					variables: {
+						input: {
+							portfolioId: selectedPortfolio,
+							name: `${params.name} Wallet`,
+							deviceType: WalletDeviceType.Software,
+							evmAddress: evm || undefined,
+							evmNetworks: evm ? selectedEvmNetworks : undefined,
+							solanaAddress: solana || undefined,
+							bitcoinAddressOrXpub: bitcoin || undefined,
+						},
+					},
+				});
+			} catch (err: any) {
+				toast.error(`Erreur d'enregistrement: ${err?.message || err}`);
+			}
+		} else {
+			toast.success(
+				`${params.name} connecté ! Sélectionnez un portefeuille cible pour terminer.`,
+			);
+		}
+	};
+
+	// Deduplicate detected web3 extensions across EVM, Solana & Bitcoin
+	const unifiedDetectedWallets = useMemo(() => {
+		const list: {
+			id: string;
+			name: string;
+			icon?: string;
+			chains: string[];
+			connect: () => Promise<void>;
+		}[] = [];
+
+		const win = typeof window !== "undefined" ? (window as any) : {};
+		const hasPhantom = !!(win.phantom?.solana || win.solana?.isPhantom);
+
+		// 1. Phantom All-in-One
+		if (hasPhantom) {
+			const chains = ["Solana"];
+			if (
+				win.phantom?.ethereum ||
+				win.ethereum?.isPhantom ||
+				evmProviders.some((p) => p.info.name.toLowerCase().includes("phantom"))
+			) {
+				chains.unshift("EVM");
+			}
+			if (
+				win.phantom?.bitcoin ||
+				bitcoinProviders.some((p) => p.id.includes("phantom"))
+			) {
+				chains.push("Bitcoin");
+			}
+			list.push({
+				id: "phantom-all",
+				name: "Phantom",
+				chains,
+				connect: async () => {
+					try {
+						const res = await connectPhantomAll();
+						await autoSubmitDetectedWallet({
+							name: "Phantom",
+							evm: res.evm,
+							solana: res.solana,
+							bitcoin: res.bitcoin,
+						});
+					} catch (err: any) {
+						toast.error(err?.message || "Erreur de connexion Phantom");
+					}
+				},
+			});
+		}
+
+		// 2. EVM Providers (excluding Phantom if already added)
+		evmProviders.forEach((ep) => {
+			if (hasPhantom && ep.info.name.toLowerCase().includes("phantom")) return;
+			list.push({
+				id: ep.info.uuid,
+				name: ep.info.name,
+				icon: ep.info.icon,
+				chains: ["EVM"],
+				connect: async () => {
+					try {
+						const addr = await connectEvm(ep.provider);
+						await autoSubmitDetectedWallet({
+							name: ep.info.name,
+							evm: addr || undefined,
+						});
+					} catch (err: any) {
+						toast.error(err?.message || "Connexion refusée");
+					}
+				},
+			});
+		});
+
+		// 3. Solana Providers (excluding Phantom)
+		solanaProviders.forEach((sp) => {
+			if (sp.id.includes("phantom")) return;
+			list.push({
+				id: sp.id,
+				name: sp.name,
+				chains: ["Solana"],
+				connect: async () => {
+					try {
+						const addr = await connectSolana(sp.provider);
+						await autoSubmitDetectedWallet({
+							name: sp.name,
+							solana: addr || undefined,
+						});
+					} catch (err: any) {
+						toast.error(err?.message || "Connexion refusée");
+					}
+				},
+			});
+		});
+
+		// 4. Bitcoin Providers (excluding Phantom)
+		bitcoinProviders.forEach((bp) => {
+			if (bp.id.includes("phantom")) return;
+			list.push({
+				id: bp.id,
+				name: bp.name,
+				chains: ["Bitcoin"],
+				connect: async () => {
+					try {
+						const res = await connectBitcoin(bp.provider);
+						await autoSubmitDetectedWallet({
+							name: bp.name,
+							bitcoin: res?.address || undefined,
+						});
+					} catch (err: any) {
+						toast.error(err?.message || "Connexion refusée");
+					}
+				},
+			});
+		});
+
+		return list;
+	}, [
+		evmProviders,
+		solanaProviders,
+		bitcoinProviders,
+		selectedPortfolio,
+		selectedEvmNetworks,
+		addMultiChainWallet,
+	]);
+
 	const [addMultiNetworkWallet, { loading: addingMulti }] = useMutation(
 		ADD_MULTI_NETWORK_WALLET,
 		{
@@ -484,10 +530,32 @@ export function AddWalletDialog({
 		},
 	);
 
+	// Universal address detection on main input
+	const detectedAddressType = useMemo(() => {
+		const raw = toSafeAddressString(multiEvmAddress).trim();
+		if (!raw) return null;
+		if (/^0x[a-fA-F0-9]{40}$/.test(raw)) return "evm";
+		if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(raw) && !raw.startsWith("0x"))
+			return "solana";
+		if (
+			(/^(1|3|bc1)[a-zA-HJ-NP-Z0-9]{25,62}$/.test(raw) ||
+				/^(xpub|ypub|zpub)[a-zA-HJ-NP-Z0-9]{100,115}$/.test(raw)) &&
+			!raw.startsWith("0x")
+		)
+			return "bitcoin";
+		return "unknown";
+	}, [multiEvmAddress]);
+
 	// Validations
 	const evmValidation = useMemo(() => {
 		const trimmed = toSafeAddressString(multiEvmAddress);
 		if (!trimmed) return { isValid: true, message: "" };
+		if (detectedAddressType === "solana") {
+			return { isValid: true, message: "Clé publique Solana reconnue" };
+		}
+		if (detectedAddressType === "bitcoin") {
+			return { isValid: true, message: "Adresse / xpub Bitcoin reconnu" };
+		}
 		const isHex = /^0x[a-fA-F0-9]{40}$/.test(trimmed);
 		return {
 			isValid: isHex,
@@ -495,7 +563,7 @@ export function AddWalletDialog({
 				? "Valid EVM address"
 				: "Must be a 42-character hex address starting with 0x",
 		};
-	}, [multiEvmAddress]);
+	}, [multiEvmAddress, detectedAddressType]);
 
 	const solanaValidation = useMemo(() => {
 		const trimmed = toSafeAddressString(multiSolanaAddress);
@@ -631,16 +699,31 @@ export function AddWalletDialog({
 			return;
 		}
 
+		const rawMain = toSafeAddressString(multiEvmAddress);
+		const isMainSol = detectedAddressType === "solana";
+		const isMainBtc = detectedAddressType === "bitcoin";
+		const isMainEvm =
+			detectedAddressType === "evm" ||
+			(!isMainSol && !isMainBtc && Boolean(rawMain));
+
+		const finalEvm = isMainEvm ? rawMain : undefined;
+		const finalSolana = isMainSol
+			? rawMain
+			: toSafeAddressString(multiSolanaAddress) || undefined;
+		const finalBtc = isMainBtc
+			? rawMain
+			: toSafeAddressString(multiBtcAddress) || undefined;
+
 		await addMultiChainWallet({
 			variables: {
 				input: {
 					portfolioId: selectedPortfolio,
-					name: (multiName || "").trim(),
+					name: (multiName || "").trim() || "Portefeuille Crypto",
 					deviceType: multiDeviceType,
-					evmAddress: toSafeAddressString(multiEvmAddress) || undefined,
-					evmNetworks: toSafeAddressString(multiEvmAddress) ? selectedEvmNetworks : undefined,
-					solanaAddress: toSafeAddressString(multiSolanaAddress) || undefined,
-					bitcoinAddressOrXpub: toSafeAddressString(multiBtcAddress) || undefined,
+					evmAddress: finalEvm,
+					evmNetworks: finalEvm ? selectedEvmNetworks : undefined,
+					solanaAddress: finalSolana,
+					bitcoinAddressOrXpub: finalBtc,
 				},
 			},
 		});
@@ -750,68 +833,67 @@ export function AddWalletDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="sm:max-w-[700px] max-h-[88vh] overflow-y-auto p-0 gap-0 border border-border/80 shadow-lg">
+			<DialogContent className="sm:max-w-[620px] max-h-[90vh] overflow-y-auto p-0 gap-0 border border-border/70 shadow-xl">
 				{/* Header */}
-				<div className="p-6 pb-4 border-b border-border/60 bg-muted/20">
-					<div className="flex items-start justify-between gap-4">
-						<div className="flex items-start gap-3">
-							<div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-2xs">
-								<Wallet className="h-5 w-5" />
+				<div className="p-5 border-b border-border/50 bg-muted/15">
+					<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+						<div className="flex items-center gap-3">
+							<div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary border border-primary/20">
+								<Wallet className="h-4 w-4" />
 							</div>
 							<div>
 								<div className="flex items-center gap-2">
-									<DialogTitle className="text-lg font-semibold tracking-tight text-foreground">
+									<DialogTitle className="text-base font-semibold tracking-tight text-foreground">
 										Connect Crypto Wallet
 									</DialogTitle>
-									<span className="text-[10px] uppercase font-semibold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-										Lecture seule • €0/mois
+									<span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/50">
+										Lecture seule
 									</span>
 								</div>
 								<DialogDescription className="text-xs text-muted-foreground mt-0.5">
-									Synchronisation multi-chaînes pour EVM, Solana et Bitcoin.
-									Aucune clé privée ni seed phrase requise.
+									Synchronisation multi-chaînes EVM, Solana & Bitcoin. Aucune clé requise.
 								</DialogDescription>
 							</div>
 						</div>
-					</div>
 
-					{/* Target Portfolio Selector */}
-					<div className="mt-4 pt-3 border-t border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-						<Label
-							htmlFor="multi-portfolio"
-							className="text-xs font-medium text-muted-foreground shrink-0"
-						>
-							Target Portfolio :
-						</Label>
-						<Select
-							value={selectedPortfolio}
-							onValueChange={setSelectedPortfolio}
-						>
-							<SelectTrigger
-								id="multi-portfolio"
-								className="h-8 text-xs sm:w-[260px] bg-background"
+						{/* Compact Target Portfolio Selector */}
+						<div className="flex items-center gap-2 shrink-0">
+							<Label
+								htmlFor="multi-portfolio"
+								className="text-xs font-medium text-muted-foreground shrink-0"
 							>
-								<SelectValue placeholder="Sélectionner le portefeuille cible" />
-							</SelectTrigger>
-							<SelectContent>
-								{portfolios.length > 0 ? (
-									portfolios.map((p: { id: string; name: string }) => (
-										<SelectItem key={p.id} value={p.id} className="text-xs">
-											{p.name}
+								Target Portfolio :
+							</Label>
+							<Select
+								value={selectedPortfolio}
+								onValueChange={setSelectedPortfolio}
+							>
+								<SelectTrigger
+									id="multi-portfolio"
+									className="h-8 text-xs w-[170px] bg-background"
+								>
+									<SelectValue placeholder="Portefeuille cible" />
+								</SelectTrigger>
+								<SelectContent>
+									{portfolios.length > 0 ? (
+										portfolios.map((p: { id: string; name: string }) => (
+											<SelectItem key={p.id} value={p.id} className="text-xs">
+												{p.name}
+											</SelectItem>
+										))
+									) : (
+										<SelectItem value="no-portfolio" disabled className="text-xs">
+											Aucun portefeuille
 										</SelectItem>
-									))
-								) : (
-									<SelectItem value="no-portfolio" disabled className="text-xs">
-										Aucun portefeuille disponible
-									</SelectItem>
-								)}
-							</SelectContent>
-						</Select>
+									)}
+								</SelectContent>
+							</Select>
+						</div>
 					</div>
 				</div>
 
 				{/* Body Content */}
-				<div className="p-6 pt-4">
+				<div className="p-5 pt-3">
 					<Tabs
 						value={activeTab}
 						onValueChange={(v) =>
@@ -819,7 +901,7 @@ export function AddWalletDialog({
 						}
 						className="w-full space-y-4"
 					>
-						<TabsList className="grid w-full grid-cols-3 bg-muted/50 p-1 rounded-lg border border-border/60">
+						<TabsList className="grid w-full grid-cols-3 bg-muted/40 p-1 rounded-lg border border-border/50">
 							<TabsTrigger
 								value="multichain"
 								className="flex items-center justify-center gap-1.5 text-xs font-medium py-1.5"
@@ -849,7 +931,7 @@ export function AddWalletDialog({
 							className="space-y-4 pt-1 outline-none"
 						>
 							{/* Quick Auto-Detection & Web3 Connect */}
-							<div className="rounded-xl border border-border/70 bg-card p-3.5 space-y-3 shadow-2xs">
+							<div className="rounded-lg border border-border/50 bg-muted/20 p-3 space-y-2.5">
 								<div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
 									<div className="flex items-center gap-2">
 										{unifiedDetectedWallets.length > 0 ? (
@@ -885,14 +967,13 @@ export function AddWalletDialog({
 											<Button
 												key={wallet.id}
 												type="button"
-												variant="secondary"
 												size="sm"
-												className="h-8 text-xs gap-2 bg-primary/10 hover:bg-primary/20 text-foreground border border-primary/25 font-medium px-3 transition-all"
+												className="h-8 text-xs gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-3.5 shadow-xs transition-all cursor-pointer"
 												onClick={wallet.connect}
 											>
-												<Sparkles className="h-3.5 w-3.5 text-primary" />
+												<Sparkles className="h-3.5 w-3.5" />
 												<span>Connecter {wallet.name}</span>
-												<span className="text-[10px] font-mono text-muted-foreground bg-background/80 px-1.5 py-0.5 rounded border border-border/60">
+												<span className="text-[10px] font-mono bg-primary-foreground/20 text-primary-foreground px-1.5 py-0.5 rounded font-normal">
 													{wallet.chains.join(" • ")}
 												</span>
 											</Button>
@@ -907,18 +988,18 @@ export function AddWalletDialog({
 								)}
 
 								{/* Discrete Collapsible for Direct Mobile Deep Links */}
-								<div className="pt-2 border-t border-border/50">
+								<div className="pt-2 border-t border-border/40">
 									<button
 										type="button"
 										onClick={() => setShowMobileLinks(!showMobileLinks)}
-										className="flex items-center justify-between w-full text-left text-xs text-muted-foreground hover:text-foreground py-0.5 transition-colors group"
+										className="flex items-center justify-between w-full text-left text-xs text-muted-foreground hover:text-foreground py-0.5 transition-colors group cursor-pointer"
 									>
 										<span className="flex items-center gap-1.5">
 											<Smartphone className="h-3.5 w-3.5 text-primary" />
 											<span className="font-medium">
 												Connexion Mobile (Deep Links)
 											</span>
-											<span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
+											<span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground border border-border/40">
 												14+ wallets supportés
 											</span>
 										</span>
@@ -956,12 +1037,24 @@ export function AddWalletDialog({
 								</div>
 							</div>
 
+							{/* Visual Separator: 1-Click vs Manual */}
+							<div className="relative my-2.5">
+								<div className="absolute inset-0 flex items-center">
+									<span className="w-full border-t border-border/50" />
+								</div>
+								<div className="relative flex justify-center text-[10px] uppercase font-medium">
+									<span className="bg-background px-2.5 text-muted-foreground tracking-wider">
+										ou saisie manuelle
+									</span>
+								</div>
+							</div>
+
 							{/* Unified Form */}
 							<form
 								onSubmit={handleSubmitMultiChain}
-								className="space-y-3 pt-1"
+								className="space-y-3.5 pt-0.5"
 							>
-								<div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+								<div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
 									<div className="sm:col-span-2 space-y-1">
 										<Label htmlFor="multi-name" className="text-xs">
 											Nom de l'appareil / Wallet
@@ -970,7 +1063,7 @@ export function AddWalletDialog({
 											id="multi-name"
 											value={multiName}
 											onChange={(e) => setMultiName(e.target.value)}
-											className="h-8 text-xs"
+											className="h-8 text-xs bg-background"
 											placeholder="ex: Phantom Wallet, Trust Wallet, Ledger Nano X"
 										/>
 									</div>
@@ -1012,20 +1105,42 @@ export function AddWalletDialog({
 								</div>
 
 								{/* EVM Section */}
-								<div className="rounded-xl border border-border/70 bg-card p-3 space-y-2.5 shadow-2xs">
+								<div className="space-y-1.5 pt-1 border-t border-border/40">
 									<div className="flex items-center justify-between">
 										<Label
 											htmlFor="multi-evm"
-											className="text-xs font-semibold flex items-center gap-1.5 text-foreground"
+											className="text-xs font-medium flex items-center gap-1.5 text-foreground"
 										>
-											<EthIcon className="h-3.5 w-3.5 text-primary" />
-											<span>Adresse EVM (0x...)</span>
+											{detectedAddressType === "solana" ? (
+												<SolanaIcon className="h-3.5 w-3.5 text-purple-400" />
+											) : detectedAddressType === "bitcoin" ? (
+												<BtcIcon className="h-3.5 w-3.5 text-amber-500" />
+											) : (
+												<EthIcon className="h-3.5 w-3.5 text-primary" />
+											)}
+											<span>
+												{detectedAddressType === "solana"
+													? "Adresse Solana"
+													: detectedAddressType === "bitcoin"
+														? "Adresse Bitcoin"
+														: "Adresse EVM (0x...) ou Universelle"}
+											</span>
 										</Label>
 										{Boolean(toSafeAddressString(multiEvmAddress)) && (
 											<span
-												className={`text-[10px] flex items-center gap-1 ${evmValidation.isValid ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-destructive"}`}
+												className={`text-[10px] flex items-center gap-1 ${
+													detectedAddressType === "solana"
+														? "text-purple-400 font-medium"
+														: detectedAddressType === "bitcoin"
+															? "text-amber-500 font-medium"
+															: evmValidation.isValid
+																? "text-emerald-600 dark:text-emerald-400 font-medium"
+																: "text-destructive"
+												}`}
 											>
-												{evmValidation.isValid && (
+												{(detectedAddressType === "solana" ||
+													detectedAddressType === "bitcoin" ||
+													evmValidation.isValid) && (
 													<CheckCircle2 className="h-3 w-3" />
 												)}
 												{evmValidation.message}
@@ -1034,147 +1149,178 @@ export function AddWalletDialog({
 									</div>
 									<Input
 										id="multi-evm"
-										placeholder="0x... ou coller l'adresse partagée EVM (Ethereum, Base, Polygon...)"
+										placeholder="0x... ou coller l'adresse partagée EVM (Ethereum, Base, Polygon...), Solana ou Bitcoin"
 										value={toSafeAddressString(multiEvmAddress)}
 										onChange={(e) => setMultiEvmAddress(e.target.value)}
 										className="h-8 text-xs font-mono bg-background"
 									/>
 
-									{/* EVM Network Selection Chips */}
-									<div className="space-y-1.5 pt-1">
-										<div className="flex items-center justify-between">
-											<span className="text-[11px] text-muted-foreground">
-												Réseaux EVM synchronisés en parallèle :
-											</span>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												className="h-5 text-[10px] px-1.5 text-primary hover:bg-primary/5"
-												onClick={() => {
-													if (
-														selectedEvmNetworks.length === EVM_NETWORKS.length
-													) {
-														setSelectedEvmNetworks([
-															BlockchainNetwork.Ethereum,
-														]);
-													} else {
-														setSelectedEvmNetworks(
-															EVM_NETWORKS.map((n) => n.value),
+									{/* EVM Network Selection Chips (shown when EVM or empty) */}
+									{detectedAddressType !== "solana" &&
+										detectedAddressType !== "bitcoin" && (
+											<div className="flex items-center justify-between gap-2 pt-0.5">
+												<div className="flex items-center gap-1 flex-wrap">
+													{EVM_NETWORKS.map((net) => {
+														const isSelected = selectedEvmNetworks.includes(
+															net.value,
 														);
-													}
-												}}
-											>
-												{selectedEvmNetworks.length === EVM_NETWORKS.length
-													? "Réinitialiser"
-													: "Tout sélectionner"}
-											</Button>
-										</div>
-										<div className="flex flex-wrap gap-1.5">
-											{EVM_NETWORKS.map((net) => {
-												const isSelected = selectedEvmNetworks.includes(
-													net.value,
-												);
-												return (
-													<button
-														key={net.value}
-														type="button"
-														onClick={() => {
-															if (isSelected) {
-																if (selectedEvmNetworks.length > 1) {
-																	setSelectedEvmNetworks(
-																		selectedEvmNetworks.filter(
-																			(n) => n !== net.value,
-																		),
-																	);
-																}
-															} else {
-																setSelectedEvmNetworks([
-																	...selectedEvmNetworks,
-																	net.value,
-																]);
-															}
-														}}
-														className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-medium border transition-colors ${
-															isSelected
-																? "bg-primary/10 border-primary/40 text-foreground"
-																: "bg-background border-border/60 text-muted-foreground hover:bg-muted/40"
-														}`}
-													>
-														<span
-															className={`h-1.5 w-1.5 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`}
-														/>
-														<span>{net.label}</span>
-													</button>
-												);
-											})}
-										</div>
-									</div>
+														return (
+															<button
+																key={net.value}
+																type="button"
+																onClick={() => {
+																	if (isSelected) {
+																		if (selectedEvmNetworks.length > 1) {
+																			setSelectedEvmNetworks(
+																				selectedEvmNetworks.filter(
+																					(n) => n !== net.value,
+																				),
+																			);
+																		}
+																	} else {
+																		setSelectedEvmNetworks([
+																			...selectedEvmNetworks,
+																			net.value,
+																		]);
+																	}
+																}}
+																className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border transition-colors cursor-pointer ${
+																	isSelected
+																		? "bg-primary/10 border-primary/40 text-foreground"
+																		: "bg-muted/30 border-border/50 text-muted-foreground hover:bg-muted/50"
+																}`}
+															>
+																<span
+																	className={`h-1 w-1 rounded-full ${isSelected ? "bg-primary" : "bg-muted-foreground/40"}`}
+																/>
+																<span>{net.label}</span>
+															</button>
+														);
+													})}
+												</div>
+												<button
+													type="button"
+													className="text-[10px] text-muted-foreground hover:text-foreground underline underline-offset-2 shrink-0 cursor-pointer"
+													onClick={() => {
+														if (
+															selectedEvmNetworks.length === EVM_NETWORKS.length
+														) {
+															setSelectedEvmNetworks([
+																BlockchainNetwork.Ethereum,
+															]);
+														} else {
+															setSelectedEvmNetworks(
+																EVM_NETWORKS.map((n) => n.value),
+															);
+														}
+													}}
+												>
+													{selectedEvmNetworks.length === EVM_NETWORKS.length
+														? "Réinitialiser"
+														: "Tout"}
+												</button>
+											</div>
+										)}
 								</div>
 
-								{/* Solana Section */}
-								<div className="rounded-xl border border-border/70 bg-card p-3 space-y-2 shadow-2xs">
-									<div className="flex items-center justify-between">
-										<Label
-											htmlFor="multi-solana"
-											className="text-xs font-semibold flex items-center gap-1.5 text-foreground"
+								{/* Progressive Disclosure for Extra Chains (Solana, Bitcoin) */}
+								{!isExtraChainsVisible ? (
+									<div className="pt-0.5">
+										<button
+											type="button"
+											onClick={() => setShowExtraChains(true)}
+											className="inline-flex items-center gap-1.5 text-xs text-primary hover:text-primary/80 font-medium cursor-pointer transition-colors"
 										>
-											<SolanaIcon className="h-3.5 w-3.5 text-purple-400" />
-											<span>Adresse Solana (Optionnel)</span>
-										</Label>
-										{Boolean(toSafeAddressString(multiSolanaAddress)) && (
-											<span
-												className={`text-[10px] flex items-center gap-1 ${solanaValidation.isValid ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-destructive"}`}
-											>
-												{solanaValidation.isValid && (
-													<CheckCircle2 className="h-3 w-3" />
-												)}
-												{solanaValidation.message}
-											</span>
-										)}
+											<Plus className="h-3.5 w-3.5" />
+											<span>Lier aussi une adresse Solana ou Bitcoin (Multi-chaînes)</span>
+										</button>
 									</div>
-									<Input
-										id="multi-solana"
-										placeholder="Clé publique Solana (base58, ex: 9WzDXwBbmkg8ZTbNMqUxvQRAyrZz...)"
-										value={toSafeAddressString(multiSolanaAddress)}
-										onChange={(e) => setMultiSolanaAddress(e.target.value)}
-										className="h-8 text-xs font-mono bg-background"
-									/>
-								</div>
+								) : null}
 
-								{/* Bitcoin Section */}
-								<div className="rounded-xl border border-border/70 bg-card p-3 space-y-2 shadow-2xs">
-									<div className="flex items-center justify-between">
-										<Label
-											htmlFor="multi-btc"
-											className="text-xs font-semibold flex items-center gap-1.5 text-foreground"
+								<div
+									className={
+										isExtraChainsVisible
+											? "space-y-3 pt-1 border-t border-border/40 animate-in fade-in duration-200"
+											: "hidden"
+									}
+								>
+									<div className="flex items-center justify-between text-xs text-muted-foreground pt-0.5">
+										<span className="font-medium text-foreground">
+											Blockchains additionnelles (Hardware / Multi-chaînes) :
+										</span>
+										<button
+											type="button"
+											onClick={() => setShowExtraChains(false)}
+											className="text-[10px] text-muted-foreground hover:text-foreground cursor-pointer"
 										>
-											<BtcIcon className="h-3.5 w-3.5 text-amber-500" />
-											<span>Adresse / xpub Bitcoin (Optionnel)</span>
-										</Label>
-										{Boolean(toSafeAddressString(multiBtcAddress)) && (
-											<span
-												className={`text-[10px] flex items-center gap-1 ${btcValidation.isValid ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-destructive"}`}
-											>
-												{btcValidation.isValid && (
-													<CheckCircle2 className="h-3 w-3" />
-												)}
-												{btcValidation.message}
-											</span>
-										)}
+											Masquer
+										</button>
 									</div>
-									<Input
-										id="multi-btc"
-										placeholder="bc1q... (SegWit), bc1p... (Taproot) ou zpub..."
-										value={toSafeAddressString(multiBtcAddress)}
-										onChange={(e) => setMultiBtcAddress(e.target.value)}
-										className="h-8 text-xs font-mono bg-background"
-									/>
+
+									{/* Solana Section */}
+									<div className="space-y-1.5">
+										<div className="flex items-center justify-between">
+											<Label
+												htmlFor="multi-solana"
+												className="text-xs font-medium flex items-center gap-1.5 text-foreground"
+											>
+												<SolanaIcon className="h-3.5 w-3.5 text-purple-400" />
+												<span>Adresse Solana (Optionnel)</span>
+											</Label>
+											{Boolean(toSafeAddressString(multiSolanaAddress)) && (
+												<span
+													className={`text-[10px] flex items-center gap-1 ${solanaValidation.isValid ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-destructive"}`}
+												>
+													{solanaValidation.isValid && (
+														<CheckCircle2 className="h-3 w-3" />
+													)}
+													{solanaValidation.message}
+												</span>
+											)}
+										</div>
+										<Input
+											id="multi-solana"
+											placeholder="Clé publique Solana (base58, ex: 9WzDXwBbmkg8ZTbNMqUxvQRAyrZz...)"
+											value={toSafeAddressString(multiSolanaAddress)}
+											onChange={(e) => setMultiSolanaAddress(e.target.value)}
+											className="h-8 text-xs font-mono bg-background"
+										/>
+									</div>
+
+									{/* Bitcoin Section */}
+									<div className="space-y-1.5">
+										<div className="flex items-center justify-between">
+											<Label
+												htmlFor="multi-btc"
+												className="text-xs font-medium flex items-center gap-1.5 text-foreground"
+											>
+												<BtcIcon className="h-3.5 w-3.5 text-amber-500" />
+												<span>Adresse / xpub Bitcoin (Optionnel)</span>
+											</Label>
+											{Boolean(toSafeAddressString(multiBtcAddress)) && (
+												<span
+													className={`text-[10px] flex items-center gap-1 ${btcValidation.isValid ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-destructive"}`}
+												>
+													{btcValidation.isValid && (
+														<CheckCircle2 className="h-3 w-3" />
+													)}
+													{btcValidation.message}
+												</span>
+											)}
+										</div>
+										<Input
+											id="multi-btc"
+											placeholder="bc1q... (SegWit), bc1p... (Taproot) ou zpub..."
+											value={toSafeAddressString(multiBtcAddress)}
+											onChange={(e) => setMultiBtcAddress(e.target.value)}
+											className="h-8 text-xs font-mono bg-background"
+										/>
+									</div>
 								</div>
 
 								{/* Security Guarantee */}
-								<div className="bg-muted/40 p-2.5 rounded-lg border border-border/50 text-[11px] text-muted-foreground flex items-center gap-2.5">
-									<ShieldCheck className="h-4 w-4 text-primary shrink-0" />
+								<div className="bg-muted/30 p-2.5 rounded-md border border-border/40 text-[11px] text-muted-foreground flex items-center gap-2">
+									<ShieldCheck className="h-3.5 w-3.5 text-primary shrink-0" />
 									<span className="leading-relaxed">
 										Lecture seule sécurisée. Sigma Finance ne stocke que vos
 										adresses publiques pour calculer vos soldes. Aucune clé
@@ -1183,10 +1329,10 @@ export function AddWalletDialog({
 								</div>
 
 								{/* Submit Footer */}
-								<div className="flex items-center justify-end gap-2 pt-2">
+								<div className="flex items-center justify-end gap-2 pt-2 border-t border-border/40">
 									<Button
 										type="button"
-										variant="outline"
+										variant="ghost"
 										size="sm"
 										onClick={handleClose}
 										className="text-xs h-8"
@@ -1197,7 +1343,7 @@ export function AddWalletDialog({
 										type="submit"
 										size="sm"
 										disabled={!isMultiFormValid || addingMultiChain}
-										className="gap-1.5 text-xs h-8 font-medium"
+										className="gap-1.5 text-xs h-8 font-medium bg-primary text-primary-foreground hover:bg-primary/95 shadow-xs"
 									>
 										<Sparkles className="h-3.5 w-3.5" />
 										{addingMultiChain

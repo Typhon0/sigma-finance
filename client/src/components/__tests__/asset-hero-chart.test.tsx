@@ -112,6 +112,42 @@ describe("SignedDelta", () => {
 		expect(screen.getByText("-$42.00 (-1.50%)")).toBeInTheDocument();
 		expect(screen.getByText("1D")).toBeInTheDocument();
 	});
+
+	it("renders negative delta in text-gain when variant is liability (debt reduction)", () => {
+		render(
+			<SignedDelta
+				value={-35372}
+				percent={-17.52}
+				label="ALL"
+				title="Debt amortized"
+				formatCurrency={(v) => `€${v.toLocaleString()}`}
+				variant="liability"
+			/>,
+		);
+
+		const el = screen.getByTitle("Debt amortized");
+		expect(el).toHaveClass("text-gain");
+		expect(screen.getByText("-€35,372 (-17.52%)")).toBeInTheDocument();
+		expect(screen.getByText("ALL · AMORTIZED")).toBeInTheDocument();
+	});
+
+	it("renders positive delta in text-loss when variant is liability (new borrowing)", () => {
+		render(
+			<SignedDelta
+				value={5000}
+				percent={2.5}
+				label="1M"
+				title="New debt"
+				formatCurrency={(v) => `€${v.toLocaleString()}`}
+				variant="liability"
+			/>,
+		);
+
+		const el = screen.getByTitle("New debt");
+		expect(el).toHaveClass("text-loss");
+		expect(screen.getByText("+€5,000 (+2.50%)")).toBeInTheDocument();
+		expect(screen.getByText("1M")).toBeInTheDocument();
+	});
 });
 
 describe("AssetHeroChart", () => {
@@ -181,5 +217,45 @@ describe("AssetHeroChart", () => {
 
 		expect(screen.getByText("+$120.00 (+31.50%)")).toBeInTheDocument();
 		expect(screen.getByText("All-Time")).toBeInTheDocument();
+	});
+
+	it("hides benchmark selector when variant is liability", () => {
+		render(
+			<AssetHeroChart
+				title="Total Debt Outstanding"
+				data={mockData}
+				totalEquity={166449}
+				formatCurrency={(v) => `€${v.toLocaleString()}`}
+				timeRange="ALL"
+				onTimeRangeChange={vi.fn()}
+				variant="liability"
+			/>,
+		);
+
+		expect(screen.queryByText(/No Benchmark/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/vs S&P 500/i)).not.toBeInTheDocument();
+	});
+
+	it("renders liability multi-year time ranges (1Y, 3Y, 5Y, 10Y, ALL) and hides 1D/7D", () => {
+		render(
+			<AssetHeroChart
+				title="Total Debt Outstanding"
+				data={mockData}
+				totalEquity={166449}
+				formatCurrency={(v) => `€${v.toLocaleString()}`}
+				timeRange="1Y"
+				onTimeRangeChange={vi.fn()}
+				variant="liability"
+			/>,
+		);
+
+		expect(screen.getByRole("button", { name: /Show 1Y performance/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Show 3Y performance/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Show 5Y performance/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Show 10Y performance/i })).toBeInTheDocument();
+		expect(screen.getByRole("button", { name: /Show ALL performance/i })).toBeInTheDocument();
+
+		expect(screen.queryByRole("button", { name: /Show 1D performance/i })).not.toBeInTheDocument();
+		expect(screen.queryByRole("button", { name: /Show 7D performance/i })).not.toBeInTheDocument();
 	});
 });

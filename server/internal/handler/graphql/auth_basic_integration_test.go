@@ -46,18 +46,8 @@ func TestBasicAuthenticationIntegration(t *testing.T) {
 			}
 		}
 		require.True(t, response.Success, "Registration should succeed")
-		require.NotNil(t, response.Data, "Registration should return data")
-
-		// Verify user data
-		assert.NotEmpty(t, response.Data.User.ID, "User ID should be set")
-		assert.Equal(t, email, response.Data.User.Email, "Email should match")
-		assert.Equal(t, name, response.Data.User.Name, "Name should match")
-		assert.False(t, response.Data.User.EmailVerified, "Email should not be verified initially")
-
-		// Verify tokens
-		assert.NotEmpty(t, response.Data.Token, "JWT token should be provided")
-		assert.NotEmpty(t, response.Data.RefreshToken, "Refresh token should be provided")
-		assert.True(t, response.Data.ExpiresAt.After(time.Now()), "Token should not be expired")
+		// Registration does not issue a session for an unverified account.
+		assert.Nil(t, response.Data, "Registration should not return auth data")
 
 		// Verify user was created in database
 		userRepo := repository.NewUserRepository(testDB.DB)
@@ -291,8 +281,22 @@ func TestBasicAuthenticationIntegration(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, registerResponse.Success)
 
-		originalToken := registerResponse.Data.Token
-		originalRefreshToken := registerResponse.Data.RefreshToken
+		// Registration no longer issues a session; verify the address and log in.
+		userRepo := repository.NewUserRepository(testDB.DB)
+		user, err := userRepo.GetByEmail(ctx, email)
+		require.NoError(t, err)
+		require.NoError(t, userRepo.UpdateEmailVerified(ctx, user.ID, true))
+
+		loginResponse, err := mutationResolver.Login(ctx, gqlModel.LoginInput{
+			Email:    email,
+			Password: "TokenPass123!",
+		})
+		require.NoError(t, err)
+		require.True(t, loginResponse.Success)
+		require.NotNil(t, loginResponse.Data)
+
+		originalToken := loginResponse.Data.Token
+		originalRefreshToken := loginResponse.Data.RefreshToken
 
 		// Add a small delay to ensure different timestamps in JWT
 		time.Sleep(time.Second)

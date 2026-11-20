@@ -16,6 +16,7 @@ type ISyncRepository interface {
 	CreateCredential(ctx context.Context, cred *model.SyncCredential) error
 	GetCredentialByID(ctx context.Context, id string) (*model.SyncCredential, error)
 	GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error)
+	GetCredentialByPortfolioAndProvider(ctx context.Context, userID string, portfolioID string, provider string) (*model.SyncCredential, error)
 	ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error)
 	UpdateCredential(ctx context.Context, cred *model.SyncCredential) error
 	DeleteCredential(ctx context.Context, id string) error
@@ -23,6 +24,7 @@ type ISyncRepository interface {
 	GetConnectionByID(ctx context.Context, id string) (*model.SyncConnection, error)
 	GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error)
 	ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error)
+	ListConnectionsByCredentialID(ctx context.Context, credentialID string) ([]*model.SyncConnection, error)
 	UpdateConnection(ctx context.Context, conn *model.SyncConnection) error
 	DeleteConnection(ctx context.Context, id string) error
 	CreateSyncRun(ctx context.Context, run *model.SyncRun) error
@@ -66,10 +68,17 @@ func (r *SyncRepository) CreateCredential(ctx context.Context, cred *model.SyncC
 		q = q.ExcludeColumn("id")
 	}
 	if cred.UserID != "" {
-		q = q.On("CONFLICT (user_id, provider) WHERE user_id IS NOT NULL DO UPDATE").
-			Set("encrypted_data = EXCLUDED.encrypted_data").
-			Set("status = EXCLUDED.status").
-			Set("updated_at = EXCLUDED.updated_at")
+		if cred.PortfolioID != nil && *cred.PortfolioID != "" {
+			q = q.On("CONFLICT (user_id, portfolio_id, provider) WHERE portfolio_id IS NOT NULL DO UPDATE").
+				Set("encrypted_data = EXCLUDED.encrypted_data").
+				Set("status = EXCLUDED.status").
+				Set("updated_at = EXCLUDED.updated_at")
+		} else {
+			q = q.On("CONFLICT (user_id, provider) WHERE user_id IS NOT NULL AND portfolio_id IS NULL DO UPDATE").
+				Set("encrypted_data = EXCLUDED.encrypted_data").
+				Set("status = EXCLUDED.status").
+				Set("updated_at = EXCLUDED.updated_at")
+		}
 	}
 
 	return q.Returning("*").Scan(ctx)
@@ -112,6 +121,50 @@ func (r *SyncRepository) GetCredentialByProvider(ctx context.Context, userID str
 		return nil, err
 	}
 	return &cred, nil
+}
+
+// GetCredentialByPortfolioAndProvider retrieves a sync credential specifically for a portfolio,
+// falling back to user-level global credential, and then system credential.
+func (r *SyncRepository) GetCredentialByPortfolioAndProvider(ctx context.Context, userID string, portfolioID string, provider string) (*model.SyncCredential, error) {
+	var cred model.SyncCredential
+	q := r.db.NewSelect().Model(&cred)
+
+	if userID == "" {
+		q = q.Where("sc.is_system = TRUE AND sc.provider = ?", provider)
+	} else if portfolioID != "" {
+		q = q.Where("((sc.user_id = ? AND sc.portfolio_id = ?) OR (sc.user_id = ? AND sc.portfolio_id IS NULL) OR (sc.is_system = TRUE AND sc.user_id IS NULL)) AND sc.provider = ?", userID, portfolioID, userID, provider).
+			OrderExpr("CASE WHEN sc.portfolio_id = ? THEN 1 WHEN sc.user_id = ? AND sc.portfolio_id IS NULL THEN 2 ELSE 3 END ASC", portfolioID, userID).
+			Limit(1)
+	} else {
+		q = q.Where("(sc.user_id = ? OR (sc.is_system = TRUE AND sc.user_id IS NULL)) AND sc.provider = ?", userID, provider).
+			OrderExpr("sc.is_system ASC").
+			Limit(1)
+	}
+
+	err := q.Scan(ctx)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) || isInvalidIDError(err) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &cred, nil
+}
+
+// ListConnectionsByCredentialID retrieves all sync connections associated with a specific credential.
+func (r *SyncRepository) ListConnectionsByCredentialID(ctx context.Context, credentialID string) ([]*model.SyncConnection, error) {
+	var conns []*model.SyncConnection
+	err := r.db.NewSelect().
+		Model(&conns).
+		Relation("Credential").
+		Relation("Account").
+		Where("sconn.credential_id = ?", credentialID).
+		Order("sconn.created_at ASC").
+		Scan(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return conns, nil
 }
 
 // ListCredentialsByUser retrieves all credentials for a given user, including system credentials.

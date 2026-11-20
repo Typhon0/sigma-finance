@@ -20,7 +20,7 @@ type Position struct {
 	Quantity            decimal.Decimal  `bun:"quantity,type:numeric,notnull,default:0"`
 	OwnershipPercentage decimal.Decimal  `bun:"ownership_percentage,type:decimal(5,2),default:100.00"`
 	AverageCostBasis    *decimal.Decimal `bun:"average_cost_basis,type:numeric"` // Cost per unit
-	TotalCostBasis      *Money           `bun:"total_cost_basis"`                      // Total cost in cents
+	TotalCostBasis      *Money           `bun:"total_cost_basis"`                // Total cost in cents
 	// RealizedGainLoss is the cumulative ECONOMIC realized P/L (average-cost
 	// method). It is deliberately a different number from the FISCAL
 	// lot-matched G/L recorded per disposal in tax_lot_dispositions.
@@ -192,7 +192,7 @@ func (p *Position) addToCostBasis(quantity decimal.Decimal, price decimal.Decima
 		}
 
 		newTotalCost := currentTotalCost.Add(decimal.NewFromInt(int64(amount)))
-		newTotalCostMoney := Money(newTotalCost.IntPart())
+		newTotalCostMoney := Money(newTotalCost.Round(0).IntPart())
 
 		newAverageCost := newTotalCost.Div(newQuantity).Div(decimal.NewFromInt(100)) // Divide by quantity then convert from cents to dollars
 
@@ -224,7 +224,7 @@ func (p *Position) reduceFromCostBasis(quantity decimal.Decimal, price decimal.D
 			soldProportion := quantity.Div(p.Quantity)
 			soldCost := currentTotalCost.Mul(soldProportion)
 			newTotalCost := currentTotalCost.Sub(soldCost)
-			newTotalCostMoney := Money(newTotalCost.IntPart())
+			newTotalCostMoney := Money(newTotalCost.Round(0).IntPart())
 
 			p.Quantity = newQuantity
 			p.TotalCostBasis = &newTotalCostMoney
@@ -248,7 +248,7 @@ func (p *Position) CalculateValue(currentPrice *decimal.Decimal) *PositionValue 
 		value.CurrentPrice = currentPrice
 		// Calculate current value: quantity * price * ownership percentage
 		currentValueDecimal := p.Quantity.Mul(*currentPrice).Mul(p.OwnershipPercentage.Div(decimal.NewFromInt(100)))
-		value.CurrentValue = Money(currentValueDecimal.Mul(decimal.NewFromInt(100)).IntPart()) // Convert to cents
+		value.CurrentValue = Money(currentValueDecimal.Mul(decimal.NewFromInt(100)).Round(0).IntPart()) // Convert to cents
 	}
 
 	// Calculate unrealized gain/loss if we have cost basis
@@ -273,14 +273,14 @@ func (p *Position) CalculateRealizedGains(soldQuantity decimal.Decimal, salePric
 	if p.AverageCostBasis == nil {
 		// No cost basis recorded, assume zero cost (gift, inheritance, etc.)
 		saleAmount := soldQuantity.Mul(salePrice).Mul(decimal.NewFromInt(100)) // Convert to cents
-		return Money(saleAmount.IntPart()), nil
+		return Money(saleAmount.Round(0).IntPart()), nil
 	}
 
 	// Calculate cost basis of sold shares
 	soldCostBasis := soldQuantity.Mul(*p.AverageCostBasis).Mul(decimal.NewFromInt(100)) // Convert to cents
 	saleAmount := soldQuantity.Mul(salePrice).Mul(decimal.NewFromInt(100))              // Convert to cents
 
-	realizedGain := Money(saleAmount.IntPart()) - Money(soldCostBasis.IntPart())
+	realizedGain := Money(saleAmount.Round(0).IntPart()) - Money(soldCostBasis.Round(0).IntPart())
 	return realizedGain, nil
 }
 

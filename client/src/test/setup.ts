@@ -39,3 +39,16 @@ const localStorageMock = {
 	key: vi.fn((index: number) => Array.from(store.keys())[index] ?? null),
 };
 global.localStorage = localStorageMock as unknown as Storage;
+
+// Global mock for TanStack Router to allow SPA navigation hooks in test environments without RouterProvider
+vi.mock("@tanstack/react-router", async (importOriginal) => {
+	const actual = await importOriginal<Record<string, unknown>>();
+	return {
+		...actual,
+		useNavigate: () => vi.fn(),
+		useRouter: () => ({
+			navigate: vi.fn(),
+			state: {},
+		}),
+	};
+});

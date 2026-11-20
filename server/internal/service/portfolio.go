@@ -222,6 +222,11 @@ func (s *PortfolioService) ValidatePortfolioOwnership(ctx context.Context, portf
 		return err
 	}
 
+	callerUser, _ := s.uow.User().GetByID(ctx, userID)
+	if callerUser != nil && callerUser.IsAdmin() {
+		return nil
+	}
+
 	portfolio, err := s.uow.Portfolio().GetByID(ctx, portfolioID)
 	if err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
@@ -654,11 +659,15 @@ func (s *PortfolioService) AddAssetToPortfolio(ctx context.Context, portfolioID,
 			if stock, stockErr := uow.Stock().GetByID(ctx, assetID); stockErr == nil && stock != nil {
 				stock.Quantity = decimal.NewFromFloat(newQty)
 				stock.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
-				_ = uow.Stock().Update(ctx, stock)
+				if updateErr := uow.Stock().Update(ctx, stock); updateErr != nil {
+					return fmt.Errorf("failed to sync legacy stock holding: %w", updateErr)
+				}
 			} else if fund, fundErr := uow.Fund().GetByID(ctx, assetID); fundErr == nil && fund != nil {
 				fund.Quantity = decimal.NewFromFloat(newQty)
 				fund.BuyingPrice = decimal.NewFromFloat(newAvgPrice)
-				_ = uow.Fund().Update(ctx, fund)
+				if updateErr := uow.Fund().Update(ctx, fund); updateErr != nil {
+					return fmt.Errorf("failed to sync legacy fund holding: %w", updateErr)
+				}
 			}
 		} else if err != nil && !errors.Is(err, repository.ErrNotFound) {
 			return fmt.Errorf("failed to check existing portfolio asset: %w", err)
@@ -1082,11 +1091,15 @@ func (s *PortfolioService) UpdateAssetInPortfolio(ctx context.Context, portfolio
 		if stock, stockErr := uow.Stock().GetByID(ctx, assetID); stockErr == nil && stock != nil {
 			stock.Quantity = decimal.NewFromFloat(quantity)
 			stock.BuyingPrice = decimal.NewFromFloat(price)
-			_ = uow.Stock().Update(ctx, stock)
+			if updateErr := uow.Stock().Update(ctx, stock); updateErr != nil {
+				return fmt.Errorf("failed to sync legacy stock holding: %w", updateErr)
+			}
 		} else if fund, fundErr := uow.Fund().GetByID(ctx, assetID); fundErr == nil && fund != nil {
 			fund.Quantity = decimal.NewFromFloat(quantity)
 			fund.BuyingPrice = decimal.NewFromFloat(price)
-			_ = uow.Fund().Update(ctx, fund)
+			if updateErr := uow.Fund().Update(ctx, fund); updateErr != nil {
+				return fmt.Errorf("failed to sync legacy fund holding: %w", updateErr)
+			}
 		}
 
 		return nil
@@ -2379,13 +2392,18 @@ func (s *PortfolioService) resolveAssetQuoteCurrency(ctx context.Context, uow re
 	if len(asset.Metadata) > 0 {
 		var metadata map[string]interface{}
 		if err := json.Unmarshal(asset.Metadata, &metadata); err == nil {
-			if value, ok := metadata["currency"].(string); ok {
+			if value, ok := metadata["currency"].(string); ok && value != "" {
 				currency := model.Currency(strings.ToUpper(strings.TrimSpace(value)))
 				if currency.IsValid() {
 					return currency, nil
 				}
 			}
 		}
+	}
+
+	// For real estate, watch, collectibles, or manual non-tradeable assets without an explicit currency, fallback to EUR
+	if asset.Type == model.AssetTypeRealEstate || asset.Type == model.AssetTypeWatch || asset.Type == model.AssetTypeOtherValuable || !asset.IsTradeable {
+		return model.CurrencyEUR, nil
 	}
 
 	return "", fmt.Errorf("unable to resolve quote currency for asset %s", asset.ID)

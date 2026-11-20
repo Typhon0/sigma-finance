@@ -1,33 +1,46 @@
+import { motion, useReducedMotion } from "framer-motion";
 import {
 	Bath,
 	Bed,
 	Building2,
-	Calendar as CalendarIcon,
+	Calendar,
 	Car,
-	ChevronLeft,
-	ChevronRight,
-	Construction,
-	Droplets,
+	Coins,
 	FileText,
+	Home,
 	Info,
 	Layers,
-	Leaf,
-	Link,
 	MapPin,
-	Minus,
-	Mountain,
+	Maximize,
 	Plus,
-	Sofa,
-	Trash2,
-	UserPlus,
-	Users,
+	ShieldCheck,
+	Sparkles,
+	Trees,
 	Waves,
 	X,
+	Zap,
+	AlertCircle,
+	CheckCircle2,
+	TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useLazyQuery } from "@apollo/client";
+import { ESTIMATE_REAL_ESTATE, FETCH_ADEME_DPE } from "@/graphql/queries/real-estate";
+import { AddressAutocomplete, type AddressData } from "./AddressAutocomplete";
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { usePortfolio } from "@/components/PortfolioProvider";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -37,2015 +50,1662 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { useCurrency } from "@/hooks/use-currency";
+import { cn } from "@/lib/utils";
+
+export interface AddRealEstateFormSubmitData {
+	name: string;
+	type: string;
+	address: string;
+	city: string;
+	state?: string;
+	postalCode?: string;
+	country: string;
+	surface?: string;
+	currentValuation: string;
+	purchasePrice: string;
+	purchaseDate?: string;
+	yearBuilt?: string;
+	bedrooms?: string;
+	bathrooms?: string;
+	monthlyRent?: string;
+
+	category?: string;
+	landSurface?: string;
+	rooms?: string;
+	floor?: string;
+	totalFloors?: string;
+	garages?: string;
+	parkingSpaces?: string;
+	energyLabel?: string;
+	condition?: string;
+	agencyFees?: string;
+	notaryFees?: string;
+	renovationFees?: string;
+	furnishingCosts?: string;
+	rentalType?: string;
+	rentalPeriod?: string;
+	utilityCosts?: string;
+	yearlyMiscCosts?: string;
+	hasGarden?: boolean;
+	hasBalcony?: boolean;
+	hasLift?: boolean;
+	hasPool?: boolean;
+	hasSauna?: boolean;
+	isFurnished?: boolean;
+	isNewConstruction?: boolean;
+	kitchenQuality?: string;
+	kitchenCondition?: string;
+	bathroomQuality?: string;
+	bathroomCondition?: string;
+	flooringQuality?: string;
+	flooringCondition?: string;
+	windowsQuality?: string;
+	windowsCondition?: string;
+	generalQuality?: string;
+	generalCondition?: string;
+
+	linkedLoanId?: string;
+	ownershipPercentage?: string;
+	ownershipStructure?: string;
+
+	// BAN & Auto-Valuation
+	addressLabel?: string;
+	cityCode?: string;
+	banId?: string;
+	latitude?: number;
+	longitude?: number;
+	hasOutdoor?: boolean;
+	isGroundFloor?: boolean;
+	valuationMode?: "AUTO" | "MANUAL";
+	manualValue?: string;
+}
 
 interface AddRealEstateFormProps {
 	open: boolean;
 	onClose: () => void;
-	// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-	onSubmit: (data: any) => void;
+	onSubmit: (data: AddRealEstateFormSubmitData) => Promise<void> | void;
 }
 
-type FormStep =
-	| "description"
-	| "characteristics"
-	| "rental"
-	| "details"
-	| "quality"
-	| "attached-loan"
-	| "ownership";
+type FormTab = "identity" | "financials" | "specifications" | "amenities" | "rental";
 
-interface CoOwner {
-	id: string;
-	type: "registered" | "custom";
-	userId?: string;
-	name: string;
-	percentage: string;
-}
+const PROPERTY_TYPES = [
+	{ value: "House", label: "House / Villa" },
+	{ value: "Apartment", label: "Apartment / Condo" },
+	{ value: "Building", label: "Multi-Family / Building" },
+	{ value: "Commercial", label: "Commercial / Retail" },
+	{ value: "Office", label: "Office Space" },
+	{ value: "Land", label: "Land / Plot" },
+	{ value: "Parking", label: "Parking / Garage" },
+	{ value: "Other", label: "Other Real Estate" },
+];
 
-interface CompanyOwner {
-	id: string;
-	type: "existing" | "new";
-	companyId?: string;
-	name: string;
-	registrationNumber: string;
-	legalForm: string;
-	percentage: string;
-}
+const PROPERTY_CATEGORIES = [
+	{ value: "Residential", label: "Residential" },
+	{ value: "Commercial", label: "Commercial" },
+	{ value: "Industrial", label: "Industrial / Logistics" },
+	{ value: "Land", label: "Land / Development" },
+	{ value: "Special", label: "Special Asset / Other" },
+];
 
-interface FormData {
-	// Description
-	name: string;
-	description: string;
+const ENERGY_LABELS = ["A", "B", "C", "D", "E", "F", "G"];
 
-	// Location
-	address: string;
-	city: string;
-	state: string;
-	postalCode: string;
-	country: string;
+const CONDITION_OPTIONS = [
+	{ value: "New", label: "Brand New / Mint" },
+	{ value: "Excellent", label: "Excellent Condition" },
+	{ value: "Good", label: "Good / Maintained" },
+	{ value: "Fair", label: "Fair / Refresh needed" },
+	{ value: "To Renovate", label: "Renovation Needed" },
+	{ value: "Heavy Renovation", label: "Full Rehabilitation" },
+];
 
-	// Characteristics
-	type: string;
-	category: string;
-	purchasePrice: string;
-	currentValuation: string;
-	surface: string;
-	landSurface: string;
-	constructionPeriod: string;
-	energyLabel: string;
-	agencyFees: string;
-	notaryFees: string;
-	renovationFees: string;
-	purchaseDate: Date | undefined;
-	furnishingCosts: string;
+const QUALITY_OPTIONS = [
+	{ value: "Luxury", label: "Luxury / High-End" },
+	{ value: "High", label: "Superior Quality" },
+	{ value: "Standard", label: "Standard / Good" },
+	{ value: "Basic", label: "Basic / Economy" },
+];
 
-	// Rental
-	rentalType: string;
-	rentalPeriod: string;
-	monthlyRent: string;
-	utilityCosts: string;
-	yearlyMiscCosts: string;
+const RENTAL_TYPES = [
+	{ value: "None", label: "None (Owner Occupied / Vacant)" },
+	{ value: "Unfurnished", label: "Long-term Unfurnished" },
+	{ value: "Furnished", label: "Long-term Furnished" },
+	{ value: "Short-term", label: "Short-term / Seasonal (Airbnb)" },
+	{ value: "Commercial", label: "Commercial Lease" },
+];
 
-	// Details
-	floorOfApartment: string;
-	floorsInBuilding: string;
-	rooms: string;
-	bathrooms: string;
-	garages: string;
-	parkingSpaces: string;
-	garden: string;
-	balcony: string;
-	lift: boolean;
-	newConstruction: boolean;
-	pool: boolean;
-	sauna: boolean;
-	furnished: boolean;
-
-	// Quality
-	condition: string;
-	kitchenQuality: string;
-	kitchenCondition: string;
-	bathroomQuality: string;
-	bathroomCondition: string;
-	flooringQuality: string;
-	flooringCondition: string;
-	windowsQuality: string;
-	windowsCondition: string;
-	generalQuality: string;
-	generalCondition: string;
-
-	// Attached loan
-	linkedLoanId: string;
-
-	// Ownership
-	ownershipMode: "personal" | "company";
-	ownershipPercentage: string;
-	coOwners: CoOwner[];
-	companyOwners: CompanyOwner[];
-}
+const OWNERSHIP_STRUCTURES = [
+	{ value: "Nom propre", label: "Nom propre (Pleine propriété)" },
+	{ value: "Indivision", label: "Indivision" },
+	{ value: "SCI à l'IR", label: "SCI à l'IR" },
+	{ value: "SCI à l'IS", label: "SCI à l'IS" },
+	{ value: "SARL de famille", label: "SARL de famille" },
+	{ value: "Nue-propriété", label: "Démembrement (Nue-propriété)" },
+	{ value: "Usufruit", label: "Démembrement (Usufruit)" },
+];
 
 export function AddRealEstateForm({ open, onClose, onSubmit }: AddRealEstateFormProps) {
-	const [currentStep, setCurrentStep] = useState<FormStep>("description");
-	const [formData, setFormData] = useState<FormData>({
-		name: "",
-		description: "",
-		address: "",
-		city: "",
-		state: "",
-		postalCode: "",
-		country: "",
-		type: "",
-		category: "",
-		purchasePrice: "",
-		currentValuation: "",
-		surface: "",
-		landSurface: "",
-		constructionPeriod: "",
-		energyLabel: "",
-		agencyFees: "",
-		notaryFees: "",
-		renovationFees: "",
-		purchaseDate: undefined,
-		furnishingCosts: "",
-		rentalType: "",
-		rentalPeriod: "",
-		monthlyRent: "",
-		utilityCosts: "",
-		yearlyMiscCosts: "",
-		floorOfApartment: "0",
-		floorsInBuilding: "0",
-		rooms: "0",
-		bathrooms: "0",
-		garages: "0",
-		parkingSpaces: "0",
-		garden: "",
-		balcony: "",
-		lift: false,
-		newConstruction: false,
-		pool: false,
-		sauna: false,
-		furnished: false,
-		condition: "",
-		kitchenQuality: "",
-		kitchenCondition: "",
-		bathroomQuality: "",
-		bathroomCondition: "",
-		flooringQuality: "",
-		flooringCondition: "",
-		windowsQuality: "",
-		windowsCondition: "",
-		generalQuality: "",
-		generalCondition: "",
-		linkedLoanId: "",
-		ownershipMode: "personal",
-		ownershipPercentage: "100",
-		coOwners: [],
-		companyOwners: [],
+	const shouldReduceMotion = useReducedMotion();
+	const { formatCurrency } = useCurrency();
+	const { assets } = usePortfolio();
+	const availableLoans = useMemo(
+		() => assets.filter((a) => a.type === "loan"),
+		[assets],
+	);
+
+	const [activeTab, setActiveTab] = useState<FormTab>("identity");
+	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	// 1. Identity & Location & Structure
+	const [name, setName] = useState("");
+	const [category, setCategory] = useState("Residential");
+	const [propertyType, setPropertyType] = useState("House");
+	const [address, setAddress] = useState("");
+	const [city, setCity] = useState("");
+	const [stateProvince, setStateProvince] = useState("");
+	const [postalCode, setPostalCode] = useState("");
+	const [country, setCountry] = useState("France");
+
+	// BAN & Auto-Valuation State
+	const [addressLabel, setAddressLabel] = useState("");
+	const [cityCode, setCityCode] = useState("");
+	const [banId, setBanId] = useState("");
+	const [latitude, setLatitude] = useState<number | undefined>(undefined);
+	const [longitude, setLongitude] = useState<number | undefined>(undefined);
+	const [valuationMode, setValuationMode] = useState<"AUTO" | "MANUAL">("AUTO");
+	const [manualValue, setManualValue] = useState("");
+	const [detectedDpe, setDetectedDpe] = useState<{
+		rating: string;
+		surfaceM2?: number;
+		diagnosticDate?: string;
+	} | null>(null);
+
+	// Queries
+	const [fetchDpe, { loading: isDpeLoading }] = useLazyQuery(FETCH_ADEME_DPE, {
+		fetchPolicy: "network-only",
+		onCompleted: (data) => {
+			if (data?.fetchADEMEDpe) {
+				setDetectedDpe({
+					rating: data.fetchADEMEDpe.rating,
+					surfaceM2: data.fetchADEMEDpe.surfaceM2 || undefined,
+					diagnosticDate: data.fetchADEMEDpe.diagnosticDate || undefined,
+				});
+			} else {
+				setDetectedDpe(null);
+			}
+		},
 	});
 
-	// Generate steps dynamically based on type and category
-	const getSteps = (): { id: FormStep; label: string }[] => {
-		const baseSteps: { id: FormStep; label: string }[] = [
-			{ id: "description", label: "Description" },
-			{ id: "characteristics", label: "Characteristics" },
-		];
+	const [estimateRealEstate, { data: estimationData, loading: isEstimating }] = useLazyQuery(
+		ESTIMATE_REAL_ESTATE,
+		{ fetchPolicy: "network-only" },
+	);
 
-		// Only show Rental step if category is "rental"
-		const showRental = formData.category === "rental";
-		if (showRental) {
-			baseSteps.push({ id: "rental", label: "Rental" });
+	const [ownershipPercentage, setOwnershipPercentage] = useState("100");
+	const [ownershipStructure, setOwnershipStructure] = useState("Nom propre");
+	const [linkedLoanId, setLinkedLoanId] = useState("none");
+
+	// 2. Financials & Costs
+	const [purchasePrice, setPurchasePrice] = useState("");
+	const [currentValuation, setCurrentValuation] = useState("");
+	const [purchaseDate, setPurchaseDate] = useState<Date | undefined>(undefined);
+	const [agencyFees, setAgencyFees] = useState("");
+	const [notaryFees, setNotaryFees] = useState("");
+	const [renovationFees, setRenovationFees] = useState("");
+	const [furnishingCosts, setFurnishingCosts] = useState("");
+
+	// 3. Specs & Layout
+	const [surface, setSurface] = useState("");
+	const [landSurface, setLandSurface] = useState("");
+	const [yearBuilt, setYearBuilt] = useState("");
+	const [floor, setFloor] = useState("");
+	const [totalFloors, setTotalFloors] = useState("");
+	const [rooms, setRooms] = useState("");
+	const [bedrooms, setBedrooms] = useState("");
+	const [bathrooms, setBathrooms] = useState("");
+	const [garages, setGarages] = useState("");
+	const [parkingSpaces, setParkingSpaces] = useState("");
+	const [energyLabel, setEnergyLabel] = useState<string>("");
+
+	// 4. Amenities & Quality
+	const [hasGarden, setHasGarden] = useState(false);
+	const [hasBalcony, setHasBalcony] = useState(false);
+	const [hasLift, setHasLift] = useState(false);
+	const [hasPool, setHasPool] = useState(false);
+	const [hasSauna, setHasSauna] = useState(false);
+	const [isFurnished, setIsFurnished] = useState(false);
+	const [isNewConstruction, setIsNewConstruction] = useState(false);
+
+	const [condition, setCondition] = useState("");
+	const [generalQuality, setGeneralQuality] = useState("");
+	const [kitchenQuality, setKitchenQuality] = useState("");
+	const [kitchenCondition, setKitchenCondition] = useState("");
+	const [bathroomQuality, setBathroomQuality] = useState("");
+	const [bathroomCondition, setBathroomCondition] = useState("");
+	const [flooringQuality, setFlooringQuality] = useState("");
+	const [flooringCondition, setFlooringCondition] = useState("");
+	const [windowsQuality, setWindowsQuality] = useState("");
+	const [windowsCondition, setWindowsCondition] = useState("");
+
+	// 5. Rental Stream
+	const [rentalType, setRentalType] = useState("None");
+	const [rentalPeriod, setRentalPeriod] = useState("Monthly");
+	const [monthlyRent, setMonthlyRent] = useState("");
+	const [utilityCosts, setUtilityCosts] = useState("");
+	const [yearlyMiscCosts, setYearlyMiscCosts] = useState("");
+
+	// Live telemetry calculations
+	const numSurface = parseFloat(surface) || 0;
+	const numPurchase = parseFloat(purchasePrice) || 0;
+	const numValuation = parseFloat(currentValuation) || numPurchase;
+	const numAgency = parseFloat(agencyFees) || 0;
+	const numNotary = parseFloat(notaryFees) || 0;
+	const numReno = parseFloat(renovationFees) || 0;
+	const numFurnish = parseFloat(furnishingCosts) || 0;
+	const allInCost = numPurchase + numAgency + numNotary + numReno + numFurnish;
+
+	const livePricePerM2 =
+		numSurface > 0 && numValuation > 0 ? Math.round(numValuation / numSurface) : null;
+	const livePnl = numValuation - (allInCost > 0 ? allInCost : numPurchase);
+	const livePnlPercent =
+		(allInCost > 0 ? allInCost : numPurchase) > 0
+			? (livePnl / (allInCost > 0 ? allInCost : numPurchase)) * 100
+			: 0;
+
+	const numRent = parseFloat(monthlyRent) || 0;
+	const numUtility = parseFloat(utilityCosts) || 0;
+	const numYearlyMisc = parseFloat(yearlyMiscCosts) || 0;
+	const grossYield =
+		numRent > 0 && numValuation > 0 ? ((numRent * 12) / numValuation) * 100 : null;
+	const netMonthlyCashflow =
+		numRent > 0 ? numRent - numUtility - numYearlyMisc / 12 : null;
+
+	const handleAddressSelected = (data: AddressData) => {
+		setAddress(data.address);
+		setCity(data.city);
+		setPostalCode(data.zipCode);
+		setCountry(data.country || "France");
+		setAddressLabel(data.addressLabel);
+		setCityCode(data.cityCode);
+		setBanId(data.banId);
+		setLatitude(data.latitude);
+		setLongitude(data.longitude);
+
+		if (data.banId && numSurface > 0) {
+			fetchDpe({
+				variables: {
+					banId: data.banId,
+					surfaceM2: numSurface,
+					propertyType,
+				},
+			});
 		}
-
-		// Only show Details step if NOT parking
-		const isParking = formData.type === "parking";
-		if (!isParking) {
-			baseSteps.push({ id: "details", label: "Details" });
-		}
-
-		// Only show Quality step if NOT parking
-		if (!isParking) {
-			baseSteps.push({ id: "quality", label: "Quality" });
-		}
-
-		baseSteps.push(
-			{ id: "attached-loan", label: "Attached loan" },
-			{ id: "ownership", label: "Ownership" },
-		);
-
-		return baseSteps;
 	};
 
-	const steps = getSteps();
-	const currentStepIndex = steps.findIndex((step) => step.id === currentStep);
-
-	// Reset to description step if current step is no longer valid
+	// Query ADEME DPE when surface is updated and banId is known
 	useEffect(() => {
-		if (currentStepIndex === -1 && currentStep !== "description") {
-			setCurrentStep("description");
+		if (banId && numSurface > 0) {
+			fetchDpe({
+				variables: {
+					banId,
+					surfaceM2: numSurface,
+					propertyType,
+				},
+			});
 		}
-	}, [currentStepIndex, currentStep]);
+	}, [banId, numSurface, propertyType, fetchDpe]);
 
-	const handleInputChange = (
-		field: keyof FormData,
-		value: string | Date | undefined | boolean | CoOwner[] | CompanyOwner[],
-	) => {
-		setFormData((prev) => ({ ...prev, [field]: value }));
+	// Estimate real estate on the fly
+	useEffect(() => {
+		if (numSurface > 0 && (cityCode || (latitude && longitude) || address)) {
+			const timeout = setTimeout(() => {
+				estimateRealEstate({
+					variables: {
+						input: {
+							propertyType,
+							surfaceM2: numSurface,
+							latitude: latitude ?? undefined,
+							longitude: longitude ?? undefined,
+							cityCode: cityCode || undefined,
+							address: address || undefined,
+							city: city || undefined,
+							postcode: postalCode || undefined,
+							banId: banId || undefined,
+							energyLabel: energyLabel || undefined,
+							condition: condition || undefined,
+							purchasePrice: numPurchase > 0 ? numPurchase : undefined,
+							purchaseDate: purchaseDate ? purchaseDate.toISOString() : undefined,
+							isGroundFloor: floor === "0" || propertyType === "House",
+							hasOutdoor: hasGarden || hasBalcony,
+							roomsCount: parseInt(rooms, 10) || undefined,
+						},
+					},
+				});
+			}, 350);
+			return () => clearTimeout(timeout);
+		}
+	}, [
+		cityCode,
+		latitude,
+		longitude,
+		address,
+		city,
+		postalCode,
+		banId,
+		propertyType,
+		numSurface,
+		energyLabel,
+		condition,
+		numPurchase,
+		purchaseDate,
+		floor,
+		hasGarden,
+		hasBalcony,
+		rooms,
+		estimateRealEstate,
+	]);
+
+	// Auto-fill valuation if in AUTO mode
+	const liveEstimation = estimationData?.estimateRealEstate;
+	useEffect(() => {
+		if (valuationMode === "AUTO" && liveEstimation?.estimatedValue) {
+			setCurrentValuation(Math.round(liveEstimation.estimatedValue).toString());
+		}
+	}, [valuationMode, liveEstimation]);
+
+	const resetForm = () => {
+		setName("");
+		setCategory("Residential");
+		setPropertyType("House");
+		setAddress("");
+		setCity("");
+		setStateProvince("");
+		setPostalCode("");
+		setCountry("France");
+		setPurchasePrice("");
+		setCurrentValuation("");
+		setPurchaseDate(undefined);
+		setAgencyFees("");
+		setNotaryFees("");
+		setRenovationFees("");
+		setFurnishingCosts("");
+		setSurface("");
+		setLandSurface("");
+		setYearBuilt("");
+		setFloor("");
+		setTotalFloors("");
+		setRooms("");
+		setBedrooms("");
+		setBathrooms("");
+		setGarages("");
+		setParkingSpaces("");
+		setEnergyLabel("");
+		setHasGarden(false);
+		setHasBalcony(false);
+		setHasLift(false);
+		setHasPool(false);
+		setHasSauna(false);
+		setIsFurnished(false);
+		setIsNewConstruction(false);
+		setCondition("");
+		setGeneralQuality("");
+		setKitchenQuality("");
+		setKitchenCondition("");
+		setBathroomQuality("");
+		setBathroomCondition("");
+		setFlooringQuality("");
+		setFlooringCondition("");
+		setWindowsQuality("");
+		setWindowsCondition("");
+		setRentalType("None");
+		setRentalPeriod("Monthly");
+		setMonthlyRent("");
+		setUtilityCosts("");
+		setYearlyMiscCosts("");
+		setOwnershipPercentage("100");
+		setOwnershipStructure("Nom propre");
+		setLinkedLoanId("none");
+		setAddressLabel("");
+		setCityCode("");
+		setBanId("");
+		setLatitude(undefined);
+		setLongitude(undefined);
+		setValuationMode("AUTO");
+		setManualValue("");
+		setDetectedDpe(null);
+		setActiveTab("identity");
 	};
 
-	const handleNext = () => {
-		if (currentStepIndex < steps.length - 1) {
-			setCurrentStep(steps[currentStepIndex + 1].id);
-		} else {
-			// Final submit
-			onSubmit(formData);
-			onClose();
-		}
+	const handleDialogClose = () => {
+		resetForm();
+		onClose();
 	};
 
-	const handleBack = () => {
-		if (currentStepIndex > 0) {
-			setCurrentStep(steps[currentStepIndex - 1].id);
+	const handleSubmit = async (e: React.FormEvent) => {
+		e.preventDefault();
+
+		if (!name.trim()) {
+			toast.error("Please enter a property name (e.g. 'Villa Cap Ferret')");
+			setActiveTab("identity");
+			return;
 		}
-	};
 
-	const renderStepContent = () => {
-		switch (currentStep) {
-			case "description":
-				return (
-					<div className="space-y-6">
-						<div className="space-y-2">
-							<Label htmlFor="name" className="text-sm">
-								Name <span className="text-muted-foreground">Optional</span>
-							</Label>
-							<Input
-								id="name"
-								value={formData.name}
-								onChange={(e) => handleInputChange("name", e.target.value)}
-								placeholder="test"
-								className="bg-background border-border"
-							/>
-						</div>
-
-						<div className="space-y-2">
-							<Label htmlFor="description" className="text-sm">
-								Description <span className="text-muted-foreground">Optional</span>
-							</Label>
-							<Textarea
-								id="description"
-								value={formData.description}
-								onChange={(e) => handleInputChange("description", e.target.value)}
-								placeholder="test"
-								className="bg-background border-border min-h-[100px]"
-							/>
-						</div>
-
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label htmlFor="type" className="text-sm">
-									Type
-								</Label>
-								<Select
-									value={formData.type}
-									onValueChange={(value) => handleInputChange("type", value)}
-								>
-									<SelectTrigger id="type" className="bg-background border-border">
-										<SelectValue placeholder="Parking" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="apartment">Apartment</SelectItem>
-										<SelectItem value="house">House</SelectItem>
-										<SelectItem value="building">Building</SelectItem>
-										<SelectItem value="parking">Parking</SelectItem>
-										<SelectItem value="land">Land</SelectItem>
-										<SelectItem value="commercial">Commercial</SelectItem>
-										<SelectItem value="other">Other</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="category" className="text-sm">
-									Category
-								</Label>
-								<Select
-									value={formData.category}
-									onValueChange={(value) => handleInputChange("category", value)}
-								>
-									<SelectTrigger id="category" className="bg-background border-border">
-										<SelectValue placeholder="Other" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="residence">Residence</SelectItem>
-										<SelectItem value="vacation-home">Vacation home</SelectItem>
-										<SelectItem value="rental">Rental</SelectItem>
-										<SelectItem value="other">Other</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-
-						{/* Location */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<MapPin className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Location</h4>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="address" className="text-sm">
-									Street Address <span className="text-muted-foreground text-xs">Optional</span>
-								</Label>
-								<Input
-									id="address"
-									value={formData.address}
-									onChange={(e) => handleInputChange("address", e.target.value)}
-									placeholder="123 Main St"
-									className="bg-background border-border"
-								/>
-							</div>
-
-							<div className="grid grid-cols-2 gap-3">
-								<div className="space-y-2">
-									<Label htmlFor="city" className="text-sm">
-										City
-									</Label>
-									<Input
-										id="city"
-										value={formData.city}
-										onChange={(e) => handleInputChange("city", e.target.value)}
-										placeholder="Paris"
-										className="bg-background border-border"
-									/>
-								</div>
-
-								<div className="space-y-2">
-									<Label htmlFor="state" className="text-sm">
-										State / Region <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<Input
-										id="state"
-										value={formData.state}
-										onChange={(e) => handleInputChange("state", e.target.value)}
-										placeholder="Île-de-France"
-										className="bg-background border-border"
-									/>
-								</div>
-							</div>
-
-							<div className="grid grid-cols-2 gap-3">
-								<div className="space-y-2">
-									<Label htmlFor="postalCode" className="text-sm">
-										Postal Code <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<Input
-										id="postalCode"
-										value={formData.postalCode}
-										onChange={(e) => handleInputChange("postalCode", e.target.value)}
-										placeholder="75001"
-										className="bg-background border-border"
-									/>
-								</div>
-
-								<div className="space-y-2">
-									<Label htmlFor="country" className="text-sm">
-										Country
-									</Label>
-									<Select
-										value={formData.country}
-										onValueChange={(value) => handleInputChange("country", value)}
-									>
-										<SelectTrigger id="country" className="bg-background border-border">
-											<SelectValue placeholder="Select country" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="FR">France</SelectItem>
-											<SelectItem value="US">United States</SelectItem>
-											<SelectItem value="DE">Germany</SelectItem>
-											<SelectItem value="GB">United Kingdom</SelectItem>
-											<SelectItem value="ES">Spain</SelectItem>
-											<SelectItem value="IT">Italy</SelectItem>
-											<SelectItem value="NL">Netherlands</SelectItem>
-											<SelectItem value="BE">Belgium</SelectItem>
-											<SelectItem value="CH">Switzerland</SelectItem>
-											<SelectItem value="PT">Portugal</SelectItem>
-											<SelectItem value="LU">Luxembourg</SelectItem>
-											<SelectItem value="other">Other</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-							</div>
-						</div>
-					</div>
-				);
-
-			case "characteristics": {
-				const isLand = formData.type === "land";
-				const isParking = formData.type === "parking";
-				const showCurrentValuation = !isLand;
-				// Show land surface ONLY for houses (as per Finary screenshots)
-				const showLandSurface = formData.type === "house";
-				// Show PriceHubble box ONLY for apartment, house, building
-				const showPriceHubble = ["apartment", "house", "building"].includes(formData.type);
-				// Show furnishing costs for all EXCEPT parking
-				const showFurnishingCosts = !isParking;
-
-				return (
-					<div className="space-y-6">
-						{/* Property Value Section */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<Building2 className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Property Value</h4>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="purchasePrice" className="text-sm flex items-center gap-2">
-									<span>Purchase price (without fees)</span>
-								</Label>
-								<div className="relative">
-									<Input
-										id="purchasePrice"
-										type="number"
-										value={formData.purchasePrice}
-										onChange={(e) => handleInputChange("purchasePrice", e.target.value)}
-										className="bg-background border-border pr-12"
-										placeholder="0"
-									/>
-									<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-										EUR
-									</span>
-								</div>
-							</div>
-
-							{/* PriceHubble Info Box - Show ONLY for apartment, house, building */}
-							{showPriceHubble && (
-								<div className="rounded-lg bg-primary/5 border border-primary/20 p-3 space-y-2">
-									<p className="text-xs text-muted-foreground">
-										The current value of your real estate will be automatically calculated &
-										updated.
-									</p>
-									<div className="flex items-center gap-2 text-xs">
-										<svg
-											className="h-3.5 w-3.5"
-											viewBox="0 0 24 24"
-											fill="none"
-											xmlns="http://www.w3.org/2000/svg"
-											role="img"
-											aria-label="PriceHubble"
-										>
-											<title>PriceHubble</title>
-											<path
-												d="M12 2L2 7L12 12L22 7L12 2Z"
-												stroke="currentColor"
-												strokeWidth="2"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											/>
-											<path
-												d="M2 17L12 22L22 17"
-												stroke="currentColor"
-												strokeWidth="2"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											/>
-											<path
-												d="M2 12L12 17L22 12"
-												stroke="currentColor"
-												strokeWidth="2"
-												strokeLinecap="round"
-												strokeLinejoin="round"
-											/>
-										</svg>
-										<span className="font-medium">PriceHubble</span>
-										<Button
-											variant="link"
-											className="text-primary hover:underline flex items-center gap-1 h-auto p-0"
-										>
-											How does it work?
-											<Info className="h-3 w-3" />
-										</Button>
-									</div>
-								</div>
-							)}
-
-							{/* Current valuation - Show for all except land */}
-							{showCurrentValuation && (
-								<div className="space-y-2">
-									<Label htmlFor="currentValuation" className="text-sm flex items-center gap-2">
-										<span>
-											Current valuation{" "}
-											<span className="text-muted-foreground text-xs">Optional</span>
-										</span>
-									</Label>
-									<div className="relative">
-										<Input
-											id="currentValuation"
-											type="number"
-											value={formData.currentValuation}
-											onChange={(e) => handleInputChange("currentValuation", e.target.value)}
-											className="bg-background border-border pr-12"
-											placeholder="0"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-											EUR
-										</span>
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* Property Details Section */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<Layers className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Property Details</h4>
-							</div>
-
-							{showLandSurface ? (
-								// For House: Surface | Land surface
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-2">
-										<Label htmlFor="surface" className="text-sm">
-											Surface
-										</Label>
-										<div className="relative">
-											<Input
-												id="surface"
-												type="number"
-												value={formData.surface}
-												onChange={(e) => handleInputChange("surface", e.target.value)}
-												className="bg-background border-border pr-10"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-												m²
-											</span>
-										</div>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="landSurface" className="text-sm flex items-center gap-1">
-											Land surface
-											<Info className="h-3 w-3 text-muted-foreground" />
-										</Label>
-										<div className="relative">
-											<Input
-												id="landSurface"
-												type="number"
-												value={formData.landSurface}
-												onChange={(e) => handleInputChange("landSurface", e.target.value)}
-												className="bg-background border-border pr-10"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-												m²
-											</span>
-										</div>
-									</div>
-								</div>
-							) : (
-								// For others: Surface | Construction period
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-2">
-										<Label htmlFor="surface" className="text-sm">
-											Surface
-										</Label>
-										<div className="relative">
-											<Input
-												id="surface"
-												type="number"
-												value={formData.surface}
-												onChange={(e) => handleInputChange("surface", e.target.value)}
-												className="bg-background border-border pr-10"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-												m²
-											</span>
-										</div>
-									</div>
-
-									{!isLand && (
-										<div className="space-y-2">
-											<Label htmlFor="constructionPeriod" className="text-sm">
-												Construction period
-											</Label>
-											<Select
-												value={formData.constructionPeriod}
-												onValueChange={(value) => handleInputChange("constructionPeriod", value)}
-											>
-												<SelectTrigger
-													id="constructionPeriod"
-													className="bg-background border-border"
-												>
-													<SelectValue placeholder="Select period" />
-												</SelectTrigger>
-												<SelectContent>
-													<SelectItem value="before-1900">Before 1900</SelectItem>
-													<SelectItem value="1900-1945">1900-1945</SelectItem>
-													<SelectItem value="1946-1970">1946-1970</SelectItem>
-													<SelectItem value="1971-1990">1971-1990</SelectItem>
-													<SelectItem value="1991-2000">1991-2000</SelectItem>
-													<SelectItem value="2001-2010">2001-2010</SelectItem>
-													<SelectItem value="2011-2020">2011-2020</SelectItem>
-													<SelectItem value="after-2020">After 2020</SelectItem>
-												</SelectContent>
-											</Select>
-										</div>
-									)}
-								</div>
-							)}
-
-							{/* For House: Construction period | Energy label on separate row */}
-							{showLandSurface && !isLand && (
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-2">
-										<Label htmlFor="constructionPeriod" className="text-sm">
-											Construction period
-										</Label>
-										<Select
-											value={formData.constructionPeriod}
-											onValueChange={(value) => handleInputChange("constructionPeriod", value)}
-										>
-											<SelectTrigger
-												id="constructionPeriod"
-												className="bg-background border-border"
-											>
-												<SelectValue placeholder="Select period" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="before-1900">Before 1900</SelectItem>
-												<SelectItem value="1900-1945">1900-1945</SelectItem>
-												<SelectItem value="1946-1970">1946-1970</SelectItem>
-												<SelectItem value="1971-1990">1971-1990</SelectItem>
-												<SelectItem value="1991-2000">1991-2000</SelectItem>
-												<SelectItem value="2001-2010">2001-2010</SelectItem>
-												<SelectItem value="2011-2020">2011-2020</SelectItem>
-												<SelectItem value="after-2020">After 2020</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="energyLabel" className="text-sm">
-											Energy label <span className="text-muted-foreground text-xs">Optional</span>
-										</Label>
-										<Select
-											value={formData.energyLabel}
-											onValueChange={(value) => handleInputChange("energyLabel", value)}
-										>
-											<SelectTrigger id="energyLabel" className="bg-background border-border">
-												<SelectValue placeholder="Select label" />
-											</SelectTrigger>
-											<SelectContent>
-												<SelectItem value="A">A</SelectItem>
-												<SelectItem value="B">B</SelectItem>
-												<SelectItem value="C">C</SelectItem>
-												<SelectItem value="D">D</SelectItem>
-												<SelectItem value="E">E</SelectItem>
-												<SelectItem value="F">F</SelectItem>
-												<SelectItem value="G">G</SelectItem>
-											</SelectContent>
-										</Select>
-									</div>
-								</div>
-							)}
-
-							{/* For non-House types: Energy label on same row */}
-							{!showLandSurface && (
-								<div className="space-y-2">
-									<Label htmlFor="energyLabel" className="text-sm">
-										Energy label <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<Select
-										value={formData.energyLabel}
-										onValueChange={(value) => handleInputChange("energyLabel", value)}
-									>
-										<SelectTrigger id="energyLabel" className="bg-background border-border">
-											<SelectValue placeholder="Select label" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="A">A</SelectItem>
-											<SelectItem value="B">B</SelectItem>
-											<SelectItem value="C">C</SelectItem>
-											<SelectItem value="D">D</SelectItem>
-											<SelectItem value="E">E</SelectItem>
-											<SelectItem value="F">F</SelectItem>
-											<SelectItem value="G">G</SelectItem>
-										</SelectContent>
-									</Select>
-								</div>
-							)}
-						</div>
-
-						{/* Fees & Costs Section */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<Construction className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Fees & Costs</h4>
-							</div>
-
-							<div className="grid grid-cols-2 gap-3">
-								<div className="space-y-2">
-									<Label htmlFor="agencyFees" className="text-sm">
-										Agency fees <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<div className="relative">
-										<Input
-											id="agencyFees"
-											type="number"
-											value={formData.agencyFees}
-											onChange={(e) => handleInputChange("agencyFees", e.target.value)}
-											className="bg-background border-border pr-12"
-											placeholder="0"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-											EUR
-										</span>
-									</div>
-								</div>
-
-								<div className="space-y-2">
-									<Label htmlFor="notaryFees" className="text-sm">
-										Notary fees <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<div className="relative">
-										<Input
-											id="notaryFees"
-											type="number"
-											value={formData.notaryFees}
-											onChange={(e) => handleInputChange("notaryFees", e.target.value)}
-											className="bg-background border-border pr-12"
-											placeholder="0"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-											EUR
-										</span>
-									</div>
-								</div>
-							</div>
-
-							<div className="grid grid-cols-2 gap-3">
-								<div className="space-y-2">
-									<Label htmlFor="renovationFees" className="text-sm">
-										Renovation fees <span className="text-muted-foreground text-xs">Optional</span>
-									</Label>
-									<div className="relative">
-										<Input
-											id="renovationFees"
-											type="number"
-											value={formData.renovationFees}
-											onChange={(e) => handleInputChange("renovationFees", e.target.value)}
-											className="bg-background border-border pr-12"
-											placeholder="0"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-											EUR
-										</span>
-									</div>
-								</div>
-
-								{showFurnishingCosts && (
-									<div className="space-y-2">
-										<Label htmlFor="furnishingCosts" className="text-sm">
-											Furnishing costs{" "}
-											<span className="text-muted-foreground text-xs">Optional</span>
-										</Label>
-										<div className="relative">
-											<Input
-												id="furnishingCosts"
-												type="number"
-												value={formData.furnishingCosts}
-												onChange={(e) => handleInputChange("furnishingCosts", e.target.value)}
-												className="bg-background border-border pr-12"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-												EUR
-											</span>
-										</div>
-									</div>
-								)}
-							</div>
-						</div>
-
-						{/* Purchase Information Section */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<div className="flex items-center gap-2 mb-2">
-								<CalendarIcon className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Purchase Information</h4>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="purchaseDate" className="text-sm">
-									Purchase date <span className="text-muted-foreground text-xs">Optional</span>
-								</Label>
-								<DatePicker
-									date={formData.purchaseDate}
-									onChange={(date) => handleInputChange("purchaseDate", date)}
-									disabledDates={(date) => date > new Date() || date < new Date("1900-01-01")}
-								/>
-							</div>
-						</div>
-					</div>
-				);
-			}
-
-			case "rental":
-				return (
-					<div className="space-y-6">
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label htmlFor="rentalType" className="text-sm">
-									Rental type
-								</Label>
-								<Select
-									value={formData.rentalType}
-									onValueChange={(value) => handleInputChange("rentalType", value)}
-								>
-									<SelectTrigger id="rentalType" className="bg-background border-border">
-										<SelectValue placeholder="Select type" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="furnished-rental">Furnished rental</SelectItem>
-										<SelectItem value="sci">SCI</SelectItem>
-										<SelectItem value="unfurnished">Unfurnished</SelectItem>
-										<SelectItem value="pinel">Pinel</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-
-							<div className="space-y-2">
-								<Label htmlFor="rentalPeriod" className="text-sm">
-									Rental period
-								</Label>
-								<Select
-									value={formData.rentalPeriod}
-									onValueChange={(value) => handleInputChange("rentalPeriod", value)}
-								>
-									<SelectTrigger id="rentalPeriod" className="bg-background border-border">
-										<SelectValue placeholder="Select period" />
-									</SelectTrigger>
-									<SelectContent>
-										<SelectItem value="seasonal">Seasonal</SelectItem>
-										<SelectItem value="annual">Annual</SelectItem>
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label
-									htmlFor="monthlyRent"
-									className="text-sm flex items-center gap-1 justify-between"
-								>
-									<span className="flex items-center gap-1">
-										Rent
-										<Info className="h-3 w-3 text-muted-foreground" />
-									</span>
-									<span className="text-xs text-muted-foreground">EUR</span>
-								</Label>
-								<Input
-									id="monthlyRent"
-									type="number"
-									value={formData.monthlyRent}
-									onChange={(e) => handleInputChange("monthlyRent", e.target.value)}
-									className="bg-background border-border"
-								/>
-							</div>
-
-							<div className="space-y-2">
-								<Label
-									htmlFor="utilityCosts"
-									className="text-sm flex items-center gap-1 justify-between"
-								>
-									<span className="flex items-center gap-1">
-										Utility costs
-										<Info className="h-3 w-3 text-muted-foreground" />
-									</span>
-									<span className="text-xs text-muted-foreground">EUR</span>
-								</Label>
-								<Input
-									id="utilityCosts"
-									type="number"
-									value={formData.utilityCosts}
-									onChange={(e) => handleInputChange("utilityCosts", e.target.value)}
-									className="bg-background border-border"
-								/>
-							</div>
-						</div>
-
-						<div className="space-y-2">
-							<Label
-								htmlFor="yearlyMiscCosts"
-								className="text-sm flex items-center gap-1 justify-between"
-							>
-								<span className="flex items-center gap-1">
-									Yearly misc. costs
-									<Info className="h-3 w-3 text-muted-foreground" />
-								</span>
-								<span className="text-xs text-muted-foreground">EUR</span>
-							</Label>
-							<Input
-								id="yearlyMiscCosts"
-								type="number"
-								value={formData.yearlyMiscCosts}
-								onChange={(e) => handleInputChange("yearlyMiscCosts", e.target.value)}
-								className="bg-background border-border"
-							/>
-						</div>
-					</div>
-				);
-
-			case "details": {
-				const detailsIsApartment = formData.type === "apartment";
-				const detailsIsHouse = formData.type === "house";
-				const detailsIsBuilding = formData.type === "building";
-				const detailsIsLand = formData.type === "land";
-				const detailsIsCommercial = formData.type === "commercial";
-				const detailsIsOther = formData.type === "other";
-
-				// Building, Land, Commercial, Other have same layout as Building
-				const isBuildingLike =
-					detailsIsBuilding || detailsIsLand || detailsIsCommercial || detailsIsOther;
-
-				const incrementValue = (field: keyof FormData) => {
-					const currentValue = parseInt(formData[field] as string, 10) || 0;
-					handleInputChange(field, (currentValue + 1).toString());
-				};
-
-				const decrementValue = (field: keyof FormData) => {
-					const currentValue = parseInt(formData[field] as string, 10) || 0;
-					if (currentValue > 0) {
-						handleInputChange(field, (currentValue - 1).toString());
-					}
-				};
-
-				// Modern number control component
-				const NumberControl = ({
-					field,
-					label,
-					icon: Icon,
-					tooltip,
-				}: {
-					field: keyof FormData;
-					label: string;
-					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-					icon?: any;
-					tooltip?: boolean;
-				}) => (
-					<div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group">
-						<div className="flex items-center gap-3">
-							{Icon && (
-								<Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-							)}
-							<Label htmlFor={field} className="text-sm cursor-pointer flex items-center gap-2">
-								{label}
-								{tooltip && <Info className="h-3.5 w-3.5 text-muted-foreground" />}
-							</Label>
-						</div>
-						<div className="flex items-center gap-2">
-							<Button
-								type="button"
-								variant="outline"
-								size="icon"
-								className="h-9 w-9 rounded-lg hover:bg-primary hover:text-primary-foreground transition-all"
-								onClick={() => decrementValue(field)}
-							>
-								<Minus className="h-4 w-4" />
-							</Button>
-							<div className="w-12 text-center font-medium tabular-nums">
-								{String(formData[field] ?? "")}
-							</div>
-							<Button
-								type="button"
-								variant="outline"
-								size="icon"
-								className="h-9 w-9 rounded-lg hover:bg-primary hover:text-primary-foreground transition-all"
-								onClick={() => incrementValue(field)}
-							>
-								<Plus className="h-4 w-4" />
-							</Button>
-						</div>
-					</div>
-				);
-
-				// Modern switch control component
-				const SwitchControl = ({
-					field,
-					label,
-					icon: Icon,
-					tooltip,
-				}: {
-					field: keyof FormData;
-					label: string;
-					// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-					icon?: any;
-					tooltip?: boolean;
-				}) => (
-					<div className="flex items-center justify-between p-4 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors group">
-						<div className="flex items-center gap-3">
-							{Icon && (
-								<Icon className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
-							)}
-							<Label htmlFor={field} className="text-sm cursor-pointer flex items-center gap-2">
-								{label}
-								{tooltip && <Info className="h-3.5 w-3.5 text-muted-foreground" />}
-							</Label>
-						</div>
-						<Switch
-							id={field}
-							checked={formData[field] as boolean}
-							onCheckedChange={(checked) => handleInputChange(field, checked)}
-						/>
-					</div>
-				);
-
-				return (
-					<div className="space-y-6">
-						{/* Building Information */}
-						<div className="space-y-3">
-							<div className="flex items-center gap-2 mb-4">
-								<Building2 className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Building Information</h4>
-							</div>
-
-							{/* Floor of the apartment - ONLY for apartments */}
-							{detailsIsApartment && (
-								<NumberControl
-									field="floorOfApartment"
-									label="Floor of the apartment"
-									icon={Layers}
-								/>
-							)}
-
-							<NumberControl
-								field="floorsInBuilding"
-								label="No. floors in the building"
-								icon={Building2}
-							/>
-						</div>
-
-						{/* Rooms & Spaces */}
-						<div className="space-y-3">
-							<div className="flex items-center gap-2 mb-4">
-								<Bed className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Rooms & Spaces</h4>
-							</div>
-
-							<NumberControl field="rooms" label="No. rooms" icon={Bed} tooltip />
-							<NumberControl field="bathrooms" label="No. bathrooms" icon={Bath} />
-							<NumberControl field="garages" label="No. garages" icon={Car} />
-							<NumberControl field="parkingSpaces" label="No. parking spaces" icon={Car} />
-						</div>
-
-						{/* Outdoor Spaces */}
-						<div className="space-y-3">
-							<div className="flex items-center gap-2 mb-4">
-								<Leaf className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Outdoor Spaces</h4>
-							</div>
-
-							{detailsIsApartment ? (
-								<div className="grid grid-cols-2 gap-3">
-									<div className="space-y-2">
-										<Label htmlFor="garden" className="text-sm flex items-center gap-2">
-											<Leaf className="h-4 w-4 text-muted-foreground" />
-											<span>
-												Garden <span className="text-muted-foreground text-xs">Optional</span>
-											</span>
-										</Label>
-										<div className="relative">
-											<Input
-												id="garden"
-												type="number"
-												value={formData.garden}
-												onChange={(e) => handleInputChange("garden", e.target.value)}
-												className="bg-background border-border pr-10"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-												m²
-											</span>
-										</div>
-									</div>
-
-									<div className="space-y-2">
-										<Label htmlFor="balcony" className="text-sm flex items-center gap-2">
-											<Mountain className="h-4 w-4 text-muted-foreground" />
-											<span>
-												Balcony <span className="text-muted-foreground text-xs">Optional</span>
-											</span>
-										</Label>
-										<div className="relative">
-											<Input
-												id="balcony"
-												type="number"
-												value={formData.balcony}
-												onChange={(e) => handleInputChange("balcony", e.target.value)}
-												className="bg-background border-border pr-10"
-												placeholder="0"
-											/>
-											<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-												m²
-											</span>
-										</div>
-									</div>
-								</div>
-							) : (
-								<div className="space-y-2">
-									<Label htmlFor="balcony" className="text-sm flex items-center gap-2">
-										<Mountain className="h-4 w-4 text-muted-foreground" />
-										<span>
-											Balcony <span className="text-muted-foreground text-xs">Optional</span>
-										</span>
-									</Label>
-									<div className="relative">
-										<Input
-											id="balcony"
-											type="number"
-											value={formData.balcony}
-											onChange={(e) => handleInputChange("balcony", e.target.value)}
-											className="bg-background border-border pr-10"
-											placeholder="0"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-											m²
-										</span>
-									</div>
-								</div>
-							)}
-						</div>
-
-						{/* Features & Amenities */}
-						<div className="space-y-3">
-							<div className="flex items-center gap-2 mb-4">
-								<Sofa className="h-4 w-4 text-primary" />
-								<h4 className="text-sm text-muted-foreground">Features & Amenities</h4>
-							</div>
-
-							{(detailsIsApartment || isBuildingLike) && (
-								<SwitchControl field="lift" label="Elevator / Lift" icon={Layers} />
-							)}
-
-							<SwitchControl
-								field="newConstruction"
-								label="New construction"
-								icon={Construction}
-								tooltip
-							/>
-
-							{detailsIsHouse && (
-								<>
-									<SwitchControl field="pool" label="Swimming pool" icon={Waves} />
-									<SwitchControl field="sauna" label="Sauna" icon={Droplets} />
-								</>
-							)}
-
-							<SwitchControl field="furnished" label="Furnished" icon={Sofa} />
-						</div>
-					</div>
-				);
-			}
-
-			case "quality": {
-				const qualityOptions = [
-					{ value: "luxury", label: "Luxury" },
-					{ value: "high-end", label: "High-end" },
-					{ value: "standard", label: "Standard" },
-					{ value: "basic", label: "Basic" },
-				];
-
-				const conditionOptions = [
-					{ value: "new", label: "New" },
-					{ value: "excellent", label: "Excellent" },
-					{ value: "good", label: "Good" },
-					{ value: "average", label: "Average" },
-					{ value: "poor", label: "Poor" },
-				];
-
-				const QualitySection = ({
-					title,
-					qualityField,
-					conditionField,
-				}: {
-					title: string;
-					qualityField: keyof FormData;
-					conditionField: keyof FormData;
-				}) => (
-					<div className="space-y-3">
-						<h4 className="text-sm">{title}</h4>
-						<div className="grid grid-cols-2 gap-4">
-							<div className="space-y-2">
-								<Label htmlFor={qualityField} className="text-sm text-muted-foreground">
-									Quality <span className="text-xs">Optional</span>
-								</Label>
-								<Select
-									value={formData[qualityField] as string}
-									onValueChange={(value) => handleInputChange(qualityField, value)}
-								>
-									<SelectTrigger
-										id={qualityField}
-										className="bg-background border-border text-muted-foreground"
-									>
-										<SelectValue placeholder="Quality Optional" />
-									</SelectTrigger>
-									<SelectContent>
-										{qualityOptions.map((opt) => (
-											<SelectItem key={opt.value} value={opt.value}>
-												{opt.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-							<div className="space-y-2">
-								<Label htmlFor={conditionField} className="text-sm text-muted-foreground">
-									Condition <span className="text-xs">Optional</span>
-								</Label>
-								<Select
-									value={formData[conditionField] as string}
-									onValueChange={(value) => handleInputChange(conditionField, value)}
-								>
-									<SelectTrigger
-										id={conditionField}
-										className="bg-background border-border text-muted-foreground"
-									>
-										<SelectValue placeholder="Condition Optional" />
-									</SelectTrigger>
-									<SelectContent>
-										{conditionOptions.map((opt) => (
-											<SelectItem key={opt.value} value={opt.value}>
-												{opt.label}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-							</div>
-						</div>
-					</div>
-				);
-
-				return (
-					<div className="space-y-6">
-						{/* Header */}
-						<div className="space-y-2">
-							<h3>Quality</h3>
-							<p className="text-sm text-muted-foreground">
-								Indicating the quality and condition of the facilities helps refine the estimate
-								even further
-							</p>
-						</div>
-
-						{/* Quality Sections */}
-						<div className="space-y-6">
-							<QualitySection
-								title="Kitchen"
-								qualityField="kitchenQuality"
-								conditionField="kitchenCondition"
-							/>
-							<QualitySection
-								title="Bathroom(s)"
-								qualityField="bathroomQuality"
-								conditionField="bathroomCondition"
-							/>
-							<QualitySection
-								title="Flooring"
-								qualityField="flooringQuality"
-								conditionField="flooringCondition"
-							/>
-							<QualitySection
-								title="Windows"
-								qualityField="windowsQuality"
-								conditionField="windowsCondition"
-							/>
-							<QualitySection
-								title="General"
-								qualityField="generalQuality"
-								conditionField="generalCondition"
-							/>
-						</div>
-					</div>
-				);
-			}
-
-			case "attached-loan": {
-				// Mock existing loans for demo
-				const existingLoans = [
-					{
-						id: "loan-1",
-						name: "Mortgage ABC Bank - €250,000",
-						amount: 250000,
-						type: "Mortgage",
-						bank: "ABC Bank",
-					},
-					{
-						id: "loan-2",
-						name: "Personal Loan XYZ - €50,000",
-						amount: 50000,
-						type: "Personal Loan",
-						bank: "XYZ Bank",
-					},
-					{
-						id: "loan-3",
-						name: "Investment Property Loan - €180,000",
-						amount: 180000,
-						type: "Investment Loan",
-						bank: "Capital Bank",
-					},
-				];
-
-				return (
-					<div className="space-y-6">
-						{/* Header */}
-						<div className="space-y-2">
-							<h3 className="flex items-center gap-2">
-								<Link className="h-5 w-5" />
-								Attached Loan
-							</h3>
-							<p className="text-sm text-muted-foreground">
-								Link this property to an existing loan in your portfolio
-							</p>
-						</div>
-
-						{/* Loan Selection */}
-						<div className="space-y-4">
-							<div className="space-y-2">
-								<Label htmlFor="linkedLoanId" className="text-sm">
-									Select Loan <span className="text-muted-foreground">Optional</span>
-								</Label>
-								<Select
-									value={formData.linkedLoanId}
-									onValueChange={(value) => handleInputChange("linkedLoanId", value)}
-								>
-									<SelectTrigger id="linkedLoanId" className="bg-background border-border">
-										<SelectValue placeholder="Select an existing loan..." />
-									</SelectTrigger>
-									<SelectContent>
-										{existingLoans.map((loan) => (
-											<SelectItem key={loan.id} value={loan.id}>
-												<div className="flex flex-col">
-													<span className="font-medium">{loan.name}</span>
-													<span className="text-xs text-muted-foreground">
-														{loan.type} • {loan.bank}
-													</span>
-												</div>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								{formData.linkedLoanId && (
-									<div className="mt-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-										<p className="text-xs text-muted-foreground">
-											✓ This property will be linked to the selected loan in your portfolio
-										</p>
-									</div>
-								)}
-							</div>
-
-							{/* Create New Loan CTA */}
-							<div className="p-4 rounded-lg border border-dashed border-border bg-muted/30">
-								<div className="flex items-start gap-3">
-									<div className="p-2 rounded-lg bg-background border border-border">
-										<Plus className="h-4 w-4 text-muted-foreground" />
-									</div>
-									<div className="flex-1 space-y-2">
-										<div>
-											<h4 className="text-sm font-medium">Don't have a loan yet?</h4>
-											<p className="text-xs text-muted-foreground mt-1">
-												Create a new loan in the Loans section first, then link it to this property
-											</p>
-										</div>
-										<Button
-											type="button"
-											variant="outline"
-											size="sm"
-											className="gap-2"
-											onClick={() => {}}
-										>
-											<FileText className="h-3.5 w-3.5" />
-											Create New Loan
-										</Button>
-									</div>
-								</div>
-							</div>
-
-							{/* Info Box */}
-							<div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900">
-								<div className="flex gap-2">
-									<Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
-									<p className="text-xs text-blue-900 dark:text-blue-100">
-										Linking a loan helps you track total debt, monthly payments, and calculate your
-										true property equity and net worth
-									</p>
-								</div>
-							</div>
-						</div>
-					</div>
-				);
-			}
-
-			case "ownership": {
-				// Mock registered users for demo
-				const registeredUsers = [
-					{ id: "user-1", name: "Alice Johnson", email: "alice@example.com" },
-					{ id: "user-2", name: "Bob Smith", email: "bob@example.com" },
-					{ id: "user-3", name: "Carol Williams", email: "carol@example.com" },
-				];
-
-				// Mock existing companies for demo
-				const existingCompanies = [
-					{
-						id: "comp-1",
-						name: "Sigma Real Estate SCI",
-						registrationNumber: "123456789",
-						legalForm: "SCI",
-					},
-					{
-						id: "comp-2",
-						name: "Investment Holdings SARL",
-						registrationNumber: "987654321",
-						legalForm: "SARL",
-					},
-					{
-						id: "comp-3",
-						name: "Property Management SA",
-						registrationNumber: "456789123",
-						legalForm: "SA",
-					},
-				];
-
-				const addCoOwner = () => {
-					const newCoOwner: CoOwner = {
-						id: `co-owner-${Date.now()}`,
-						type: "registered",
-						name: "",
-						percentage: "0",
-					};
-					handleInputChange("coOwners", [...formData.coOwners, newCoOwner]);
-				};
-
-				const removeCoOwner = (id: string) => {
-					handleInputChange(
-						"coOwners",
-						formData.coOwners.filter((co) => co.id !== id),
-					);
-				};
-
-				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-				const updateCoOwner = (id: string, field: keyof CoOwner, value: any) => {
-					handleInputChange(
-						"coOwners",
-						formData.coOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
-					);
-				};
-
-				const addCompanyOwner = () => {
-					const newCompanyOwner: CompanyOwner = {
-						id: `company-owner-${Date.now()}`,
-						type: "existing",
-						name: "",
-						registrationNumber: "",
-						legalForm: "",
-						percentage: "0",
-					};
-					handleInputChange("companyOwners", [...formData.companyOwners, newCompanyOwner]);
-				};
-
-				const removeCompanyOwner = (id: string) => {
-					handleInputChange(
-						"companyOwners",
-						formData.companyOwners.filter((co) => co.id !== id),
-					);
-				};
-
-				// biome-ignore lint/suspicious/noExplicitAny: unavoidable
-				const updateCompanyOwner = (id: string, field: keyof CompanyOwner, value: any) => {
-					handleInputChange(
-						"companyOwners",
-						formData.companyOwners.map((co) => (co.id === id ? { ...co, [field]: value } : co)),
-					);
-				};
-
-				const totalOwnership =
-					(formData.ownershipMode === "personal"
-						? parseFloat(formData.ownershipPercentage || "0")
-						: 0) +
-					formData.coOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0) +
-					formData.companyOwners.reduce((sum, co) => sum + parseFloat(co.percentage || "0"), 0);
-
-				return (
-					<div className="space-y-6">
-						{/* Header */}
-						<div className="space-y-2">
-							<h3 className="flex items-center gap-2">
-								<Users className="h-5 w-5" />
-								Ownership
-							</h3>
-							<p className="text-sm text-muted-foreground">
-								Define ownership distribution for this property
-							</p>
-						</div>
-
-						{/* Ownership Mode Selection */}
-						<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-							<h4 className="text-sm font-medium">Ownership Type</h4>
-							<div className="flex gap-3">
-								<Button
-									variant="ghost"
-									onClick={() => handleInputChange("ownershipMode", "personal")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
-										formData.ownershipMode === "personal"
-											? "border-primary bg-primary/5"
-											: "border-border hover:border-border/80"
-									}`}
-								>
-									<div className="flex flex-col items-center gap-2">
-										<Users
-											className={`h-5 w-5 ${formData.ownershipMode === "personal" ? "text-primary" : "text-muted-foreground"}`}
-										/>
-										<span className="text-sm font-medium">Personal</span>
-										<span className="text-xs text-muted-foreground text-center">
-											Owned by individuals
-										</span>
-									</div>
-								</Button>
-								<Button
-									variant="ghost"
-									onClick={() => handleInputChange("ownershipMode", "company")}
-									className={`flex-1 p-4 rounded-lg border-2 transition-all h-auto ${
-										formData.ownershipMode === "company"
-											? "border-primary bg-primary/5"
-											: "border-border hover:border-border/80"
-									}`}
-								>
-									<div className="flex flex-col items-center gap-2">
-										<Building2
-											className={`h-5 w-5 ${formData.ownershipMode === "company" ? "text-primary" : "text-muted-foreground"}`}
-										/>
-										<span className="text-sm font-medium">Company</span>
-										<span className="text-xs text-muted-foreground text-center">
-											Owned by companies
-										</span>
-									</div>
-								</Button>
-							</div>
-						</div>
-
-						{/* Personal Ownership Mode */}
-						{formData.ownershipMode === "personal" && (
-							<div className="space-y-4 p-4 rounded-lg bg-muted/20 border border-border/50">
-								<div className="flex items-center gap-2 mb-2">
-									<Users className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">Your Ownership</h4>
-								</div>
-
-								<div className="space-y-2">
-									<Label htmlFor="ownershipPercentage" className="text-sm">
-										Ownership percentage
-									</Label>
-									<div className="relative">
-										<Input
-											id="ownershipPercentage"
-											type="number"
-											min="0"
-											max="100"
-											step="0.01"
-											value={formData.ownershipPercentage}
-											onChange={(e) => handleInputChange("ownershipPercentage", e.target.value)}
-											className="bg-background border-border pr-12"
-											placeholder="100"
-										/>
-										<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-											%
-										</span>
-									</div>
-								</div>
-							</div>
-						)}
-
-						{/* Co-Owners */}
-						{formData.coOwners.length > 0 && (
-							<div className="space-y-4">
-								<div className="flex items-center gap-2">
-									<h4 className="text-sm text-muted-foreground">Co-Owners</h4>
-								</div>
-
-								{formData.coOwners.map((coOwner, index) => (
-									<div
-										key={coOwner.id}
-										className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-4"
-									>
-										<div className="flex items-center justify-between">
-											<span className="text-sm">Co-Owner {index + 1}</span>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={() => removeCoOwner(coOwner.id)}
-												className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</div>
-
-										{/* Owner Type Selection */}
-										<div className="flex gap-2">
-											<Button
-												variant="ghost"
-												onClick={() => updateCoOwner(coOwner.id, "type", "registered")}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
-													coOwner.type === "registered"
-														? "border-primary bg-primary/5 text-primary"
-														: "border-border hover:border-border/80"
-												}`}
-											>
-												Registered User
-											</Button>
-											<Button
-												variant="ghost"
-												onClick={() => updateCoOwner(coOwner.id, "type", "custom")}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
-													coOwner.type === "custom"
-														? "border-primary bg-primary/5 text-primary"
-														: "border-border hover:border-border/80"
-												}`}
-											>
-												Custom Owner
-											</Button>
-										</div>
-
-										{/* Owner Selection/Input */}
-										{coOwner.type === "registered" ? (
-											<div className="space-y-2">
-												<Label className="text-sm">Select User</Label>
-												<Select
-													value={coOwner.userId}
-													onValueChange={(value) => {
-														const user = registeredUsers.find((u) => u.id === value);
-														updateCoOwner(coOwner.id, "userId", value);
-														if (user) {
-															updateCoOwner(coOwner.id, "name", user.name);
-														}
-													}}
-												>
-													<SelectTrigger className="bg-background border-border">
-														<SelectValue placeholder="Select a user..." />
-													</SelectTrigger>
-													<SelectContent>
-														{registeredUsers.map((user) => (
-															<SelectItem key={user.id} value={user.id}>
-																<div className="flex flex-col">
-																	<span>{user.name}</span>
-																	<span className="text-xs text-muted-foreground">
-																		{user.email}
-																	</span>
-																</div>
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
-										) : (
-											<div className="space-y-2">
-												<Label className="text-sm">Owner Name</Label>
-												<Input
-													type="text"
-													value={coOwner.name}
-													onChange={(e) => updateCoOwner(coOwner.id, "name", e.target.value)}
-													className="bg-background border-border"
-													placeholder="Enter owner name..."
-												/>
-											</div>
-										)}
-
-										{/* Ownership Percentage */}
-										<div className="space-y-2">
-											<Label className="text-sm">Ownership percentage</Label>
-											<div className="relative">
-												<Input
-													type="number"
-													min="0"
-													max="100"
-													step="0.01"
-													value={coOwner.percentage}
-													onChange={(e) => updateCoOwner(coOwner.id, "percentage", e.target.value)}
-													className="bg-background border-border pr-12"
-													placeholder="0"
-												/>
-												<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-													%
-												</span>
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
-
-						{/* Company Owners Section */}
-						{formData.companyOwners.length > 0 && (
-							<div className="space-y-4">
-								<div className="flex items-center gap-2">
-									<Building2 className="h-4 w-4 text-primary" />
-									<h4 className="text-sm text-muted-foreground">Company Owners</h4>
-								</div>
-
-								{formData.companyOwners.map((company, index) => (
-									<div
-										key={company.id}
-										className="p-4 rounded-lg bg-muted/20 border border-border/50 space-y-4"
-									>
-										<div className="flex items-center justify-between">
-											<span className="text-sm">Company {index + 1}</span>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={() => removeCompanyOwner(company.id)}
-												className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</div>
-
-										{/* Company Type Selection */}
-										<div className="flex gap-2">
-											<Button
-												variant="ghost"
-												onClick={() => updateCompanyOwner(company.id, "type", "existing")}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
-													company.type === "existing"
-														? "border-primary bg-primary/5 text-primary"
-														: "border-border hover:border-border/80"
-												}`}
-											>
-												Existing Company
-											</Button>
-											<Button
-												variant="ghost"
-												onClick={() => updateCompanyOwner(company.id, "type", "new")}
-												className={`flex-1 px-3 py-2 rounded-lg border text-sm transition-all h-auto ${
-													company.type === "new"
-														? "border-primary bg-primary/5 text-primary"
-														: "border-border hover:border-border/80"
-												}`}
-											>
-												New Company
-											</Button>
-										</div>
-
-										{/* Company Selection/Input */}
-										{company.type === "existing" ? (
-											<div className="space-y-2">
-												<Label className="text-sm">Select Company</Label>
-												<Select
-													value={company.companyId}
-													onValueChange={(value) => {
-														const comp = existingCompanies.find((c) => c.id === value);
-														updateCompanyOwner(company.id, "companyId", value);
-														if (comp) {
-															updateCompanyOwner(company.id, "name", comp.name);
-															updateCompanyOwner(
-																company.id,
-																"registrationNumber",
-																comp.registrationNumber,
-															);
-															updateCompanyOwner(company.id, "legalForm", comp.legalForm);
-														}
-													}}
-												>
-													<SelectTrigger className="bg-background border-border">
-														<SelectValue placeholder="Select a company..." />
-													</SelectTrigger>
-													<SelectContent>
-														{existingCompanies.map((comp) => (
-															<SelectItem key={comp.id} value={comp.id}>
-																<div className="flex flex-col">
-																	<span>{comp.name}</span>
-																	<span className="text-xs text-muted-foreground">
-																		{comp.legalForm} • {comp.registrationNumber}
-																	</span>
-																</div>
-															</SelectItem>
-														))}
-													</SelectContent>
-												</Select>
-											</div>
-										) : (
-											<div className="space-y-4">
-												<div className="space-y-2">
-													<Label className="text-sm">Company Name</Label>
-													<Input
-														type="text"
-														value={company.name}
-														onChange={(e) => updateCompanyOwner(company.id, "name", e.target.value)}
-														className="bg-background border-border"
-														placeholder="Enter company name..."
-													/>
-												</div>
-												<div className="grid grid-cols-2 gap-4">
-													<div className="space-y-2">
-														<Label className="text-sm">Legal Form</Label>
-														<Select
-															value={company.legalForm}
-															onValueChange={(value) =>
-																updateCompanyOwner(company.id, "legalForm", value)
-															}
-														>
-															<SelectTrigger className="bg-background border-border">
-																<SelectValue placeholder="Select..." />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="SCI">SCI</SelectItem>
-																<SelectItem value="SARL">SARL</SelectItem>
-																<SelectItem value="SA">SA</SelectItem>
-																<SelectItem value="SAS">SAS</SelectItem>
-																<SelectItem value="EURL">EURL</SelectItem>
-																<SelectItem value="LLC">LLC</SelectItem>
-																<SelectItem value="LTD">LTD</SelectItem>
-																<SelectItem value="Other">Other</SelectItem>
-															</SelectContent>
-														</Select>
-													</div>
-													<div className="space-y-2">
-														<Label className="text-sm">Registration Number</Label>
-														<Input
-															type="text"
-															value={company.registrationNumber}
-															onChange={(e) =>
-																updateCompanyOwner(company.id, "registrationNumber", e.target.value)
-															}
-															className="bg-background border-border"
-															placeholder="000 000 000"
-														/>
-													</div>
-												</div>
-											</div>
-										)}
-
-										{/* Company Ownership Percentage */}
-										<div className="space-y-2">
-											<Label className="text-sm">Ownership percentage</Label>
-											<div className="relative">
-												<Input
-													type="number"
-													min="0"
-													max="100"
-													step="0.01"
-													value={company.percentage}
-													onChange={(e) =>
-														updateCompanyOwner(company.id, "percentage", e.target.value)
-													}
-													className="bg-background border-border pr-12"
-													placeholder="0"
-												/>
-												<span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-													%
-												</span>
-											</div>
-										</div>
-									</div>
-								))}
-							</div>
-						)}
-
-						{/* Add Co-Owner/Company Buttons */}
-						<div className="flex gap-3">
-							<Button type="button" variant="outline" onClick={addCoOwner} className="flex-1 gap-2">
-								<UserPlus className="h-4 w-4" />
-								Add Co-Owner
-							</Button>
-							<Button
-								type="button"
-								variant="outline"
-								onClick={addCompanyOwner}
-								className="flex-1 gap-2"
-							>
-								<Building2 className="h-4 w-4" />
-								Add Company
-							</Button>
-						</div>
-
-						{/* Total Ownership Summary */}
-						<div
-							className={`p-4 rounded-lg border ${
-								totalOwnership === 100
-									? "bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900"
-									: totalOwnership > 100
-										? "bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900"
-										: "bg-yellow-50 border-yellow-200 dark:bg-yellow-950/20 dark:border-yellow-900"
-							}`}
-						>
-							<div className="flex items-center justify-between">
-								<span className="text-sm">Total Ownership</span>
-								<span
-									className={`font-medium ${
-										totalOwnership === 100
-											? "text-green-600 dark:text-green-400"
-											: totalOwnership > 100
-												? "text-red-600 dark:text-red-400"
-												: "text-yellow-600 dark:text-yellow-400"
-									}`}
-								>
-									{totalOwnership.toFixed(2)}%
-								</span>
-							</div>
-							{totalOwnership !== 100 && (
-								<p className="text-xs mt-2 text-muted-foreground">
-									{totalOwnership > 100
-										? "Total ownership exceeds 100%. Please adjust the percentages."
-										: "Total ownership is less than 100%. Remaining ownership will be unassigned."}
-								</p>
-							)}
-						</div>
-					</div>
-				);
-			}
-
-			default:
-				return (
-					<div className="space-y-4">
-						<p className="text-muted-foreground">Section "{currentStep}"</p>
-					</div>
-				);
+		if (!city.trim()) {
+			toast.error("Please enter the city where the property is located");
+			setActiveTab("identity");
+			return;
+		}
+
+		const valStr = currentValuation.trim() || purchasePrice.trim() || "0";
+		const priceStr = purchasePrice.trim() || currentValuation.trim() || "0";
+
+		setIsSubmitting(true);
+		try {
+			await onSubmit({
+				name: name.trim(),
+				category: category.trim() || undefined,
+				type: propertyType,
+				address: address.trim(),
+				city: city.trim(),
+				state: stateProvince.trim() || undefined,
+				postalCode: postalCode.trim() || undefined,
+				country: country.trim() || "France",
+				surface: surface.trim() || undefined,
+				landSurface: landSurface.trim() || undefined,
+				currentValuation: valStr,
+				purchasePrice: priceStr,
+				purchaseDate: purchaseDate ? purchaseDate.toISOString() : undefined,
+				agencyFees: agencyFees.trim() || undefined,
+				notaryFees: notaryFees.trim() || undefined,
+				renovationFees: renovationFees.trim() || undefined,
+				furnishingCosts: furnishingCosts.trim() || undefined,
+				yearBuilt: yearBuilt.trim() || undefined,
+				floor: floor.trim() || undefined,
+				totalFloors: totalFloors.trim() || undefined,
+				rooms: rooms.trim() || undefined,
+				bedrooms: bedrooms.trim() || undefined,
+				bathrooms: bathrooms.trim() || undefined,
+				garages: garages.trim() || undefined,
+				parkingSpaces: parkingSpaces.trim() || undefined,
+				energyLabel: energyLabel.trim() || undefined,
+				hasGarden,
+				hasBalcony,
+				hasLift,
+				hasPool,
+				hasSauna,
+				isFurnished,
+				isNewConstruction,
+				condition: condition.trim() || undefined,
+				generalQuality: generalQuality.trim() || undefined,
+				kitchenQuality: kitchenQuality.trim() || undefined,
+				kitchenCondition: kitchenCondition.trim() || undefined,
+				bathroomQuality: bathroomQuality.trim() || undefined,
+				bathroomCondition: bathroomCondition.trim() || undefined,
+				flooringQuality: flooringQuality.trim() || undefined,
+				flooringCondition: flooringCondition.trim() || undefined,
+				windowsQuality: windowsQuality.trim() || undefined,
+				windowsCondition: windowsCondition.trim() || undefined,
+				rentalType: rentalType.trim() || undefined,
+				rentalPeriod: rentalPeriod.trim() || undefined,
+				monthlyRent: monthlyRent.trim() || undefined,
+				utilityCosts: utilityCosts.trim() || undefined,
+				yearlyMiscCosts: yearlyMiscCosts.trim() || undefined,
+				linkedLoanId: linkedLoanId && linkedLoanId !== "none" ? linkedLoanId : undefined,
+				ownershipPercentage: ownershipPercentage.trim() || "100",
+				ownershipStructure: ownershipStructure.trim() || "Nom propre",
+
+				// BAN & Auto-Valuation
+				addressLabel: addressLabel || undefined,
+				cityCode: cityCode || undefined,
+				banId: banId || undefined,
+				latitude,
+				longitude,
+				hasOutdoor: hasGarden || hasBalcony,
+				isGroundFloor: floor === "0" || propertyType === "House",
+				valuationMode,
+				manualValue: valuationMode === "MANUAL" ? (manualValue || currentValuation) : undefined,
+			});
+
+			resetForm();
+		} catch (err) {
+			// error handled in parent
+		} finally {
+			setIsSubmitting(false);
 		}
 	};
 
 	return (
-		<Dialog open={open} onOpenChange={onClose}>
-			<DialogContent className=" w-[80%] h-[92vh] p-0 gap-0 overflow-hidden bg-background">
-				<DialogTitle className="sr-only">Add my Real Estate</DialogTitle>
-				<DialogDescription className="sr-only">
-					Add a new real estate property to your portfolio by filling out the information step by
-					step
-				</DialogDescription>
+		<Dialog open={open} onOpenChange={(isOpen) => !isOpen && handleDialogClose()}>
+			<DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden bg-card border border-border/60 shadow-xl max-h-[90vh] flex flex-col">
+				{/* Dialog Header */}
+				<DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0">
+					<div className="flex items-center gap-2.5">
+						<div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+							<Building2 className="h-4 w-4" />
+						</div>
+						<div>
+							<DialogTitle className="text-base font-bold text-foreground">
+								Add Real Estate Property
+							</DialogTitle>
+							<DialogDescription className="text-xs text-muted-foreground mt-0.5">
+								Complete acquisition, technical characteristics, DPE, amenities, and rental stream.
+							</DialogDescription>
+						</div>
+					</div>
 
-				{/* Content */}
-				<div className="flex flex-1 overflow-hidden h-full">
-					{/* Left Sidebar - Steps Navigation */}
-					<div className="w-56 border-r border-border p-5 space-y-1 flex-shrink-0">
-						{steps.map((step, index) => (
-							<Button
-								variant="ghost"
-								key={step.id}
-								onClick={() => setCurrentStep(step.id)}
-								className={`w-full justify-start px-3 py-2.5 rounded-lg transition-colors text-sm h-auto ${
-									currentStep === step.id
-										? "bg-primary/10 text-primary font-medium"
-										: index <= currentStepIndex
-											? "text-foreground hover:bg-accent"
-											: "text-muted-foreground cursor-not-allowed"
-								}`}
-								disabled={index > currentStepIndex}
+					{/* 5-Tab Segmented Navigator */}
+					<div
+						className="relative flex p-0.5 rounded-lg bg-muted border border-border/40 mt-3.5 text-xs font-semibold overflow-x-auto no-scrollbar"
+						role="tablist"
+						aria-label="Add property steps"
+					>
+						{[
+							{ id: "identity", label: "1. Identity" },
+							{ id: "financials", label: "2. Financials" },
+							{ id: "specifications", label: "3. Specs" },
+							{ id: "amenities", label: "4. Quality" },
+							{ id: "rental", label: "5. Rental" },
+						].map((tab) => (
+							<button
+								key={tab.id}
+								type="button"
+								role="tab"
+								aria-selected={activeTab === tab.id}
+								onClick={() => setActiveTab(tab.id as FormTab)}
+								className={cn(
+									"relative flex-1 py-1.5 px-2 rounded-md transition-colors cursor-pointer text-center touch-target min-h-[30px] whitespace-nowrap",
+									activeTab === tab.id
+										? "text-foreground font-bold"
+										: "text-muted-foreground hover:text-foreground",
+								)}
 							>
-								{step.label}
-							</Button>
+								{activeTab === tab.id && (
+									<motion.span
+										layoutId="addRealEstateActiveTab"
+										className="absolute inset-0 rounded-md bg-background border border-border/60 shadow-xs"
+										transition={
+											shouldReduceMotion
+												? { duration: 0 }
+												: { type: "spring", stiffness: 500, damping: 38 }
+										}
+									/>
+								)}
+								<span className="relative z-10">{tab.label}</span>
+							</button>
 						))}
 					</div>
+				</DialogHeader>
 
-					{/* Right Content Area */}
-					<div className="flex-1 flex flex-col min-w-0">
-						<div className="flex-1 min-h-0 overflow-y-auto px-10 py-8">
-							<div className="max-w-3xl mx-auto">
-								<div className="flex items-start justify-between mb-8">
-									<h1>Add my Real Estate</h1>
-									<Button
-										variant="ghost"
-										onClick={onClose}
-										className="p-2 h-auto w-auto -mt-1"
-										aria-label="Close dialog"
-									>
-										<X className="h-5 w-5" />
-									</Button>
+				{/* Form Body with Smooth Overflow Scrolling */}
+				<form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+					<div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+						{/* ============================================================== */}
+						{/* TAB 1: IDENTITY & LOCATION                                     */}
+						{/* ============================================================== */}
+						{activeTab === "identity" && (
+							<div className="space-y-4">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+									<div className="space-y-1.5 sm:col-span-2">
+										<Label htmlFor="prop-name" className="text-xs font-semibold">
+											Property Designation <span className="text-destructive">*</span>
+										</Label>
+										<Input
+											id="prop-name"
+											placeholder="e.g. Villa Cap Ferret, Appartement Haussmann..."
+											value={name}
+											onChange={(e) => setName(e.target.value)}
+											className="h-9 text-xs"
+											autoFocus
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-category" className="text-xs font-semibold">
+											Asset Category
+										</Label>
+										<Select value={category} onValueChange={setCategory}>
+											<SelectTrigger id="prop-category" className="h-9 text-xs">
+												<SelectValue placeholder="Select category" />
+											</SelectTrigger>
+											<SelectContent>
+												{PROPERTY_CATEGORIES.map((cat) => (
+													<SelectItem key={cat.value} value={cat.value} className="text-xs">
+														{cat.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-type" className="text-xs font-semibold">
+											Property Type
+										</Label>
+										<Select value={propertyType} onValueChange={setPropertyType}>
+											<SelectTrigger id="prop-type" className="h-9 text-xs">
+												<SelectValue placeholder="Select property type" />
+											</SelectTrigger>
+											<SelectContent>
+												{PROPERTY_TYPES.map((type) => (
+													<SelectItem key={type.value} value={type.value} className="text-xs">
+														{type.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5 sm:col-span-2">
+										<Label htmlFor="prop-address" className="text-xs font-semibold">
+											Adresse (Autocomplétion BAN Géoplateforme)
+										</Label>
+										<AddressAutocomplete
+											value={address}
+											onChange={handleAddressSelected}
+											onRawChange={(val) => setAddress(val)}
+											placeholder="ex. 14 Boulevard Saint-Germain, 75005 Paris..."
+										/>
+										{addressLabel && (
+											<span className="text-micro text-muted-foreground flex items-center gap-1 mt-1">
+												<CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+												Normalisée : <strong className="font-medium text-foreground">{addressLabel}</strong>
+												{cityCode && ` (INSEE: ${cityCode})`}
+											</span>
+										)}
+									</div>
+
+									{detectedDpe && (
+										<div className="flex items-center justify-between p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs sm:col-span-2">
+											<div className="flex items-center gap-2">
+												<Zap className="h-4 w-4 text-emerald-500 shrink-0" />
+												<span>
+													Diagnostic ADEME officiel trouvé : Classe{" "}
+													<strong className="font-bold underline text-foreground">{detectedDpe.rating}</strong>
+													{detectedDpe.surfaceM2 ? ` (${detectedDpe.surfaceM2} m²)` : ""}
+												</span>
+											</div>
+											<Button
+												type="button"
+												size="sm"
+												variant="outline"
+												className="h-7 text-xs bg-emerald-600 text-white hover:bg-emerald-700 border-none"
+												onClick={() => {
+													setEnergyLabel(detectedDpe.rating);
+													toast.success(`DPE ${detectedDpe.rating} appliqué !`);
+												}}
+											>
+												Appliquer
+											</Button>
+										</div>
+									)}
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-city" className="text-xs font-semibold">
+											City <span className="text-destructive">*</span>
+										</Label>
+										<Input
+											id="prop-city"
+											placeholder="e.g. Paris, Bordeaux, Lyon..."
+											value={city}
+											onChange={(e) => setCity(e.target.value)}
+											className="h-9 text-xs"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-postal" className="text-xs font-semibold">
+											Postal / Zip Code
+										</Label>
+										<Input
+											id="prop-postal"
+											placeholder="e.g. 75005"
+											value={postalCode}
+											onChange={(e) => setPostalCode(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-state" className="text-xs font-semibold">
+											State / Region / Province
+										</Label>
+										<Input
+											id="prop-state"
+											placeholder="e.g. Île-de-France, Nouvelle-Aquitaine..."
+											value={stateProvince}
+											onChange={(e) => setStateProvince(e.target.value)}
+											className="h-9 text-xs"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-country" className="text-xs font-semibold">
+											Country
+										</Label>
+										<Input
+											id="prop-country"
+											placeholder="e.g. France"
+											value={country}
+											onChange={(e) => setCountry(e.target.value)}
+											className="h-9 text-xs"
+										/>
+									</div>
+
+									{/* Ownership & Debt Structure */}
+									<div className="pt-2 border-t border-border/40 sm:col-span-2">
+										<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+											Détention & Financement
+										</span>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-ownership-mode" className="text-xs font-semibold">
+											Structure de détention
+										</Label>
+										<Select value={ownershipStructure} onValueChange={setOwnershipStructure}>
+											<SelectTrigger id="prop-ownership-mode" className="h-9 text-xs">
+												<SelectValue placeholder="Mode de détention" />
+											</SelectTrigger>
+											<SelectContent>
+												{OWNERSHIP_STRUCTURES.map((st) => (
+													<SelectItem key={st.value} value={st.value} className="text-xs">
+														{st.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-ownership-pct" className="text-xs font-semibold">
+											Quote-part de détention (%)
+										</Label>
+										<Input
+											id="prop-ownership-pct"
+											type="number"
+											step="any"
+											placeholder="100"
+											value={ownershipPercentage}
+											onChange={(e) => setOwnershipPercentage(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5 sm:col-span-2">
+										<Label htmlFor="prop-linked-loan" className="text-xs font-semibold flex items-center justify-between">
+											<span>Crédit immobilier adossé</span>
+											<span className="text-micro font-normal text-muted-foreground">Source: module Loans</span>
+										</Label>
+										<Select value={linkedLoanId} onValueChange={setLinkedLoanId}>
+											<SelectTrigger id="prop-linked-loan" className="h-9 text-xs">
+												<SelectValue placeholder="Sélectionner un crédit" />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="none" className="text-xs font-medium text-muted-foreground">
+													Aucun crédit adossé
+												</SelectItem>
+												{availableLoans.map((l) => (
+													<SelectItem key={l.id} value={l.id} className="text-xs">
+														{l.name} {l.lender ? `(${l.lender})` : ""} — {formatCurrency(l.remainingBalance ?? l.loanAmount ?? 0)} restant {l.monthlyPayment ? `(${formatCurrency(l.monthlyPayment)}/m)` : ""}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									{/* Quick Financial Values for immediate submission */}
+									<div className="pt-2 border-t border-border/40 sm:col-span-2">
+										<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+											Valorisation Initiale (Saisie Rapide)
+										</span>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-quick-purchase" className="text-xs font-semibold">
+											Prix d'acquisition net
+										</Label>
+										<Input
+											id="prop-quick-purchase"
+											type="number"
+											step="any"
+											placeholder="e.g. 450000"
+											value={purchasePrice}
+											onChange={(e) => setPurchasePrice(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-quick-val" className="text-xs font-semibold">
+											Valorisation actuelle
+										</Label>
+										<Input
+											id="prop-quick-val"
+											type="number"
+											step="any"
+											placeholder="e.g. 495000"
+											value={currentValuation}
+											onChange={(e) => setCurrentValuation(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
 								</div>
-								{renderStepContent()}
 							</div>
+						)}
+
+						{/* ============================================================== */}
+						{/* TAB 2: FINANCIALS & ACQUISITION COSTS                           */}
+						{/* ============================================================== */}
+						{activeTab === "financials" && (
+							<div className="space-y-4">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-purchase" className="text-xs font-semibold">
+											Net Purchase Price <span className="text-destructive">*</span>
+										</Label>
+										<Input
+											id="prop-purchase"
+											type="number"
+											step="any"
+											placeholder="e.g. 450000"
+											value={purchasePrice}
+											onChange={(e) => setPurchasePrice(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-valuation" className="text-xs font-semibold">
+											Current Valuation
+										</Label>
+										<Input
+											id="prop-valuation"
+											type="number"
+											step="any"
+											placeholder="e.g. 495000"
+											value={currentValuation}
+											onChange={(e) => {
+												setCurrentValuation(e.target.value);
+												if (valuationMode === "MANUAL") setManualValue(e.target.value);
+											}}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									{/* Valuation Mode & Live Estimation Section */}
+									<div className="pt-2 border-t border-border/40 sm:col-span-2 space-y-3">
+										<div className="flex items-center justify-between">
+											<div className="flex items-center gap-1.5">
+												<Sparkles className="h-4 w-4 text-primary" />
+												<Label className="text-xs font-semibold">Mode d'estimation</Label>
+											</div>
+											<div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-lg border border-border/40">
+												<button
+													type="button"
+													onClick={() => setValuationMode("AUTO")}
+													className={cn(
+														"px-2.5 py-1 text-xs rounded-md font-medium transition-colors",
+														valuationMode === "AUTO"
+															? "bg-card text-foreground shadow-sm"
+															: "text-muted-foreground hover:text-foreground"
+													)}
+												>
+													Auto (DVF+ / INSEE)
+												</button>
+												<button
+													type="button"
+													onClick={() => setValuationMode("MANUAL")}
+													className={cn(
+														"px-2.5 py-1 text-xs rounded-md font-medium transition-colors",
+														valuationMode === "MANUAL"
+															? "bg-card text-foreground shadow-sm"
+															: "text-muted-foreground hover:text-foreground"
+													)}
+												>
+													Manuel
+												</button>
+											</div>
+										</div>
+
+										{valuationMode === "AUTO" ? (
+											<div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-3">
+												<div className="flex items-start justify-between">
+													<div>
+														<span className="text-micro font-bold uppercase tracking-wider text-muted-foreground">
+															Estimation automatique (Temps Réel)
+														</span>
+														<div className="flex items-baseline gap-2 mt-0.5">
+															<span className="text-2xl font-bold font-mono tracking-tight text-foreground">
+																{liveEstimation?.estimatedValue
+																	? formatCurrency(liveEstimation.estimatedValue)
+																	: isEstimating
+																	? "Calcul en cours..."
+																	: numPurchase > 0
+																	? formatCurrency(numPurchase)
+																	: "En attente d'adresse..."}
+															</span>
+															{liveEstimation?.confidence && (
+																<Badge
+																	variant="outline"
+																	className={cn(
+																		"text-micro font-semibold uppercase",
+																		liveEstimation.confidence === "HIGH" &&
+																			"bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+																		liveEstimation.confidence === "MEDIUM" &&
+																			"bg-sky-500/10 text-sky-600 border-sky-500/30",
+																		liveEstimation.confidence === "LOW" &&
+																			"bg-amber-500/10 text-amber-600 border-amber-500/30",
+																		liveEstimation.confidence === "UNAVAILABLE" &&
+																			"bg-muted text-muted-foreground"
+																	)}
+																>
+																	{liveEstimation.confidence === "HIGH" && "Confiance Haute"}
+																	{liveEstimation.confidence === "MEDIUM" && "Confiance Moyenne"}
+																	{liveEstimation.confidence === "LOW" && "Zone peu dense"}
+																	{liveEstimation.confidence === "UNAVAILABLE" && "Non estimable"}
+																</Badge>
+															)}
+														</div>
+													</div>
+													{liveEstimation?.method && (
+														<Badge variant="secondary" className="text-micro">
+															{liveEstimation.method === "DVF_COMPARABLES" && "DVF+ Notaires"}
+															{liveEstimation.method === "INSEE_INDEX" && "Notaires-INSEE"}
+															{liveEstimation.method === "ACQUISITION_COST" && "Coût d'achat"}
+														</Badge>
+													)}
+												</div>
+
+												{liveEstimation?.estimatedMin && liveEstimation?.estimatedMax && (
+													<div className="grid grid-cols-2 gap-2 pt-2 border-t border-primary/10 text-xs">
+														<div>
+															<span className="text-micro text-muted-foreground block">Fourchette basse / haute</span>
+															<span className="font-mono font-medium">
+																{formatCurrency(liveEstimation.estimatedMin)} – {formatCurrency(liveEstimation.estimatedMax)}
+															</span>
+														</div>
+														<div>
+															<span className="text-micro text-muted-foreground block">Prix au m² estimé</span>
+															<span className="font-mono font-medium">
+																{liveEstimation.estimatedPricePerM2
+																	? `${Math.round(liveEstimation.estimatedPricePerM2)} €/m²`
+																	: "–"}
+																{liveEstimation.comparablesCount > 0 && (
+																	<span className="text-micro text-muted-foreground ml-1">
+																		({liveEstimation.comparablesCount} ventes)
+																	</span>
+																)}
+															</span>
+														</div>
+													</div>
+												)}
+
+												{liveEstimation?.rentalMarket && (
+													<div className="pt-2 border-t border-primary/10 flex items-center justify-between text-xs">
+														<div className="flex items-center gap-1.5 text-muted-foreground">
+															<Home className="h-3.5 w-3.5 text-primary" />
+															<span>Carte des loyers (ANIL 2025) :</span>
+														</div>
+														<div className="flex items-center gap-3 font-mono font-medium">
+															{liveEstimation.rentalMarket.estimatedMonthlyRent && (
+																<span>~{Math.round(liveEstimation.rentalMarket.estimatedMonthlyRent)} €/mois</span>
+															)}
+															{liveEstimation.rentalMarket.estimatedGrossYield && (
+																<span className="text-emerald-600 dark:text-emerald-400">
+																	Rendement: {liveEstimation.rentalMarket.estimatedGrossYield.toFixed(2)} %
+																</span>
+															)}
+														</div>
+													</div>
+												)}
+											</div>
+										) : null}
+									</div>
+
+									<div className="space-y-1.5 sm:col-span-2">
+										<Label className="text-xs font-semibold">Acquisition Date</Label>
+										<DatePicker
+											date={purchaseDate}
+											onChange={setPurchaseDate}
+											placeholder="Select purchase date"
+											className="w-full h-9 text-xs"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-agency" className="text-xs font-semibold">
+											Agency Fees (Frais d'agence)
+										</Label>
+										<Input
+											id="prop-agency"
+											type="number"
+											step="any"
+											placeholder="e.g. 18000"
+											value={agencyFees}
+											onChange={(e) => setAgencyFees(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-notary" className="text-xs font-semibold">
+											Notary Fees (Frais de notaire)
+										</Label>
+										<Input
+											id="prop-notary"
+											type="number"
+											step="any"
+											placeholder="e.g. 32000"
+											value={notaryFees}
+											onChange={(e) => setNotaryFees(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-reno" className="text-xs font-semibold">
+											Renovation Work (Travaux)
+										</Label>
+										<Input
+											id="prop-reno"
+											type="number"
+											step="any"
+											placeholder="e.g. 45000"
+											value={renovationFees}
+											onChange={(e) => setRenovationFees(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-furnishing" className="text-xs font-semibold">
+											Furnishing & Equipment (Mobilier)
+										</Label>
+										<Input
+											id="prop-furnishing"
+											type="number"
+											step="any"
+											placeholder="e.g. 15000"
+											value={furnishingCosts}
+											onChange={(e) => setFurnishingCosts(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+								</div>
+
+								{/* Live Financial Telemetry Card */}
+								<div className="p-3.5 rounded-lg border border-border/60 bg-muted/30 grid grid-cols-2 gap-3 text-xs">
+									<div>
+										<span className="text-micro uppercase font-bold text-muted-foreground block">
+											All-in Acquisition Cost
+										</span>
+										<span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
+											{allInCost > 0 ? formatCurrency(allInCost) : "—"}
+										</span>
+										<span className="text-micro text-muted-foreground">
+											Purchase + Agency + Notary + Works
+										</span>
+									</div>
+									<div className="text-right">
+										<span className="text-micro uppercase font-bold text-muted-foreground block">
+											Unrealized Net P&L
+										</span>
+										<span
+											className={cn(
+												"text-sm font-bold font-mono mt-0.5 block",
+												livePnl >= 0 ? "text-emerald-500" : "text-rose-500",
+											)}
+										>
+											{livePnl >= 0 ? "+" : ""}
+											{formatCurrency(livePnl)}{" "}
+											<span className="text-micro font-normal">
+												({livePnlPercent >= 0 ? "+" : ""}
+												{livePnlPercent.toFixed(1)}%)
+											</span>
+										</span>
+										<span className="text-micro text-muted-foreground">
+											Current value vs All-in basis
+										</span>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* ============================================================== */}
+						{/* TAB 3: SPECIFICATIONS & LAYOUT                                 */}
+						{/* ============================================================== */}
+						{activeTab === "specifications" && (
+							<div className="space-y-4">
+								<div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-surface" className="text-xs font-semibold">
+											Living Area (m²)
+										</Label>
+										<Input
+											id="prop-surface"
+											type="number"
+											step="any"
+											placeholder="e.g. 95"
+											value={surface}
+											onChange={(e) => setSurface(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-land" className="text-xs font-semibold">
+											Land Area (m²)
+										</Label>
+										<Input
+											id="prop-land"
+											type="number"
+											step="any"
+											placeholder="e.g. 450"
+											value={landSurface}
+											onChange={(e) => setLandSurface(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-year" className="text-xs font-semibold">
+											Year Built
+										</Label>
+										<Input
+											id="prop-year"
+											type="number"
+											placeholder="e.g. 1998, 2022..."
+											value={yearBuilt}
+											onChange={(e) => setYearBuilt(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-floor" className="text-xs font-semibold">
+											Floor
+										</Label>
+										<Input
+											id="prop-floor"
+											type="number"
+											placeholder="e.g. 3"
+											value={floor}
+											onChange={(e) => setFloor(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-totalfloors" className="text-xs font-semibold">
+											Total Building Floors
+										</Label>
+										<Input
+											id="prop-totalfloors"
+											type="number"
+											placeholder="e.g. 6"
+											value={totalFloors}
+											onChange={(e) => setTotalFloors(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-rooms" className="text-xs font-semibold">
+											Total Rooms (Pièces)
+										</Label>
+										<Input
+											id="prop-rooms"
+											type="number"
+											placeholder="e.g. 4"
+											value={rooms}
+											onChange={(e) => setRooms(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-bedrooms" className="text-xs font-semibold">
+											Bedrooms
+										</Label>
+										<Input
+											id="prop-bedrooms"
+											type="number"
+											placeholder="e.g. 2"
+											value={bedrooms}
+											onChange={(e) => setBedrooms(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-bathrooms" className="text-xs font-semibold">
+											Bathrooms
+										</Label>
+										<Input
+											id="prop-bathrooms"
+											type="number"
+											step="0.5"
+											placeholder="e.g. 1.5"
+											value={bathrooms}
+											onChange={(e) => setBathrooms(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-garages" className="text-xs font-semibold">
+											Closed Garages
+										</Label>
+										<Input
+											id="prop-garages"
+											type="number"
+											placeholder="e.g. 1"
+											value={garages}
+											onChange={(e) => setGarages(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-parkings" className="text-xs font-semibold">
+											Parking Spaces
+										</Label>
+										<Input
+											id="prop-parkings"
+											type="number"
+											placeholder="e.g. 1"
+											value={parkingSpaces}
+											onChange={(e) => setParkingSpaces(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5 col-span-2">
+										<Label className="text-xs font-semibold">Energy Label (DPE)</Label>
+										<div className="flex items-center gap-1.5 pt-1">
+											{ENERGY_LABELS.map((label) => (
+												<button
+													key={label}
+													type="button"
+													onClick={() => setEnergyLabel(energyLabel === label ? "" : label)}
+													className={cn(
+														"flex-1 h-8 rounded text-xs font-bold transition-all border",
+														energyLabel === label
+															? "bg-foreground text-background border-foreground shadow-xs scale-105"
+															: "bg-muted/40 hover:bg-muted text-muted-foreground border-border/50",
+													)}
+												>
+													{label}
+												</button>
+											))}
+										</div>
+									</div>
+								</div>
+
+								{/* Live Price/m² telemetry */}
+								{livePricePerM2 !== null && (
+									<div className="p-3 rounded-lg border border-border/50 bg-muted/20 flex items-center justify-between text-xs">
+										<span className="text-muted-foreground">Computed valuation rate:</span>
+										<span className="font-mono font-bold text-foreground">
+											{formatCurrency(livePricePerM2)} / m²
+										</span>
+									</div>
+								)}
+							</div>
+						)}
+
+						{/* ============================================================== */}
+						{/* TAB 4: AMENITIES & QUALITY                                     */}
+						{/* ============================================================== */}
+						{activeTab === "amenities" && (
+							<div className="space-y-4">
+								<div>
+									<Label className="text-xs font-semibold block mb-2">
+										Property Equipment & Amenities
+									</Label>
+									<div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+										{[
+											{ id: "garden", label: "Garden", val: hasGarden, set: setHasGarden },
+											{ id: "balcony", label: "Balcony / Terrace", val: hasBalcony, set: setHasBalcony },
+											{ id: "lift", label: "Elevator / Lift", val: hasLift, set: setHasLift },
+											{ id: "pool", label: "Swimming Pool", val: hasPool, set: setHasPool },
+											{ id: "sauna", label: "Sauna / Spa", val: hasSauna, set: setHasSauna },
+											{ id: "furnished", label: "Furnished", val: isFurnished, set: setIsFurnished },
+											{ id: "newconst", label: "New Construction (VEFA)", val: isNewConstruction, set: setIsNewConstruction },
+										].map((item) => (
+											<label
+												key={item.id}
+												className={cn(
+													"flex items-center gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors",
+													item.val
+														? "bg-primary/10 border-primary/40 text-foreground font-semibold"
+														: "bg-muted/20 border-border/50 text-muted-foreground hover:bg-muted/40",
+												)}
+											>
+												<Checkbox
+													checked={item.val}
+													onCheckedChange={(checked) => item.set(!!checked)}
+												/>
+												<span>{item.label}</span>
+											</label>
+										))}
+									</div>
+								</div>
+
+								<div className="pt-2 border-t border-border/40">
+									<Label className="text-xs font-semibold block mb-2.5">
+										Construction Condition & Finishes
+									</Label>
+									<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-cond" className="text-micro uppercase font-bold text-muted-foreground">
+												Overall Condition
+											</Label>
+											<Select value={condition} onValueChange={setCondition}>
+												<SelectTrigger id="prop-cond" className="h-9 text-xs">
+													<SelectValue placeholder="Select condition" />
+												</SelectTrigger>
+												<SelectContent>
+													{CONDITION_OPTIONS.map((c) => (
+														<SelectItem key={c.value} value={c.value} className="text-xs">
+															{c.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-qual" className="text-micro uppercase font-bold text-muted-foreground">
+												General Finish Quality
+											</Label>
+											<Select value={generalQuality} onValueChange={setGeneralQuality}>
+												<SelectTrigger id="prop-qual" className="h-9 text-xs">
+													<SelectValue placeholder="Select quality level" />
+												</SelectTrigger>
+												<SelectContent>
+													{QUALITY_OPTIONS.map((q) => (
+														<SelectItem key={q.value} value={q.value} className="text-xs">
+															{q.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-kitchen-qual" className="text-micro uppercase font-bold text-muted-foreground">
+												Kitchen Quality
+											</Label>
+											<Select value={kitchenQuality} onValueChange={setKitchenQuality}>
+												<SelectTrigger id="prop-kitchen-qual" className="h-9 text-xs">
+													<SelectValue placeholder="Standard, Custom, Luxury..." />
+												</SelectTrigger>
+												<SelectContent>
+													{QUALITY_OPTIONS.map((q) => (
+														<SelectItem key={q.value} value={q.value} className="text-xs">
+															{q.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-bath-qual" className="text-micro uppercase font-bold text-muted-foreground">
+												Bathroom Quality
+											</Label>
+											<Select value={bathroomQuality} onValueChange={setBathroomQuality}>
+												<SelectTrigger id="prop-bath-qual" className="h-9 text-xs">
+													<SelectValue placeholder="Standard, Italian Shower, Luxury..." />
+												</SelectTrigger>
+												<SelectContent>
+													{QUALITY_OPTIONS.map((q) => (
+														<SelectItem key={q.value} value={q.value} className="text-xs">
+															{q.label}
+														</SelectItem>
+													))}
+												</SelectContent>
+											</Select>
+										</div>
+
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-floor-qual" className="text-micro uppercase font-bold text-muted-foreground">
+												Flooring (Parquet, Tiles...)
+											</Label>
+											<Input
+												id="prop-floor-qual"
+												placeholder="e.g. Solid Oak Parquet, Marble..."
+												value={flooringQuality}
+												onChange={(e) => setFlooringQuality(e.target.value)}
+												className="h-9 text-xs"
+											/>
+										</div>
+
+										<div className="space-y-1.5">
+											<Label htmlFor="prop-win-qual" className="text-micro uppercase font-bold text-muted-foreground">
+												Windows & Insulation
+											</Label>
+											<Input
+												id="prop-win-qual"
+												placeholder="e.g. Double Glazing Aluminium, Argon..."
+												value={windowsQuality}
+												onChange={(e) => setWindowsQuality(e.target.value)}
+												className="h-9 text-xs"
+											/>
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
+
+						{/* ============================================================== */}
+						{/* TAB 5: RENTAL STREAM & YIELD                                   */}
+						{/* ============================================================== */}
+						{activeTab === "rental" && (
+							<div className="space-y-4">
+								<div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-rental-type" className="text-xs font-semibold">
+											Rental Exploitation Type
+										</Label>
+										<Select value={rentalType} onValueChange={setRentalType}>
+											<SelectTrigger id="prop-rental-type" className="h-9 text-xs">
+												<SelectValue placeholder="Select rental type" />
+											</SelectTrigger>
+											<SelectContent>
+												{RENTAL_TYPES.map((rt) => (
+													<SelectItem key={rt.value} value={rt.value} className="text-xs">
+														{rt.label}
+													</SelectItem>
+												))}
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-rental-period" className="text-xs font-semibold">
+											Payment Frequency
+										</Label>
+										<Select value={rentalPeriod} onValueChange={setRentalPeriod}>
+											<SelectTrigger id="prop-rental-period" className="h-9 text-xs">
+												<SelectValue placeholder="Monthly, Yearly..." />
+											</SelectTrigger>
+											<SelectContent>
+												<SelectItem value="Monthly" className="text-xs">Monthly</SelectItem>
+												<SelectItem value="Quarterly" className="text-xs">Quarterly</SelectItem>
+												<SelectItem value="Yearly" className="text-xs">Yearly</SelectItem>
+												<SelectItem value="Seasonal" className="text-xs">Seasonal / Per Night</SelectItem>
+											</SelectContent>
+										</Select>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-rent-val" className="text-xs font-semibold">
+											Gross Monthly Rent
+										</Label>
+										<Input
+											id="prop-rent-val"
+											type="number"
+											step="any"
+											placeholder="e.g. 1450"
+											value={monthlyRent}
+											onChange={(e) => setMonthlyRent(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5">
+										<Label htmlFor="prop-utility" className="text-xs font-semibold">
+											Monthly Service Charges / Utilities
+										</Label>
+										<Input
+											id="prop-utility"
+											type="number"
+											step="any"
+											placeholder="e.g. 180"
+											value={utilityCosts}
+											onChange={(e) => setUtilityCosts(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+
+									<div className="space-y-1.5 sm:col-span-2">
+										<Label htmlFor="prop-yearly-misc" className="text-xs font-semibold">
+											Yearly Property Taxes & Misc Expenses (Taxe Foncière, PNO...)
+										</Label>
+										<Input
+											id="prop-yearly-misc"
+											type="number"
+											step="any"
+											placeholder="e.g. 1200"
+											value={yearlyMiscCosts}
+											onChange={(e) => setYearlyMiscCosts(e.target.value)}
+											className="h-9 text-xs font-mono"
+										/>
+									</div>
+								</div>
+
+								{/* Live Rental Yield Card */}
+								<div className="p-3.5 rounded-lg border border-border/60 bg-muted/30 grid grid-cols-2 gap-3 text-xs">
+									<div>
+										<span className="text-micro uppercase font-bold text-muted-foreground block">
+											Gross Rental Yield
+										</span>
+										<span className="text-sm font-bold font-mono text-foreground mt-0.5 block">
+											{grossYield !== null ? `${grossYield.toFixed(2)}%` : "—"}
+										</span>
+										<span className="text-micro text-muted-foreground">
+											Annualized rent / Property valuation
+										</span>
+									</div>
+
+									<div className="text-right">
+										<span className="text-micro uppercase font-bold text-muted-foreground block">
+											Est. Net Monthly Cash Flow
+										</span>
+										<span
+											className={cn(
+												"text-sm font-bold font-mono mt-0.5 block",
+												netMonthlyCashflow !== null && netMonthlyCashflow >= 0
+													? "text-emerald-500"
+													: "text-foreground",
+											)}
+										>
+											{netMonthlyCashflow !== null ? formatCurrency(netMonthlyCashflow) : "—"}
+										</span>
+										<span className="text-micro text-muted-foreground">
+											Rent minus charges & taxes
+										</span>
+									</div>
+								</div>
+							</div>
+						)}
+					</div>
+
+					{/* Dialog Footer */}
+					<DialogFooter className="px-6 py-3.5 border-t border-border/40 bg-muted/20 flex items-center justify-between sm:justify-between shrink-0">
+						<div>
+							{activeTab !== "identity" && (
+								<Button
+									type="button"
+									variant="ghost"
+									size="sm"
+									onClick={() => {
+										const order: FormTab[] = [
+											"identity",
+											"financials",
+											"specifications",
+											"amenities",
+											"rental",
+										];
+										const prevIdx = order.indexOf(activeTab) - 1;
+										if (prevIdx >= 0) setActiveTab(order[prevIdx]);
+									}}
+									className="text-xs touch-target"
+								>
+									Previous
+								</Button>
+							)}
 						</div>
 
-						{/* Footer Actions */}
-						<div className="border-t border-border px-10 py-5 flex items-center justify-between bg-background">
-							<div className="max-w-3xl mx-auto w-full flex items-center justify-between">
+						<div className="flex items-center gap-2">
+							<Button
+								type="button"
+								variant="outline"
+								size="sm"
+								onClick={handleDialogClose}
+								className="text-xs touch-target"
+							>
+								Cancel
+							</Button>
+
+							{activeTab === "identity" && (
 								<Button
-									variant="ghost"
-									onClick={handleBack}
-									disabled={currentStepIndex === 0}
-									className="gap-2"
+									type="submit"
+									variant="secondary"
+									size="sm"
+									disabled={isSubmitting || !name.trim() || !city.trim()}
+									className="text-xs touch-target border border-border/60 hover:bg-muted font-semibold"
+									title="Enregistrer immédiatement sans parcourir les autres onglets"
 								>
-									<ChevronLeft className="h-4 w-4" />
-									Back
+									<Zap className="h-3.5 w-3.5 mr-1 text-amber-500 fill-amber-500" />
+									Sauvegarder immédiatement
 								</Button>
-								<Button onClick={handleNext} className="gap-2 bg-primary hover:bg-primary/90">
-									{currentStepIndex === steps.length - 1 ? "Submit" : "Next"}
-									<ChevronRight className="h-4 w-4" />
+							)}
+
+							{activeTab !== "rental" ? (
+								<Button
+									type="button"
+									size="sm"
+									onClick={() => {
+										const order: FormTab[] = [
+											"identity",
+											"financials",
+											"specifications",
+											"amenities",
+											"rental",
+										];
+										const nextIdx = order.indexOf(activeTab) + 1;
+										if (nextIdx < order.length) setActiveTab(order[nextIdx]);
+									}}
+									className="text-xs touch-target bg-primary text-primary-foreground font-semibold"
+								>
+									Continue
 								</Button>
-							</div>
+							) : (
+								<Button
+									type="submit"
+									size="sm"
+									disabled={isSubmitting}
+									className="text-xs touch-target bg-primary text-primary-foreground font-semibold"
+								>
+									{isSubmitting ? "Saving..." : "Save Property"}
+								</Button>
+							)}
 						</div>
-					</div>
-				</div>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

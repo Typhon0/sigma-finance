@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 
 	"github.com/shopspring/decimal"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
@@ -63,45 +64,320 @@ func (r *mutationResolver) CreateAlert(ctx context.Context, input gqlModel.Creat
 
 // UpdateAlert is the resolver for the updateAlert field.
 func (r *mutationResolver) UpdateAlert(ctx context.Context, id string, input gqlModel.UpdateAlertInput) (*gqlModel.Alert, error) {
-	return nil, fmt.Errorf("not implemented: UpdateAlert - updateAlert")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.requireAlertOwner(ctx, id, caller.ID); err != nil {
+		return nil, err
+	}
+
+	req := service.UpdateAlertRequest{}
+	if input.AlertType != nil {
+		alertType := mapGQLAlertTypeToService(*input.AlertType)
+		req.AlertType = &alertType
+	}
+	if input.ConditionType != nil {
+		conditionType := mapGQLConditionTypeToService(*input.ConditionType)
+		req.ConditionType = &conditionType
+	}
+	if input.ThresholdValue != nil {
+		v := decimal.NewFromFloat(*input.ThresholdValue)
+		req.ThresholdValue = &v
+	}
+	if input.ThresholdPercentage != nil {
+		p := decimal.NewFromFloat(*input.ThresholdPercentage)
+		req.ThresholdPercentage = &p
+	}
+	if input.IsActive != nil {
+		req.IsActive = input.IsActive
+	}
+	if input.NotificationMethods != nil {
+		req.NotificationMethods = mapGQLNotificationMethodsToService(input.NotificationMethods)
+	}
+
+	updated, err := r.Resolver.AlertService.UpdateAlert(ctx, id, req)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] UpdateAlert: failed id=%s: %v", id, err)
+		return nil, err
+	}
+	return mapAlertToGQL(updated), nil
 }
 
 // DeleteAlert is the resolver for the deleteAlert field.
 func (r *mutationResolver) DeleteAlert(ctx context.Context, id string) (bool, error) {
-	return false, fmt.Errorf("not implemented: DeleteAlert - deleteAlert")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return false, err
+	}
+	if err := r.requireAlertOwner(ctx, id, caller.ID); err != nil {
+		return false, err
+	}
+	if err := r.Resolver.AlertService.DeleteAlert(ctx, id); err != nil {
+		log.Printf("[ERROR] [graphql] DeleteAlert: failed id=%s: %v", id, err)
+		return false, err
+	}
+	return true, nil
 }
 
 // AcknowledgeAlert is the resolver for the acknowledgeAlert field.
 func (r *mutationResolver) AcknowledgeAlert(ctx context.Context, alertID string) (bool, error) {
-	return false, fmt.Errorf("not implemented: AcknowledgeAlert - acknowledgeAlert")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return false, err
+	}
+	if err := r.requireAlertOwner(ctx, alertID, caller.ID); err != nil {
+		return false, err
+	}
+	if err := r.Resolver.AlertService.AcknowledgeAlert(ctx, alertID, caller.ID); err != nil {
+		log.Printf("[ERROR] [graphql] AcknowledgeAlert: failed id=%s: %v", alertID, err)
+		return false, err
+	}
+	return true, nil
 }
 
 // CreateBatchAlerts is the resolver for the createBatchAlerts field.
+//
+// Every alert in the batch belongs to the caller. Failures are reported per
+// index rather than aborting the batch, which is what the result type is for.
 func (r *mutationResolver) CreateBatchAlerts(ctx context.Context, input gqlModel.BatchAlertInput) (*gqlModel.BatchAlertResult, error) {
-	return nil, fmt.Errorf("not implemented: CreateBatchAlerts - createBatchAlerts")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &gqlModel.BatchAlertResult{
+		SuccessfulAlerts: []*gqlModel.Alert{},
+		FailedAlerts:     []*gqlModel.AlertError{},
+		TotalProcessed:   int32(len(input.Alerts)),
+	}
+
+	for i, in := range input.Alerts {
+		if in.AssetID != nil && in.PortfolioID != nil {
+			result.FailedAlerts = append(result.FailedAlerts, &gqlModel.AlertError{
+				Index:   int32(i),
+				Message: "provide either assetId or portfolioId, not both",
+			})
+			continue
+		}
+
+		req := service.CreateAlertRequest{
+			UserID:              caller.ID,
+			AlertType:           mapGQLAlertTypeToService(in.AlertType),
+			ConditionType:       mapGQLConditionTypeToService(in.ConditionType),
+			NotificationMethods: mapGQLNotificationMethodsToService(in.NotificationMethods),
+		}
+		if in.AssetID != nil && *in.AssetID != "" {
+			req.AssetID = in.AssetID
+		}
+		if in.PortfolioID != nil && *in.PortfolioID != "" {
+			req.PortfolioID = in.PortfolioID
+		}
+		if in.ThresholdValue != nil {
+			v := decimal.NewFromFloat(*in.ThresholdValue)
+			req.ThresholdValue = &v
+		}
+		if in.ThresholdPercentage != nil {
+			p := decimal.NewFromFloat(*in.ThresholdPercentage)
+			req.ThresholdPercentage = &p
+		}
+
+		created, createErr := r.Resolver.AlertService.CreateAlert(ctx, req)
+		if createErr != nil {
+			result.FailedAlerts = append(result.FailedAlerts, &gqlModel.AlertError{
+				Index:   int32(i),
+				Message: createErr.Error(),
+			})
+			continue
+		}
+		result.SuccessfulAlerts = append(result.SuccessfulAlerts, mapAlertToGQL(created))
+	}
+
+	result.SuccessCount = int32(len(result.SuccessfulAlerts))
+	result.FailureCount = int32(len(result.FailedAlerts))
+	return result, nil
 }
 
 // DeactivateBatchAlerts is the resolver for the deactivateBatchAlerts field.
 func (r *mutationResolver) DeactivateBatchAlerts(ctx context.Context, input gqlModel.BatchDeactivateInput) (*gqlModel.BatchDeactivateResult, error) {
-	return nil, fmt.Errorf("not implemented: DeactivateBatchAlerts - deactivateBatchAlerts")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result := &gqlModel.BatchDeactivateResult{
+		SuccessfulIds:       []string{},
+		FailedDeactivations: []*gqlModel.DeactivationError{},
+		TotalProcessed:      int32(len(input.AlertIds)),
+	}
+
+	owned := make([]string, 0, len(input.AlertIds))
+	for _, alertID := range input.AlertIds {
+		if ownerErr := r.requireAlertOwner(ctx, alertID, caller.ID); ownerErr != nil {
+			result.FailedDeactivations = append(result.FailedDeactivations, &gqlModel.DeactivationError{
+				AlertID: alertID,
+				Message: ownerErr.Error(),
+			})
+			continue
+		}
+		owned = append(owned, alertID)
+	}
+
+	if len(owned) > 0 {
+		if deactivateErr := r.Resolver.AlertService.DeactivateBatchAlerts(ctx, owned); deactivateErr != nil {
+			for _, alertID := range owned {
+				result.FailedDeactivations = append(result.FailedDeactivations, &gqlModel.DeactivationError{
+					AlertID: alertID,
+					Message: deactivateErr.Error(),
+				})
+			}
+		} else {
+			result.SuccessfulIds = append(result.SuccessfulIds, owned...)
+		}
+	}
+
+	result.SuccessCount = int32(len(result.SuccessfulIds))
+	result.FailureCount = int32(len(result.FailedDeactivations))
+	return result, nil
 }
 
 // Alerts is the resolver for the alerts field.
+//
+// Alerts are always the caller's own: a client-supplied user ID is ignored.
+// The service exposes one list per user, so the filter is applied in memory
+// over that list; pagination is applied the same way. That is honest about
+// what the storage layer supports rather than silently pretending to filter.
 func (r *queryResolver) Alerts(ctx context.Context, filter *gqlModel.AlertFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.Alert, error) {
-	return nil, fmt.Errorf("not implemented: Alerts - alerts")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	alerts, err := r.Resolver.AlertService.GetUserAlerts(ctx, caller.ID)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] Alerts: failed user=%s: %v", caller.ID, err)
+		return nil, err
+	}
+
+	matched := make([]*gqlModel.Alert, 0, len(alerts))
+	for _, alert := range alerts {
+		if filter != nil {
+			if filter.AlertType != nil && alert.AlertType != mapGQLAlertTypeToService(*filter.AlertType) {
+				continue
+			}
+			if filter.AssetID != nil && (alert.AssetID == nil || *alert.AssetID != *filter.AssetID) {
+				continue
+			}
+			if filter.PortfolioID != nil && (alert.PortfolioID == nil || *alert.PortfolioID != *filter.PortfolioID) {
+				continue
+			}
+			if filter.IsActive != nil && alert.IsActive != *filter.IsActive {
+				continue
+			}
+			if filter.TriggeredAfter != nil && (alert.LastTriggered == nil || !alert.LastTriggered.After(*filter.TriggeredAfter)) {
+				continue
+			}
+		}
+		matched = append(matched, mapAlertToGQL(alert))
+	}
+
+	return paginate(matched, pagination), nil
 }
 
 // Alert is the resolver for the alert field.
 func (r *queryResolver) Alert(ctx context.Context, id string) (*gqlModel.Alert, error) {
-	return nil, fmt.Errorf("not implemented: Alert - alert")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	alert, err := r.Resolver.AlertService.GetAlert(ctx, id)
+	if err != nil || alert == nil {
+		return nil, nil
+	}
+	if alert.UserID != caller.ID && !r.Resolver.callerIsAdmin(ctx, caller.ID) {
+		// Not found rather than forbidden: the caller has no business knowing
+		// whether this ID exists.
+		return nil, nil
+	}
+	return mapAlertToGQL(alert), nil
 }
 
 // AlertHistory is the resolver for the alertHistory field.
+//
+// The user ID argument is ignored in favour of the authenticated caller.
 func (r *queryResolver) AlertHistory(ctx context.Context, userID *string, filter *gqlModel.AlertHistoryFilter, pagination *gqlModel.PaginationInput) ([]*gqlModel.AlertTriggerEvent, error) {
-	return nil, fmt.Errorf("not implemented: AlertHistory - alertHistory")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	serviceFilter := service.AlertHistoryFilter{}
+	if filter != nil {
+		if filter.AlertType != nil {
+			alertType := mapGQLAlertTypeToService(*filter.AlertType)
+			serviceFilter.AlertType = &alertType
+		}
+		serviceFilter.AssetID = filter.AssetID
+		serviceFilter.PortfolioID = filter.PortfolioID
+		if filter.TimeRange != nil {
+			serviceFilter.TriggeredAfter = &filter.TimeRange.Start
+			serviceFilter.TriggeredBefore = &filter.TimeRange.End
+		}
+	}
+
+	entries, err := r.Resolver.AlertService.GetAlertHistory(ctx, caller.ID, serviceFilter)
+	if err != nil {
+		log.Printf("[ERROR] [graphql] AlertHistory: failed user=%s: %v", caller.ID, err)
+		return nil, err
+	}
+
+	events := make([]*gqlModel.AlertTriggerEvent, 0, len(entries))
+	for _, entry := range entries {
+		events = append(events, mapAlertHistoryToGQL(entry))
+	}
+
+	// Newest first, then paginate: history without an order is unusable.
+	sort.SliceStable(events, func(i, j int) bool {
+		return events[i].TriggeredAt.After(events[j].TriggeredAt)
+	})
+	return paginate(events, pagination), nil
 }
 
-// AlertTriggered is the resolver for the alertTriggered field.
-func (r *subscriptionResolver) AlertTriggered(ctx context.Context, userID string) (<-chan *gqlModel.AlertTriggerEvent, error) {
-	return nil, fmt.Errorf("not implemented: AlertTriggered - alertTriggered")
+// paginate applies the GraphQL pagination input to an already-filtered slice.
+func paginate[T any](items []T, pagination *gqlModel.PaginationInput) []T {
+	if pagination == nil {
+		return items
+	}
+	offset := 0
+	if pagination.Offset != nil && *pagination.Offset > 0 {
+		offset = int(*pagination.Offset)
+	}
+	if offset >= len(items) {
+		return []T{}
+	}
+	items = items[offset:]
+	if pagination.Limit != nil && *pagination.Limit >= 0 && int(*pagination.Limit) < len(items) {
+		items = items[:*pagination.Limit]
+	}
+	return items
+}
+
+// requireAlertOwner fails unless the alert exists and belongs to the caller (or
+// the caller is an administrator).
+func (r *Resolver) requireAlertOwner(ctx context.Context, alertID, callerID string) error {
+	if r == nil || r.AlertService == nil {
+		return fmt.Errorf("alert service unavailable")
+	}
+	alert, err := r.AlertService.GetAlert(ctx, alertID)
+	if err != nil {
+		return err
+	}
+	if alert == nil {
+		return fmt.Errorf("alert not found")
+	}
+	if alert.UserID != callerID && !r.callerIsAdmin(ctx, callerID) {
+		return fmt.Errorf("not authorized to access this alert")
+	}
+	return nil
 }

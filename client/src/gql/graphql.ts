@@ -22,6 +22,14 @@ export type Scalars = {
   Time: { input: any; output: any; }
 };
 
+export type AdemeDpeResult = {
+  __typename?: 'ADEMEDpeResult';
+  diagnosticDate?: Maybe<Scalars['String']['output']>;
+  rating: Scalars['String']['output'];
+  sourceDataset?: Maybe<Scalars['String']['output']>;
+  surfaceM2?: Maybe<Scalars['Float']['output']>;
+};
+
 export type Account = {
   __typename?: 'Account';
   accountNumber?: Maybe<Scalars['String']['output']>;
@@ -159,38 +167,6 @@ export type Alert = {
   userId: Scalars['ID']['output'];
 };
 
-/** Alert action configuration */
-export type AlertAction = {
-  __typename?: 'AlertAction';
-  config: Scalars['JSON']['output'];
-  type: AlertActionType;
-};
-
-/** Input for alert actions */
-export type AlertActionInput = {
-  config: Scalars['JSON']['input'];
-  type: AlertActionType;
-};
-
-/** Alert action type enumeration */
-export enum AlertActionType {
-  Email = 'EMAIL',
-  Log = 'LOG',
-  Slack = 'SLACK',
-  Webhook = 'WEBHOOK'
-}
-
-/** Alert condition enumeration */
-export enum AlertCondition {
-  AvgGreaterThan = 'AVG_GREATER_THAN',
-  AvgLessThan = 'AVG_LESS_THAN',
-  EqualTo = 'EQUAL_TO',
-  GreaterThan = 'GREATER_THAN',
-  LessThan = 'LESS_THAN',
-  MaxGreaterThan = 'MAX_GREATER_THAN',
-  MinLessThan = 'MIN_LESS_THAN'
-}
-
 export type AlertError = {
   __typename?: 'AlertError';
   index: Scalars['Int']['output'];
@@ -212,62 +188,11 @@ export type AlertHistoryFilter = {
   timeRange?: InputMaybe<PerformanceTimeRangeInput>;
 };
 
-/** Alert notification */
-export type AlertNotification = {
-  __typename?: 'AlertNotification';
-  alertId: Scalars['ID']['output'];
-  alertName: Scalars['String']['output'];
-  currentValue: Scalars['Float']['output'];
-  id: Scalars['ID']['output'];
-  message: Scalars['String']['output'];
-  metricName: Scalars['String']['output'];
-  severity: AlertSeverity;
-  threshold: Scalars['Float']['output'];
-  timestamp: Scalars['DateTime']['output'];
-};
-
 export enum AlertNotificationMethod {
   Email = 'EMAIL',
   InApp = 'IN_APP',
   Push = 'PUSH',
   Sms = 'SMS'
-}
-
-/** Alert rule configuration */
-export type AlertRule = {
-  __typename?: 'AlertRule';
-  actions: Array<AlertAction>;
-  condition: AlertCondition;
-  createdAt: Scalars['DateTime']['output'];
-  duration: Scalars['Int']['output'];
-  enabled: Scalars['Boolean']['output'];
-  id: Scalars['ID']['output'];
-  labels: Scalars['JSON']['output'];
-  lastFired?: Maybe<Scalars['DateTime']['output']>;
-  metricName: Scalars['String']['output'];
-  name: Scalars['String']['output'];
-  threshold: Scalars['Float']['output'];
-  updatedAt: Scalars['DateTime']['output'];
-};
-
-/** Input for creating/updating alert rules */
-export type AlertRuleInput = {
-  actions: Array<AlertActionInput>;
-  condition: AlertCondition;
-  duration: Scalars['Int']['input'];
-  enabled: Scalars['Boolean']['input'];
-  labels?: InputMaybe<Scalars['JSON']['input']>;
-  metricName: Scalars['String']['input'];
-  name: Scalars['String']['input'];
-  threshold: Scalars['Float']['input'];
-};
-
-/** Alert severity enumeration */
-export enum AlertSeverity {
-  Critical = 'CRITICAL',
-  High = 'HIGH',
-  Low = 'LOW',
-  Medium = 'MEDIUM'
 }
 
 export type AlertTriggerEvent = {
@@ -745,14 +670,17 @@ export type CreatePortfolioInput = {
 
 export type CreateRealEstateInput = {
   address: Scalars['String']['input'];
+  addressLabel?: InputMaybe<Scalars['String']['input']>;
   agencyFees?: InputMaybe<Scalars['Float']['input']>;
   assetTypeID: Scalars['ID']['input'];
+  banId?: InputMaybe<Scalars['String']['input']>;
   bathroomCondition?: InputMaybe<Scalars['String']['input']>;
   bathroomQuality?: InputMaybe<Scalars['String']['input']>;
   bathrooms?: InputMaybe<Scalars['Float']['input']>;
   bedrooms?: InputMaybe<Scalars['Int']['input']>;
   category?: InputMaybe<Scalars['String']['input']>;
   city: Scalars['String']['input'];
+  cityCode?: InputMaybe<Scalars['String']['input']>;
   condition?: InputMaybe<Scalars['String']['input']>;
   country: Scalars['String']['input'];
   currentValue?: InputMaybe<Scalars['Float']['input']>;
@@ -767,16 +695,24 @@ export type CreateRealEstateInput = {
   hasBalcony?: InputMaybe<Scalars['Boolean']['input']>;
   hasGarden?: InputMaybe<Scalars['Boolean']['input']>;
   hasLift?: InputMaybe<Scalars['Boolean']['input']>;
+  hasOutdoor?: InputMaybe<Scalars['Boolean']['input']>;
   hasPool?: InputMaybe<Scalars['Boolean']['input']>;
   hasSauna?: InputMaybe<Scalars['Boolean']['input']>;
   isFurnished?: InputMaybe<Scalars['Boolean']['input']>;
+  isGroundFloor?: InputMaybe<Scalars['Boolean']['input']>;
   isNewConstruction?: InputMaybe<Scalars['Boolean']['input']>;
   kitchenCondition?: InputMaybe<Scalars['String']['input']>;
   kitchenQuality?: InputMaybe<Scalars['String']['input']>;
   landSurface?: InputMaybe<Scalars['Float']['input']>;
+  latitude?: InputMaybe<Scalars['Float']['input']>;
+  linkedLoanId?: InputMaybe<Scalars['ID']['input']>;
+  longitude?: InputMaybe<Scalars['Float']['input']>;
+  manualValue?: InputMaybe<Scalars['Float']['input']>;
   monthlyRent?: InputMaybe<Scalars['Float']['input']>;
   name: Scalars['String']['input'];
   notaryFees?: InputMaybe<Scalars['Float']['input']>;
+  ownershipPercentage?: InputMaybe<Scalars['Float']['input']>;
+  ownershipStructure?: InputMaybe<Scalars['String']['input']>;
   parkingSpaces?: InputMaybe<Scalars['Int']['input']>;
   propertyType: Scalars['String']['input'];
   purchaseDate?: InputMaybe<Scalars['Time']['input']>;
@@ -789,6 +725,7 @@ export type CreateRealEstateInput = {
   state?: InputMaybe<Scalars['String']['input']>;
   totalFloors?: InputMaybe<Scalars['Int']['input']>;
   utilityCosts?: InputMaybe<Scalars['Float']['input']>;
+  valuationMode?: InputMaybe<ValuationMode>;
   windowsCondition?: InputMaybe<Scalars['String']['input']>;
   windowsQuality?: InputMaybe<Scalars['String']['input']>;
   yearBuilt?: InputMaybe<Scalars['Int']['input']>;
@@ -861,24 +798,6 @@ export type Crypto = Asset & {
   walletAddress?: Maybe<Scalars['String']['output']>;
 };
 
-/** Input for recording dashboard events */
-export type DashboardEventInput = {
-  data: Scalars['JSON']['input'];
-  sessionId?: InputMaybe<Scalars['String']['input']>;
-  type: Scalars['String']['input'];
-  userId?: InputMaybe<Scalars['String']['input']>;
-};
-
-/** Dashboard performance metrics */
-export type DashboardPerformanceMetrics = {
-  __typename?: 'DashboardPerformanceMetrics';
-  dashboardStateTransitions?: Maybe<MetricSummary>;
-  dataLoadTimes?: Maybe<MetricSummary>;
-  errorRates?: Maybe<MetricSummary>;
-  marketDataUpdates?: Maybe<MetricSummary>;
-  userInteractions?: Maybe<MetricSummary>;
-};
-
 export type DataQuality = {
   __typename?: 'DataQuality';
   estimatedDataPoints: Scalars['Int']['output'];
@@ -928,6 +847,12 @@ export type EnableBankingInstitution = {
   title: Scalars['String']['output'];
 };
 
+export enum EstimationMethod {
+  AcquisitionCost = 'ACQUISITION_COST',
+  DvfComparables = 'DVF_COMPARABLES',
+  InseeIndex = 'INSEE_INDEX'
+}
+
 export type ExportData = {
   __typename?: 'ExportData';
   data: Scalars['String']['output'];
@@ -965,15 +890,6 @@ export type ExportResult = {
   downloadUrl?: Maybe<Scalars['String']['output']>;
   error?: Maybe<Scalars['String']['output']>;
   success: Scalars['Boolean']['output'];
-};
-
-/** Feature usage statistics */
-export type FeatureUsage = {
-  __typename?: 'FeatureUsage';
-  avgDuration: Scalars['Float']['output'];
-  feature: Scalars['String']['output'];
-  uniqueUsers: Scalars['Int']['output'];
-  usageCount: Scalars['Int']['output'];
 };
 
 export type FinanceDatabasePreviewItem = {
@@ -1489,40 +1405,6 @@ export type MethodParameter = {
   value: Scalars['String']['output'];
 };
 
-/** Individual metric data */
-export type Metric = {
-  __typename?: 'Metric';
-  aggregations: Scalars['JSON']['output'];
-  labels: Scalars['JSON']['output'];
-  lastUpdated: Scalars['DateTime']['output'];
-  name: Scalars['String']['output'];
-  type: MetricType;
-  value: Scalars['Float']['output'];
-};
-
-/** Aggregated metric summary */
-export type MetricSummary = {
-  __typename?: 'MetricSummary';
-  average: Scalars['Float']['output'];
-  breakdown: Scalars['JSON']['output'];
-  lastDay: Scalars['Float']['output'];
-  lastHour: Scalars['Float']['output'];
-  max: Scalars['Float']['output'];
-  min: Scalars['Float']['output'];
-  p50: Scalars['Float']['output'];
-  p95: Scalars['Float']['output'];
-  p99: Scalars['Float']['output'];
-  total: Scalars['Float']['output'];
-};
-
-/** Metric type enumeration */
-export enum MetricType {
-  Counter = 'COUNTER',
-  Gauge = 'GAUGE',
-  Histogram = 'HISTOGRAM',
-  Timing = 'TIMING'
-}
-
 export type Mutation = {
   __typename?: 'Mutation';
   acknowledgeAlert: Scalars['Boolean']['output'];
@@ -1550,8 +1432,6 @@ export type Mutation = {
   confirmPasswordReset: PasswordResetResponse;
   createAccount: Account;
   createAlert: Alert;
-  /** Create an alert rule */
-  createAlertRule: AlertRule;
   createBankAccountAsset: BankAccount;
   createBatchAlerts: BatchAlertResult;
   createCryptoAsset: Crypto;
@@ -1568,8 +1448,6 @@ export type Mutation = {
   deactivateBatchAlerts: BatchDeactivateResult;
   deleteAccount: Scalars['Boolean']['output'];
   deleteAlert: Scalars['Boolean']['output'];
-  /** Delete an alert rule */
-  deleteAlertRule: Scalars['Boolean']['output'];
   deleteMarketDataCredential: Scalars['ID']['output'];
   deletePortfolio: Scalars['ID']['output'];
   deleteTransaction: Scalars['ID']['output'];
@@ -1591,9 +1469,8 @@ export type Mutation = {
   persistDiscoveredInstrument: Instrument;
   pollTradeRepublicAuth: TradeRepublicAuthPollResult;
   pollWoobAuth: WoobAuthPollResult;
-  /** Record a dashboard monitoring event */
-  recordDashboardEvent: Scalars['Boolean']['output'];
   refreshAssetPrices: RefreshAssetPricesResult;
+  refreshRealEstateValuation: RealEstate;
   refreshSingleAssetPrice: AssetPricePoint;
   refreshToken: AuthResponse;
   refreshWalletBalancePrice: WalletBalance;
@@ -1625,8 +1502,6 @@ export type Mutation = {
   untagPortfolio: Portfolio;
   updateAccount: Account;
   updateAlert: Alert;
-  /** Update an alert rule */
-  updateAlertRule: AlertRule;
   updateAssetInPortfolio: PortfolioAsset;
   updateBlockchainNetworkConfig: BlockchainNetworkConfig;
   updateFinanceDatabaseSyncEnabled: FinanceDatabaseSyncItem;
@@ -1635,6 +1510,7 @@ export type Mutation = {
   updatePerformanceSnapshots: Scalars['Boolean']['output'];
   updatePortfolio: Portfolio;
   updateProviderRoutingPreferences: ProviderRoutingPreferences;
+  updateRealEstateAsset: RealEstate;
   updateTransaction: Transaction;
   updateUser: User;
   updateUserDisplayCurrency: User;
@@ -1784,11 +1660,6 @@ export type MutationCreateAlertArgs = {
 };
 
 
-export type MutationCreateAlertRuleArgs = {
-  input: AlertRuleInput;
-};
-
-
 export type MutationCreateBankAccountAssetArgs = {
   input: CreateBankAccountInput;
 };
@@ -1866,11 +1737,6 @@ export type MutationDeleteAccountArgs = {
 
 
 export type MutationDeleteAlertArgs = {
-  id: Scalars['ID']['input'];
-};
-
-
-export type MutationDeleteAlertRuleArgs = {
   id: Scalars['ID']['input'];
 };
 
@@ -1996,13 +1862,13 @@ export type MutationPollWoobAuthArgs = {
 };
 
 
-export type MutationRecordDashboardEventArgs = {
-  input: DashboardEventInput;
+export type MutationRefreshAssetPricesArgs = {
+  assetId?: InputMaybe<Scalars['ID']['input']>;
 };
 
 
-export type MutationRefreshAssetPricesArgs = {
-  assetId?: InputMaybe<Scalars['ID']['input']>;
+export type MutationRefreshRealEstateValuationArgs = {
+  id: Scalars['ID']['input'];
 };
 
 
@@ -2177,12 +2043,6 @@ export type MutationUpdateAlertArgs = {
 };
 
 
-export type MutationUpdateAlertRuleArgs = {
-  id: Scalars['ID']['input'];
-  input: AlertRuleInput;
-};
-
-
 export type MutationUpdateAssetInPortfolioArgs = {
   input: PortfolioAssetInput;
 };
@@ -2224,6 +2084,12 @@ export type MutationUpdatePortfolioArgs = {
 
 export type MutationUpdateProviderRoutingPreferencesArgs = {
   input: ProviderRoutingPreferencesInput;
+};
+
+
+export type MutationUpdateRealEstateAssetArgs = {
+  id: Scalars['ID']['input'];
+  input: UpdateRealEstateInput;
 };
 
 
@@ -2277,15 +2143,6 @@ export type MutationValidateProviderCredentialsArgs = {
 
 export type MutationVerifyEmailArgs = {
   input: EmailVerificationInput;
-};
-
-/** User navigation pattern */
-export type NavigationPattern = {
-  __typename?: 'NavigationPattern';
-  avgDuration: Scalars['Float']['output'];
-  conversion: Scalars['Float']['output'];
-  count: Scalars['Int']['output'];
-  pattern: Scalars['String']['output'];
 };
 
 export type OnlineInstrumentInput = {
@@ -2515,12 +2372,6 @@ export type PortfolioOrderInput = {
   sortOrder: Scalars['Int']['input'];
 };
 
-export type PortfolioUpdatePayload = {
-  __typename?: 'PortfolioUpdatePayload';
-  portfolio: Portfolio;
-  type: Scalars['String']['output'];
-};
-
 export type Position = {
   __typename?: 'Position';
   account: Account;
@@ -2651,11 +2502,13 @@ export type Query = {
   comparePortfolios: Array<PerformanceMetrics>;
   dispositionsByPosition: Array<TaxLotDisposition>;
   enableBankingInstitutions: Array<EnableBankingInstitution>;
-  exportPortfolioData: ExportData;
+  estimateRealEstate: RealEstateEstimationResult;
+  fetchADEMEDpe?: Maybe<AdemeDpeResult>;
   financeDatabasePreview: Array<FinanceDatabasePreviewItem>;
   financeDatabaseSyncHistory: Array<FinanceDatabaseSyncHistoryEntry>;
   financeDatabaseSyncStatus: FinanceDatabaseSyncStatusPayload;
   generatePerformanceReport: PerformanceReport;
+  getCommuneRentalIndicators?: Maybe<RealEstateRentalMarket>;
   historicalDataBackfillJob?: Maybe<HistoricalDataBackfillJob>;
   historicalDataBackfillJobs: Array<HistoricalDataBackfillJob>;
   installedMarketDataPacks: Array<MarketDataPack>;
@@ -2667,15 +2520,9 @@ export type Query = {
   marketDataCredentials: Array<MarketDataCredential>;
   marketDataPackJob?: Maybe<MarketDataPackJob>;
   me?: Maybe<AuthUser>;
-  /** Get specific metric data */
-  metric?: Maybe<Metric>;
-  /** Get all available metrics */
-  metrics: Array<Metric>;
   packBuildJob?: Maybe<MarketDataPackBuildJob>;
   packBuildJobs: Array<MarketDataPackBuildJob>;
   pendingWalletReviews: Array<WalletActivityReview>;
-  /** Get dashboard performance metrics */
-  performanceMetrics: DashboardPerformanceMetrics;
   performanceSnapshots: Array<PerformanceSnapshot>;
   portfolio?: Maybe<Portfolio>;
   portfolioAllocation: AllocationBreakdown;
@@ -2694,8 +2541,6 @@ export type Query = {
   supportedProviders: Array<ProviderInfo>;
   syncConnections: Array<SyncConnection>;
   syncCredentials: Array<SyncCredential>;
-  /** Get current system health status */
-  systemHealth: SystemHealth;
   tag?: Maybe<Tag>;
   tags: Array<Tag>;
   taxHarvestOpportunities: Array<TaxHarvestOpportunity>;
@@ -2705,8 +2550,6 @@ export type Query = {
   transaction?: Maybe<Transaction>;
   transactions: Array<Transaction>;
   user?: Maybe<User>;
-  /** Get user engagement analytics */
-  userEngagementMetrics: UserEngagementMetrics;
   users: Array<User>;
   walletAccounts: Array<WalletAccount>;
   walletCUUsage: WalletCuUsage;
@@ -2852,8 +2695,15 @@ export type QueryEnableBankingInstitutionsArgs = {
 };
 
 
-export type QueryExportPortfolioDataArgs = {
-  input: ExportDataInput;
+export type QueryEstimateRealEstateArgs = {
+  input: RealEstateEstimationInput;
+};
+
+
+export type QueryFetchAdemeDpeArgs = {
+  banId: Scalars['String']['input'];
+  propertyType?: InputMaybe<Scalars['String']['input']>;
+  surfaceM2: Scalars['Float']['input'];
 };
 
 
@@ -2871,6 +2721,15 @@ export type QueryFinanceDatabaseSyncHistoryArgs = {
 
 export type QueryGeneratePerformanceReportArgs = {
   input: GenerateReportInput;
+};
+
+
+export type QueryGetCommuneRentalIndicatorsArgs = {
+  cityCode: Scalars['String']['input'];
+  propertyType?: InputMaybe<Scalars['String']['input']>;
+  propertyValue?: InputMaybe<Scalars['Float']['input']>;
+  roomsCount?: InputMaybe<Scalars['Int']['input']>;
+  surfaceM2?: InputMaybe<Scalars['Float']['input']>;
 };
 
 
@@ -2917,11 +2776,6 @@ export type QueryMarketDataPackJobArgs = {
 };
 
 
-export type QueryMetricArgs = {
-  name: Scalars['String']['input'];
-};
-
-
 export type QueryPackBuildJobArgs = {
   id: Scalars['ID']['input'];
 };
@@ -2934,11 +2788,6 @@ export type QueryPackBuildJobsArgs = {
 
 export type QueryPendingWalletReviewsArgs = {
   portfolioId: Scalars['ID']['input'];
-};
-
-
-export type QueryPerformanceMetricsArgs = {
-  timeRange?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3079,11 +2928,6 @@ export type QueryUserArgs = {
 };
 
 
-export type QueryUserEngagementMetricsArgs = {
-  timeRange?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type QueryUsersArgs = {
   filter?: InputMaybe<UserFilter>;
   orderBy?: InputMaybe<UserOrder>;
@@ -3123,20 +2967,32 @@ export type RateLimit = {
 export type RealEstate = Asset & {
   __typename?: 'RealEstate';
   address: Scalars['String']['output'];
+  addressLabel?: Maybe<Scalars['String']['output']>;
   agencyFees?: Maybe<Scalars['Float']['output']>;
   assetType: AssetType;
+  banId?: Maybe<Scalars['String']['output']>;
+  basePricePerM2?: Maybe<Scalars['Float']['output']>;
   bathroomCondition?: Maybe<Scalars['String']['output']>;
   bathroomQuality?: Maybe<Scalars['String']['output']>;
   bathrooms?: Maybe<Scalars['Float']['output']>;
   bedrooms?: Maybe<Scalars['Int']['output']>;
   category?: Maybe<Scalars['String']['output']>;
   city: Scalars['String']['output'];
+  cityCode?: Maybe<Scalars['String']['output']>;
+  comparablesCount?: Maybe<Scalars['Int']['output']>;
   condition?: Maybe<Scalars['String']['output']>;
   country: Scalars['String']['output'];
   currentValue?: Maybe<Scalars['Float']['output']>;
   dayChange?: Maybe<Scalars['Float']['output']>;
   dayChangePercent?: Maybe<Scalars['Float']['output']>;
   energyLabel?: Maybe<Scalars['String']['output']>;
+  estimatedGrossYield?: Maybe<Scalars['Float']['output']>;
+  estimatedMax?: Maybe<Scalars['Float']['output']>;
+  estimatedMin?: Maybe<Scalars['Float']['output']>;
+  estimatedMonthlyRent?: Maybe<Scalars['Float']['output']>;
+  estimatedPricePerM2?: Maybe<Scalars['Float']['output']>;
+  estimatedValue?: Maybe<Scalars['Float']['output']>;
+  estimationMethod?: Maybe<EstimationMethod>;
   exchange?: Maybe<Scalars['String']['output']>;
   floor?: Maybe<Scalars['Int']['output']>;
   flooringCondition?: Maybe<Scalars['String']['output']>;
@@ -3148,17 +3004,27 @@ export type RealEstate = Asset & {
   hasBalcony?: Maybe<Scalars['Boolean']['output']>;
   hasGarden?: Maybe<Scalars['Boolean']['output']>;
   hasLift?: Maybe<Scalars['Boolean']['output']>;
+  hasOutdoor?: Maybe<Scalars['Boolean']['output']>;
   hasPool?: Maybe<Scalars['Boolean']['output']>;
   hasSauna?: Maybe<Scalars['Boolean']['output']>;
   id: Scalars['ID']['output'];
   isFurnished?: Maybe<Scalars['Boolean']['output']>;
+  isGroundFloor?: Maybe<Scalars['Boolean']['output']>;
   isNewConstruction?: Maybe<Scalars['Boolean']['output']>;
   kitchenCondition?: Maybe<Scalars['String']['output']>;
   kitchenQuality?: Maybe<Scalars['String']['output']>;
   landSurface?: Maybe<Scalars['Float']['output']>;
+  lastEstimatedAt?: Maybe<Scalars['Time']['output']>;
+  latitude?: Maybe<Scalars['Float']['output']>;
+  linkedLoanId?: Maybe<Scalars['ID']['output']>;
+  longitude?: Maybe<Scalars['Float']['output']>;
+  manualValue?: Maybe<Scalars['Float']['output']>;
+  marketRentPerM2?: Maybe<Scalars['Float']['output']>;
   monthlyRent?: Maybe<Scalars['Float']['output']>;
   name: Scalars['String']['output'];
   notaryFees?: Maybe<Scalars['Float']['output']>;
+  ownershipPercentage?: Maybe<Scalars['Float']['output']>;
+  ownershipStructure?: Maybe<Scalars['String']['output']>;
   parkingSpaces?: Maybe<Scalars['Int']['output']>;
   positions: Array<Position>;
   propertyType: Scalars['String']['output'];
@@ -3166,8 +3032,10 @@ export type RealEstate = Asset & {
   purchasePrice?: Maybe<Scalars['Float']['output']>;
   renovationFees?: Maybe<Scalars['Float']['output']>;
   rentalPeriod?: Maybe<Scalars['String']['output']>;
+  rentalR2Adjusted?: Maybe<Scalars['Float']['output']>;
   rentalType?: Maybe<Scalars['String']['output']>;
   rooms?: Maybe<Scalars['Int']['output']>;
+  searchRadiusMeters?: Maybe<Scalars['Int']['output']>;
   sector?: Maybe<Scalars['String']['output']>;
   squareFeet?: Maybe<Scalars['Int']['output']>;
   state?: Maybe<Scalars['String']['output']>;
@@ -3175,11 +3043,67 @@ export type RealEstate = Asset & {
   tags: Array<Tag>;
   totalFloors?: Maybe<Scalars['Int']['output']>;
   utilityCosts?: Maybe<Scalars['Float']['output']>;
+  valuationConfidence?: Maybe<ValuationConfidence>;
+  valuationHistory?: Maybe<Array<RealEstateValuationPoint>>;
+  valuationMode?: Maybe<ValuationMode>;
   windowsCondition?: Maybe<Scalars['String']['output']>;
   windowsQuality?: Maybe<Scalars['String']['output']>;
   yearBuilt?: Maybe<Scalars['Int']['output']>;
   yearlyMiscCosts?: Maybe<Scalars['Float']['output']>;
   zipCode?: Maybe<Scalars['String']['output']>;
+};
+
+export type RealEstateEstimationInput = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  banId?: InputMaybe<Scalars['String']['input']>;
+  city?: InputMaybe<Scalars['String']['input']>;
+  cityCode?: InputMaybe<Scalars['String']['input']>;
+  condition?: InputMaybe<Scalars['String']['input']>;
+  energyLabel?: InputMaybe<Scalars['String']['input']>;
+  hasOutdoor?: InputMaybe<Scalars['Boolean']['input']>;
+  isGroundFloor?: InputMaybe<Scalars['Boolean']['input']>;
+  latitude?: InputMaybe<Scalars['Float']['input']>;
+  longitude?: InputMaybe<Scalars['Float']['input']>;
+  postcode?: InputMaybe<Scalars['String']['input']>;
+  propertyType: Scalars['String']['input'];
+  purchaseDate?: InputMaybe<Scalars['Time']['input']>;
+  purchasePrice?: InputMaybe<Scalars['Float']['input']>;
+  roomsCount?: InputMaybe<Scalars['Int']['input']>;
+  surfaceM2: Scalars['Float']['input'];
+};
+
+export type RealEstateEstimationResult = {
+  __typename?: 'RealEstateEstimationResult';
+  basePricePerM2?: Maybe<Scalars['Float']['output']>;
+  comparablesCount: Scalars['Int']['output'];
+  confidence: ValuationConfidence;
+  estimatedMax?: Maybe<Scalars['Float']['output']>;
+  estimatedMin?: Maybe<Scalars['Float']['output']>;
+  estimatedPricePerM2?: Maybe<Scalars['Float']['output']>;
+  estimatedValue?: Maybe<Scalars['Float']['output']>;
+  lastEstimatedAt: Scalars['Time']['output'];
+  method: EstimationMethod;
+  rentalMarket?: Maybe<RealEstateRentalMarket>;
+  searchRadiusMeters?: Maybe<Scalars['Int']['output']>;
+};
+
+export type RealEstateRentalMarket = {
+  __typename?: 'RealEstateRentalMarket';
+  estimatedGrossYield?: Maybe<Scalars['Float']['output']>;
+  estimatedMonthlyRent?: Maybe<Scalars['Float']['output']>;
+  isCommuneLevel: Scalars['Boolean']['output'];
+  marketRentPerM2?: Maybe<Scalars['Float']['output']>;
+  r2Adjusted?: Maybe<Scalars['Float']['output']>;
+  sourceLabel: Scalars['String']['output'];
+};
+
+export type RealEstateValuationPoint = {
+  __typename?: 'RealEstateValuationPoint';
+  date: Scalars['Time']['output'];
+  estimatedMax?: Maybe<Scalars['Float']['output']>;
+  estimatedMin?: Maybe<Scalars['Float']['output']>;
+  mode?: Maybe<Scalars['String']['output']>;
+  value: Scalars['Float']['output'];
 };
 
 export type RealizedGainsSummary = {
@@ -3296,44 +3220,6 @@ export type Stock = Asset & {
   ticker: Scalars['String']['output'];
 };
 
-export type Subscription = {
-  __typename?: 'Subscription';
-  alertTriggered: AlertTriggerEvent;
-  /** Subscribe to real-time performance metrics */
-  performanceMetricsUpdated: DashboardPerformanceMetrics;
-  portfolioPerformanceUpdates: PerformanceMetrics;
-  portfolioUpdates: PortfolioUpdatePayload;
-  priceUpdates: ChartDataPoint;
-  /** Subscribe to system health changes */
-  systemHealthUpdated: SystemHealth;
-  transactionUpdates: TransactionUpdatePayload;
-};
-
-
-export type SubscriptionAlertTriggeredArgs = {
-  userId: Scalars['ID']['input'];
-};
-
-
-export type SubscriptionPortfolioPerformanceUpdatesArgs = {
-  portfolioId: Scalars['ID']['input'];
-};
-
-
-export type SubscriptionPortfolioUpdatesArgs = {
-  userID: Scalars['ID']['input'];
-};
-
-
-export type SubscriptionPriceUpdatesArgs = {
-  assetIds: Array<Scalars['ID']['input']>;
-};
-
-
-export type SubscriptionTransactionUpdatesArgs = {
-  userID: Scalars['ID']['input'];
-};
-
 export type SyncConnection = {
   __typename?: 'SyncConnection';
   account?: Maybe<Account>;
@@ -3402,17 +3288,6 @@ export enum SyncStatus {
   Idle = 'IDLE',
   Syncing = 'SYNCING'
 }
-
-/** System health status */
-export type SystemHealth = {
-  __typename?: 'SystemHealth';
-  alertsCount: Scalars['Int']['output'];
-  details?: Maybe<Scalars['JSON']['output']>;
-  metricsCount: Scalars['Int']['output'];
-  recentErrors: Scalars['Float']['output'];
-  status: Scalars['String']['output'];
-  timestamp: Scalars['DateTime']['output'];
-};
 
 export type Tag = {
   __typename?: 'Tag';
@@ -3606,12 +3481,6 @@ export enum TransactionType {
   Withdrawal = 'WITHDRAWAL'
 }
 
-export type TransactionUpdatePayload = {
-  __typename?: 'TransactionUpdatePayload';
-  transaction: Transaction;
-  type: Scalars['String']['output'];
-};
-
 export type TriggerFinanceDatabaseSyncPayload = {
   __typename?: 'TriggerFinanceDatabaseSyncPayload';
   message: Scalars['String']['output'];
@@ -3676,6 +3545,70 @@ export type UpdatePortfolioInput = {
   name?: InputMaybe<Scalars['String']['input']>;
   sortOrder?: InputMaybe<Scalars['Int']['input']>;
   taxWrapper?: InputMaybe<TaxWrapperType>;
+};
+
+export type UpdateRealEstateInput = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  addressLabel?: InputMaybe<Scalars['String']['input']>;
+  agencyFees?: InputMaybe<Scalars['Float']['input']>;
+  banId?: InputMaybe<Scalars['String']['input']>;
+  bathroomCondition?: InputMaybe<Scalars['String']['input']>;
+  bathroomQuality?: InputMaybe<Scalars['String']['input']>;
+  bathrooms?: InputMaybe<Scalars['Float']['input']>;
+  bedrooms?: InputMaybe<Scalars['Int']['input']>;
+  category?: InputMaybe<Scalars['String']['input']>;
+  city?: InputMaybe<Scalars['String']['input']>;
+  cityCode?: InputMaybe<Scalars['String']['input']>;
+  condition?: InputMaybe<Scalars['String']['input']>;
+  country?: InputMaybe<Scalars['String']['input']>;
+  currentValue?: InputMaybe<Scalars['Float']['input']>;
+  energyLabel?: InputMaybe<Scalars['String']['input']>;
+  floor?: InputMaybe<Scalars['Int']['input']>;
+  flooringCondition?: InputMaybe<Scalars['String']['input']>;
+  flooringQuality?: InputMaybe<Scalars['String']['input']>;
+  furnishingCosts?: InputMaybe<Scalars['Float']['input']>;
+  garages?: InputMaybe<Scalars['Int']['input']>;
+  generalCondition?: InputMaybe<Scalars['String']['input']>;
+  generalQuality?: InputMaybe<Scalars['String']['input']>;
+  hasBalcony?: InputMaybe<Scalars['Boolean']['input']>;
+  hasGarden?: InputMaybe<Scalars['Boolean']['input']>;
+  hasLift?: InputMaybe<Scalars['Boolean']['input']>;
+  hasOutdoor?: InputMaybe<Scalars['Boolean']['input']>;
+  hasPool?: InputMaybe<Scalars['Boolean']['input']>;
+  hasSauna?: InputMaybe<Scalars['Boolean']['input']>;
+  isFurnished?: InputMaybe<Scalars['Boolean']['input']>;
+  isGroundFloor?: InputMaybe<Scalars['Boolean']['input']>;
+  isNewConstruction?: InputMaybe<Scalars['Boolean']['input']>;
+  kitchenCondition?: InputMaybe<Scalars['String']['input']>;
+  kitchenQuality?: InputMaybe<Scalars['String']['input']>;
+  landSurface?: InputMaybe<Scalars['Float']['input']>;
+  latitude?: InputMaybe<Scalars['Float']['input']>;
+  linkedLoanId?: InputMaybe<Scalars['ID']['input']>;
+  longitude?: InputMaybe<Scalars['Float']['input']>;
+  manualValue?: InputMaybe<Scalars['Float']['input']>;
+  monthlyRent?: InputMaybe<Scalars['Float']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  notaryFees?: InputMaybe<Scalars['Float']['input']>;
+  ownershipPercentage?: InputMaybe<Scalars['Float']['input']>;
+  ownershipStructure?: InputMaybe<Scalars['String']['input']>;
+  parkingSpaces?: InputMaybe<Scalars['Int']['input']>;
+  propertyType?: InputMaybe<Scalars['String']['input']>;
+  purchaseDate?: InputMaybe<Scalars['Time']['input']>;
+  purchasePrice?: InputMaybe<Scalars['Float']['input']>;
+  renovationFees?: InputMaybe<Scalars['Float']['input']>;
+  rentalPeriod?: InputMaybe<Scalars['String']['input']>;
+  rentalType?: InputMaybe<Scalars['String']['input']>;
+  rooms?: InputMaybe<Scalars['Int']['input']>;
+  squareFeet?: InputMaybe<Scalars['Int']['input']>;
+  state?: InputMaybe<Scalars['String']['input']>;
+  totalFloors?: InputMaybe<Scalars['Int']['input']>;
+  utilityCosts?: InputMaybe<Scalars['Float']['input']>;
+  valuationMode?: InputMaybe<ValuationMode>;
+  windowsCondition?: InputMaybe<Scalars['String']['input']>;
+  windowsQuality?: InputMaybe<Scalars['String']['input']>;
+  yearBuilt?: InputMaybe<Scalars['Int']['input']>;
+  yearlyMiscCosts?: InputMaybe<Scalars['Float']['input']>;
+  zipCode?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type UpdateTransactionInput = {
@@ -3743,18 +3676,6 @@ export type User = {
   watchlists: Array<Watchlist>;
 };
 
-/** User engagement analytics */
-export type UserEngagementMetrics = {
-  __typename?: 'UserEngagementMetrics';
-  activeUsers: Scalars['Int']['output'];
-  avgSessionDuration: Scalars['Float']['output'];
-  deviceBreakdown: Scalars['JSON']['output'];
-  errorsByComponent: Scalars['JSON']['output'];
-  navigationPatterns: Array<NavigationPattern>;
-  topFeatures: Array<FeatureUsage>;
-  totalUsers: Scalars['Int']['output'];
-};
-
 export type UserFilter = {
   email?: InputMaybe<Scalars['String']['input']>;
   id?: InputMaybe<Scalars['ID']['input']>;
@@ -3777,6 +3698,18 @@ export type ValidationResult = {
   message?: Maybe<Scalars['String']['output']>;
   valid: Scalars['Boolean']['output'];
 };
+
+export enum ValuationConfidence {
+  High = 'HIGH',
+  Low = 'LOW',
+  Medium = 'MEDIUM',
+  Unavailable = 'UNAVAILABLE'
+}
+
+export enum ValuationMode {
+  Auto = 'AUTO',
+  Manual = 'MANUAL'
+}
 
 export type WalletAccount = {
   __typename?: 'WalletAccount';
@@ -4054,7 +3987,15 @@ export type CreateRealEstateAssetMutationVariables = Exact<{
 }>;
 
 
-export type CreateRealEstateAssetMutation = { __typename?: 'Mutation', createRealEstateAsset: { __typename?: 'RealEstate', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, purchaseDate?: any | null, propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, agencyFees?: number | null, notaryFees?: number | null, renovationFees?: number | null, furnishingCosts?: number | null, rentalType?: string | null, rentalPeriod?: string | null, monthlyRent?: number | null, utilityCosts?: number | null, yearlyMiscCosts?: number | null, hasGarden?: boolean | null, hasBalcony?: boolean | null, hasLift?: boolean | null, hasPool?: boolean | null, hasSauna?: boolean | null, isFurnished?: boolean | null, isNewConstruction?: boolean | null, kitchenQuality?: string | null, kitchenCondition?: string | null, bathroomQuality?: string | null, bathroomCondition?: string | null, flooringQuality?: string | null, flooringCondition?: string | null, windowsQuality?: string | null, windowsCondition?: string | null, generalQuality?: string | null, generalCondition?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } };
+export type CreateRealEstateAssetMutation = { __typename?: 'Mutation', createRealEstateAsset: { __typename?: 'RealEstate', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, purchaseDate?: any | null, propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, agencyFees?: number | null, notaryFees?: number | null, renovationFees?: number | null, furnishingCosts?: number | null, rentalType?: string | null, rentalPeriod?: string | null, monthlyRent?: number | null, utilityCosts?: number | null, yearlyMiscCosts?: number | null, hasGarden?: boolean | null, hasBalcony?: boolean | null, hasLift?: boolean | null, hasPool?: boolean | null, hasSauna?: boolean | null, isFurnished?: boolean | null, isNewConstruction?: boolean | null, kitchenQuality?: string | null, kitchenCondition?: string | null, bathroomQuality?: string | null, bathroomCondition?: string | null, flooringQuality?: string | null, flooringCondition?: string | null, windowsQuality?: string | null, windowsCondition?: string | null, generalQuality?: string | null, generalCondition?: string | null, linkedLoanId?: string | null, ownershipPercentage?: number | null, ownershipStructure?: string | null, addressLabel?: string | null, cityCode?: string | null, banId?: string | null, latitude?: number | null, longitude?: number | null, hasOutdoor?: boolean | null, isGroundFloor?: boolean | null, valuationMode?: ValuationMode | null, estimationMethod?: EstimationMethod | null, manualValue?: number | null, estimatedValue?: number | null, estimatedMin?: number | null, estimatedMax?: number | null, estimatedPricePerM2?: number | null, basePricePerM2?: number | null, valuationConfidence?: ValuationConfidence | null, comparablesCount?: number | null, searchRadiusMeters?: number | null, lastEstimatedAt?: any | null, marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, rentalR2Adjusted?: number | null, dayChange?: number | null, dayChangePercent?: number | null, valuationHistory?: Array<{ __typename?: 'RealEstateValuationPoint', date: any, value: number, mode?: string | null, estimatedMin?: number | null, estimatedMax?: number | null }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } };
+
+export type UpdateRealEstateAssetMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+  input: UpdateRealEstateInput;
+}>;
+
+
+export type UpdateRealEstateAssetMutation = { __typename?: 'Mutation', updateRealEstateAsset: { __typename?: 'RealEstate', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, purchaseDate?: any | null, propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, agencyFees?: number | null, notaryFees?: number | null, renovationFees?: number | null, furnishingCosts?: number | null, rentalType?: string | null, rentalPeriod?: string | null, monthlyRent?: number | null, utilityCosts?: number | null, yearlyMiscCosts?: number | null, hasGarden?: boolean | null, hasBalcony?: boolean | null, hasLift?: boolean | null, hasPool?: boolean | null, hasSauna?: boolean | null, isFurnished?: boolean | null, isNewConstruction?: boolean | null, kitchenQuality?: string | null, kitchenCondition?: string | null, bathroomQuality?: string | null, bathroomCondition?: string | null, flooringQuality?: string | null, flooringCondition?: string | null, windowsQuality?: string | null, windowsCondition?: string | null, generalQuality?: string | null, generalCondition?: string | null, linkedLoanId?: string | null, ownershipPercentage?: number | null, ownershipStructure?: string | null, addressLabel?: string | null, cityCode?: string | null, banId?: string | null, latitude?: number | null, longitude?: number | null, hasOutdoor?: boolean | null, isGroundFloor?: boolean | null, valuationMode?: ValuationMode | null, estimationMethod?: EstimationMethod | null, manualValue?: number | null, estimatedValue?: number | null, estimatedMin?: number | null, estimatedMax?: number | null, estimatedPricePerM2?: number | null, basePricePerM2?: number | null, valuationConfidence?: ValuationConfidence | null, comparablesCount?: number | null, searchRadiusMeters?: number | null, lastEstimatedAt?: any | null, marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, rentalR2Adjusted?: number | null, dayChange?: number | null, dayChangePercent?: number | null, valuationHistory?: Array<{ __typename?: 'RealEstateValuationPoint', date: any, value: number, mode?: string | null, estimatedMin?: number | null, estimatedMax?: number | null }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } };
 
 export type CreateLifeInsuranceAssetMutationVariables = Exact<{
   input: CreateLifeInsuranceInput;
@@ -4090,6 +4031,13 @@ export type RefreshSingleAssetPriceMutationVariables = Exact<{
 
 
 export type RefreshSingleAssetPriceMutation = { __typename?: 'Mutation', refreshSingleAssetPrice: { __typename?: 'AssetPricePoint', id: string, assetId: string, price: number, timestamp: any, source: string } };
+
+export type RefreshRealEstateValuationMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+
+export type RefreshRealEstateValuationMutation = { __typename?: 'Mutation', refreshRealEstateValuation: { __typename?: 'RealEstate', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, purchaseDate?: any | null, propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, addressLabel?: string | null, cityCode?: string | null, banId?: string | null, latitude?: number | null, longitude?: number | null, hasOutdoor?: boolean | null, isGroundFloor?: boolean | null, valuationMode?: ValuationMode | null, estimationMethod?: EstimationMethod | null, manualValue?: number | null, estimatedValue?: number | null, estimatedMin?: number | null, estimatedMax?: number | null, estimatedPricePerM2?: number | null, basePricePerM2?: number | null, valuationConfidence?: ValuationConfidence | null, comparablesCount?: number | null, searchRadiusMeters?: number | null, lastEstimatedAt?: any | null, marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, rentalR2Adjusted?: number | null, dayChange?: number | null, dayChangePercent?: number | null, valuationHistory?: Array<{ __typename?: 'RealEstateValuationPoint', date: any, value: number, mode?: string | null, estimatedMin?: number | null, estimatedMax?: number | null }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } };
 
 export type RegisterMutationVariables = Exact<{
   input: RegisterInput;
@@ -4686,7 +4634,7 @@ export type GetDashboardCriticalQueryVariables = Exact<{
 }>;
 
 
-export type GetDashboardCriticalQuery = { __typename?: 'Query', portfolios: Array<{ __typename?: 'Portfolio', id: string, name: string, analytics?: { __typename?: 'PortfolioAnalytics', totalValue: number, totalCost: number, totalGainLoss: number, totalGainLossPercent: number, displayCurrency?: string | null, quoteCurrency?: string | null, isStale?: boolean | null, assetAllocation: Array<{ __typename?: 'AssetAllocation', assetType: string, value: number, percentage: number, count: number }>, riskMetrics: { __typename?: 'RiskMetrics', volatility?: number | null, sharpeRatio?: number | null, maxDrawdown?: number | null, diversification?: number | null }, performanceHistory: Array<{ __typename?: 'PerformancePoint', date: any, value: number }>, positionValuations?: Array<{ __typename?: 'PositionValuation', positionId: string, assetId: string, nativeValue: number, displayValue: number, costBasisNative: number, costBasisDisplay: number, costBasisCurrency: string, costBasisConverted: boolean, hasDisplayValue: boolean, isExcluded: boolean, exclusionReason?: string | null, fxRate: number, fxAsOf?: any | null, isStale: boolean, quoteCurrency: string, displayCurrency: string }> | null } | null, assets: Array<{ __typename?: 'PortfolioAsset', quantity: number, averagePurchasePrice?: number | null, currentValue?: number | null, dayChange?: number | null, dayChangePercent?: number | null, quoteCurrency?: string | null, accountName?: string | null, accountID?: string | null, asset: { __typename?: 'BankAccount', accountType: string, institution: string, accountNumber: string, currency: string, interestRate?: number | null, balance?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Crypto', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Fund', expenseRatio?: number | null, dividendYield?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'LifeInsurance', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Loan', loanType: string, loanAmount: number, remainingBalance: number, interestRate?: number | null, durationMonths: number, monthlyPayment: number, startDate: string, endDate?: string | null, lender: string, loanNumber?: string | null, currency: string, downPayment?: number | null, status: string, ownershipMode?: string | null, applicationFee?: number | null, brokerFee?: number | null, insuranceFee?: number | null, otherFees?: number | null, earlyRepaymentFee?: number | null, linkedAssetIDs?: Array<string> | null, ownershipPercentage?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, steps?: Array<{ __typename?: 'LoanStep', id: string, date?: string | null, amount: number, interestRate: number }> | null, coOwners?: Array<{ __typename?: 'LoanCoOwner', id: string, type: string, userId?: string | null, name: string, percentage: number }> | null, companyOwners?: Array<{ __typename?: 'LoanCompanyOwner', id: string, type: string, companyId?: string | null, name: string, registrationNumber?: string | null, legalForm?: string | null, percentage: number }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'RealEstate', propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, agencyFees?: number | null, notaryFees?: number | null, renovationFees?: number | null, furnishingCosts?: number | null, rentalType?: string | null, rentalPeriod?: string | null, monthlyRent?: number | null, utilityCosts?: number | null, yearlyMiscCosts?: number | null, hasGarden?: boolean | null, hasBalcony?: boolean | null, hasLift?: boolean | null, hasPool?: boolean | null, hasSauna?: boolean | null, isFurnished?: boolean | null, isNewConstruction?: boolean | null, kitchenQuality?: string | null, kitchenCondition?: string | null, bathroomQuality?: string | null, bathroomCondition?: string | null, flooringQuality?: string | null, flooringCondition?: string | null, windowsQuality?: string | null, windowsCondition?: string | null, generalQuality?: string | null, generalCondition?: string | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Stock', peRatio?: number | null, dividendYield?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Watch', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } }> }>, watchlists: Array<{ __typename?: 'Watchlist', id: string, name: string, assets: Array<{ __typename?: 'BankAccount', id: string, symbol?: string | null } | { __typename?: 'Crypto', id: string, symbol?: string | null } | { __typename?: 'Fund', id: string, symbol?: string | null } | { __typename?: 'LifeInsurance', id: string, symbol?: string | null } | { __typename?: 'Loan', id: string, symbol?: string | null } | { __typename?: 'RealEstate', id: string, symbol?: string | null } | { __typename?: 'Stock', id: string, symbol?: string | null } | { __typename?: 'Watch', id: string, symbol?: string | null }> }> };
+export type GetDashboardCriticalQuery = { __typename?: 'Query', portfolios: Array<{ __typename?: 'Portfolio', id: string, name: string, analytics?: { __typename?: 'PortfolioAnalytics', totalValue: number, totalCost: number, totalGainLoss: number, totalGainLossPercent: number, displayCurrency?: string | null, quoteCurrency?: string | null, isStale?: boolean | null, assetAllocation: Array<{ __typename?: 'AssetAllocation', assetType: string, value: number, percentage: number, count: number }>, riskMetrics: { __typename?: 'RiskMetrics', volatility?: number | null, sharpeRatio?: number | null, maxDrawdown?: number | null, diversification?: number | null }, performanceHistory: Array<{ __typename?: 'PerformancePoint', date: any, value: number }>, positionValuations?: Array<{ __typename?: 'PositionValuation', positionId: string, assetId: string, nativeValue: number, displayValue: number, costBasisNative: number, costBasisDisplay: number, costBasisCurrency: string, costBasisConverted: boolean, hasDisplayValue: boolean, isExcluded: boolean, exclusionReason?: string | null, fxRate: number, fxAsOf?: any | null, isStale: boolean, quoteCurrency: string, displayCurrency: string }> | null } | null, assets: Array<{ __typename?: 'PortfolioAsset', quantity: number, averagePurchasePrice?: number | null, currentValue?: number | null, dayChange?: number | null, dayChangePercent?: number | null, quoteCurrency?: string | null, accountName?: string | null, accountID?: string | null, asset: { __typename?: 'BankAccount', accountType: string, institution: string, accountNumber: string, currency: string, interestRate?: number | null, balance?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Crypto', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Fund', expenseRatio?: number | null, dividendYield?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'LifeInsurance', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Loan', loanType: string, loanAmount: number, remainingBalance: number, interestRate?: number | null, durationMonths: number, monthlyPayment: number, startDate: string, endDate?: string | null, lender: string, loanNumber?: string | null, currency: string, downPayment?: number | null, status: string, ownershipMode?: string | null, applicationFee?: number | null, brokerFee?: number | null, insuranceFee?: number | null, otherFees?: number | null, earlyRepaymentFee?: number | null, linkedAssetIDs?: Array<string> | null, ownershipPercentage?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, steps?: Array<{ __typename?: 'LoanStep', id: string, date?: string | null, amount: number, interestRate: number }> | null, coOwners?: Array<{ __typename?: 'LoanCoOwner', id: string, type: string, userId?: string | null, name: string, percentage: number }> | null, companyOwners?: Array<{ __typename?: 'LoanCompanyOwner', id: string, type: string, companyId?: string | null, name: string, registrationNumber?: string | null, legalForm?: string | null, percentage: number }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'RealEstate', propertyType: string, category?: string | null, address: string, city: string, state?: string | null, country: string, zipCode?: string | null, squareFeet?: number | null, landSurface?: number | null, yearBuilt?: number | null, bedrooms?: number | null, bathrooms?: number | null, rooms?: number | null, floor?: number | null, totalFloors?: number | null, garages?: number | null, parkingSpaces?: number | null, energyLabel?: string | null, condition?: string | null, agencyFees?: number | null, notaryFees?: number | null, renovationFees?: number | null, furnishingCosts?: number | null, rentalType?: string | null, rentalPeriod?: string | null, monthlyRent?: number | null, utilityCosts?: number | null, yearlyMiscCosts?: number | null, hasGarden?: boolean | null, hasBalcony?: boolean | null, hasLift?: boolean | null, hasPool?: boolean | null, hasSauna?: boolean | null, isFurnished?: boolean | null, isNewConstruction?: boolean | null, kitchenQuality?: string | null, kitchenCondition?: string | null, bathroomQuality?: string | null, bathroomCondition?: string | null, flooringQuality?: string | null, flooringCondition?: string | null, windowsQuality?: string | null, windowsCondition?: string | null, generalQuality?: string | null, generalCondition?: string | null, linkedLoanId?: string | null, ownershipPercentage?: number | null, ownershipStructure?: string | null, addressLabel?: string | null, cityCode?: string | null, banId?: string | null, latitude?: number | null, longitude?: number | null, hasOutdoor?: boolean | null, isGroundFloor?: boolean | null, valuationMode?: ValuationMode | null, estimationMethod?: EstimationMethod | null, manualValue?: number | null, estimatedValue?: number | null, estimatedMin?: number | null, estimatedMax?: number | null, estimatedPricePerM2?: number | null, basePricePerM2?: number | null, valuationConfidence?: ValuationConfidence | null, comparablesCount?: number | null, searchRadiusMeters?: number | null, lastEstimatedAt?: any | null, marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, rentalR2Adjusted?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, valuationHistory?: Array<{ __typename?: 'RealEstateValuationPoint', date: any, value: number, mode?: string | null, estimatedMin?: number | null, estimatedMax?: number | null }> | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Stock', peRatio?: number | null, dividendYield?: number | null, id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Watch', id: string, name: string, symbol?: string | null, currentValue?: number | null, purchasePrice?: number | null, sector?: string | null, exchange?: string | null, dayChange?: number | null, dayChangePercent?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } }> }>, watchlists: Array<{ __typename?: 'Watchlist', id: string, name: string, assets: Array<{ __typename?: 'BankAccount', id: string, symbol?: string | null } | { __typename?: 'Crypto', id: string, symbol?: string | null } | { __typename?: 'Fund', id: string, symbol?: string | null } | { __typename?: 'LifeInsurance', id: string, symbol?: string | null } | { __typename?: 'Loan', id: string, symbol?: string | null } | { __typename?: 'RealEstate', id: string, symbol?: string | null } | { __typename?: 'Stock', id: string, symbol?: string | null } | { __typename?: 'Watch', id: string, symbol?: string | null }> }> };
 
 export type GetDashboardSecondaryQueryVariables = Exact<{
   userID: Scalars['ID']['input'];
@@ -4866,6 +4814,33 @@ export type GetScopedPerformanceHistoryQueryVariables = Exact<{
 
 export type GetScopedPerformanceHistoryQuery = { __typename?: 'Query', scopedPerformanceHistory: Array<{ __typename?: 'PerformancePoint', date: any, value: number }> };
 
+export type EstimateRealEstateQueryVariables = Exact<{
+  input: RealEstateEstimationInput;
+}>;
+
+
+export type EstimateRealEstateQuery = { __typename?: 'Query', estimateRealEstate: { __typename?: 'RealEstateEstimationResult', estimatedValue?: number | null, estimatedMin?: number | null, estimatedMax?: number | null, estimatedPricePerM2?: number | null, basePricePerM2?: number | null, confidence: ValuationConfidence, method: EstimationMethod, comparablesCount: number, searchRadiusMeters?: number | null, lastEstimatedAt: any, rentalMarket?: { __typename?: 'RealEstateRentalMarket', marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, isCommuneLevel: boolean, r2Adjusted?: number | null, sourceLabel: string } | null } };
+
+export type FetchAdemeDpeQueryVariables = Exact<{
+  banId: Scalars['String']['input'];
+  surfaceM2: Scalars['Float']['input'];
+  propertyType?: InputMaybe<Scalars['String']['input']>;
+}>;
+
+
+export type FetchAdemeDpeQuery = { __typename?: 'Query', fetchADEMEDpe?: { __typename?: 'ADEMEDpeResult', rating: string, surfaceM2?: number | null, diagnosticDate?: string | null, sourceDataset?: string | null } | null };
+
+export type GetCommuneRentalIndicatorsQueryVariables = Exact<{
+  cityCode: Scalars['String']['input'];
+  propertyType?: InputMaybe<Scalars['String']['input']>;
+  roomsCount?: InputMaybe<Scalars['Int']['input']>;
+  surfaceM2?: InputMaybe<Scalars['Float']['input']>;
+  propertyValue?: InputMaybe<Scalars['Float']['input']>;
+}>;
+
+
+export type GetCommuneRentalIndicatorsQuery = { __typename?: 'Query', getCommuneRentalIndicators?: { __typename?: 'RealEstateRentalMarket', marketRentPerM2?: number | null, estimatedMonthlyRent?: number | null, estimatedGrossYield?: number | null, isCommuneLevel: boolean, r2Adjusted?: number | null, sourceLabel: string } | null };
+
 export type GetFinanceDatabaseSyncStatusQueryVariables = Exact<{ [key: string]: never; }>;
 
 
@@ -4981,13 +4956,6 @@ export type GetBlockchainNetworkConfigsQueryVariables = Exact<{ [key: string]: n
 
 export type GetBlockchainNetworkConfigsQuery = { __typename?: 'Query', blockchainNetworkConfigs: Array<{ __typename?: 'BlockchainNetworkConfig', network: BlockchainNetwork, rpcUrl: string, explorerApiUrl?: string | null, source: string, updatedAt: any }> };
 
-export type PortfolioUpdateSubscriptionSubscriptionVariables = Exact<{
-  userID: Scalars['ID']['input'];
-}>;
-
-
-export type PortfolioUpdateSubscriptionSubscription = { __typename?: 'Subscription', portfolioUpdates: { __typename?: 'PortfolioUpdatePayload', type: string, portfolio: { __typename?: 'Portfolio', id: string, name: string } } };
-
 export type InvalidationProbeQueryVariables = Exact<{
   userID: Scalars['ID']['input'];
 }>;
@@ -5031,37 +4999,6 @@ export type UpdateAssetInPortfolioMutationVariables = Exact<{
 
 
 export type UpdateAssetInPortfolioMutation = { __typename?: 'Mutation', updateAssetInPortfolio: { __typename?: 'PortfolioAsset', quantity: number, averagePurchasePrice?: number | null, ownershipPct?: number | null, asset: { __typename?: 'BankAccount', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Crypto', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Fund', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'LifeInsurance', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Loan', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'RealEstate', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Stock', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } | { __typename?: 'Watch', id: string, name: string, symbol?: string | null, currentValue?: number | null, assetType: { __typename?: 'AssetType', id: string, name: string } } } };
-
-export type GetPerformanceMetricsQueryVariables = Exact<{
-  timeRange?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type GetPerformanceMetricsQuery = { __typename?: 'Query', performanceMetrics: { __typename?: 'DashboardPerformanceMetrics', dashboardStateTransitions?: { __typename?: 'MetricSummary', total: number, average: number, min: number, max: number, p50: number, p95: number, p99: number, lastHour: number, lastDay: number, breakdown: any } | null, dataLoadTimes?: { __typename?: 'MetricSummary', total: number, average: number, min: number, max: number, p50: number, p95: number, p99: number, lastHour: number, lastDay: number, breakdown: any } | null, userInteractions?: { __typename?: 'MetricSummary', total: number, average: number, lastHour: number, lastDay: number, breakdown: any } | null, errorRates?: { __typename?: 'MetricSummary', total: number, average: number, lastHour: number, lastDay: number, breakdown: any } | null, marketDataUpdates?: { __typename?: 'MetricSummary', total: number, average: number, lastHour: number, lastDay: number, breakdown: any } | null } };
-
-export type GetSystemHealthQueryVariables = Exact<{ [key: string]: never; }>;
-
-
-export type GetSystemHealthQuery = { __typename?: 'Query', systemHealth: { __typename?: 'SystemHealth', status: string, timestamp: any, metricsCount: number, alertsCount: number, recentErrors: number, details?: any | null } };
-
-export type GetUserEngagementMetricsQueryVariables = Exact<{
-  timeRange?: InputMaybe<Scalars['String']['input']>;
-}>;
-
-
-export type GetUserEngagementMetricsQuery = { __typename?: 'Query', userEngagementMetrics: { __typename?: 'UserEngagementMetrics', totalUsers: number, activeUsers: number, avgSessionDuration: number, deviceBreakdown: any, errorsByComponent: any, topFeatures: Array<{ __typename?: 'FeatureUsage', feature: string, usageCount: number, uniqueUsers: number, avgDuration: number }>, navigationPatterns: Array<{ __typename?: 'NavigationPattern', pattern: string, count: number, avgDuration: number, conversion: number }> } };
-
-export type RecordDashboardEventMutationVariables = Exact<{
-  input: DashboardEventInput;
-}>;
-
-
-export type RecordDashboardEventMutation = { __typename?: 'Mutation', recordDashboardEvent: boolean };
-
-export type PerformanceMetricsUpdatedSubscriptionVariables = Exact<{ [key: string]: never; }>;
-
-
-export type PerformanceMetricsUpdatedSubscription = { __typename?: 'Subscription', performanceMetricsUpdated: { __typename?: 'DashboardPerformanceMetrics', dashboardStateTransitions?: { __typename?: 'MetricSummary', total: number, average: number, p95: number, lastHour: number } | null, dataLoadTimes?: { __typename?: 'MetricSummary', average: number, p95: number, lastHour: number } | null, errorRates?: { __typename?: 'MetricSummary', total: number, lastHour: number } | null } };
 
 export type PortfolioFieldsFragment = { __typename?: 'Portfolio', id: string, name: string, description?: string | null, createdAt: any, updatedAt: any } & { ' $fragmentName'?: 'PortfolioFieldsFragment' };
 
@@ -5162,12 +5099,14 @@ export const CreateAlertDocument = {"kind":"Document","definitions":[{"kind":"Op
 export const CreateStockAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateStockAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateStockInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createStockAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"ticker"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateStockAssetMutation, CreateStockAssetMutationVariables>;
 export const CreateBankAccountAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateBankAccountAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateBankAccountInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createBankAccountAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"accountType"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}},{"kind":"Field","name":{"kind":"Name","value":"accountNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateBankAccountAssetMutation, CreateBankAccountAssetMutationVariables>;
 export const CreateCryptoAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateCryptoAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateCryptoInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createCryptoAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"walletAddress"}},{"kind":"Field","name":{"kind":"Name","value":"blockchainNetwork"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateCryptoAssetMutation, CreateCryptoAssetMutationVariables>;
-export const CreateRealEstateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateRealEstateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateRealEstateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createRealEstateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"agencyFees"}},{"kind":"Field","name":{"kind":"Name","value":"notaryFees"}},{"kind":"Field","name":{"kind":"Name","value":"renovationFees"}},{"kind":"Field","name":{"kind":"Name","value":"furnishingCosts"}},{"kind":"Field","name":{"kind":"Name","value":"rentalType"}},{"kind":"Field","name":{"kind":"Name","value":"rentalPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"utilityCosts"}},{"kind":"Field","name":{"kind":"Name","value":"yearlyMiscCosts"}},{"kind":"Field","name":{"kind":"Name","value":"hasGarden"}},{"kind":"Field","name":{"kind":"Name","value":"hasBalcony"}},{"kind":"Field","name":{"kind":"Name","value":"hasLift"}},{"kind":"Field","name":{"kind":"Name","value":"hasPool"}},{"kind":"Field","name":{"kind":"Name","value":"hasSauna"}},{"kind":"Field","name":{"kind":"Name","value":"isFurnished"}},{"kind":"Field","name":{"kind":"Name","value":"isNewConstruction"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenQuality"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenCondition"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomQuality"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomCondition"}},{"kind":"Field","name":{"kind":"Name","value":"flooringQuality"}},{"kind":"Field","name":{"kind":"Name","value":"flooringCondition"}},{"kind":"Field","name":{"kind":"Name","value":"windowsQuality"}},{"kind":"Field","name":{"kind":"Name","value":"windowsCondition"}},{"kind":"Field","name":{"kind":"Name","value":"generalQuality"}},{"kind":"Field","name":{"kind":"Name","value":"generalCondition"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateRealEstateAssetMutation, CreateRealEstateAssetMutationVariables>;
+export const CreateRealEstateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateRealEstateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateRealEstateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createRealEstateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"agencyFees"}},{"kind":"Field","name":{"kind":"Name","value":"notaryFees"}},{"kind":"Field","name":{"kind":"Name","value":"renovationFees"}},{"kind":"Field","name":{"kind":"Name","value":"furnishingCosts"}},{"kind":"Field","name":{"kind":"Name","value":"rentalType"}},{"kind":"Field","name":{"kind":"Name","value":"rentalPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"utilityCosts"}},{"kind":"Field","name":{"kind":"Name","value":"yearlyMiscCosts"}},{"kind":"Field","name":{"kind":"Name","value":"hasGarden"}},{"kind":"Field","name":{"kind":"Name","value":"hasBalcony"}},{"kind":"Field","name":{"kind":"Name","value":"hasLift"}},{"kind":"Field","name":{"kind":"Name","value":"hasPool"}},{"kind":"Field","name":{"kind":"Name","value":"hasSauna"}},{"kind":"Field","name":{"kind":"Name","value":"isFurnished"}},{"kind":"Field","name":{"kind":"Name","value":"isNewConstruction"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenQuality"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenCondition"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomQuality"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomCondition"}},{"kind":"Field","name":{"kind":"Name","value":"flooringQuality"}},{"kind":"Field","name":{"kind":"Name","value":"flooringCondition"}},{"kind":"Field","name":{"kind":"Name","value":"windowsQuality"}},{"kind":"Field","name":{"kind":"Name","value":"windowsCondition"}},{"kind":"Field","name":{"kind":"Name","value":"generalQuality"}},{"kind":"Field","name":{"kind":"Name","value":"generalCondition"}},{"kind":"Field","name":{"kind":"Name","value":"linkedLoanId"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipStructure"}},{"kind":"Field","name":{"kind":"Name","value":"addressLabel"}},{"kind":"Field","name":{"kind":"Name","value":"cityCode"}},{"kind":"Field","name":{"kind":"Name","value":"banId"}},{"kind":"Field","name":{"kind":"Name","value":"latitude"}},{"kind":"Field","name":{"kind":"Name","value":"longitude"}},{"kind":"Field","name":{"kind":"Name","value":"hasOutdoor"}},{"kind":"Field","name":{"kind":"Name","value":"isGroundFloor"}},{"kind":"Field","name":{"kind":"Name","value":"valuationMode"}},{"kind":"Field","name":{"kind":"Name","value":"estimationMethod"}},{"kind":"Field","name":{"kind":"Name","value":"manualValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedPricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"basePricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"valuationConfidence"}},{"kind":"Field","name":{"kind":"Name","value":"comparablesCount"}},{"kind":"Field","name":{"kind":"Name","value":"searchRadiusMeters"}},{"kind":"Field","name":{"kind":"Name","value":"lastEstimatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"valuationHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"rentalR2Adjusted"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateRealEstateAssetMutation, CreateRealEstateAssetMutationVariables>;
+export const UpdateRealEstateAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateRealEstateAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"UpdateRealEstateInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateRealEstateAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"agencyFees"}},{"kind":"Field","name":{"kind":"Name","value":"notaryFees"}},{"kind":"Field","name":{"kind":"Name","value":"renovationFees"}},{"kind":"Field","name":{"kind":"Name","value":"furnishingCosts"}},{"kind":"Field","name":{"kind":"Name","value":"rentalType"}},{"kind":"Field","name":{"kind":"Name","value":"rentalPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"utilityCosts"}},{"kind":"Field","name":{"kind":"Name","value":"yearlyMiscCosts"}},{"kind":"Field","name":{"kind":"Name","value":"hasGarden"}},{"kind":"Field","name":{"kind":"Name","value":"hasBalcony"}},{"kind":"Field","name":{"kind":"Name","value":"hasLift"}},{"kind":"Field","name":{"kind":"Name","value":"hasPool"}},{"kind":"Field","name":{"kind":"Name","value":"hasSauna"}},{"kind":"Field","name":{"kind":"Name","value":"isFurnished"}},{"kind":"Field","name":{"kind":"Name","value":"isNewConstruction"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenQuality"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenCondition"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomQuality"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomCondition"}},{"kind":"Field","name":{"kind":"Name","value":"flooringQuality"}},{"kind":"Field","name":{"kind":"Name","value":"flooringCondition"}},{"kind":"Field","name":{"kind":"Name","value":"windowsQuality"}},{"kind":"Field","name":{"kind":"Name","value":"windowsCondition"}},{"kind":"Field","name":{"kind":"Name","value":"generalQuality"}},{"kind":"Field","name":{"kind":"Name","value":"generalCondition"}},{"kind":"Field","name":{"kind":"Name","value":"linkedLoanId"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipStructure"}},{"kind":"Field","name":{"kind":"Name","value":"addressLabel"}},{"kind":"Field","name":{"kind":"Name","value":"cityCode"}},{"kind":"Field","name":{"kind":"Name","value":"banId"}},{"kind":"Field","name":{"kind":"Name","value":"latitude"}},{"kind":"Field","name":{"kind":"Name","value":"longitude"}},{"kind":"Field","name":{"kind":"Name","value":"hasOutdoor"}},{"kind":"Field","name":{"kind":"Name","value":"isGroundFloor"}},{"kind":"Field","name":{"kind":"Name","value":"valuationMode"}},{"kind":"Field","name":{"kind":"Name","value":"estimationMethod"}},{"kind":"Field","name":{"kind":"Name","value":"manualValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedPricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"basePricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"valuationConfidence"}},{"kind":"Field","name":{"kind":"Name","value":"comparablesCount"}},{"kind":"Field","name":{"kind":"Name","value":"searchRadiusMeters"}},{"kind":"Field","name":{"kind":"Name","value":"lastEstimatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"valuationHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"rentalR2Adjusted"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<UpdateRealEstateAssetMutation, UpdateRealEstateAssetMutationVariables>;
 export const CreateLifeInsuranceAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateLifeInsuranceAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateLifeInsuranceInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createLifeInsuranceAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"policyNumber"}},{"kind":"Field","name":{"kind":"Name","value":"insurer"}},{"kind":"Field","name":{"kind":"Name","value":"policyType"}},{"kind":"Field","name":{"kind":"Name","value":"coverageAmount"}},{"kind":"Field","name":{"kind":"Name","value":"premiumAmount"}},{"kind":"Field","name":{"kind":"Name","value":"premiumFrequency"}},{"kind":"Field","name":{"kind":"Name","value":"beneficiaries"}},{"kind":"Field","name":{"kind":"Name","value":"maturityDate"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateLifeInsuranceAssetMutation, CreateLifeInsuranceAssetMutationVariables>;
 export const CreateWatchAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateWatchAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateWatchInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createWatchAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"brand"}},{"kind":"Field","name":{"kind":"Name","value":"model"}},{"kind":"Field","name":{"kind":"Name","value":"serialNumber"}},{"kind":"Field","name":{"kind":"Name","value":"referenceNumber"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"yearMade"}},{"kind":"Field","name":{"kind":"Name","value":"material"}},{"kind":"Field","name":{"kind":"Name","value":"movement"}},{"kind":"Field","name":{"kind":"Name","value":"caseSize"}},{"kind":"Field","name":{"kind":"Name","value":"waterResistance"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateWatchAssetMutation, CreateWatchAssetMutationVariables>;
 export const CreateLoanAssetDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"CreateLoanAsset"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"CreateLoanInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"createLoanAsset"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"loanType"}},{"kind":"Field","name":{"kind":"Name","value":"loanAmount"}},{"kind":"Field","name":{"kind":"Name","value":"remainingBalance"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"durationMonths"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyPayment"}},{"kind":"Field","name":{"kind":"Name","value":"startDate"}},{"kind":"Field","name":{"kind":"Name","value":"endDate"}},{"kind":"Field","name":{"kind":"Name","value":"lender"}},{"kind":"Field","name":{"kind":"Name","value":"loanNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"downPayment"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipMode"}},{"kind":"Field","name":{"kind":"Name","value":"applicationFee"}},{"kind":"Field","name":{"kind":"Name","value":"brokerFee"}},{"kind":"Field","name":{"kind":"Name","value":"insuranceFee"}},{"kind":"Field","name":{"kind":"Name","value":"otherFees"}},{"kind":"Field","name":{"kind":"Name","value":"earlyRepaymentFee"}},{"kind":"Field","name":{"kind":"Name","value":"linkedAssetIDs"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"steps"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"coOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"companyOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"companyId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"registrationNumber"}},{"kind":"Field","name":{"kind":"Name","value":"legalForm"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<CreateLoanAssetMutation, CreateLoanAssetMutationVariables>;
 export const AddAssetToPortfolioDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddAssetToPortfolio"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PortfolioAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addAssetToPortfolio"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}}]}}]}}]} as unknown as DocumentNode<AddAssetToPortfolioMutation, AddAssetToPortfolioMutationVariables>;
 export const RefreshSingleAssetPriceDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshSingleAssetPrice"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshSingleAssetPrice"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"price"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"source"}}]}}]}}]} as unknown as DocumentNode<RefreshSingleAssetPriceMutation, RefreshSingleAssetPriceMutationVariables>;
+export const RefreshRealEstateValuationDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RefreshRealEstateValuation"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"refreshRealEstateValuation"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"purchaseDate"}},{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"addressLabel"}},{"kind":"Field","name":{"kind":"Name","value":"cityCode"}},{"kind":"Field","name":{"kind":"Name","value":"banId"}},{"kind":"Field","name":{"kind":"Name","value":"latitude"}},{"kind":"Field","name":{"kind":"Name","value":"longitude"}},{"kind":"Field","name":{"kind":"Name","value":"hasOutdoor"}},{"kind":"Field","name":{"kind":"Name","value":"isGroundFloor"}},{"kind":"Field","name":{"kind":"Name","value":"valuationMode"}},{"kind":"Field","name":{"kind":"Name","value":"estimationMethod"}},{"kind":"Field","name":{"kind":"Name","value":"manualValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedPricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"basePricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"valuationConfidence"}},{"kind":"Field","name":{"kind":"Name","value":"comparablesCount"}},{"kind":"Field","name":{"kind":"Name","value":"searchRadiusMeters"}},{"kind":"Field","name":{"kind":"Name","value":"lastEstimatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"valuationHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"rentalR2Adjusted"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<RefreshRealEstateValuationMutation, RefreshRealEstateValuationMutationVariables>;
 export const RegisterDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Register"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"RegisterInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"register"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"refreshToken"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"themePreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeBaseColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeAccentColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeFontPreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeHeadingFont"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuAccent"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeStyle"}},{"kind":"Field","name":{"kind":"Name","value":"themeRadius"}},{"kind":"Field","name":{"kind":"Name","value":"themeRTL"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"errors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"field"}}]}}]}}]}}]} as unknown as DocumentNode<RegisterMutation, RegisterMutationVariables>;
 export const LoginDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Login"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"LoginInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"login"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"data"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"token"}},{"kind":"Field","name":{"kind":"Name","value":"refreshToken"}},{"kind":"Field","name":{"kind":"Name","value":"expiresAt"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"themePreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeBaseColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeAccentColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeFontPreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeHeadingFont"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuAccent"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeStyle"}},{"kind":"Field","name":{"kind":"Name","value":"themeRadius"}},{"kind":"Field","name":{"kind":"Name","value":"themeRTL"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"errors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"field"}}]}}]}}]}}]} as unknown as DocumentNode<LoginMutation, LoginMutationVariables>;
 export const LogoutDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"Logout"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"LogoutInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"logout"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"success"}},{"kind":"Field","name":{"kind":"Name","value":"errors"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"code"}},{"kind":"Field","name":{"kind":"Name","value":"message"}},{"kind":"Field","name":{"kind":"Name","value":"field"}}]}}]}}]}}]} as unknown as DocumentNode<LogoutMutation, LogoutMutationVariables>;
@@ -5246,7 +5185,7 @@ export const AdminUsersDocument = {"kind":"Document","definitions":[{"kind":"Ope
 export const AdminUserStatsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"AdminUserStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"adminUserStats"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalUsers"}},{"kind":"Field","name":{"kind":"Name","value":"activeUsers"}},{"kind":"Field","name":{"kind":"Name","value":"lockedUsers"}},{"kind":"Field","name":{"kind":"Name","value":"adminUsers"}},{"kind":"Field","name":{"kind":"Name","value":"unverifiedUsers"}}]}}]}}]} as unknown as DocumentNode<AdminUserStatsQuery, AdminUserStatsQueryVariables>;
 export const MeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"Me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"me"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"email"}},{"kind":"Field","name":{"kind":"Name","value":"role"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"emailVerified"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"themePreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeBaseColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeAccentColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeFontPreference"}},{"kind":"Field","name":{"kind":"Name","value":"themeHeadingFont"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuAccent"}},{"kind":"Field","name":{"kind":"Name","value":"themeMenuColor"}},{"kind":"Field","name":{"kind":"Name","value":"themeStyle"}},{"kind":"Field","name":{"kind":"Name","value":"themeRadius"}},{"kind":"Field","name":{"kind":"Name","value":"themeRTL"}}]}}]}}]} as unknown as DocumentNode<MeQuery, MeQueryVariables>;
 export const BenchmarkComparisonDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"BenchmarkComparison"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"benchmarkAssetId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PerformanceTimeRangeInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"benchmarkComparison"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}},{"kind":"Argument","name":{"kind":"Name","value":"benchmarkAssetId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"benchmarkAssetId"}}},{"kind":"Argument","name":{"kind":"Name","value":"timeRange"},"value":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioReturn"}},{"kind":"Field","name":{"kind":"Name","value":"benchmarkReturn"}},{"kind":"Field","name":{"kind":"Name","value":"alpha"}},{"kind":"Field","name":{"kind":"Name","value":"beta"}},{"kind":"Field","name":{"kind":"Name","value":"correlation"}},{"kind":"Field","name":{"kind":"Name","value":"trackingError"}},{"kind":"Field","name":{"kind":"Name","value":"informationRatio"}},{"kind":"Field","name":{"kind":"Name","value":"riskAdjustedAlpha"}},{"kind":"Field","name":{"kind":"Name","value":"outperformancePeriods"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"start"}},{"kind":"Field","name":{"kind":"Name","value":"end"}}]}}]}}]}}]} as unknown as DocumentNode<BenchmarkComparisonQuery, BenchmarkComparisonQueryVariables>;
-export const GetDashboardCriticalDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDashboardCritical"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolios"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"analytics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalCost"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLossPercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetAllocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"riskMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"volatility"}},{"kind":"Field","name":{"kind":"Name","value":"sharpeRatio"}},{"kind":"Field","name":{"kind":"Name","value":"maxDrawdown"}},{"kind":"Field","name":{"kind":"Name","value":"diversification"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"positionValuations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"nativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"displayValue"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisNative"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisDisplay"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisConverted"}},{"kind":"Field","name":{"kind":"Name","value":"hasDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"isExcluded"}},{"kind":"Field","name":{"kind":"Name","value":"exclusionReason"}},{"kind":"Field","name":{"kind":"Name","value":"fxRate"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"accountName"}},{"kind":"Field","name":{"kind":"Name","value":"accountID"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Stock"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"peRatio"}},{"kind":"Field","name":{"kind":"Name","value":"dividendYield"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Fund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenseRatio"}},{"kind":"Field","name":{"kind":"Name","value":"dividendYield"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"BankAccount"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"accountType"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}},{"kind":"Field","name":{"kind":"Name","value":"accountNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"RealEstate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"agencyFees"}},{"kind":"Field","name":{"kind":"Name","value":"notaryFees"}},{"kind":"Field","name":{"kind":"Name","value":"renovationFees"}},{"kind":"Field","name":{"kind":"Name","value":"furnishingCosts"}},{"kind":"Field","name":{"kind":"Name","value":"rentalType"}},{"kind":"Field","name":{"kind":"Name","value":"rentalPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"utilityCosts"}},{"kind":"Field","name":{"kind":"Name","value":"yearlyMiscCosts"}},{"kind":"Field","name":{"kind":"Name","value":"hasGarden"}},{"kind":"Field","name":{"kind":"Name","value":"hasBalcony"}},{"kind":"Field","name":{"kind":"Name","value":"hasLift"}},{"kind":"Field","name":{"kind":"Name","value":"hasPool"}},{"kind":"Field","name":{"kind":"Name","value":"hasSauna"}},{"kind":"Field","name":{"kind":"Name","value":"isFurnished"}},{"kind":"Field","name":{"kind":"Name","value":"isNewConstruction"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenQuality"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenCondition"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomQuality"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomCondition"}},{"kind":"Field","name":{"kind":"Name","value":"flooringQuality"}},{"kind":"Field","name":{"kind":"Name","value":"flooringCondition"}},{"kind":"Field","name":{"kind":"Name","value":"windowsQuality"}},{"kind":"Field","name":{"kind":"Name","value":"windowsCondition"}},{"kind":"Field","name":{"kind":"Name","value":"generalQuality"}},{"kind":"Field","name":{"kind":"Name","value":"generalCondition"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Loan"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"loanType"}},{"kind":"Field","name":{"kind":"Name","value":"loanAmount"}},{"kind":"Field","name":{"kind":"Name","value":"remainingBalance"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"durationMonths"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyPayment"}},{"kind":"Field","name":{"kind":"Name","value":"startDate"}},{"kind":"Field","name":{"kind":"Name","value":"endDate"}},{"kind":"Field","name":{"kind":"Name","value":"lender"}},{"kind":"Field","name":{"kind":"Name","value":"loanNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"downPayment"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipMode"}},{"kind":"Field","name":{"kind":"Name","value":"applicationFee"}},{"kind":"Field","name":{"kind":"Name","value":"brokerFee"}},{"kind":"Field","name":{"kind":"Name","value":"insuranceFee"}},{"kind":"Field","name":{"kind":"Name","value":"otherFees"}},{"kind":"Field","name":{"kind":"Name","value":"earlyRepaymentFee"}},{"kind":"Field","name":{"kind":"Name","value":"linkedAssetIDs"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"steps"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"coOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"companyOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"companyId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"registrationNumber"}},{"kind":"Field","name":{"kind":"Name","value":"legalForm"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"watchlists"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}}]}}]}}]}}]} as unknown as DocumentNode<GetDashboardCriticalQuery, GetDashboardCriticalQueryVariables>;
+export const GetDashboardCriticalDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDashboardCritical"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolios"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"analytics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalCost"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLossPercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetAllocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}},{"kind":"Field","name":{"kind":"Name","value":"count"}}]}},{"kind":"Field","name":{"kind":"Name","value":"riskMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"volatility"}},{"kind":"Field","name":{"kind":"Name","value":"sharpeRatio"}},{"kind":"Field","name":{"kind":"Name","value":"maxDrawdown"}},{"kind":"Field","name":{"kind":"Name","value":"diversification"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"positionValuations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"nativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"displayValue"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisNative"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisDisplay"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisConverted"}},{"kind":"Field","name":{"kind":"Name","value":"hasDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"isExcluded"}},{"kind":"Field","name":{"kind":"Name","value":"exclusionReason"}},{"kind":"Field","name":{"kind":"Name","value":"fxRate"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"accountName"}},{"kind":"Field","name":{"kind":"Name","value":"accountID"}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChange"}},{"kind":"Field","name":{"kind":"Name","value":"dayChangePercent"}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Stock"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"peRatio"}},{"kind":"Field","name":{"kind":"Name","value":"dividendYield"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Fund"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"expenseRatio"}},{"kind":"Field","name":{"kind":"Name","value":"dividendYield"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"BankAccount"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"accountType"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}},{"kind":"Field","name":{"kind":"Name","value":"accountNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"balance"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"RealEstate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"propertyType"}},{"kind":"Field","name":{"kind":"Name","value":"category"}},{"kind":"Field","name":{"kind":"Name","value":"address"}},{"kind":"Field","name":{"kind":"Name","value":"city"}},{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"country"}},{"kind":"Field","name":{"kind":"Name","value":"zipCode"}},{"kind":"Field","name":{"kind":"Name","value":"squareFeet"}},{"kind":"Field","name":{"kind":"Name","value":"landSurface"}},{"kind":"Field","name":{"kind":"Name","value":"yearBuilt"}},{"kind":"Field","name":{"kind":"Name","value":"bedrooms"}},{"kind":"Field","name":{"kind":"Name","value":"bathrooms"}},{"kind":"Field","name":{"kind":"Name","value":"rooms"}},{"kind":"Field","name":{"kind":"Name","value":"floor"}},{"kind":"Field","name":{"kind":"Name","value":"totalFloors"}},{"kind":"Field","name":{"kind":"Name","value":"garages"}},{"kind":"Field","name":{"kind":"Name","value":"parkingSpaces"}},{"kind":"Field","name":{"kind":"Name","value":"energyLabel"}},{"kind":"Field","name":{"kind":"Name","value":"condition"}},{"kind":"Field","name":{"kind":"Name","value":"agencyFees"}},{"kind":"Field","name":{"kind":"Name","value":"notaryFees"}},{"kind":"Field","name":{"kind":"Name","value":"renovationFees"}},{"kind":"Field","name":{"kind":"Name","value":"furnishingCosts"}},{"kind":"Field","name":{"kind":"Name","value":"rentalType"}},{"kind":"Field","name":{"kind":"Name","value":"rentalPeriod"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"utilityCosts"}},{"kind":"Field","name":{"kind":"Name","value":"yearlyMiscCosts"}},{"kind":"Field","name":{"kind":"Name","value":"hasGarden"}},{"kind":"Field","name":{"kind":"Name","value":"hasBalcony"}},{"kind":"Field","name":{"kind":"Name","value":"hasLift"}},{"kind":"Field","name":{"kind":"Name","value":"hasPool"}},{"kind":"Field","name":{"kind":"Name","value":"hasSauna"}},{"kind":"Field","name":{"kind":"Name","value":"isFurnished"}},{"kind":"Field","name":{"kind":"Name","value":"isNewConstruction"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenQuality"}},{"kind":"Field","name":{"kind":"Name","value":"kitchenCondition"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomQuality"}},{"kind":"Field","name":{"kind":"Name","value":"bathroomCondition"}},{"kind":"Field","name":{"kind":"Name","value":"flooringQuality"}},{"kind":"Field","name":{"kind":"Name","value":"flooringCondition"}},{"kind":"Field","name":{"kind":"Name","value":"windowsQuality"}},{"kind":"Field","name":{"kind":"Name","value":"windowsCondition"}},{"kind":"Field","name":{"kind":"Name","value":"generalQuality"}},{"kind":"Field","name":{"kind":"Name","value":"generalCondition"}},{"kind":"Field","name":{"kind":"Name","value":"linkedLoanId"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipStructure"}},{"kind":"Field","name":{"kind":"Name","value":"addressLabel"}},{"kind":"Field","name":{"kind":"Name","value":"cityCode"}},{"kind":"Field","name":{"kind":"Name","value":"banId"}},{"kind":"Field","name":{"kind":"Name","value":"latitude"}},{"kind":"Field","name":{"kind":"Name","value":"longitude"}},{"kind":"Field","name":{"kind":"Name","value":"hasOutdoor"}},{"kind":"Field","name":{"kind":"Name","value":"isGroundFloor"}},{"kind":"Field","name":{"kind":"Name","value":"valuationMode"}},{"kind":"Field","name":{"kind":"Name","value":"estimationMethod"}},{"kind":"Field","name":{"kind":"Name","value":"manualValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedPricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"basePricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"valuationConfidence"}},{"kind":"Field","name":{"kind":"Name","value":"comparablesCount"}},{"kind":"Field","name":{"kind":"Name","value":"searchRadiusMeters"}},{"kind":"Field","name":{"kind":"Name","value":"lastEstimatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"valuationHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"mode"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"rentalR2Adjusted"}}]}},{"kind":"InlineFragment","typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Loan"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"loanType"}},{"kind":"Field","name":{"kind":"Name","value":"loanAmount"}},{"kind":"Field","name":{"kind":"Name","value":"remainingBalance"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}},{"kind":"Field","name":{"kind":"Name","value":"durationMonths"}},{"kind":"Field","name":{"kind":"Name","value":"monthlyPayment"}},{"kind":"Field","name":{"kind":"Name","value":"startDate"}},{"kind":"Field","name":{"kind":"Name","value":"endDate"}},{"kind":"Field","name":{"kind":"Name","value":"lender"}},{"kind":"Field","name":{"kind":"Name","value":"loanNumber"}},{"kind":"Field","name":{"kind":"Name","value":"currency"}},{"kind":"Field","name":{"kind":"Name","value":"downPayment"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipMode"}},{"kind":"Field","name":{"kind":"Name","value":"applicationFee"}},{"kind":"Field","name":{"kind":"Name","value":"brokerFee"}},{"kind":"Field","name":{"kind":"Name","value":"insuranceFee"}},{"kind":"Field","name":{"kind":"Name","value":"otherFees"}},{"kind":"Field","name":{"kind":"Name","value":"earlyRepaymentFee"}},{"kind":"Field","name":{"kind":"Name","value":"linkedAssetIDs"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPercentage"}},{"kind":"Field","name":{"kind":"Name","value":"steps"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"interestRate"}}]}},{"kind":"Field","name":{"kind":"Name","value":"coOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"userId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"companyOwners"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"companyId"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"registrationNumber"}},{"kind":"Field","name":{"kind":"Name","value":"legalForm"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"watchlists"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}}]}}]}}]}}]} as unknown as DocumentNode<GetDashboardCriticalQuery, GetDashboardCriticalQueryVariables>;
 export const GetDashboardSecondaryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetDashboardSecondary"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transactions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"limit"},"value":{"kind":"IntValue","value":"10"}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"accountId"}},{"kind":"Field","name":{"kind":"Name","value":"account"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPriceAmount"}},{"kind":"Field","name":{"kind":"Name","value":"unitPriceCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"executedAt"}},{"kind":"Field","name":{"kind":"Name","value":"feesAmount"}},{"kind":"Field","name":{"kind":"Name","value":"feesCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"transactionType"}}]}}]}}]} as unknown as DocumentNode<GetDashboardSecondaryQuery, GetDashboardSecondaryQueryVariables>;
 export const GetRecentTransactionsMinimalDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetRecentTransactionsMinimal"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"transactions"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"accountId"}},{"kind":"Field","name":{"kind":"Name","value":"account"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"institution"}}]}},{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"amount"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"unitPriceAmount"}},{"kind":"Field","name":{"kind":"Name","value":"unitPriceCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"executedAt"}},{"kind":"Field","name":{"kind":"Name","value":"transactionType"}}]}}]}}]} as unknown as DocumentNode<GetRecentTransactionsMinimalQuery, GetRecentTransactionsMinimalQueryVariables>;
 export const GetAssetPerformanceOptimizedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetPerformanceOptimized"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"purchasePrice"}}]}}]}}]} as unknown as DocumentNode<GetAssetPerformanceOptimizedQuery, GetAssetPerformanceOptimizedQueryVariables>;
@@ -5272,6 +5211,9 @@ export const GetPortfolioRiskMetricsDocument = {"kind":"Document","definitions":
 export const GetPortfoliosWithAnalyticsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPortfoliosWithAnalytics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolios"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"taxWrapper"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"analytics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalCost"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLossPercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetAllocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"riskMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"volatility"}},{"kind":"Field","name":{"kind":"Name","value":"sharpeRatio"}},{"kind":"Field","name":{"kind":"Name","value":"maxDrawdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalNativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"fxSource"}},{"kind":"Field","name":{"kind":"Name","value":"fxGranularity"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"fxState"}},{"kind":"Field","name":{"kind":"Name","value":"excludedPositionCount"}},{"kind":"Field","name":{"kind":"Name","value":"coveredValueRatio"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"positionValuations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"nativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"displayValue"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisNative"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisDisplay"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisConverted"}},{"kind":"Field","name":{"kind":"Name","value":"hasDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"isExcluded"}},{"kind":"Field","name":{"kind":"Name","value":"exclusionReason"}},{"kind":"Field","name":{"kind":"Name","value":"fxRate"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"fxSource"}},{"kind":"Field","name":{"kind":"Name","value":"fxGranularity"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetPortfoliosWithAnalyticsQuery, GetPortfoliosWithAnalyticsQueryVariables>;
 export const GetPortfolioDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPortfolio"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"taxWrapper"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"sortOrder"}},{"kind":"Field","name":{"kind":"Name","value":"user"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}}]}},{"kind":"Field","name":{"kind":"Name","value":"assets"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPct"}}]}},{"kind":"Field","name":{"kind":"Name","value":"analytics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalCost"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLoss"}},{"kind":"Field","name":{"kind":"Name","value":"totalGainLossPercent"}},{"kind":"Field","name":{"kind":"Name","value":"assetAllocation"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"value"}},{"kind":"Field","name":{"kind":"Name","value":"percentage"}}]}},{"kind":"Field","name":{"kind":"Name","value":"performanceHistory"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"Field","name":{"kind":"Name","value":"riskMetrics"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"volatility"}},{"kind":"Field","name":{"kind":"Name","value":"sharpeRatio"}},{"kind":"Field","name":{"kind":"Name","value":"maxDrawdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"totalNativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"totalDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"fxSource"}},{"kind":"Field","name":{"kind":"Name","value":"fxGranularity"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"fxState"}},{"kind":"Field","name":{"kind":"Name","value":"excludedPositionCount"}},{"kind":"Field","name":{"kind":"Name","value":"coveredValueRatio"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"positionValuations"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"positionId"}},{"kind":"Field","name":{"kind":"Name","value":"assetId"}},{"kind":"Field","name":{"kind":"Name","value":"nativeValue"}},{"kind":"Field","name":{"kind":"Name","value":"displayValue"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisNative"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisDisplay"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"costBasisConverted"}},{"kind":"Field","name":{"kind":"Name","value":"hasDisplayValue"}},{"kind":"Field","name":{"kind":"Name","value":"isExcluded"}},{"kind":"Field","name":{"kind":"Name","value":"exclusionReason"}},{"kind":"Field","name":{"kind":"Name","value":"fxRate"}},{"kind":"Field","name":{"kind":"Name","value":"fxAsOf"}},{"kind":"Field","name":{"kind":"Name","value":"fxSource"}},{"kind":"Field","name":{"kind":"Name","value":"fxGranularity"}},{"kind":"Field","name":{"kind":"Name","value":"isStale"}},{"kind":"Field","name":{"kind":"Name","value":"quoteCurrency"}},{"kind":"Field","name":{"kind":"Name","value":"displayCurrency"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"tags"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<GetPortfolioQuery, GetPortfolioQueryVariables>;
 export const GetScopedPerformanceHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetScopedPerformanceHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetTypes"}},"type":{"kind":"NonNullType","type":{"kind":"ListType","type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"scopedPerformanceHistory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioID"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetTypes"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetTypes"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"date"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]} as unknown as DocumentNode<GetScopedPerformanceHistoryQuery, GetScopedPerformanceHistoryQueryVariables>;
+export const EstimateRealEstateDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"EstimateRealEstate"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"RealEstateEstimationInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"estimateRealEstate"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"estimatedValue"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMin"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMax"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedPricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"basePricePerM2"}},{"kind":"Field","name":{"kind":"Name","value":"confidence"}},{"kind":"Field","name":{"kind":"Name","value":"method"}},{"kind":"Field","name":{"kind":"Name","value":"comparablesCount"}},{"kind":"Field","name":{"kind":"Name","value":"searchRadiusMeters"}},{"kind":"Field","name":{"kind":"Name","value":"lastEstimatedAt"}},{"kind":"Field","name":{"kind":"Name","value":"rentalMarket"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"isCommuneLevel"}},{"kind":"Field","name":{"kind":"Name","value":"r2Adjusted"}},{"kind":"Field","name":{"kind":"Name","value":"sourceLabel"}}]}}]}}]}}]} as unknown as DocumentNode<EstimateRealEstateQuery, EstimateRealEstateQueryVariables>;
+export const FetchAdemeDpeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"FetchADEMEDpe"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"banId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"surfaceM2"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"propertyType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"fetchADEMEDpe"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"banId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"banId"}}},{"kind":"Argument","name":{"kind":"Name","value":"surfaceM2"},"value":{"kind":"Variable","name":{"kind":"Name","value":"surfaceM2"}}},{"kind":"Argument","name":{"kind":"Name","value":"propertyType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"propertyType"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"rating"}},{"kind":"Field","name":{"kind":"Name","value":"surfaceM2"}},{"kind":"Field","name":{"kind":"Name","value":"diagnosticDate"}},{"kind":"Field","name":{"kind":"Name","value":"sourceDataset"}}]}}]}}]} as unknown as DocumentNode<FetchAdemeDpeQuery, FetchAdemeDpeQueryVariables>;
+export const GetCommuneRentalIndicatorsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetCommuneRentalIndicators"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"cityCode"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"propertyType"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"roomsCount"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"surfaceM2"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"propertyValue"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Float"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"getCommuneRentalIndicators"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"cityCode"},"value":{"kind":"Variable","name":{"kind":"Name","value":"cityCode"}}},{"kind":"Argument","name":{"kind":"Name","value":"propertyType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"propertyType"}}},{"kind":"Argument","name":{"kind":"Name","value":"roomsCount"},"value":{"kind":"Variable","name":{"kind":"Name","value":"roomsCount"}}},{"kind":"Argument","name":{"kind":"Name","value":"surfaceM2"},"value":{"kind":"Variable","name":{"kind":"Name","value":"surfaceM2"}}},{"kind":"Argument","name":{"kind":"Name","value":"propertyValue"},"value":{"kind":"Variable","name":{"kind":"Name","value":"propertyValue"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"marketRentPerM2"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedMonthlyRent"}},{"kind":"Field","name":{"kind":"Name","value":"estimatedGrossYield"}},{"kind":"Field","name":{"kind":"Name","value":"isCommuneLevel"}},{"kind":"Field","name":{"kind":"Name","value":"r2Adjusted"}},{"kind":"Field","name":{"kind":"Name","value":"sourceLabel"}}]}}]}}]} as unknown as DocumentNode<GetCommuneRentalIndicatorsQuery, GetCommuneRentalIndicatorsQueryVariables>;
 export const GetFinanceDatabaseSyncStatusDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabaseSyncStatus"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabaseSyncStatus"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"lastSynced"}},{"kind":"Field","name":{"kind":"Name","value":"recordCount"}},{"kind":"Field","name":{"kind":"Name","value":"syncStatus"}},{"kind":"Field","name":{"kind":"Name","value":"progress"}},{"kind":"Field","name":{"kind":"Name","value":"currentRecord"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabaseSyncStatusQuery, GetFinanceDatabaseSyncStatusQueryVariables>;
 export const GetFinanceDatabaseSyncHistoryDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabaseSyncHistory"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabaseSyncHistory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"recordCount"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabaseSyncHistoryQuery, GetFinanceDatabaseSyncHistoryQueryVariables>;
 export const GetFinanceDatabasePreviewDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabasePreview"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetSyncType"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabasePreview"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabasePreviewQuery, GetFinanceDatabasePreviewQueryVariables>;
@@ -5289,18 +5231,12 @@ export const GetWalletAccountsDocument = {"kind":"Document","definitions":[{"kin
 export const GetWalletCuUsageDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetWalletCUUsage"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"walletCUUsage"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"billingMonth"}},{"kind":"Field","name":{"kind":"Name","value":"consumedUnits"}},{"kind":"Field","name":{"kind":"Name","value":"maxQuota"}},{"kind":"Field","name":{"kind":"Name","value":"isThrottled"}},{"kind":"Field","name":{"kind":"Name","value":"hasKey"}},{"kind":"Field","name":{"kind":"Name","value":"keySource"}},{"kind":"Field","name":{"kind":"Name","value":"maskedKey"}}]}}]}}]} as unknown as DocumentNode<GetWalletCuUsageQuery, GetWalletCuUsageQueryVariables>;
 export const GetPendingWalletReviewsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPendingWalletReviews"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pendingWalletReviews"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioId"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioId"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"walletActivityId"}},{"kind":"Field","name":{"kind":"Name","value":"reviewStatus"}},{"kind":"Field","name":{"kind":"Name","value":"suggestedType"}},{"kind":"Field","name":{"kind":"Name","value":"notes"}},{"kind":"Field","name":{"kind":"Name","value":"createdAt"}}]}}]}}]} as unknown as DocumentNode<GetPendingWalletReviewsQuery, GetPendingWalletReviewsQueryVariables>;
 export const GetBlockchainNetworkConfigsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetBlockchainNetworkConfigs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"blockchainNetworkConfigs"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"network"}},{"kind":"Field","name":{"kind":"Name","value":"rpcUrl"}},{"kind":"Field","name":{"kind":"Name","value":"explorerApiUrl"}},{"kind":"Field","name":{"kind":"Name","value":"source"}},{"kind":"Field","name":{"kind":"Name","value":"updatedAt"}}]}}]}}]} as unknown as DocumentNode<GetBlockchainNetworkConfigsQuery, GetBlockchainNetworkConfigsQueryVariables>;
-export const PortfolioUpdateSubscriptionDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"PortfolioUpdateSubscription"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolioUpdates"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"portfolio"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<PortfolioUpdateSubscriptionSubscription, PortfolioUpdateSubscriptionSubscriptionVariables>;
 export const InvalidationProbeDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"InvalidationProbe"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"userID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"portfolios"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"Field","name":{"kind":"Name","value":"watchlists"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"ObjectValue","fields":[{"kind":"ObjectField","name":{"kind":"Name","value":"userID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"userID"}}}]}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<InvalidationProbeQuery, InvalidationProbeQueryVariables>;
 export const GetAssetsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssets"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"filter"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetFilter"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"PaginationInput"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"orderBy"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetOrder"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assets"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"filter"},"value":{"kind":"Variable","name":{"kind":"Name","value":"filter"}}},{"kind":"Argument","name":{"kind":"Name","value":"pagination"},"value":{"kind":"Variable","name":{"kind":"Name","value":"pagination"}}},{"kind":"Argument","name":{"kind":"Name","value":"orderBy"},"value":{"kind":"Variable","name":{"kind":"Name","value":"orderBy"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]}}]} as unknown as DocumentNode<GetAssetsQuery, GetAssetsQueryVariables>;
 export const GetAssetTypesDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetAssetTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}}]} as unknown as DocumentNode<GetAssetTypesQuery, GetAssetTypesQueryVariables>;
 export const AddAssetToPortfolioHookDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"AddAssetToPortfolioHook"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PortfolioAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"addAssetToPortfolio"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPct"}}]}}]}}]} as unknown as DocumentNode<AddAssetToPortfolioHookMutation, AddAssetToPortfolioHookMutationVariables>;
 export const RemoveAssetFromPortfolioDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RemoveAssetFromPortfolio"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"portfolioID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"accountID"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"ID"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"removeAssetFromPortfolio"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"portfolioID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"portfolioID"}}},{"kind":"Argument","name":{"kind":"Name","value":"assetID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetID"}}},{"kind":"Argument","name":{"kind":"Name","value":"accountID"},"value":{"kind":"Variable","name":{"kind":"Name","value":"accountID"}}}]}]}}]} as unknown as DocumentNode<RemoveAssetFromPortfolioMutation, RemoveAssetFromPortfolioMutationVariables>;
 export const UpdateAssetInPortfolioDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"UpdateAssetInPortfolio"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"PortfolioAssetInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"updateAssetInPortfolio"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"asset"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"currentValue"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"quantity"}},{"kind":"Field","name":{"kind":"Name","value":"averagePurchasePrice"}},{"kind":"Field","name":{"kind":"Name","value":"ownershipPct"}}]}}]}}]} as unknown as DocumentNode<UpdateAssetInPortfolioMutation, UpdateAssetInPortfolioMutationVariables>;
-export const GetPerformanceMetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetPerformanceMetrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"performanceMetrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"timeRange"},"value":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dashboardStateTransitions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"min"}},{"kind":"Field","name":{"kind":"Name","value":"max"}},{"kind":"Field","name":{"kind":"Name","value":"p50"}},{"kind":"Field","name":{"kind":"Name","value":"p95"}},{"kind":"Field","name":{"kind":"Name","value":"p99"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}},{"kind":"Field","name":{"kind":"Name","value":"lastDay"}},{"kind":"Field","name":{"kind":"Name","value":"breakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"dataLoadTimes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"min"}},{"kind":"Field","name":{"kind":"Name","value":"max"}},{"kind":"Field","name":{"kind":"Name","value":"p50"}},{"kind":"Field","name":{"kind":"Name","value":"p95"}},{"kind":"Field","name":{"kind":"Name","value":"p99"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}},{"kind":"Field","name":{"kind":"Name","value":"lastDay"}},{"kind":"Field","name":{"kind":"Name","value":"breakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"userInteractions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}},{"kind":"Field","name":{"kind":"Name","value":"lastDay"}},{"kind":"Field","name":{"kind":"Name","value":"breakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"errorRates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}},{"kind":"Field","name":{"kind":"Name","value":"lastDay"}},{"kind":"Field","name":{"kind":"Name","value":"breakdown"}}]}},{"kind":"Field","name":{"kind":"Name","value":"marketDataUpdates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}},{"kind":"Field","name":{"kind":"Name","value":"lastDay"}},{"kind":"Field","name":{"kind":"Name","value":"breakdown"}}]}}]}}]}}]} as unknown as DocumentNode<GetPerformanceMetricsQuery, GetPerformanceMetricsQueryVariables>;
-export const GetSystemHealthDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetSystemHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"systemHealth"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"metricsCount"}},{"kind":"Field","name":{"kind":"Name","value":"alertsCount"}},{"kind":"Field","name":{"kind":"Name","value":"recentErrors"}},{"kind":"Field","name":{"kind":"Name","value":"details"}}]}}]}}]} as unknown as DocumentNode<GetSystemHealthQuery, GetSystemHealthQueryVariables>;
-export const GetUserEngagementMetricsDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetUserEngagementMetrics"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"userEngagementMetrics"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"timeRange"},"value":{"kind":"Variable","name":{"kind":"Name","value":"timeRange"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"totalUsers"}},{"kind":"Field","name":{"kind":"Name","value":"activeUsers"}},{"kind":"Field","name":{"kind":"Name","value":"avgSessionDuration"}},{"kind":"Field","name":{"kind":"Name","value":"topFeatures"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"feature"}},{"kind":"Field","name":{"kind":"Name","value":"usageCount"}},{"kind":"Field","name":{"kind":"Name","value":"uniqueUsers"}},{"kind":"Field","name":{"kind":"Name","value":"avgDuration"}}]}},{"kind":"Field","name":{"kind":"Name","value":"navigationPatterns"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"pattern"}},{"kind":"Field","name":{"kind":"Name","value":"count"}},{"kind":"Field","name":{"kind":"Name","value":"avgDuration"}},{"kind":"Field","name":{"kind":"Name","value":"conversion"}}]}},{"kind":"Field","name":{"kind":"Name","value":"deviceBreakdown"}},{"kind":"Field","name":{"kind":"Name","value":"errorsByComponent"}}]}}]}}]} as unknown as DocumentNode<GetUserEngagementMetricsQuery, GetUserEngagementMetricsQueryVariables>;
-export const RecordDashboardEventDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"mutation","name":{"kind":"Name","value":"RecordDashboardEvent"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"input"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"DashboardEventInput"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"recordDashboardEvent"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"input"},"value":{"kind":"Variable","name":{"kind":"Name","value":"input"}}}]}]}}]} as unknown as DocumentNode<RecordDashboardEventMutation, RecordDashboardEventMutationVariables>;
-export const PerformanceMetricsUpdatedDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"PerformanceMetricsUpdated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"performanceMetricsUpdated"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"dashboardStateTransitions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"p95"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}}]}},{"kind":"Field","name":{"kind":"Name","value":"dataLoadTimes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"average"}},{"kind":"Field","name":{"kind":"Name","value":"p95"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}}]}},{"kind":"Field","name":{"kind":"Name","value":"errorRates"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"total"}},{"kind":"Field","name":{"kind":"Name","value":"lastHour"}}]}}]}}]}}]} as unknown as DocumentNode<PerformanceMetricsUpdatedSubscription, PerformanceMetricsUpdatedSubscriptionVariables>;
 export const GetFinanceDatabaseSyncStatusHookDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabaseSyncStatusHook"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabaseSyncStatus"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetTypes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"isEnabled"}},{"kind":"Field","name":{"kind":"Name","value":"lastSynced"}},{"kind":"Field","name":{"kind":"Name","value":"recordCount"}},{"kind":"Field","name":{"kind":"Name","value":"syncStatus"}},{"kind":"Field","name":{"kind":"Name","value":"progress"}},{"kind":"Field","name":{"kind":"Name","value":"currentRecord"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabaseSyncStatusHookQuery, GetFinanceDatabaseSyncStatusHookQueryVariables>;
 export const GetFinanceDatabaseSyncHistoryHookDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabaseSyncHistoryHook"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabaseSyncHistory"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"timestamp"}},{"kind":"Field","name":{"kind":"Name","value":"assetType"}},{"kind":"Field","name":{"kind":"Name","value":"recordCount"}},{"kind":"Field","name":{"kind":"Name","value":"status"}},{"kind":"Field","name":{"kind":"Name","value":"errorMessage"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabaseSyncHistoryHookQuery, GetFinanceDatabaseSyncHistoryHookQueryVariables>;
 export const GetFinanceDatabasePreviewHookDocument = {"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetFinanceDatabasePreviewHook"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"AssetSyncType"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"search"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"financeDatabasePreview"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"assetType"},"value":{"kind":"Variable","name":{"kind":"Name","value":"assetType"}}},{"kind":"Argument","name":{"kind":"Name","value":"search"},"value":{"kind":"Variable","name":{"kind":"Name","value":"search"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"symbol"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"exchange"}},{"kind":"Field","name":{"kind":"Name","value":"sector"}},{"kind":"Field","name":{"kind":"Name","value":"country"}}]}}]}}]} as unknown as DocumentNode<GetFinanceDatabasePreviewHookQuery, GetFinanceDatabasePreviewHookQueryVariables>;

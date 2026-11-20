@@ -21,7 +21,7 @@ import { toast } from "sonner";
 import { PerformerPanel } from "@/components/assets/stocks-funds/PerformerPanel";
 import type { InsightFilter as DistributionInsightFilter } from "@/components/assets/stocks-funds/StocksDistributionWidget";
 import { StocksDistributionWidget } from "@/components/assets/stocks-funds/StocksDistributionWidget";
-import { AssetHeroChart, buildPerformanceSeries } from "@/components/charts/AssetHeroChart";
+import { AssetHeroChart, buildPerformanceSeries, type TimeRange } from "@/components/charts/AssetHeroChart";
 import { BenchmarkComparisonCard } from "@/components/insights/BenchmarkComparisonCard";
 import { CurrencyExposureCard } from "@/components/insights/CurrencyExposureCard";
 import { FeesTerCard } from "@/components/insights/FeesTerCard";
@@ -77,8 +77,6 @@ interface StocksFundsModuleProps {
 	onSelectAsset?: (symbol: string) => void;
 	detailMode?: "external" | "panel";
 }
-
-type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
 
 export interface RawAsset {
 	id?: string;

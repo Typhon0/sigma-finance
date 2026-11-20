@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { type ReactElement, useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import {
 	type AllocationFilter,
@@ -132,6 +133,32 @@ function getBlockExplorerUrl(
 		default:
 			return null;
 	}
+}
+
+const NETWORK_DISPLAY_NAMES: Record<string, string> = {
+	ETHEREUM: "Ethereum",
+	SOLANA: "Solana",
+	BITCOIN: "Bitcoin",
+	BASE: "Base",
+	ARBITRUM: "Arbitrum",
+	OPTIMISM: "Optimism",
+	POLYGON: "Polygon",
+};
+
+const NETWORK_NATIVE_ASSETS: Record<string, { symbol: string; name: string }> = {
+	BITCOIN: { symbol: "BTC", name: "Bitcoin" },
+	ETHEREUM: { symbol: "ETH", name: "Ethereum" },
+	SOLANA: { symbol: "SOL", name: "Solana" },
+	BASE: { symbol: "ETH", name: "Ethereum" },
+	ARBITRUM: { symbol: "ETH", name: "Ethereum" },
+	OPTIMISM: { symbol: "ETH", name: "Ethereum" },
+	POLYGON: { symbol: "POL", name: "Polygon" },
+};
+
+function formatNetworkName(raw: string): string {
+	const upper = raw.toUpperCase();
+	if (NETWORK_DISPLAY_NAMES[upper]) return NETWORK_DISPLAY_NAMES[upper];
+	return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
 }
 
 /** Crypto holding derived from portfolio asset data */
@@ -574,6 +601,7 @@ export function CryptoList({
 		updateAsset,
 		refetch,
 	} = usePortfolio();
+	const navigate = useNavigate();
 	const [showAddForm, setShowAddForm] = useState(false);
 	const [hideSmallBalances, setHideSmallBalances] = useState(false);
 	const [filterExchange, setFilterExchange] = useState("all");
@@ -635,6 +663,23 @@ export function CryptoList({
 		() => walletAccountsData?.walletAccounts ?? [],
 		[walletAccountsData],
 	);
+
+	const connectedNetworks = useMemo(() => {
+		return Array.from(
+			new Set<string>(walletAccounts.map((w: { network: string }) => w.network)),
+		);
+	}, [walletAccounts]);
+
+	const lastSyncText = useMemo(() => {
+		const lastSync = walletAccounts
+			.map((w: { lastSyncAt?: string | null }) => w.lastSyncAt)
+			.filter(Boolean)
+			.sort()
+			.reverse()[0];
+		return lastSync
+			? `Last synced ${new Date(lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+			: "Sync ready";
+	}, [walletAccounts]);
 
 	const { data: walletDevicesData } = useQuery(GET_WALLET_DEVICES);
 	const walletDevices = useMemo(() => walletDevicesData?.walletDevices ?? [], [walletDevicesData]);
@@ -793,14 +838,54 @@ export function CryptoList({
 			const formattedNet = wallet.network
 				? wallet.network.charAt(0).toUpperCase() + wallet.network.slice(1).toLowerCase()
 				: "Crypto";
-			const accountName = wallet.label?.trim()
-				? wallet.label.trim()
-				: `${formattedNet} Wallet (${shortAddr})`;
+			const accountName =
+				wallet.device?.deviceType === "HARDWARE" && wallet.device?.name
+					? `${wallet.device.name} (Hardware)`
+					: wallet.label?.trim() || `${formattedNet} Wallet (${shortAddr})`;
 
-			for (const b of wallet.balances ?? []) {
-				if (b.isSpam || b.isHidden) continue;
-				const quantity = Number(b.formattedQuantity) || 0;
-				if (quantity <= 0) continue;
+			const balances = wallet.balances ?? [];
+			if (balances.length === 0) {
+				const netKey = (wallet.network || "").toUpperCase();
+				const nativeInfo = NETWORK_NATIVE_ASSETS[netKey] || { symbol: "BTC", name: "Bitcoin" };
+				const sym = nativeInfo.symbol;
+				const marketData = priceLookup.get(sym);
+				const currentPrice = marketData?.currentPrice ?? 0;
+				walletHoldings.push({
+					id: `wallet-empty-${wallet.id}`,
+					walletAddress: wallet.addressOrXpub,
+					network: wallet.network,
+					cryptoId: sym.toLowerCase(),
+					cryptoName: nativeInfo.name,
+					symbol: sym,
+					quantity: 0,
+					averageBuyPrice: 0,
+					currentPrice,
+					value: 0,
+					cost: 0,
+					profitLoss: 0,
+					profitLossPercent: 0,
+					hasCostBasis: false,
+					change24h: marketData?.change24h ?? 0,
+					sparklineData: computeFallbackSparkline(currentPrice, marketData?.change24h ?? 0),
+					accountName,
+					accountType: "Wallet",
+					walletAccountId: wallet.id,
+					deviceId: wallet.deviceId || wallet.device?.id || null,
+					deviceName: wallet.device?.name || null,
+					deviceType: (wallet.device?.deviceType as any) || null,
+					icon: sym.charAt(0),
+					color: CRYPTO_COLORS[sym] || "#10B981",
+					isPriceResolved: currentPrice > 0,
+				});
+			} else {
+				for (const b of balances) {
+					if (b.isSpam || b.isHidden) continue;
+					const quantity = Number(b.formattedQuantity) || 0;
+					if (quantity < 0) continue;
+					const isNative = !b.tokenAddress || b.tokenAddress.trim() === "";
+					if (!isNative && quantity === 0 && !(Number(b.costBasisPerUnit) > 0)) {
+						continue;
+					}
 
 				let symbol = (b.symbol || "?").toUpperCase();
 				let cryptoName = b.name || symbol;
@@ -924,6 +1009,7 @@ export function CryptoList({
 				});
 			}
 		}
+	}
 
 		return [...manualHoldings, ...walletHoldings].sort((a, b) => b.value - a.value);
 	}, [assets, allAssets, walletAccounts]);
@@ -1217,9 +1303,9 @@ export function CryptoList({
 				onSelectAccount(accountName);
 				return;
 			}
-			window.location.href = "/settings/connections";
+			navigate({ to: "/settings/connections" });
 		},
-		[onSelectAccount],
+		[navigate, onSelectAccount],
 	);
 
 	const openEditDialog = useCallback((holding: CryptoHolding) => {
@@ -2360,6 +2446,35 @@ export function CryptoList({
 				title="Crypto Assets"
 				description="Track cryptocurrency assets, portfolio allocation, wallet performance, and live market trends."
 				onBack={onBack}
+				meta={
+					walletAccounts.length > 0 ? (
+						<div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs text-muted-foreground">
+							<div className="inline-flex items-center gap-1.5 font-medium text-foreground">
+								<span className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.35)]" />
+								<span>
+									{walletAccounts.length} On-Chain Wallet{walletAccounts.length > 1 ? "s" : ""}
+								</span>
+							</div>
+							{connectedNetworks.length > 0 && (
+								<>
+									<span className="text-muted-foreground/40 font-light">•</span>
+									<div className="inline-flex items-center gap-1 flex-wrap">
+										{connectedNetworks.map((net) => (
+											<span
+												key={net}
+												className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted/60 text-muted-foreground border border-border/40"
+											>
+												{formatNetworkName(net)}
+											</span>
+										))}
+									</div>
+								</>
+							)}
+							<span className="text-muted-foreground/40 font-light">•</span>
+							<span className="text-[11px] text-muted-foreground/80">{lastSyncText}</span>
+						</div>
+					) : undefined
+				}
 				actions={
 					<div className="flex flex-wrap items-center gap-2">
 						<Button
@@ -2372,16 +2487,29 @@ export function CryptoList({
 							Connect Wallet
 						</Button>
 						{walletAccounts.length > 0 && (
-							<Button
-								size="sm"
-								variant="outline"
-								className="h-8 text-xs"
-								onClick={handleSyncAllWallets}
-								disabled={isSyncingWallets}
-							>
-								<RefreshCw className={`mr-1.5 h-3 w-3 ${isSyncingWallets ? "animate-spin" : ""}`} />
-								Sync Wallets
-							</Button>
+							<>
+								<Button
+									size="sm"
+									variant="outline"
+									className="h-8 text-xs"
+									onClick={handleSyncAllWallets}
+									disabled={isSyncingWallets}
+									title="Sync on-chain wallets"
+								>
+									<RefreshCw className={`mr-1.5 h-3 w-3 ${isSyncingWallets ? "animate-spin" : ""}`} />
+									{isSyncingWallets ? "Syncing..." : "Sync Wallets"}
+								</Button>
+								<Button
+									size="sm"
+									variant="outline"
+									className="h-8 text-xs text-muted-foreground hover:text-foreground"
+									onClick={() => navigate({ to: "/settings/connections" })}
+									title="Manage Wallets & Connections"
+								>
+									<Settings className="mr-1.5 h-3 w-3" />
+									Manage Wallets
+								</Button>
+							</>
 						)}
 						<Button
 							size="sm"
@@ -2394,66 +2522,6 @@ export function CryptoList({
 					</div>
 				}
 			/>
-
-			{/* Connected Wallets Sync Status Ribbon */}
-			{walletAccounts.length > 0 && (
-				<div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-lg bg-muted/40 border border-border/60 text-xs">
-					<div className="flex items-center gap-2.5 flex-wrap">
-						<span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-						<span className="font-semibold text-foreground">
-							{walletAccounts.length} On-Chain Wallet{walletAccounts.length > 1 ? "s" : ""}{" "}
-							Connected
-						</span>
-						<span className="text-muted-foreground">•</span>
-						<div className="flex items-center gap-1.5 flex-wrap">
-							{Array.from(
-								new Set<string>(walletAccounts.map((w: { network: string }) => w.network)),
-							).map((net) => (
-								<Badge
-									key={net}
-									variant="outline"
-									className="text-[10px] uppercase font-mono px-1.5 py-0 h-4"
-								>
-									{net}
-								</Badge>
-							))}
-						</div>
-					</div>
-					<div className="flex items-center gap-3">
-						<span className="text-muted-foreground text-[11px]">
-							{(() => {
-								const lastSync = walletAccounts
-									.map((w: { lastSyncAt?: string | null }) => w.lastSyncAt)
-									.filter(Boolean)
-									.sort()
-									.reverse()[0];
-								return lastSync
-									? `Last synced: ${new Date(lastSync).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
-									: "Sync ready";
-							})()}
-						</span>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-6 px-2 text-xs text-primary hover:text-primary/80"
-							onClick={handleSyncAllWallets}
-							disabled={isSyncingWallets}
-						>
-							<RefreshCw className={`h-3 w-3 mr-1 ${isSyncingWallets ? "animate-spin" : ""}`} />
-							Sync Now
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-							onClick={() => (window.location.href = "/settings/connections")}
-						>
-							<Settings className="h-3 w-3 mr-1" />
-							Manage Wallets
-						</Button>
-					</div>
-				</div>
-			)}
 
 			{/* Unified Dashboard Grid: Chart + Summary side by side with vertical separator */}
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-10 border-b border-border/30 pb-6">
@@ -2678,6 +2746,7 @@ export function CryptoList({
 				groupByOptions={cryptoGroupByOptions}
 				knownAccountGroups={knownAccountGroups}
 				emptyGroupMessage="No crypto holdings in this wallet yet."
+				hideEmptyAccounts={hideSmallBalances}
 				toolbarExtra={
 					<div className="flex items-center gap-2">
 						<Select value={filterExchange} onValueChange={setFilterExchange}>

@@ -212,7 +212,7 @@ func TestKrakenAdapter_FetchAccounts(t *testing.T) {
 	require.Len(t, accounts, 1)
 
 	acc := accounts[0]
-	assert.Equal(t, "kraken-spot", acc.ExternalID)
+	assert.True(t, strings.HasPrefix(acc.ExternalID, "kraken-spot"))
 	assert.Equal(t, "Kraken Spot", acc.Name)
 	assert.Equal(t, model.AccountTypeCryptoExchange, acc.Type)
 	assert.Equal(t, "Kraken", acc.Institution)

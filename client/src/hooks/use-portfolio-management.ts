@@ -17,7 +17,6 @@ import { GET_PORTFOLIOS_WITH_ANALYTICS } from "@/graphql/queries";
 import { apolloClient } from "@/lib/apollo/apollo-client";
 import { useAuth } from "@/lib/auth-context";
 import { getErrorMessage, useErrorHandling } from "./use-error-handling";
-import { usePerformanceMonitoring } from "./use-performance-monitoring";
 
 // --- Utility Stubs (replace with real implementations as needed) ---
 const _optimisticResponseGenerators = {
@@ -156,9 +155,6 @@ const cacheInvalidationHelpers = {
 export function usePortfolioManagement() {
 	const { user } = useAuth();
 	const effectiveUserId = user?.id;
-
-	// Performance monitoring
-	const _perfMonitor = usePerformanceMonitoring();
 
 	// Loading states for individual operations
 	const [operationLoading, setOperationLoading] = useState({

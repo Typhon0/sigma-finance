@@ -159,17 +159,20 @@ An ink-and-paper neutral core carries the entire product; saturation enters only
 **Character:** Product-polished and neutral. Inter's clarity does the work; hierarchy comes from size and weight steps, never from novelty. A custom `--text-micro` floor (0.6875rem / 11px) exists specifically because the stocks page once shipped 8–10px type that was unreadable at render — the floor is a scar, and it holds.
 
 ### Hierarchy
-- **Display** (700, 2rem/1.5rem, line-height 2rem): KPI numerals and total-value figures (e.g. portfolio total value). The largest thing on any dashboard.
+- **Display** (700, 1.5rem / 24px, line-height 2rem; 2rem / 32px exclusively for top-level portfolio hero totals): KPI numerals and total-value figures on full-width dashboard hero sections.
+- **Surface / Sheet KPI** (700, 1.125rem – 1.25rem / 18px – 20px, line-height 1.5rem): KPI numerals inside constrained surfaces (slide-over sheets, dialogs, drawers, sidebars). Never force 24px/32px numerals into compact multi-column layouts.
 - **Headline** (600, 1.125rem / 18px, 1.75rem): dialog and sheet titles.
 - **Title** (500, 1rem / 16px, 1.5rem): card titles, section headers, nav groups.
-- **Body** (400, 0.875rem / 14px, 1.25rem): the product default — tables, forms, descriptions, data chrome.
-- **Label** (500, 0.75rem / 12px, 1rem): badges, table column headers, metadata; uppercase + tracking only in editorial styles (Sera).
-- **Micro** (500, 0.6875rem / 11px): the absolute floor for badges and table chrome (`--text-micro`).
+- **Body** (400 or 500, 0.875rem / 14px, 1.25rem): the product default — data table values, specifications, forms, descriptions, data chrome. This is the readable core tier.
+- **Label** (400 or 500, 0.75rem / 12px, 1rem): field labels, metadata descriptions, secondary values, table column headers. Standard casing; uppercase + tracking only in editorial styles (Sera).
+- **Micro** (500, 0.6875rem / 11px, line-height 1.35): the absolute emergency floor for dense status badges and compact table chrome (`--text-micro`). Never use as general body or label type.
 
 ### Named Rules
-**The 11px Floor Rule.** Labels never render below 0.6875rem (11px). If a label needs to be smaller than that to fit, cut the label instead.
+**The 11px Floor Rule.** Labels never render below 0.6875rem (11px). If a label needs to be smaller than that to fit, cut the label instead. Conversely, 11px is an emergency minimum, NOT the standard label size: standard labels are 12px (`text-xs`), and standard values are 14px (`text-sm`).
 
-**The Numerals Rule.** Money and quantities are the clearest type on any screen: KPI values at 2rem/700, deltas at body size with weight ≥500, always signed and colored by semantic token. Identifiers that must align (tickers, percentages in columns) take the mono stack where implemented.
+**The Numerals Rule.** Money and quantities are the clearest type on any screen: Full-page Hero KPI values at 1.5rem / 24px (2rem / 32px for main portfolio total), Sheet/Drawer KPI values at 1.125rem – 1.25rem (18px – 20px / `text-lg` or `text-xl`), deltas at body size with weight ≥500, always signed and colored by semantic token. Identifiers that must align (tickers, percentages in columns) take the mono stack where implemented.
+
+**The Surface Context Scale Rule.** Scale typography to container width: on full-width pages (1800px max-width), large display type breathes; inside side sheets / drawers (400–600px width), cap primary figures at 18–20px (`text-lg`/`text-xl`) and preserve the 14px body (`text-sm`) / 12px label (`text-xs`) hierarchy so data does not wrap or collide.
 
 ## Layout
 
@@ -256,7 +259,7 @@ The seven styles are first-class user choices (Settings → Appearance), selecte
 - **Do** tune each semantic color separately per theme and check it against that theme's `--card` (≥4.5:1 for text) — copy the documented ratios, don't eyeball.
 - **Do** keep structure hairline-first: 1px `--border` at rest; shadows only on floating layers (dropdowns, popovers, dialogs, sheets).
 - **Do** derive radii from `--ui-radius` (`calc()` steps sm→xl); controls `md`, cards `xl`.
-- **Do** keep type inside the hierarchy: body 14px, tables 14px, labels ≥11px (`--text-micro` floor), KPI numerals 2rem/700, signed deltas with a trend arrow.
+- **Do** keep type inside the hierarchy: body 14px (`text-sm`), tables 14px (`text-sm`), labels 12px (`text-xs`), badges/chrome ≥11px (`--text-micro` floor), full-page KPI numerals 1.5rem / 24px (compact sheet KPIs 18–20px), signed deltas with a trend arrow.
 - **Do** lead with everyday clarity: the default view exists for understanding your money, not for showing how much data can fit — depth is something the user reaches for.
 - **Do** hold 44px touch targets on mobile and 16px input font at mobile widths; hide chart controls below 768px.
 - **Do** keep glass on shell chrome only (header/sidebar), and keep both themes verified — light and dark are equal citizens.

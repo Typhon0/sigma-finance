@@ -35,6 +35,9 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 	queryResolver := &queryResolver{resolver}
 	mutResolver := &mutationResolver{resolver}
 
+	// The list query is admin-only, so run this suite as an admin caller.
+	ctx = seedAdminCaller(t, ctx, uow, mutResolver)
+
 	t.Run("CreateUser_Success", func(t *testing.T) {
 		input := gqlModel.CreateUserInput{
 			Username: "testuser",
@@ -566,6 +569,8 @@ func TestGraphQLIntegration_ComprehensiveWatchlistOperations(t *testing.T) {
 	testUser, err := mutResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
 
+	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
+
 	// Seed test data for assets
 	testData := testDB.SeedTestData(ctx)
 
@@ -584,14 +589,30 @@ func TestGraphQLIntegration_ComprehensiveWatchlistOperations(t *testing.T) {
 		assert.NotZero(t, watchlist.UpdatedAt)
 	})
 
-	t.Run("CreateWatchlist_InvalidUser", func(t *testing.T) {
+	t.Run("CreateWatchlist_IgnoresSuppliedUserID", func(t *testing.T) {
+		// The caller owns whatever it creates: a user ID supplied by the
+		// client must not be honoured, or any caller could plant watchlists
+		// in another account.
 		input := gqlModel.CreateWatchlistInput{
 			UserID: "99999",
-			Name:   "Invalid User Watchlist",
+			Name:   "Ignored User Watchlist",
 		}
 
-		_, err := mutResolver.CreateWatchlist(ctx, input)
-		assert.Error(t, err)
+		created, err := mutResolver.CreateWatchlist(ctx, input)
+		require.NoError(t, err)
+		require.NotNil(t, created)
+
+		caller, err := requireCaller(ctx)
+		require.NoError(t, err)
+
+		var ownerID string
+		err = testDB.DB.NewSelect().
+			TableExpr("sigma_finance.watchlist").
+			Column("user_id").
+			Where("id = ?", created.ID).
+			Scan(ctx, &ownerID)
+		require.NoError(t, err)
+		assert.Equal(t, caller.ID, ownerID, "watchlist must belong to the caller, not the supplied user ID")
 	})
 
 	t.Run("GetWatchlists_Success", func(t *testing.T) {
@@ -688,6 +709,14 @@ func TestGraphQLIntegration_ErrorHandling(t *testing.T) {
 	queryResolver := &queryResolver{resolver}
 	mutResolver := &mutationResolver{resolver}
 
+	caller, err := mutResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+		Username: "errcaller",
+		Email:    "errcaller@example.com",
+		Password: "password123",
+	})
+	require.NoError(t, err)
+	ctx = withAuthUser(ctx, caller.ID, caller.Email)
+
 	t.Run("InvalidID_Parsing", func(t *testing.T) {
 		// Test invalid ID formats — resolvers return nil, nil for not-found
 		user, err := queryResolver.User(ctx, "invalid")
@@ -775,6 +804,9 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 	testUser, err := mutResolver.CreateUser(ctx, userInput)
 	require.NoError(t, err)
 
+	// The user list query is admin-only, so run the suite as an admin caller.
+	ctx = seedAdminCaller(t, ctx, uow, mutResolver)
+
 	t.Run("MultiUserPortfolioScenario", func(t *testing.T) {
 		// Create portfolios for different users
 		portfolio1Input := gqlModel.CreatePortfolioInput{
@@ -823,6 +855,15 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 		for _, p := range user1Portfolios {
 			// Note: User field is not populated by basic mapping, would need separate resolver
 			assert.NotEmpty(t, p.ID)
+		}
+
+		// The userID filter cannot be used to read another user's portfolios.
+		crossFilter := &gqlModel.PortfolioFilter{UserID: &testUser2.ID}
+		crossPortfolios, err := queryResolver.Portfolios(ctx1, crossFilter, nil, nil)
+		require.NoError(t, err)
+		assert.GreaterOrEqual(t, len(crossPortfolios), 1)
+		for _, p := range crossPortfolios {
+			assert.NotEqual(t, portfolio2.ID, p.ID)
 		}
 
 		assert.NotEqual(t, portfolio1.ID, portfolio2.ID)

@@ -253,7 +253,6 @@ extend type Query {
 
     
     # Export
-    exportPortfolioData(input: ExportDataInput!): ExportData! @auth
 }
 
 # Mutation Extensions
@@ -264,13 +263,4 @@ extend type Mutation {
     updatePerformanceSnapshots(portfolioIds: [ID!]!, asOfDate: Time!): Boolean! @auth
     
 
-}
-
-# Subscription Extensions
-
-extend type Subscription {
-    # Real-time Performance Updates
-    portfolioPerformanceUpdates(portfolioId: ID!): PerformanceMetrics! @auth
-
-    priceUpdates(assetIds: [ID!]!): ChartDataPoint! @auth
 }

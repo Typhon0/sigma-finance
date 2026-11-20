@@ -12,7 +12,17 @@ import { useChartTheme } from "@/lib/charts/config";
 import { downsampleLTTB } from "@/lib/charts/lttb";
 import { cn } from "@/lib/utils";
 
-export type TimeRange = "1D" | "7D" | "1M" | "3M" | "YTD" | "1Y" | "ALL";
+export type TimeRange =
+	| "1D"
+	| "7D"
+	| "1M"
+	| "3M"
+	| "YTD"
+	| "1Y"
+	| "3Y"
+	| "5Y"
+	| "10Y"
+	| "ALL";
 export type { BenchmarkMode } from "@/hooks/useBenchmarkInstrumentId";
 
 export interface PerformancePoint {
@@ -31,6 +41,8 @@ export interface PortfolioHeroChartProps {
 	benchmarkMode?: BenchmarkMode;
 	/** The current portfolio ID, required for benchmark comparison metrics. */
 	portfolioID?: string;
+	/** Invert polarity for liabilities (debt drop is gain/green). Defaults to "asset". */
+	variant?: "asset" | "liability";
 }
 
 function interpolatePoint(
@@ -87,6 +99,18 @@ export function filterByRange(data: PerformancePoint[], range: TimeRange): Perfo
 		case "1Y":
 			rangeStart = new Date(now);
 			rangeStart.setFullYear(now.getFullYear() - 1);
+			break;
+		case "3Y":
+			rangeStart = new Date(now);
+			rangeStart.setFullYear(now.getFullYear() - 3);
+			break;
+		case "5Y":
+			rangeStart = new Date(now);
+			rangeStart.setFullYear(now.getFullYear() - 5);
+			break;
+		case "10Y":
+			rangeStart = new Date(now);
+			rangeStart.setFullYear(now.getFullYear() - 10);
 			break;
 	}
 
@@ -183,6 +207,7 @@ export function PortfolioHeroChart({
 	error,
 	benchmarkMode = "none",
 	portfolioID,
+	variant = "asset",
 }: PortfolioHeroChartProps) {
 	const { echarts: echartsTheme, isDark } = useChartTheme();
 	const { currency } = useCurrency();
@@ -388,10 +413,11 @@ export function PortfolioHeroChart({
 		(instrumentLoading || isBenchmarkLoading);
 
 	const isUp = useMemo(() => {
-		return filteredData.length >= 2
-			? filteredData[filteredData.length - 1].portfolioValue >= filteredData[0].portfolioValue
-			: true;
-	}, [filteredData]);
+		if (filteredData.length < 2) return true;
+		const diff =
+			filteredData[filteredData.length - 1].portfolioValue - filteredData[0].portfolioValue;
+		return variant === "liability" ? diff <= 0 : diff >= 0;
+	}, [filteredData, variant]);
 
 	// biome-ignore lint/correctness/useExhaustiveDependencies: unavoidable
 	const chartOption = useMemo(() => {
@@ -446,7 +472,7 @@ export function PortfolioHeroChart({
 
 					// biome-ignore lint/suspicious/noExplicitAny: echarts injects any
 					params.forEach((param: any) => {
-						const isPortfolio = param.seriesName === "Portfolio";
+						const isPortfolio = param.seriesName === "Portfolio" || param.seriesName === "Dette";
 						const seriesColor = isPortfolio ? portfolioLineColor : benchmarkLineColor;
 						const val = param.value?.[1];
 						if (val === null || val === undefined || Number.isNaN(val)) return;
@@ -556,7 +582,7 @@ export function PortfolioHeroChart({
 			series: [
 				{
 					id: "portfolio-main-series",
-					name: "Portfolio",
+					name: variant === "liability" ? "Dette" : "Portfolio",
 					type: "line",
 					smooth: isDense ? 0.2 : 0.35,
 					showSymbol: false,
@@ -688,7 +714,7 @@ export function PortfolioHeroChart({
 								<span
 									className={`inline-block h-1.5 w-1.5 rounded-full ${isUp ? "bg-gain" : "bg-loss"}`}
 								/>
-								<span className="text-foreground/90">Portfolio</span>
+								<span className="text-foreground/90">{variant === "liability" ? "Dette" : "Portfolio"}</span>
 							</div>
 							<div className="h-2 w-[1px] bg-border/50" />
 							<div className="flex items-center gap-1.5">

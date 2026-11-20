@@ -4,6 +4,7 @@ import {
 	computeLoanAmortization,
 	computeLoanToValue,
 	computePortfolioDebtSummary,
+	simulateEarlyRepayment,
 } from "../loan-calculator";
 
 describe("computeLoanAmortization", () => {
@@ -155,5 +156,49 @@ describe("computePortfolioDebtSummary", () => {
 		expect(summary.activeLoansCount).toBe(2);
 		// Weighted rate: (200k * 2% + 20k * 4%) / 220k = 480k / 220k ~ 2.18%
 		expect(summary.weightedAverageRate).toBe(2.18);
+	});
+});
+
+describe("simulateEarlyRepayment", () => {
+	it("returns zero metrics when remaining balance or months is 0", () => {
+		const res = simulateEarlyRepayment({
+			remainingBalance: 0,
+			interestRate: 1.28,
+			monthlyPayment: 786.46,
+			remainingMonths: 240,
+		});
+		expect(res.interestSaved).toBe(0);
+		expect(res.monthsSaved).toBe(0);
+	});
+
+	it("calculates realistic interest savings and reduced duration for a lump sum prepayment", () => {
+		// 166,448.91 € balance, 1.28%, 786.46 €/mo, 240 months remaining
+		const res = simulateEarlyRepayment({
+			remainingBalance: 166448.91,
+			interestRate: 1.28,
+			monthlyPayment: 786.46,
+			remainingMonths: 240,
+			lumpSumPrepayment: 10000,
+		});
+
+		// 10k lump sum should reduce balance by 10k and save ~16-18 months and over 2,000 € in interest
+		expect(res.monthsSaved).toBeGreaterThan(12);
+		expect(res.monthsSaved).toBeLessThan(24);
+		expect(res.interestSaved).toBeGreaterThan(1500);
+		expect(res.interestSaved).toBeLessThan(3500);
+		expect(res.monthlyPaymentSavings).toBeGreaterThan(40);
+	});
+
+	it("calculates savings for recurring extra monthly payment", () => {
+		const res = simulateEarlyRepayment({
+			remainingBalance: 166448.91,
+			interestRate: 1.28,
+			monthlyPayment: 786.46,
+			remainingMonths: 240,
+			extraMonthlyPayment: 100, // Pay 886.46 € instead of 786.46 €
+		});
+
+		expect(res.monthsSaved).toBeGreaterThan(24); // More than 2 years saved
+		expect(res.interestSaved).toBeGreaterThan(2000);
 	});
 });

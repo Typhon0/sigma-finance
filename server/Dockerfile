@@ -35,6 +35,14 @@ RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /app/bin/sigma-finance-server ./sigma-finance-server
 COPY --from=builder /app/bin/sigma-finance ./sigma-finance
 
+# Run as an unprivileged user. UID/GID 1000 matches the host user that owns the
+# bind-mounted ./data directories declared in docker-compose.yml.
+RUN addgroup -g 1000 app \
+	&& adduser -D -u 1000 -G app app \
+	&& mkdir -p /data \
+	&& chown -R app:app /app /data
+USER app
+
 # Expose HTTP port
 EXPOSE 8080
 

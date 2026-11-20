@@ -308,10 +308,11 @@ func TestSecurityFeatures(t *testing.T) {
 			tokens = append(tokens, loginResponse.Token)
 		}
 
-		// Verify all sessions are stored (1 from register + 3 from login)
+		// Registration deliberately issues no session: an unverified account
+		// must not hold a usable token, so only the 3 logins are recorded.
 		sessions, err := sessionRepo.GetByUserID(ctx, authResponse.User.ID)
 		require.NoError(t, err)
-		assert.GreaterOrEqual(t, len(sessions), 4, "Should have at least 4 sessions (1 register + 3 login)")
+		assert.Len(t, sessions, 3, "Should have exactly 3 sessions (3 logins, none from register)")
 
 		// Verify sessions have proper security attributes
 		for _, session := range sessions {

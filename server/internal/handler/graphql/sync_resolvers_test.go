@@ -62,7 +62,7 @@ func (m *mockSyncService) TriggerAccountSync(ctx context.Context, accountID stri
 	}, nil
 }
 
-func (m *mockSyncService) RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string) (*model.SyncCredential, error) {
+func (m *mockSyncService) RegisterCredential(ctx context.Context, userID string, provider string, rawJSON string, portfolioID ...*string) (*model.SyncCredential, error) {
 	if m.registerCredentialFn != nil {
 		return m.registerCredentialFn(ctx, userID, provider, rawJSON)
 	}

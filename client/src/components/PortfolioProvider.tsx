@@ -116,6 +116,39 @@ export interface PortfolioAssetItem {
 	windowsCondition?: string;
 	generalQuality?: string;
 	generalCondition?: string;
+	linkedLoanId?: string;
+	ownershipStructure?: string;
+	// RealEstate BAN & Auto-Valuation
+	addressLabel?: string;
+	cityCode?: string;
+	banId?: string;
+	latitude?: number;
+	longitude?: number;
+	hasOutdoor?: boolean;
+	isGroundFloor?: boolean;
+	valuationMode?: string;
+	estimationMethod?: string;
+	manualValue?: number;
+	estimatedValue?: number;
+	estimatedMin?: number;
+	estimatedMax?: number;
+	estimatedPricePerM2?: number;
+	basePricePerM2?: number;
+	valuationConfidence?: string;
+	comparablesCount?: number;
+	searchRadiusMeters?: number;
+	lastEstimatedAt?: string;
+	valuationHistory?: Array<{
+		date: string;
+		value: number;
+		mode?: string | null;
+		estimatedMin?: number | null;
+		estimatedMax?: number | null;
+	}>;
+	marketRentPerM2?: number;
+	estimatedMonthlyRent?: number;
+	estimatedGrossYield?: number;
+	rentalR2Adjusted?: number;
 	// Loan-specific metadata
 	loanType?: string;
 	loanAmount?: number;
@@ -314,6 +347,86 @@ function extractRealEstateFields(
 		windowsCondition: asset.windowsCondition as string | undefined,
 		generalQuality: asset.generalQuality as string | undefined,
 		generalCondition: asset.generalCondition as string | undefined,
+		linkedLoanId: asset.linkedLoanId as string | undefined,
+		ownershipPercentage:
+			typeof asset.ownershipPercentage === "number" && Number.isFinite(asset.ownershipPercentage)
+				? asset.ownershipPercentage
+				: undefined,
+		ownershipStructure: asset.ownershipStructure as string | undefined,
+		addressLabel: asset.addressLabel as string | undefined,
+		cityCode: asset.cityCode as string | undefined,
+		banId: asset.banId as string | undefined,
+		latitude:
+			typeof asset.latitude === "number" && Number.isFinite(asset.latitude)
+				? asset.latitude
+				: undefined,
+		longitude:
+			typeof asset.longitude === "number" && Number.isFinite(asset.longitude)
+				? asset.longitude
+				: undefined,
+		hasOutdoor: typeof asset.hasOutdoor === "boolean" ? asset.hasOutdoor : undefined,
+		isGroundFloor: typeof asset.isGroundFloor === "boolean" ? asset.isGroundFloor : undefined,
+		valuationMode: asset.valuationMode as string | undefined,
+		estimationMethod: asset.estimationMethod as string | undefined,
+		manualValue:
+			typeof asset.manualValue === "number" && Number.isFinite(asset.manualValue)
+				? asset.manualValue
+				: undefined,
+		estimatedValue:
+			typeof asset.estimatedValue === "number" && Number.isFinite(asset.estimatedValue)
+				? asset.estimatedValue
+				: undefined,
+		estimatedMin:
+			typeof asset.estimatedMin === "number" && Number.isFinite(asset.estimatedMin)
+				? asset.estimatedMin
+				: undefined,
+		estimatedMax:
+			typeof asset.estimatedMax === "number" && Number.isFinite(asset.estimatedMax)
+				? asset.estimatedMax
+				: undefined,
+		estimatedPricePerM2:
+			typeof asset.estimatedPricePerM2 === "number" && Number.isFinite(asset.estimatedPricePerM2)
+				? asset.estimatedPricePerM2
+				: undefined,
+		basePricePerM2:
+			typeof asset.basePricePerM2 === "number" && Number.isFinite(asset.basePricePerM2)
+				? asset.basePricePerM2
+				: undefined,
+		valuationConfidence: asset.valuationConfidence as string | undefined,
+		comparablesCount:
+			typeof asset.comparablesCount === "number" && Number.isFinite(asset.comparablesCount)
+				? asset.comparablesCount
+				: undefined,
+		searchRadiusMeters:
+			typeof asset.searchRadiusMeters === "number" && Number.isFinite(asset.searchRadiusMeters)
+				? asset.searchRadiusMeters
+				: undefined,
+		lastEstimatedAt: asset.lastEstimatedAt as string | undefined,
+		valuationHistory: Array.isArray(asset.valuationHistory)
+			? (asset.valuationHistory as Array<{
+					date: string;
+					value: number;
+					mode?: string | null;
+					estimatedMin?: number | null;
+					estimatedMax?: number | null;
+				}>)
+			: undefined,
+		marketRentPerM2:
+			typeof asset.marketRentPerM2 === "number" && Number.isFinite(asset.marketRentPerM2)
+				? asset.marketRentPerM2
+				: undefined,
+		estimatedMonthlyRent:
+			typeof asset.estimatedMonthlyRent === "number" && Number.isFinite(asset.estimatedMonthlyRent)
+				? asset.estimatedMonthlyRent
+				: undefined,
+		estimatedGrossYield:
+			typeof asset.estimatedGrossYield === "number" && Number.isFinite(asset.estimatedGrossYield)
+				? asset.estimatedGrossYield
+				: undefined,
+		rentalR2Adjusted:
+			typeof asset.rentalR2Adjusted === "number" && Number.isFinite(asset.rentalR2Adjusted)
+				? asset.rentalR2Adjusted
+				: undefined,
 	};
 }
 
@@ -469,13 +582,13 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 				const loanFields = extractLoanFields(
 					a.asset as { __typename?: string } & Record<string, unknown>,
 				);
+				const rawCurrentVal =
+					typeof a.currentValue === "number" && Number.isFinite(a.currentValue)
+						? a.currentValue
+						: 0;
 				const currentPrice =
 					typeof a.asset?.currentValue === "number" && Number.isFinite(a.asset.currentValue)
 						? a.asset.currentValue
-						: 0;
-				const currentValue =
-					typeof a.currentValue === "number" && Number.isFinite(a.currentValue)
-						? a.currentValue
 						: 0;
 				const purchasePrice =
 					typeof a.asset?.purchasePrice === "number" && Number.isFinite(a.asset.purchasePrice)
@@ -483,6 +596,14 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 						: typeof a.averagePurchasePrice === "number" && Number.isFinite(a.averagePurchasePrice)
 							? a.averagePurchasePrice
 							: 0;
+				const currentValue =
+					rawCurrentVal > 0
+						? rawCurrentVal
+						: currentPrice > 0
+							? currentPrice * (a.quantity ?? 1)
+							: (realEstateFields.type || bankFields.type || loanFields.type) && purchasePrice > 0
+								? purchasePrice * (a.quantity ?? 1)
+								: 0;
 				const dayChangePercent = a.dayChangePercent ?? null;
 
 				return {
@@ -545,18 +666,26 @@ export function PortfolioProvider({ children }: { children: React.ReactNode }) {
 			const loanFields = extractLoanFields(
 				a.asset as { __typename?: string } & Record<string, unknown>,
 			);
+			const rawCurrentVal =
+				typeof a.currentValue === "number" && Number.isFinite(a.currentValue) ? a.currentValue : 0;
 			const currentPrice =
 				typeof a.asset?.currentValue === "number" && Number.isFinite(a.asset.currentValue)
 					? a.asset.currentValue
 					: 0;
-			const currentValue =
-				typeof a.currentValue === "number" && Number.isFinite(a.currentValue) ? a.currentValue : 0;
 			const purchasePrice =
 				typeof a.asset?.purchasePrice === "number" && Number.isFinite(a.asset.purchasePrice)
 					? a.asset.purchasePrice
 					: typeof a.averagePurchasePrice === "number" && Number.isFinite(a.averagePurchasePrice)
 						? a.averagePurchasePrice
 						: 0;
+			const currentValue =
+				rawCurrentVal > 0
+					? rawCurrentVal
+					: currentPrice > 0
+						? currentPrice * (a.quantity ?? 1)
+						: (realEstateFields.type || bankFields.type || loanFields.type) && purchasePrice > 0
+							? purchasePrice * (a.quantity ?? 1)
+							: 0;
 			const dayChangePercent = a.dayChangePercent ?? null;
 
 			return {

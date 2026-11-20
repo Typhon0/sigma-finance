@@ -19,9 +19,11 @@ func FromFloat(v float64) Money { return Money(math.Round(v * 100)) }
 // ToFloat converts Money back to a float with 2 decimal places.
 func (m Money) ToFloat() float64 { return float64(m) / 100.0 }
 
-// FromDecimal converts a decimal to Money, scaling by 100 to convert to cents
+// FromDecimal converts a decimal to Money, scaling by 100 to convert to cents.
+// The value is rounded to the nearest cent; truncating would silently lose up
+// to one cent on every conversion.
 func FromDecimal(d decimal.Decimal) Money {
-	return Money(d.Mul(decimal.NewFromInt(100)).IntPart())
+	return Money(d.Mul(decimal.NewFromInt(100)).Round(0).IntPart())
 }
 
 // ToDecimal converts Money to a decimal, scaling by 0.01 to convert from cents
