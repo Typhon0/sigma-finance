@@ -284,38 +284,24 @@ func (r *InstrumentRepository) Search(ctx context.Context, query string, filter 
 	limit := max(filter.Limit, 1)
 	offset := max(filter.Offset, 0)
 
-	// Run exact symbol and text searches in parallel (both fast, B-tree indexed)
-	type searchResult struct {
-		rows []InstrumentSearchRow
-		err  error
+	// Run sequentially: the repository may be bound to a transaction, which
+	// owns a single connection. Two concurrent queries on that connection
+	// desynchronise the wire protocol ("unexpected message 'T'").
+	exactRows, err := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
+	if err != nil {
+		return nil, err
 	}
-	exactCh := make(chan searchResult, 1)
-	textCh := make(chan searchResult, 1)
+	exactRows = filterVisibleInstrumentSearchRows(exactRows, filter.OwnerUserID)
+	scoreInstrumentRows(exactRows, symbolQuery, textQuery)
 
-	go func() {
-		r, e := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
-		exactCh <- searchResult{r, e}
-	}()
-	go func() {
-		r, e := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
-		textCh <- searchResult{r, e}
-	}()
-
-	exactRes := <-exactCh
-	if exactRes.err != nil {
-		return nil, exactRes.err
+	textRows, err := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
+	if err != nil {
+		return nil, err
 	}
-	exactRes.rows = filterVisibleInstrumentSearchRows(exactRes.rows, filter.OwnerUserID)
-	scoreInstrumentRows(exactRes.rows, symbolQuery, textQuery)
+	textRows = filterVisibleInstrumentSearchRows(textRows, filter.OwnerUserID)
+	scoreInstrumentRows(textRows, symbolQuery, textQuery)
 
-	textRes := <-textCh
-	if textRes.err != nil {
-		return nil, textRes.err
-	}
-	textRes.rows = filterVisibleInstrumentSearchRows(textRes.rows, filter.OwnerUserID)
-	scoreInstrumentRows(textRes.rows, symbolQuery, textQuery)
-
-	rows := mergeInstrumentSearchRows(exactRes.rows, textRes.rows)
+	rows := mergeInstrumentSearchRows(exactRows, textRows)
 	topScore := maxScore(rows)
 
 	// Try tsvector full-text search before falling back to expensive pg_trgm fuzzy.
@@ -362,37 +348,22 @@ func (r *InstrumentRepository) SearchBaseline(ctx context.Context, query string,
 	limit := max(filter.Limit, 1)
 	offset := max(filter.Offset, 0)
 
-	type searchResult struct {
-		rows []InstrumentSearchRow
-		err  error
+	// Sequential for the same reason as Search: this may run on a transaction.
+	exactRows, err := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
+	if err != nil {
+		return nil, err
 	}
-	exactCh := make(chan searchResult, 1)
-	textCh := make(chan searchResult, 1)
+	exactRows = filterVisibleInstrumentSearchRows(exactRows, filter.OwnerUserID)
+	scoreInstrumentRows(exactRows, symbolQuery, textQuery)
 
-	go func() {
-		r, e := r.searchExactSymbolInstruments(ctx, symbolQuery, filter, limit+offset)
-		exactCh <- searchResult{r, e}
-	}()
-	go func() {
-		r, e := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
-		textCh <- searchResult{r, e}
-	}()
-
-	exactRes := <-exactCh
-	if exactRes.err != nil {
-		return nil, exactRes.err
+	textRows, err := r.searchExactTextInstruments(ctx, textQuery, filter, limit+offset)
+	if err != nil {
+		return nil, err
 	}
-	exactRes.rows = filterVisibleInstrumentSearchRows(exactRes.rows, filter.OwnerUserID)
-	scoreInstrumentRows(exactRes.rows, symbolQuery, textQuery)
+	textRows = filterVisibleInstrumentSearchRows(textRows, filter.OwnerUserID)
+	scoreInstrumentRows(textRows, symbolQuery, textQuery)
 
-	textRes := <-textCh
-	if textRes.err != nil {
-		return nil, textRes.err
-	}
-	textRes.rows = filterVisibleInstrumentSearchRows(textRes.rows, filter.OwnerUserID)
-	scoreInstrumentRows(textRes.rows, symbolQuery, textQuery)
-
-	rows := mergeInstrumentSearchRows(exactRes.rows, textRes.rows)
+	rows := mergeInstrumentSearchRows(exactRows, textRows)
 	topScore := maxScore(rows)
 
 	// Only run expensive fuzzy (trigram) search if exact strategies are insufficient

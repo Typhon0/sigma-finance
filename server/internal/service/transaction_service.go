@@ -28,7 +28,6 @@ func NewTransactionService(uow repository.IUnitOfWork) *TransactionService {
 // ITransactionService defines the interface for transaction management operations
 type ITransactionService interface {
 	// Core CRUD operations
-	RecordTransaction(ctx context.Context, req TransactionRequest) (*model.Transaction, error)
 	GetTransaction(ctx context.Context, id string) (*model.Transaction, error)
 	UpdateTransaction(ctx context.Context, id string, req UpdateTransactionRequest) (*model.Transaction, error)
 	DeleteTransaction(ctx context.Context, id string) error
@@ -42,28 +41,9 @@ type ITransactionService interface {
 	CalculateCostBasis(ctx context.Context, positionID string) (*model.CostBasisInfo, error)
 	CalculateRealizedGains(ctx context.Context, userID string, timeRange TimeRange) (*model.RealizedGains, error)
 	GetTransactionSummary(ctx context.Context, userID string, timeRange TimeRange) ([]model.TransactionSummary, error)
-
-	// Business logic operations
-	ProcessBuyTransaction(ctx context.Context, req BuyTransactionRequest) (*TransactionResult, error)
-	ProcessSellTransaction(ctx context.Context, req SellTransactionRequest) (*TransactionResult, error)
-	ProcessCashTransaction(ctx context.Context, req CashTransactionRequest) (*model.Transaction, error)
 }
 
 // Request/Response structures
-
-type TransactionRequest struct {
-	UserID            string                `json:"user_id" validate:"required"`
-	PositionID        *string               `json:"position_id,omitempty"`
-	Type              model.TransactionType `json:"type" validate:"required"`
-	Amount            model.Money           `json:"amount" validate:"required"`
-	Quantity          *decimal.Decimal      `json:"quantity,omitempty"`
-	UnitPriceAmount   *decimal.Decimal      `json:"unit_price_amount,omitempty"`
-	UnitPriceCurrency model.Currency        `json:"unit_price_currency"`
-	FeesAmount        model.Money           `json:"fees_amount"`
-	FeesCurrency      model.Currency        `json:"fees_currency"`
-	Notes             *string               `json:"notes,omitempty"`
-	ExecutedAt        time.Time             `json:"executed_at" validate:"required"`
-}
 
 type UpdateTransactionRequest struct {
 	Type              *model.TransactionType `json:"type,omitempty"`
@@ -75,45 +55,6 @@ type UpdateTransactionRequest struct {
 	FeesCurrency      *model.Currency        `json:"fees_currency,omitempty"`
 	Notes             *string                `json:"notes,omitempty"`
 	ExecutedAt        *time.Time             `json:"executed_at,omitempty"`
-}
-
-type BuyTransactionRequest struct {
-	UserID            string          `json:"user_id" validate:"required"`
-	PortfolioID       string          `json:"portfolio_id" validate:"required"`
-	AccountID         *string         `json:"account_id,omitempty"`
-	AssetID           string          `json:"asset_id" validate:"required"`
-	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
-	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
-	UnitPriceCurrency model.Currency  `json:"unit_price_currency" validate:"required"`
-	FeesAmount        model.Money     `json:"fees_amount"`
-	FeesCurrency      model.Currency  `json:"fees_currency"`
-	Notes             *string         `json:"notes,omitempty"`
-	ExecutedAt        time.Time       `json:"executed_at" validate:"required"`
-}
-
-type SellTransactionRequest struct {
-	UserID            string          `json:"user_id" validate:"required"`
-	PositionID        string          `json:"position_id" validate:"required"`
-	AccountID         *string         `json:"account_id,omitempty"`
-	Quantity          decimal.Decimal `json:"quantity" validate:"required"`
-	UnitPriceAmount   decimal.Decimal `json:"unit_price_amount" validate:"required"`
-	UnitPriceCurrency model.Currency  `json:"unit_price_currency" validate:"required"`
-	FeesAmount        model.Money     `json:"fees_amount"`
-	FeesCurrency      model.Currency  `json:"fees_currency"`
-	Notes             *string         `json:"notes,omitempty"`
-	ExecutedAt        time.Time       `json:"executed_at" validate:"required"`
-}
-
-type CashTransactionRequest struct {
-	UserID       string                `json:"user_id" validate:"required"`
-	AccountID    *string               `json:"account_id,omitempty"`
-	Type         model.TransactionType `json:"type" validate:"required"` // DEPOSIT, WITHDRAWAL, etc.
-	Amount       model.Money           `json:"amount" validate:"required"`
-	Currency     model.Currency        `json:"currency" validate:"required"`
-	FeesAmount   model.Money           `json:"fees_amount"`
-	FeesCurrency model.Currency        `json:"fees_currency"`
-	Notes        *string               `json:"notes,omitempty"`
-	ExecutedAt   time.Time             `json:"executed_at" validate:"required"`
 }
 
 type TransactionFilter struct {
@@ -134,78 +75,6 @@ type TransactionFilter struct {
 type TimeRange struct {
 	StartDate time.Time `json:"start_date"`
 	EndDate   time.Time `json:"end_date"`
-}
-
-type TransactionResult struct {
-	Transaction *model.Transaction `json:"transaction"`
-	Position    *model.Position    `json:"position"`
-	// RealizedGains is the ECONOMIC realized P/L for this sale (average-cost
-	// method). See FiscalRealizedGainLoss for the tax-basis number.
-	RealizedGains *model.Money `json:"realized_gains,omitempty"`
-	// FiscalRealizedGainLoss is the FISCAL lot-matched gain/loss for this
-	// sale (FIFO etc., persisted per disposal in tax_lot_dispositions).
-	// It is a different number from RealizedGains and must never be
-	// aggregated with it.
-	FiscalRealizedGainLoss  *model.Money                  `json:"fiscal_realized_gain_loss,omitempty"`
-	FiscalAllocationDetails *model.TaxLotAllocationResult `json:"fiscal_allocation_details,omitempty"`
-}
-
-// RecordTransaction creates a new transaction with validation
-func (s *TransactionService) RecordTransaction(ctx context.Context, req TransactionRequest) (*model.Transaction, error) {
-	// Validate required fields
-	if req.UserID == "" {
-		return nil, errors.New("user ID is required")
-	}
-
-	log.Printf("[INFO] [TransactionService] RecordTransaction: started user=%s type=%s", req.UserID, req.Type)
-	unitPriceCurrency := req.UnitPriceCurrency
-	if !unitPriceCurrency.IsValid() {
-		unitPriceCurrency = model.CurrencyUSD
-	}
-	feesCurrency := req.FeesCurrency
-	if !feesCurrency.IsValid() {
-		feesCurrency = unitPriceCurrency
-	}
-
-	// Create transaction model
-	transaction := &model.Transaction{
-		UserID:            req.UserID,
-		PositionID:        req.PositionID,
-		Type:              req.Type,
-		Amount:            req.Amount,
-		UnitPriceCurrency: unitPriceCurrency,
-		FeesAmount:        req.FeesAmount,
-		FeesCurrency:      feesCurrency,
-		ExecutedAt:        req.ExecutedAt,
-	}
-
-	// Set optional fields
-	if req.Quantity != nil {
-		transaction.Quantity = req.Quantity
-	}
-	if req.UnitPriceAmount != nil {
-		transaction.UnitPriceAmount = req.UnitPriceAmount
-	}
-	if req.Notes != nil && *req.Notes != "" {
-		notes := *req.Notes
-		transaction.Notes = &notes
-	}
-
-	// Validate the transaction
-	if err := transaction.Validate(); err != nil {
-		return nil, fmt.Errorf("transaction validation failed: %w", err)
-	}
-
-	// Create in repository
-	createdTransaction, err := s.uow.Transaction().Create(ctx, transaction)
-	if err != nil {
-		log.Printf("[ERROR] [TransactionService] RecordTransaction: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
-		return nil, fmt.Errorf("failed to create transaction: %w", err)
-	}
-
-	log.Printf("[INFO] [TransactionService] RecordTransaction: completed tx=%s user=%s type=%s amount=%d", createdTransaction.ID, req.UserID, req.Type, req.Amount)
-	s.enqueueDirtyRecalculationForPosition(ctx, req.PositionID, req.ExecutedAt)
-	return createdTransaction, nil
 }
 
 // GetTransaction retrieves a transaction by ID
@@ -235,9 +104,6 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 		log.Printf("[WARN] [TransactionService] UpdateTransaction: ERROR: transaction not found tx=%s: %v", id, err)
 		return nil, fmt.Errorf("failed to get transaction: %w", err)
 	}
-
-	dirtyFrom := transaction.ExecutedAt
-	positionID := transaction.PositionID
 
 	// Update fields if provided
 	if req.Type != nil {
@@ -285,13 +151,6 @@ func (s *TransactionService) UpdateTransaction(ctx context.Context, id string, r
 	}
 
 	log.Printf("[INFO] [TransactionService] UpdateTransaction: completed tx=%s", id)
-	if transaction.ExecutedAt.Before(dirtyFrom) {
-		dirtyFrom = transaction.ExecutedAt
-	}
-	if transaction.PositionID != nil {
-		positionID = transaction.PositionID
-	}
-	s.enqueueDirtyRecalculationForPosition(ctx, positionID, dirtyFrom)
 	return transaction, nil
 }
 
@@ -355,7 +214,6 @@ func (s *TransactionService) DeleteTransaction(ctx context.Context, id string) e
 				log.Printf("[ERROR] [TransactionService] DeleteTransaction: ERROR: delete failed tx=%s: %v", id, err)
 				return err
 			}
-			s.enqueuePortfolioRecalculation(ctx, pos.PortfolioID, tx.ExecutedAt)
 			log.Printf("[INFO] [TransactionService] DeleteTransaction: completed with position recalculation tx=%s", id)
 			return nil
 		})
@@ -490,415 +348,83 @@ func (s *TransactionService) GetTransactionSummary(ctx context.Context, userID s
 	return summaries, nil
 }
 
-// ProcessBuyTransaction handles a buy transaction with position updates
-func (s *TransactionService) ProcessBuyTransaction(ctx context.Context, req BuyTransactionRequest) (*TransactionResult, error) {
-	if req.UserID == "" {
-		return nil, errors.New("user ID is required")
+// ConsumeTaxLotsForSale matches a sale against the position's open lots,
+// persists the reduced lots and the fiscal dispositions, and returns the
+// allocation result (nil when the position has no open lots).
+//
+// It is the single place where a sale consumes lots, so a manually recorded
+// trade and a synced one leave the same tax-lot state behind.
+func ConsumeTaxLotsForSale(
+	ctx context.Context,
+	uow repository.IUnitOfWork,
+	position *model.Position,
+	quantity, unitPrice decimal.Decimal,
+	executedAt time.Time,
+	sellTransactionID string,
+	userID string,
+) (*model.TaxLotAllocationResult, error) {
+	if position == nil {
+		return nil, errors.New("position is required")
+	}
+	if quantity.LessThanOrEqual(decimal.Zero) {
+		return nil, errors.New("sell quantity must be greater than zero")
 	}
 
-	log.Printf("[INFO] [TransactionService] ProcessBuy: started user=%s portfolio=%s asset=%s qty=%s", req.UserID, req.PortfolioID, req.AssetID, req.Quantity.String())
-	if req.PortfolioID == "" {
-		return nil, errors.New("portfolio ID is required")
-	}
-	if req.AssetID == "" {
-		return nil, errors.New("asset ID is required")
-	}
-	if req.Quantity.IsNegative() || req.Quantity.IsZero() {
-		return nil, errors.New("quantity must be positive")
-	}
-	if req.UnitPriceAmount.IsNegative() || req.UnitPriceAmount.IsZero() {
-		return nil, errors.New("price per unit must be positive")
-	}
-	if !req.UnitPriceCurrency.IsValid() {
-		return nil, errors.New("unit price currency is required")
-	}
-	if !req.FeesCurrency.IsValid() {
-		req.FeesCurrency = req.UnitPriceCurrency
+	taxMethod := model.TaxLotMethodFIFO
+	if userID != "" {
+		if user, uErr := uow.User().GetByID(ctx, userID); uErr == nil && user != nil && user.TaxJurisdiction == "FR" {
+			taxMethod = model.TaxLotMethodPMP
+		}
 	}
 
-	totalAmount := req.Quantity.Mul(req.UnitPriceAmount).Mul(decimal.NewFromInt(100))
-	amount := model.Money(totalAmount.IntPart())
+	isTaxExempt := resolveTaxExempt(ctx, uow, position)
 
-	var result *TransactionResult
-	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		position, err := uow.Position().GetByPortfolioAndAsset(ctx, req.PortfolioID, req.AssetID)
-		if err != nil && !errors.Is(err, repository.ErrNotFound) {
-			return fmt.Errorf("failed to get position: %w", err)
-		}
-
-		var positionID string
-		if position == nil {
-			var targetAccountID string
-			if req.AccountID != nil && *req.AccountID != "" {
-				targetAccountID = *req.AccountID
-			} else {
-				// Default to first account of the portfolio
-				accounts, _ := uow.Account().GetAccountsByPortfolioID(ctx, req.PortfolioID)
-				if len(accounts) > 0 {
-					targetAccountID = accounts[0].ID
-				} else {
-					portfolio, pErr := uow.Portfolio().GetByID(ctx, req.PortfolioID)
-					if pErr != nil {
-						return fmt.Errorf("failed to get portfolio for default account: %w", pErr)
-					}
-					defaultAccount := &model.Account{
-						PortfolioID:  req.PortfolioID,
-						UserID:       portfolio.UserID,
-						Name:         portfolio.Name + " - Main Account",
-						Type:         model.AccountTypeBroker,
-						TaxWrapper:   portfolio.TaxWrapper,
-						Currency:     "EUR",
-						SyncProvider: "MANUAL",
-					}
-					acc, createAccErr := uow.Account().Create(ctx, defaultAccount)
-					if createAccErr != nil {
-						return fmt.Errorf("failed to ensure default account: %w", createAccErr)
-					}
-					targetAccountID = acc.ID
-				}
-			}
-
-			newPosition := &model.Position{
-				PortfolioID:         req.PortfolioID,
-				AccountID:           targetAccountID,
-				AssetID:             req.AssetID,
-				Quantity:            decimal.Zero,
-				OwnershipPercentage: decimal.NewFromInt(100),
-				QuoteCurrency:       req.UnitPriceCurrency,
-			}
-
-			createdPosition, err := uow.Position().Create(ctx, newPosition)
-			if err != nil {
-				return fmt.Errorf("failed to create position: %w", err)
-			}
-			position = createdPosition
-			positionID = createdPosition.ID
-		} else {
-			positionID = position.ID
-			if !position.QuoteCurrency.IsValid() {
-				position.QuoteCurrency = req.UnitPriceCurrency
-			}
-		}
-
-		var txAccountID *string
-		if position.AccountID != "" {
-			accID := position.AccountID
-			txAccountID = &accID
-		} else if req.AccountID != nil && *req.AccountID != "" {
-			txAccountID = req.AccountID
-		}
-
-		transaction := &model.Transaction{
-			UserID:            req.UserID,
-			AccountID:         txAccountID,
-			PositionID:        &positionID,
-			Type:              model.TransactionTypeBuy,
-			Amount:            amount,
-			Quantity:          &req.Quantity,
-			UnitPriceAmount:   &req.UnitPriceAmount,
-			UnitPriceCurrency: req.UnitPriceCurrency,
-			FeesAmount:        req.FeesAmount,
-			FeesCurrency:      req.FeesCurrency,
-			ExecutedAt:        req.ExecutedAt,
-		}
-
-		if req.Notes != nil && *req.Notes != "" {
-			notes := *req.Notes
-			transaction.Notes = &notes
-		}
-
-		if err := transaction.Validate(); err != nil {
-			return fmt.Errorf("transaction validation failed: %w", err)
-		}
-
-		createdTransaction, err := uow.Transaction().Create(ctx, transaction)
-		if err != nil {
-			return fmt.Errorf("failed to create transaction: %w", err)
-		}
-
-		if err := position.UpdateCostBasis(req.Quantity, req.UnitPriceAmount, amount); err != nil {
-			return fmt.Errorf("failed to update cost basis: %w", err)
-		}
-
-		if err := uow.Position().Update(ctx, position); err != nil {
-			return fmt.Errorf("failed to update position: %w", err)
-		}
-
-		// Persist TaxLot for this buy order
-		lot := &model.TaxLot{
-			PortfolioID:       position.PortfolioID,
-			PositionID:        position.ID,
-			AssetID:           req.AssetID,
-			TransactionID:     &createdTransaction.ID,
-			AcquiredAt:        req.ExecutedAt,
-			InitialQuantity:   req.Quantity,
-			RemainingQuantity: req.Quantity,
-			CostBasisPerUnit:  req.UnitPriceAmount,
-			TotalCostBasis:    amount,
-			Currency:          req.UnitPriceCurrency,
-			Status:            model.TaxLotStatusOpen,
-		}
-		if _, lotErr := uow.TaxLot().Create(ctx, lot); lotErr != nil {
-			log.Printf("[WARN] [TransactionService] ProcessBuy: failed to persist tax lot: %v", lotErr)
-		}
-
-		result = &TransactionResult{
-			Transaction: createdTransaction,
-			Position:    position,
-		}
-		return nil
-	})
+	openLots, err := uow.TaxLot().FindOpenByPositionID(ctx, position.ID)
 	if err != nil {
-		log.Printf("[ERROR] [TransactionService] ProcessBuy: ERROR: user=%s asset=%s: %v", req.UserID, req.AssetID, err)
-		return nil, err
+		return nil, fmt.Errorf("failed to load open tax lots: %w", err)
 	}
-	if result != nil && result.Position != nil {
-		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
+	if len(openLots) == 0 {
+		return nil, nil
 	}
-	log.Printf("[INFO] [TransactionService] ProcessBuy: completed tx=%s user=%s", result.Transaction.ID, req.UserID)
+
+	result, err := model.AllocateTaxLots(openLots, quantity, unitPrice, executedAt, taxMethod)
+	if err != nil {
+		return nil, fmt.Errorf("failed to allocate tax lots for sale: %w", err)
+	}
+	result.IsTaxExempt = isTaxExempt
+
+	if err := uow.TaxLot().UpdateBatch(ctx, openLots); err != nil {
+		return nil, fmt.Errorf("failed to update tax lots: %w", err)
+	}
+
+	var txID *string
+	if sellTransactionID != "" {
+		id := sellTransactionID
+		txID = &id
+	}
+	dispositions := model.NewDispositionsFromAllocation(result, position.PortfolioID, position.ID, position.AssetID, txID, isTaxExempt)
+	if err := uow.TaxLotDisposition().CreateBatch(ctx, dispositions); err != nil {
+		return nil, fmt.Errorf("failed to persist tax lot dispositions: %w", err)
+	}
+
 	return result, nil
 }
 
-// ProcessSellTransaction handles a sell transaction with position updates and realized gains calculation
-func (s *TransactionService) ProcessSellTransaction(ctx context.Context, req SellTransactionRequest) (*TransactionResult, error) {
-	if req.UserID == "" {
-		return nil, errors.New("user ID is required")
-	}
-
-	log.Printf("[INFO] [TransactionService] ProcessSell: started user=%s position=%s qty=%s", req.UserID, req.PositionID, req.Quantity.String())
-	if req.PositionID == "" {
-		return nil, errors.New("position ID is required")
-	}
-	if req.Quantity.IsNegative() || req.Quantity.IsZero() {
-		return nil, errors.New("quantity must be positive")
-	}
-	if req.UnitPriceAmount.IsNegative() || req.UnitPriceAmount.IsZero() {
-		return nil, errors.New("price per unit must be positive")
-	}
-	if !req.UnitPriceCurrency.IsValid() {
-		return nil, errors.New("unit price currency is required")
-	}
-	if !req.FeesCurrency.IsValid() {
-		req.FeesCurrency = req.UnitPriceCurrency
-	}
-
-	totalAmount := req.Quantity.Mul(req.UnitPriceAmount).Mul(decimal.NewFromInt(100))
-	amount := -model.Money(totalAmount.IntPart())
-
-	var result *TransactionResult
-	err := s.uow.Do(ctx, func(uow repository.IUnitOfWork) error {
-		position, err := uow.Position().GetByID(ctx, req.PositionID)
-		if err != nil {
-			return fmt.Errorf("failed to get position: %w", err)
-		}
-
-		if req.Quantity.GreaterThan(position.Quantity) {
-			return fmt.Errorf("insufficient quantity: have %s, trying to sell %s",
-				position.Quantity.String(), req.Quantity.String())
-		}
-
-		realizedGains, err := position.CalculateRealizedGains(req.Quantity, req.UnitPriceAmount)
-		if err != nil {
-			return fmt.Errorf("failed to calculate realized gains: %w", err)
-		}
-
-		var txAccountID *string
+// resolveTaxExempt reads the effective tax wrapper with the same account-first,
+// portfolio-second fallback the sale path has always used.
+func resolveTaxExempt(ctx context.Context, uow repository.IUnitOfWork, position *model.Position) bool {
+	wrapper := position.EffectiveTaxWrapper()
+	if wrapper == "" || wrapper == model.TaxWrapperStandardTaxable {
 		if position.AccountID != "" {
-			accID := position.AccountID
-			txAccountID = &accID
-		} else if req.AccountID != nil && *req.AccountID != "" {
-			txAccountID = req.AccountID
-		}
-
-		transaction := &model.Transaction{
-			UserID:            req.UserID,
-			AccountID:         txAccountID,
-			PositionID:        &req.PositionID,
-			Type:              model.TransactionTypeSell,
-			Amount:            amount,
-			Quantity:          &req.Quantity,
-			UnitPriceAmount:   &req.UnitPriceAmount,
-			UnitPriceCurrency: req.UnitPriceCurrency,
-			FeesAmount:        req.FeesAmount,
-			FeesCurrency:      req.FeesCurrency,
-			ExecutedAt:        req.ExecutedAt,
-		}
-
-		if req.Notes != nil && *req.Notes != "" {
-			notes := *req.Notes
-			transaction.Notes = &notes
-		}
-
-		if err := transaction.Validate(); err != nil {
-			return fmt.Errorf("transaction validation failed: %w", err)
-		}
-
-		createdTransaction, err := uow.Transaction().Create(ctx, transaction)
-		if err != nil {
-			return fmt.Errorf("failed to create transaction: %w", err)
-		}
-
-		if err := position.UpdateCostBasis(req.Quantity.Neg(), req.UnitPriceAmount, amount); err != nil {
-			return fmt.Errorf("failed to update cost basis: %w", err)
-		}
-
-		// Accumulate the ECONOMIC realized P/L onto the position
-		// (average-cost method). Separate from the fiscal number below.
-		position.RealizedGainLoss += realizedGains
-
-		if err := uow.Position().Update(ctx, position); err != nil {
-			return fmt.Errorf("failed to update position: %w", err)
-		}
-
-		// Determine tax envelope and jurisdiction rules
-		var isTaxExempt bool
-		var taxMethod model.TaxLotMethod = model.TaxLotMethodFIFO
-
-		// Effective tax wrapper check from Account, falling back to Portfolio
-		wrapper := position.EffectiveTaxWrapper()
-		if wrapper == "" || wrapper == model.TaxWrapperStandardTaxable {
-			if position.AccountID != "" {
-				if acc, aErr := uow.Account().GetByID(ctx, position.AccountID); aErr == nil && acc != nil {
-					wrapper = acc.TaxWrapper
-				}
-			}
-			if wrapper == "" || wrapper == model.TaxWrapperStandardTaxable {
-				if portfolio, pErr := uow.Portfolio().GetByID(ctx, position.PortfolioID); pErr == nil && portfolio != nil {
-					if wrapper == "" {
-						wrapper = portfolio.TaxWrapper
-					}
-				}
+			if acc, aErr := uow.Account().GetByID(ctx, position.AccountID); aErr == nil && acc != nil {
+				wrapper = acc.TaxWrapper
 			}
 		}
-		isTaxExempt = wrapper.IsTaxExempt()
-
-		if user, uErr := uow.User().GetByID(ctx, req.UserID); uErr == nil && user != nil {
-			if user.TaxJurisdiction == "FR" {
-				taxMethod = model.TaxLotMethodPMP
+		if (wrapper == "" || wrapper == model.TaxWrapperStandardTaxable) && position.PortfolioID != "" {
+			if portfolio, pErr := uow.Portfolio().GetByID(ctx, position.PortfolioID); pErr == nil && portfolio != nil && wrapper == "" {
+				wrapper = portfolio.TaxWrapper
 			}
 		}
-
-		// Allocate open tax lots and persist the fiscal
-		// gain/loss per matched lot as dispositions.
-		var fiscalResult *model.TaxLotAllocationResult
-		openLots, lotErr := uow.TaxLot().FindOpenByPositionID(ctx, req.PositionID)
-		if lotErr != nil {
-			return fmt.Errorf("failed to load open tax lots: %w", lotErr)
-		}
-		if len(openLots) > 0 {
-			var allocErr error
-			fiscalResult, allocErr = model.AllocateTaxLots(openLots, req.Quantity, req.UnitPriceAmount, req.ExecutedAt, taxMethod)
-			if allocErr != nil {
-				return fmt.Errorf("failed to allocate tax lots for sale: %w", allocErr)
-			}
-			fiscalResult.IsTaxExempt = isTaxExempt
-
-			if updateErr := uow.TaxLot().UpdateBatch(ctx, openLots); updateErr != nil {
-				return fmt.Errorf("failed to update tax lots: %w", updateErr)
-			}
-			dispositions := model.NewDispositionsFromAllocation(fiscalResult, position.PortfolioID, position.ID, position.AssetID, &createdTransaction.ID, isTaxExempt)
-			if dispErr := uow.TaxLotDisposition().CreateBatch(ctx, dispositions); dispErr != nil {
-				return fmt.Errorf("failed to persist tax lot dispositions: %w", dispErr)
-			}
-		}
-
-		result = &TransactionResult{
-			Transaction:             createdTransaction,
-			Position:                position,
-			RealizedGains:           &realizedGains,
-			FiscalRealizedGainLoss:  fiscalGainCentsPtr(fiscalResult),
-			FiscalAllocationDetails: fiscalResult,
-		}
-		return nil
-	})
-	if err != nil {
-		log.Printf("[ERROR] [TransactionService] ProcessSell: ERROR: user=%s position=%s: %v", req.UserID, req.PositionID, err)
-		return nil, err
 	}
-	if result != nil && result.Position != nil {
-		s.enqueuePortfolioRecalculation(ctx, result.Position.PortfolioID, req.ExecutedAt)
-	}
-	log.Printf("[INFO] [TransactionService] ProcessSell: completed tx=%s user=%s economic=%v fiscal=%v", result.Transaction.ID, req.UserID, result.RealizedGains, result.FiscalRealizedGainLoss)
-	return result, nil
-}
-
-// fiscalGainCentsPtr extracts the fiscal lot-matched G/L total from an
-// allocation result; nil when no lot matching happened (no open lots).
-func fiscalGainCentsPtr(result *model.TaxLotAllocationResult) *model.Money {
-	if result == nil {
-		return nil
-	}
-	g := result.TotalRealizedGainLoss
-	return &g
-}
-
-func (s *TransactionService) enqueueDirtyRecalculationForPosition(ctx context.Context, positionID *string, dirtyFrom time.Time) {
-	if positionID == nil || *positionID == "" {
-		return
-	}
-	position, err := s.uow.Position().GetByID(ctx, *positionID)
-	if err != nil {
-		log.Printf("[ERROR] [portfolio-materialization] position lookup failed for dirty enqueue position=%s err=%v", *positionID, err)
-		return
-	}
-	s.enqueuePortfolioRecalculation(ctx, position.PortfolioID, dirtyFrom)
-}
-
-func (s *TransactionService) enqueuePortfolioRecalculation(ctx context.Context, portfolioID string, dirtyFrom time.Time) {
-	if portfolioID == "" || dirtyFrom.IsZero() {
-		return
-	}
-	log.Printf("[DEBUG] [portfolio-materialization] recalculation enqueue skipped (worker not active) portfolio=%s dirty_from=%s", portfolioID, dirtyFrom.Format(time.DateOnly))
-}
-
-// ProcessCashTransaction handles cash-only transactions (deposits, withdrawals, etc.)
-func (s *TransactionService) ProcessCashTransaction(ctx context.Context, req CashTransactionRequest) (*model.Transaction, error) {
-	// Validate request
-	if req.UserID == "" {
-		return nil, errors.New("user ID is required")
-	}
-
-	log.Printf("[INFO] [TransactionService] ProcessCash: started user=%s type=%s amount=%d", req.UserID, req.Type, req.Amount)
-	if !req.Currency.IsValid() {
-		return nil, errors.New("currency is required")
-	}
-	if !req.FeesCurrency.IsValid() {
-		req.FeesCurrency = req.Currency
-	}
-
-	// Create a temporary transaction to use the IsCashFlowTransaction method
-	tempTransaction := &model.Transaction{Type: req.Type}
-	if !tempTransaction.IsCashFlowTransaction() {
-		return nil, fmt.Errorf("transaction type %s is not a cash flow transaction", req.Type)
-	}
-
-	// Create transaction
-	transaction := &model.Transaction{
-		UserID:            req.UserID,
-		Type:              req.Type,
-		Amount:            req.Amount,
-		UnitPriceCurrency: req.Currency,
-		FeesAmount:        req.FeesAmount,
-		FeesCurrency:      req.FeesCurrency,
-		ExecutedAt:        req.ExecutedAt,
-	}
-
-	if req.Notes != nil && *req.Notes != "" {
-		notes := *req.Notes
-		transaction.Notes = &notes
-	}
-
-	// Validate and create transaction
-	if err := transaction.Validate(); err != nil {
-		return nil, fmt.Errorf("transaction validation failed: %w", err)
-	}
-
-	createdTransaction, err := s.uow.Transaction().Create(ctx, transaction)
-	if err != nil {
-		log.Printf("[ERROR] [TransactionService] ProcessCash: ERROR: creation failed user=%s type=%s: %v", req.UserID, req.Type, err)
-		return nil, fmt.Errorf("failed to create transaction: %w", err)
-	}
-
-	log.Printf("[INFO] [TransactionService] ProcessCash: completed tx=%s user=%s type=%s", createdTransaction.ID, req.UserID, req.Type)
-	return createdTransaction, nil
+	return wrapper.IsTaxExempt()
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sigma_finance/internal/benchmark"
 	"sigma_finance/internal/domain/model"
 	"sigma_finance/internal/repository"
@@ -1046,9 +1047,10 @@ func (s *PerformanceService) CalculateRiskMetrics(ctx context.Context, portfolio
 
 	// Calculate additional risk metrics
 	sortinoRatio := s.calculateSortinoRatio(ctx, portfolioID, riskFreeRate, days)
-	valueAtRisk := s.calculateValueAtRisk(ctx, portfolioID, decimal.NewFromFloat(0.05), days) // 5% VaR
+	// 5% tail probability = 95% confidence.
+	valueAtRisk := s.calculateValueAtRisk(ctx, portfolioID, decimal.NewFromFloat(0.05), days)
 	conditionalVaR := s.calculateConditionalVaR(ctx, portfolioID, decimal.NewFromFloat(0.05), days)
-	calmarRatio := s.calculateCalmarRatio(sharpeRatio, maxDrawdown)
+	calmarRatio := s.calculateCalmarRatio(annualizedReturn(ctx, s, portfolioID, timeRange, days), maxDrawdown)
 	downsideDeviation := s.calculateDownsideDeviation(ctx, portfolioID, days)
 
 	// Beta, alpha, tracking error and the information ratio are deliberately
@@ -1308,10 +1310,21 @@ func (s *PerformanceService) calculateSortinoRatio(ctx context.Context, portfoli
 	return portfolioReturn.Sub(riskFreeRate).Div(downsideDev)
 }
 
-func (s *PerformanceService) calculateValueAtRisk(ctx context.Context, portfolioID string, confidenceLevel decimal.Decimal, days int) decimal.Decimal {
-	// Simple Parametric VaR
-	// For 95% confidence, z-score is ~1.645
+func (s *PerformanceService) calculateValueAtRisk(ctx context.Context, portfolioID string, tailProbability decimal.Decimal, days int) decimal.Decimal {
+	// Parametric VaR. The z-score follows the requested tail probability;
+	// 0.05 (95% confidence) is the default and matches the 1.645 value the
+	// call site used before the parameter was honoured.
 	zScore := decimal.NewFromFloat(1.645)
+	switch {
+	case tailProbability.LessThanOrEqual(decimal.NewFromFloat(0.01)):
+		zScore = decimal.NewFromFloat(2.326)
+	case tailProbability.LessThanOrEqual(decimal.NewFromFloat(0.025)):
+		zScore = decimal.NewFromFloat(1.960)
+	case tailProbability.LessThanOrEqual(decimal.NewFromFloat(0.05)):
+		zScore = decimal.NewFromFloat(1.645)
+	case tailProbability.LessThanOrEqual(decimal.NewFromFloat(0.10)):
+		zScore = decimal.NewFromFloat(1.282)
+	}
 
 	volatility, err := s.CalculateVolatility(ctx, portfolioID, days)
 	if err != nil {
@@ -1330,12 +1343,35 @@ func (s *PerformanceService) calculateConditionalVaR(ctx context.Context, portfo
 	return varVal.Mul(decimal.NewFromFloat(1.25))
 }
 
-func (s *PerformanceService) calculateCalmarRatio(sharpeRatio, maxDrawdown decimal.Decimal) decimal.Decimal {
+// calculateCalmarRatio is annualized return divided by the absolute maximum
+// drawdown. It is not a Sharpe ratio and the two are never interchangeable.
+func (s *PerformanceService) calculateCalmarRatio(annualizedReturn, maxDrawdown decimal.Decimal) decimal.Decimal {
 	if maxDrawdown.IsZero() {
 		return decimal.Zero
 	}
-	// Simplified: using Sharpe ratio as a proxy for annualized return
-	return sharpeRatio.Div(maxDrawdown.Abs())
+	return annualizedReturn.Div(maxDrawdown.Abs())
+}
+
+// annualizedReturn converts the time-weighted return over the window into a
+// yearly rate. It returns zero when there is not enough history, so a metric
+// built on it reads as unavailable instead of invented.
+func annualizedReturn(ctx context.Context, s *PerformanceService, portfolioID string, timeRange PerformanceTimeRange, days int) decimal.Decimal {
+	if days <= 0 {
+		return decimal.Zero
+	}
+	twr, err := s.CalculateTimeWeightedReturn(ctx, portfolioID, timeRange)
+	if err != nil {
+		return decimal.Zero
+	}
+	rate, _ := twr.Float64()
+	if rate <= -1 {
+		return decimal.Zero
+	}
+	years := float64(days) / 365.0
+	if years <= 0 {
+		return decimal.Zero
+	}
+	return decimal.NewFromFloat(math.Pow(1+rate, 1/years) - 1)
 }
 
 func (s *PerformanceService) calculateDownsideDeviation(ctx context.Context, portfolioID string, days int) decimal.Decimal {
@@ -1345,7 +1381,10 @@ func (s *PerformanceService) calculateDownsideDeviation(ctx context.Context, por
 	startDate := endDate.AddDate(0, 0, -days)
 	snapshots, err := s.performanceRepo.GetPerformanceSnapshots(ctx, portfolioID, startDate, endDate)
 	if err != nil || len(snapshots) < 2 {
-		return decimal.NewFromFloat(0.10) // fallback
+		// No downside deviation can be measured from fewer than two
+		// observations. Returning a made-up 10% made the Sortino ratio look
+		// computed when it was not.
+		return decimal.Zero
 	}
 
 	var negReturns []decimal.Decimal

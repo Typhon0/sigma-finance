@@ -51,7 +51,7 @@ type parquetCandleRow struct {
 	High          [16]byte  `parquet:"high,decimal(18:38)"`
 	Low           [16]byte  `parquet:"low,decimal(18:38)"`
 	Close         [16]byte  `parquet:"close,decimal(18:38)"`
-	AdjustedClose *[16]byte `parquet:"adjusted_close,optional"`
+	AdjustedClose []byte    `parquet:"adjusted_close,optional,decimal(18:38)"`
 	Volume        [16]byte  `parquet:"volume,decimal(8:38)"`
 	QuoteCurrency string    `parquet:"quote_currency"`
 	Source        string    `parquet:"source"`
@@ -249,13 +249,16 @@ func toParquetRow(candle sources.NormalizedCandle) (parquetCandleRow, error) {
 		return parquetCandleRow{}, fmt.Errorf("encode volume for %s: %w", candle.Symbol, err)
 	}
 
-	var adjusted *[16]byte
+	// A slice (not *[16]byte): parquet-go rejects the decimal tag on a
+	// pointer to a fixed-size array, while a byte slice maps to the same
+	// FIXED_LEN_BYTE_ARRAY(16) column and still encodes absent values as null.
+	var adjusted []byte
 	if candle.AdjustedClose != nil {
 		value, err := encodeDecimalFixed(*candle.AdjustedClose, priceScale, maxPrecision, decimalFixedLengthBytes)
 		if err != nil {
 			return parquetCandleRow{}, fmt.Errorf("encode adjusted_close for %s: %w", candle.Symbol, err)
 		}
-		adjusted = &value
+		adjusted = value[:]
 	}
 
 	return parquetCandleRow{

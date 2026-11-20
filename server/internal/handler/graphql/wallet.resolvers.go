@@ -46,6 +46,28 @@ func (r *Resolver) getBlockchainProvider(ctx context.Context, userID string) blo
 	return registry.NewAdapterRegistry(apiKey, "", customEndpoints)
 }
 
+// requireWalletBalanceOwner fails closed unless the balance belongs to the
+// caller. A wallet balance is reachable only through its wallet account, so
+// ownership is checked there; a balance ID alone must never grant access.
+func (r *Resolver) requireWalletBalanceOwner(ctx context.Context, balanceID, userID string) error {
+	db := r.getDB()
+	if db == nil {
+		return errors.New("database connection unavailable")
+	}
+	owned, err := db.NewSelect().
+		Model((*model.WalletBalance)(nil)).
+		Where("wb.id = ?", balanceID).
+		Where("wb.wallet_account_id IN (SELECT wacc.id FROM sigma_finance.wallet_accounts wacc WHERE wacc.user_id = ?)", userID).
+		Exists(ctx)
+	if err != nil {
+		return err
+	}
+	if !owned {
+		return errors.New("wallet balance not found")
+	}
+	return nil
+}
+
 // CreateWalletDevice creates a parent container for multi-chain hardware/software wallets
 func (r *mutationResolver) CreateWalletDevice(ctx context.Context, input gqlModel.CreateWalletDeviceInput) (*gqlModel.WalletDevice, error) {
 	userID, err := getUserIDFromContext(ctx)
@@ -413,12 +435,19 @@ func (r *mutationResolver) TriggerWalletSync(ctx context.Context, id string) (bo
 
 // ToggleSpamToken hides or unhides a token from the main wallet balance view
 func (r *mutationResolver) ToggleSpamToken(ctx context.Context, balanceID string, isHidden bool) (bool, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return false, err
+	}
 	db := r.getDB()
 	if db == nil {
 		return false, errors.New("database connection unavailable")
 	}
+	if err := r.requireWalletBalanceOwner(ctx, balanceID, userID); err != nil {
+		return false, err
+	}
 
-	_, err := db.NewUpdate().
+	_, err = db.NewUpdate().
 		Model((*model.WalletBalance)(nil)).
 		Set("is_hidden = ?", isHidden).
 		Where("id = ?", balanceID).
@@ -428,8 +457,11 @@ func (r *mutationResolver) ToggleSpamToken(ctx context.Context, balanceID string
 
 // RefreshWalletBalancePrice forces a live price check and persists the new price
 func (r *mutationResolver) RefreshWalletBalancePrice(ctx context.Context, balanceID string) (*gqlModel.WalletBalance, error) {
-	_, err := getUserIDFromContext(ctx)
+	userID, err := getUserIDFromContext(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := r.requireWalletBalanceOwner(ctx, balanceID, userID); err != nil {
 		return nil, err
 	}
 
@@ -449,6 +481,13 @@ func (r *mutationResolver) RefreshWalletBalancePrice(ctx context.Context, balanc
 
 // SetWalletBalanceCostBasis updates the manual cost basis for a wallet balance
 func (r *mutationResolver) SetWalletBalanceCostBasis(ctx context.Context, balanceID string, costBasisPerUnit float64, currency *string) (bool, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+	if err := r.requireWalletBalanceOwner(ctx, balanceID, userID); err != nil {
+		return false, err
+	}
 	db := r.getDB()
 	if db == nil {
 		return false, errors.New("database connection unavailable")
@@ -462,7 +501,7 @@ func (r *mutationResolver) SetWalletBalanceCostBasis(ctx context.Context, balanc
 	dec := decimal.NewFromFloat(costBasisPerUnit)
 	now := time.Now().UTC()
 
-	_, err := db.NewUpdate().
+	_, err = db.NewUpdate().
 		Model((*model.WalletBalance)(nil)).
 		Set("cost_basis_per_unit = ?", dec).
 		Set("cost_basis_currency = ?", curr).
@@ -475,13 +514,20 @@ func (r *mutationResolver) SetWalletBalanceCostBasis(ctx context.Context, balanc
 
 // ResetWalletBalanceCostBasis restores auto-calculated basis if present
 func (r *mutationResolver) ResetWalletBalanceCostBasis(ctx context.Context, balanceID string) (bool, error) {
+	userID, err := getUserIDFromContext(ctx)
+	if err != nil {
+		return false, err
+	}
+	if err := r.requireWalletBalanceOwner(ctx, balanceID, userID); err != nil {
+		return false, err
+	}
 	db := r.getDB()
 	if db == nil {
 		return false, errors.New("database connection unavailable")
 	}
 
 	var bal model.WalletBalance
-	err := db.NewSelect().
+	err = db.NewSelect().
 		Model(&bal).
 		Where("id = ?", balanceID).
 		Scan(ctx)
@@ -544,8 +590,11 @@ func (r *mutationResolver) ConfigureAlchemyKey(ctx context.Context, apiKey strin
 		return false, errors.New("API key cannot be empty")
 	}
 
-	// Set in process environment
-	os.Setenv("ALCHEMY_API_KEY", trimmed)
+	// The process-wide key changes wallet pricing for every user, so only an
+	// administrator may replace it. Everyone else stores a personal key below.
+	if r.callerIsAdmin(ctx, userID) {
+		os.Setenv("ALCHEMY_API_KEY", trimmed)
+	}
 
 	// Persist encrypted in sync_credentials if SyncService is available
 	if r.SyncService != nil {

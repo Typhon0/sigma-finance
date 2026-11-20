@@ -18,6 +18,9 @@ import (
 // CreatePerformanceSnapshot is the resolver for the createPerformanceSnapshot field.
 func (r *mutationResolver) CreatePerformanceSnapshot(ctx context.Context, portfolioID string, asOfDate time.Time) (*gqlModel.PerformanceSnapshot, error) {
 	log.Printf("[INFO] [graphql] CreatePerformanceSnapshot: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	snapshot, err := r.PerformanceService.CreatePerformanceSnapshot(ctx, portfolioID, asOfDate)
 	if err != nil {
 		return nil, fmt.Errorf("create performance snapshot: %w", err)
@@ -28,6 +31,11 @@ func (r *mutationResolver) CreatePerformanceSnapshot(ctx context.Context, portfo
 // UpdatePerformanceSnapshots is the resolver for the updatePerformanceSnapshots field.
 func (r *mutationResolver) UpdatePerformanceSnapshots(ctx context.Context, portfolioIds []string, asOfDate time.Time) (bool, error) {
 	log.Printf("[INFO] [graphql] UpdatePerformanceSnapshots: started count=%d", len(portfolioIds))
+	for _, portfolioID := range portfolioIds {
+		if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+			return false, err
+		}
+	}
 	err := r.PerformanceService.UpdatePerformanceSnapshots(ctx, portfolioIds, asOfDate)
 	if err != nil {
 		return false, fmt.Errorf("update performance snapshots: %w", err)
@@ -38,6 +46,9 @@ func (r *mutationResolver) UpdatePerformanceSnapshots(ctx context.Context, portf
 // PortfolioPerformance is the resolver for the portfolioPerformance field.
 func (r *queryResolver) PortfolioPerformance(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.PerformanceMetrics, error) {
 	log.Printf("[INFO] [graphql] PortfolioPerformance: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	metrics, err := r.PerformanceService.CalculatePortfolioPerformance(ctx, portfolioID, asOfDate)
 	if err != nil {
 		return nil, fmt.Errorf("portfolio performance: %w", err)
@@ -48,6 +59,9 @@ func (r *queryResolver) PortfolioPerformance(ctx context.Context, portfolioID st
 // PortfolioAllocation is the resolver for the portfolioAllocation field.
 func (r *queryResolver) PortfolioAllocation(ctx context.Context, portfolioID string, asOfDate *time.Time) (*gqlModel.AllocationBreakdown, error) {
 	log.Printf("[INFO] [graphql] PortfolioAllocation: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	breakdown, err := r.PerformanceService.CalculateAssetAllocation(ctx, portfolioID, asOfDate)
 	if err != nil {
 		return nil, fmt.Errorf("portfolio allocation: %w", err)
@@ -58,6 +72,9 @@ func (r *queryResolver) PortfolioAllocation(ctx context.Context, portfolioID str
 // PortfolioRiskMetrics is the resolver for the portfolioRiskMetrics field.
 func (r *queryResolver) PortfolioRiskMetrics(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.RiskMetrics, error) {
 	log.Printf("[INFO] [graphql] PortfolioRiskMetrics: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	svcTimeRange := service.PerformanceTimeRange{
 		Start: timeRange.Start,
 		End:   timeRange.End,
@@ -72,6 +89,9 @@ func (r *queryResolver) PortfolioRiskMetrics(ctx context.Context, portfolioID st
 // PerformanceSnapshots is the resolver for the performanceSnapshots field.
 func (r *queryResolver) PerformanceSnapshots(ctx context.Context, portfolioID string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceSnapshot, error) {
 	log.Printf("[INFO] [graphql] PerformanceSnapshots: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	svcTimeRange := service.PerformanceTimeRange{
 		Start: timeRange.Start,
 		End:   timeRange.End,
@@ -90,6 +110,9 @@ func (r *queryResolver) PerformanceSnapshots(ctx context.Context, portfolioID st
 // LatestPerformanceSnapshot is the resolver for the latestPerformanceSnapshot field.
 func (r *queryResolver) LatestPerformanceSnapshot(ctx context.Context, portfolioID string) (*gqlModel.PerformanceSnapshot, error) {
 	log.Printf("[INFO] [graphql] LatestPerformanceSnapshot: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	snapshot, err := r.PerformanceService.GetLatestPerformanceSnapshot(ctx, portfolioID)
 	if err != nil {
 		return nil, fmt.Errorf("latest performance snapshot: %w", err)
@@ -102,6 +125,9 @@ func (r *queryResolver) PortfolioChartData(ctx context.Context, input gqlModel.C
 	log.Printf("[INFO] [graphql] PortfolioChartData: started")
 	if input.PortfolioID == nil {
 		return nil, fmt.Errorf("portfolioId is required")
+	}
+	if err := r.requirePortfolioAccess(ctx, *input.PortfolioID); err != nil {
+		return nil, err
 	}
 
 	start := time.Now().AddDate(0, -1, 0)
@@ -177,6 +203,9 @@ func (r *queryResolver) AssetChartData(ctx context.Context, input gqlModel.Chart
 // AllocationChartData is the resolver for the allocationChartData field.
 func (r *queryResolver) AllocationChartData(ctx context.Context, portfolioID string, timeRange *gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.ChartDataPoint, error) {
 	log.Printf("[INFO] [graphql] AllocationChartData: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	breakdown, err := r.PerformanceService.CalculateAssetAllocation(ctx, portfolioID, nil)
 	if err != nil {
 		return nil, fmt.Errorf("allocation chart data: %w", err)
@@ -199,6 +228,11 @@ func (r *queryResolver) AllocationChartData(ctx context.Context, portfolioID str
 // ComparePortfolios is the resolver for the comparePortfolios field.
 func (r *queryResolver) ComparePortfolios(ctx context.Context, portfolioIds []string, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PerformanceMetrics, error) {
 	log.Printf("[INFO] [graphql] ComparePortfolios: started count=%d", len(portfolioIds))
+	for _, portfolioID := range portfolioIds {
+		if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+			return nil, err
+		}
+	}
 	svcTimeRange := service.PerformanceTimeRange{
 		Start: timeRange.Start,
 		End:   timeRange.End,
@@ -219,6 +253,9 @@ func (r *queryResolver) ComparePortfolios(ctx context.Context, portfolioIds []st
 // BenchmarkComparison is the resolver for the benchmarkComparison field.
 func (r *queryResolver) BenchmarkComparison(ctx context.Context, portfolioID string, benchmarkAssetID string, timeRange gqlModel.PerformanceTimeRangeInput) (*gqlModel.BenchmarkComparison, error) {
 	log.Printf("[INFO] [graphql] BenchmarkComparison: started")
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	svcTimeRange := service.PerformanceTimeRange{
 		Start: timeRange.Start,
 		End:   timeRange.End,
@@ -235,6 +272,9 @@ func (r *queryResolver) BenchmarkComparison(ctx context.Context, portfolioID str
 // TopPerformingAssets is the resolver for the topPerformingAssets field.
 func (r *queryResolver) TopPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
 	log.Printf("[INFO] [graphql] TopPerformingAssets: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	l := 5
 	if limit != nil && *limit > 0 {
 		l = int(*limit)
@@ -259,6 +299,9 @@ func (r *queryResolver) TopPerformingAssets(ctx context.Context, portfolioID str
 // WorstPerformingAssets is the resolver for the worstPerformingAssets field.
 func (r *queryResolver) WorstPerformingAssets(ctx context.Context, portfolioID string, limit *int32, timeRange gqlModel.PerformanceTimeRangeInput) ([]*gqlModel.PositionPerformance, error) {
 	log.Printf("[INFO] [graphql] WorstPerformingAssets: started portfolio=%s", portfolioID)
+	if err := r.requirePortfolioAccess(ctx, portfolioID); err != nil {
+		return nil, err
+	}
 	l := 5
 	if limit != nil && *limit > 0 {
 		l = int(*limit)
@@ -283,6 +326,9 @@ func (r *queryResolver) WorstPerformingAssets(ctx context.Context, portfolioID s
 // GeneratePerformanceReport is the resolver for the generatePerformanceReport field.
 func (r *queryResolver) GeneratePerformanceReport(ctx context.Context, input gqlModel.GenerateReportInput) (*gqlModel.PerformanceReport, error) {
 	log.Printf("[INFO] [graphql] GeneratePerformanceReport: started portfolio=%s", input.PortfolioID)
+	if err := r.requirePortfolioAccess(ctx, input.PortfolioID); err != nil {
+		return nil, err
+	}
 	svcTimeRange := service.PerformanceTimeRange{
 		Start: input.TimeRange.Start,
 		End:   input.TimeRange.End,
@@ -295,5 +341,3 @@ func (r *queryResolver) GeneratePerformanceReport(ctx context.Context, input gql
 
 	return mapPerformanceReportToGQL(report), nil
 }
-
-

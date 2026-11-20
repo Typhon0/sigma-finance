@@ -1029,16 +1029,42 @@ daily_metrics AS (
     GROUP BY ds.snapshot_date
 ),
 realized_gains AS (
+    -- Fiscal (lot-matched) dispositions are the stable record of what each sale
+    -- actually realised: they were priced at sale time and never move.
     SELECT
         ds.snapshot_date,
-        COALESCE(SUM(ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0)), 0) AS realized_gain_loss
+        COALESCE((
+            SELECT SUM(d.realized_gain_loss)
+            FROM sigma_finance.tax_lot_dispositions d
+            WHERE d.portfolio_id = ?
+              AND d.sold_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ), 0)
+        -- Sells recorded before dispositions existed keep the legacy
+        -- average-cost estimate; they are excluded once a disposition names
+        -- them, so nothing is counted twice.
+        + COALESCE((
+            SELECT SUM(ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0))
+            FROM sigma_finance.transactions t
+            JOIN sigma_finance.positions p ON p.id = t.position_id
+            WHERE p.portfolio_id = ?
+              AND t.type = 'SELL'
+              AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+              AND NOT EXISTS (
+                  SELECT 1 FROM sigma_finance.tax_lot_dispositions d WHERE d.transaction_id = t.id
+              )
+        ), 0) AS realized_gain_loss,
+        -- Return percentage is measured against everything ever invested, so a
+        -- portfolio that sold out still reports the return it made instead of
+        -- dividing by a cost basis that is now zero.
+        COALESCE((
+            SELECT SUM(t.amount)
+            FROM sigma_finance.transactions t
+            JOIN sigma_finance.positions p ON p.id = t.position_id
+            WHERE p.portfolio_id = ?
+              AND t.type = 'BUY'
+              AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
+        ), 0) AS total_invested
     FROM date_series ds
-    LEFT JOIN sigma_finance.positions p ON p.portfolio_id = ?
-    LEFT JOIN sigma_finance.transactions t
-        ON t.position_id = p.id
-        AND t.type = 'SELL'
-        AND t.executed_at <= ds.snapshot_date + interval '23 hours 59 minutes 59 seconds'
-    GROUP BY ds.snapshot_date
 )
 INSERT INTO sigma_finance.portfolio_performance (
     portfolio_id, snapshot_date, total_value, total_cost_basis, unrealized_gain_loss, realized_gain_loss, return_percentage, created_at
@@ -1051,8 +1077,8 @@ SELECT
     dm.unrealized_gain_loss,
     rg.realized_gain_loss,
     CASE
-        WHEN dm.total_cost_basis > 0 THEN
-            LEAST(999999.9999, GREATEST(-999999.9999, ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / dm.total_cost_basis::numeric) * 100))
+        WHEN rg.total_invested > 0 THEN
+            LEAST(999999.9999, GREATEST(-999999.9999, ((dm.total_value - dm.total_cost_basis + rg.realized_gain_loss) / rg.total_invested::numeric) * 100))
         ELSE 0
     END AS return_percentage,
     NOW()
@@ -1066,7 +1092,7 @@ ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
     return_percentage = EXCLUDED.return_percentage,
     created_at = EXCLUDED.created_at;
 `
-	_, err := r.db.ExecContext(ctx, query, startDate, endDate, portfolioID, portfolioID, portfolioID)
+	_, err := r.db.ExecContext(ctx, query, startDate, endDate, portfolioID, portfolioID, portfolioID, portfolioID, portfolioID)
 	return err
 }
 
@@ -1155,14 +1181,32 @@ metrics AS (
     LEFT JOIN latest_prices lp USING (asset_id)
 ),
 realized AS (
-    SELECT COALESCE(SUM(
-        ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0)
-    ), 0) AS realized_gain_loss
-    FROM sigma_finance.positions p
-    JOIN sigma_finance.transactions t ON t.position_id = p.id
-    WHERE p.portfolio_id = ?
-      AND t.type = 'SELL'
-      AND t.executed_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+    SELECT
+        COALESCE((
+            SELECT SUM(d.realized_gain_loss)
+            FROM sigma_finance.tax_lot_dispositions d
+            WHERE d.portfolio_id = ?
+              AND d.sold_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+        ), 0)
+        + COALESCE((
+            SELECT SUM(ABS(t.amount) - (t.quantity * COALESCE(p.average_cost_basis, 0) * 100) - COALESCE(t.fees_amount, 0))
+            FROM sigma_finance.positions p
+            JOIN sigma_finance.transactions t ON t.position_id = p.id
+            WHERE p.portfolio_id = ?
+              AND t.type = 'SELL'
+              AND t.executed_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+              AND NOT EXISTS (
+                  SELECT 1 FROM sigma_finance.tax_lot_dispositions d WHERE d.transaction_id = t.id
+              )
+        ), 0) AS realized_gain_loss,
+        COALESCE((
+            SELECT SUM(t.amount)
+            FROM sigma_finance.positions p
+            JOIN sigma_finance.transactions t ON t.position_id = p.id
+            WHERE p.portfolio_id = ?
+              AND t.type = 'BUY'
+              AND t.executed_at <= (SELECT snapshot_date + interval '23 hours 59 minutes 59 seconds' FROM date_params)
+        ), 0) AS total_invested
 )
 INSERT INTO sigma_finance.portfolio_performance (
     portfolio_id, snapshot_date, total_value, total_cost_basis, unrealized_gain_loss, realized_gain_loss, return_percentage, created_at
@@ -1175,8 +1219,8 @@ SELECT
     m.total_value - m.total_cost_basis,
     r.realized_gain_loss,
     CASE
-        WHEN m.total_cost_basis > 0 THEN
-            LEAST(999999.9999, GREATEST(-999999.9999, ((m.total_value - m.total_cost_basis + r.realized_gain_loss) / m.total_cost_basis::numeric) * 100))
+        WHEN r.total_invested > 0 THEN
+            LEAST(999999.9999, GREATEST(-999999.9999, ((m.total_value - m.total_cost_basis + r.realized_gain_loss) / r.total_invested::numeric) * 100))
         ELSE 0
     END,
     NOW()
@@ -1190,7 +1234,7 @@ ON CONFLICT (portfolio_id, snapshot_date) DO UPDATE SET
     return_percentage = EXCLUDED.return_percentage,
     created_at = EXCLUDED.created_at;
 `
-	_, err := r.db.ExecContext(ctx, query, date, portfolioID, portfolioID, portfolioID)
+	_, err := r.db.ExecContext(ctx, query, date, portfolioID, portfolioID, portfolioID, portfolioID, portfolioID)
 	return err
 }
 

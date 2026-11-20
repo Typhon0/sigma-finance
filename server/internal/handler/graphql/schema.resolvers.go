@@ -25,6 +25,15 @@ import (
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input gqlModel.CreateUserInput) (*gqlModel.User, error) {
 	log.Printf("[INFO] [graphql] CreateUser: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// Account creation from the admin panel only. Self-service signup goes
+	// through register, which is rate-limited; this path bypasses that limit.
+	if !r.callerIsAdmin(ctx, caller.ID) {
+		return nil, fmt.Errorf("unauthorized: admin access required")
+	}
 	userInput := service.CreateUserInput{
 		Username: input.Username,
 		Email:    input.Email,
@@ -405,6 +414,15 @@ func (r *mutationResolver) DuplicatePortfolio(ctx context.Context, input gqlMode
 // ReorderPortfolios is the resolver for the reorderPortfolios field.
 func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel.ReorderPortfoliosInput) ([]*gqlModel.Portfolio, error) {
 	log.Printf("[INFO] [graphql] ReorderPortfolios: started")
+	caller, err := requireCaller(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// The reorder always applies to the caller's own portfolios. A user ID in
+	// the input is ignored so it cannot be used to rewrite someone else's list.
+	if input.UserID != "" && input.UserID != caller.ID {
+		log.Printf("[WARN] [graphql] ReorderPortfolios: ignoring requested user %s for caller %s", input.UserID, caller.ID)
+	}
 	// ReorderPortfolios Input parsing might need loop
 	orders := make([]service.PortfolioOrderInput, len(input.PortfolioOrders))
 	for i, o := range input.PortfolioOrders {
@@ -414,14 +432,14 @@ func (r *mutationResolver) ReorderPortfolios(ctx context.Context, input gqlModel
 		}
 	}
 
-	_, err := r.PortfolioService.ReorderPortfolios(ctx, input.UserID, orders)
+	_, err = r.PortfolioService.ReorderPortfolios(ctx, caller.ID, orders)
 	if err != nil {
 		log.Printf("[ERROR] [graphql] ReorderPortfolios: reorder failed: %v", err)
 		return nil, err
 	}
 
 	// Fetch all user portfolios to return updated list
-	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, input.UserID, "sort_order")
+	portfolios, err := r.PortfolioService.GetPortfoliosByUser(ctx, caller.ID, "sort_order")
 	if err != nil {
 		log.Printf("[ERROR] [graphql] ReorderPortfolios: fetch failed: %v", err)
 		return nil, err

@@ -40,7 +40,7 @@ func (wp *WorkerPool) Stop() {
 	log.Printf("[INFO] Stopping worker pool...")
 	close(wp.stopCh)
 	wp.wg.Wait()
-	
+
 	log.Printf("[INFO] Worker pool stopped")
 }
 
@@ -71,18 +71,18 @@ func (wp *WorkerPool) GetDroppedJobs() int64 {
 // worker processes jobs from the job channel
 func (wp *WorkerPool) worker(workerID int) {
 	defer wp.wg.Done()
-	
+
 	log.Printf("[INFO] Worker %d started", workerID)
 	for {
 		select {
 		case job := <-wp.jobCh:
 			result := wp.processJob(workerID, job)
-			
+
 			select {
 			case wp.resultCh <- result:
 				// Result sent successfully
 			default:
-				log.Printf("[WARN] Worker %d: Result channel full, dropping result for job %s", 
+				log.Printf("[WARN] Worker %d: Result channel full, dropping result for job %s",
 					workerID, job.GetID())
 			}
 
@@ -96,8 +96,8 @@ func (wp *WorkerPool) worker(workerID int) {
 // processJob processes a single job and returns the result
 func (wp *WorkerPool) processJob(workerID int, job Job) JobResult {
 	startTime := time.Now()
-	
-	log.Printf("[INFO] Worker %d processing job %s (type: %s, priority: %d)", 
+
+	log.Printf("[INFO] Worker %d processing job %s (type: %s, priority: %d)",
 		workerID, job.GetID(), job.GetType(), job.GetPriority())
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -110,14 +110,12 @@ func (wp *WorkerPool) processJob(workerID int, job Job) JobResult {
 	switch j := job.(type) {
 	case CalculationJob:
 		result, err = wp.processor.ProcessCalculation(ctx, j)
-	case RefreshJob:
-		result, err = wp.processor.ProcessRefresh(ctx, j)
 	default:
 		err = fmt.Errorf("unknown job type: %T", job)
 	}
 
 	duration := time.Since(startTime)
-	
+
 	jobResult := JobResult{
 		JobID:     job.GetID(),
 		Success:   err == nil,
@@ -128,10 +126,10 @@ func (wp *WorkerPool) processJob(workerID int, job Job) JobResult {
 	}
 
 	if err != nil {
-		log.Printf("[ERROR] Worker %d: Job %s failed after %v: %v", 
+		log.Printf("[ERROR] Worker %d: Job %s failed after %v: %v",
 			workerID, job.GetID(), duration, err)
 	} else {
-		log.Printf("[INFO] Worker %d: Job %s completed successfully in %v", 
+		log.Printf("[INFO] Worker %d: Job %s completed successfully in %v",
 			workerID, job.GetID(), duration)
 	}
 
@@ -141,7 +139,7 @@ func (wp *WorkerPool) processJob(workerID int, job Job) JobResult {
 // resultProcessor handles job results
 func (wp *WorkerPool) resultProcessor() {
 	defer wp.wg.Done()
-	
+
 	log.Printf("[INFO] Result processor started")
 	for {
 		select {
@@ -164,7 +162,7 @@ func (wp *WorkerPool) handleResult(result JobResult) {
 		// - Updating cache
 		// - Sending notifications
 		// - Triggering dependent jobs
-		
+
 	} else {
 		log.Printf("[ERROR] Job %s failed: %v", result.JobID, result.Error)
 		// Handle failed results
@@ -174,4 +172,3 @@ func (wp *WorkerPool) handleResult(result JobResult) {
 		// - Fallback processing
 	}
 }
-

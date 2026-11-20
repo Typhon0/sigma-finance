@@ -637,6 +637,26 @@ func ReconcileTransactions(ctx context.Context, uow repository.IUnitOfWork, conn
 			}
 			_, _ = uow.TaxLot().Create(ctx, lot)
 		}
+
+		// A synced sell disposes of lots exactly like a manually recorded one.
+		// Without this the tax-lot view keeps reporting quantity that was sold,
+		// which also skews unrealized gain and harvest suggestions.
+		if rawTx.Type == model.TransactionTypeSell && posID != nil && rawTx.Quantity != nil && rawTx.Quantity.IsPositive() {
+			sellPrice := decimal.Zero
+			if rawTx.UnitPriceAmount != nil {
+				sellPrice = *rawTx.UnitPriceAmount
+			} else if rawTx.Amount != 0 {
+				sellPrice = decimal.NewFromInt(int64(rawTx.Amount)).Abs().Div(decimal.NewFromInt(100)).Div(*rawTx.Quantity)
+			}
+			position, posErr := uow.Position().GetByID(ctx, *posID)
+			if posErr != nil || position == nil {
+				log.Printf("[WARN] [ReconcileTransactions] tax lot disposal skipped tx=%s position=%s: %v", createdTx.ID, *posID, posErr)
+			} else if _, lotErr := service.ConsumeTaxLotsForSale(ctx, uow, position, *rawTx.Quantity, sellPrice, rawTx.ExecutedAt, createdTx.ID, conn.UserID); lotErr != nil {
+				// A sell with no matching lots (e.g. history imported mid-stream)
+				// must not abort the whole account import.
+				log.Printf("[WARN] [ReconcileTransactions] tax lot disposal skipped tx=%s position=%s: %v", createdTx.ID, *posID, lotErr)
+			}
+		}
 	}
 
 	return imported, updated, nil

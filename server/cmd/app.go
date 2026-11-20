@@ -548,8 +548,7 @@ func NewApp() (*AppContainer, error) {
 	//
 	// Keys returned inside `metrics` (see BackgroundProcessor.GetMetrics):
 	//   processed_jobs, failed_jobs, avg_processing_time,
-	//   calculation_queue_size, refresh_queue_size,
-	//   calculation_dropped_jobs, refresh_dropped_jobs, is_running
+	//   calculation_queue_size, calculation_dropped_jobs, is_running
 	adminGroup.Get("/metrics", func(c *fiber.Ctx) error {
 		snapshotAt := time.Now().UTC().Format(time.RFC3339)
 		if backgroundProcessor == nil {

@@ -474,6 +474,11 @@ func (s *instrumentService) AddInstrumentToPortfolio(ctx context.Context, portfo
 		if err != nil {
 			return fmt.Errorf("portfolio with ID %s not found", portfolioID)
 		}
+		// A holding may only be added to a portfolio the caller owns: knowing
+		// the portfolio ID must never be enough to write into it.
+		if userID == nil || strings.TrimSpace(*userID) == "" || portfolio.UserID != strings.TrimSpace(*userID) {
+			return ErrPortfolioUnauthorized
+		}
 
 		asset, err := s.resolveTradeableAsset(ctx, uow, instrument)
 		if err != nil {
