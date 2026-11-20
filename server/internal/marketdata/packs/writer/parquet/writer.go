@@ -41,6 +41,27 @@ type BuildResult struct {
 	ChecksumsPath string
 }
 
+// candleParquetSchema declares the decimal logical types explicitly. A
+// *[16]byte field cannot carry a decimal tag (parquet-go rejects the tag), and
+// a []byte field with that tag is written as its slice header instead of the
+// bytes. Passing the schema to the writer keeps adjusted_close optional and
+// fixed-width without either failure mode.
+var candleParquetSchema = pq.NewSchema("candle", pq.Group{
+	"instrument_id":  pq.UUID(),
+	"symbol":         pq.String(),
+	"asset_type":     pq.String(),
+	"interval":       pq.String(),
+	"timestamp":      pq.Timestamp(pq.Microsecond),
+	"open":           pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"high":           pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"low":            pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"close":          pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"adjusted_close": pq.Optional(pq.Decimal(18, 38, pq.FixedLenByteArrayType(16))),
+	"volume":         pq.Decimal(8, 38, pq.FixedLenByteArrayType(16)),
+	"quote_currency": pq.String(),
+	"source":         pq.String(),
+})
+
 type parquetCandleRow struct {
 	InstrumentID  string    `parquet:"instrument_id,uuid"`
 	Symbol        string    `parquet:"symbol"`
@@ -51,7 +72,7 @@ type parquetCandleRow struct {
 	High          [16]byte  `parquet:"high,decimal(18:38)"`
 	Low           [16]byte  `parquet:"low,decimal(18:38)"`
 	Close         [16]byte  `parquet:"close,decimal(18:38)"`
-	AdjustedClose []byte    `parquet:"adjusted_close,optional,decimal(18:38)"`
+	AdjustedClose *[16]byte `parquet:"adjusted_close,optional"`
 	Volume        [16]byte  `parquet:"volume,decimal(8:38)"`
 	QuoteCurrency string    `parquet:"quote_currency"`
 	Source        string    `parquet:"source"`
@@ -216,7 +237,7 @@ func writeParquetFile(path string, rows []parquetCandleRow) error {
 	}
 	defer file.Close()
 
-	writer := pq.NewGenericWriter[parquetCandleRow](file, pq.Compression(&pqzstd.Codec{}))
+	writer := pq.NewGenericWriter[parquetCandleRow](file, candleParquetSchema, pq.Compression(&pqzstd.Codec{}))
 	if _, err := writer.Write(rows); err != nil {
 		_ = writer.Close()
 		return fmt.Errorf("write parquet rows: %w", err)
@@ -249,16 +270,13 @@ func toParquetRow(candle sources.NormalizedCandle) (parquetCandleRow, error) {
 		return parquetCandleRow{}, fmt.Errorf("encode volume for %s: %w", candle.Symbol, err)
 	}
 
-	// A slice (not *[16]byte): parquet-go rejects the decimal tag on a
-	// pointer to a fixed-size array, while a byte slice maps to the same
-	// FIXED_LEN_BYTE_ARRAY(16) column and still encodes absent values as null.
-	var adjusted []byte
+	var adjusted *[16]byte
 	if candle.AdjustedClose != nil {
 		value, err := encodeDecimalFixed(*candle.AdjustedClose, priceScale, maxPrecision, decimalFixedLengthBytes)
 		if err != nil {
 			return parquetCandleRow{}, fmt.Errorf("encode adjusted_close for %s: %w", candle.Symbol, err)
 		}
-		adjusted = value[:]
+		adjusted = &value
 	}
 
 	return parquetCandleRow{

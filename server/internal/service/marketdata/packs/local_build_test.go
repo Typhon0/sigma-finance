@@ -1,14 +1,123 @@
 package packs
 
 import (
+	"math/big"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"sigma_finance/internal/domain/model"
+	"sigma_finance/internal/marketdata/packs/sources"
 	"sigma_finance/internal/service/providers"
+
+	pq "github.com/parquet-go/parquet-go"
+	"github.com/shopspring/decimal"
 )
+
+// The local pack writer used []byte fields with decimal tags. parquet-go
+// serialises those as the Go slice header (pointer + length), so every price
+// column was corrupted. The explicit schema plus fixed-size arrays is what
+// keeps the bytes intact and adjusted_close nullable.
+func TestLocalBuildWriterRoundTripsDecimals(t *testing.T) {
+	adjusted := mustLocalDecimal(t, "123.456789012345678901")
+	candles := []sources.NormalizedCandle{
+		{
+			InstrumentID:  "00000000-0000-0000-0000-000000000001",
+			Symbol:        "AAPL",
+			AssetType:     "STOCK",
+			Interval:      "1d",
+			Timestamp:     time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			Open:          mustLocalDecimal(t, "100.1"),
+			High:          mustLocalDecimal(t, "130.2"),
+			Low:           mustLocalDecimal(t, "99.3"),
+			Close:         mustLocalDecimal(t, "125.4"),
+			AdjustedClose: &adjusted,
+			Volume:        mustLocalDecimal(t, "1000.5"),
+			QuoteCurrency: "USD",
+			Source:        "test",
+		},
+		{
+			InstrumentID:  "00000000-0000-0000-0000-000000000001",
+			Symbol:        "AAPL",
+			AssetType:     "STOCK",
+			Interval:      "1d",
+			Timestamp:     time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
+			Open:          mustLocalDecimal(t, "101.1"),
+			High:          mustLocalDecimal(t, "131.2"),
+			Low:           mustLocalDecimal(t, "100.3"),
+			Close:         mustLocalDecimal(t, "126.4"),
+			AdjustedClose: nil,
+			Volume:        mustLocalDecimal(t, "1001.5"),
+			QuoteCurrency: "USD",
+			Source:        "test",
+		},
+	}
+
+	rows := make([]localBuildParquetRow, 0, len(candles))
+	for _, candle := range candles {
+		row, err := toLocalParquetRow(candle)
+		if err != nil {
+			t.Fatalf("to local parquet row: %v", err)
+		}
+		rows = append(rows, row)
+	}
+
+	path := filepath.Join(t.TempDir(), "part-000.parquet")
+	if err := writeLocalParquetFile(path, rows); err != nil {
+		t.Fatalf("write local parquet file: %v", err)
+	}
+
+	raw, err := pq.ReadFile[localBuildParquetRawRow](path)
+	if err != nil {
+		t.Fatalf("read local parquet file: %v", err)
+	}
+	if len(raw) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(raw))
+	}
+	if len(raw[0].Open) != 16 {
+		t.Fatalf("expected 16-byte open, got %d", len(raw[0].Open))
+	}
+	if got := decodeLocalFixed(raw[0].Open, 18); !got.Equal(candles[0].Open) {
+		t.Fatalf("open round trip: expected %s got %s", candles[0].Open, got)
+	}
+	if got := decodeLocalFixed(raw[0].AdjustedClose, 18); !got.Equal(adjusted) {
+		t.Fatalf("adjusted close round trip: expected %s got %s", adjusted, got)
+	}
+	if raw[1].AdjustedClose != nil {
+		t.Fatalf("expected null adjusted close, got %x", raw[1].AdjustedClose)
+	}
+}
+
+type localBuildParquetRawRow struct {
+	Open          []byte `parquet:"open"`
+	High          []byte `parquet:"high"`
+	Low           []byte `parquet:"low"`
+	Close         []byte `parquet:"close"`
+	AdjustedClose []byte `parquet:"adjusted_close,optional"`
+	Volume        []byte `parquet:"volume"`
+}
+
+func mustLocalDecimal(t *testing.T, raw string) decimal.Decimal {
+	t.Helper()
+	value, err := decimal.NewFromString(raw)
+	if err != nil {
+		t.Fatalf("parse decimal %s: %v", raw, err)
+	}
+	return value
+}
+
+func decodeLocalFixed(raw []byte, scale int32) decimal.Decimal {
+	if len(raw) == 0 {
+		return decimal.Zero
+	}
+	i := new(big.Int).SetBytes(raw)
+	if raw[0]&0x80 != 0 {
+		max := new(big.Int).Lsh(big.NewInt(1), uint(len(raw))*8)
+		i.Sub(i, max)
+	}
+	return decimal.NewFromBigInt(i, -scale)
+}
 
 func TestResolveLocalBuildRateLimitsLowersProviderLimit(t *testing.T) {
 	reqPerMinute := 50

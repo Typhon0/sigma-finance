@@ -55,18 +55,36 @@ type localBuildPartitionWriter struct {
 	rows int64
 }
 
+// localCandleParquetSchema declares the decimal columns explicitly: parquet-go
+// writes a []byte field with a decimal tag as its slice header, not the bytes.
+var localCandleParquetSchema = pq.NewSchema("candle", pq.Group{
+	"instrument_id":  pq.UUID(),
+	"symbol":         pq.String(),
+	"asset_type":     pq.String(),
+	"interval":       pq.String(),
+	"timestamp":      pq.Timestamp(pq.Microsecond),
+	"open":           pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"high":           pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"low":            pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"close":          pq.Decimal(18, 38, pq.FixedLenByteArrayType(16)),
+	"adjusted_close": pq.Optional(pq.Decimal(18, 38, pq.FixedLenByteArrayType(16))),
+	"volume":         pq.Decimal(8, 38, pq.FixedLenByteArrayType(16)),
+	"quote_currency": pq.String(),
+	"source":         pq.String(),
+})
+
 type localBuildParquetRow struct {
 	InstrumentID  string    `parquet:"instrument_id,uuid"`
 	Symbol        string    `parquet:"symbol"`
 	AssetType     string    `parquet:"asset_type"`
 	Interval      string    `parquet:"interval"`
 	Timestamp     time.Time `parquet:"timestamp,timestamp(microsecond)"`
-	Open          []byte    `parquet:"open,decimal(18:38)"`
-	High          []byte    `parquet:"high,decimal(18:38)"`
-	Low           []byte    `parquet:"low,decimal(18:38)"`
-	Close         []byte    `parquet:"close,decimal(18:38)"`
-	AdjustedClose []byte    `parquet:"adjusted_close,decimal(18:38),optional"`
-	Volume        []byte    `parquet:"volume,decimal(8:38)"`
+	Open          [16]byte  `parquet:"open,decimal(18:38)"`
+	High          [16]byte  `parquet:"high,decimal(18:38)"`
+	Low           [16]byte  `parquet:"low,decimal(18:38)"`
+	Close         [16]byte  `parquet:"close,decimal(18:38)"`
+	AdjustedClose *[16]byte `parquet:"adjusted_close,optional"`
+	Volume        [16]byte  `parquet:"volume,decimal(8:38)"`
 	QuoteCurrency string    `parquet:"quote_currency"`
 	Source        string    `parquet:"source"`
 }
@@ -341,7 +359,7 @@ func (w *localBuildStreamingWriter) partitionWriter(relPath string) (*localBuild
 	if err != nil {
 		return nil, err
 	}
-	writer := pq.NewGenericWriter[localBuildParquetRow](file, pq.Compression(&pqzstd.Codec{}))
+	writer := pq.NewGenericWriter[localBuildParquetRow](file, localCandleParquetSchema, pq.Compression(&pqzstd.Codec{}))
 	partitionWriter := &localBuildPartitionWriter{file: file, pq: writer}
 	w.writers[relPath] = partitionWriter
 	return partitionWriter, nil
@@ -356,7 +374,7 @@ func writeLocalParquetFile(path string, rows []localBuildParquetRow) error {
 		return err
 	}
 	defer file.Close()
-	writer := pq.NewGenericWriter[localBuildParquetRow](file, pq.Compression(&pqzstd.Codec{}))
+	writer := pq.NewGenericWriter[localBuildParquetRow](file, localCandleParquetSchema, pq.Compression(&pqzstd.Codec{}))
 	if _, err := writer.Write(rows); err != nil {
 		_ = writer.Close()
 		return err
@@ -385,12 +403,13 @@ func toLocalParquetRow(candle sources.NormalizedCandle) (localBuildParquetRow, e
 	if err != nil {
 		return localBuildParquetRow{}, err
 	}
-	var adjusted []byte
+	var adjusted *[16]byte
 	if candle.AdjustedClose != nil {
-		adjusted, err = encodeLocalDecimal(*candle.AdjustedClose, localPriceScale, localMaxPrecision, localDecimalFixedBytes)
+		value, err := encodeLocalDecimal(*candle.AdjustedClose, localPriceScale, localMaxPrecision, localDecimalFixedBytes)
 		if err != nil {
 			return localBuildParquetRow{}, err
 		}
+		adjusted = &value
 	}
 	return localBuildParquetRow{
 		InstrumentID:  strings.TrimSpace(candle.InstrumentID),
@@ -409,14 +428,14 @@ func toLocalParquetRow(candle sources.NormalizedCandle) (localBuildParquetRow, e
 	}, nil
 }
 
-func encodeLocalDecimal(value decimal.Decimal, scale int32, precision int, size int) ([]byte, error) {
+func encodeLocalDecimal(value decimal.Decimal, scale int32, precision int, size int) ([16]byte, error) {
 	scaled := value.Shift(scale)
 	if !scaled.IsInteger() {
-		return nil, fmt.Errorf("value %s has too many fractional digits", value.String())
+		return [16]byte{}, fmt.Errorf("value %s has too many fractional digits", value.String())
 	}
 	unscaled := scaled.BigInt()
 	if localDigitsCount(unscaled) > precision {
-		return nil, fmt.Errorf("value %s exceeds precision", value.String())
+		return [16]byte{}, fmt.Errorf("value %s exceeds precision", value.String())
 	}
 	bits := uint(size * 8)
 	maxPositive := new(big.Int).Lsh(big.NewInt(1), bits-1)
@@ -424,17 +443,16 @@ func encodeLocalDecimal(value decimal.Decimal, scale int32, precision int, size 
 	minNegative := new(big.Int).Lsh(big.NewInt(1), bits-1)
 	minNegative.Neg(minNegative)
 	if unscaled.Cmp(maxPositive) > 0 || unscaled.Cmp(minNegative) < 0 {
-		return nil, fmt.Errorf("value %s out of range", value.String())
+		return [16]byte{}, fmt.Errorf("value %s out of range", value.String())
 	}
+	var out [16]byte
 	if unscaled.Sign() >= 0 {
-		out := make([]byte, size)
-		unscaled.FillBytes(out)
+		unscaled.FillBytes(out[:])
 		return out, nil
 	}
 	modulus := new(big.Int).Lsh(big.NewInt(1), bits)
 	twos := new(big.Int).Add(modulus, unscaled)
-	out := make([]byte, size)
-	twos.FillBytes(out)
+	twos.FillBytes(out[:])
 	return out, nil
 }
 

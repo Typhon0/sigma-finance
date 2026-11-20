@@ -105,6 +105,85 @@ func TestBuildUnpackedDirectoryRoundTrip(t *testing.T) {
 	}
 }
 
+// adjusted_close is optional but must survive the decimal fixed-length
+// encoding. A nil-only fixture hid the tag/type mismatch that made the writer
+// reject the column.
+func TestBuildUnpackedDirectoryRoundTripsAdjustedClose(t *testing.T) {
+	adjustedClose := mustDecimal(t, "123.456789012345678901")
+	candles := []sources.NormalizedCandle{
+		{
+			InstrumentID:  "00000000-0000-0000-0000-000000000001",
+			Symbol:        "AAPL",
+			AssetType:     "STOCK",
+			Interval:      "1d",
+			Timestamp:     time.Date(2024, 1, 2, 0, 0, 0, 0, time.UTC),
+			Open:          mustDecimal(t, "100"),
+			High:          mustDecimal(t, "130"),
+			Low:           mustDecimal(t, "99"),
+			Close:         mustDecimal(t, "125"),
+			AdjustedClose: &adjustedClose,
+			Volume:        mustDecimal(t, "1000"),
+			QuoteCurrency: "USD",
+			Source:        "test",
+		},
+		{
+			InstrumentID:  "00000000-0000-0000-0000-000000000001",
+			Symbol:        "AAPL",
+			AssetType:     "STOCK",
+			Interval:      "1d",
+			Timestamp:     time.Date(2024, 1, 3, 0, 0, 0, 0, time.UTC),
+			Open:          mustDecimal(t, "101"),
+			High:          mustDecimal(t, "131"),
+			Low:           mustDecimal(t, "100"),
+			Close:         mustDecimal(t, "126"),
+			AdjustedClose: nil,
+			Volume:        mustDecimal(t, "1001"),
+			QuoteCurrency: "USD",
+			Source:        "test",
+		},
+	}
+
+	result, err := BuildUnpackedDirectory(context.Background(), candles, BuildOptions{
+		RootDir:     t.TempDir(),
+		PartitionBy: []string{"asset_type", "quote_currency", "year"},
+		Manifest: packservice.Manifest{
+			PackID:         "adjusted-close-pack",
+			Version:        "1",
+			Name:           "Adjusted Close Pack",
+			Description:    "Adjusted Close Pack",
+			FormatVersion:  1,
+			Distribution:   "local",
+			Interval:       "1d",
+			SourceProvider: "test",
+			DataLicense:    "MIT",
+			LicenseURL:     "https://example.test/license",
+			GeneratedBy:    "sigma-finance pack-builder",
+		},
+	})
+	if err != nil {
+		t.Fatalf("build unpacked directory: %v", err)
+	}
+
+	file := filepath.Join(result.PackDir, "data", "asset_type=STOCK", "quote_currency=USD", "year=2024", "part-000.parquet")
+	rows, err := parquet.ReadFile[packCandleParquetRawRow](file)
+	if err != nil {
+		t.Fatalf("read parquet rows: %v", err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("expected 2 rows, got %d", len(rows))
+	}
+	if len(rows[0].AdjustedClose) != 16 {
+		t.Fatalf("expected 16-byte adjusted close, got %d", len(rows[0].AdjustedClose))
+	}
+	if rows[1].AdjustedClose != nil {
+		t.Fatalf("expected null adjusted close, got %x", rows[1].AdjustedClose)
+	}
+	decoded := decodeDecimalFixed(rows[0].AdjustedClose, 18)
+	if !decoded.Equal(adjustedClose) {
+		t.Fatalf("adjusted close round trip: expected %s got %s", adjustedClose, decoded)
+	}
+}
+
 func TestEncodeDecimalFixedPreservesPrecision(t *testing.T) {
 	value := mustDecimal(t, "0.000023")
 	encoded, err := encodeDecimalFixed(value, 18, 38, 16)
