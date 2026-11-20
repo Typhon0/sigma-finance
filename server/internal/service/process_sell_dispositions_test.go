@@ -106,38 +106,26 @@ func setupSellWorld(t *testing.T) (context.Context, repository.IUnitOfWork, *mod
 	return ctx, uow, portfolio, position
 }
 
-// Selling must persist one fiscal disposition per matched lot, with real
-// FIFO matching, while the economic P/L accumulates separately on the position.
-func TestProcessSellTransaction_PersistsDispositionsAndSeparatesFiscalFromEconomic(t *testing.T) {
+// ConsumeTaxLotsForSale is the single place a sale consumes lots (the sync
+// path and any future manual entry both go through it). Selling must persist
+// one fiscal disposition per matched lot, with real FIFO matching.
+func TestConsumeTaxLotsForSale_PersistsFiscalDispositions(t *testing.T) {
 	ctx, uow, portfolio, position := setupSellWorld(t)
-	svc := NewTransactionService(uow)
 
-	result, err := svc.ProcessSellTransaction(ctx, SellTransactionRequest{
-		UserID:            portfolio.UserID,
-		PositionID:        position.ID,
-		Quantity:          decimal.NewFromInt(60),
-		UnitPriceAmount:   decimal.NewFromFloat(30),
-		UnitPriceCurrency: model.CurrencyUSD,
-		ExecutedAt:        time.Now().UTC(),
-	})
+	result, err := ConsumeTaxLotsForSale(
+		ctx, uow, position,
+		decimal.NewFromInt(60), decimal.NewFromFloat(30),
+		time.Now().UTC(), "", portfolio.UserID,
+	)
 	require.NoError(t, err)
 	require.NotNil(t, result)
 
 	// FISCAL: FIFO consumes the 50 cheap units ($10) then 10 of the $20 units.
 	// gain = 50*(30-10) + 10*(30-20) = 1000 + 100 dollars = 110000 cents.
-	require.NotNil(t, result.FiscalRealizedGainLoss, "fiscal lot-matched G/L must be reported")
-	require.Equal(t, int64(110000), int64(*result.FiscalRealizedGainLoss))
-	require.NotNil(t, result.FiscalAllocationDetails)
-	require.Len(t, result.FiscalAllocationDetails.Matches, 2)
-	require.Equal(t, int64(100000), int64(result.FiscalAllocationDetails.LongTermGainLoss))
-	require.Equal(t, int64(10000), int64(result.FiscalAllocationDetails.ShortTermGainLoss))
-
-	// ECONOMIC: average cost $15 → gain = 60*(30-15) = 900 dollars = 90000 cents.
-	// Distinct from the fiscal number — the two must never be conflated.
-	require.NotNil(t, result.RealizedGains)
-	require.Equal(t, int64(90000), int64(*result.RealizedGains))
-	require.NotEqual(t, *result.RealizedGains, *result.FiscalRealizedGainLoss,
-		"economic and fiscal numbers differ here; if equal something collapsed them")
+	require.Equal(t, int64(110000), int64(result.TotalRealizedGainLoss))
+	require.Len(t, result.Matches, 2)
+	require.Equal(t, int64(100000), int64(result.LongTermGainLoss))
+	require.Equal(t, int64(10000), int64(result.ShortTermGainLoss))
 
 	// Fiscal rows persisted per matched lot.
 	dispositions, err := uow.TaxLotDisposition().FindByPositionID(ctx, position.ID)
@@ -148,11 +136,6 @@ func TestProcessSellTransaction_PersistsDispositionsAndSeparatesFiscalFromEconom
 		sum += int64(d.RealizedGainLoss)
 	}
 	require.Equal(t, int64(110000), sum, "persisted dispositions must equal the fiscal total")
-
-	// Economic P/L persisted on the position.
-	updated, err := uow.Position().GetByID(ctx, position.ID)
-	require.NoError(t, err)
-	require.Equal(t, int64(90000), int64(updated.RealizedGainLoss))
 
 	// Lots updated: first lot closed, second partially closed.
 	// (decimal does not compare with == across scale, so match via Equal.)
@@ -171,45 +154,47 @@ func TestProcessSellTransaction_PersistsDispositionsAndSeparatesFiscalFromEconom
 	require.Equal(t, model.TaxLotStatusPartiallyClosed, statusByCost("20"))
 }
 
-// Lot-allocation failure must FATAL the sell (full rollback), because
-// dispositions now feed tax records — silently selling without fiscal G/L
-// is no longer acceptable.
-func TestProcessSellTransaction_InsufficientLotsFailsAtomically(t *testing.T) {
+// Lot-allocation failure must fail the sale before anything is persisted:
+// dispositions feed tax records, so selling without fiscal G/L is not allowed.
+func TestConsumeTaxLotsForSale_InsufficientLotsFails(t *testing.T) {
 	ctx, uow, portfolio, position := setupSellWorld(t)
-	svc := NewTransactionService(uow)
 
 	// Position holds 100 units but only ONE lot (50) stays open. Selling 60
-	// passes the position-quantity check yet cannot be lot-matched, so
-	// allocation must fail and roll the entire sell back.
+	// passes a position-quantity check yet cannot be lot-matched, so
+	// allocation must fail.
 	lots, err := uow.TaxLot().FindByPositionID(ctx, position.ID)
 	require.NoError(t, err)
 	require.Len(t, lots, 2)
-	for i, l := range lots {
-		if i > 0 {
+	closed := false
+	for _, l := range lots {
+		if l.CostBasisPerUnit.Equal(decimal.NewFromFloat(20)) {
 			l.RemainingQuantity = decimal.Zero
 			l.Status = model.TaxLotStatusClosed
 			require.NoError(t, uow.TaxLot().Update(ctx, l))
+			closed = true
 		}
 	}
+	require.True(t, closed, "the $20 lot must be the one closed")
 
-	_, err = svc.ProcessSellTransaction(ctx, SellTransactionRequest{
-		UserID:            portfolio.UserID,
-		PositionID:        position.ID,
-		Quantity:          decimal.NewFromInt(60),
-		UnitPriceAmount:   decimal.NewFromFloat(30),
-		UnitPriceCurrency: model.CurrencyUSD,
-		ExecutedAt:        time.Now().UTC(),
-	})
+	_, err = ConsumeTaxLotsForSale(
+		ctx, uow, position,
+		decimal.NewFromInt(60), decimal.NewFromFloat(30),
+		time.Now().UTC(), "", portfolio.UserID,
+	)
 	require.Error(t, err, "selling with no allocatable lots must fail, not silently skip fiscal G/L")
 	require.Contains(t, err.Error(), "insufficient quantity")
 
-	// Atomicity: nothing persisted — no transaction, no position change.
-	txs, err := uow.Transaction().FindByPositionID(ctx, position.ID)
+	// Nothing persisted: no dispositions, and the open lot was not written.
+	dispositions, err := uow.TaxLotDisposition().FindByPositionID(ctx, position.ID)
 	require.NoError(t, err)
-	require.Empty(t, txs, "failed sell must roll back the transaction record")
+	require.Empty(t, dispositions, "failed allocation must not persist dispositions")
 
-	updated, err := uow.Position().GetByID(ctx, position.ID)
+	unchanged, err := uow.TaxLot().FindByPositionID(ctx, position.ID)
 	require.NoError(t, err)
-	require.True(t, updated.Quantity.Equal(decimal.NewFromInt(100)), "position quantity must be unchanged after rollback, got %s", updated.Quantity)
-	require.Equal(t, int64(0), int64(updated.RealizedGainLoss), "economic P/L must be unchanged after rollback")
+	for _, l := range unchanged {
+		if l.CostBasisPerUnit.Equal(decimal.NewFromFloat(10)) {
+			require.True(t, l.RemainingQuantity.Equal(decimal.NewFromInt(50)),
+				"lots must not be written when allocation fails, got %s", l.RemainingQuantity)
+		}
+	}
 }

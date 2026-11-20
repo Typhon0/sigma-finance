@@ -14,6 +14,7 @@ import (
 // accountTestUOW implements a lightweight in-memory stub of repository.IUnitOfWork for AccountService tests
 type accountTestUOW struct {
 	repository.IUnitOfWork
+	users       map[string]*model.User
 	portfolios  map[string]*model.Portfolio
 	accounts    map[string]*model.Account
 	connections map[string]*model.SyncConnection
@@ -181,18 +182,39 @@ func (u *accountTestUOW) Sync() repository.ISyncRepository {
 	return &accountTestSyncRepo{uow: u}
 }
 
+// accountTestUserRepo keeps the ownership lookups CreateAccount/DeleteAccount
+// perform from hitting the nil embedded interface.
+type accountTestUserRepo struct {
+	repository.IUserRepository
+	uow *accountTestUOW
+}
+
+func (r *accountTestUserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
+	if u, ok := r.uow.users[id]; ok {
+		return u, nil
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (u *accountTestUOW) User() repository.IUserRepository {
+	return &accountTestUserRepo{uow: u}
+}
+
 func (u *accountTestUOW) Do(ctx context.Context, fn func(uow repository.IUnitOfWork) error) error {
 	return fn(u)
 }
 
 func setupAccountTestService() (*AccountService, *accountTestUOW) {
 	uow := &accountTestUOW{
+		users:       make(map[string]*model.User),
 		portfolios:  make(map[string]*model.Portfolio),
 		accounts:    make(map[string]*model.Account),
 		connections: make(map[string]*model.SyncConnection),
 		credentials: make(map[string]*model.SyncCredential),
 		positions:   make(map[string]*model.Position),
 	}
+
+	uow.users["user-1"] = &model.User{ID: "user-1", Email: "user1@example.com"}
 
 	uow.portfolios["pf-1"] = &model.Portfolio{
 		ID:         "pf-1",

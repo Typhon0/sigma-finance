@@ -45,7 +45,7 @@ func TestGraphQLIntegration_SimpleUserOperations(t *testing.T) {
 			Password: "password123",
 		}
 
-		user, err := mutationResolver.CreateUser(ctx, input)
+		user, err := createUserFixture(t, ctx, resolver, input)
 		require.NoError(t, err)
 		assert.NotNil(t, user)
 		assert.Equal(t, "testuser", user.Username)
@@ -87,7 +87,7 @@ func TestGraphQLIntegration_SimpleUserOperations(t *testing.T) {
 
 		createdUsers := make([]*gqlModel.User, 0, len(users))
 		for _, userInput := range users {
-			user, err := mutationResolver.CreateUser(ctx, userInput)
+			user, err := createUserFixture(t, ctx, resolver, userInput)
 			require.NoError(t, err)
 			createdUsers = append(createdUsers, user)
 		}
@@ -140,7 +140,7 @@ func TestGraphQLIntegration_SimplePortfolioOperations(t *testing.T) {
 		Email:    "portfolio@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutationResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
@@ -298,7 +298,7 @@ func TestGraphQLIntegration_SimpleWatchlistOperations(t *testing.T) {
 		Email:    "watchlist@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutationResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
@@ -371,7 +371,7 @@ func TestGraphQLIntegration_SimpleErrorHandling(t *testing.T) {
 	queryResolver := &queryResolver{resolver}
 	mutationResolver := &mutationResolver{resolver}
 
-	caller, err := mutationResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+	caller, err := createUserFixture(t, ctx, resolver, gqlModel.CreateUserInput{
 		Username: "errcaller",
 		Email:    "errcaller@example.com",
 		Password: "password123",
@@ -408,7 +408,7 @@ func TestGraphQLIntegration_SimpleErrorHandling(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password123",
 		}
-		_, err := mutationResolver.CreateUser(ctx, input1)
+		_, err := createUserFixture(t, ctx, resolver, input1)
 		require.NoError(t, err)
 
 		input2 := gqlModel.CreateUserInput{
@@ -416,7 +416,7 @@ func TestGraphQLIntegration_SimpleErrorHandling(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password123",
 		}
-		_, err = mutationResolver.CreateUser(ctx, input2)
+		_, err = createUserFixture(t, ctx, resolver, input2)
 		assert.Error(t, err)
 
 		// Test invalid portfolio creation
@@ -462,7 +462,7 @@ func TestGraphQLIntegration_PaginationAndFiltering(t *testing.T) {
 				Email:    "pagination" + string(rune('0'+i)) + "@example.com",
 				Password: "password123",
 			}
-			user, err := mutationResolver.CreateUser(ctx, input)
+			user, err := createUserFixture(t, ctx, resolver, input)
 			require.NoError(t, err)
 			users = append(users, user)
 		}
@@ -503,7 +503,7 @@ func TestGraphQLIntegration_PaginationAndFiltering(t *testing.T) {
 			Email:    "portfoliopagination@example.com",
 			Password: "password123",
 		}
-		testUser, err := mutationResolver.CreateUser(ctx, userInput)
+		testUser, err := createUserFixture(t, ctx, resolver, userInput)
 		require.NoError(t, err)
 
 		ctx := context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
@@ -553,8 +553,6 @@ func TestGraphQLIntegration_ConcurrentOperations(t *testing.T) {
 		UOW:         uow,
 	}
 
-	mutationResolver := &mutationResolver{resolver}
-
 	t.Run("ConcurrentUserCreation", func(t *testing.T) {
 		// Create users concurrently
 		userCount := 5
@@ -568,7 +566,7 @@ func TestGraphQLIntegration_ConcurrentOperations(t *testing.T) {
 					Email:    "concurrent" + string(rune('0'+index)) + "@example.com",
 					Password: "password123",
 				}
-				user, err := mutationResolver.CreateUser(ctx, input)
+				user, err := createUserFixture(t, ctx, resolver, input)
 				if err != nil {
 					errorChan <- err
 				} else {

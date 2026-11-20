@@ -199,6 +199,16 @@ func (r *e2eSyncRepo) GetConnectionByID(ctx context.Context, id string) (*model.
 	return nil, repository.ErrNotFound
 }
 
+func (r *e2eSyncRepo) ListConnectionsByCredentialID(ctx context.Context, credentialID string) ([]*model.SyncConnection, error) {
+	var res []*model.SyncConnection
+	for _, c := range r.u.connections {
+		if c.CredentialID == credentialID {
+			res = append(res, c)
+		}
+	}
+	return res, nil
+}
+
 func (r *e2eSyncRepo) GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error) {
 	for _, c := range r.u.connections {
 		if c.AccountID != nil && *c.AccountID == accountID {

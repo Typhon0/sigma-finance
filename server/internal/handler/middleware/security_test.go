@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"io"
+	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"sigma_finance/internal/service"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/adaptor"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -228,56 +230,58 @@ func TestSecurityMiddleware_IPTracking(t *testing.T) {
 	app := fiber.New()
 	app.Use(middleware.IPTracking())
 	app.Get("/test", func(c *fiber.Ctx) error {
-		ip := c.Locals("client_ip")
-		userAgent := c.Locals("user_agent")
-		requestID := c.Locals("request_id")
-
 		return c.JSON(fiber.Map{
-			"ip":         ip,
-			"user_agent": userAgent,
-			"request_id": requestID,
+			"ip":         c.Locals("client_ip"),
+			"user_agent": c.Locals("user_agent"),
+			"request_id": c.Locals("request_id"),
 		})
 	})
 
-	t.Run("extracts IP from X-Forwarded-For", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-Forwarded-For", "203.0.113.1, 192.168.1.1")
-		req.Header.Set("User-Agent", "Test-Agent/1.0")
+	// Serve over a real loopback listener. GetClientIP only trusts forwarding
+	// headers from a loopback/private peer, and app.Test cannot set the peer.
+	srv := httptest.NewServer(adaptor.FiberApp(app))
+	defer srv.Close()
 
-		resp, err := app.Test(req)
+	get := func(t *testing.T, headers map[string]string) string {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/test", nil)
 		require.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
-
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		require.Equal(t, http.StatusOK, resp.StatusCode)
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Contains(t, string(body), "203.0.113.1")
-		assert.Contains(t, string(body), "Test-Agent/1.0")
+		return string(body)
+	}
+
+	t.Run("extracts IP from X-Forwarded-For", func(t *testing.T) {
+		body := get(t, map[string]string{
+			"X-Forwarded-For": "203.0.113.1, 192.168.1.1",
+			"User-Agent":      "Test-Agent/1.0",
+		})
+		assert.Contains(t, body, "203.0.113.1")
+		assert.Contains(t, body, "Test-Agent/1.0")
 	})
 
 	t.Run("extracts IP from X-Real-IP", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-Real-IP", "203.0.113.2")
-		req.Header.Set("User-Agent", "Test-Agent/2.0")
-
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
-
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		assert.Contains(t, string(body), "203.0.113.2")
+		body := get(t, map[string]string{
+			"X-Real-IP":  "203.0.113.2",
+			"User-Agent": "Test-Agent/2.0",
+		})
+		assert.Contains(t, body, "203.0.113.2")
 	})
 
 	t.Run("generates request ID if not present", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-
-		resp, err := app.Test(req)
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/test", nil)
 		require.NoError(t, err)
-		assert.Equal(t, 200, resp.StatusCode)
-
-		// Check that X-Request-ID header is set
-		requestID := resp.Header.Get("X-Request-ID")
-		assert.NotEmpty(t, requestID)
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+		assert.NotEmpty(t, resp.Header.Get("X-Request-ID"))
 	})
 }
 
@@ -374,58 +378,43 @@ func TestSecurityMiddleware_AuthenticationRateLimit(t *testing.T) {
 
 func TestGetClientIP(t *testing.T) {
 	app := fiber.New()
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendString(GetClientIP(c))
+	})
+	srv := httptest.NewServer(adaptor.FiberApp(app))
+	defer srv.Close()
 
-	t.Run("extracts from X-Forwarded-For", func(t *testing.T) {
-		app.Get("/test", func(c *fiber.Ctx) error {
-			ip := GetClientIP(c)
-			return c.SendString(ip)
-		})
-
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-Forwarded-For", "203.0.113.1, 192.168.1.1, 10.0.0.1")
-
-		resp, err := app.Test(req)
+	get := func(t *testing.T, headers map[string]string) string {
+		t.Helper()
+		req, err := http.NewRequest(http.MethodGet, srv.URL+"/test", nil)
 		require.NoError(t, err)
-
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		require.NoError(t, err)
+		defer resp.Body.Close()
 		body, err := io.ReadAll(resp.Body)
 		require.NoError(t, err)
-		assert.Equal(t, "203.0.113.1", string(body))
+		return string(body)
+	}
+
+	t.Run("extracts from X-Forwarded-For", func(t *testing.T) {
+		assert.Equal(t, "203.0.113.1", get(t, map[string]string{
+			"X-Forwarded-For": "203.0.113.1, 192.168.1.1, 10.0.0.1",
+		}))
 	})
 
 	t.Run("extracts from X-Real-IP when X-Forwarded-For not present", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.Header.Set("X-Real-IP", "203.0.113.2")
-
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		assert.Equal(t, "203.0.113.2", string(body))
+		assert.Equal(t, "203.0.113.2", get(t, map[string]string{"X-Real-IP": "203.0.113.2"}))
 	})
 
 	t.Run("extracts from CF-Connecting-IP", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-		req.Header.Set("CF-Connecting-IP", "203.0.113.3")
-
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		assert.Equal(t, "203.0.113.3", string(body))
+		assert.Equal(t, "203.0.113.3", get(t, map[string]string{"CF-Connecting-IP": "203.0.113.3"}))
 	})
 
 	t.Run("falls back to remote address", func(t *testing.T) {
-		req := httptest.NewRequest("GET", "/test", nil)
-
-		resp, err := app.Test(req)
-		require.NoError(t, err)
-
-		body, err := io.ReadAll(resp.Body)
-		require.NoError(t, err)
-		// Should return some IP (test framework default)
-		assert.NotEmpty(t, string(body))
+		assert.Equal(t, "127.0.0.1", get(t, nil))
 	})
 }
 

@@ -25,20 +25,22 @@ func TestUpdateAndDeleteUser_ScopedToCaller(t *testing.T) {
 	testDB.CleanupTables(ctx)
 
 	uow := repository.NewUnitOfWork(testDB.DB)
+	userSvc := service.NewUserService(uow)
 	resolver := &Resolver{
-		UserService: service.NewUserService(uow),
+		UserService: userSvc,
 		UOW:         uow,
 	}
 	mutResolver := &mutationResolver{resolver}
 
-	victim, err := mutResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+	// Seed through the service: the resolver mutation is admin-only.
+	victim, err := userSvc.CreateUser(ctx, service.CreateUserInput{
 		Username: "victim",
 		Email:    "victim@example.com",
 		Password: "password123",
 	})
 	require.NoError(t, err)
 
-	attacker, err := mutResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+	attacker, err := userSvc.CreateUser(ctx, service.CreateUserInput{
 		Username: "attacker",
 		Email:    "attacker@example.com",
 		Password: "password123",

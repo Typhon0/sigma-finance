@@ -300,7 +300,9 @@ func TestTradeRepublicAdapter_FetchHoldings_Positions(t *testing.T) {
 	require.NotNil(t, h.CostBasisPerUnit)
 	assert.True(t, h.CostBasisPerUnit.Equal(decimal.NewFromFloat(140.25)))
 	require.NotNil(t, h.TotalCostBasis)
-	assert.Equal(t, model.Money(217387), *h.TotalCostBasis)
+	// 15.5 * 140.25 EUR = 2173.875 EUR = 217387.5 cents, rounded to the
+	// nearest cent (model.FromDecimal), not truncated.
+	assert.Equal(t, model.Money(217388), *h.TotalCostBasis)
 }
 
 func TestTradeRepublicAdapter_FetchTransactions_DualTimelineAndEventClassification(t *testing.T) {

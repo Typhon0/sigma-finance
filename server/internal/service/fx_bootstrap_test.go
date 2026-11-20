@@ -1,6 +1,7 @@
 package service
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,6 +12,11 @@ import (
 
 func TestLocalPack_ParquetFilesExistAndAreScannable(t *testing.T) {
 	testFile := filepath.Join("..", "..", "..", "data", "market-data", "packs", "fx-ecb-core-daily-2026.05.11", "data", "asset_type=FX", "quote_currency=USD", "year=2026", "part-000.parquet")
+	if _, err := os.Stat(testFile); err != nil {
+		// The pack is a generated artifact under the gitignored data/ tree;
+		// a fresh checkout has nothing to scan.
+		t.Skipf("local market-data pack fixture not present: %v", err)
+	}
 	rows, err := parquet.ReadFile[packCandleParquetRow](testFile)
 	if err != nil {
 		t.Fatalf("failed to read parquet file: %v", err)

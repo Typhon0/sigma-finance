@@ -59,33 +59,6 @@ func TestServiceValidation(t *testing.T) {
 		assert.Equal(t, model.Money(1500000), result.CurrentValue) // 100 * $150 * 100 cents
 	})
 
-	t.Run("TransactionService request validation", func(t *testing.T) {
-		// Test that transaction request structures are valid
-		buyReq := BuyTransactionRequest{
-			UserID:          uuid.NewString(),
-			PortfolioID:     uuid.NewString(),
-			AssetID:         uuid.NewString(),
-			Quantity:        decimal.NewFromFloat(100),
-			UnitPriceAmount: decimal.NewFromFloat(50),
-		}
-
-		// Basic validation
-		assert.NotEqual(t, "", buyReq.UserID)
-		assert.True(t, buyReq.Quantity.IsPositive())
-		assert.True(t, buyReq.UnitPriceAmount.IsPositive())
-
-		sellReq := SellTransactionRequest{
-			UserID:          uuid.NewString(),
-			PositionID:      uuid.NewString(),
-			Quantity:        decimal.NewFromFloat(50),
-			UnitPriceAmount: decimal.NewFromFloat(75),
-		}
-
-		assert.NotEqual(t, "", sellReq.UserID)
-		assert.True(t, sellReq.Quantity.IsPositive())
-		assert.True(t, sellReq.UnitPriceAmount.IsPositive())
-	})
-
 	t.Run("Service interfaces are properly defined", func(t *testing.T) {
 		// Test that we can create service instances
 		var assetService IAssetService = &AssetService{}

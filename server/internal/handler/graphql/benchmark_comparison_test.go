@@ -8,6 +8,7 @@ import (
 
 	"sigma_finance/internal/domain/model"
 	gqlModel "sigma_finance/internal/handler/graphql/model"
+	"sigma_finance/internal/handler/middleware"
 	"sigma_finance/internal/repository"
 	"sigma_finance/internal/service"
 
@@ -273,7 +274,7 @@ func TestBenchmarkComparisonResolver_Success(t *testing.T) {
 	gqlTimeRange := gqlModel.PerformanceTimeRangeInput{Start: start, End: now}
 
 	result, err := r.Query().BenchmarkComparison(
-		context.Background(),
+		benchmarkTestContext(),
 		"portfolio-1",
 		"benchmark-spy",
 		gqlTimeRange,
@@ -303,7 +304,7 @@ func TestBenchmarkComparisonResolver_ServiceError(t *testing.T) {
 	}
 
 	result, err := r.Query().BenchmarkComparison(
-		context.Background(),
+		benchmarkTestContext(),
 		"portfolio-1",
 		"benchmark-spy",
 		gqlTimeRange,
@@ -326,7 +327,7 @@ func TestBenchmarkComparisonResolver_NilComparison(t *testing.T) {
 	}
 
 	result, err := r.Query().BenchmarkComparison(
-		context.Background(),
+		benchmarkTestContext(),
 		"portfolio-empty",
 		"benchmark-spy",
 		gqlTimeRange,
@@ -343,5 +344,22 @@ func TestBenchmarkComparisonResolver_NilComparison(t *testing.T) {
 func buildTestResolver(ps service.IPerformanceService) *Resolver {
 	return &Resolver{
 		PerformanceService: ps,
+		PortfolioService:   benchmarkPortfolioService{},
 	}
+}
+
+// benchmarkPortfolioService answers only the ownership check the resolver now
+// performs before touching portfolio data.
+type benchmarkPortfolioService struct {
+	service.IPortfolioService
+}
+
+func (benchmarkPortfolioService) ValidatePortfolioOwnership(_ context.Context, _, _ string) error {
+	return nil
+}
+
+// benchmarkTestContext carries an authenticated caller, which the resolver
+// requires before it checks portfolio ownership.
+func benchmarkTestContext() context.Context {
+	return context.WithValue(context.Background(), middleware.UserKey, &middleware.AuthenticatedUser{ID: "user-1"})
 }

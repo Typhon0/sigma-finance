@@ -3,6 +3,8 @@ package sync_test
 import (
 	"context"
 	"errors"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -1397,6 +1399,10 @@ func strPtr(s string) *string                   { return &s }
 
 type syncTestUOW struct {
 	repository.IUnitOfWork
+	idSeq int
+	// mu guards the maps below: TriggerSync fans out into goroutines that
+	// outlive the test that started them.
+	mu                 sync.Mutex
 	users              map[string]*model.User
 	portfolios         map[string]*model.Portfolio
 	accounts           map[string]*model.Account
@@ -1432,11 +1438,41 @@ func newSyncTestUOW() *syncTestUOW {
 	}
 }
 
+// syncTestUserRepo backs the user lookups the sale path performs (tax
+// jurisdiction) without reaching the nil embedded interface.
+type syncTestUserRepo struct {
+	repository.IUserRepository
+	uow *syncTestUOW
+}
+
+func (r *syncTestUserRepo) GetByID(ctx context.Context, id string) (*model.User, error) {
+	r.uow.mu.Lock()
+	defer r.uow.mu.Unlock()
+	if user, ok := r.uow.users[id]; ok {
+		return user, nil
+	}
+	return nil, repository.ErrNotFound
+}
+
+func (u *syncTestUOW) User() repository.IUserRepository {
+	return &syncTestUserRepo{uow: u}
+}
+
 func (u *syncTestUOW) Do(ctx context.Context, fn func(uow repository.IUnitOfWork) error) error {
 	return fn(u)
 }
 
+// nextID returns a unique fake id. Callers already hold u.mu. A timestamp is
+// not enough: two accounts created in the same microsecond used to collide and
+// silently overwrite each other.
+func (u *syncTestUOW) nextID(prefix string) string {
+	u.idSeq++
+	return fmt.Sprintf("%s-%d", prefix, u.idSeq)
+}
+
 func (u *syncTestUOW) seedBaseEntities(userID, portfolioID, accountID, credID, connID, provider string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
 	u.users[userID] = &model.User{ID: userID}
 	u.portfolios[portfolioID] = &model.Portfolio{ID: portfolioID, UserID: userID, Name: "Main Portfolio"}
 	u.accounts[accountID] = &model.Account{
@@ -1500,6 +1536,8 @@ type syncTestPortfolioAssetRepo struct {
 }
 
 func (r *syncTestPortfolioAssetRepo) FindByPortfolioAndAsset(ctx context.Context, portfolioID, assetID string) (*model.PortfolioAsset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	key := portfolioID + ":" + assetID
 	if pa, ok := r.u.portfolioAssets[key]; ok {
 		return pa, nil
@@ -1508,12 +1546,16 @@ func (r *syncTestPortfolioAssetRepo) FindByPortfolioAndAsset(ctx context.Context
 }
 
 func (r *syncTestPortfolioAssetRepo) Create(ctx context.Context, pa *model.PortfolioAsset) (*model.PortfolioAsset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	key := pa.PortfolioID + ":" + pa.AssetID
 	r.u.portfolioAssets[key] = pa
 	return pa, nil
 }
 
 func (r *syncTestPortfolioAssetRepo) Update(ctx context.Context, pa *model.PortfolioAsset) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	key := pa.PortfolioID + ":" + pa.AssetID
 	r.u.portfolioAssets[key] = pa
 	return nil
@@ -1525,6 +1567,8 @@ type syncTestInstrumentRepo struct {
 }
 
 func (r *syncTestInstrumentRepo) GetByGlobalIdentifier(ctx context.Context, field, value string) (*model.Instrument, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, inst := range r.u.instruments {
 		if field == "isin" && inst.ISIN != nil && *inst.ISIN == value {
 			return inst, nil
@@ -1543,14 +1587,18 @@ type syncTestSyncRepo struct {
 }
 
 func (r *syncTestSyncRepo) CreateCredential(ctx context.Context, cred *model.SyncCredential) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if cred.ID == "" {
-		cred.ID = "cred-" + time.Now().Format("150405.000000")
+		cred.ID = r.u.nextID("cred")
 	}
 	r.u.credentials[cred.ID] = cred
 	return nil
 }
 
 func (r *syncTestSyncRepo) GetCredentialByID(ctx context.Context, id string) (*model.SyncCredential, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if c, ok := r.u.credentials[id]; ok {
 		return c, nil
 	}
@@ -1558,6 +1606,8 @@ func (r *syncTestSyncRepo) GetCredentialByID(ctx context.Context, id string) (*m
 }
 
 func (r *syncTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID string, provider string) (*model.SyncCredential, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, c := range r.u.credentials {
 		if (c.UserID == userID || (c.IsSystem && c.UserID == "")) && c.Provider == provider {
 			return c, nil
@@ -1567,15 +1617,24 @@ func (r *syncTestSyncRepo) GetCredentialByProvider(ctx context.Context, userID s
 }
 
 func (r *syncTestSyncRepo) GetCredentialByPortfolioAndProvider(ctx context.Context, userID string, portfolioID string, provider string) (*model.SyncCredential, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, c := range r.u.credentials {
 		if c.UserID == userID && c.PortfolioID != nil && *c.PortfolioID == portfolioID && c.Provider == provider {
 			return c, nil
 		}
 	}
-	return r.GetCredentialByProvider(ctx, userID, provider)
+	for _, c := range r.u.credentials {
+		if (c.UserID == userID || (c.IsSystem && c.UserID == "")) && c.Provider == provider {
+			return c, nil
+		}
+	}
+	return nil, repository.ErrNotFound
 }
 
 func (r *syncTestSyncRepo) ListConnectionsByCredentialID(ctx context.Context, credentialID string) ([]*model.SyncConnection, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.SyncConnection
 	for _, c := range r.u.connections {
 		if c.CredentialID == credentialID {
@@ -1586,24 +1645,32 @@ func (r *syncTestSyncRepo) ListConnectionsByCredentialID(ctx context.Context, cr
 }
 
 func (r *syncTestSyncRepo) UpdateCredential(ctx context.Context, cred *model.SyncCredential) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.credentials[cred.ID] = cred
 	return nil
 }
 
 func (r *syncTestSyncRepo) DeleteCredential(ctx context.Context, id string) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	delete(r.u.credentials, id)
 	return nil
 }
 
 func (r *syncTestSyncRepo) CreateConnection(ctx context.Context, conn *model.SyncConnection) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if conn.ID == "" {
-		conn.ID = "conn-" + time.Now().Format("150405.000000")
+		conn.ID = r.u.nextID("conn")
 	}
 	r.u.connections[conn.ID] = conn
 	return nil
 }
 
 func (r *syncTestSyncRepo) GetConnectionByID(ctx context.Context, id string) (*model.SyncConnection, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if c, ok := r.u.connections[id]; ok {
 		return c, nil
 	}
@@ -1611,6 +1678,8 @@ func (r *syncTestSyncRepo) GetConnectionByID(ctx context.Context, id string) (*m
 }
 
 func (r *syncTestSyncRepo) GetConnectionByAccountID(ctx context.Context, accountID string) (*model.SyncConnection, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, c := range r.u.connections {
 		if c.AccountID != nil && *c.AccountID == accountID {
 			return c, nil
@@ -1620,6 +1689,8 @@ func (r *syncTestSyncRepo) GetConnectionByAccountID(ctx context.Context, account
 }
 
 func (r *syncTestSyncRepo) ListCredentialsByUser(ctx context.Context, userID string) ([]*model.SyncCredential, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.SyncCredential
 	for _, c := range r.u.credentials {
 		if c.UserID == userID || (c.IsSystem && c.UserID == "") {
@@ -1630,6 +1701,8 @@ func (r *syncTestSyncRepo) ListCredentialsByUser(ctx context.Context, userID str
 }
 
 func (r *syncTestSyncRepo) ListConnectionsByPortfolio(ctx context.Context, portfolioID string) ([]*model.SyncConnection, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.SyncConnection
 	for _, c := range r.u.connections {
 		if c.PortfolioID == portfolioID {
@@ -1640,29 +1713,39 @@ func (r *syncTestSyncRepo) ListConnectionsByPortfolio(ctx context.Context, portf
 }
 
 func (r *syncTestSyncRepo) UpdateConnection(ctx context.Context, conn *model.SyncConnection) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.connections[conn.ID] = conn
 	return nil
 }
 
 func (r *syncTestSyncRepo) DeleteConnection(ctx context.Context, id string) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	delete(r.u.connections, id)
 	return nil
 }
 
 func (r *syncTestSyncRepo) CreateSyncRun(ctx context.Context, run *model.SyncRun) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if run.ID == "" {
-		run.ID = "run-" + time.Now().Format("150405.000000")
+		run.ID = r.u.nextID("run")
 	}
 	r.u.syncRuns[run.ID] = run
 	return nil
 }
 
 func (r *syncTestSyncRepo) UpdateSyncRun(ctx context.Context, run *model.SyncRun) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.syncRuns[run.ID] = run
 	return nil
 }
 
 func (r *syncTestSyncRepo) GetSyncRunByID(ctx context.Context, id string) (*model.SyncRun, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if run, ok := r.u.syncRuns[id]; ok {
 		return run, nil
 	}
@@ -1675,14 +1758,18 @@ type syncTestAccountRepo struct {
 }
 
 func (r *syncTestAccountRepo) Create(ctx context.Context, acc *model.Account) (*model.Account, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if acc.ID == "" {
-		acc.ID = "acc-" + time.Now().Format("150405.000000")
+		acc.ID = r.u.nextID("acc")
 	}
 	r.u.accounts[acc.ID] = acc
 	return acc, nil
 }
 
 func (r *syncTestAccountRepo) GetByID(ctx context.Context, id string) (*model.Account, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if a, ok := r.u.accounts[id]; ok {
 		return a, nil
 	}
@@ -1690,11 +1777,15 @@ func (r *syncTestAccountRepo) GetByID(ctx context.Context, id string) (*model.Ac
 }
 
 func (r *syncTestAccountRepo) Update(ctx context.Context, acc *model.Account) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.accounts[acc.ID] = acc
 	return nil
 }
 
 func (r *syncTestAccountRepo) GetAccountsByPortfolioID(ctx context.Context, portfolioID string) ([]model.Account, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []model.Account
 	for _, a := range r.u.accounts {
 		if a.PortfolioID == portfolioID {
@@ -1705,6 +1796,8 @@ func (r *syncTestAccountRepo) GetAccountsByPortfolioID(ctx context.Context, port
 }
 
 func (r *syncTestAccountRepo) GetAccountsByAccountNumber(ctx context.Context, accountNumber string) ([]model.Account, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []model.Account
 	for _, a := range r.u.accounts {
 		if a.AccountNumber != nil && *a.AccountNumber == accountNumber {
@@ -1720,6 +1813,8 @@ type syncTestPortfolioRepo struct {
 }
 
 func (r *syncTestPortfolioRepo) GetByID(ctx context.Context, id string) (*model.Portfolio, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if p, ok := r.u.portfolios[id]; ok {
 		return p, nil
 	}
@@ -1732,14 +1827,18 @@ type syncTestAssetRepo struct {
 }
 
 func (r *syncTestAssetRepo) Create(ctx context.Context, asset *model.Asset) (*model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if asset.ID == "" {
-		asset.ID = "asset-" + time.Now().Format("150405.000000")
+		asset.ID = r.u.nextID("asset")
 	}
 	r.u.assets[asset.ID] = asset
 	return asset, nil
 }
 
 func (r *syncTestAssetRepo) GetByID(ctx context.Context, id string) (*model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if a, ok := r.u.assets[id]; ok {
 		return a, nil
 	}
@@ -1747,6 +1846,8 @@ func (r *syncTestAssetRepo) GetByID(ctx context.Context, id string) (*model.Asse
 }
 
 func (r *syncTestAssetRepo) GetBySymbol(ctx context.Context, symbol string) (*model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, a := range r.u.assets {
 		if a.Symbol != nil && *a.Symbol == symbol {
 			return a, nil
@@ -1756,6 +1857,8 @@ func (r *syncTestAssetRepo) GetBySymbol(ctx context.Context, symbol string) (*mo
 }
 
 func (r *syncTestAssetRepo) GetByInstrumentID(ctx context.Context, instID string) (*model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, a := range r.u.assets {
 		if a.InstrumentID != nil && *a.InstrumentID == instID {
 			return a, nil
@@ -1765,14 +1868,18 @@ func (r *syncTestAssetRepo) GetByInstrumentID(ctx context.Context, instID string
 }
 
 func (r *syncTestAssetRepo) UpsertTradeable(ctx context.Context, asset *model.Asset) (*model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if asset.ID == "" {
-		asset.ID = "asset-" + time.Now().Format("150405.000000")
+		asset.ID = r.u.nextID("asset")
 	}
 	r.u.assets[asset.ID] = asset
 	return asset, nil
 }
 
 func (r *syncTestAssetRepo) FindWithFilters(ctx context.Context, filter repository.AssetFilter) ([]model.Asset, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var result []model.Asset
 	for _, a := range r.u.assets {
 		if filter.Symbol != nil && (a.Symbol == nil || *a.Symbol != *filter.Symbol) {
@@ -1795,14 +1902,18 @@ type syncTestPositionRepo struct {
 }
 
 func (r *syncTestPositionRepo) Create(ctx context.Context, pos *model.Position) (*model.Position, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if pos.ID == "" {
-		pos.ID = "pos-" + time.Now().Format("150405.000000")
+		pos.ID = r.u.nextID("pos")
 	}
 	r.u.positions[pos.ID] = pos
 	return pos, nil
 }
 
 func (r *syncTestPositionRepo) GetByID(ctx context.Context, id string) (*model.Position, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if p, ok := r.u.positions[id]; ok {
 		return p, nil
 	}
@@ -1810,11 +1921,15 @@ func (r *syncTestPositionRepo) GetByID(ctx context.Context, id string) (*model.P
 }
 
 func (r *syncTestPositionRepo) Update(ctx context.Context, pos *model.Position) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.positions[pos.ID] = pos
 	return nil
 }
 
 func (r *syncTestPositionRepo) GetByAccountAndAsset(ctx context.Context, accountID, assetID string) (*model.Position, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, p := range r.u.positions {
 		if p.AccountID == accountID && p.AssetID == assetID {
 			return p, nil
@@ -1824,6 +1939,8 @@ func (r *syncTestPositionRepo) GetByAccountAndAsset(ctx context.Context, account
 }
 
 func (r *syncTestPositionRepo) GetPortfolioPositions(ctx context.Context, portfolioID string) ([]model.Position, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []model.Position
 	for _, p := range r.u.positions {
 		if p.PortfolioID == portfolioID {
@@ -1843,14 +1960,18 @@ type syncTestTaxLotRepo struct {
 }
 
 func (r *syncTestTaxLotRepo) Create(ctx context.Context, lot *model.TaxLot) (*model.TaxLot, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if lot.ID == "" {
-		lot.ID = "lot-" + time.Now().Format("150405.000000")
+		lot.ID = r.u.nextID("lot")
 	}
 	r.u.taxLots[lot.ID] = lot
 	return lot, nil
 }
 
 func (r *syncTestTaxLotRepo) FindByPositionID(ctx context.Context, positionID string) ([]*model.TaxLot, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.TaxLot
 	for _, l := range r.u.taxLots {
 		if l.PositionID == positionID {
@@ -1861,6 +1982,8 @@ func (r *syncTestTaxLotRepo) FindByPositionID(ctx context.Context, positionID st
 }
 
 func (r *syncTestTaxLotRepo) FindOpenByPositionID(ctx context.Context, positionID string) ([]*model.TaxLot, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.TaxLot
 	for _, l := range r.u.taxLots {
 		if l.PositionID == positionID && l.Status != model.TaxLotStatusClosed {
@@ -1871,11 +1994,15 @@ func (r *syncTestTaxLotRepo) FindOpenByPositionID(ctx context.Context, positionI
 }
 
 func (r *syncTestTaxLotRepo) Update(ctx context.Context, lot *model.TaxLot) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	r.u.taxLots[lot.ID] = lot
 	return nil
 }
 
 func (r *syncTestTaxLotRepo) Delete(ctx context.Context, id string) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	delete(r.u.taxLots, id)
 	return nil
 }
@@ -1886,6 +2013,8 @@ type syncTestTaxLotDispositionRepo struct {
 }
 
 func (r *syncTestTaxLotDispositionRepo) FindByPositionID(ctx context.Context, positionID string) ([]*model.TaxLotDisposition, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []*model.TaxLotDisposition
 	for _, d := range r.u.taxLotDispositions {
 		if d.PositionID == positionID {
@@ -1901,17 +2030,21 @@ type syncTestTxRepo struct {
 }
 
 func (r *syncTestTxRepo) Create(ctx context.Context, tx *model.Transaction) (*model.Transaction, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	if tx.Amount == 0 {
 		return nil, errors.New("pq: new row for relation \"transactions\" violates check constraint \"valid_amount\"")
 	}
 	if tx.ID == "" {
-		tx.ID = "tx-" + time.Now().Format("150405.000000")
+		tx.ID = r.u.nextID("tx")
 	}
 	r.u.transactions[tx.ID] = tx
 	return tx, nil
 }
 
 func (r *syncTestTxRepo) FindByPositionID(ctx context.Context, positionID string) ([]model.Transaction, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	var res []model.Transaction
 	for _, t := range r.u.transactions {
 		if t.PositionID != nil && *t.PositionID == positionID {
@@ -1922,6 +2055,8 @@ func (r *syncTestTxRepo) FindByPositionID(ctx context.Context, positionID string
 }
 
 func (r *syncTestTxRepo) FindByAccountAndExternalID(ctx context.Context, accountID, externalID string) (*model.Transaction, error) {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for _, t := range r.u.transactions {
 		if t.AccountID != nil && *t.AccountID == accountID && t.ExternalID != nil && *t.ExternalID == externalID {
 			return t, nil
@@ -1936,6 +2071,8 @@ type syncTestPriceRepo struct {
 }
 
 func (r *syncTestPriceRepo) UpsertPrices(ctx context.Context, prices []model.AssetPrice) error {
+	r.u.mu.Lock()
+	defer r.u.mu.Unlock()
 	for i := range prices {
 		if !prices[i].Price.IsPositive() {
 			return errors.New("pq: new row for relation \"asset_prices\" violates check constraint \"valid_price\"")

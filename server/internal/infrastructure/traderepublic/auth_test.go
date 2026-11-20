@@ -43,6 +43,11 @@ func TestAuth_InitiateLoginV2(t *testing.T) {
 	}))
 	defer server.Close()
 
+	// Pin the app version: the client otherwise resolves it from the live web
+	// app, which makes the request header depend on the current release.
+	SetCachedAppVersion(DefaultAppVersion, time.Hour)
+	t.Cleanup(InvalidateVersionCache)
+
 	client := NewAuthClient(server.URL, mockWAF, nil)
 	ctx := context.Background()
 

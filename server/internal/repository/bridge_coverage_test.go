@@ -3,13 +3,12 @@ package repository
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"testing"
 	"time"
 
-	"sigma_finance/internal/config"
 	"sigma_finance/internal/domain/model"
+	"sigma_finance/internal/testutil"
 
 	"github.com/uptrace/bun"
 )
@@ -19,10 +18,11 @@ import (
 func setupBridgeDB(t *testing.T) (*bun.DB, func(), error) {
 	t.Helper()
 
-	db, err := config.NewTestDB()
-	if err != nil {
-		return nil, nil, fmt.Errorf("connect: %w", err)
-	}
+	// Build the shared schema through testutil first: the bridge DDL below
+	// used to hardcode UUID ids while every other test table uses text ids,
+	// and the two definitions cannot coexist in one database.
+	testDB := testutil.NewTestDB(t)
+	db := testDB.DB
 
 	ctx := context.Background()
 	cleanup := func() {
@@ -34,7 +34,7 @@ func setupBridgeDB(t *testing.T) (*bun.DB, func(), error) {
 		for _, tbl := range tables {
 			_, _ = db.NewRaw("TRUNCATE TABLE " + tbl + " CASCADE").Exec(ctx)
 		}
-		db.Close()
+		testDB.Close()
 	}
 
 	// Clean up from previous runs first
@@ -71,7 +71,7 @@ func setupBridgeDB(t *testing.T) (*bun.DB, func(), error) {
 
 		CREATE TABLE IF NOT EXISTS sigma_finance.market_data_pack_coverage (
 			pack_id TEXT NOT NULL REFERENCES sigma_finance.market_data_packs(id) ON DELETE CASCADE,
-			instrument_id UUID NOT NULL,
+			instrument_id TEXT NOT NULL,
 			symbol TEXT NOT NULL,
 			asset_type TEXT NOT NULL,
 			interval TEXT NOT NULL,
@@ -87,7 +87,7 @@ func setupBridgeDB(t *testing.T) (*bun.DB, func(), error) {
 	// Ensure coverage table has the pack_instrument_id column (our migration)
 	_, _ = db.ExecContext(ctx, `
 		ALTER TABLE sigma_finance.market_data_pack_coverage
-		ADD COLUMN IF NOT EXISTS pack_instrument_id UUID;
+		ADD COLUMN IF NOT EXISTS pack_instrument_id TEXT;
 	`)
 
 	return db, cleanup, nil

@@ -28,7 +28,9 @@ func withAuthUser(ctx context.Context, userID, email string) context.Context {
 // that user, for tests that exercise admin-only queries.
 func seedAdminCaller(t *testing.T, ctx context.Context, uow repository.IUnitOfWork, mut *mutationResolver) context.Context {
 	t.Helper()
-	admin, err := mut.CreateUser(ctx, gqlModel.CreateUserInput{
+	// Bootstrap through the service: CreateUser is admin-only, so the first
+	// administrator cannot be created through the resolver it guards.
+	admin, err := mut.UserService.CreateUser(ctx, service.CreateUserInput{
 		Username: "admincaller",
 		Email:    "admincaller@example.com",
 		Password: "password123",
@@ -39,6 +41,22 @@ func seedAdminCaller(t *testing.T, ctx context.Context, uow repository.IUnitOfWo
 	record.Role = model.UserRoleAdmin
 	require.NoError(t, uow.User().Update(ctx, record))
 	return withAuthUser(ctx, admin.ID, admin.Email)
+}
+
+// createUserFixture creates a user through the service. The CreateUser
+// mutation is admin-only, so fixtures that just need an account must not call
+// it; the guarded mutation itself is covered by the admin-path tests.
+func createUserFixture(t *testing.T, ctx context.Context, r *Resolver, input gqlModel.CreateUserInput) (*gqlModel.User, error) {
+	t.Helper()
+	user, err := r.UserService.CreateUser(ctx, service.CreateUserInput{
+		Username: input.Username,
+		Email:    input.Email,
+		Password: input.Password,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return mapUserToGQL(*user), nil
 }
 
 // TestGraphQLIntegration_UserOperations tests all User GraphQL operations
@@ -197,7 +215,7 @@ func TestGraphQLIntegration_PortfolioOperations(t *testing.T) {
 		Email:    "portfolio@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutationResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
@@ -660,7 +678,7 @@ func TestGraphQLIntegration_WatchlistOperations(t *testing.T) {
 		Email:    "watchlist@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutationResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
@@ -820,7 +838,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 		Email:    "complex@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutationResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
@@ -1014,7 +1032,7 @@ func TestGraphQLIntegration_ComplexRelationships(t *testing.T) {
 			Email:    "filter@example.com",
 			Password: "password123",
 		}
-		user2, err := mutationResolver.CreateUser(ctx, user2Input)
+		user2, err := createUserFixture(t, ctx, resolver, user2Input)
 		require.NoError(t, err)
 
 		// Create portfolios for both users

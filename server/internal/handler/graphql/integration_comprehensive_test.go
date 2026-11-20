@@ -45,7 +45,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Password: "password123",
 		}
 
-		user, err := mutResolver.CreateUser(ctx, input)
+		user, err := createUserFixture(t, ctx, resolver, input)
 		require.NoError(t, err)
 		assert.NotNil(t, user)
 		assert.Equal(t, "testuser", user.Username)
@@ -62,7 +62,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password123",
 		}
-		_, err := mutResolver.CreateUser(ctx, input1)
+		_, err := createUserFixture(t, ctx, resolver, input1)
 		require.NoError(t, err)
 
 		// Try to create second user with same email
@@ -71,7 +71,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Email:    "duplicate@example.com",
 			Password: "password123",
 		}
-		_, err = mutResolver.CreateUser(ctx, input2)
+		_, err = createUserFixture(t, ctx, resolver, input2)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "email")
 	})
@@ -83,7 +83,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Email:    "get@example.com",
 			Password: "password123",
 		}
-		createdUser, err := mutResolver.CreateUser(ctx, input)
+		createdUser, err := createUserFixture(t, ctx, resolver, input)
 		require.NoError(t, err)
 
 		// Get the user
@@ -110,7 +110,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 		}
 
 		for _, userInput := range users {
-			_, err := mutResolver.CreateUser(ctx, userInput)
+			_, err := createUserFixture(t, ctx, resolver, userInput)
 			require.NoError(t, err)
 		}
 
@@ -141,7 +141,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Email:    "update@example.com",
 			Password: "password123",
 		}
-		createdUser, err := mutResolver.CreateUser(ctx, input)
+		createdUser, err := createUserFixture(t, ctx, resolver, input)
 		require.NoError(t, err)
 
 		// Update the user
@@ -165,7 +165,7 @@ func TestGraphQLIntegration_ComprehensiveUserOperations(t *testing.T) {
 			Email:    "delete@example.com",
 			Password: "password123",
 		}
-		createdUser, err := mutResolver.CreateUser(ctx, input)
+		createdUser, err := createUserFixture(t, ctx, resolver, input)
 		require.NoError(t, err)
 
 		// Delete the user
@@ -209,7 +209,7 @@ func TestGraphQLIntegration_ComprehensivePortfolioOperations(t *testing.T) {
 		Email:    "portfolio@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = context.WithValue(ctx, middleware.UserKey, &middleware.AuthenticatedUser{
@@ -566,7 +566,7 @@ func TestGraphQLIntegration_ComprehensiveWatchlistOperations(t *testing.T) {
 		Email:    "watchlist@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	ctx = withAuthUser(ctx, testUser.ID, testUser.Email)
@@ -709,7 +709,7 @@ func TestGraphQLIntegration_ErrorHandling(t *testing.T) {
 	queryResolver := &queryResolver{resolver}
 	mutResolver := &mutationResolver{resolver}
 
-	caller, err := mutResolver.CreateUser(ctx, gqlModel.CreateUserInput{
+	caller, err := createUserFixture(t, ctx, resolver, gqlModel.CreateUserInput{
 		Username: "errcaller",
 		Email:    "errcaller@example.com",
 		Password: "password123",
@@ -754,7 +754,7 @@ func TestGraphQLIntegration_ErrorHandling(t *testing.T) {
 			Email:    "invalid-email", // Invalid email format
 			Password: "123",           // Too short password
 		}
-		_, err := mutResolver.CreateUser(ctx, invalidUserInput)
+		_, err := createUserFixture(t, ctx, resolver, invalidUserInput)
 		assert.Error(t, err)
 
 		// Test invalid portfolio creation
@@ -801,7 +801,7 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 		Email:    "complex@example.com",
 		Password: "password123",
 	}
-	testUser, err := mutResolver.CreateUser(ctx, userInput)
+	testUser, err := createUserFixture(t, ctx, resolver, userInput)
 	require.NoError(t, err)
 
 	// The user list query is admin-only, so run the suite as an admin caller.
@@ -826,7 +826,7 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 			Email:    "user2@example.com",
 			Password: "password123",
 		}
-		testUser2, err := mutResolver.CreateUser(ctx, user2Input)
+		testUser2, err := createUserFixture(t, ctx, resolver, user2Input)
 		require.NoError(t, err)
 
 		portfolio2Input := gqlModel.CreatePortfolioInput{
@@ -928,7 +928,7 @@ func TestGraphQLIntegration_ComprehensiveRelationships(t *testing.T) {
 				Email:    fmt.Sprintf("pagination%d@example.com", i),
 				Password: "password123",
 			}
-			user, err := mutResolver.CreateUser(ctx, userInput)
+			user, err := createUserFixture(t, ctx, resolver, userInput)
 			require.NoError(t, err)
 			users = append(users, user)
 		}
